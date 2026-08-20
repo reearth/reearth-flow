@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io::BufWriter;
 use std::io::Cursor;
-use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
@@ -9,13 +8,12 @@ use std::vec;
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Attribute, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
@@ -33,11 +31,11 @@ pub struct MVTSinkFactory;
 
 impl SinkFactory for MVTSinkFactory {
     fn name(&self) -> &str {
-        "MVTWriter"
+        "MVT Writer"
     }
 
     fn description(&self) -> &str {
-        "Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata."
+        "Writes features to Mapbox Vector Tiles (MVT) format."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -49,11 +47,11 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["mvt"]
+        &["vector", "tiling"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![FEATURES_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -124,8 +122,8 @@ type BufferValue = Vec<(Feature, String)>;
 pub struct MVTWriter {
     pub(super) params: MVTWriterCompiledParam,
     pub(super) schema: Schema,
-    /// (output, compress_output) -> Vec<(Feature, layer_name)>
-    pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
+    /// (output_rel_path, compress_output_rel_path) -> Vec<(Feature, layer_name)>
+    pub(super) buffer: HashMap<(String, Option<String>), BufferValue>,
     #[allow(clippy::type_complexity)]
     pub(super) join_handles: Vec<JoinHandle>,
 }
@@ -133,38 +131,38 @@ pub struct MVTWriter {
 /// # MVTWriter Parameters
 ///
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
-/// Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
-    /// # Output
-    /// Output directory path or expression for the generated MVT tiles
+    /// # Output Directory
+    /// Output directory path or expression where the generated MVT tiles are written.
     pub(super) output: Code,
     /// # Layer Name
-    /// Name of the layer within the MVT tiles
+    /// Name or expression for the layer within the generated tiles.
     pub(super) layer_name: Code,
     /// # Minimum Zoom
-    /// Minimum zoom level to generate tiles for
+    /// Lowest zoom level to generate tiles for.
     pub(super) min_zoom: u8,
     /// # Maximum Zoom
-    /// Maximum zoom level to generate tiles for
+    /// Highest zoom level to generate tiles for.
     pub(super) max_zoom: u8,
-    /// # Compress Output
-    /// Optional expression to determine whether to compress the output tiles
+    /// # Compressed Output Path
+    /// Optional path where a compressed archive of the tiles is also written.
     pub(super) compress_output: Option<Code>,
-    /// # Skip Unexposed Attributes
-    /// Skip attributes with double underscore prefix
-    pub(super) skip_unexposed_attributes: Option<bool>,
-    /// # Colon to Underscore
-    /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
-    pub(super) colon_to_underscore: Option<bool>,
-    /// # Extent
-    /// MVT tile resolution. Default is 4096.
-    pub(super) extent: Option<u32>,
     /// # Schema Key
-    /// Attribute key to match data and schema features for attribute filtering and casting.
+    /// Attribute key used to match data and schema features for attribute filtering and casting.
     /// This attribute is excluded from output.
     pub(super) schema_key: Option<String>,
+    /// # Skip Unexposed Attributes
+    /// Whether to skip attributes whose keys begin with a double underscore.
+    pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Colon to Underscore
+    /// Whether to replace colons in attribute keys (such as those from XML namespaces) with underscores.
+    pub(super) colon_to_underscore: Option<bool>,
+    /// # Tile Extent
+    /// Coordinate grid resolution within each tile. Higher values preserve more positional
+    /// precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.
+    pub(super) extent: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
@@ -182,9 +180,10 @@ pub struct MVTWriterCompiledParam {
 
 impl Sink for MVTWriter {
     fn name(&self) -> &str {
-        "MVTWriter"
+        "MVT Writer"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
             let Some(ref schema_key) = self.params.schema_key else {
@@ -211,17 +210,14 @@ impl Sink for MVTWriter {
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_)
             | geometry_types::GeometryValue::FlowGeometry2D(_) => {
-                let env_vars = ctx.expr_engine.vars();
+                let variables = ctx.variables.clone();
                 let eval = |c: &CompiledCode| {
-                    c.eval_string(feature, Arc::clone(&env_vars))
+                    c.eval_string(feature, Arc::clone(&variables))
                         .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
                 };
-                let output = Uri::from_str(eval(&self.params.output)?.as_str())?;
+                let output = eval(&self.params.output)?;
                 let compress_output = if let Some(c) = &self.params.compress_output {
-                    Some(
-                        Uri::from_str(eval(c)?.as_str())
-                            .map_err(|e| SinkError::MvtWriter(e.to_string()))?,
-                    )
+                    Some(eval(c)?)
                 } else {
                     None
                 };
@@ -248,6 +244,7 @@ impl Sink for MVTWriter {
 
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let result = self.flush_buffer(ctx.as_context())?;
         let mut join_handles = self.join_handles.clone();
@@ -281,9 +278,10 @@ impl Sink for MVTWriter {
 
 impl MVTWriter {
     #[allow(clippy::type_complexity)]
+    #[cfg(not(feature = "new-geometry"))]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
         let mut result = Vec::new();
-        let mut features = HashMap::<(Uri, Option<Uri>), BufferValue>::new();
+        let mut features = HashMap::<(String, Option<String>), BufferValue>::new();
         for ((output, compress_output), buffer) in &self.buffer {
             features
                 .entry((output.clone(), compress_output.clone()))
@@ -320,13 +318,16 @@ impl MVTWriter {
         Ok(result)
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     pub fn write(
         &self,
         ctx: Context,
         upstream: BufferValue,
-        output: &Uri,
-        compress_output: &Option<Uri>,
+        output: &str,
+        compress_output: &Option<String>,
     ) -> crate::errors::Result<Vec<JoinHandle>> {
+        let node_ctx = NodeContext::from(ctx.clone());
+
         let tile_id_conv = TileIdMethod::Hilbert;
         let name = self.name().to_string();
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
@@ -334,19 +335,27 @@ impl MVTWriter {
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
         let gctx = ctx.clone();
-        let out = output.clone();
 
         let mut result = Vec::new();
 
+        let sandbox_root = node_ctx.sandbox_root.clone();
+        let resolver = node_ctx.storage_resolver.clone();
+        let output_rel = output.to_string();
+
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
+        let sandbox_root_clone = sandbox_root.clone();
+        let resolver_clone = resolver.clone();
+        let output_rel_clone = output_rel.clone();
         std::thread::spawn(move || {
             let result = super::pipeline::geometry_slicing_stage(
                 gctx.clone(),
                 &upstream,
                 tile_id_conv,
                 sender_sliced,
-                &out,
+                &sandbox_root_clone,
+                &output_rel_clone,
+                &resolver_clone,
                 min_zoom,
                 max_zoom,
             );
@@ -376,10 +385,10 @@ impl MVTWriter {
             }
             tx.send(result).unwrap();
         });
-        let out = output.clone();
         let gctx = gctx.clone();
         let name = self.name().to_string();
         let compress_output = compress_output.clone();
+        let node_ctx_for_compress = node_ctx.clone();
         let extent = self.params.extent;
         let (tx, rx) = std::sync::mpsc::channel();
         result.push(Arc::new(parking_lot::Mutex::new(rx)));
@@ -391,7 +400,9 @@ impl MVTWriter {
             pool.install(|| {
                 let result = super::pipeline::tile_writing_stage(
                     gctx.clone(),
-                    &out,
+                    &sandbox_root,
+                    &output_rel,
+                    &resolver,
                     receiver_sorted,
                     tile_id_conv,
                     extent,
@@ -405,19 +416,36 @@ impl MVTWriter {
                         .send(Event::SinkFinishFailed { name: name.clone() });
                 }
 
-                if let Some(compress_output) = compress_output {
-                    let compress_node_ctx = NodeContext::from(gctx.clone());
-                    match crate::SinkOutput::from_path(
-                        &compress_node_ctx,
-                        compress_output.as_str(),
+                if let Some(ref compress_rel) = compress_output {
+                    // Resolve the output URI to get its path for zipping.
+                    let output_abs_path = crate::SinkOutput::new(
+                        &node_ctx_for_compress.sandbox_root,
+                        &output_rel,
+                        &node_ctx_for_compress.storage_resolver,
+                    )
+                    .map(|s| s.uri().clone());
+                    match crate::SinkOutput::new(
+                        &node_ctx_for_compress.sandbox_root,
+                        compress_rel,
+                        &node_ctx_for_compress.storage_resolver,
                     ) {
                         Ok(compress_sink_out) => {
+                            let abs_path = match output_abs_path {
+                                Ok(ref uri) => uri.path().as_path().to_path_buf(),
+                                Err(e) => {
+                                    gctx.event_hub.error_log(
+                                        None,
+                                        format!("Failed to resolve output path: {e}"),
+                                    );
+                                    return;
+                                }
+                            };
                             let buffer = Vec::new();
                             let mut cursor = Cursor::new(buffer);
                             let writer = BufWriter::new(&mut cursor);
                             let zip_result = reearth_flow_common::zip::write(
                                 writer,
-                                out.path().as_path(),
+                                abs_path.as_path(),
                             )
                             .map_err(|e| {
                                 crate::errors::SinkError::MvtWriter(e.to_string())
@@ -430,7 +458,7 @@ impl MVTWriter {
                                             crate::errors::SinkError::MvtWriter(e.to_string())
                                         }) {
                                         Ok(_) => {
-                                            match std::fs::remove_dir_all(out.path().as_path()) {
+                                            match std::fs::remove_dir_all(abs_path.as_path()) {
                                                 Ok(_) => {}
                                                 Err(e) => {
                                                     gctx.event_hub.error_log(

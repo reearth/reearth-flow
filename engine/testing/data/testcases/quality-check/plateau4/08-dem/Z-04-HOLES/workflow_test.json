@@ -1,5 +1,6 @@
 {
   "description": "Test for plateau4 08 holes error.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "workflowVariables": [
     {
@@ -39,7 +40,7 @@
   ],
   "intermediateAssertions": [
     {
-      "outputPort": "057a1995-8af0-4a8e-8699-cbb77e1ed374.default",
+      "outputPort": "057a1995-8af0-4a8e-8699-cbb77e1ed374.features",
       "expectedFile": "intermediate_holes.jsonl",
       "jsonFilter": "{attributes}"
     }

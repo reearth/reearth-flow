@@ -5,12 +5,18 @@ import (
 	"log"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+// tracerName identifies spans emitted by this package in the OpenTelemetry backend.
+const tracerName = "github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 
 var skipPermissionCheck bool
 
@@ -48,7 +54,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
 		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
 		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
-		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
+		NodeExecution: NewNodeExecution(r.NodeExecution, r.Job, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
 		Project:       NewProject(r, g, job, permissionChecker, GQLClient.WorkspaceRepo, client),
 		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
@@ -56,7 +62,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          NewUser(GQLClient.UserRepo),
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
-		Websocket:     client,
+		Websocket:     NewWebsocket(client, r.Project, permissionChecker),
 		WorkerConfig:  NewWorkerConfig(r, permissionChecker),
 	}
 }
@@ -92,15 +98,30 @@ func setSkipPermissionCheck(isSkipPermissionCheck bool) {
 	skipPermissionCheck = isSkipPermissionCheck
 }
 
-func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
+func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string, workspaceID ...accountsid.WorkspaceID) error {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.checkPermission")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("permission.resource", resource),
+		attribute.String("permission.action", action),
+		attribute.Int("permission.workspace_count", len(workspaceID)),
+	)
+
+	// At most one workspace is meaningful; reject misuse and fail closed rather
+	// than silently evaluating against workspaceID[0] and ignoring the rest.
+	if len(workspaceID) > 1 {
+		log.Printf("ERROR: checkPermission called with %d workspace ids for resource=%s action=%s; expected at most one", len(workspaceID), resource, action)
+		return interfaces.ErrOperationDenied
+	}
 	if skipPermissionCheck {
 		log.Printf("INFO: SkipPermissionCheck enabled, skipping permission check for resource=%s action=%s", resource, action)
 		return nil
 	}
 
-	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action, workspaceID...)
 	if err != nil {
 		log.Printf("WARNING: Permission check error for resource=%s action=%s: %v", resource, action, err)
+		span.RecordError(err)
 		return err
 	}
 

@@ -18,6 +18,6 @@ func New() *repo.Container {
 		Trigger:       NewTrigger(),
 		Workspace:     accountmemory.NewWorkspace(),
 		Lock:          NewLock(),
-		Transaction:   &usecasex.NopTransaction{},
+		Transaction:   usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 	}
 }

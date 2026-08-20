@@ -3,17 +3,22 @@ import * as Y from "yjs";
 import { ProjectCorruptionError } from "@flow/errors";
 import { Workflow } from "@flow/types";
 import type { Edge, Node, NodeData, NodeType } from "@flow/types";
+import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 import type { YWorkflow, YEdge, YNode, YNodesMap, YEdgesMap } from "../types";
 
 export const reassembleNode = (yNode: YNode): Node => {
   const id = yNode.get("id")?.toString() as string;
 
+  // Guard against non-finite / missing coordinates. A NaN position (e.g. from
+  // screenToFlowPosition running before the canvas is measured) would otherwise
+  // reach ReactFlow and trigger an infinite render loop, making the project
+  // impossible to open. `?? 0` alone does NOT catch NaN (NaN ?? 0 === NaN).
   const positionMap = yNode.get("position") as Y.Map<any>;
-  const position = {
-    x: positionMap?.get("x") ?? 0,
-    y: positionMap?.get("y") ?? 0,
-  };
+  const position = toFinitePosition({
+    x: positionMap?.get("x"),
+    y: positionMap?.get("y"),
+  });
 
   const type = yNode.get("type")?.toString() as NodeType;
   const dragging = yNode.get("dragging") as boolean;
@@ -50,6 +55,9 @@ export const reassembleNode = (yNode: YNode): Node => {
     data.customizations = (yNode.get("data") as Y.Map<any>)?.get(
       "customizations",
     );
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("nodeMetadata") !== undefined) {
+    data.nodeMetadata = (yNode.get("data") as Y.Map<any>)?.get("nodeMetadata");
   }
   if ((yNode.get("data") as Y.Map<any>)?.get("isCollapsed") !== undefined) {
     data.isCollapsed = (yNode.get("data") as Y.Map<any>)?.get("isCollapsed");

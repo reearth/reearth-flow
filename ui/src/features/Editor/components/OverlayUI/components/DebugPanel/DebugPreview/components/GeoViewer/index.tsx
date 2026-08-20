@@ -36,6 +36,7 @@ const GeoViewer: React.FC<Props> = ({
       textSize="sm">
       <div className={`relative size-full ${className}`}>
         <CesiumViewer
+          key={visualizerType}
           fileContent={fileContent}
           visualizerType={visualizerType}
           viewerRef={cesiumViewerRef}

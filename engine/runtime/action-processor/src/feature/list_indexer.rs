@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -19,7 +19,7 @@ pub(super) struct ListIndexerFactory;
 
 impl ProcessorFactory for ListIndexerFactory {
     fn name(&self) -> &str {
-        "ListIndexer"
+        "List Indexer"
     }
 
     fn description(&self) -> &str {
@@ -35,11 +35,11 @@ impl ProcessorFactory for ListIndexerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -70,7 +70,7 @@ impl ProcessorFactory for ListIndexerFactory {
     }
 }
 
-/// # ListIndexer Parameters
+/// # List Indexer Parameters
 ///
 /// Configuration for copying attributes from a specific list element to main feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -101,14 +101,14 @@ impl Processor for ListIndexer {
             let Some(AttributeValue::Array(list)) = feature.attributes.get(&self.list_attribute)
             else {
                 // If list attribute doesn't exist or isn't an array, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 return Ok(());
             };
 
             // Check if the specified index exists
             if self.list_index_to_copy >= list.len() {
                 // If index is out of bounds, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 return Ok(());
             }
 
@@ -149,7 +149,7 @@ impl Processor for ListIndexer {
             }
         }
 
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -162,6 +162,6 @@ impl Processor for ListIndexer {
     }
 
     fn name(&self) -> &str {
-        "ListIndexer"
+        "List Indexer"
     }
 }

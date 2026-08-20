@@ -3,6 +3,7 @@ import {
   DiscIcon,
   GraphIcon,
   LightningIcon,
+  WarningCircleIcon,
 } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo, useMemo } from "react";
@@ -37,6 +38,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
+    isNodeStale,
     handleCollapsedToggle,
   } = useHooks({ data, type, nodeId: id });
 
@@ -55,7 +57,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   return (
     <div
       style={gradientBorderStyle}
-      className={`max-w-[200px] min-w-[150px] rounded-lg bg-secondary shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${gradientBorderStyle ? "" : `border ${selected ? selectedColor : borderColor}`} ${data.isDisabled ? "opacity-70" : ""} ${readonly ? "nopan" : ""}`}>
+      className={`relative max-w-[200px] min-w-[150px] rounded-lg bg-secondary shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${gradientBorderStyle ? "" : `border ${selected ? selectedColor : borderColor}`} ${data.isDisabled ? "opacity-70" : ""} ${readonly ? "nopan" : ""}`}>
       <div
         style={
           !gradientBorderStyle && remoteColor
@@ -83,11 +85,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               {data.customizations?.customName || officialName}
             </p>
           </div>
+          {isNodeStale && (
+            <WarningCircleIcon className="absolute -top-1 -right-0.5 size-3 text-warning" />
+          )}
           {/* <CaretRight weight="fill" /> */}
         </div>
         <Handles
           id={id}
-          readonly={readonly}
           nodeType={type}
           nodeData={data}
           inputs={inputs}

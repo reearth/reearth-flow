@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func NewMockPermissionChecker(checkFunc func(ctx context.Context, resource, acti
 	}
 }
 
-func (m *mockPermissionChecker) CheckPermission(ctx context.Context, resource, action string) (bool, error) {
+func (m *mockPermissionChecker) CheckPermission(ctx context.Context, resource, action string, _ ...accountsid.WorkspaceID) (bool, error) {
 	if m.checkPermissionFunc != nil {
 		return m.checkPermissionFunc(ctx, resource, action)
 	}

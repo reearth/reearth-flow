@@ -1,17 +1,10 @@
-use std::{
-    collections::HashMap,
-    io::{BufWriter, Cursor},
-    str::FromStr,
-    sync::Arc,
-    time, vec,
-};
+use std::{collections::HashMap, io::Cursor, sync::Arc, time, vec};
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Code, CompiledCode, Feature};
@@ -29,11 +22,11 @@ pub struct Cesium3DTilesSinkFactory;
 
 impl SinkFactory for Cesium3DTilesSinkFactory {
     fn name(&self) -> &str {
-        "Cesium3DTilesWriter"
+        "Cesium 3D Tiles Writer"
     }
 
     fn description(&self) -> &str {
-        "Export Features as Cesium 3D Tiles for Web Visualization"
+        "Writes features to Cesium 3D Tiles format for 3D web visualization."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -45,11 +38,11 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["3d-tiles", "3d"]
+        &["3d", "tiling"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![FEATURES_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -85,6 +78,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .output
             .compile()
             .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))?;
+        #[cfg(not(feature = "new-geometry"))]
         let compress_output = params
             .compress_output
             .as_ref()
@@ -99,20 +93,38 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             schema: Default::default(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
+                #[cfg(not(feature = "new-geometry"))]
                 min_zoom: params.min_zoom,
+                #[cfg(not(feature = "new-geometry"))]
                 max_zoom: params.max_zoom,
+                #[cfg(feature = "new-geometry")]
+                target_tile_size: params.target_tile_size,
+                #[cfg(not(feature = "new-geometry"))]
                 attach_texture: params.attach_texture,
+                #[cfg(not(feature = "new-geometry"))]
                 compress_output,
                 draco_compression: params.draco_compression,
+                #[cfg(feature = "new-geometry")]
+                compute_flat_normal: params.compute_flat_normal,
+                #[cfg(feature = "new-geometry")]
+                texel_size: params.texel_size,
+                #[cfg(feature = "new-geometry")]
+                atlas_size: params.atlas_size,
+                #[cfg(feature = "new-geometry")]
+                atlas_extrusion: params.atlas_extrusion,
+                #[cfg(feature = "new-geometry")]
+                texture_codec: params.texture_codec,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
+                #[cfg(feature = "new-geometry")]
+                array_map_separator: params.array_map_separator,
             },
         };
         Ok(Box::new(sink))
     }
 }
 
-type BufferKey = (Uri, Option<String>, Option<Uri>); // (output, filename, compress_output)
+type BufferKey = (String, Option<String>, Option<String>); // (output_rel_path, filename, compress_output_rel_path)
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
@@ -121,58 +133,154 @@ pub struct Cesium3DTilesWriter {
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
+/// Serde default for flags that are on unless explicitly disabled. Also makes
+/// the generated JSON schema advertise `default: true`.
+fn default_true() -> bool {
+    true
+}
+
+/// # Texture Codec
+/// Texture image codec for the new-geometry writer's atlas pages.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
+pub enum TextureCodec {
+    /// KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`):
+    /// higher quality, larger files.
+    #[serde(rename = "KTX2/UASTC")]
+    Ktx2Uastc,
+    /// KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`):
+    /// smaller files, lower quality.
+    #[default]
+    #[serde(rename = "KTX2/ETC1S")]
+    Ktx2Etc1s,
+    /// PNG, lossless with alpha.
+    #[serde(rename = "PNG")]
+    Png,
+    /// JPEG, lossy and opaque (alpha is dropped).
+    #[serde(rename = "JPEG")]
+    Jpeg,
+    /// Attach no textures; textured geometry falls back to its neutral colour.
+    Untextured,
+}
+
 /// # Cesium3DTilesWriter Parameters
+///
+/// Configuration for writing features to Cesium 3D Tiles.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Cesium3DTilesWriterParam {
     /// # Output Path
-    /// Directory path where the 3D tiles will be written
+    /// Directory path where the 3D Tiles will be written.
     pub(super) output: Code,
     /// # Minimum Zoom Level
-    /// Minimum zoom level for tile generation (0-24)
+    /// Lowest zoom level to generate tiles for, from 0 to 24.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) min_zoom: u8,
     /// # Maximum Zoom Level
-    /// Maximum zoom level for tile generation (0-24)
+    /// Highest zoom level to generate tiles for, from 0 to 24.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) max_zoom: u8,
+    /// # Target Tile Size
+    /// Target content size per tile, in bytes. Tiles are split when they'd
+    /// exceed it and merged with neighbours when they'd otherwise be smaller;
+    /// a single feature that alone exceeds it is kept whole (features are
+    /// never clipped). A value of 0 disables merging and splits every feature
+    /// into its own content. Defaults to 1,048,576 (1 MiB).
+    #[cfg(feature = "new-geometry")]
+    pub(super) target_tile_size: Option<u64>,
     /// # Attach Textures
-    /// Whether to include texture information in the generated tiles
+    /// Whether to include texture information in the generated tiles.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
-    /// # Compressed Output Path
-    /// Optional path for compressed archive output
-    pub(super) compress_output: Option<Code>,
     /// # Draco Compression
-    /// Use draco compression. Defaults to true.
-    pub(super) draco_compression: Option<bool>,
-    /// # Skip unexposed Attributes
-    /// Skip attributes with double underscore prefix
-    pub(super) skip_unexposed_attributes: Option<bool>,
+    /// Whether to compress mesh geometry with Draco. Defaults to true.
+    #[serde(default = "default_true")]
+    pub(super) draco_compression: bool,
+    /// # Compute Flat Normals
+    /// Compute per-polygon flat normals for lighting. Defaults to true.
+    /// When disabled, no normals are written and the mesh is smaller, but the
+    /// tile carries no lighting data (a viewer must derive flat normals itself).
+    #[serde(default = "default_true")]
+    pub(super) compute_flat_normal: bool,
+    /// # Texel Size
+    /// Target texel size in metres per pixel. Textures finer than this are
+    /// downsampled to it. Defaults to 0, which keeps full texture detail.
+    pub(super) texel_size: Option<f64>,
+    /// # Atlas Size
+    /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
+    /// onto additional atlas pages; a single texture larger than it is
+    /// downsampled to fit. Defaults to 2048.
+    // Upper bound mirrors `reearth_flow_atlas::MAX_ATLAS_DIMENSION`; the packer
+    // rejects larger values, so the schema advertises the same ceiling.
+    #[schemars(range(min = 1, max = 65536))]
+    pub(super) atlas_size: Option<u32>,
+    /// # Atlas Extrusion
+    /// Ring of pixels blitted around each texture region in the atlas to stop
+    /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
+    #[schemars(range(max = 65536))]
+    pub(super) atlas_extrusion: Option<u32>,
+    /// # Texture Codec
+    /// Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select
+    /// `Untextured` to attach no textures.
+    #[serde(default)]
+    pub(super) texture_codec: TextureCodec,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
     /// filename: all features sharing the same value are written to the same file.
     /// This attribute is excluded from output.
     pub(super) schema_key: Option<String>,
+    /// # Skip Unexposed Attributes
+    /// Whether to skip attributes whose keys begin with a double underscore.
+    pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Array/Map Separator
+    /// Separator joining a nested array or map attribute to its child key or
+    /// index when flattening it into metadata columns. Leave unset to drop array
+    /// and map attributes from the output entirely.
+    pub(super) array_map_separator: Option<String>,
+    /// # Compressed Output Path
+    /// Optional path where a compressed archive of the tiles is also written.
+    #[cfg(not(feature = "new-geometry"))]
+    pub(super) compress_output: Option<Code>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: CompiledCode,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) min_zoom: u8,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) max_zoom: u8,
+    #[cfg(feature = "new-geometry")]
+    pub(super) target_tile_size: Option<u64>,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<CompiledCode>,
-    pub(super) draco_compression: Option<bool>,
+    pub(super) draco_compression: bool,
+    #[cfg(feature = "new-geometry")]
+    pub(super) compute_flat_normal: bool,
+    #[cfg(feature = "new-geometry")]
+    pub(super) texel_size: Option<f64>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) atlas_size: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) atlas_extrusion: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) texture_codec: TextureCodec,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) array_map_separator: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
     fn name(&self) -> &str {
-        "Cesium3DTilesWriter"
+        "Cesium 3D Tiles Writer"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         match &ctx.port {
-            port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
+            port if *port == *FEATURES_PORT => self.process_default(&ctx)?,
             port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx),
             port => {
                 return Err(
@@ -183,13 +291,27 @@ impl Sink for Cesium3DTilesWriter {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context())?;
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        self.process_new_geometry(&ctx)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        self.finish_new_geometry(ctx)?;
         Ok(())
     }
 }
 
 impl Cesium3DTilesWriter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
@@ -211,23 +333,21 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
-        let env_vars = ctx.expr_engine.vars();
-        let path = self
+        let variables = ctx.variables.clone();
+        let output = self
             .params
             .output
-            .eval_string(&ctx.feature, Arc::clone(&env_vars))
+            .eval_string(&ctx.feature, Arc::clone(&variables))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-        // URI parse only; sandbox-validated when SinkOutput::from_path runs at write time (pipeline.rs).
-        let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
         let compress_output = self
             .params
             .compress_output
             .as_ref()
-            .map(|c| -> crate::errors::Result<Uri> {
-                let path = c
-                    .eval_string(&ctx.feature, Arc::clone(&env_vars))
+            .map(|c| -> crate::errors::Result<String> {
+                let compress_path = c
+                    .eval_string(&ctx.feature, Arc::clone(&variables))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
-                Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)
+                Ok(compress_path)
             })
             .transpose()?;
 
@@ -286,9 +406,10 @@ impl Cesium3DTilesWriter {
         self.schema.types.insert(schema_type, typedef);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         let mut features =
-            HashMap::<(Uri, Option<Uri>), Vec<(Option<String>, Vec<Feature>)>>::new();
+            HashMap::<(String, Option<String>), Vec<(Option<String>, Vec<Feature>)>>::new();
         for ((output, filename, compress_output), buffer) in &self.buffer {
             features
                 .entry((output.clone(), compress_output.clone()))
@@ -302,12 +423,13 @@ impl Cesium3DTilesWriter {
     }
 
     #[allow(clippy::type_complexity)]
+    #[cfg(not(feature = "new-geometry"))]
     pub(crate) fn write(
         &self,
         ctx: Context,
         upstream: &[(Option<String>, Vec<Feature>)],
-        output: &Uri,
-        compress_output: &Option<Uri>,
+        output: &str,
+        compress_output: &Option<String>,
     ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
@@ -321,6 +443,13 @@ impl Cesium3DTilesWriter {
                 }
             }
         }
+        // Resolve the output URI once here; the pipeline uses it as the base directory.
+        let node_ctx = NodeContext::from(ctx.clone());
+        let output_sink =
+            crate::SinkOutput::new(&node_ctx.sandbox_root, output, &node_ctx.storage_resolver)
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+        let output_uri = output_sink.uri().clone();
+
         let grouped_features: Vec<(Option<String>, Vec<Feature>)> = upstream.to_owned();
 
         let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
@@ -328,9 +457,13 @@ impl Cesium3DTilesWriter {
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
 
+        let output_uri_for_log = output_uri.clone();
+        let compress_output = compress_output.clone();
+
         std::thread::scope(|s| {
             {
                 let ctx = ctx.clone();
+                let out_log = output_uri_for_log.clone();
                 s.spawn(move || {
                     let feature_count: usize =
                         grouped_features.iter().map(|(_, fs)| fs.len()).sum();
@@ -358,13 +491,14 @@ impl Cesium3DTilesWriter {
                             "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
                             feature_count,
                             now.elapsed(),
-                            output
+                            out_log
                         ),
                     );
                 });
             }
             {
                 let ctx = ctx.clone();
+                let out_log = output_uri_for_log.clone();
                 s.spawn(move || {
                     let now = time::Instant::now();
                     let result =
@@ -383,7 +517,7 @@ impl Cesium3DTilesWriter {
                         format!(
                             "Finish feature_sorting_stage. elapsed = {:?}, output = {}",
                             now.elapsed(),
-                            output
+                            out_log
                         ),
                     );
                 });
@@ -391,6 +525,13 @@ impl Cesium3DTilesWriter {
             {
                 let ctx = ctx.clone();
                 let schema = schema.clone();
+                let output_uri_inner = output_uri.clone();
+                // When compress_output is set, tiles stream into an in-memory zip instead of output_uri_inner.
+                let zip_sink = compress_output.as_ref().map(|_| {
+                    Arc::new(reearth_flow_common::zip::StreamingZipWriter::new(
+                        Cursor::new(Vec::new()),
+                    ))
+                });
                 s.spawn(move || {
                     let pool = rayon::ThreadPoolBuilder::new()
                         .use_current_thread()
@@ -400,11 +541,12 @@ impl Cesium3DTilesWriter {
                         let now = time::Instant::now();
                         let result = super::pipeline::tile_writing_stage(
                             ctx.clone(),
-                            output.clone(),
+                            output_uri_inner.clone(),
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
-                            self.params.draco_compression.unwrap_or(true),
+                            self.params.draco_compression,
+                            zip_sink.clone(),
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();
@@ -421,35 +563,34 @@ impl Cesium3DTilesWriter {
                             format!(
                                 "Finish tile_writing_stage. elapsed = {:?}, output = {}",
                                 now.elapsed(),
-                                output
+                                output_uri_inner
                             ),
                         );
 
-                        if let Some(compress_output) = compress_output {
-                            // Sandbox: `compress_output` (zip) runs through
-                            // the same chokepoint as the tiles dir above, so
-                            // both Cesium outputs share one bounded location.
+                        if let Some(ref compress_rel) = compress_output {
                             let compress_node_ctx = NodeContext::from(ctx.clone());
-                            match crate::SinkOutput::from_path(
-                                &compress_node_ctx,
-                                compress_output.as_str(),
+                            match crate::SinkOutput::new(
+                                &compress_node_ctx.sandbox_root,
+                                compress_rel,
+                                &compress_node_ctx.storage_resolver,
                             ) {
                                 Ok(compress_sink_out) => {
                                     let now = time::Instant::now();
-                                    let buffer = Vec::new();
-                                    let mut cursor = Cursor::new(buffer);
-                                    let writer = BufWriter::new(&mut cursor);
-                                    let zip_result = reearth_flow_common::zip::write(
-                                        writer,
-                                        output.path().as_path(),
-                                    )
-                                    .map_err(|e| {
-                                        crate::errors::SinkError::cesium3dtiles_writer(
-                                            e.to_string(),
-                                        )
-                                    });
+                                    let zip_result = Arc::try_unwrap(zip_sink.unwrap())
+                                        .unwrap_or_else(|_| {
+                                            panic!(
+                                                "zip_sink still has other referents after \
+                                                 tile_writing_stage returned"
+                                            )
+                                        })
+                                        .finish()
+                                        .map_err(|e| {
+                                            crate::errors::SinkError::cesium3dtiles_writer(
+                                                e.to_string(),
+                                            )
+                                        });
                                     match zip_result {
-                                        Ok(_) => {
+                                        Ok(cursor) => {
                                             match compress_sink_out
                                                 .write(bytes::Bytes::from(cursor.into_inner()))
                                                 .map_err(|e| {
@@ -458,21 +599,7 @@ impl Cesium3DTilesWriter {
                                                     )
                                                 })
                                             {
-                                                Ok(_) => {
-                                                    match std::fs::remove_dir_all(
-                                                        output.path().as_path(),
-                                                    ) {
-                                                        Ok(_) => {}
-                                                        Err(e) => {
-                                                            ctx.event_hub.error_log(
-                                                                None,
-                                                                format!(
-                                                        "Failed to remove directory with error = {e:?}"
-                                                    ),
-                                                            );
-                                                        }
-                                                    }
-                                                }
+                                                Ok(_) => {}
                                                 Err(e) => {
                                                     ctx.event_hub.error_log(
                                                         None,
@@ -497,7 +624,7 @@ impl Cesium3DTilesWriter {
                                         format!(
                                             "Finish write zip file. elapsed = {:?}, output = {}",
                                             now.elapsed(),
-                                            output
+                                            output_uri_inner
                                         ),
                                     );
                                 }

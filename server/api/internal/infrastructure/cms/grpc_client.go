@@ -8,10 +8,11 @@ import (
 	"sync"
 	"time"
 
-	cmspb "github.com/eukarya-inc/reearth-proto/gen/go/cms/v1"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
+	cmspb "github.com/reearth/reearth-proto/gen/go/cms/v1"
 	"github.com/reearth/reearthx/log"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -108,6 +109,7 @@ func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*gr
 			grpc.MaxCallRecvMsgSize(4*1024*1024),
 			grpc.MaxCallSendMsgSize(4*1024*1024),
 		),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 
 	conn, err := grpc.NewClient(endpoint, opts...)

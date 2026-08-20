@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -15,6 +16,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	reearth_log "github.com/reearth/reearthx/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type LogInteractor struct {
@@ -36,12 +39,29 @@ func NewLogInteractor(lgRedis gateway.Redis, jobRepo repo.Job, permissionChecker
 	}
 }
 
-func (li *LogInteractor) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action)
+func (li *LogInteractor) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action, workspaceID...)
 }
 
-func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) ([]*log.Log, error) {
-	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) (_ []*log.Log, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.LogInteractor.GetLogs")
+	span.SetAttributes(attribute.String("job.id", jobID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
+	j, err := li.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := li.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 
@@ -60,7 +80,15 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 }
 
 func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {
-	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+	j, err := li.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	var wsIDs []accountsid.WorkspaceID
+	if j != nil {
+		wsIDs = append(wsIDs, j.Workspace())
+	}
+	if err := li.checkPermission(ctx, rbac.ActionAny, wsIDs...); err != nil {
 		return nil, err
 	}
 

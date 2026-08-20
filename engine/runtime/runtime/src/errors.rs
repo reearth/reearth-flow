@@ -118,6 +118,8 @@ pub enum ExecutionError {
         max_iterations: usize,
         ids: Vec<String>,
     },
+    #[error("Schema inference failed: workflow graph contains a cycle")]
+    SchemaInferenceCycle,
 }
 
 impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {

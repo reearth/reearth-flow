@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_geometry::algorithm::bvh_acceleration::AcceleratedGeometrySet;
 use reearth_flow_geometry::algorithm::ray_intersection::{IncludeOrigin, Ray3D, RayHit};
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
@@ -24,7 +23,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,7 +36,7 @@ use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 static RAY_PORT: Lazy<Port> = Lazy::new(|| Port::new("ray"));
 static GEOM_PORT: Lazy<Port> = Lazy::new(|| Port::new("geom"));
 static INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("intersection"));
-static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no_intersection"));
+static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no-intersection"));
 
 /// Sanitize a pair_id string for safe use as a filename component.
 /// Only allows alphanumeric, hyphen, and underscore; replaces everything
@@ -69,16 +70,20 @@ fn sanitize_pair_id(pair_id: &str) -> String {
 
 const DEFAULT_TOLERANCE: f64 = 1e-10;
 
+/// Pairing key used when no `pairId` expression is configured, putting every ray
+/// and every geometry into one group so all are tested against each other.
+const ALL_PAIRS_KEY: &str = "all";
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct RayIntersectorFactory;
 
 impl ProcessorFactory for RayIntersectorFactory {
     fn name(&self) -> &str {
-        "RayIntersector"
+        "Ray Intersector"
     }
 
     fn description(&self) -> &str {
-        "Computes intersection points between rays and geometries"
+        "Computes intersection points between rays and geometries."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -90,7 +95,7 @@ impl ProcessorFactory for RayIntersectorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["ray", "intersection", "3d"]
+        &["3d", "spatial"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -107,12 +112,12 @@ impl ProcessorFactory for RayIntersectorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: RayIntersectorParams = if let Some(with) = with.clone() {
+        let params: RayIntersectorParams = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::RayIntersectorFactory(format!(
                     "Failed to serialize parameters: {e}"
@@ -130,42 +135,12 @@ impl ProcessorFactory for RayIntersectorFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-
-        let pair_id_ast = expr_engine.compile(params.pair_id.as_ref()).map_err(|e| {
-            GeometryProcessorError::RayIntersectorFactory(format!(
-                "Failed to compile pairId expression: {e}"
-            ))
-        })?;
-
-        let closest_only_ast = params
-            .closest_intersection_only
+        let pair_id_ast = params
+            .pair_id
             .map(|expr| {
-                expr_engine.compile(expr.as_ref()).map_err(|e| {
+                expr.compile().map_err(|e| {
                     GeometryProcessorError::RayIntersectorFactory(format!(
-                        "Failed to compile closestIntersectionOnly expression: {e}"
-                    ))
-                })
-            })
-            .transpose()?;
-
-        let tolerance_ast = params
-            .tolerance
-            .map(|expr| {
-                expr_engine.compile(expr.as_ref()).map_err(|e| {
-                    GeometryProcessorError::RayIntersectorFactory(format!(
-                        "Failed to compile tolerance expression: {e}"
-                    ))
-                })
-            })
-            .transpose()?;
-
-        let include_ray_origin_ast = params
-            .include_ray_origin
-            .map(|expr| {
-                expr_engine.compile(expr.as_ref()).map_err(|e| {
-                    GeometryProcessorError::RayIntersectorFactory(format!(
-                        "Failed to compile includeRayOrigin expression: {e}"
+                        "Failed to compile pairId expression: {e}"
                     ))
                 })
             })
@@ -174,7 +149,7 @@ impl ProcessorFactory for RayIntersectorFactory {
         let geom_id_ast = params
             .geom_id
             .map(|expr| {
-                expr_engine.compile(expr.as_ref()).map_err(|e| {
+                expr.compile().map_err(|e| {
                     GeometryProcessorError::RayIntersectorFactory(format!(
                         "Failed to compile geomId expression: {e}"
                     ))
@@ -183,12 +158,11 @@ impl ProcessorFactory for RayIntersectorFactory {
             .transpose()?;
 
         Ok(Box::new(RayIntersector {
-            global_params: with,
             ray_definition: params.ray,
             pair_id_ast,
-            closest_only_ast,
-            tolerance_ast,
-            include_ray_origin_ast,
+            closest_intersection_only: params.closest_intersection_only,
+            tolerance: params.tolerance,
+            include_ray_origin: params.include_ray_origin,
             geom_id_ast,
             output_geometry_type: params.output_geometry_type,
             pair_ids: Vec::new(),
@@ -206,67 +180,95 @@ impl ProcessorFactory for RayIntersectorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum OutputGeometryType {
-    /// Output a point at the intersection location (default behavior)
+    /// # Point of Intersection
+    /// Emits a point at the location where the ray meets the geometry.
     #[default]
     PointOfIntersection,
-    /// Output a line segment from ray origin to intersection point
+    /// # Line Segment to Intersection
+    /// Emits a line running from the ray's origin to the intersection point.
     LineSegmentToIntersection,
 }
 
-/// RayIntersector Parameters
+/// # Ray Intersector Parameters
+/// Configure how rays and geometries are paired and how intersection results are output.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RayIntersectorParams {
-    /// Defines how to extract ray data from feature attributes
+    /// # Ray
+    /// Attributes on the ray features that hold the ray's origin and direction.
     pub ray: RayDefinition,
 
-    /// Expression that evaluates to a pair ID (int or string) for grouping rays with geometries.
-    /// Only rays and geometries with matching pairId values are tested against each other.
-    pub pair_id: Expr,
-
-    /// When true (default), return only the closest intersection point per ray-geometry pair.
-    /// When false, return all intersection points.
+    /// # Pair ID
+    /// Expression producing the key that pairs rays with geometries, so that only
+    /// rays and geometries whose keys match are tested against each other. Omit it
+    /// to test every ray against every geometry.
     #[serde(default)]
-    pub closest_intersection_only: Option<Expr>,
+    pub pair_id: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 
-    /// Tolerance for intersection calculations (evaluates to f64).
-    /// If not specified, a default tolerance is used.
-    #[serde(default)]
-    pub tolerance: Option<Expr>,
+    /// # Closest Intersection Only
+    /// Whether to keep only the nearest hit per ray rather than every hit along it.
+    /// Defaults to true.
+    #[serde(default = "closest_intersection_only_default")]
+    pub closest_intersection_only: bool,
 
-    /// When true (default), include intersections at the ray origin.
-    /// When false, exclude intersections where t < tolerance.
-    #[serde(default)]
-    pub include_ray_origin: Option<Expr>,
+    /// # Include Ray Origin
+    /// Whether an intersection at the ray's own origin counts as a hit. When false,
+    /// intersections nearer than the tolerance are discarded. Defaults to true.
+    #[serde(default = "include_ray_origin_default")]
+    pub include_ray_origin: bool,
 
-    /// Type of geometry to output for intersection results.
-    /// - "pointOfIntersection" (default): Output a point at the intersection location
-    /// - "lineSegmentToIntersection": Output a line segment from ray origin to intersection point
+    /// # Output Geometry Type
+    /// Geometry to emit for each intersection.
     #[serde(default)]
     pub output_geometry_type: OutputGeometryType,
 
-    /// Expression evaluated on geometry features to extract an ID string.
-    /// When set, intersection features will include a `geom_id` attribute
-    /// identifying which geometry was hit.
+    /// # Geometry ID
+    /// Expression evaluated on each geometry feature to label it. When set, every
+    /// intersection carries a `geom_id` attribute naming the geometry it hit.
     #[serde(default)]
-    pub geom_id: Option<Expr>,
+    pub geom_id: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+
+    /// # Tolerance
+    /// Distance below which an intersection is treated as coincident with the ray's
+    /// origin. Defaults to 1e-10.
+    #[serde(default = "tolerance_default")]
+    pub tolerance: f64,
 }
 
-/// Defines how ray data is extracted from feature attributes.
+fn closest_intersection_only_default() -> bool {
+    true
+}
+
+fn include_ray_origin_default() -> bool {
+    true
+}
+
+fn tolerance_default() -> f64 {
+    DEFAULT_TOLERANCE
+}
+
+/// # Ray Definition
+/// Attributes that hold a ray's origin and direction.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RayDefinition {
-    /// Attribute containing ray origin X coordinate
+    /// # Origin X Attribute
+    /// Attribute holding the X coordinate of the ray's origin.
     pub pos_x: Attribute,
-    /// Attribute containing ray origin Y coordinate
+    /// # Origin Y Attribute
+    /// Attribute holding the Y coordinate of the ray's origin.
     pub pos_y: Attribute,
-    /// Attribute containing ray origin Z coordinate
+    /// # Origin Z Attribute
+    /// Attribute holding the Z coordinate of the ray's origin.
     pub pos_z: Attribute,
-    /// Attribute containing ray direction X component
+    /// # Direction X Attribute
+    /// Attribute holding the X component of the ray's direction.
     pub dir_x: Attribute,
-    /// Attribute containing ray direction Y component
+    /// # Direction Y Attribute
+    /// Attribute holding the Y component of the ray's direction.
     pub dir_y: Attribute,
-    /// Attribute containing ray direction Z component
+    /// # Direction Z Attribute
+    /// Attribute holding the Z component of the ray's direction.
     pub dir_z: Attribute,
 }
 
@@ -289,13 +291,13 @@ struct DiskGeomRecord {
 
 pub struct RayIntersector {
     // Immutable config
-    global_params: Option<HashMap<String, Value>>,
     ray_definition: RayDefinition,
-    pair_id_ast: rhai::AST,
-    closest_only_ast: Option<rhai::AST>,
-    tolerance_ast: Option<rhai::AST>,
-    include_ray_origin_ast: Option<rhai::AST>,
-    geom_id_ast: Option<rhai::AST>,
+    /// Absent means every ray is tested against every geometry.
+    pair_id_ast: Option<CompiledCode>,
+    closest_intersection_only: bool,
+    tolerance: f64,
+    include_ray_origin: bool,
+    geom_id_ast: Option<CompiledCode>,
     output_geometry_type: OutputGeometryType,
 
     // Disk-backed state
@@ -311,7 +313,7 @@ pub struct RayIntersector {
 
 impl fmt::Debug for RayIntersector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RayIntersector")
+        f.debug_struct("Ray Intersector")
             .field("pair_ids", &self.pair_ids.len())
             .field("buffer_bytes", &self.buffer_bytes)
             .field("temp_dir", &self.temp_dir)
@@ -322,12 +324,11 @@ impl fmt::Debug for RayIntersector {
 impl Clone for RayIntersector {
     fn clone(&self) -> Self {
         Self {
-            global_params: self.global_params.clone(),
             ray_definition: self.ray_definition.clone(),
             pair_id_ast: self.pair_id_ast.clone(),
-            closest_only_ast: self.closest_only_ast.clone(),
-            tolerance_ast: self.tolerance_ast.clone(),
-            include_ray_origin_ast: self.include_ray_origin_ast.clone(),
+            closest_intersection_only: self.closest_intersection_only,
+            tolerance: self.tolerance,
+            include_ray_origin: self.include_ray_origin,
             geom_id_ast: self.geom_id_ast.clone(),
             output_geometry_type: self.output_geometry_type.clone(),
             pair_ids: Vec::new(),
@@ -394,85 +395,35 @@ impl RayIntersector {
         Ok(())
     }
 
+    /// Key used to pair a ray with a geometry. With no `pairId` expression every
+    /// ray is tested against every geometry, which one shared key expresses.
     fn evaluate_pair_id(
         &self,
-        expr_engine: &Arc<Engine>,
         feature: &Feature,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let result: rhai::Dynamic = scope.eval_ast(&self.pair_id_ast).map_err(|e| {
-            GeometryProcessorError::RayIntersector(format!("Failed to evaluate pairId: {e}"))
-        })?;
-        Ok(result.to_string())
-    }
-
-    fn evaluate_closest_only(
-        &self,
-        expr_engine: &Arc<Engine>,
-        feature: &Feature,
-    ) -> Result<bool, BoxedError> {
-        match &self.closest_only_ast {
-            Some(ast) => {
-                let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-                let result: rhai::Dynamic = scope.eval_ast(ast).map_err(|e| {
-                    GeometryProcessorError::RayIntersector(format!(
-                        "Failed to evaluate closestIntersectionOnly: {e}"
-                    ))
-                })?;
-                Ok(result.as_bool().unwrap_or(true))
-            }
-            None => Ok(true),
-        }
-    }
-
-    fn evaluate_tolerance(
-        &self,
-        expr_engine: &Arc<Engine>,
-        feature: &Feature,
-    ) -> Result<f64, BoxedError> {
-        match &self.tolerance_ast {
-            Some(ast) => {
-                let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-                let result: rhai::Dynamic = scope.eval_ast(ast).map_err(|e| {
-                    GeometryProcessorError::RayIntersector(format!(
-                        "Failed to evaluate tolerance: {e}"
-                    ))
-                })?;
-                result.as_float().map_err(|_| {
-                    GeometryProcessorError::RayIntersector(
-                        "tolerance must evaluate to a number".to_string(),
-                    )
+        let Some(ast) = &self.pair_id_ast else {
+            return Ok(ALL_PAIRS_KEY.to_string());
+        };
+        ast.eval(feature, variables)
+            .map(|av| av.to_string())
+            .map_err(|e| {
+                GeometryProcessorError::RayIntersector(format!("Failed to evaluate pairId: {e}"))
                     .into()
-                })
-            }
-            None => Ok(DEFAULT_TOLERANCE),
-        }
+            })
     }
 
-    fn evaluate_include_ray_origin(
+    fn evaluate_geom_id(
         &self,
-        expr_engine: &Arc<Engine>,
         feature: &Feature,
-    ) -> Result<bool, BoxedError> {
-        match &self.include_ray_origin_ast {
-            Some(ast) => {
-                let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-                let result: rhai::Dynamic = scope.eval_ast(ast).map_err(|e| {
-                    GeometryProcessorError::RayIntersector(format!(
-                        "Failed to evaluate includeRayOrigin: {e}"
-                    ))
-                })?;
-                Ok(result.as_bool().unwrap_or(true))
-            }
-            None => Ok(true),
-        }
-    }
-
-    fn evaluate_geom_id(&self, expr_engine: &Arc<Engine>, feature: &Feature) -> Option<String> {
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> Option<String> {
         self.geom_id_ast.as_ref().and_then(|ast| {
-            let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-            let result: rhai::Dynamic = scope.eval_ast(ast).ok()?;
-            let s = result.to_string();
+            let av = ast.eval(feature, variables).ok()?;
+            if matches!(av, AttributeValue::Null) {
+                return None;
+            }
+            let s = av.to_string();
             if s.is_empty() {
                 None
             } else {
@@ -515,6 +466,7 @@ impl RayIntersector {
     }
 
     /// Creates an intersection feature (pure function — no fw.send()).
+    #[cfg(not(feature = "new-geometry"))]
     fn create_intersection_feature(
         &self,
         ray_feature: &Feature,
@@ -559,6 +511,7 @@ impl RayIntersector {
 
     /// Creates an output feature with ray geometry when lineSegmentToIntersection is set,
     /// or returns the original feature otherwise.
+    #[cfg(not(feature = "new-geometry"))]
     fn create_ray_output_feature(&self, ray_feature: &Feature, ray: &Ray3D) -> Feature {
         match self.output_geometry_type {
             OutputGeometryType::PointOfIntersection => ray_feature.clone(),
@@ -587,6 +540,7 @@ impl Processor for RayIntersector {
         true
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -597,9 +551,9 @@ impl Processor for RayIntersector {
         }
 
         let feature = &ctx.feature;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let variables = ctx.variables.clone();
 
-        let pair_id = self.evaluate_pair_id(&expr_engine, feature)?;
+        let pair_id = self.evaluate_pair_id(feature, variables.clone())?;
 
         // Register pair_id
         if self.pair_id_set.insert(pair_id.clone()) {
@@ -635,7 +589,7 @@ impl Processor for RayIntersector {
                 }
             },
             port if port == &*GEOM_PORT => {
-                let geom_id = self.evaluate_geom_id(&expr_engine, feature);
+                let geom_id = self.evaluate_geom_id(feature, variables.clone());
 
                 let serialize_mesh = |mesh: TriangularMesh<f64, f64>,
                                       gid: Option<String>|
@@ -724,6 +678,7 @@ impl Processor for RayIntersector {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -740,7 +695,6 @@ impl Processor for RayIntersector {
             None => return Ok(()),
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let pair_ids = std::mem::take(&mut self.pair_ids);
 
         let intersection_path = dir.join("intersection.jsonl.zst");
@@ -864,17 +818,10 @@ impl Processor for RayIntersector {
                             ),
                         );
 
-                        let closest_only = self
-                            .evaluate_closest_only(&expr_engine, &record.feature)
-                            .unwrap_or(true);
-                        let tolerance = self
-                            .evaluate_tolerance(&expr_engine, &record.feature)
-                            .unwrap_or(DEFAULT_TOLERANCE);
-                        let include_ray_origin = self
-                            .evaluate_include_ray_origin(&expr_engine, &record.feature)
-                            .unwrap_or(true);
+                        let closest_only = self.closest_intersection_only;
+                        let tolerance = self.tolerance;
 
-                        let include_origin = if include_ray_origin {
+                        let include_origin = if self.include_ray_origin {
                             IncludeOrigin::Yes
                         } else {
                             IncludeOrigin::No { tolerance }
@@ -952,7 +899,7 @@ impl Processor for RayIntersector {
     }
 
     fn name(&self) -> &str {
-        "RayIntersector"
+        "Ray Intersector"
     }
 }
 

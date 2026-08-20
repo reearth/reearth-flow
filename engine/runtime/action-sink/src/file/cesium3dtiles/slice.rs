@@ -16,6 +16,7 @@ use crate::zip_eq_logged::ZipEqLoggedExt;
 
 pub type TileZXYName = (u8, u32, u32);
 
+#[cfg(not(feature = "new-geometry"))]
 pub fn slice_to_tiles<E>(
     feature: &Feature,
     min_zoom: u8,

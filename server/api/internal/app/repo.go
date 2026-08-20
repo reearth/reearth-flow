@@ -4,6 +4,9 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
@@ -14,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	postgresrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -71,9 +75,27 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
 
-	repos, err := mongorepo.New(ctx, client.Database(databaseName), accountRepos, txAvailable)
-	if err != nil {
-		log.Fatalf("Failed to init mongo: %+v\n", err)
+	var repos *repo.Container
+	switch conf.DB_Driver {
+	case "postgres":
+		pgxCfg, perr := pgxpool.ParseConfig(conf.DB_PG)
+		if perr != nil {
+			log.Fatalf("postgres error: %+v\n", perr)
+		}
+		pgxCfg.ConnConfig.Tracer = otelpgx.NewTracer()
+		pool, perr := pgxpool.NewWithConfig(ctx, pgxCfg)
+		if perr != nil {
+			log.Fatalf("postgres error: %+v\n", perr)
+		}
+		repos, err = postgresrepo.New(ctx, pool, accountRepos)
+		if err != nil {
+			log.Fatalf("Failed to init postgres: %+v\n", err)
+		}
+	default:
+		repos, err = mongorepo.New(ctx, client.Database(databaseName), accountRepos, txAvailable)
+		if err != nil {
+			log.Fatalf("Failed to init mongo: %+v\n", err)
+		}
 	}
 	// Redis
 	gateways.Redis = initRedis(ctx, conf)
@@ -225,6 +247,9 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 		log.Fatalf("failed to parse redis url: %s\n", err.Error())
 	}
 	client := redis.NewClient(opt)
+	if err := redisotel.InstrumentTracing(client); err != nil {
+		log.Warnf("failed to instrument redis tracing: %s\n", err.Error())
+	}
 	RedisRepo, err := redisrepo.NewRedisLog(client)
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())

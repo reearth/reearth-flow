@@ -20,62 +20,73 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440020
         name: Generate-Post-Data
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
-          creator: |
-            [
-              #{
-                title: "Test Post 1",
-                body: "This is the content of post 1",
-                userId: 1
-              },
-              #{
-                title: "Test Post 2",
-                body: "This is the content of post 2",
-                userId: 2
-              }
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "title": "Test Post 1",
+                  "body": "This is the content of post 1",
+                  "userId": 1
+                },
+                {
+                  "title": "Test Post 2",
+                  "body": "This is the content of post 2",
+                  "userId": 2
+                }
+              ]
 
       # Make HTTP POST requests with authentication and retry
       - id: 550e8400-e29b-41d4-a716-446655440030
         name: Create-Posts
         type: action
-        action: HTTPCaller
+        action: HTTP Caller
         with:
-          url: |
-            "https://jsonplaceholder.typicode.com/posts"
+          url:
+            type: string
+            value: https://jsonplaceholder.typicode.com/posts
 
           method: POST
 
           # Custom headers
           customHeaders:
             - name: "Content-Type"
-              value: |
-                "application/json"
+              value:
+                type: string
+                value: "application/json"
             - name: "X-Custom-Header"
-              value: |
-                "reearth-flow"
+              value:
+                type: string
+                value: "reearth-flow"
 
           # Query parameters
           queryParameters:
             - name: "format"
-              value: |
-                "json"
+              value:
+                type: string
+                value: "json"
 
           # Request body - send feature attributes as JSON
           requestBody:
             type: text
-            content: |
-              "{\"title\": \"" + env.get("__value").title +
-              "\", \"body\": \"" + env.get("__value").body +
-              "\", \"userId\": " + env.get("__value").userId + "}"
+            content:
+              type: flowExpr
+              value: |
+                json.dumps({
+                  "title": attributes["title"],
+                  "body": attributes["body"],
+                  "userId": attributes["userId"]
+                })
             contentType: "application/json"
 
           # Authentication - Bearer token
           authentication:
             type: bearer
-            token: |
-              "your-api-token-here"
+            token:
+              type: string
+              value: your-api-token-here
 
           # Response configuration
           responseBodyAttribute: "_api_response"
@@ -121,41 +132,43 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440040
         name: Save-Success
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
-          output: |
-            "{{ env.outputFilePath }}"
+          output:
+            type: flowExpr
+            value: 'variables["outputFilePath"]'
 
       # Write failed requests to separate file for debugging
       - id: 550e8400-e29b-41d4-a716-446655440050
         name: Save-Errors
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
-          output: |
-            "{{ env.errorFilePath }}"
+          output:
+            type: flowExpr
+            value: 'variables["errorFilePath"]'
 
     edges:
       # Feature creator to HTTP caller
       - id: 550e8400-e29b-41d4-a716-446655440060
         from: 550e8400-e29b-41d4-a716-446655440020
         to: 550e8400-e29b-41d4-a716-446655440030
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Successful responses go to success output
       - id: 550e8400-e29b-41d4-a716-446655440070
         from: 550e8400-e29b-41d4-a716-446655440030
         to: 550e8400-e29b-41d4-a716-446655440040
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Failed requests go to error output
       - id: 550e8400-e29b-41d4-a716-446655440080
         from: 550e8400-e29b-41d4-a716-446655440030
         to: 550e8400-e29b-41d4-a716-446655440050
         fromPort: rejected
-        toPort: default
+        toPort: features
 
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run \

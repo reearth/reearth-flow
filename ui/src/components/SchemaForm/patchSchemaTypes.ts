@@ -1,4 +1,5 @@
-import { RJSFSchema } from "@rjsf/utils";
+import { createSchemaUtils, RJSFSchema } from "@rjsf/utils";
+import validator from "@rjsf/validator-ajv8";
 import { JSONSchema7, JSONSchema7Definition } from "json-schema";
 
 // This is a workaround for the `anyOf` type for RJSF/JSON Schema. Currently if "null" only is passed as a type in `anyof` it won't work as expected.
@@ -216,6 +217,15 @@ const simplifyAllOf = (
   }
 
   return newSchema;
+};
+
+export const applySchemaDefaults = <T = any>(
+  schema: RJSFSchema | JSONSchema7Definition,
+  formData: T,
+): T => {
+  const patchedSchema = patchAnyOfAndOneOfType(schema as JSONSchema7Definition);
+  const schemaUtils = createSchemaUtils(validator, patchedSchema);
+  return schemaUtils.getDefaultFormState(patchedSchema, formData) as T;
 };
 
 export const patchAnyOfAndOneOfType = (

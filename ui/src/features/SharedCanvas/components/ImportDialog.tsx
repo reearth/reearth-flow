@@ -57,7 +57,8 @@ const ImportDialog: React.FC<Props> = ({
               onValueChange={(value) => {
                 const workspace = workspaces.find((w) => w.id === value);
                 if (workspace) onSelectWorkspace(workspace);
-              }}>
+              }}
+              items={workspaces.map((w) => ({ value: w.id, label: w.name }))}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("Select a workspace")} />
               </SelectTrigger>

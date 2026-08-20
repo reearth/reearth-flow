@@ -12,6 +12,17 @@ yarn.lock
 src/lib/gql/__gen__
 src/routeTree.gen.ts
 
+# Copied verbatim from engine/schema. Without this, `yarn format:check` fails on
+# it, and a `format:write` would reformat it into a permanent mismatch against
+# the original — which `ci_ui.yml` compares byte for byte.
+src/lib/intermediateData/feature-intermediate.schema.json
+
 public/mockServiceWorker.js
+
+e2e/playwright-report/
+e2e/test-results/
+e2e/allure-results/
+e2e/allure-report/
+e2e/.auth/
 
 CLAUDE.md

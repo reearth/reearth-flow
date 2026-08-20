@@ -9,7 +9,6 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
@@ -39,7 +38,6 @@ pub struct DagExecutor {
 }
 
 pub struct DagExecutorJoinHandle {
-    event_hub: EventHub,
     join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
@@ -48,7 +46,7 @@ pub struct DagExecutorJoinHandle {
 impl DagExecutor {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        expr_engine: Arc<Engine>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         entry_graph_id: uuid::Uuid,
@@ -61,7 +59,7 @@ impl DagExecutor {
             DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
         let ctx = NodeContext::new(
-            expr_engine,
+            variables,
             storage_resolver,
             kv_store,
             event_hub,
@@ -79,7 +77,7 @@ impl DagExecutor {
         self,
         shutdown: F,
         runtime: Arc<Handle>,
-        expr_engine: Arc<Engine>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
         ingress_state: Arc<State>,
@@ -111,10 +109,8 @@ impl DagExecutor {
         };
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
 
-        let event_hub = execution_dag.event_hub().clone();
-
         let ctx = NodeContext::new(
-            Arc::clone(&expr_engine),
+            Arc::clone(&variables),
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
@@ -167,7 +163,7 @@ impl DagExecutor {
                 NodeKind::Source { .. } => continue,
                 NodeKind::Processor(_) => {
                     let ctx = NodeContext::new(
-                        Arc::clone(&expr_engine),
+                        Arc::clone(&variables),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
@@ -186,7 +182,7 @@ impl DagExecutor {
                 }
                 NodeKind::Sink(_) => {
                     let ctx = NodeContext::new(
-                        Arc::clone(&expr_engine),
+                        Arc::clone(&variables),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
@@ -225,7 +221,7 @@ impl DagExecutor {
                 replay_groups.len()
             );
 
-            let expr_engine2 = Arc::clone(&expr_engine);
+            let variables2 = Arc::clone(&variables);
             let storage_resolver2 = Arc::clone(&storage_resolver);
             let kv_store2 = Arc::clone(&kv_store);
             let event_hub2 = execution_dag.event_hub().clone();
@@ -234,7 +230,7 @@ impl DagExecutor {
                 .name("replay-injector".to_string())
                 .spawn(move || {
                     let node_ctx = NodeContext::new(
-                        expr_engine2,
+                        variables2,
                         storage_resolver2,
                         kv_store2,
                         event_hub2,
@@ -249,7 +245,6 @@ impl DagExecutor {
         }
 
         Ok(DagExecutorJoinHandle {
-            event_hub,
             join_handles,
             notify: notify_publish.clone(),
             executor_id,
@@ -266,7 +261,7 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    pub fn join(&mut self, runtime: Handle) -> Result<(), ExecutionError> {
+    pub fn join(&mut self) -> Result<(), ExecutionError> {
         loop {
             let Some(finished) = self
                 .join_handles
@@ -282,17 +277,16 @@ impl DagExecutorJoinHandle {
             handle.join().unwrap()?;
 
             if self.join_handles.is_empty() {
-                // All threads have completed, add a delay before returning
-                tracing::info!("Workflow complete, waiting for final events to be published...");
-
-                // Enhanced delay approach - use improved flush with dynamic waiting
-                runtime.block_on(self.event_hub.enhanced_flush(5000));
-
-                // Cleanup executor cache directory (includes channel buffers and processor temp files)
+                // `enhanced_flush(5000)` used to live here. Its early-break
+                // condition (`sender.receiver_count() == 0`) never fired in
+                // practice because broadcast subscribers stay attached for
+                // the lifetime of the workflow, so the call effectively
+                // waited the full 5 seconds on every workflow execution
+                // (~11+ minutes across the 141 workflow-tests). The runner-
+                // level shutdown sleep + the trailing settle in any caller
+                // that needs one provides enough of a drain window without
+                // this 5s tax.
                 cleanup_executor_cache(self.executor_id);
-
-                tracing::info!("Proceeding with workflow termination");
-
                 return Ok(());
             }
         }
@@ -510,7 +504,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                         let ctx = crate::executor_operation::ExecutorContext::new(
                             feature,
                             e.downstream_input_port.clone(),
-                            node_ctx.expr_engine.clone(),
+                            node_ctx.variables.clone(),
                             node_ctx.storage_resolver.clone(),
                             node_ctx.kv_store.clone(),
                             node_ctx.event_hub.clone(),

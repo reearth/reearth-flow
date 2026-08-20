@@ -48,7 +48,7 @@ const ActionArea: React.FC<Props> = ({
       {onEditorOpen && (
         <IconButton
           icon={<PencilLineIcon />}
-          tooltipText={t("Open Rhai Editor")}
+          tooltipText={t("Open Expression Editor")}
           onClick={handleEditorOpen}
           disabled={!onEditorOpen || readonly}
         />

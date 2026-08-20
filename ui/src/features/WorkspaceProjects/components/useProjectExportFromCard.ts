@@ -9,6 +9,7 @@ import { useAuth } from "@flow/lib/auth";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
+import type { YDocMetadataValue } from "@flow/types";
 
 export default (project: Project) => {
   const { getAccessToken } = useAuth();
@@ -36,7 +37,7 @@ export default (project: Project) => {
           );
 
           yWebSocketProvider.once("sync", async () => {
-            const metadata = yDoc.getMap("metadata");
+            const metadata = yDoc.getMap<YDocMetadataValue>("metadata");
             if (!metadata.get("initialized")) {
               yDoc.transact(() => {
                 const yWorkflows = yDoc.getMap<YWorkflow>("workflows");

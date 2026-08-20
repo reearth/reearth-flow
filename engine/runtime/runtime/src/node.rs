@@ -15,13 +15,12 @@ use crate::event::EventHub;
 use crate::executor_operation::{ExecutorContext, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 
-pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
+pub static FEATURES_PORT: Lazy<Port> = Lazy::new(|| Port::new("features"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
-pub static INPUT_ROUTING_ACTION: &str = "InputRouter";
-pub static OUTPUT_ROUTING_ACTION: &str = "OutputRouter";
-pub static FEATURE_FILTER_ACTION: &str = "FeatureFilter";
-pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
+pub static INPUT_ROUTING_ACTION: &str = "Input Router";
+pub static OUTPUT_ROUTING_ACTION: &str = "Output Router";
+pub static FEATURE_FILTER_ACTION: &str = "Feature Filter";
 
 pub static SYSTEM_ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
@@ -239,6 +238,17 @@ pub trait SourceFactory: Send + Sync + Debug + SourceFactoryClone {
         with: Option<HashMap<String, Value>>,
         state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError>;
+
+    /// Statically infer this node's output attribute schema per output port, given the
+    /// inferred input schema per input port and the node's `with` params. Default `None`
+    /// = inference not implemented for this factory (treated as schema-transparent/opaque downstream).
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        None
+    }
 }
 
 pub trait SourceFactoryClone {
@@ -266,11 +276,15 @@ pub trait Source: Send + Sync + Debug + SourceClone {
     fn name(&self) -> &str;
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError>;
 
+    // TODO(new-geometry): remove this temporary default after migration; restore
+    // `start` as a required method.
     async fn start(
         &mut self,
-        ctx: NodeContext,
-        sender: Sender<(Port, IngestionMessage)>,
-    ) -> Result<(), BoxedError>;
+        _ctx: NodeContext,
+        _sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -307,6 +321,17 @@ pub trait ProcessorFactory: Send + Sync + Debug + ProcessorFactoryClone {
         action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError>;
+
+    /// Statically infer this node's output attribute schema per output port, given the
+    /// inferred input schema per input port and the node's `with` params. Default `None`
+    /// = inference not implemented for this factory (treated as schema-transparent/opaque downstream).
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        None
+    }
 }
 
 pub trait ProcessorFactoryClone {
@@ -338,16 +363,24 @@ pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn num_threads(&self) -> usize {
         1
     }
+    // TODO(new-geometry): remove these temporary defaults after migration; restore
+    // `process`/`finish` as required methods.
+    // The loud default fires for actions not yet ported to the new geometry; it must
+    // never be a silent `Ok(())`, which would pass features through unchanged.
     fn process(
         &mut self,
-        ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+        _ctx: ExecutorContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
     fn finish(
         &mut self,
-        ctx: NodeContext,
-        fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 
     fn name(&self) -> &str;
 }
@@ -375,6 +408,17 @@ pub trait SinkFactory: Send + Sync + Debug + SinkFactoryClone {
         action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError>;
+
+    /// Statically infer this node's output attribute schema per output port, given the
+    /// inferred input schema per input port and the node's `with` params. Default `None`
+    /// = inference not implemented for this factory (treated as schema-transparent/opaque downstream).
+    fn infer_output_schema(
+        &self,
+        _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        _with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        None
+    }
 }
 
 pub trait SinkFactoryClone {
@@ -402,8 +446,14 @@ pub trait Sink: Send + Debug + SinkClone {
     }
 
     fn name(&self) -> &str;
-    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;
+    // TODO(new-geometry): remove these temporary defaults after migration; restore
+    // `process`/`finish` as required methods.
+    fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
+    fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        Err(format!("`{}` is not yet ported to new geometry", self.name()).into())
+    }
 
     fn set_source_state(&mut self, _source_state: &[u8]) -> Result<(), BoxedError> {
         Ok(())
@@ -423,7 +473,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn description(&self) -> &str {
-        "Action for first port forwarding for sub-workflows."
+        "Forwards features from the parent workflow into a sub-workflow."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -443,7 +493,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -463,9 +513,14 @@ impl ProcessorFactory for InputRouterFactory {
     }
 }
 
+/// # Input Router Parameters
+///
+/// Configuration for receiving features from the parent workflow.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputRouter {
+    /// # Routing Port
+    /// Name of the parent workflow port whose features enter the sub-workflow through this router.
     routing_port: String,
 }
 
@@ -478,8 +533,8 @@ impl Processor for InputRouter {
         let feature = ctx.feature;
         fw.send(ExecutorContext::new(
             feature,
-            DEFAULT_PORT.clone(),
-            Arc::clone(&ctx.expr_engine),
+            FEATURES_PORT.clone(),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
@@ -510,7 +565,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn description(&self) -> &str {
-        "Action for last port forwarding for sub-workflows."
+        "Forwards features from a sub-workflow back to the parent workflow."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -526,7 +581,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -550,9 +605,14 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 }
 
+/// # Output Router Parameters
+///
+/// Configuration for returning features to the parent workflow.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputRouter {
+    /// # Routing Port
+    /// Name of the output port under which the sub-workflow's features are exposed to the parent workflow.
     routing_port: String,
 }
 
@@ -566,7 +626,7 @@ impl Processor for OutputRouter {
         fw.send(ExecutorContext::new(
             feature,
             Port::new(&self.routing_port),
-            Arc::clone(&ctx.expr_engine),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
@@ -585,5 +645,43 @@ impl Processor for OutputRouter {
 
     fn name(&self) -> &str {
         OUTPUT_ROUTING_ACTION
+    }
+}
+
+#[cfg(test)]
+mod schema_hook_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[derive(Debug, Clone)]
+    struct DummyProc;
+    impl ProcessorFactory for DummyProc {
+        fn name(&self) -> &str {
+            "DummyProc"
+        }
+        fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+            None
+        }
+        fn get_input_ports(&self) -> Vec<Port> {
+            vec![FEATURES_PORT.clone()]
+        }
+        fn get_output_ports(&self) -> Vec<Port> {
+            vec![FEATURES_PORT.clone()]
+        }
+        fn build(
+            &self,
+            _ctx: NodeContext,
+            _event_hub: EventHub,
+            _action: String,
+            _with: Option<HashMap<String, Value>>,
+        ) -> Result<Box<dyn Processor>, BoxedError> {
+            unreachable!("not built in test")
+        }
+    }
+
+    #[test]
+    fn schema_hook_defaults_are_none_and_empty() {
+        let f = DummyProc;
+        assert!(f.infer_output_schema(&HashMap::new(), &None).is_none());
     }
 }

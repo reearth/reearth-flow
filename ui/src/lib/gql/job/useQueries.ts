@@ -8,13 +8,12 @@ import {
 import { isDefined } from "@flow/utils";
 
 import { CancelJobInput } from "../__gen__/graphql";
-import { toJob, toNodeExecution } from "../convert";
+import { toJob } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum JobQueryKeys {
   GetJobs = "getJobs",
   GetJob = "getJob",
-  GetNodeExecution = "getNodeExecution",
 }
 
 export const JOBS_FETCH_RATE = 15;
@@ -66,24 +65,6 @@ export const useQueries = () => {
       enabled: !!jobId,
     });
 
-  const useGetNodeExecutionQuery = (
-    jobId?: string,
-    nodeId?: string,
-    disabled?: boolean,
-  ) =>
-    useQuery({
-      queryKey: [JobQueryKeys.GetNodeExecution, jobId, nodeId],
-      queryFn: async () => {
-        const data = await graphQLContext?.GetNodeExecution({
-          jobId: jobId ?? "",
-          nodeId: nodeId ?? "",
-        });
-        if (!data?.nodeExecution) return;
-        return toNodeExecution(data.nodeExecution);
-      },
-      enabled: !disabled && !!jobId && !!nodeId,
-    });
-
   const cancelJobMutation = useMutation({
     mutationFn: async ({ jobId }: { jobId: string }) => {
       const input: CancelJobInput = {
@@ -109,7 +90,6 @@ export const useQueries = () => {
   return {
     useGetJobsQuery,
     useGetJobQuery,
-    useGetNodeExecutionQuery,
     cancelJobMutation,
   };
 };

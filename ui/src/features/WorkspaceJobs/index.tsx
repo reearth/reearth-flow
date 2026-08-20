@@ -49,7 +49,14 @@ const JobsManager: React.FC = () => {
     {
       accessorKey: "completedAt",
       header: t("Completed At"),
-      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
+      cell: ({ row }) => {
+        const status = row.getValue("status");
+        return status === "completed" ||
+          status === "failed" ||
+          status === "cancelled"
+          ? formatTimestamp(row.getValue<string>("completedAt"))
+          : t("N/A");
+      },
     },
   ];
   const resultsPerPage = JOBS_FETCH_RATE;

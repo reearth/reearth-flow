@@ -7,7 +7,6 @@ with:
   schemas:
   codelistsPath:
   codelists:
-  workerArtifactPath:
   prcs:
   targetPackages: ["cons"]
   objectListsPath:
@@ -29,24 +28,26 @@ graphs:
       - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7ea0
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
-          creator: |
-            [
-              #{
-                cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
-                schemas: env.get("schemasPath") ?? env.get("schemas"),
-                codelists: env.get("codelistsPath") ?? env.get("codelists"),
-                objectListsPath: env.get("objectListsPath") ?? env.get("objectLists"),
-              },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "objectListsPath": variables.get("objectListsPath") or variables.get("objectLists"),
+                },
+              ]
 
       - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -67,27 +68,29 @@ graphs:
       - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a10
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
-          sourceDataset: |
-            env.get("__value")["cityGmlPath"]
+          sourceDataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
           extractArchive: true
           destPrefix: udx
 
       - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b20
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
-            - expr: |
-                env.get("__value").extension == "gml"
-              outputPort: default
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
+              outputPort: features
 
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c30
         name: FeatureCounterFileIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: fileIndex
@@ -97,74 +100,71 @@ graphs:
         type: action
         action: PLATEAU4.UDXFolderExtractor
         with:
-          cityGmlPath: |
-            env.get("__value")["path"]
-          codelistsPath: "codelists"
-          schemasPath: "schemas"
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
+          codelistsPath: codelists
+          schemasPath: schemas
 
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a14
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
-          - expr: |
-              (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
-            outputPort: default
+          - expr:
+              type: flowExpr
+              value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
+            outputPort: features
 
       - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
         name: AttributeMapperGmlPathAndFilename
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: gmlPath
-              expr: |
-                env.get("__value").path
+              valueAttribute: path
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").name
+              valueAttribute: name
             - attribute: fileIndex
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: codelists
-              expr: |
-                env.get("__value").codelists
+              valueAttribute: codelists
             - attribute: schemas
-              expr: |
-                env.get("__value").schemas
+              valueAttribute: schemas
             - attribute: udxDirs
-              expr: |
-                let path = env.get("__value").path;
-                let parts = path.split("/");
-                let len = parts.len();
-                if len >= 2 {
-                  parts[len - 2]
-                } else {
-                  env.get("__value").udxDirs ?? ""
-                }
+              expr:
+                type: flowExpr
+                value: |
+                  parts = attributes["path"].split("/");
+                  if len(parts) >= 2 { parts[-2] } else { attributes.get("udxDirs", "") }
 
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
         name: FeatureCityGmlReader
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
-          codelistsPath: env.get("__value").codelists
+          codelistsPath:
+            type: flowExpr
+            value: attributes["codelists"]
           flatten: true
-          dataset: |
-            env.get("__value")["gmlPath"]
-
+          dataset:
+            type: flowExpr
+            value: attributes["gmlPath"]
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a70
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
-          targetEpsgCode: env.get("prcs")
+          targetEpsgCode:
+            type: flowExpr
+            value: variables["prcs"]
 
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes: [fileIndex]
           order: ascending
@@ -172,7 +172,7 @@ graphs:
       - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c90
         name: FeatureCounterFeatureIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 0
           outputAttribute: featureIndex
@@ -181,7 +181,7 @@ graphs:
       - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
         name: FeatureTypeNameExtractor
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: featureTypeName
@@ -205,8 +205,7 @@ graphs:
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
         name: GeometrySplitterForCount
         type: action
-        action: GeometrySplitter
-
+        action: Geometry Splitter
       # CONS Validation Subgraph
       - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         name: CONSValidation
@@ -218,7 +217,7 @@ graphs:
       - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b40
         name: InstanceCountCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - gmlFilename
@@ -229,331 +228,341 @@ graphs:
             - buildingGroupKey
           calculations:
             - newAttribute: instanceCount
-              expr: '1'
+              expr:
+                type: flowExpr
+                value: "1"
 
       # File info extraction for per-file summary
       - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e20
         name: FileInfoExtractor
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: index
-              expr: |
-                env.get("__value").fileIndex
+              valueAttribute: fileIndex
             - attribute: filename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
             - attribute: udxDirs
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: gmlFilename
-              expr: |
-                env.get("__value").gmlFilename
+              valueAttribute: gmlFilename
             - attribute: featureTypeName
-              expr: |
-                env.get("__value").featureTypeName
+              valueAttribute: featureTypeName
             - attribute: instanceCount
-              expr: |
-                env.get("__value").instanceCount
+              valueAttribute: instanceCount
             - attribute: lod
-              expr: |
-                env.get("__value").lod ?? "0"
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "0")
 
       - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         name: GeometryRemoverForErrorSummary
         type: action
-        action: GeometryRemover
-
+        action: Geometry Remover
       - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a30
         name: ErrorSummaryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
-          requestorAttributeValue: |
-            let v = env.get("__value");
-            v.gmlFilename + "|" + v.featureTypeName + "|" + v.lod
-          supplierAttributeValue: |
-            let v = env.get("__value");
-            let fname = v.Filename ?? v.filename ?? "";
-            let ftype = v.FeatureType ?? v.feature_type ?? "";
-            let lod_val = v.LOD ?? v.lod ?? "";
-            fname + "|" + ftype + "|" + lod_val
+          requestorAttributeValue:
+            type: flowExpr
+            value: 'attributes["gmlFilename"] + "|" + attributes["featureTypeName"] + "|" + str(attributes["lod"])'
+          supplierAttributeValue:
+            type: flowExpr
+            value: '(attributes.get("Filename") or attributes.get("filename") or "") + "|" + (attributes.get("FeatureType") or attributes.get("feature_type") or "") + "|" + str(attributes.get("LOD") or attributes.get("lod") or "")'
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
         name: SummaryAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
-              expr: |
-                env.get("__value").udxDirs
+              valueAttribute: udxDirs
             - attribute: Index
-              expr: |
-                env.get("__value").fileIndex ?? env.get("__value").index
+              expr:
+                type: flowExpr
+                value: attributes.get("fileIndex", attributes.get("index"))
             - attribute: Filename
-              expr: |
-                env.get("__value").gmlFilename ?? env.get("__value").filename
+              expr:
+                type: flowExpr
+                value: attributes.get("gmlFilename", attributes.get("filename"))
             - attribute: フィーチャータイプ
-              expr: |
-                env.get("__value").featureTypeName ?? "OtherConstruction"
+              expr:
+                type: flowExpr
+                value: attributes.get("featureTypeName", "OtherConstruction")
             - attribute: LOD
-              expr: |
-                env.get("__value").lod ?? "0"
+              expr:
+                type: flowExpr
+                value: attributes.get("lod", "0")
             - attribute: インスタンス数
-              expr: |
-                env.get("__value").instanceCount ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("instanceCount", 0)
             - attribute: 面のエラー
-              expr: |
-                env.get("__value")._num_surface_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_surface_errors", 0)
             - attribute: 面の向き不正
-              expr: |
-                env.get("__value")._num_orientation_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_orientation_errors", 0)
             - attribute: 非水密立体
-              expr: |
-                env.get("__value")._num_not_closed_solid ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_not_closed_solid", 0)
             - attribute: 立体のその他のエラー
-              expr: |
-                env.get("__value")._num_other_solid_errors ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("_num_other_solid_errors", 0)
 
       - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e80
         name: CSVSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "10_その他の構造物_検査結果一覧.csv")
+          output:
+            type: string
+            value: 10_その他の構造物_検査結果一覧.csv
 
       # JSON summary output
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f80
         name: StatisticsCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: 面のエラー
-              expr: |
-                env.get("__value")["面のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面のエラー", 0)
             - newAttribute: 面の向き不正
-              expr: |
-                env.get("__value")["面の向き不正"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("面の向き不正", 0)
             - newAttribute: 非水密立体
-              expr: |
-                env.get("__value")["非水密立体"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("非水密立体", 0)
             - newAttribute: 立体のその他のエラー
-              expr: |
-                env.get("__value")["立体のその他のエラー"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("立体のその他のエラー", 0)
             - newAttribute: totalErrorCount
-              expr: |
-                let total = 0;
-                let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のその他のエラー"];
-                for key in keys {
-                  total += env.get("__value")[key] ?? 0;
-                }
-                total
+              expr:
+                type: flowExpr
+                value: |
+                  itertools.sum([
+                    attributes.get("面のエラー", 0),
+                    attributes.get("面の向き不正", 0),
+                    attributes.get("非水密立体", 0),
+                    attributes.get("立体のその他のエラー", 0),
+                  ])
 
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a90
         name: JSONSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
-          converter: |
-            if env.get("__features").is_empty() {
-              []
-            } else {
-              let result = [];
-              let feature = env.get("__features")[0];
-              let keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のその他のエラー"];
-              for key in keys {
-                result.push(#{
-                  name: key,
-                  count: feature[key] ?? 0,
-                });
+          converter:
+            type: flowExpr
+            value: |
+              if len(attributes["__features"]) == 0 {
+                []
+              } else {
+                result = [];
+                feature = attributes["__features"][0];
+                keys = ["面のエラー", "面の向き不正", "非水密立体", "立体のその他のエラー"];
+                for key in keys {
+                  result.append({"name": key, "count": feature.get(key, 0)});
+                }
+                result
               }
-              result
-            }
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "summary_cons.json")
+          output:
+            type: string
+            value: summary_cons.json
 
       # qc_result_ok generation flow
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
-              expr: |
-                env.get("__value")["totalErrorCount"] ?? 0
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
 
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c10
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
-            - expr: |
-                env.get("__value")["totalErrorCount"] == 0
-              outputPort: default
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
+              outputPort: features
 
       - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d20
         name: FileWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
-          converter: '[]'
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
-          output: |
-            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
-            let dirname = env.get("workerArtifactPath");
-            file::join_path(dirname, filename)
+          output:
+            type: flowExpr
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # FeatureCreator → DirectoryDecompressor
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a71
         from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7ea0
         to: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # DirectoryDecompressor → CommonQualityCheck-01-01
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b81
         from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
         to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f70
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # DirectoryDecompressor → CommonQualityCheck-01-02
       - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c91
         from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
         to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a80
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # DirectoryDecompressor → FeatureFilePathExtractor (for CONS validation)
       - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da1
         from: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
         to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a10
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureFilePathExtractor → FeatureFilterByGml
       - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e21
         from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a10
         to: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b20
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureFilterByGml → FeatureCounterFileIndex
       - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f21
         from: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b20
         to: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c30
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureCounterFileIndex → UDXFolderExtractor
       - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a31
         from: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c30
         to: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d40
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # UDXFolderExtractor → FeatureFilterByPackage
       - id: b8c9d0e1-0001-0001-0001-000000000010
         from: b8c9d0e1-f2a3-4b5c-6d7e-8f9a0b1c2d40
         to: a1554a74-3caa-4880-a4a3-6dc4ab526a14
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureFilterByPackage → AttributeMapperGmlPathAndFilename
       - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b41
         from: a1554a74-3caa-4880-a4a3-6dc4ab526a14
         to: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # AttributeMapperGmlPathAndFilename → FeatureCityGmlReader
       - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c51
         from: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
         to: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureCityGmlReader → HorizontalReprojector
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d61
         from: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
         to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a70
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # HorizontalReprojector → FeatureSorter
       - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e71
         from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a70
         to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureSorter → FeatureCounterFeatureIndex
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f81
         from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
         to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c90
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureCounterFeatureIndex → FeatureTypeNameExtractor
       - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a91
         from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c90
         to: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureTypeNameExtractor → CONSValidation
       - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c91
         from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
         to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureTypeNameExtractor → GeometrySplitterForCount
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba1
         from: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
         to: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # GeometrySplitterForCount → InstanceCountCalculator
       - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d21
         from: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
         to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b40
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # InstanceCountCalculator → FileInfoExtractor (for requestor)
       - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d21
         from: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b40
         to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e20
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FileInfoExtractor → ErrorSummaryMerger (requestor)
       - id: c7d8e9f0-a1b2-3c4d-5e6f-7a8b9c0d1e30
         from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e20
         to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a30
-        fromPort: default
+        fromPort: features
         toPort: requestor
 
       # CONS Validation error counts → GeometryRemover → ErrorSummaryMerger (supplier)
@@ -562,34 +571,34 @@ graphs:
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         fromPort: errorCountSurfaceErrors
-        toPort: default
+        toPort: features
 
       # Orientation Errors
       - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b51
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         fromPort: errorCountOrientationErrors
-        toPort: default
+        toPort: features
 
       # Not Closed Solid
       - id: d8e9f0a1-b2c3-4d5e-6f7a-8b9c0d1e2f3c
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         fromPort: errorCountNotClosedSolid
-        toPort: default
+        toPort: features
 
       # Solid Errors
       - id: e9f0a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a4d
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         to: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         fromPort: errorCountSolidErrors
-        toPort: default
+        toPort: features
 
       # GeometryRemover → ErrorSummaryMerger (supplier)
       - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c72
         from: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
         to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a30
-        fromPort: default
+        fromPort: features
         toPort: supplier
 
       # ErrorSummaryMerger → SummaryAttributeMapper
@@ -597,69 +606,69 @@ graphs:
         from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a30
         to: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
         fromPort: merged
-        toPort: default
+        toPort: features
 
       - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7ea1
         from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a30
         to: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
         fromPort: unmerged
-        toPort: default
+        toPort: features
 
       # SummaryAttributeMapper → CSVSummaryWriter
       - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa1
         from: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
         to: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e80
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # SummaryAttributeMapper → StatisticsCalculator
       - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a11
         from: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
         to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f80
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # StatisticsCalculator → JSONSummaryWriter
       - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b21
         from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f80
         to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a90
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # ===== ZipFileWriter connections =====
       # Common subgraph outputs to ZipFileWriter
       - id: dd2e3f4a-b6c7-8d9e-0f1a-2b3c4d5e6f80
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f70
         to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: ee3f4a5b-c7d8-9e0f-1a2b-3c4d5e6f7a90
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a80
         to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # CONS validation file output to ZipFileWriter
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba2
         from: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
         fromPort: fileOutput
-        toPort: default
+        toPort: features
 
       # CSVSummaryWriter → ZipFileWriter
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c11
         from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e80
         to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # JSONSummaryWriter → ZipFileWriter
       - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d22
         from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a90
         to: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # ===== qc_result_ok generation flow =====
       # Common subgraph summaryOutput to StatisticsCalculatorTotalErrors
@@ -667,31 +676,31 @@ graphs:
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f70
         to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
 
       - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d20
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a80
         to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
 
       # StatisticsCalculator → StatisticsCalculatorTotalErrors
       - id: c7d8e9f0-a1b2-3c4d-5e6f-7a8b9c0d1e31
         from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f80
         to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # StatisticsCalculatorTotalErrors → FeatureFilterNoErrors
       - id: d8e9f0a1-b2c3-4d5e-6f7a-8b9c0d1e2f40
         from: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
         to: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c10
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureFilterNoErrors → FileWriterQcResultOk
       - id: e9f0a1b2-c3d4-5e6f-7a8b-9c0d1e2f3a50
         from: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c10
         to: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d20
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

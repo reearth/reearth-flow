@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
@@ -49,6 +49,7 @@ export default ({
     setshowOverlayElement(undefined);
   };
   const [debugRunStarted, setDebugRunStarted] = useState(false);
+  const isStartingRef = useRef(false);
 
   const { useGetJob } = useJob();
 
@@ -93,15 +94,26 @@ export default ({
   }, [debugJob, jobStatus, debugRunStarted]);
 
   const handleDebugRunStart = async () => {
-    if (
-      customDebugRunWorkflowVariables &&
-      customDebugRunWorkflowVariables.length > 0
-    ) {
-      handleShowDebugWorkflowVariablesDialog();
-    } else {
-      setDebugRunStarted(true);
-      await onDebugRunStart();
-      handlePopoverClose();
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
+    try {
+      if (
+        customDebugRunWorkflowVariables &&
+        customDebugRunWorkflowVariables.length > 0
+      ) {
+        handleShowDebugWorkflowVariablesDialog();
+      } else {
+        setDebugRunStarted(true);
+        handlePopoverClose();
+        try {
+          await onDebugRunStart();
+        } catch (e) {
+          setDebugRunStarted(false);
+          throw e;
+        }
+      }
+    } finally {
+      isStartingRef.current = false;
     }
   };
 

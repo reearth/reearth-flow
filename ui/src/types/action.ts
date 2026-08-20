@@ -7,6 +7,7 @@ export type Action = {
   description: string;
   type: string;
   categories: string[];
+  tags: string[];
   inputPorts: string[];
   outputPorts: string[];
   parameter?: RJSFSchema;

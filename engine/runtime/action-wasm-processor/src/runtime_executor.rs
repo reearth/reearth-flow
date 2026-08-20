@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -40,11 +40,11 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -101,11 +101,7 @@ impl WasmRuntimeExecutorFactory {
             )
         })?;
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let source = expr_engine
-            .eval_scope::<String>(params.source.as_ref(), &scope)
-            .unwrap_or_else(|_| params.source.to_string());
+        let source = params.source.to_string();
 
         let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
             || source.starts_with("https://")
@@ -266,7 +262,7 @@ impl WasmRuntimeExecutor {
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 

@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use schemars::JsonSchema;
@@ -20,11 +20,11 @@ pub(super) struct AreaCalculatorFactory;
 
 impl ProcessorFactory for AreaCalculatorFactory {
     fn name(&self) -> &str {
-        "AreaCalculator"
+        "Area Calculator"
     }
 
     fn description(&self) -> &str {
-        "Calculates the planar or sloped area of polygon geometries and adds the results as attributes"
+        "Calculates the planar or sloped area of a feature's geometry and stores it in an attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,16 +35,12 @@ impl ProcessorFactory for AreaCalculatorFactory {
         &["Geometry"]
     }
 
-    fn tags(&self) -> &[&'static str] {
-        &["area", "measurement"]
-    }
-
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -77,30 +73,39 @@ impl ProcessorFactory for AreaCalculatorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum AreaType {
+    /// # Planar Area
+    /// Calculates the flat area of the geometry projected onto the XY plane.
     #[serde(alias = "plane_area")]
     #[serde(alias = "planeArea")]
     #[default]
     PlaneArea,
+    /// # Sloped Area
+    /// Calculates the true surface area, accounting for the slope of each face.
     #[serde(alias = "sloped_area")]
     #[serde(alias = "slopedArea")]
     SlopedArea,
 }
 
-/// # AreaCalculator Parameters
+/// # Area Calculator Parameters
 ///
-/// Configuration for calculating areas of geometries.
+/// Configure how the area of each feature's geometry is measured and stored.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaCalculator {
-    /// Type of area calculation to perform (PlaneArea or SlopedArea)
+    /// # Area Type
+    /// Whether to measure the flat projected area or the true sloped surface
+    /// area. Has no effect on a geometry with no elevation, which is always flat.
     #[serde(default)]
     area_type: AreaType,
 
-    /// Name of the attribute to store the calculated area (default: "area")
+    /// # Output Attribute
+    /// Attribute to store the calculated area in. Defaults to `area`.
     #[serde(default = "default_output_attribute")]
     output_attribute: Attribute,
 
-    /// Multiplier to scale the area values (default: 1.0)
+    /// # Multiplier
+    /// Factor applied to the calculated area, for converting to another unit.
+    /// Defaults to 1.0.
     #[serde(default = "default_multiplier")]
     multiplier: f64,
 }
@@ -124,6 +129,7 @@ fn default_multiplier() -> f64 {
 }
 
 impl Processor for AreaCalculator {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -131,12 +137,10 @@ impl Processor for AreaCalculator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            return Ok(());
-        }
 
-        // Calculate area based on the geometry type
+        // A geometry with no area — a point, a curve, or no geometry at all —
+        // measures zero. The attribute is written either way, so that downstream
+        // steps never have to distinguish "no area" from "not measured".
         let area = match &geometry.value {
             GeometryValue::None => 0.0,
             GeometryValue::FlowGeometry2D(geom_2d) => geom_2d.unsigned_area2d() * self.multiplier,
@@ -188,10 +192,11 @@ impl Processor for AreaCalculator {
             ),
         );
 
-        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -201,6 +206,6 @@ impl Processor for AreaCalculator {
     }
 
     fn name(&self) -> &str {
-        "AreaCalculator"
+        "Area Calculator"
     }
 }

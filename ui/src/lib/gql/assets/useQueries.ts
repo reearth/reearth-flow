@@ -27,7 +27,7 @@ export const useQueries = () => {
   const queryClient = useQueryClient();
 
   const useGetAssetsQuery = (
-    workspaceId: string,
+    workspaceId?: string,
     keyword?: string,
     paginationOptions?: PaginationOptions,
   ) =>

@@ -9,9 +9,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Expr, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,11 +23,11 @@ pub struct ThreeDimensionForcerFactory;
 
 impl ProcessorFactory for ThreeDimensionForcerFactory {
     fn name(&self) -> &str {
-        "ThreeDimensionForcer"
+        "Three Dimension Forcer"
     }
 
     fn description(&self) -> &str {
-        "Convert 2D Geometry to 3D by Adding Z-Coordinates"
+        "Adds Z-coordinates to 2D geometries to produce 3D output."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -43,21 +43,21 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ThreeDimensionForcerParam = if let Some(with) = with.clone() {
+        let params: ThreeDimensionForcerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionForcerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,95 +72,99 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
             ThreeDimensionForcerParam::default()
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let elevation_ast = if let Some(ref elevation_expr) = params.elevation {
-            Some(expr_engine.compile(elevation_expr.as_ref()).map_err(|e| {
-                GeometryProcessorError::ThreeDimensionForcerFactory(format!(
-                    "Failed to compile elevation expression '{}': {:?}",
-                    elevation_expr.as_ref(),
-                    e
-                ))
-            })?)
-        } else {
-            None
-        };
+        let elevation = params
+            .elevation
+            .map(|expr| {
+                expr.compile().map_err(|e| {
+                    GeometryProcessorError::ThreeDimensionForcerFactory(format!(
+                        "Failed to compile elevation expression: {e:?}"
+                    ))
+                })
+            })
+            .transpose()?;
 
         Ok(Box::new(ThreeDimensionForcer {
-            global_params: with,
-            elevation: elevation_ast,
+            elevation,
             preserve_existing_z: params.preserve_existing_z,
         }))
     }
 }
 
-/// # ThreeDimensionForcer Parameters
-/// Configure how to convert 2D geometries to 3D by adding Z-coordinates
+/// Geometry that already carries Z is left alone unless the user opts in to
+/// replacing it. This matches the standard behaviour of a force-3D operation,
+/// where adding a dimension never discards coordinates that are already there.
+fn preserve_existing_z_default() -> bool {
+    true
+}
+
+/// # Three Dimension Forcer Parameters
+/// Configure the elevation applied to 2D geometry and how existing Z values are treated.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[derive(Default)]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
-    /// The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.
+    /// Z-coordinate applied to every point, as a constant or an expression.
+    /// Defaults to 0.0.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub elevation: Option<Expr>,
+    pub elevation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Preserve Existing Z Values
-    /// If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.
-    #[serde(default)]
+    /// Whether geometry that is already 3D passes through untouched. Defaults to
+    /// true, so existing Z is kept. Set it to false to overwrite every Z value
+    /// with the elevation.
+    #[serde(default = "preserve_existing_z_default")]
     pub preserve_existing_z: bool,
+}
+
+impl Default for ThreeDimensionForcerParam {
+    fn default() -> Self {
+        Self {
+            elevation: None,
+            preserve_existing_z: preserve_existing_z_default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionForcer {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    elevation: Option<rhai::AST>,
+    elevation: Option<CompiledCode>,
     preserve_existing_z: bool,
 }
 
 impl Processor for ThreeDimensionForcer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
 
-        // Calculate the elevation value to use
         let elevation_value = if let Some(ref elevation_ast) = self.elevation {
-            let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-            // Try to evaluate as f64 first, if that fails try i64 and convert
-            match scope.eval_ast::<f64>(elevation_ast) {
-                Ok(val) => val,
-                Err(_) => {
-                    // If f64 evaluation fails, try i64 and convert to f64
-                    scope
-                        .eval_ast::<i64>(elevation_ast)
-                        .map(|i| i as f64)
-                        .map_err(|e| {
-                            GeometryProcessorError::ThreeDimensionForcer(format!(
-                                "Failed to evaluate elevation expression: {e:?}"
-                            ))
-                        })?
-                }
-            }
+            elevation_ast
+                .eval_float(feature, ctx.variables.clone())
+                .map_err(|e| {
+                    GeometryProcessorError::ThreeDimensionForcer(format!(
+                        "Failed to evaluate elevation expression: {e:?}"
+                    ))
+                })?
         } else {
             0.0
         };
 
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geos) => {
                 if self.preserve_existing_z {
                     // Pass through unchanged if we're preserving existing Z values
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 } else {
                     // Convert to 2D then back to 3D with the new elevation
                     let value_2d: Geometry2D = geos.clone().into();
@@ -169,7 +173,7 @@ impl Processor for ThreeDimensionForcer {
                     new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                     let mut new_feature = feature.clone();
                     new_feature.geometry = Arc::new(new_geometry);
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             GeometryValue::FlowGeometry2D(geos) => {
@@ -178,12 +182,12 @@ impl Processor for ThreeDimensionForcer {
                 new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                 let mut new_feature = feature.clone();
                 new_feature.geometry = Arc::new(new_geometry);
-                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(gml) => {
                 if self.preserve_existing_z {
                     // CityGML is already 3D, pass through unchanged
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 } else {
                     // Convert to 2D then back to 3D with the new elevation
                     let value_2d: Geometry2D = gml.clone().into();
@@ -192,13 +196,14 @@ impl Processor for ThreeDimensionForcer {
                     new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                     let mut new_feature = feature.clone();
                     new_feature.geometry = Arc::new(new_geometry);
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
         }
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -208,7 +213,7 @@ impl Processor for ThreeDimensionForcer {
     }
 
     fn name(&self) -> &str {
-        "ThreeDimensionForcer"
+        "Three Dimension Forcer"
     }
 }
 

@@ -1,11 +1,11 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use reearth_flow_common::csv::{
     auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
 };
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
+    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::FEATURES_PORT,
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -32,7 +32,6 @@ pub struct CsvReaderParam {
 
 pub(crate) fn read_csv(
     delimiter: Delimiter,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
     csv_params: &CsvReaderParam,
     encoding: Option<&str>,
@@ -40,12 +39,11 @@ pub(crate) fn read_csv(
     fw: &ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let feature = &ctx.feature;
-    let expr_engine = Arc::clone(&ctx.expr_engine);
     let storage_resolver = &ctx.storage_resolver;
-    let scope = feature.new_scope(expr_engine.clone(), global_params);
-    let csv_path = scope
-        .eval_ast::<String>(&params.expr)
-        .unwrap_or_else(|_| params.original_expr.to_string());
+    let csv_path = params
+        .dataset
+        .eval_string(feature, ctx.variables.clone())
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(csv_path.as_str())
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let storage = storage_resolver
@@ -82,7 +80,7 @@ pub(crate) fn read_csv(
             .collect::<HashMap<Attribute, AttributeValue>>();
         let mut feature = feature.clone();
         feature.extend(row);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
     }
     Ok(())
 }

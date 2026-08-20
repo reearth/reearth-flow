@@ -8,6 +8,7 @@ import { YWorkflow } from "@flow/lib/yjs/types";
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
+import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
@@ -81,6 +82,11 @@ export default function Editor({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    schemaProbes,
+    readerAttributeSuggestions,
+    handleNodeParamsSaved,
+    handleProbeComplete,
+    handleProbeError,
     handleLayoutChange,
     handleCopy,
     handleCut,
@@ -104,6 +110,7 @@ export default function Editor({
     awarenessSelectionsMap,
     handleShowSearchPanel,
     selectedNodeIds,
+    staleNodeIds,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -115,6 +122,7 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
+      canViewIntermediateData: true,
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
       currentYWorkflow,
@@ -127,6 +135,7 @@ export default function Editor({
         onFieldFocus: handleWorkflowVarFieldFocus,
         onEditStart: handleWorkflowVarEditStart,
       },
+      staleNodeIds,
     }),
     [
       isLocked,
@@ -140,6 +149,7 @@ export default function Editor({
       handleWorkflowVarDialogClose,
       handleWorkflowVarFieldFocus,
       handleWorkflowVarEditStart,
+      staleNodeIds,
     ],
   );
 
@@ -175,6 +185,8 @@ export default function Editor({
             onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
             onNodesChange={handleNodesChange}
+            onWorkflowAdd={handleWorkflowAdd}
+            onNodePickerOpen={handleNodePickerOpen}
             onNodePickerClose={handleNodePickerClose}
             onEdgesAdd={handleEdgesAdd}
             onEdgesChange={handleEdgesChange}
@@ -238,10 +250,17 @@ export default function Editor({
               openNode={openNode}
               onOpenNode={handleOpenNode}
               onDataSubmit={handleNodesDataUpdate}
+              onNodeParamsSaved={handleNodeParamsSaved}
+              attributeSuggestions={readerAttributeSuggestions}
               onWorkflowRename={handleWorkflowRename}
               onParamFieldFocus={handleParamFieldFocus}
             />
           )}
+          <PreviewSchemaMonitors
+            probes={schemaProbes}
+            onComplete={handleProbeComplete}
+            onError={handleProbeError}
+          />
           {showBeforeDeleteDialog && (
             <NodeDeletionDialog
               showBeforeDeleteDialog={showBeforeDeleteDialog}

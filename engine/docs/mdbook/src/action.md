@@ -1,34 +1,35 @@
 # Actions
 
-## AppearanceRemover
+## Appearance Remover
 ### Type
 * processor
 ### Description
-Removes appearance information (materials, textures) from CityGML geometry
+Discards the materials, textures, and texture coordinates carried by a feature's geometry.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## AreaCalculator
+## Area Calculator
 ### Type
 * processor
 ### Description
-Calculates the planar or sloped area of polygon geometries and adds the results as attributes
+Calculates the planar or sloped area of a feature's geometry and stores it in an attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AreaCalculator Parameters",
-  "description": "Configuration for calculating areas of geometries.",
+  "title": "Area Calculator Parameters",
+  "description": "Configure how the area of each feature's geometry is measured and stored.",
   "type": "object",
   "properties": {
     "areaType": {
-      "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+      "title": "Area Type",
+      "description": "Whether to measure the flat projected area or the true sloped surface area. Has no effect on a geometry with no elevation, which is always flat.",
       "default": "planeArea",
       "allOf": [
         {
@@ -36,28 +37,43 @@ Calculates the planar or sloped area of polygon geometries and adds the results 
         }
       ]
     },
-    "multiplier": {
-      "description": "Multiplier to scale the area values (default: 1.0)",
-      "default": 1.0,
-      "type": "number",
-      "format": "double"
-    },
     "outputAttribute": {
-      "description": "Name of the attribute to store the calculated area (default: \"area\")",
+      "title": "Output Attribute",
+      "description": "Attribute to store the calculated area in. Defaults to `area`.",
       "default": "area",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
+    },
+    "multiplier": {
+      "title": "Multiplier",
+      "description": "Factor applied to the calculated area, for converting to another unit. Defaults to 1.0.",
+      "default": 1.0,
+      "type": "number",
+      "format": "double"
     }
   },
   "definitions": {
     "AreaType": {
-      "type": "string",
-      "enum": [
-        "planeArea",
-        "slopedArea"
+      "oneOf": [
+        {
+          "title": "Planar Area",
+          "description": "Calculates the flat area of the geometry projected onto the XY plane.",
+          "type": "string",
+          "enum": [
+            "planeArea"
+          ]
+        },
+        {
+          "title": "Sloped Area",
+          "description": "Calculates the true surface area, accounting for the slope of each face.",
+          "type": "string",
+          "enum": [
+            "slopedArea"
+          ]
+        }
       ]
     },
     "Attribute": {
@@ -67,25 +83,36 @@ Calculates the planar or sloped area of polygon geometries and adds the results 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## AreaOnAreaOverlayer
+## Area On Area Overlayer
 ### Type
 * processor
 ### Description
-Perform Area Overlay Analysis
+Subdivides overlapping areas into non-overlapping pieces and records how many input features cover each piece. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AreaOnAreaOverlayer Parameters",
+  "title": "Area On Area Overlayer Parameters",
   "description": "Configure how area overlay analysis is performed",
   "type": "object",
   "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Optional attributes to group features by during overlay analysis",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
     "accumulationMode": {
       "title": "Accumulation Mode",
       "description": "Controls how attributes from input features are handled in output features",
@@ -103,17 +130,6 @@ Perform Area Overlay Analysis
         "string",
         "null"
       ]
-    },
-    "groupBy": {
-      "title": "Group By Attributes",
-      "description": "Optional attributes to group features by during overlay analysis",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
     },
     "outputAttribute": {
       "title": "Output Attribute",
@@ -134,21 +150,21 @@ Perform Area Overlay Analysis
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "AccumulationMode": {
       "type": "string",
       "enum": [
         "useAttributesFromOneFeature",
         "dropIncomingAttributes"
       ]
-    },
-    "Attribute": {
-      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * area
 * remnants
@@ -156,17 +172,17 @@ Perform Area Overlay Analysis
 ### Category
 * Geometry
 
-## AttributeAggregator
+## Attribute Aggregator
 ### Type
 * processor
 ### Description
-Group and Aggregate Features by Attributes
+Groups features by attribute values and aggregates a computed value within each group, emitting one feature per group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeAggregator Parameters",
-  "description": "Configure how features are grouped and aggregated based on attribute values",
+  "title": "Attribute Aggregator Parameters",
+  "description": "Configures how features are grouped and which value is aggregated within each group.",
   "type": "object",
   "required": [
     "aggregateAttributes",
@@ -174,26 +190,26 @@ Group and Aggregate Features by Attributes
     "method"
   ],
   "properties": {
+    "method": {
+      "title": "Aggregation Method",
+      "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Method"
+        }
+      ]
+    },
     "aggregateAttributes": {
-      "title": "List of attributes to aggregate",
+      "title": "Group-By Attributes",
+      "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AggregateAttribute"
       }
     },
-    "calculation": {
-      "title": "Calculation to perform",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "calculationAttribute": {
-      "title": "Attribute to store calculation result",
+      "title": "Result Attribute",
+      "description": "Attribute on the aggregated feature that stores the computed result.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -201,31 +217,86 @@ Group and Aggregate Features by Attributes
       ]
     },
     "calculationValue": {
-      "title": "Value to use for calculation",
+      "title": "Calculation Value",
+      "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set.",
       "type": [
         "integer",
         "null"
       ],
       "format": "int64"
     },
-    "method": {
-      "title": "Method to use for aggregation",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Method"
+    "calculation": {
+      "title": "Calculation Expression",
+      "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
+    "Method": {
+      "oneOf": [
+        {
+          "title": "Maximum",
+          "description": "Keeps the largest per-feature calculation value in the group.",
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        {
+          "title": "Minimum",
+          "description": "Keeps the smallest per-feature calculation value in the group.",
+          "type": "string",
+          "enum": [
+            "min"
+          ]
+        },
+        {
+          "title": "Count",
+          "description": "Sums the per-feature calculation value across the group; counts features when the value is 1.",
+          "type": "string",
+          "enum": [
+            "count"
+          ]
+        }
+      ]
+    },
     "AggregateAttribute": {
       "type": "object",
       "required": [
         "newAttribute"
       ],
       "properties": {
+        "newAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute written to the aggregated feature that holds this group value.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
         "attribute": {
-          "title": "Existing attribute to use",
+          "title": "Source Attribute",
+          "description": "Existing attribute to read the group value from. Ignored when a group value expression is provided.",
           "anyOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -236,71 +307,45 @@ Group and Aggregate Features by Attributes
           ]
         },
         "attributeValue": {
-          "title": "Value to use for attribute",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "title": "Group Value Expression",
+          "description": "Expression that computes the group value. Takes precedence over the source attribute when both are set.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
-        },
-        "newAttribute": {
-          "title": "New attribute to create",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            }
-          ]
+          }
         }
       }
     },
     "Attribute": {
       "type": "string"
-    },
-    "Expr": {
-      "type": "string"
-    },
-    "Method": {
-      "oneOf": [
-        {
-          "title": "Maximum Value",
-          "description": "Find the maximum value in the group",
-          "type": "string",
-          "enum": [
-            "max"
-          ]
-        },
-        {
-          "title": "Minimum Value",
-          "description": "Find the minimum value in the group",
-          "type": "string",
-          "enum": [
-            "min"
-          ]
-        },
-        {
-          "title": "Count Items",
-          "description": "Count the number of features in the group",
-          "type": "string",
-          "enum": [
-            "count"
-          ]
-        }
-      ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeBulkArrayJoiner
+## Attribute Bulk Array Joiner
 ### Type
 * processor
 ### Description
@@ -309,7 +354,7 @@ Join Array Attributes Into Single Values
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeBulkArrayJoiner Parameters",
+  "title": "Attribute Bulk Array Joiner Parameters",
   "description": "Configure which array attributes to join into single values",
   "type": "object",
   "properties": {
@@ -333,69 +378,108 @@ Join Array Attributes Into Single Values
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeConversionTable
+## Attribute Conversion Table
 ### Type
 * processor
 ### Description
-Transform Feature Attributes Using Lookup Tables
+Transforms feature attributes by looking up values in a conversion table loaded from a file or provided inline (CSV, TSV, or JSON).
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeConversionTable Parameters",
+  "title": "Attribute Conversion Table Parameters",
+  "description": "Configures the lookup table and the rules that map feature attribute values to replacement values.",
   "type": "object",
   "required": [
     "format",
     "rules"
   ],
   "properties": {
-    "dataset": {
-      "title": "Dataset URI",
-      "description": "Path or URI to external conversion table file",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "format": {
       "title": "Table Format",
-      "description": "Format of the conversion table (CSV, TSV, or JSON)",
+      "description": "Format used to parse the conversion table.",
       "allOf": [
         {
           "$ref": "#/definitions/ConversionTableFormat"
         }
       ]
     },
-    "inline": {
-      "title": "Inline Table Data",
-      "description": "Conversion table data provided directly as string content",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "rules": {
       "title": "Conversion Rules",
-      "description": "List of rules defining how to map attributes using the conversion table",
+      "description": "Rules that match feature attribute values against table columns and write the looked-up result back to the feature.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AttributeConversionTableRule"
       }
+    },
+    "dataset": {
+      "title": "Dataset URI",
+      "description": "Path or URI of the conversion table file. Provide either this or inline data.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Table",
+      "description": "Conversion table content provided directly as text. Used when no dataset URI is given.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "definitions": {
-    "Attribute": {
-      "type": "string"
+    "ConversionTableFormat": {
+      "oneOf": [
+        {
+          "title": "CSV",
+          "description": "Comma-separated values with a header row.",
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        {
+          "title": "TSV",
+          "description": "Tab-separated values with a header row.",
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        },
+        {
+          "title": "JSON",
+          "description": "JSON array of objects, or a single object, where each object is a table row.",
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        }
+      ]
     },
     "AttributeConversionTableRule": {
       "type": "object",
@@ -406,56 +490,52 @@ Transform Feature Attributes Using Lookup Tables
         "featureTo"
       ],
       "properties": {
-        "conversionTableKeys": {
-          "title": "Keys to match in conversion table",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "conversionTableTo": {
-          "title": "Attribute to convert to",
-          "type": "string"
-        },
         "featureFroms": {
-          "title": "Attributes to convert from",
+          "title": "Source Attributes",
+          "description": "Feature attributes whose values form the key looked up in the table.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Attribute"
           }
         },
         "featureTo": {
-          "title": "Attribute to convert to",
+          "title": "Target Attribute",
+          "description": "Feature attribute that receives the looked-up value.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
             }
           ]
+        },
+        "conversionTableKeys": {
+          "title": "Lookup Key Columns",
+          "description": "Table columns matched against the source attribute values.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conversionTableTo": {
+          "title": "Result Column",
+          "description": "Table column whose value is written to the target attribute.",
+          "type": "string"
         }
       }
     },
-    "ConversionTableFormat": {
-      "type": "string",
-      "enum": [
-        "csv",
-        "tsv",
-        "json"
-      ]
-    },
-    "Expr": {
+    "Attribute": {
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeDuplicateFilter
+## Attribute Duplicate Filter
 ### Type
 * processor
 ### Description
@@ -464,7 +544,7 @@ Remove Duplicate Features Based on Attribute Values
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeDuplicateFilter Parameters",
+  "title": "Attribute Duplicate Filter Parameters",
   "type": "object",
   "required": [
     "filterBy"
@@ -487,13 +567,13 @@ Remove Duplicate Features Based on Attribute Values
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeFilePathInfoExtractor
+## Attribute File Path Info Extractor
 ### Type
 * processor
 ### Description
@@ -502,7 +582,7 @@ Extract File System Information from Path Attributes
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeFilePathInfoExtractor Parameters",
+  "title": "Attribute File Path Info Extractor Parameters",
   "type": "object",
   "required": [
     "attribute"
@@ -526,23 +606,24 @@ Extract File System Information from Path Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Attribute
 
-## AttributeFlattener
+## Attribute Flattener
 ### Type
 * processor
 ### Description
-Flatten Nested Object Attributes into Top-Level Attributes
+Flattens map-valued attributes into individual top-level attributes, replacing each map with its key-value entries.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeFlattener Parameters",
+  "title": "Attribute Flattener Parameters",
+  "description": "Configures which map-valued attributes are expanded into top-level attributes.",
   "type": "object",
   "required": [
     "attributes"
@@ -550,7 +631,7 @@ Flatten Nested Object Attributes into Top-Level Attributes
   "properties": {
     "attributes": {
       "title": "Attributes to Flatten",
-      "description": "Map/object attributes that should be flattened - their nested properties will become top-level attributes",
+      "description": "Map-valued attributes to expand; each nested key becomes a top-level attribute and the original map is removed. Non-map attributes are left unchanged.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -565,22 +646,23 @@ Flatten Nested Object Attributes into Top-Level Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeManager
+## Attribute Manager
 ### Type
 * processor
 ### Description
-Create, Convert, Rename, and Remove Feature Attributes
+Creates, converts, renames, or removes feature attributes based on a configurable list of operations.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeManager Parameters",
+  "title": "Attribute Manager Parameters",
+  "description": "Defines the ordered list of operations that create, convert, rename, or remove feature attributes.",
   "type": "object",
   "required": [
     "operations"
@@ -588,7 +670,7 @@ Create, Convert, Rename, and Remove Feature Attributes
   "properties": {
     "operations": {
       "title": "Attribute Operations",
-      "description": "List of operations to perform on feature attributes (create, convert, rename, remove)",
+      "description": "Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Operation"
@@ -596,37 +678,6 @@ Create, Convert, Rename, and Remove Feature Attributes
     }
   },
   "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
-    },
-    "Method": {
-      "type": "string",
-      "enum": [
-        "convert",
-        "create",
-        "rename",
-        "remove"
-      ]
-    },
     "Operation": {
       "type": "object",
       "required": [
@@ -635,11 +686,13 @@ Create, Convert, Rename, and Remove Feature Attributes
       ],
       "properties": {
         "attribute": {
-          "title": "Attribute name",
+          "title": "Attribute Name",
+          "description": "Name of the attribute to create, convert, rename, or remove.",
           "type": "string"
         },
         "method": {
-          "title": "Operation to perform",
+          "title": "Method",
+          "description": "Operation to apply to the attribute.",
           "allOf": [
             {
               "$ref": "#/definitions/Method"
@@ -648,46 +701,96 @@ Create, Convert, Rename, and Remove Feature Attributes
         },
         "value": {
           "title": "Value",
-          "description": "Value to use for the operation",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Code"
+          "description": "Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
+    },
+    "Method": {
+      "oneOf": [
+        {
+          "title": "Convert",
+          "description": "Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged.",
+          "type": "string",
+          "enum": [
+            "convert"
+          ]
+        },
+        {
+          "title": "Create",
+          "description": "Sets the attribute to the result of the value expression, creating it or overwriting any existing value.",
+          "type": "string",
+          "enum": [
+            "create"
+          ]
+        },
+        {
+          "title": "Rename",
+          "description": "Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists.",
+          "type": "string",
+          "enum": [
+            "rename"
+          ]
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the attribute from the feature.",
+          "type": "string",
+          "enum": [
+            "remove"
+          ]
+        }
+      ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeMapper
+## Attribute Mapper
 ### Type
 * processor
 ### Description
-Transform Feature Attributes Using Expressions and Mappings
+Replaces a feature's attributes with a new set built from mapping rules, each deriving its value from an expression, another attribute, or a nested map entry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeMapper Parameters",
+  "title": "Attribute Mapper Parameters",
+  "description": "Configures the mapping rules that build the output feature's attributes.",
   "type": "object",
   "required": [
     "mappers"
   ],
   "properties": {
     "mappers": {
-      "title": "Attribute Mappers",
-      "description": "List of mapping rules to transform attributes using expressions or value copying",
+      "title": "Mapping Rules",
+      "description": "Ordered list of rules; each produces one or more output attributes. The output feature contains only the attributes produced here.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Mapper"
@@ -695,61 +798,89 @@ Transform Feature Attributes Using Expressions and Mappings
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "Mapper": {
       "type": "object",
       "properties": {
         "attribute": {
-          "title": "Attribute name",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "childAttribute": {
-          "title": "Child attribute name",
+          "title": "Target Attribute",
+          "description": "Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead.",
           "type": [
             "string",
             "null"
           ]
         },
         "expr": {
-          "title": "Expression to evaluate",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "title": "Value Expression",
+          "description": "Expression evaluated to produce the attribute value. Evaluation errors yield a null value.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
             },
-            {
-              "type": "null"
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
-        "multipleExpr": {
-          "title": "Expression to evaluate multiple attributes",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
+        "valueAttribute": {
+          "title": "Source Attribute",
+          "description": "Existing attribute to copy the value from. Yields null when the attribute is absent.",
+          "type": [
+            "string",
+            "null"
           ]
         },
         "parentAttribute": {
-          "title": "Parent attribute name",
+          "title": "Parent Attribute",
+          "description": "Map-valued attribute containing the value to copy. Used together with the child attribute.",
           "type": [
             "string",
             "null"
           ]
         },
-        "valueAttribute": {
-          "title": "Attribute name to get value from",
+        "childAttribute": {
+          "title": "Child Attribute",
+          "description": "Key within the parent map whose value is copied to the target attribute.",
           "type": [
             "string",
             "null"
           ]
+        },
+        "multipleExpr": {
+          "title": "Multiple-Values Expression",
+          "description": "Expression returning a map whose entries are added as attributes. Used when no target attribute is set.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         }
       }
     }
@@ -757,13 +888,13 @@ Transform Feature Attributes Using Expressions and Mappings
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## AttributeRangeMapper
+## Attribute Range Mapper
 ### Type
 * processor
 ### Description
@@ -772,7 +903,7 @@ Map attribute values to ranges and assign corresponding output values
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeRangeMapper Parameters",
+  "title": "Attribute Range Mapper Parameters",
   "type": "object",
   "required": [
     "inputAttribute",
@@ -780,10 +911,6 @@ Map attribute values to ranges and assign corresponding output values
     "rangeTable"
   ],
   "properties": {
-    "defaultValue": {
-      "title": "Default Value",
-      "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
-    },
     "inputAttribute": {
       "title": "Input Attribute",
       "description": "The attribute to evaluate for range mapping",
@@ -801,6 +928,10 @@ Map attribute values to ranges and assign corresponding output values
       "items": {
         "$ref": "#/definitions/RangeEntry"
       }
+    },
+    "defaultValue": {
+      "title": "Default Value",
+      "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
     }
   },
   "definitions": {
@@ -819,15 +950,15 @@ Map attribute values to ranges and assign corresponding output values
           "type": "number",
           "format": "double"
         },
-        "outputValue": {
-          "title": "Output Value",
-          "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
-        },
         "to": {
           "title": "To (Maximum)",
           "description": "The maximum value of the range (exclusive)",
           "type": "number",
           "format": "double"
+        },
+        "outputValue": {
+          "title": "Output Value",
+          "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
         }
       }
     }
@@ -835,13 +966,73 @@ Map attribute values to ranges and assign corresponding output values
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## BoundaryExtractor
+## Attribute Table Extractor
+### Type
+* processor
+### Description
+Moves values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A destination path with more than one segment creates nested maps as needed.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Attribute Table Extractor Parameters",
+  "description": "Configures the table of source/destination path pairs used to move nested attribute values.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "Dataset URI",
+      "description": "Path or URI of the extraction table file. Provide either this or inline data.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Table",
+      "description": "Extraction table content provided directly as JSON. Used when no dataset URI is given."
+    },
+    "typeAttribute": {
+      "title": "Feature Type Attribute",
+      "description": "Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Attribute
+
+## Boundary Extractor
 ### Type
 * processor
 ### Description
@@ -850,17 +1041,17 @@ Extracts the boundary of geometries. For solids/meshes returns bounding surfaces
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BoundaryExtractor Parameters",
+  "title": "Boundary Extractor Parameters",
   "description": "Configuration for extracting boundaries from geometries.",
   "type": "object",
   "properties": {
-    "exteriorOnly": {
-      "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
+    "keepEmptyBoundaries": {
+      "description": "Whether to keep features with empty boundaries (default: false)",
       "default": false,
       "type": "boolean"
     },
-    "keepEmptyBoundaries": {
-      "description": "Whether to keep features with empty boundaries (default: false)",
+    "exteriorOnly": {
+      "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
       "default": false,
       "type": "boolean"
     }
@@ -868,39 +1059,28 @@ Extracts the boundary of geometries. For solids/meshes returns bounding surfaces
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## BoundsExtractor
+## Bounds Extractor
 ### Type
 * processor
 ### Description
-Extract Bounding Box Coordinates from Feature Geometry
+Extracts the bounding box coordinates of a feature's geometry and stores them as named attributes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BoundsExtractor Parameters",
+  "title": "Bounds Extractor Parameters",
+  "description": "Configure the attribute names each bound is stored under. Every parameter is optional; a bound left unset is stored under its default name. The z bounds are written only when the geometry has an elevation.",
   "type": "object",
   "properties": {
-    "xmax": {
-      "title": "Maximum X Attribute",
-      "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "xmin": {
       "title": "Minimum X Attribute",
-      "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")",
+      "description": "Attribute to store the minimum X coordinate in. Defaults to `xmin`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -910,9 +1090,9 @@ Extract Bounding Box Coordinates from Feature Geometry
         }
       ]
     },
-    "ymax": {
-      "title": "Maximum Y Attribute",
-      "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")",
+    "xmax": {
+      "title": "Maximum X Attribute",
+      "description": "Attribute to store the maximum X coordinate in. Defaults to `xmax`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -924,7 +1104,7 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "ymin": {
       "title": "Minimum Y Attribute",
-      "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")",
+      "description": "Attribute to store the minimum Y coordinate in. Defaults to `ymin`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -934,9 +1114,9 @@ Extract Bounding Box Coordinates from Feature Geometry
         }
       ]
     },
-    "zmax": {
-      "title": "Maximum Z Attribute",
-      "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")",
+    "ymax": {
+      "title": "Maximum Y Attribute",
+      "description": "Attribute to store the maximum Y coordinate in. Defaults to `ymax`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -948,7 +1128,19 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "zmin": {
       "title": "Minimum Z Attribute",
-      "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")",
+      "description": "Attribute to store the minimum Z coordinate in. Defaults to `zmin`.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "zmax": {
+      "title": "Maximum Z Attribute",
+      "description": "Attribute to store the maximum Z coordinate in. Defaults to `zmax`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -967,9 +1159,9 @@ Extract Bounding Box Coordinates from Feature Geometry
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -978,13 +1170,13 @@ Extract Bounding Box Coordinates from Feature Geometry
 ### Type
 * processor
 ### Description
-Create Buffer Around Features
+Creates a buffer polygon around each input geometry at a specified distance.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Bufferer Parameters",
-  "description": "Configure how to create buffers around input geometries",
+  "description": "Configure the shape and extent of the buffer created around each geometry.",
   "type": "object",
   "required": [
     "bufferType",
@@ -994,7 +1186,7 @@ Create Buffer Around Features
   "properties": {
     "bufferType": {
       "title": "Buffer Type",
-      "description": "The type of buffer to create around the input geometry",
+      "description": "Shape of buffer to create around the input geometry.",
       "allOf": [
         {
           "$ref": "#/definitions/BufferType"
@@ -1003,13 +1195,13 @@ Create Buffer Around Features
     },
     "distance": {
       "title": "Distance",
-      "description": "The distance to extend the buffer from the original geometry (in coordinate units)",
+      "description": "How far the buffer extends from the original geometry, in the units of the geometry's coordinate system. A negative distance contracts it.",
       "type": "number",
       "format": "double"
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "The angle in degrees used for curve interpolation when creating rounded corners",
+      "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
       "type": "number",
       "format": "double"
     }
@@ -1019,7 +1211,7 @@ Create Buffer Around Features
       "oneOf": [
         {
           "title": "2D Area Buffer",
-          "description": "Creates a 2D polygon buffer around the input geometry",
+          "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried.",
           "type": "string",
           "enum": [
             "area2d"
@@ -1031,24 +1223,24 @@ Create Buffer Around Features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
 
-## BulkAttributeRenamer
+## Bulk Attribute Renamer
 ### Type
 * processor
 ### Description
-Rename Feature Attributes in Bulk
+Renames feature attributes in bulk by adding or removing a prefix or suffix, or replacing text.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BulkAttributeRenamer Parameters",
-  "description": "Configure how to rename feature attributes in bulk operations",
+  "title": "Bulk Attribute Renamer Parameters",
+  "description": "Selects which attributes to rename and how their names are transformed.",
   "type": "object",
   "required": [
     "renameAction",
@@ -1056,32 +1248,40 @@ Rename Feature Attributes in Bulk
     "renameValue"
   ],
   "properties": {
-    "renameAction": {
-      "title": "Rename Operation",
-      "description": "The type of renaming operation to perform on the attribute names",
-      "allOf": [
-        {
-          "$ref": "#/definitions/RenameAction"
-        }
-      ]
-    },
     "renameType": {
-      "title": "Which Attributes to Rename",
-      "description": "Choose whether to rename all attributes or only selected ones",
+      "title": "Rename Scope",
+      "description": "Scope of the rename operation: all attributes or a selected subset.",
       "allOf": [
         {
           "$ref": "#/definitions/RenameType"
         }
       ]
     },
+    "renameAction": {
+      "title": "Rename Operation",
+      "description": "Transformation applied to each attribute name.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RenameAction"
+        }
+      ]
+    },
     "renameValue": {
       "title": "Text Value",
-      "description": "The text to add as prefix/suffix, remove, or use as replacement",
+      "description": "Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation.",
       "type": "string"
+    },
+    "textToFind": {
+      "title": "Text Pattern to Find",
+      "description": "Regular expression matched against attribute names. Required for the replaceText operation.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "selectedAttributes": {
       "title": "Selected Attribute Names",
-      "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)",
+      "description": "Attribute names to rename. Required when the rename scope is set to a selected subset.",
       "type": [
         "array",
         "null"
@@ -1089,77 +1289,69 @@ Rename Feature Attributes in Bulk
       "items": {
         "type": "string"
       }
-    },
-    "textToFind": {
-      "title": "Text Pattern to Find",
-      "description": "Regular expression pattern to match when using \"Replace Text\" operation",
-      "type": [
-        "string",
-        "null"
-      ]
     }
   },
   "definitions": {
-    "RenameAction": {
-      "oneOf": [
-        {
-          "title": "Add Prefix",
-          "description": "Add text to the beginning of attribute names",
-          "type": "string",
-          "enum": [
-            "AddPrefix"
-          ]
-        },
-        {
-          "title": "Add Suffix",
-          "description": "Add text to the end of attribute names",
-          "type": "string",
-          "enum": [
-            "AddSuffix"
-          ]
-        },
-        {
-          "title": "Remove Prefix",
-          "description": "Remove text from the beginning of attribute names",
-          "type": "string",
-          "enum": [
-            "RemovePrefix"
-          ]
-        },
-        {
-          "title": "Remove Suffix",
-          "description": "Remove text from the end of attribute names",
-          "type": "string",
-          "enum": [
-            "RemoveSuffix"
-          ]
-        },
-        {
-          "title": "Replace Text",
-          "description": "Find and replace text using regular expressions",
-          "type": "string",
-          "enum": [
-            "StringReplace"
-          ]
-        }
-      ]
-    },
     "RenameType": {
       "oneOf": [
         {
           "title": "All Attributes",
-          "description": "Rename all attributes in the feature",
+          "description": "Renames every attribute on the feature.",
           "type": "string",
           "enum": [
-            "All"
+            "all"
           ]
         },
         {
           "title": "Selected Attributes",
-          "description": "Rename only specific attributes listed below",
+          "description": "Renames only the attributes listed in selectedAttributes.",
           "type": "string",
           "enum": [
-            "Selected"
+            "selected"
+          ]
+        }
+      ]
+    },
+    "RenameAction": {
+      "oneOf": [
+        {
+          "title": "Add Prefix",
+          "description": "Prepends the text value to each attribute name.",
+          "type": "string",
+          "enum": [
+            "addPrefix"
+          ]
+        },
+        {
+          "title": "Add Suffix",
+          "description": "Appends the text value to each attribute name.",
+          "type": "string",
+          "enum": [
+            "addSuffix"
+          ]
+        },
+        {
+          "title": "Remove Prefix",
+          "description": "Removes the text value from the start of each attribute name.",
+          "type": "string",
+          "enum": [
+            "removePrefix"
+          ]
+        },
+        {
+          "title": "Remove Suffix",
+          "description": "Removes the text value from the end of each attribute name.",
+          "type": "string",
+          "enum": [
+            "removeSuffix"
+          ]
+        },
+        {
+          "title": "Replace Text",
+          "description": "Replaces text matched by the find pattern with the text value, using regular expressions.",
+          "type": "string",
+          "enum": [
+            "replaceText"
           ]
         }
       ]
@@ -1168,17 +1360,17 @@ Rename Feature Attributes in Bulk
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
-## CSGBuilder
+## CSG Builder
 ### Type
 * processor
 ### Description
-Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.
+Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSG Evaluator.
 ### Parameters
 ```json
 {
@@ -1187,6 +1379,30 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
   "description": "Configure how the CSG builder pairs features from left and right ports",
   "type": "object",
   "properties": {
+    "pairIdAttribute": {
+      "title": "Pair ID Attribute",
+      "description": "Expression to evaluate the pair ID used to match features from left and right ports",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "createList": {
       "title": "Create List",
       "description": "When enabled, creates a list of attribute values from both children (left and right)",
@@ -1202,23 +1418,6 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
         "string",
         "null"
       ]
-    },
-    "pairIdAttribute": {
-      "title": "Pair ID Attribute",
-      "description": "Expression to evaluate the pair ID used to match features from left and right ports",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
     }
   }
 }
@@ -1234,7 +1433,7 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
 ### Category
 * Geometry
 
-## CSGEvaluator
+## CSG Evaluator
 ### Type
 * processor
 ### Description
@@ -1253,540 +1452,41 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
     "tolerance": {
       "title": "Tolerance",
       "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* nullport
-* rejected
-### Category
-* Geometry
-
-## CenterPointReplacer
-### Type
-* processor
-### Description
-Replace Feature Geometry with Center Point
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CenterPointReplacerParam",
-  "type": "object",
-  "properties": {
-    "mode": {
-      "description": "The method used to compute the replacement center point.",
-      "default": "centerOfGravity",
-      "allOf": [
-        {
-          "$ref": "#/definitions/CenterPointMode"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "CenterPointMode": {
-      "description": "Method used to compute the center point of a geometry.",
-      "oneOf": [
-        {
-          "description": "Computes the centroid (center of gravity) of the geometry.",
-          "type": "string",
-          "enum": [
-            "centerOfGravity"
-          ]
-        },
-        {
-          "description": "Computes the center of the geometry's bounding box.",
-          "type": "string",
-          "enum": [
-            "boundingBoxCenter"
-          ]
-        },
-        {
-          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
-          "type": "string",
-          "enum": [
-            "anyInsidePoint"
-          ]
-        }
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* point
-* rejected
-### Category
-* Geometry
-
-## Cesium3DTilesWriter
-### Type
-* sink
-### Description
-Export Features as Cesium 3D Tiles for Web Visualization
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cesium3DTilesWriter Parameters",
-  "type": "object",
-  "required": [
-    "maxZoom",
-    "minZoom",
-    "output"
-  ],
-  "properties": {
-    "attachTexture": {
-      "title": "Attach Textures",
-      "description": "Whether to include texture information in the generated tiles",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "compressOutput": {
-      "title": "Compressed Output Path",
-      "description": "Optional path for compressed archive output",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Code"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "dracoCompression": {
-      "title": "Draco Compression",
-      "description": "Use draco compression. Defaults to true.",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "maxZoom": {
-      "title": "Maximum Zoom Level",
-      "description": "Maximum zoom level for tile generation (0-24)",
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "minZoom": {
-      "title": "Minimum Zoom Level",
-      "description": "Minimum zoom level for tile generation (0-24)",
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "output": {
-      "title": "Output Path",
-      "description": "Directory path where the 3D tiles will be written",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Code"
-        }
-      ]
-    },
-    "schemaKey": {
-      "title": "Schema Key",
-      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "skipUnexposedAttributes": {
-      "title": "Skip unexposed Attributes",
-      "description": "Skip attributes with double underscore prefix",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    }
-  },
-  "definitions": {
-    "Code": {
       "type": "object",
+      "format": "code",
       "required": [
         "type",
         "value"
       ],
       "properties": {
         "type": {
-          "$ref": "#/definitions/CodeType"
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
         "value": {
           "type": "string"
         }
       }
-    },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
     }
   }
 }
 ```
 ### Input Ports
-* default
-* schema
+* features
 ### Output Ports
+* features
+* nullport
+* rejected
 ### Category
-* Output
+* Geometry
 
-## CityGmlReader
+## CSV Reader
 ### Type
 * source
 ### Description
-Reads 3D city models from CityGML files.
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CityGmlReader Parameters",
-  "description": "Configuration for reading CityGML files as 3D city models.",
-  "type": "object",
-  "properties": {
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "flatten": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "inline": {
-      "title": "Inline Content",
-      "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-### Output Ports
-* default
-### Category
-* Input
-
-## CityGmlWriter
-### Type
-* sink
-### Description
-Writes features to CityGML 2.0 files
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CityGmlWriterParam",
-  "type": "object",
-  "required": [
-    "output"
-  ],
-  "properties": {
-    "epsgCode": {
-      "description": "EPSG code for coordinate reference system",
-      "default": null,
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint32",
-      "minimum": 0.0
-    },
-    "lodFilter": {
-      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
-      "default": null,
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "integer",
-        "format": "uint8",
-        "minimum": 0.0
-      }
-    },
-    "output": {
-      "description": "Output file path expression",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "prettyPrint": {
-      "description": "Whether to format output with indentation (default: true)",
-      "default": true,
-      "type": [
-        "boolean",
-        "null"
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-### Category
-* Output
-
-## Clipper
-### Type
-* processor
-### Description
-Clip Features Using Boundary Shapes
-### Parameters
-* No parameters
-### Input Ports
-* clipper
-* candidate
-### Output Ports
-* inside
-* outside
-* rejected
-### Category
-* Geometry
-
-## ClosedCurveFilter
-### Type
-* processor
-### Description
-Filter LineString Features by Closed/Open Status
-### Parameters
-* No parameters
-### Input Ports
-* default
-### Output Ports
-* closed
-* open
-* rejected
-### Category
-* Geometry
-
-## ConvexHullAccumulator
-### Type
-* processor
-### Description
-Generate Convex Hull Polygons from Grouped Features
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ConvexHullAccumulator Parameters",
-  "type": "object",
-  "properties": {
-    "groupBy": {
-      "title": "Group By Attributes",
-      "description": "Attributes used to group features before creating convex hulls - each group gets its own hull",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* Geometry
-
-## CoordinateExtractor
-### Type
-* processor
-### Description
-Extracts coordinates from geometry vertices into feature attributes
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Coordinate Extractor Parameters",
-  "type": "object",
-  "required": [
-    "mode"
-  ],
-  "properties": {
-    "defaultZValue": {
-      "title": "Default Z Value",
-      "description": "Z value to use for 2D geometries that have no Z coordinate.",
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "mode": {
-      "title": "Extraction Mode",
-      "description": "How to extract coordinates from geometry vertices.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/CoordinateExtractionMode"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    },
-    "CoordinateExtractionMode": {
-      "description": "Extraction mode: determines how coordinates are output.",
-      "oneOf": [
-        {
-          "description": "Extract all vertices into a list attribute.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "coordinatesListName": {
-              "title": "Coordinates List Name",
-              "description": "Name of the list attribute that will store coordinate objects (default: \"_indices\")",
-              "default": "_indices",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Attribute"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "allCoordinates"
-              ]
-            }
-          }
-        },
-        {
-          "description": "Extract a single vertex by index.",
-          "type": "object",
-          "required": [
-            "coordinateIndex",
-            "type"
-          ],
-          "properties": {
-            "coordinateIndex": {
-              "title": "Coordinate Index",
-              "description": "Index of the coordinate to extract. 0 = first vertex, negative values count from end (-1 = last).",
-              "type": "integer",
-              "format": "int64"
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "specifyCoordinate"
-              ]
-            },
-            "xAttribute": {
-              "title": "X Attribute Name",
-              "description": "Name of the X coordinate attribute (default: \"_x\")",
-              "default": "_x",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Attribute"
-                }
-              ]
-            },
-            "yAttribute": {
-              "title": "Y Attribute Name",
-              "description": "Name of the Y coordinate attribute (default: \"_y\")",
-              "default": "_y",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Attribute"
-                }
-              ]
-            },
-            "zAttribute": {
-              "title": "Z Attribute Name",
-              "description": "Name of the Z coordinate attribute (default: \"_z\")",
-              "default": "_z",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Attribute"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* Geometry
-
-## CsvReader
-### Type
-* source
-### Description
-Read Features from CSV or TSV File
+Reads features from CSV and TSV files.
 ### Parameters
 ```json
 {
@@ -1798,34 +1498,92 @@ Read Features from CSV or TSV File
     "format"
   ],
   "properties": {
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "encoding": {
-      "title": "Character Encoding",
-      "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "format": {
       "title": "File Format",
-      "description": "Choose the delimiter format for the input file",
+      "description": "Delimiter format of the input file.",
       "allOf": [
         {
           "$ref": "#/definitions/CsvFormat"
         }
       ]
+    },
+    "encoding": {
+      "title": "Character Encoding",
+      "description": "Character encoding of the input file, such as \"UTF-8\" or \"Shift-JIS\". Defaults to UTF-8 when omitted; labels are case-insensitive.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "offset": {
+      "title": "Header Row Offset",
+      "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0.0
+    },
+    "headerRows": {
+      "title": "Header Row Count",
+      "description": "Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as \"column1\", \"column2\", and so on; when greater than 1, names are formed by joining values from each header row with \"_\".",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0.0
     },
     "geometry": {
       "title": "Geometry Configuration",
@@ -1838,38 +1596,6 @@ Read Features from CSV or TSV File
           "type": "null"
         }
       ]
-    },
-    "headerRows": {
-      "title": "Header Row Count",
-      "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint",
-      "minimum": 0.0
-    },
-    "inline": {
-      "title": "Inline Content",
-      "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "offset": {
-      "title": "Header Row Offset",
-      "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint",
-      "minimum": 0.0
     }
   },
   "definitions": {
@@ -1892,9 +1618,6 @@ Read Features from CSV or TSV File
           ]
         }
       ]
-    },
-    "Expr": {
-      "type": "string"
     },
     "GeometryConfig": {
       "title": "Geometry Configuration",
@@ -1964,11 +1687,11 @@ Read Features from CSV or TSV File
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## CsvWriter
+## CSV Writer
 ### Type
 * sink
 ### Description
@@ -1985,8 +1708,31 @@ Writes features to CSV or TSV files.
     "output"
   ],
   "properties": {
+    "output": {
+      "title": "Output File",
+      "description": "Output path or expression for the CSV/TSV file to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "format": {
-      "description": "File format: csv (comma) or tsv (tab)",
+      "title": "File Format",
+      "description": "File format to write: CSV (comma-separated) or TSV (tab-separated).",
       "allOf": [
         {
           "$ref": "#/definitions/CsvFormat"
@@ -1995,21 +1741,13 @@ Writes features to CSV or TSV files.
     },
     "geometry": {
       "title": "Geometry Configuration",
-      "description": "Optional configuration for exporting geometry to CSV columns",
+      "description": "Optional configuration for exporting geometry to CSV columns.",
       "anyOf": [
         {
           "$ref": "#/definitions/GeometryExportConfig"
         },
         {
           "type": "null"
-        }
-      ]
-    },
-    "output": {
-      "description": "Output path or expression for the CSV/TSV file to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
         }
       ]
     }
@@ -2034,9 +1772,6 @@ Writes features to CSV or TSV files.
           ]
         }
       ]
-    },
-    "Expr": {
-      "type": "string"
     },
     "GeometryExportConfig": {
       "title": "Geometry Export Configuration",
@@ -2087,18 +1822,28 @@ Writes features to CSV or TSV files.
             }
           }
         }
-      ]
+      ],
+      "properties": {
+        "epsgColumn": {
+          "title": "EPSG Column Name",
+          "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
 
-## CzmlReader
+## CZML Reader
 ### Type
 * source
 ### Description
@@ -2107,39 +1852,15 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CzmlReader Parameters",
+  "title": "CZML Reader Parameters",
   "description": "Configuration for reading CZML files as geographic features.",
   "type": "object",
   "properties": {
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "force2d": {
       "title": "Force 2D",
       "description": "If true, forces all geometries to be 2D (ignoring Z values)",
       "default": false,
       "type": "boolean"
-    },
-    "inline": {
-      "title": "Inline Content",
-      "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "skipDocumentPacket": {
       "title": "Skip Document Packet",
@@ -2149,19 +1870,66 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
     },
     "timeSampling": {
       "title": "Time Sampling Strategy",
-      "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter.",
+      "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
       "default": "preserveRaw",
       "allOf": [
         {
           "$ref": "#/definitions/TimeSamplingStrategy"
         }
       ]
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "TimeSamplingStrategy": {
       "description": "Strategy for handling time-dynamic CZML properties.",
       "oneOf": [
@@ -2180,7 +1948,7 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
           ]
         },
         {
-          "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter.",
+          "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
           "type": "string",
           "enum": [
             "preserveRaw"
@@ -2193,11 +1961,11 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * File
 
-## CzmlWriter
+## CZML Writer
 ### Type
 * sink
 ### Description
@@ -2206,16 +1974,49 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CzmlWriter Parameters",
-  "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```",
+  "title": "CZML Writer Parameters",
+  "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```",
   "type": "object",
   "required": [
     "output"
   ],
   "properties": {
-    "colorAttribute": {
-      "title": "Color Attribute",
-      "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+    "output": {
+      "title": "Output File Path",
+      "description": "Path where the CZML file will be written",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features into separate CZML files",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "timeField": {
+      "title": "Time Field",
+      "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CZML Writer with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -2231,41 +2032,6 @@ Export features as CZML for Cesium visualization. Supports static entities and t
       "type": [
         "string",
         "null"
-      ]
-    },
-    "groupBy": {
-      "title": "Group By Attributes",
-      "description": "Attributes used to group features into separate CZML files",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    },
-    "groupTimeseriesBy": {
-      "title": "Group Timeseries By",
-      "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "heightAttribute": {
-      "title": "Height Attribute",
-      "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
       ]
     },
     "interpolationAlgorithm": {
@@ -2286,6 +2052,30 @@ Export features as CZML for Cesium visualization. Supports static entities and t
       "format": "uint32",
       "minimum": 0.0
     },
+    "groupTimeseriesBy": {
+      "title": "Group Timeseries By",
+      "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "colorAttribute": {
+      "title": "Color Attribute",
+      "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "opacity": {
       "title": "Opacity",
       "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
@@ -2294,18 +2084,9 @@ Export features as CZML for Cesium visualization. Supports static entities and t
       "format": "uint8",
       "minimum": 0.0
     },
-    "output": {
-      "title": "Output File Path",
-      "description": "Path where the CZML file will be written",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "timeField": {
-      "title": "Time Field",
-      "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```",
+    "heightAttribute": {
+      "title": "Height Attribute",
+      "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -2318,9 +2099,6 @@ Export features as CZML for Cesium visualization. Supports static entities and t
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "InterpolationAlgorithm": {
@@ -2353,12 +2131,794 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
 
-## DateTimeConverter
+## Center Point Replacer
+### Type
+* processor
+### Description
+Replace Feature Geometry with Center Point
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CenterPointReplacerParam",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "description": "The method used to compute the replacement center point.",
+      "default": "centerOfGravity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CenterPointMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CenterPointMode": {
+      "description": "Method used to compute the center point of a geometry.",
+      "oneOf": [
+        {
+          "description": "Computes the centroid (center of gravity) of the geometry.",
+          "type": "string",
+          "enum": [
+            "centerOfGravity"
+          ]
+        },
+        {
+          "description": "Computes the center of the geometry's bounding box.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
+          "type": "string",
+          "enum": [
+            "anyInsidePoint"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* point
+* rejected
+### Category
+* Geometry
+
+## Cesium 3D Tiles Writer
+### Type
+* sink
+### Description
+Writes features to Cesium 3D Tiles format for 3D web visualization.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cesium3DTilesWriter Parameters",
+  "description": "Configuration for writing features to Cesium 3D Tiles.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output Path",
+      "description": "Directory path where the 3D Tiles will be written.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "targetTileSize": {
+      "title": "Target Tile Size",
+      "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "dracoCompression": {
+      "title": "Draco Compression",
+      "description": "Whether to compress mesh geometry with Draco. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "computeFlatNormal": {
+      "title": "Compute Flat Normals",
+      "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself).",
+      "default": true,
+      "type": "boolean"
+    },
+    "texelSize": {
+      "title": "Texel Size",
+      "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it. Defaults to 0, which keeps full texture detail.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "atlasSize": {
+      "title": "Atlas Size",
+      "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 2048.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "maximum": 65536.0,
+      "minimum": 1.0
+    },
+    "atlasExtrusion": {
+      "title": "Atlas Extrusion",
+      "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "maximum": 65536.0,
+      "minimum": 0.0
+    },
+    "textureCodec": {
+      "title": "Texture Codec",
+      "description": "Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select `Untextured` to attach no textures.",
+      "default": "KTX2/ETC1S",
+      "allOf": [
+        {
+          "$ref": "#/definitions/TextureCodec"
+        }
+      ]
+    },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip Unexposed Attributes",
+      "description": "Whether to skip attributes whose keys begin with a double underscore.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "arrayMapSeparator": {
+      "title": "Array/Map Separator",
+      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into metadata columns. Leave unset to drop array and map attributes from the output entirely.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "TextureCodec": {
+      "title": "Texture Codec",
+      "description": "Texture image codec for the new-geometry writer's atlas pages.",
+      "oneOf": [
+        {
+          "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
+          "type": "string",
+          "enum": [
+            "KTX2/UASTC"
+          ]
+        },
+        {
+          "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
+          "type": "string",
+          "enum": [
+            "KTX2/ETC1S"
+          ]
+        },
+        {
+          "description": "PNG, lossless with alpha.",
+          "type": "string",
+          "enum": [
+            "PNG"
+          ]
+        },
+        {
+          "description": "JPEG, lossy and opaque (alpha is dropped).",
+          "type": "string",
+          "enum": [
+            "JPEG"
+          ]
+        },
+        {
+          "description": "Attach no textures; textured geometry falls back to its neutral colour.",
+          "type": "string",
+          "enum": [
+            "Untextured"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+* schema
+### Output Ports
+### Category
+* Output
+
+## CityGML Reader
+### Type
+* source
+### Description
+Reads 3D city models from CityGML files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlReader Parameters",
+  "description": "Configuration for reading CityGML files as 3D city models.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "flatten": {
+      "title": "Flatten Feature Tree",
+      "description": "When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* features
+### Category
+* Input
+
+## CityGML Writer
+### Type
+* sink
+### Description
+Writes features to CityGML 2.0 files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlWriter Parameters",
+  "description": "Configuration for writing features to CityGML 2.0 files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output File",
+      "description": "Output path or expression for the CityGML file to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "prettyPrint": {
+      "title": "Pretty Print",
+      "description": "Whether to indent the output for readability. Defaults to true.",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "lodFilter": {
+      "title": "LOD Filter",
+      "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    },
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "EPSG code of the coordinate reference system to declare in the output.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+### Category
+* Output
+
+## Clipper
+### Type
+* processor
+### Description
+Clips candidate features to the boundary geometry, separating the results into inside and outside portions.
+### Parameters
+* No parameters
+### Input Ports
+* clipper
+* candidate
+### Output Ports
+* inside
+* outside
+* rejected
+### Category
+* Geometry
+
+## Closed Curve Filter
+### Type
+* processor
+### Description
+Filter LineString Features by Closed/Open Status
+### Parameters
+* No parameters
+### Input Ports
+* features
+### Output Ports
+* closed
+* open
+* rejected
+### Category
+* Geometry
+
+## Convex Hull Accumulator
+### Type
+* processor
+### Description
+Generate Convex Hull Polygons from Grouped Features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Convex Hull Accumulator Parameters",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features before creating convex hulls - each group gets its own hull",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
+## Coordinate Extractor
+### Type
+* processor
+### Description
+Extracts coordinates from geometry vertices into feature attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Extractor Parameters",
+  "type": "object",
+  "required": [
+    "mode"
+  ],
+  "properties": {
+    "mode": {
+      "title": "Extraction Mode",
+      "description": "How to extract coordinates from geometry vertices.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateExtractionMode"
+        }
+      ]
+    },
+    "defaultZValue": {
+      "title": "Default Z Value",
+      "description": "Z value to use for 2D geometries that have no Z coordinate.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    }
+  },
+  "definitions": {
+    "CoordinateExtractionMode": {
+      "description": "Extraction mode: determines how coordinates are output.",
+      "oneOf": [
+        {
+          "description": "Extract all vertices into a list attribute.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "allCoordinates"
+              ]
+            },
+            "coordinatesListName": {
+              "title": "Coordinates List Name",
+              "description": "Name of the list attribute that will store coordinate objects (default: \"_indices\")",
+              "default": "_indices",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "description": "Extract a single vertex by index.",
+          "type": "object",
+          "required": [
+            "coordinateIndex",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "specifyCoordinate"
+              ]
+            },
+            "coordinateIndex": {
+              "title": "Coordinate Index",
+              "description": "Index of the coordinate to extract. 0 = first vertex, negative values count from end (-1 = last).",
+              "type": "integer",
+              "format": "int64"
+            },
+            "xAttribute": {
+              "title": "X Attribute Name",
+              "description": "Name of the X coordinate attribute (default: \"_x\")",
+              "default": "_x",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "yAttribute": {
+              "title": "Y Attribute Name",
+              "description": "Name of the Y coordinate attribute (default: \"_y\")",
+              "default": "_y",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            },
+            "zAttribute": {
+              "title": "Z Attribute Name",
+              "description": "Name of the Z coordinate attribute (default: \"_z\")",
+              "default": "_z",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Attribute"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
+## Coordinate Frame Reprojector
+### Type
+* processor
+### Description
+Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Frame Reprojector Parameters",
+  "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D.",
+  "type": "object",
+  "required": [
+    "destinationFrame"
+  ],
+  "properties": {
+    "destinationFrame": {
+      "title": "Destination Frame",
+      "description": "Coordinate frame to convert geometry into.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DestinationFrame"
+        }
+      ]
+    },
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "basePointSource": {
+      "title": "Base Point",
+      "description": "How coordinates bridge the Euclidean/CRS boundary.",
+      "default": {
+        "type": "asIs"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasePoint"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DestinationFrame": {
+      "description": "The destination coordinate frame kind.",
+      "oneOf": [
+        {
+          "title": "CRS",
+          "description": "Reproject to a coordinate reference system identified by an EPSG code.",
+          "type": "string",
+          "enum": [
+            "crs"
+          ]
+        },
+        {
+          "title": "Euclidean",
+          "description": "Convert to a non-georeferenced Euclidean frame.",
+          "type": "string",
+          "enum": [
+            "euclidean"
+          ]
+        }
+      ]
+    },
+    "BasePoint": {
+      "description": "How coordinates bridge the Euclidean/CRS boundary, carrying the input each mode needs. Ignored for a pure CRS-to-CRS reprojection.",
+      "oneOf": [
+        {
+          "title": "As Is",
+          "description": "Reinterpret coordinate values unchanged across the boundary.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "asIs"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Value",
+          "description": "Offset by a base point given as an expression evaluating to `[x, y, z]`.",
+          "type": "object",
+          "required": [
+            "basePoint",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "value"
+              ]
+            },
+            "basePoint": {
+              "title": "Base Point",
+              "description": "Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's declared axis order.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "From Port",
+          "description": "Offset by a base point taken from the base-point input port, matched to each feature by a key.",
+          "type": "object",
+          "required": [
+            "matchKey",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fromPort"
+              ]
+            },
+            "matchKey": {
+              "title": "Match Key",
+              "description": "Expression identifying which base-point feature applies to a given feature. Evaluated against both streams.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+* base-point
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
+## Date Time Converter
 ### Type
 * processor
 ### Description
@@ -2367,7 +2927,7 @@ Convert datetime values between different formats
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DateTimeConverter Parameters",
+  "title": "Date Time Converter Parameters",
   "type": "object",
   "required": [
     "attribute"
@@ -2386,14 +2946,6 @@ Convert datetime values between different formats
         }
       ]
     },
-    "outputAttribute": {
-      "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
-      "default": null,
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "outputFormat": {
       "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
       "default": "auto",
@@ -2402,11 +2954,19 @@ Convert datetime values between different formats
           "$ref": "#/definitions/DateTimeOutputFormat"
         }
       ]
+    },
+    "outputAttribute": {
+      "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "definitions": {
     "DateTimeInputFormat": {
-      "description": "Input format options for DateTimeConverter",
+      "description": "Input format options for Date Time Converter",
       "oneOf": [
         {
           "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
@@ -2459,7 +3019,7 @@ Convert datetime values between different formats
       ]
     },
     "DateTimeOutputFormat": {
-      "description": "Output format options for DateTimeConverter",
+      "description": "Output format options for Date Time Converter",
       "oneOf": [
         {
           "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
@@ -2515,22 +3075,22 @@ Convert datetime values between different formats
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * failed
 ### Category
 * Attribute
 
-## DimensionFilter
+## Dimension Filter
 ### Type
 * processor
 ### Description
-Filter Features by Geometry Dimension
+Routes features to output ports based on the number of geometry dimensions.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * 2d
 * 3d
@@ -2538,31 +3098,33 @@ Filter Features by Geometry Dimension
 ### Category
 * Filter
 
-## DirectoryDecompressor
+## Directory Decompressor
 ### Type
 * processor
 ### Description
-Extracts and decompresses archive files from specified attributes
+Decompresses zip and 7z archives referenced by feature attributes, replacing each attribute value with the path of the directory holding the extracted files.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DirectoryDecompressor Parameters",
-  "description": "Configures the extraction and decompression of archive files.",
+  "title": "Directory Decompressor Parameters",
+  "description": "Configures which attributes hold archives and how deeply the extracted directory is unwrapped.",
   "type": "object",
   "required": [
     "archiveAttributes"
   ],
   "properties": {
     "archiveAttributes": {
-      "description": "Attributes containing archive file paths to be extracted and decompressed",
+      "title": "Archive Attributes",
+      "description": "Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with the extracted directory path; attributes holding any other value are left unchanged.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
     },
     "findDeepestSingleFolder": {
-      "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is.",
+      "title": "Find Deepest Single Folder",
+      "description": "Keeps unwrapping while the extracted directory contains nothing but a single subdirectory, stopping at the first directory with multiple entries or a file. When disabled, only one level of single-folder nesting is unwrapped.",
       "type": [
         "boolean",
         "null"
@@ -2577,9 +3139,9 @@ Extracts and decompresses archive files from specified attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * File
 
@@ -2596,16 +3158,6 @@ Dissolve Features by Grouping Attributes
   "description": "Configure how to dissolve features by grouping them based on shared attributes",
   "type": "object",
   "properties": {
-    "attributeAccumulation": {
-      "title": "Attribute Accumulation",
-      "description": "Strategy for handling attributes when dissolving features",
-      "default": "useOneFeature",
-      "allOf": [
-        {
-          "$ref": "#/definitions/AttributeAccumulationStrategy"
-        }
-      ]
-    },
     "groupBy": {
       "title": "Group By Attributes",
       "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together",
@@ -2625,6 +3177,16 @@ Dissolve Features by Grouping Attributes
         "null"
       ],
       "format": "double"
+    },
+    "attributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Strategy for handling attributes when dissolving features",
+      "default": "useOneFeature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AttributeAccumulationStrategy"
+        }
+      ]
     }
   },
   "definitions": {
@@ -2653,7 +3215,7 @@ Dissolve Features by Grouping Attributes
         },
         {
           "title": "Use Attributes From One Feature",
-          "description": "The output inherits the attributes of one representative feature (the last feature in the group)",
+          "description": "The output inherits the attributes of one representative feature of the group",
           "type": "string",
           "enum": [
             "useOneFeature"
@@ -2665,51 +3227,51 @@ Dissolve Features by Grouping Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * area
 * rejected
 ### Category
 * Geometry
 
-## EchoProcessor
+## Echo Processor
 ### Type
 * processor
 ### Description
-Debug Echo Features to Logs
+Echoes features to logs and passes them through unchanged.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Debug
 
-## EchoSink
+## Echo Sink
 ### Type
 * sink
 ### Description
-Debug Echo Features to Logs
+Echoes features to logs and discards them.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Debug
 
-## ElevationExtractor
+## Elevation Extractor
 ### Type
 * processor
 ### Description
-Extract Z-Coordinate Elevation to Attribute
+Extracts the elevation of a feature's geometry and stores it in an attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Elevation Extractor Parameters",
-  "description": "Configure where to store the extracted elevation value from geometry coordinates",
+  "description": "Configure where the extracted elevation is stored.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -2717,7 +3279,7 @@ Extract Z-Coordinate Elevation to Attribute
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Name of the attribute where the extracted elevation value will be stored",
+      "description": "Attribute to store the elevation in.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -2733,13 +3295,13 @@ Extract Z-Coordinate Elevation to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## ExcelWriter
+## Excel Writer
 ### Type
 * sink
 ### Description
@@ -2748,7 +3310,7 @@ Writes features to Microsoft Excel format (.xlsx files).
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExcelWriter Parameters",
+  "title": "Excel Writer Parameters",
   "description": "Configuration for writing features to Microsoft Excel format.",
   "type": "object",
   "required": [
@@ -2757,11 +3319,24 @@ Writes features to Microsoft Excel format (.xlsx files).
   "properties": {
     "output": {
       "description": "Output path or expression for the Excel file to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "sheetName": {
       "description": "Sheet name (defaults to \"Sheet1\")",
@@ -2770,16 +3345,11 @@ Writes features to Microsoft Excel format (.xlsx files).
         "null"
       ]
     }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
@@ -2788,13 +3358,13 @@ Writes features to Microsoft Excel format (.xlsx files).
 ### Type
 * processor
 ### Description
-Extrude 2D Polygons into 3D Solids
+Extrudes a polygon geometry vertically by a given distance to produce a solid geometry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Extruder Parameters",
-  "description": "Configure how to extrude 2D polygons into 3D solid geometries",
+  "description": "Configure how far each polygon is extruded.",
   "type": "object",
   "required": [
     "distance"
@@ -2802,38 +3372,46 @@ Extrude 2D Polygons into 3D Solids
   "properties": {
     "distance": {
       "title": "Distance",
-      "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
+* rejected
 ### Category
 * Geometry
 
-## FeatureCityGml3Reader
+## Feature CityGML 2 Reader
 ### Type
 * processor
 ### Description
-Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files
+Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureCityGml3Reader Parameters",
+  "title": "Feature CityGML 2 Reader Parameters",
   "type": "object",
   "required": [
     "dataset"
@@ -2841,12 +3419,25 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
   "properties": {
     "dataset": {
       "title": "Dataset",
-      "description": "Path expression resolving to the CityGML 3.0 file to read.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "Path expression resolving to the CityGML 2.0 file to read.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "extractTags": {
       "title": "Extract Tags",
@@ -2856,27 +3447,135 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
       "items": {
         "type": "string"
       }
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "flattenSingleChildObjects": {
+      "title": "Flatten Single-Child Object Nodes",
+      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "flattenMeasureTypes": {
+      "title": "Flatten Measure Types",
+      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
-* Feature
+* Input
 
-## FeatureCityGmlReader
+## Feature CityGML 3 Reader
 ### Type
 * processor
 ### Description
-Reads and processes features from CityGML files with optional flattening
+Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature CityGML 3 Reader Parameters",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "dataset": {
+      "title": "Dataset",
+      "description": "Path expression resolving to the CityGML 3.0 file to read.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "extractTags": {
+      "title": "Extract Tags",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "flattenSingleChildObjects": {
+      "title": "Flatten Single-Child Object Nodes",
+      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Feature
+
+## Feature CityGML Reader
+### Type
+* processor
+### Description
+Reads CityGML features from a file path referenced by the incoming feature, optionally extracting nested child city objects as separate features.
 ### Parameters
 ```json
 {
@@ -2888,26 +3587,27 @@ Reads and processes features from CityGML files with optional flattening
     "dataset"
   ],
   "properties": {
-    "codelistsPath": {
-      "title": "Codelists Path",
-      "description": "Optional path to the codelists directory for resolving codelist values",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "dataset": {
       "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "flatten": {
       "title": "Flatten",
@@ -2916,44 +3616,70 @@ Reads and processes features from CityGML files with optional flattening
         "boolean",
         "null"
       ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+    },
+    "codelistsPath": {
+      "title": "Codelists Path",
+      "description": "Optional path to the codelists directory for resolving codelist values",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## FeatureCounter
+## Feature Counter
 ### Type
 * processor
 ### Description
-Count Features and Add Counter to Attribute
+Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature Counter Parameters",
-  "description": "Configure how features are counted and grouped, and where to store the count",
+  "description": "Configure how features are numbered and grouped, and where to store the number",
   "type": "object",
   "required": [
-    "countStart",
     "outputAttribute"
   ],
   "properties": {
+    "outputAttribute": {
+      "title": "Count Attribute",
+      "description": "Name of the attribute where the count will be stored",
+      "type": "string"
+    },
     "countStart": {
       "title": "Start Count",
-      "description": "Starting value for the counter",
+      "description": "Value assigned to the first feature",
+      "default": 1,
       "type": "integer",
-      "format": "int64"
+      "format": "uint64",
+      "minimum": 0.0
     },
     "groupBy": {
       "title": "Group By Attributes",
@@ -2965,11 +3691,6 @@ Count Features and Add Counter to Attribute
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "title": "Output Attribute",
-      "description": "Name of the attribute where the count will be stored",
-      "type": "string"
     }
   },
   "definitions": {
@@ -2980,18 +3701,17 @@ Count Features and Add Counter to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
-* rejected
+* features
 ### Category
 * Debug
 
-## FeatureCreator
+## Feature Creator
 ### Type
 * source
 ### Description
-Generate Custom Features Using Scripts
+Creates features from a script expression that returns one or more attribute maps.
 ### Parameters
 ```json
 {
@@ -3005,28 +3725,35 @@ Generate Custom Features Using Scripts
   "properties": {
     "creator": {
       "title": "Script Expression",
-      "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## FeatureDuplicateFilter
+## Feature Duplicate Filter
 ### Type
 * processor
 ### Description
@@ -3034,72 +3761,79 @@ Filter Out Duplicate Features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
-## FeatureFilePathExtractor
+## Feature File Path Extractor
 ### Type
 * processor
 ### Description
-Extract File Paths from Dataset to Features
+Expands a dataset path into one feature per file, listing directories recursively and optionally extracting zip and 7z archives. Each emitted feature carries the file's path, name, and extension attributes alongside the attributes of the incoming feature.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature File Path Extractor Parameters",
-  "description": "Configure how to extract file paths from datasets and optionally extract archives",
+  "description": "Configures which dataset is expanded into file features and whether archives are extracted.",
   "type": "object",
   "required": [
-    "extractArchive",
     "sourceDataset"
   ],
   "properties": {
+    "sourceDataset": {
+      "title": "Source Dataset",
+      "description": "Expression evaluating to the path or URL of the file, directory, or archive to expand. A directory is listed recursively; any other path yields a single feature.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "extractArchive": {
+      "title": "Extract Archive",
+      "description": "Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one feature per extracted file. When disabled, the archive itself is emitted as a single path.",
+      "default": false,
+      "type": "boolean"
+    },
     "destPrefix": {
       "title": "Destination Prefix",
-      "description": "Optional prefix to add to extracted file paths",
+      "description": "Subdirectory created under the temporary extraction directory to hold the extracted files. Applies only when an archive is extracted.",
       "type": [
         "string",
         "null"
       ]
-    },
-    "extractArchive": {
-      "title": "Extract Archive",
-      "description": "Whether to extract archive files found in the dataset",
-      "type": "boolean"
-    },
-    "sourceDataset": {
-      "title": "Source Dataset",
-      "description": "Expression to get the source dataset path or URL",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
-* unfiltered
+* features
 ### Category
 * Feature
 
-## FeatureFilter
+## Feature Filter
 ### Type
 * processor
 ### Description
-Filter Features Based on Custom Conditions
+Routes features to named output ports based on user-defined filter conditions.
 ### Parameters
 ```json
 {
@@ -3129,15 +3863,29 @@ Filter Features Based on Custom Conditions
       ],
       "properties": {
         "expr": {
-          "title": "Condition expression",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "title": "Condition Expression",
+          "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         },
         "outputPort": {
-          "title": "Output port",
+          "title": "Output Port",
+          "description": "Name of the output port that receives features matching this condition.",
           "allOf": [
             {
               "$ref": "#/definitions/Port"
@@ -3146,9 +3894,6 @@ Filter Features Based on Custom Conditions
         }
       }
     },
-    "Expr": {
-      "type": "string"
-    },
     "Port": {
       "type": "string"
     }
@@ -3156,41 +3901,85 @@ Filter Features Based on Custom Conditions
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * unfiltered
 ### Category
 * Filter
 
-## FeatureJoiner
+## Feature GeoJSON Writer
 ### Type
 * processor
 ### Description
-Joins requestor and supplier features based on matching attribute values with configurable join types
+Writes features to a GeoJSON file for each resolved output path.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureJoiner Parameters",
+  "title": "FeatureGeoJsonWriter Parameters",
+  "description": "Configuration for writing features to GeoJSON files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output",
+      "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "writeCrs": {
+      "title": "Write CRS",
+      "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+      "default": false,
+      "type": "boolean"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Feature
+
+## Feature Joiner
+### Type
+* processor
+### Description
+Joins requestor and supplier features based on matching attribute values, with configurable join types.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature Joiner Parameters",
   "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
   "type": "object",
   "required": [
     "joinType"
   ],
   "properties": {
-    "conflictResolution": {
-      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ConflictResolution"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "joinType": {
-      "description": "Join type: inner, left, or full",
+      "title": "Join Type",
+      "description": "How unmatched features are handled: inner, left, or full.",
       "allOf": [
         {
           "$ref": "#/definitions/JoinType"
@@ -3198,7 +3987,19 @@ Joins requestor and supplier features based on matching attribute values with co
       ]
     },
     "requestorAttribute": {
-      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+      "title": "Requestor Attributes",
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttribute": {
+      "title": "Supplier Attributes",
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
       "type": [
         "array",
         "null"
@@ -3208,31 +4009,59 @@ Joins requestor and supplier features based on matching attribute values with co
       }
     },
     "requestorAttributeValue": {
-      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "supplierAttribute": {
-      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+      "title": "Requestor Attribute Value",
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
       "type": [
-        "array",
+        "object",
         "null"
       ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
       }
     },
     "supplierAttributeValue": {
-      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+      "title": "Supplier Attribute Value",
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "conflictResolution": {
+      "title": "Conflict Resolution",
+      "description": "How to resolve conflicts when requestor and supplier features share the same attribute.",
       "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/ConflictResolution"
         },
         {
           "type": "null"
@@ -3241,51 +4070,53 @@ Joins requestor and supplier features based on matching attribute values with co
     }
   },
   "definitions": {
-    "Attribute": {
-      "type": "string"
-    },
-    "ConflictResolution": {
-      "oneOf": [
-        {
-          "description": "Requestor attributes win on conflict",
-          "type": "string",
-          "enum": [
-            "requestorWins"
-          ]
-        },
-        {
-          "description": "Supplier attributes win on conflict (default)",
-          "type": "string",
-          "enum": [
-            "supplierWins"
-          ]
-        }
-      ]
-    },
-    "Expr": {
-      "type": "string"
-    },
     "JoinType": {
       "oneOf": [
         {
-          "description": "Only emit features where a match exists",
+          "title": "Inner",
+          "description": "Only emits features where a match exists.",
           "type": "string",
           "enum": [
             "inner"
           ]
         },
         {
-          "description": "Emit all requestor features (default)",
+          "title": "Left",
+          "description": "Emits all requestor features, matched or not.",
           "type": "string",
           "enum": [
             "left"
           ]
         },
         {
-          "description": "Emit all features from both sides",
+          "title": "Full",
+          "description": "Emits all features from both sides.",
           "type": "string",
           "enum": [
             "full"
+          ]
+        }
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    },
+    "ConflictResolution": {
+      "oneOf": [
+        {
+          "title": "Requestor Wins",
+          "description": "Requestor attributes win on conflict.",
+          "type": "string",
+          "enum": [
+            "requestorWins"
+          ]
+        },
+        {
+          "title": "Supplier Wins",
+          "description": "Supplier attributes win on conflict (default).",
+          "type": "string",
+          "enum": [
+            "supplierWins"
           ]
         }
       ]
@@ -3298,21 +4129,21 @@ Joins requestor and supplier features based on matching attribute values with co
 * supplier
 ### Output Ports
 * joined
-* unjoinedRequestor
-* unjoinedSupplier
+* unjoined-requestor
+* unjoined-supplier
 ### Category
 * Merge
 
-## FeatureLodFilter
+## Feature LOD Filter
 ### Type
 * processor
 ### Description
-Filters features by Level of Detail (LOD), routing them to appropriate output ports
+Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureLodFilter Parameters",
+  "title": "Feature LOD Filter Parameters",
   "description": "Configuration for filtering features based on Level of Detail (LOD).",
   "type": "object",
   "required": [
@@ -3320,7 +4151,8 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
   ],
   "properties": {
     "filterKey": {
-      "description": "Attribute used to group features for LOD filtering",
+      "title": "Filter Key",
+      "description": "Attribute whose value groups features; the maximum available LOD is determined within each group.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3336,39 +4168,44 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* up_to_lod0
-* up_to_lod1
-* up_to_lod2
-* up_to_lod3
-* up_to_lod4
+* max-lod0
+* max-lod1
+* max-lod2
+* max-lod3
+* max-lod4
 * unfiltered
 ### Category
 * Filter
 
-## FeatureMerger
+## Feature Merger
 ### Type
 * processor
 ### Description
-Merges requestor and supplier features based on matching attribute values
+Merges requestor and supplier features based on matching attribute values.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureMerger Parameters",
+  "title": "Feature Merger Parameters",
   "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
   "type": "object",
   "properties": {
-    "completeGrouped": {
-      "description": "Whether to complete grouped features before processing the next group",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "requestorAttribute": {
-      "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
+      "title": "Requestor Attributes",
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "supplierAttribute": {
+      "title": "Supplier Attributes",
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
       "type": [
         "array",
         "null"
@@ -3378,43 +4215,64 @@ Merges requestor and supplier features based on matching attribute values
       }
     },
     "requestorAttributeValue": {
-      "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "supplierAttribute": {
-      "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
+      "title": "Requestor Attribute Value",
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
       "type": [
-        "array",
+        "object",
         "null"
       ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
       }
     },
     "supplierAttributeValue": {
-      "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "title": "Supplier Attribute Value",
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
+      }
+    },
+    "completeGrouped": {
+      "title": "Complete Grouped",
+      "description": "Whether to complete grouped features before processing the next group.",
+      "type": [
+        "boolean",
+        "null"
       ]
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -3429,7 +4287,7 @@ Merges requestor and supplier features based on matching attribute values
 ### Category
 * Merge
 
-## FeatureReader
+## Feature Reader
 ### Type
 * processor
 ### Description
@@ -3449,13 +4307,10 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
         "format"
       ],
       "properties": {
-        "dataset": {
-          "title": "Dataset",
-          "description": "Path or expression to the dataset file to be read",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
+        "format": {
+          "type": "string",
+          "enum": [
+            "csv"
           ]
         },
         "encoding": {
@@ -3466,15 +4321,30 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
             "null"
           ]
         },
-        "format": {
-          "type": "string",
-          "enum": [
-            "csv"
-          ]
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path or expression to the dataset file to be read",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
-        "headerRows": {
-          "title": "Header Row Count",
-          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+        "offset": {
+          "description": "The offset of the first row to read",
           "type": [
             "integer",
             "null"
@@ -3482,8 +4352,9 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
           "format": "uint",
           "minimum": 0.0
         },
-        "offset": {
-          "description": "The offset of the first row to read",
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
           "type": [
             "integer",
             "null"
@@ -3502,13 +4373,10 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
         "format"
       ],
       "properties": {
-        "dataset": {
-          "title": "Dataset",
-          "description": "Path or expression to the dataset file to be read",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
+        "format": {
+          "type": "string",
+          "enum": [
+            "tsv"
           ]
         },
         "encoding": {
@@ -3519,15 +4387,30 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
             "null"
           ]
         },
-        "format": {
-          "type": "string",
-          "enum": [
-            "tsv"
-          ]
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path or expression to the dataset file to be read",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
-        "headerRows": {
-          "title": "Header Row Count",
-          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+        "offset": {
+          "description": "The offset of the first row to read",
           "type": [
             "integer",
             "null"
@@ -3535,8 +4418,9 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
           "format": "uint",
           "minimum": 0.0
         },
-        "offset": {
-          "description": "The offset of the first row to read",
+        "headerRows": {
+          "title": "Header Row Count",
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
           "type": [
             "integer",
             "null"
@@ -3555,48 +4439,56 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
         "format"
       ],
       "properties": {
-        "dataset": {
-          "title": "Dataset",
-          "description": "Path or expression to the dataset file to be read",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
         "format": {
           "type": "string",
           "enum": [
             "json"
           ]
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path or expression to the dataset file to be read",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         }
       }
     }
-  ],
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
+  ]
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
-## FeatureSorter
+## Feature Sorter
 ### Type
 * processor
 ### Description
-Sorts features based on specified attributes in ascending or descending order
+Sorts features based on specified attributes in ascending or descending order.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureSorter Parameters",
+  "title": "Feature Sorter Parameters",
   "description": "Configuration for sorting features based on attribute values.",
   "type": "object",
   "required": [
@@ -3605,14 +4497,16 @@ Sorts features based on specified attributes in ascending or descending order
   ],
   "properties": {
     "attributes": {
-      "description": "Attributes to use for sorting features (sort order based on attribute order)",
+      "title": "Sort Attributes",
+      "description": "Attributes to sort by; earlier attributes take precedence.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
     },
     "order": {
-      "description": "Sorting order (ascending or descending)",
+      "title": "Sort Order",
+      "description": "Whether features are sorted in ascending or descending order.",
       "allOf": [
         {
           "$ref": "#/definitions/Order"
@@ -3635,30 +4529,31 @@ Sorts features based on specified attributes in ascending or descending order
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Merge
 
-## FeatureTransformer
+## Feature Transformer
 ### Type
 * processor
 ### Description
-Applies transformation expressions to modify feature attributes and properties
+Replaces each feature's attributes with the map returned by one or more expressions, applied in order. Geometry is passed through unchanged.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTransformer Parameters",
-  "description": "Configuration for applying transformation expressions to features.",
+  "title": "Feature Transformer Parameters",
+  "description": "Configures the expressions that build each feature's new attributes.",
   "type": "object",
   "required": [
     "transformers"
   ],
   "properties": {
     "transformers": {
-      "description": "List of transformation expressions to apply to each feature",
+      "title": "Transformations",
+      "description": "Expressions applied in order, each one reading the attributes produced by the previous.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Transform"
@@ -3666,9 +4561,6 @@ Applies transformation expressions to modify feature attributes and properties
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "Transform": {
       "type": "object",
       "required": [
@@ -3676,12 +4568,25 @@ Applies transformation expressions to modify feature attributes and properties
       ],
       "properties": {
         "expr": {
-          "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "title": "Expression",
+          "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     }
@@ -3689,22 +4594,22 @@ Applies transformation expressions to modify feature attributes and properties
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Transform
 
-## FeatureTypeFilter
+## Feature Type Filter
 ### Type
 * processor
 ### Description
-Filter CityGML features by feature type
+Filters CityGML features by their feature type.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTypeFilter Parameters",
+  "title": "Feature Type Filter Parameters",
   "description": "Configuration for filtering features based on their feature type.",
   "type": "object",
   "required": [
@@ -3712,7 +4617,8 @@ Filter CityGML features by feature type
   ],
   "properties": {
     "targetTypes": {
-      "description": "Target feature types",
+      "title": "Target Feature Types",
+      "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\".",
       "type": "array",
       "items": {
         "type": "string"
@@ -3722,14 +4628,14 @@ Filter CityGML features by feature type
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * unfiltered
 ### Category
 * Filter
 
-## FeatureWriter
+## Feature Writer
 ### Type
 * processor
 ### Description
@@ -3738,7 +4644,7 @@ Writes features from various formats
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureWriter Parameters",
+  "title": "Feature Writer Parameters",
   "description": "Configuration for writing features to different file formats.",
   "oneOf": [
     {
@@ -3756,11 +4662,24 @@ Writes features from various formats
         },
         "output": {
           "title": "Output path",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     },
@@ -3779,11 +4698,24 @@ Writes features from various formats
         },
         "output": {
           "title": "Output path",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
         }
       }
     },
@@ -3796,16 +4728,6 @@ Writes features from various formats
         "output"
       ],
       "properties": {
-        "converter": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "format": {
           "type": "string",
           "enum": [
@@ -3814,11 +4736,46 @@ Writes features from various formats
         },
         "output": {
           "title": "Output path",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
+          }
+        },
+        "converter": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -3831,21 +4788,32 @@ Writes features from various formats
         "output"
       ],
       "properties": {
-        "epsgCode": {
-          "description": "EPSG code for coordinate reference system",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
         "format": {
           "type": "string",
           "enum": [
             "citygml"
           ]
+        },
+        "output": {
+          "title": "Output path",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
         "lodFilter": {
           "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
@@ -3860,13 +4828,15 @@ Writes features from various formats
             "minimum": 0.0
           }
         },
-        "output": {
-          "title": "Output path",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
+        "epsgCode": {
+          "description": "EPSG code for coordinate reference system",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
         },
         "prettyPrint": {
           "description": "Whether to format output with indentation (default: true)",
@@ -3878,26 +4848,21 @@ Writes features from various formats
         }
       }
     }
-  ],
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
+  ]
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
-## FilePathExtractor
+## File Path Extractor
 ### Type
 * source
 ### Description
-Extracts file paths from directories or archives, creating features for each discovered file
+Extracts file paths from directories or archives, creating features for each discovered file.
 ### Parameters
 ```json
 {
@@ -3910,155 +4875,226 @@ Extracts file paths from directories or archives, creating features for each dis
     "sourceDataset"
   ],
   "properties": {
-    "extractArchive": {
-      "title": "Extract Archive",
-      "description": "Whether to extract files from archives (zip files, etc.) or just list them",
-      "type": "boolean"
-    },
     "sourceDataset": {
       "title": "Source Dataset",
       "description": "Path or expression pointing to the source directory or archive file",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-### Output Ports
-* default
-### Category
-* Input
-
-## FilePropertyExtractor
-### Type
-* processor
-### Description
-Extracts file system properties (type, size, timestamps) from files
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FilePropertyExtractor Parameters",
-  "description": "Configuration for extracting file system properties from files.",
-  "type": "object",
-  "required": [
-    "filePathAttribute"
-  ],
-  "properties": {
-    "filePathAttribute": {
-      "description": "Attribute name containing the file path to analyze for properties",
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* File
-
-## FlowExprTest
-### Type
-* processor
-### Description
-Experimental testbed for the Flow expression engine
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FlowExprTestParam",
-  "type": "object",
-  "required": [
-    "mappings"
-  ],
-  "properties": {
-    "mappings": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Mapping"
-      }
-    }
-  },
-  "definitions": {
-    "Code": {
       "type": "object",
+      "format": "code",
       "required": [
         "type",
         "value"
       ],
       "properties": {
         "type": {
-          "$ref": "#/definitions/CodeType"
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
         "value": {
           "type": "string"
         }
       }
     },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
-      ]
-    },
-    "Mapping": {
-      "type": "object",
-      "required": [
-        "attribute",
-        "value"
-      ],
-      "properties": {
-        "attribute": {
-          "type": "string"
-        },
-        "value": {
-          "$ref": "#/definitions/Code"
-        }
-      }
+    "extractArchive": {
+      "title": "Extract Archive",
+      "description": "When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.",
+      "type": "boolean"
     }
   }
 }
 ```
 ### Input Ports
-* default
 ### Output Ports
-* default
+* features
 ### Category
-* Attribute
+* Input
 
-## FootprintReplacer
+## File Property Extractor
 ### Type
 * processor
 ### Description
-Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)
+Inspects the file or directory at a path held in a feature attribute and adds its type, size, and access, modification, and creation timestamps as attributes. Directory size is the total size of the files it contains, counted recursively.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "File Property Extractor Parameters",
+  "description": "Configures which attribute holds the path to inspect.",
+  "type": "object",
+  "required": [
+    "filePathAttribute"
+  ],
+  "properties": {
+    "filePathAttribute": {
+      "title": "File Path Attribute",
+      "description": "Name of the attribute holding the path of the file or directory to inspect. Paths that do not exist, and symbolic links, are not inspected.",
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
-* default
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* File
+
+## Footprint Replacer
+### Type
+* processor
+### Description
+Replaces a feature's geometry with its footprint: the dissolved projection of its faces onto the horizontal plane or a custom plane.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Footprint Replacer Parameters",
+  "description": "Configure the plane the geometry is projected onto. The geometry must be in a Euclidean frame or a coordinate reference system in linear units; faces smaller than 1e-6 square units after projection are dropped.",
+  "type": "object",
+  "properties": {
+    "projectionPlane": {
+      "title": "Projection Plane",
+      "description": "Plane the geometry is projected onto. Defaults to the horizontal plane.",
+      "default": {
+        "type": "horizontal"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProjectionPlane"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ProjectionPlane": {
+      "description": "The plane the footprint is projected onto.",
+      "oneOf": [
+        {
+          "title": "Horizontal",
+          "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "horizontal"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Custom Plane",
+          "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+          "type": "object",
+          "required": [
+            "normal",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "custom"
+              ]
+            },
+            "normal": {
+              "title": "Normal",
+              "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "origin": {
+              "title": "Origin",
+              "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "xAxis": {
+              "title": "X Axis",
+              "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
 ### Output Ports
 * footprint
 * rejected
 ### Category
 * Geometry
 
-## GeoJsonReader
+## GeoJSON Reader
 ### Type
 * source
 ### Description
-Reads geographic features from GeoJSON files, supporting both single features and feature collections
+Reads geographic features from a GeoJSON FeatureCollection file.
 ### Parameters
 ```json
 {
@@ -4069,47 +5105,68 @@ Reads geographic features from GeoJSON files, supporting both single features an
   "properties": {
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "inline": {
       "title": "Inline Content",
       "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## GeoJsonWriter
+## GeoJSON Writer
 ### Type
 * sink
 ### Description
-Writes geographic features to GeoJSON files with optional grouping
+Writes features to GeoJSON files, optionally grouping them into separate files.
 ### Parameters
 ```json
 {
@@ -4121,8 +5178,31 @@ Writes geographic features to GeoJSON files with optional grouping
     "output"
   ],
   "properties": {
+    "output": {
+      "title": "Output File",
+      "description": "Output path or expression for the GeoJSON file to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "groupBy": {
-      "description": "Optional attributes to group features by, creating separate files for each group",
+      "title": "Group By",
+      "description": "Attributes to group features by, writing a separate file for each distinct group.",
       "type": [
         "array",
         "null"
@@ -4131,98 +5211,42 @@ Writes geographic features to GeoJSON files with optional grouping
         "$ref": "#/definitions/Attribute"
       }
     },
-    "output": {
-      "description": "Output path or expression for the GeoJSON file to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
+    "writeCrs": {
+      "title": "Write CRS",
+      "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+      "default": false,
+      "type": "boolean"
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
 
-## GeoPackageReader
+## GeoPackage Reader
 ### Type
 * source
 ### Description
-Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata
+Reads vector features from GeoPackage (.gpkg) files, or the file's spatial reference and extension metadata.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeoPackageReaderParam",
+  "title": "GeoPackage Reader Parameters",
+  "description": "Configures which content to read from the GeoPackage file and how geometries are produced.",
   "type": "object",
   "properties": {
-    "attributeFilter": {
-      "default": null,
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "batchSize": {
-      "default": null,
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint",
-      "minimum": 0.0
-    },
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "force2D": {
-      "default": false,
-      "type": "boolean"
-    },
-    "includeMetadata": {
-      "default": false,
-      "type": "boolean"
-    },
-    "inline": {
-      "title": "Inline Content",
-      "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "layerName": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "readMode": {
+      "title": "Read Mode",
+      "description": "Which content to read from the GeoPackage file. Defaults to reading vector features.",
       "default": "features",
       "allOf": [
         {
@@ -4230,41 +5254,90 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
         }
       ]
     },
-    "spatialFilter": {
-      "default": null,
+    "layerName": {
+      "title": "Layer Name",
+      "description": "Name of the layer to read. When omitted, every feature layer in the file is read.",
       "type": [
         "string",
         "null"
       ]
     },
-    "tileFormat": {
-      "default": "png",
-      "allOf": [
-        {
-          "$ref": "#/definitions/TileFormat"
+    "force2D": {
+      "title": "Force 2D",
+      "description": "Drops the Z value from every geometry, producing 2D output.",
+      "default": false,
+      "type": "boolean"
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "GeoPackageReadMode": {
-      "type": "string",
-      "enum": [
-        "features",
-        "tiles",
-        "all",
-        "metadataOnly"
-      ]
-    },
-    "TileFormat": {
-      "type": "string",
-      "enum": [
-        "png",
-        "jpeg",
-        "webp"
+      "oneOf": [
+        {
+          "title": "Features",
+          "description": "Reads vector features, each carrying its geometry and attributes.",
+          "type": "string",
+          "enum": [
+            "features"
+          ]
+        },
+        {
+          "title": "Metadata Only",
+          "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record.",
+          "type": "string",
+          "enum": [
+            "metadataOnly"
+          ]
+        }
       ]
     }
   }
@@ -4272,15 +5345,15 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## GeoPackageWriter
+## GeoPackage Writer
 ### Type
 * sink
 ### Description
-Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables
+Writes features to a GeoPackage (.gpkg) file.
 ### Parameters
 ```json
 {
@@ -4292,60 +5365,143 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
     "output"
   ],
   "properties": {
-    "createSpatialIndex": {
-      "description": "Create RTree spatial index (default: true)",
-      "default": true,
-      "type": "boolean"
-    },
-    "geometryColumn": {
-      "description": "Geometry column name (default: \"geom\")",
-      "default": "geom",
-      "type": "string"
-    },
-    "geometryType": {
-      "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
-      "default": "GEOMETRY",
-      "type": "string"
-    },
     "output": {
-      "description": "Output path for the GeoPackage file to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "title": "Output File",
+      "description": "Output path or expression for the GeoPackage file to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
-    "overwrite": {
-      "description": "Overwrite existing file (default: false)",
-      "default": false,
-      "type": "boolean"
+    "tableName": {
+      "title": "Table Name",
+      "description": "Name of the feature table to create, shown as the layer name in GIS clients. Defaults to \"features\".",
+      "default": "features",
+      "type": "string"
     },
     "srsId": {
-      "description": "Spatial Reference System ID (default: 4326 for WGS84)",
+      "title": "SRS ID",
+      "description": "Spatial reference system identifier (EPSG code) recorded for the geometry. The writer tags this code without reprojecting, so it must match the coordinate system of the input data. Defaults to 4326 (WGS 84).",
       "default": 4326,
       "type": "integer",
       "format": "int32"
     },
-    "tableName": {
-      "description": "Table name to create (default: \"features\")",
-      "default": "features",
+    "geometryType": {
+      "title": "Geometry Type",
+      "description": "Geometry type declared for the table. Use Geometry for tables that hold mixed or unknown types. Defaults to Geometry.",
+      "default": "geometry",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryType"
+        }
+      ]
+    },
+    "overwrite": {
+      "title": "Overwrite Existing File",
+      "description": "Whether to overwrite the output file if it already exists. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "geometryColumn": {
+      "title": "Geometry Column",
+      "description": "Name of the column that stores geometry. Defaults to \"geom\".",
+      "default": "geom",
       "type": "string"
+    },
+    "createSpatialIndex": {
+      "title": "Create Spatial Index",
+      "description": "Whether to build an R-tree spatial index on the geometry column for faster queries. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
+    "GeometryType": {
+      "title": "Geometry Type",
+      "description": "Geometry type declared for a GeoPackage feature table.",
+      "oneOf": [
+        {
+          "title": "Point",
+          "description": "A single point per feature.",
+          "type": "string",
+          "enum": [
+            "point"
+          ]
+        },
+        {
+          "title": "Line String",
+          "description": "A single connected sequence of points per feature.",
+          "type": "string",
+          "enum": [
+            "lineString"
+          ]
+        },
+        {
+          "title": "Polygon",
+          "description": "A single polygon, with optional holes, per feature.",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        },
+        {
+          "title": "Multi Point",
+          "description": "A collection of points per feature.",
+          "type": "string",
+          "enum": [
+            "multiPoint"
+          ]
+        },
+        {
+          "title": "Multi Line String",
+          "description": "A collection of line strings per feature.",
+          "type": "string",
+          "enum": [
+            "multiLineString"
+          ]
+        },
+        {
+          "title": "Multi Polygon",
+          "description": "A collection of polygons per feature.",
+          "type": "string",
+          "enum": [
+            "multiPolygon"
+          ]
+        },
+        {
+          "title": "Geometry (Mixed)",
+          "description": "Any geometry type; use when the table holds mixed or unknown geometry types.",
+          "type": "string",
+          "enum": [
+            "geometry"
+          ]
+        }
+      ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
 
-## GeometryCoercer
+## Geometry Coercer
 ### Type
 * processor
 ### Description
@@ -4354,7 +5510,7 @@ Coerces and converts feature geometries to specified target geometry types
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometryCoercer Parameters",
+  "title": "Geometry Coercer Parameters",
   "description": "Configuration for coercing geometries to specific target types.",
   "type": "object",
   "required": [
@@ -4362,44 +5518,65 @@ Coerces and converts feature geometries to specified target geometry types
   ],
   "properties": {
     "targetType": {
-      "description": "Target geometry type to coerce features to (e.g., LineString)",
+      "title": "Target Type",
+      "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged.",
       "allOf": [
         {
-          "$ref": "#/definitions/CoerceTarget"
+          "$ref": "#/definitions/CoercionTarget"
         }
       ]
     }
   },
   "definitions": {
-    "CoerceTarget": {
-      "type": "string",
-      "enum": [
-        "lineString",
-        "polygon",
-        "triangularMesh"
+    "CoercionTarget": {
+      "oneOf": [
+        {
+          "title": "Line String",
+          "description": "Replaces every face with the polylines of its boundary rings, holes included.",
+          "type": "string",
+          "enum": [
+            "lineString"
+          ]
+        },
+        {
+          "title": "Polygon",
+          "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from.",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        },
+        {
+          "title": "Triangular Mesh",
+          "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated.",
+          "type": "string",
+          "enum": [
+            "triangularMesh"
+          ]
+        }
       ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## GeometryExtractor
+## Geometry Extractor
 ### Type
 * processor
 ### Description
-Extract Geometry Data to Attribute
+Serializes a feature's geometry to a compressed representation and stores it in an attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Extractor Parameters",
-  "description": "Configure where to store the extracted geometry data as a compressed attribute",
+  "description": "Configure where the serialized geometry is stored.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -4407,7 +5584,7 @@ Extract Geometry Data to Attribute
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON",
+      "description": "Attribute to store the compressed geometry in. Geometry Replacer reads the same representation back onto a feature.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -4423,13 +5600,13 @@ Extract Geometry Data to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## GeometryFilter
+## Geometry Filter
 ### Type
 * processor
 ### Description
@@ -4442,6 +5619,8 @@ Filter Features by Geometry Type
   "description": "Configure how to filter features based on their geometry type",
   "oneOf": [
     {
+      "title": "No Geometry",
+      "description": "Separates the features that carry no geometry at all from the ones that do.",
       "type": "object",
       "required": [
         "filterType"
@@ -4456,20 +5635,8 @@ Filter Features by Geometry Type
       }
     },
     {
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
-          "type": "string",
-          "enum": [
-            "multiple"
-          ]
-        }
-      }
-    },
-    {
+      "title": "Geometry Type",
+      "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
       "type": "object",
       "required": [
         "filterType"
@@ -4482,45 +5649,68 @@ Filter Features by Geometry Type
           ]
         }
       }
+    },
+    {
+      "title": "Detailed Geometry Type",
+      "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
+      "type": "object",
+      "required": [
+        "filterType"
+      ],
+      "properties": {
+        "filterType": {
+          "type": "string",
+          "enum": [
+            "detailedGeometryType"
+          ]
+        }
+      }
     }
   ]
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * unfiltered
 * none
-* contains
-* solid
-* multiSurface
-* compositeSurface
+* point
+* curve
 * surface
 * triangle
-* multiCurve
-* curve
-* multiPoint
-* point
-* tin
+* solid
+* multi-point
+* point-cloud
+* line-string
+* multi-curve
+* polygon
+* multi-area
+* face
+* polygon-mesh
+* triangular-mesh
+* multi-surface
+* csg
+* multi-solid
+* aggregate
 ### Category
 * Geometry
 
-## GeometryPartExtractor
+## Geometry Part Extractor
 ### Type
 * processor
 ### Description
-Extract geometry parts (surfaces) from 3D geometries as separate features
+Extracts the individual surfaces of a geometry, emitting each as a separate feature.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Part Extractor Parameters",
-  "description": "Configure which geometry parts to extract from 3D geometries",
+  "description": "Configure which kind of part is pulled out of each geometry.",
   "type": "object",
   "properties": {
     "geometryPartType": {
       "title": "Part Type",
-      "description": "Type of geometry part to extract",
+      "description": "Kind of part to extract from the geometry.",
       "default": "surface",
       "allOf": [
         {
@@ -4533,7 +5723,8 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
     "GeometryPartType": {
       "oneOf": [
         {
-          "description": "Extract surfaces as separate features",
+          "title": "Surface",
+          "description": "Emits each surface of the geometry as a separate feature.",
           "type": "string",
           "enum": [
             "surface"
@@ -4545,7 +5736,7 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * extracted
 * remaining
@@ -4553,31 +5744,31 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 ### Category
 * Geometry
 
-## GeometryRemover
+## Geometry Remover
 ### Type
 * processor
 ### Description
-Removes geometry from a feature
+Discards a feature's geometry, keeping its attributes.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## GeometryReplacer
+## Geometry Replacer
 ### Type
 * processor
 ### Description
-Replace Feature Geometry from Attribute
+Replaces a feature's geometry with the compressed geometry data stored in a named attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Replacer Parameters",
-  "description": "Configure which attribute contains the geometry data to replace the feature's current geometry",
+  "description": "Configure which attribute holds the geometry that replaces the feature's current geometry.",
   "type": "object",
   "required": [
     "sourceAttribute"
@@ -4585,7 +5776,7 @@ Replace Feature Geometry from Attribute
   "properties": {
     "sourceAttribute": {
       "title": "Source Attribute",
-      "description": "Name of the attribute containing the compressed geometry data to use as the new geometry",
+      "description": "Attribute holding the compressed geometry to apply, as written by Geometry Extractor. The attribute is removed once its geometry has been applied, and a feature that does not carry it passes through unchanged. A feature whose stored geometry cannot be decoded is sent to the rejected port.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -4601,106 +5792,155 @@ Replace Feature Geometry from Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
+* rejected
 ### Category
 * Geometry
 
-## GeometrySplitter
+## Geometry Splitter
 ### Type
 * processor
 ### Description
-Split Multi-Geometries into Individual Features
+Splits multi-part geometries into individual single-geometry features.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometrySplitterParam",
-  "description": "Parameters for GeometrySplitter",
+  "title": "Geometry Splitter Parameters",
+  "description": "Configure how multi-part geometries are split into individual features.",
   "type": "object",
   "properties": {
-    "splitLevel": {
-      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
-      "default": "element",
-      "allOf": [
-        {
-          "$ref": "#/definitions/SplitLevel"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "SplitLevel": {
-      "description": "Split level for CityGML geometry",
-      "oneOf": [
-        {
-          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
-          "type": "string",
-          "enum": [
-            "element"
-          ]
-        },
-        {
-          "description": "Split down to individual polygons within each element",
-          "type": "string",
-          "enum": [
-            "polygon"
-          ]
-        }
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attribute key to group split members by. Members sharing the same value for this attribute are kept together in a single output feature instead of being split into separate ones; members lacking the attribute are still emitted individually.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
       ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## GeometryValidator
+## Geometry Validator
 ### Type
 * processor
 ### Description
-Validate Feature Geometry Quality
+Validates feature geometry for issues such as duplicate points, corrupt geometry, or self-intersection.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Validator Parameters",
-  "description": "Configure which validation checks to perform on feature geometries",
+  "description": "Configure which validation checks to perform on feature geometries.",
   "type": "object",
-  "required": [
-    "validationTypes"
-  ],
   "properties": {
-    "validationTypes": {
-      "title": "Validation Types",
-      "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)",
+    "disabledOptionalChecks": {
+      "title": "Disabled Optional Checks",
+      "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs.",
+      "default": [],
       "type": "array",
       "items": {
-        "$ref": "#/definitions/ValidationType"
+        "$ref": "#/definitions/OptionalCheck"
       }
+    },
+    "planarityThreshold": {
+      "title": "Planarity Threshold",
+      "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only).",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PlanarityThreshold"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "duplicateTolerance": {
+      "title": "Duplicate Point Tolerance",
+      "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+      "default": null,
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "degenerateThresholds": {
+      "title": "Degeneracy Thresholds",
+      "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
+      "default": {
+        "minLength": 0.0,
+        "minArea": 0.0,
+        "minVolume": 0.0
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/DegenerateThresholds"
+        }
+      ]
     }
   },
   "definitions": {
-    "ValidationType": {
+    "OptionalCheck": {
+      "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
       "oneOf": [
         {
+          "title": "Duplicate Points",
+          "description": "Detection of coordinates that repeat within the geometry.",
           "type": "string",
           "enum": [
             "duplicatePoints"
           ]
         },
         {
+          "title": "Orientable",
+          "description": "Detection of surfaces whose faces cannot be given a consistent orientation.",
+          "type": "string",
+          "enum": [
+            "orientable"
+          ]
+        },
+        {
+          "title": "Orientation",
+          "description": "Detection of rings wound in the wrong direction.",
+          "type": "string",
+          "enum": [
+            "orientation"
+          ]
+        },
+        {
+          "title": "Shell Orientation",
+          "description": "Detection of solid shells whose faces point the wrong way.",
+          "type": "string",
+          "enum": [
+            "shellOrientation"
+          ]
+        }
+      ]
+    },
+    "PlanarityThreshold": {
+      "description": "How the planarity check bounds a face's out-of-plane deviation.",
+      "oneOf": [
+        {
+          "title": "Ratio",
+          "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant.",
           "type": "object",
           "required": [
-            "duplicateConsecutivePoints"
+            "ratio"
           ],
           "properties": {
-            "duplicateConsecutivePoints": {
+            "ratio": {
               "type": "number",
               "format": "double"
             }
@@ -4708,46 +5948,54 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         },
         {
-          "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
+          "title": "Max Height",
+          "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
           "type": "object",
           "required": [
-            "corruptGeometry"
+            "maxHeight"
           ],
           "properties": {
-            "corruptGeometry": {
-              "type": [
-                "number",
-                "null"
-              ],
-              "format": "double"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
-          "type": "object",
-          "required": [
-            "selfIntersection"
-          ],
-          "properties": {
-            "selfIntersection": {
-              "type": [
-                "number",
-                "null"
-              ],
+            "maxHeight": {
+              "type": "number",
               "format": "double"
             }
           },
           "additionalProperties": false
         }
       ]
+    },
+    "DegenerateThresholds": {
+      "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults to zero, flagging only an exactly-zero measure.",
+      "type": "object",
+      "properties": {
+        "minLength": {
+          "title": "Minimum Length",
+          "description": "Shortest length a 1D geometry (line or ring edge) may have before it is flagged.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "minArea": {
+          "title": "Minimum Area",
+          "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "minVolume": {
+          "title": "Minimum Volume",
+          "description": "Smallest volume a 3D geometry (solid) may have before it is flagged.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * success
 * failed
@@ -4755,7 +6003,7 @@ Validate Feature Geometry Quality
 ### Category
 * Geometry
 
-## GeometryValueFilter
+## Geometry Value Filter
 ### Type
 * processor
 ### Description
@@ -4763,7 +6011,7 @@ Filter Features by Geometry Value Type
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * none
 * geometry2d
@@ -4772,152 +6020,39 @@ Filter Features by Geometry Value Type
 ### Category
 * Geometry
 
-## GltfReader
-### Type
-* source
-### Description
-Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GltfReaderParam",
-  "type": "object",
-  "properties": {
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "includeNodes": {
-      "title": "Include Nodes",
-      "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
-      "default": true,
-      "type": "boolean"
-    },
-    "inline": {
-      "title": "Inline Content",
-      "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "mergeMeshes": {
-      "title": "Merge Meshes",
-      "description": "If true, combines all meshes from the glTF file into a single output feature",
-      "default": false,
-      "type": "boolean"
-    },
-    "triangulate": {
-      "title": "Triangulate",
-      "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
-      "default": true,
-      "type": "boolean"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-### Output Ports
-* default
-### Category
-* File
-* 3D
-
-## GltfWriter
-### Type
-* sink
-### Description
-Writes 3D features to GLTF format with optional texture attachment
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GltfWriter Parameters",
-  "description": "Configuration for writing features to GLTF 3D format.",
-  "type": "object",
-  "required": [
-    "output"
-  ],
-  "properties": {
-    "attachTexture": {
-      "description": "Whether to attach texture information to the GLTF model",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "dracoCompression": {
-      "description": "Apply Draco compression to the geometry",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "output": {
-      "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "schemaKey": {
-      "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-### Category
-* File
-
-## GridDivider
+## Grid Divider
 ### Type
 * processor
 ### Description
-Divide Polygons into Regular Grid Cells
+Divides polygon geometries into a regular grid of equal-sized cells.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GridDivider Parameters",
+  "title": "Grid Divider Parameters",
+  "description": "Configure the size of the grid cells and how features are grouped onto a shared grid.",
   "type": "object",
   "required": [
-    "unitSquareSize"
+    "cellSize"
   ],
   "properties": {
+    "cellSize": {
+      "title": "Cell Size",
+      "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero.",
+      "type": "number",
+      "format": "double"
+    },
+    "completeCellsOnly": {
+      "title": "Complete Cells Only",
+      "description": "Whether to emit only cells that are whole, discarding the partial cells left where the grid meets the edge of a geometry. Defaults to false.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "Attributes used to group features - each group gets its own grid origin",
+      "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds.",
       "type": [
         "array",
         "null"
@@ -4925,20 +6060,6 @@ Divide Polygons into Regular Grid Cells
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "keepSquareOnly": {
-      "title": "Keep Square Only",
-      "description": "If true, only output complete grid squares (discard edge pieces). Default: false",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "unitSquareSize": {
-      "title": "Unit Square Size",
-      "description": "Side length of each grid cell (in the same units as the geometry coordinates)",
-      "type": "number",
-      "format": "double"
     }
   },
   "definitions": {
@@ -4949,14 +6070,14 @@ Divide Polygons into Regular Grid Cells
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
 
-## HTTPCaller
+## HTTP Caller
 ### Type
 * processor
 ### Description
@@ -4972,12 +6093,78 @@ Make HTTP/HTTPS requests and enrich features with response data
     "url"
   ],
   "properties": {
+    "url": {
+      "title": "URL",
+      "description": "The target URL for the HTTP request (supports expressions)",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "method": {
+      "title": "HTTP Method",
+      "description": "The HTTP method to use for the request",
+      "default": "GET",
+      "allOf": [
+        {
+          "$ref": "#/definitions/HttpMethod"
+        }
+      ]
+    },
     "authentication": {
       "title": "Authentication",
       "description": "Authentication method and credentials for the request",
       "anyOf": [
         {
           "$ref": "#/definitions/Authentication"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "customHeaders": {
+      "title": "Custom Headers",
+      "description": "Additional HTTP headers to include in the request",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/HeaderParam"
+      }
+    },
+    "queryParameters": {
+      "title": "Query Parameters",
+      "description": "URL query parameters to append to the request",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/QueryParam"
+      }
+    },
+    "requestBody": {
+      "title": "Request Body",
+      "description": "The body content to send with the request",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/RequestBody"
         },
         {
           "type": "null"
@@ -4992,16 +6179,17 @@ Make HTTP/HTTPS requests and enrich features with response data
         "null"
       ]
     },
-    "customHeaders": {
-      "title": "Custom Headers",
-      "description": "Additional HTTP headers to include in the request",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/HeaderParam"
-      }
+    "timeouts": {
+      "title": "Timeouts",
+      "description": "Connection and transfer timeout settings",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TimeoutConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "httpOptions": {
       "title": "HTTP Options",
@@ -5009,63 +6197,6 @@ Make HTTP/HTTPS requests and enrich features with response data
       "anyOf": [
         {
           "$ref": "#/definitions/HttpOptions"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "method": {
-      "title": "HTTP Method",
-      "description": "The HTTP method to use for the request",
-      "default": "GET",
-      "allOf": [
-        {
-          "$ref": "#/definitions/HttpMethod"
-        }
-      ]
-    },
-    "observability": {
-      "title": "Observability",
-      "description": "Track additional metrics and diagnostics",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ObservabilityConfig"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "queryParameters": {
-      "title": "Query Parameters",
-      "description": "URL query parameters to append to the request",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/QueryParam"
-      }
-    },
-    "rateLimit": {
-      "title": "Rate Limiting",
-      "description": "Rate limiting configuration to control request frequency",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/RateLimitConfig"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "requestBody": {
-      "title": "Request Body",
-      "description": "The body content to send with the request",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/RequestBody"
         },
         {
           "type": "null"
@@ -5096,272 +6227,32 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "timeouts": {
-      "title": "Timeouts",
-      "description": "Connection and transfer timeout settings",
+    "rateLimit": {
+      "title": "Rate Limiting",
+      "description": "Rate limiting configuration to control request frequency",
       "anyOf": [
         {
-          "$ref": "#/definitions/TimeoutConfig"
+          "$ref": "#/definitions/RateLimitConfig"
         },
         {
           "type": "null"
         }
       ]
     },
-    "url": {
-      "title": "URL",
-      "description": "The target URL for the HTTP request (supports expressions)",
-      "allOf": [
+    "observability": {
+      "title": "Observability",
+      "description": "Track additional metrics and diagnostics",
+      "anyOf": [
         {
-          "$ref": "#/definitions/Expr"
+          "$ref": "#/definitions/ObservabilityConfig"
+        },
+        {
+          "type": "null"
         }
       ]
     }
   },
   "definitions": {
-    "ApiKeyLocation": {
-      "title": "API Key Location",
-      "description": "Where to include the API key in the request",
-      "oneOf": [
-        {
-          "title": "Header",
-          "description": "Include API key in HTTP header",
-          "type": "string",
-          "enum": [
-            "header"
-          ]
-        },
-        {
-          "title": "Query Parameter",
-          "description": "Include API key in URL query string",
-          "type": "string",
-          "enum": [
-            "query"
-          ]
-        }
-      ]
-    },
-    "Authentication": {
-      "title": "Authentication",
-      "description": "Authentication method and credentials for HTTP requests",
-      "oneOf": [
-        {
-          "title": "Basic Authentication",
-          "description": "HTTP Basic authentication with username and password",
-          "type": "object",
-          "required": [
-            "password",
-            "type",
-            "username"
-          ],
-          "properties": {
-            "password": {
-              "title": "Password",
-              "description": "The password for basic authentication",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "basic"
-              ]
-            },
-            "username": {
-              "title": "Username",
-              "description": "The username for basic authentication",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "title": "Bearer Token",
-          "description": "Bearer token authentication (OAuth 2.0)",
-          "type": "object",
-          "required": [
-            "token",
-            "type"
-          ],
-          "properties": {
-            "token": {
-              "title": "Token",
-              "description": "The bearer token value",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "bearer"
-              ]
-            }
-          }
-        },
-        {
-          "title": "API Key",
-          "description": "API key authentication in header or query parameter",
-          "type": "object",
-          "required": [
-            "keyName",
-            "keyValue",
-            "type"
-          ],
-          "properties": {
-            "keyName": {
-              "title": "Key Name",
-              "description": "The name of the API key parameter",
-              "type": "string"
-            },
-            "keyValue": {
-              "title": "Key Value",
-              "description": "The API key value",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "location": {
-              "title": "Location",
-              "description": "Where to include the API key (header or query parameter)",
-              "default": "header",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/ApiKeyLocation"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "apiKey"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "BinarySource": {
-      "title": "Binary Source",
-      "description": "Source of binary data for request body",
-      "oneOf": [
-        {
-          "title": "Base64 Encoded",
-          "description": "Binary data encoded as base64 string",
-          "type": "object",
-          "required": [
-            "data",
-            "type"
-          ],
-          "properties": {
-            "data": {
-              "title": "Data",
-              "description": "Base64-encoded binary data (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "base64"
-              ]
-            }
-          }
-        },
-        {
-          "title": "From File",
-          "description": "Read binary data from a file",
-          "type": "object",
-          "required": [
-            "path",
-            "type"
-          ],
-          "properties": {
-            "path": {
-              "title": "File Path",
-              "description": "Path to the file to read (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "file"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "Expr": {
-      "type": "string"
-    },
-    "FormField": {
-      "title": "Form Field",
-      "description": "A name-value pair for URL-encoded form data",
-      "type": "object",
-      "required": [
-        "name",
-        "value"
-      ],
-      "properties": {
-        "name": {
-          "title": "Field Name",
-          "description": "The name of the form field",
-          "type": "string"
-        },
-        "value": {
-          "title": "Field Value",
-          "description": "The value of the form field (supports expressions)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        }
-      }
-    },
-    "HeaderParam": {
-      "title": "HTTP Header",
-      "description": "A custom HTTP header to include in the request",
-      "type": "object",
-      "required": [
-        "name",
-        "value"
-      ],
-      "properties": {
-        "name": {
-          "title": "Header Name",
-          "description": "The name of the HTTP header",
-          "type": "string"
-        },
-        "value": {
-          "title": "Header Value",
-          "description": "The value of the header (supports expressions)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        }
-      }
-    },
     "HttpMethod": {
       "title": "HTTP Method",
       "description": "The HTTP request method to use",
@@ -5480,193 +6371,225 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "HttpOptions": {
-      "title": "HTTP Options",
-      "description": "Configure HTTP client behavior",
-      "type": "object",
-      "properties": {
-        "followRedirects": {
-          "title": "Follow Redirects",
-          "description": "Whether to automatically follow HTTP redirects (default: true)",
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "maxRedirects": {
-          "title": "Max Redirects",
-          "description": "Maximum number of redirects to follow (default: 10)",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint8",
-          "minimum": 0.0
-        },
-        "userAgent": {
-          "title": "User Agent",
-          "description": "Custom User-Agent header value",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "verifySsl": {
-          "title": "Verify SSL",
-          "description": "Whether to verify SSL/TLS certificates (default: true)",
-          "type": [
-            "boolean",
-            "null"
-          ]
-        }
-      }
-    },
-    "MultipartPart": {
-      "title": "Multipart Part",
-      "description": "A part in a multipart/form-data request",
+    "Authentication": {
+      "title": "Authentication",
+      "description": "Authentication method and credentials for HTTP requests",
       "oneOf": [
         {
-          "title": "Text Field",
-          "description": "A text field in the multipart form",
+          "title": "Basic Authentication",
+          "description": "HTTP Basic authentication with username and password",
           "type": "object",
           "required": [
-            "name",
+            "password",
             "type",
-            "value"
+            "username"
           ],
           "properties": {
-            "name": {
-              "title": "Field Name",
-              "description": "The name of the form field",
-              "type": "string"
-            },
             "type": {
               "type": "string",
               "enum": [
-                "text"
+                "basic"
               ]
             },
-            "value": {
-              "title": "Field Value",
-              "description": "The value of the form field (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+            "username": {
+              "title": "Username",
+              "description": "The username for basic authentication",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
+            },
+            "password": {
+              "title": "Password",
+              "description": "The password for basic authentication",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           }
         },
         {
-          "title": "File Upload",
-          "description": "A file upload in the multipart form",
+          "title": "Bearer Token",
+          "description": "Bearer token authentication (OAuth 2.0)",
           "type": "object",
           "required": [
-            "name",
-            "source",
+            "token",
             "type"
           ],
           "properties": {
-            "contentType": {
-              "title": "Content Type",
-              "description": "MIME type of the file",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "filename": {
-              "title": "Filename",
-              "description": "The filename to send in the Content-Disposition header",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "name": {
-              "title": "Field Name",
-              "description": "The name of the file upload field",
-              "type": "string"
-            },
-            "source": {
-              "title": "File Source",
-              "description": "Source of the file data (base64 or file path)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BinarySource"
-                }
-              ]
-            },
             "type": {
               "type": "string",
               "enum": [
-                "file"
+                "bearer"
+              ]
+            },
+            "token": {
+              "title": "Token",
+              "description": "The bearer token value",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "API Key",
+          "description": "API key authentication in header or query parameter",
+          "type": "object",
+          "required": [
+            "keyName",
+            "keyValue",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "apiKey"
+              ]
+            },
+            "keyName": {
+              "title": "Key Name",
+              "description": "The name of the API key parameter",
+              "type": "string"
+            },
+            "keyValue": {
+              "title": "Key Value",
+              "description": "The API key value",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "location": {
+              "title": "Location",
+              "description": "Where to include the API key (header or query parameter)",
+              "default": "header",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/ApiKeyLocation"
+                }
               ]
             }
           }
         }
       ]
     },
-    "ObservabilityConfig": {
-      "title": "Observability Configuration",
-      "description": "Track additional metrics and diagnostics about HTTP requests",
+    "ApiKeyLocation": {
+      "title": "API Key Location",
+      "description": "Where to include the API key in the request",
+      "oneOf": [
+        {
+          "title": "Header",
+          "description": "Include API key in HTTP header",
+          "type": "string",
+          "enum": [
+            "header"
+          ]
+        },
+        {
+          "title": "Query Parameter",
+          "description": "Include API key in URL query string",
+          "type": "string",
+          "enum": [
+            "query"
+          ]
+        }
+      ]
+    },
+    "HeaderParam": {
+      "title": "HTTP Header",
+      "description": "A custom HTTP header to include in the request",
       "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
       "properties": {
-        "bytesAttribute": {
-          "title": "Bytes Attribute",
-          "description": "Feature attribute name to store the response body size",
-          "type": [
-            "string",
-            "null"
-          ]
+        "name": {
+          "title": "Header Name",
+          "description": "The name of the HTTP header",
+          "type": "string"
         },
-        "durationAttribute": {
-          "title": "Duration Attribute",
-          "description": "Feature attribute name to store request duration in milliseconds",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "finalUrlAttribute": {
-          "title": "Final URL Attribute",
-          "description": "Feature attribute name to store the final URL after redirects",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "retryCountAttribute": {
-          "title": "Retry Count Attribute",
-          "description": "Feature attribute name to store the number of retry attempts",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "trackBytes": {
-          "title": "Track Bytes",
-          "description": "Whether to track the response body size in bytes (default: false)",
-          "default": false,
-          "type": "boolean"
-        },
-        "trackDuration": {
-          "title": "Track Duration",
-          "description": "Whether to track the total request duration (default: true)",
-          "default": true,
-          "type": "boolean"
-        },
-        "trackFinalUrl": {
-          "title": "Track Final URL",
-          "description": "Whether to track the final URL after redirects (default: false)",
-          "default": false,
-          "type": "boolean"
-        },
-        "trackRetryCount": {
-          "title": "Track Retry Count",
-          "description": "Whether to track the number of retry attempts (default: true)",
-          "default": true,
-          "type": "boolean"
+        "value": {
+          "title": "Header Value",
+          "description": "The value of the header (supports expressions)",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -5687,46 +6610,24 @@ Make HTTP/HTTPS requests and enrich features with response data
         "value": {
           "title": "Parameter Value",
           "description": "The value of the parameter (supports expressions)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
-          ]
-        }
-      }
-    },
-    "RateLimitConfig": {
-      "title": "Rate Limit Configuration",
-      "description": "Control the rate of HTTP requests to avoid overwhelming the server",
-      "type": "object",
-      "required": [
-        "requests"
-      ],
-      "properties": {
-        "intervalMs": {
-          "title": "Interval",
-          "description": "Time interval in milliseconds for the rate limit (default: 1000ms)",
-          "default": 1000,
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "requests": {
-          "title": "Requests",
-          "description": "Maximum number of requests allowed within the interval",
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "timing": {
-          "title": "Timing Strategy",
-          "description": "How to distribute requests within the interval (default: Burst)",
-          "default": "burst",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TimingStrategy"
-            }
-          ]
+          }
         }
       }
     },
@@ -5743,14 +6644,33 @@ Make HTTP/HTTPS requests and enrich features with response data
             "type"
           ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
             "content": {
               "title": "Content",
               "description": "The text content to send (supports expressions)",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
                 }
-              ]
+              }
             },
             "contentType": {
               "title": "Content Type",
@@ -5758,12 +6678,6 @@ Make HTTP/HTTPS requests and enrich features with response data
               "type": [
                 "string",
                 "null"
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "text"
               ]
             }
           }
@@ -5777,12 +6691,10 @@ Make HTTP/HTTPS requests and enrich features with response data
             "type"
           ],
           "properties": {
-            "contentType": {
-              "title": "Content Type",
-              "description": "Content-Type header (e.g., application/octet-stream, image/png)",
-              "type": [
-                "string",
-                "null"
+            "type": {
+              "type": "string",
+              "enum": [
+                "binary"
               ]
             },
             "source": {
@@ -5794,10 +6706,12 @@ Make HTTP/HTTPS requests and enrich features with response data
                 }
               ]
             },
-            "type": {
-              "type": "string",
-              "enum": [
-                "binary"
+            "contentType": {
+              "title": "Content Type",
+              "description": "Content-Type header (e.g., application/octet-stream, image/png)",
+              "type": [
+                "string",
+                "null"
               ]
             }
           }
@@ -5811,6 +6725,12 @@ Make HTTP/HTTPS requests and enrich features with response data
             "type"
           ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "formUrlEncoded"
+              ]
+            },
             "fields": {
               "title": "Form Fields",
               "description": "List of form field name-value pairs",
@@ -5818,12 +6738,6 @@ Make HTTP/HTTPS requests and enrich features with response data
               "items": {
                 "$ref": "#/definitions/FormField"
               }
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "formUrlEncoded"
-              ]
             }
           }
         },
@@ -5836,6 +6750,12 @@ Make HTTP/HTTPS requests and enrich features with response data
             "type"
           ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "multipart"
+              ]
+            },
             "parts": {
               "title": "Parts",
               "description": "List of multipart form parts (text fields or file uploads)",
@@ -5843,34 +6763,315 @@ Make HTTP/HTTPS requests and enrich features with response data
               "items": {
                 "$ref": "#/definitions/MultipartPart"
               }
-            },
+            }
+          }
+        }
+      ]
+    },
+    "BinarySource": {
+      "title": "Binary Source",
+      "description": "Source of binary data for request body",
+      "oneOf": [
+        {
+          "title": "Base64 Encoded",
+          "description": "Binary data encoded as base64 string",
+          "type": "object",
+          "required": [
+            "data",
+            "type"
+          ],
+          "properties": {
             "type": {
               "type": "string",
               "enum": [
-                "multipart"
+                "base64"
+              ]
+            },
+            "data": {
+              "title": "Data",
+              "description": "Base64-encoded binary data (supports expressions)",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "From File",
+          "description": "Read binary data from a file",
+          "type": "object",
+          "required": [
+            "path",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            },
+            "path": {
+              "title": "File Path",
+              "description": "Path to the file to read (supports expressions)",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FormField": {
+      "title": "Form Field",
+      "description": "A name-value pair for URL-encoded form data",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "title": "Field Name",
+          "description": "The name of the form field",
+          "type": "string"
+        },
+        "value": {
+          "title": "Field Value",
+          "description": "The value of the form field (supports expressions)",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "MultipartPart": {
+      "title": "Multipart Part",
+      "description": "A part in a multipart/form-data request",
+      "oneOf": [
+        {
+          "title": "Text Field",
+          "description": "A text field in the multipart form",
+          "type": "object",
+          "required": [
+            "name",
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "name": {
+              "title": "Field Name",
+              "description": "The name of the form field",
+              "type": "string"
+            },
+            "value": {
+              "title": "Field Value",
+              "description": "The value of the form field (supports expressions)",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "File Upload",
+          "description": "A file upload in the multipart form",
+          "type": "object",
+          "required": [
+            "name",
+            "source",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            },
+            "name": {
+              "title": "Field Name",
+              "description": "The name of the file upload field",
+              "type": "string"
+            },
+            "source": {
+              "title": "File Source",
+              "description": "Source of the file data (base64 or file path)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BinarySource"
+                }
+              ]
+            },
+            "filename": {
+              "title": "Filename",
+              "description": "The filename to send in the Content-Disposition header",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "contentType": {
+              "title": "Content Type",
+              "description": "MIME type of the file",
+              "type": [
+                "string",
+                "null"
               ]
             }
           }
         }
       ]
     },
-    "ResponseConfig": {
-      "title": "Response Configuration",
-      "description": "Configure how HTTP response data is stored and processed",
+    "TimeoutConfig": {
+      "title": "Timeout Configuration",
+      "description": "Configure connection and transfer timeouts for HTTP requests",
       "type": "object",
       "properties": {
-        "autoDetectEncoding": {
-          "title": "Auto Detect Encoding",
-          "description": "Automatically detect character encoding from response headers",
+        "connectionTimeout": {
+          "title": "Connection Timeout",
+          "description": "Maximum time in seconds to establish a connection (default: 60)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "transferTimeout": {
+          "title": "Transfer Timeout",
+          "description": "Maximum time in seconds to complete the entire request (default: 90)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "HttpOptions": {
+      "title": "HTTP Options",
+      "description": "Configure HTTP client behavior",
+      "type": "object",
+      "properties": {
+        "userAgent": {
+          "title": "User Agent",
+          "description": "Custom User-Agent header value",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verifySsl": {
+          "title": "Verify SSL",
+          "description": "Whether to verify SSL/TLS certificates (default: true)",
           "type": [
             "boolean",
             "null"
           ]
         },
-        "errorAttribute": {
-          "title": "Error Attribute",
-          "description": "Feature attribute name to store any error messages (default: \"_http_error\")",
-          "default": "_http_error",
+        "followRedirects": {
+          "title": "Follow Redirects",
+          "description": "Whether to automatically follow HTTP redirects (default: true)",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "maxRedirects": {
+          "title": "Max Redirects",
+          "description": "Maximum number of redirects to follow (default: 10)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint8",
+          "minimum": 0.0
+        }
+      }
+    },
+    "ResponseConfig": {
+      "title": "Response Configuration",
+      "description": "Configure how HTTP response data is stored and processed",
+      "type": "object",
+      "properties": {
+        "responseBodyAttribute": {
+          "title": "Response Body Attribute",
+          "description": "Feature attribute name to store the response body (default: \"_response_body\")",
+          "default": "_response_body",
+          "type": "string"
+        },
+        "statusCodeAttribute": {
+          "title": "Status Code Attribute",
+          "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")",
+          "default": "_http_status_code",
           "type": "string"
         },
         "headersAttribute": {
@@ -5879,33 +7080,11 @@ Make HTTP/HTTPS requests and enrich features with response data
           "default": "_headers",
           "type": "string"
         },
-        "maxResponseSize": {
-          "title": "Max Response Size",
-          "description": "Maximum response body size in bytes (unlimited if not set)",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "responseBodyAttribute": {
-          "title": "Response Body Attribute",
-          "description": "Feature attribute name to store the response body (default: \"_response_body\")",
-          "default": "_response_body",
+        "errorAttribute": {
+          "title": "Error Attribute",
+          "description": "Feature attribute name to store any error messages (default: \"_http_error\")",
+          "default": "_http_error",
           "type": "string"
-        },
-        "responseEncoding": {
-          "title": "Response Encoding",
-          "description": "How to encode the response body (text, base64, or binary)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ResponseEncoding"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "responseHandling": {
           "title": "Response Handling",
@@ -5919,13 +7098,114 @@ Make HTTP/HTTPS requests and enrich features with response data
             }
           ]
         },
-        "statusCodeAttribute": {
-          "title": "Status Code Attribute",
-          "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")",
-          "default": "_http_status_code",
-          "type": "string"
+        "maxResponseSize": {
+          "title": "Max Response Size",
+          "description": "Maximum response body size in bytes (unlimited if not set)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "responseEncoding": {
+          "title": "Response Encoding",
+          "description": "How to encode the response body (text, base64, or binary)",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResponseEncoding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "autoDetectEncoding": {
+          "title": "Auto Detect Encoding",
+          "description": "Automatically detect character encoding from response headers",
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       }
+    },
+    "ResponseHandling": {
+      "title": "Response Handling",
+      "description": "How to handle the HTTP response data",
+      "oneOf": [
+        {
+          "title": "Store in Attribute",
+          "description": "Store response body in a feature attribute",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "attribute"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Save to File",
+          "description": "Save response body to a file",
+          "type": "object",
+          "required": [
+            "path",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            },
+            "path": {
+              "title": "File Path",
+              "description": "Path where the response should be saved",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "storePathInAttribute": {
+              "title": "Store Path in Attribute",
+              "description": "Whether to store the file path in a feature attribute",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "pathAttribute": {
+              "title": "Path Attribute Name",
+              "description": "Attribute name for storing the file path",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
     },
     "ResponseEncoding": {
       "title": "Response Encoding",
@@ -5957,87 +7237,18 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "ResponseHandling": {
-      "title": "Response Handling",
-      "description": "How to handle the HTTP response data",
-      "oneOf": [
-        {
-          "title": "Store in Attribute",
-          "description": "Store response body in a feature attribute",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "attribute"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Save to File",
-          "description": "Save response body to a file",
-          "type": "object",
-          "required": [
-            "path",
-            "type"
-          ],
-          "properties": {
-            "path": {
-              "title": "File Path",
-              "description": "Path where the response should be saved",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "pathAttribute": {
-              "title": "Path Attribute Name",
-              "description": "Attribute name for storing the file path",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "storePathInAttribute": {
-              "title": "Store Path in Attribute",
-              "description": "Whether to store the file path in a feature attribute",
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "file"
-              ]
-            }
-          }
-        }
-      ]
-    },
     "RetryConfig": {
       "title": "Retry Configuration",
       "description": "Configure automatic retry behavior for failed requests",
       "type": "object",
       "properties": {
-        "backoffMultiplier": {
-          "title": "Backoff Multiplier",
-          "description": "Multiplier for exponential backoff between retries (default: 2.0)",
-          "default": 2.0,
-          "type": "number",
-          "format": "double"
-        },
-        "honorRetryAfter": {
-          "title": "Honor Retry-After Header",
-          "description": "Whether to respect the Retry-After header from server responses (default: true)",
-          "default": true,
-          "type": "boolean"
+        "maxAttempts": {
+          "title": "Max Attempts",
+          "description": "Maximum number of retry attempts (default: 3)",
+          "default": 3,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
         },
         "initialDelayMs": {
           "title": "Initial Delay",
@@ -6047,13 +7258,12 @@ Make HTTP/HTTPS requests and enrich features with response data
           "format": "uint64",
           "minimum": 0.0
         },
-        "maxAttempts": {
-          "title": "Max Attempts",
-          "description": "Maximum number of retry attempts (default: 3)",
-          "default": 3,
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
+        "backoffMultiplier": {
+          "title": "Backoff Multiplier",
+          "description": "Multiplier for exponential backoff between retries (default: 2.0)",
+          "default": 2.0,
+          "type": "number",
+          "format": "double"
         },
         "maxDelayMs": {
           "title": "Max Delay",
@@ -6075,33 +7285,47 @@ Make HTTP/HTTPS requests and enrich features with response data
             "format": "uint16",
             "minimum": 0.0
           }
+        },
+        "honorRetryAfter": {
+          "title": "Honor Retry-After Header",
+          "description": "Whether to respect the Retry-After header from server responses (default: true)",
+          "default": true,
+          "type": "boolean"
         }
       }
     },
-    "TimeoutConfig": {
-      "title": "Timeout Configuration",
-      "description": "Configure connection and transfer timeouts for HTTP requests",
+    "RateLimitConfig": {
+      "title": "Rate Limit Configuration",
+      "description": "Control the rate of HTTP requests to avoid overwhelming the server",
       "type": "object",
+      "required": [
+        "requests"
+      ],
       "properties": {
-        "connectionTimeout": {
-          "title": "Connection Timeout",
-          "description": "Maximum time in seconds to establish a connection (default: 60)",
-          "type": [
-            "integer",
-            "null"
-          ],
+        "requests": {
+          "title": "Requests",
+          "description": "Maximum number of requests allowed within the interval",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "intervalMs": {
+          "title": "Interval",
+          "description": "Time interval in milliseconds for the rate limit (default: 1000ms)",
+          "default": 1000,
+          "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "transferTimeout": {
-          "title": "Transfer Timeout",
-          "description": "Maximum time in seconds to complete the entire request (default: 90)",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0.0
+        "timing": {
+          "title": "Timing Strategy",
+          "description": "How to distribute requests within the interval (default: Burst)",
+          "default": "burst",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TimingStrategy"
+            }
+          ]
         }
       }
     },
@@ -6126,19 +7350,82 @@ Make HTTP/HTTPS requests and enrich features with response data
           ]
         }
       ]
+    },
+    "ObservabilityConfig": {
+      "title": "Observability Configuration",
+      "description": "Track additional metrics and diagnostics about HTTP requests",
+      "type": "object",
+      "properties": {
+        "trackDuration": {
+          "title": "Track Duration",
+          "description": "Whether to track the total request duration (default: true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "durationAttribute": {
+          "title": "Duration Attribute",
+          "description": "Feature attribute name to store request duration in milliseconds",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trackFinalUrl": {
+          "title": "Track Final URL",
+          "description": "Whether to track the final URL after redirects (default: false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "finalUrlAttribute": {
+          "title": "Final URL Attribute",
+          "description": "Feature attribute name to store the final URL after redirects",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trackRetryCount": {
+          "title": "Track Retry Count",
+          "description": "Whether to track the number of retry attempts (default: true)",
+          "default": true,
+          "type": "boolean"
+        },
+        "retryCountAttribute": {
+          "title": "Retry Count Attribute",
+          "description": "Feature attribute name to store the number of retry attempts",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trackBytes": {
+          "title": "Track Bytes",
+          "description": "Whether to track the response body size in bytes (default: false)",
+          "default": false,
+          "type": "boolean"
+        },
+        "bytesAttribute": {
+          "title": "Bytes Attribute",
+          "description": "Feature attribute name to store the response body size",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Web
 
-## HoleCounter
+## Hole Counter
 ### Type
 * processor
 ### Description
@@ -6172,13 +7459,13 @@ Count Polygon Holes to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## HoleExtractor
+## Hole Extractor
 ### Type
 * processor
 ### Description
@@ -6186,7 +7473,7 @@ Extract Polygon Holes as Separate Features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * outershell
 * hole
@@ -6194,82 +7481,128 @@ Extract Polygon Holes as Separate Features
 ### Category
 * Geometry
 
-## HorizontalReprojector
+## Horizontal Reprojector
 ### Type
 * processor
 ### Description
-Reproject Geometry to Different Coordinate System
+Reprojects feature geometry from one horizontal coordinate system to another using EPSG codes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Horizontal Reprojector Parameters",
-  "description": "Configure the source and target coordinate systems for geometry reprojection",
+  "description": "Configure the source and target coordinate systems for geometry reprojection.",
   "type": "object",
   "required": [
     "targetEpsgCode"
   ],
   "properties": {
-    "sourceEpsgCode": {
-      "title": "Source EPSG Code",
-      "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "targetEpsgCode": {
       "title": "Target EPSG Code",
-      "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "EPSG code to reproject into, as a constant such as \"4326\" or an expression referencing feature attributes.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
+    },
+    "sourceEpsgCode": {
+      "title": "Source EPSG Code",
+      "description": "EPSG code to reproject from, as a constant or an expression. Defaults to the EPSG code carried on the geometry, so setting it is only necessary when the geometry has none or carries the wrong one.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## ImageRasterizer
+## Image Rasterizer
 ### Type
 * processor
 ### Description
-Convert vector geometries to raster image format
+Converts vector geometries to a raster image using configurable overlap resolution.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Image Rasterizer Parameters",
-  "description": "Configure how to convert vector geometries to raster images",
+  "description": "Configure the size of the rendered image, where it is written, and how overlapping geometries are resolved.",
   "type": "object",
   "properties": {
     "imageWidth": {
-      "description": "The width of image",
+      "title": "Image Width",
+      "description": "Width of the output image in pixels. The height follows from the extent of the input geometries, preserving their aspect ratio.",
       "default": 1000,
       "type": "integer",
       "format": "uint32",
       "minimum": 0.0
     },
+    "saveTo": {
+      "title": "Save To",
+      "description": "Path to write the generated image to. When omitted, the image is written to the cache directory.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "onOverlap": {
       "title": "On Overlap",
-      "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel.",
+      "description": "How to colour a pixel covered by more than one geometry. When omitted, overlapping geometries are drawn in the order they arrive.",
       "default": null,
       "anyOf": [
         {
@@ -6279,61 +7612,91 @@ Convert vector geometries to raster image format
           "type": "null"
         }
       ]
-    },
-    "saveTo": {
-      "title": "Save To",
-      "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "OnOverlap": {
       "description": "Overlap resolution strategy for rasterized pixels",
       "oneOf": [
         {
+          "title": "Take Last",
+          "description": "Keeps the colour of the last polygon drawn over the pixel.",
           "type": "string",
           "enum": [
-            "takeLast",
+            "takeLast"
+          ]
+        },
+        {
+          "title": "Take First",
+          "description": "Keeps the colour of the first polygon drawn over the pixel.",
+          "type": "string",
+          "enum": [
             "takeFirst"
           ]
         },
         {
+          "title": "Maximum",
+          "description": "Keeps the colour of the overlapping polygon whose expression evaluates highest.",
           "type": "object",
           "required": [
             "max"
           ],
           "properties": {
             "max": {
-              "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           },
           "additionalProperties": false
         },
         {
+          "title": "Minimum",
+          "description": "Keeps the colour of the overlapping polygon whose expression evaluates lowest.",
           "type": "object",
           "required": [
             "min"
           ],
           "properties": {
             "min": {
-              "$ref": "#/definitions/Expr"
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           },
           "additionalProperties": false
         },
         {
-          "description": "Saturating-add RGB channels of all overlapping polygons.",
+          "title": "Sum",
+          "description": "Adds the RGB channels of every overlapping polygon, saturating at full intensity.",
           "type": "string",
           "enum": [
             "sum"
@@ -6345,31 +7708,35 @@ Convert vector geometries to raster image format
 }
 ```
 ### Input Ports
-* default
-* textureCoordinates
+* features
+* texture-coordinates
 ### Output Ports
-* default
+* features
 * textured
-* textureBounds
+* texture-bounds
+* rejected
 ### Category
 * Geometry
 
-## InputRouter
+## Input Router
 ### Type
 * processor
 ### Description
-Action for first port forwarding for sub-workflows.
+Forwards features from the parent workflow into a sub-workflow.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InputRouter",
+  "title": "Input Router Parameters",
+  "description": "Configuration for receiving features from the parent workflow.",
   "type": "object",
   "required": [
     "routingPort"
   ],
   "properties": {
     "routingPort": {
+      "title": "Routing Port",
+      "description": "Name of the parent workflow port whose features enter the sub-workflow through this router.",
       "type": "string"
     }
   }
@@ -6377,11 +7744,11 @@ Action for first port forwarding for sub-workflows.
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Filter
 
-## JPStandardGridAccumulator
+## JP Standard Grid Accumulator
 ### Type
 * processor
 ### Description
@@ -6389,14 +7756,14 @@ Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
 
-## JSONFragmenter
+## JSON Fragmenter
 ### Type
 * processor
 ### Description
@@ -6405,7 +7772,7 @@ Fragments JSON documents into individual features based on a JSONPath query
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "JSONFragmenter Parameters",
+  "title": "JSON Fragmenter Parameters",
   "description": "Configuration for fragmenting JSON documents into individual features.",
   "oneOf": [
     {
@@ -6417,19 +7784,6 @@ Fragments JSON documents into individual features based on a JSONPath query
         "jsonQuery"
       ],
       "properties": {
-        "attributePrefix": {
-          "description": "Optional prefix for flattened attribute names",
-          "default": null,
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "flattenQueryResult": {
-          "description": "If true, flatten JSON object keys into feature attributes",
-          "default": false,
-          "type": "boolean"
-        },
         "inputSource": {
           "type": "string",
           "enum": [
@@ -6448,10 +7802,23 @@ Fragments JSON documents into individual features based on a JSONPath query
           "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
           "type": "string"
         },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
         "recursivelyFlatten": {
           "description": "If true, recursively flatten nested objects using dot-separated keys",
           "default": false,
           "type": "boolean"
+        },
+        "attributePrefix": {
+          "description": "Optional prefix for flattened attribute names",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "rejectNoFragments": {
           "description": "If true, reject features that produce no fragments",
@@ -6469,6 +7836,47 @@ Fragments JSON documents into individual features based on a JSONPath query
         "path"
       ],
       "properties": {
+        "inputSource": {
+          "type": "string",
+          "enum": [
+            "fileUrl"
+          ]
+        },
+        "path": {
+          "description": "Expression evaluating to the file path or URL containing JSON",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "jsonQuery": {
+          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+          "type": "string"
+        },
+        "flattenQueryResult": {
+          "description": "If true, flatten JSON object keys into feature attributes",
+          "default": false,
+          "type": "boolean"
+        },
+        "recursivelyFlatten": {
+          "description": "If true, recursively flatten nested objects using dot-separated keys",
+          "default": false,
+          "type": "boolean"
+        },
         "attributePrefix": {
           "description": "Optional prefix for flattened attribute names",
           "default": null,
@@ -6476,34 +7884,6 @@ Fragments JSON documents into individual features based on a JSONPath query
             "string",
             "null"
           ]
-        },
-        "flattenQueryResult": {
-          "description": "If true, flatten JSON object keys into feature attributes",
-          "default": false,
-          "type": "boolean"
-        },
-        "inputSource": {
-          "type": "string",
-          "enum": [
-            "fileUrl"
-          ]
-        },
-        "jsonQuery": {
-          "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
-          "type": "string"
-        },
-        "path": {
-          "description": "Expression evaluating to the file path or URL containing JSON",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "recursivelyFlatten": {
-          "description": "If true, recursively flatten nested objects using dot-separated keys",
-          "default": false,
-          "type": "boolean"
         },
         "rejectNoFragments": {
           "description": "If true, reject features that produce no fragments",
@@ -6516,22 +7896,19 @@ Fragments JSON documents into individual features based on a JSONPath query
   "definitions": {
     "Attribute": {
       "type": "string"
-    },
-    "Expr": {
-      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Feature
 
-## JsonReader
+## JSON Reader
 ### Type
 * source
 ### Description
@@ -6546,43 +7923,64 @@ Reads features from JSON files, supporting both single objects and arrays of obj
   "properties": {
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "inline": {
       "title": "Inline Content",
       "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## JsonWriter
+## JSON Writer
 ### Type
 * sink
 ### Description
@@ -6598,49 +7996,71 @@ Writes features to JSON files.
     "output"
   ],
   "properties": {
-    "converter": {
-      "description": "Optional converter expression to transform features before writing",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "output": {
-      "description": "Output path or expression for the JSON file to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "title": "Output File",
+      "description": "Output path or expression for the JSON file to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
+    },
+    "converter": {
+      "title": "Converter Expression",
+      "description": "Expression that transforms features into the JSON value to write. When omitted, features are written as an array of their attributes.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
 
-## LineOnLineOverlayer
+## Line On Line Overlayer
 ### Type
 * processor
 ### Description
-Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.
+Splits lines where they cross and turns each intersection into a point feature carrying the merged attributes of the lines that meet there. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "LineOnLineOverlayer Parameters",
+  "title": "Line On Line Overlayer Parameters",
   "description": "Configuration for finding intersection points between line features.",
   "type": "object",
   "required": [
@@ -6656,16 +8076,16 @@ Intersection points are turned into point features that can contain the merged l
         "$ref": "#/definitions/Attribute"
       }
     },
+    "tolerance": {
+      "type": "number",
+      "format": "double"
+    },
     "overlaidListsAttrName": {
       "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\".",
       "type": [
         "string",
         "null"
       ]
-    },
-    "tolerance": {
-      "type": "number",
-      "format": "double"
     }
   },
   "definitions": {
@@ -6676,7 +8096,7 @@ Intersection points are turned into point features that can contain the merged l
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * point
 * line
@@ -6684,7 +8104,7 @@ Intersection points are turned into point features that can contain the merged l
 ### Category
 * Geometry
 
-## ListConcatenator
+## List Concatenator
 ### Type
 * processor
 ### Description
@@ -6693,7 +8113,7 @@ Extracts a specific attribute from each element in a list and concatenates them 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListConcatenator Parameters",
+  "title": "List Concatenator Parameters",
   "description": "Configuration for concatenating a specific attribute from list elements.",
   "type": "object",
   "required": [
@@ -6703,14 +8123,6 @@ Extracts a specific attribute from each element in a list and concatenates them 
     "separateCharacter"
   ],
   "properties": {
-    "attribute": {
-      "description": "Attribute name to extract from each list element",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
     "list": {
       "description": "List attribute to read from",
       "allOf": [
@@ -6719,8 +8131,8 @@ Extracts a specific attribute from each element in a list and concatenates them 
         }
       ]
     },
-    "outputAttributeName": {
-      "description": "Name of the attribute to store the concatenated result",
+    "attribute": {
+      "description": "Attribute name to extract from each list element",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -6730,40 +8142,9 @@ Extracts a specific attribute from each element in a list and concatenates them 
     "separateCharacter": {
       "description": "Character(s) to use as separator between concatenated values",
       "type": "string"
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Feature
-
-## ListExploder
-### Type
-* processor
-### Description
-Explodes array attributes into separate features, creating one feature per array element
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListExploder Parameters",
-  "description": "Configuration for exploding array attributes into individual features.",
-  "type": "object",
-  "required": [
-    "sourceAttribute"
-  ],
-  "properties": {
-    "sourceAttribute": {
-      "description": "Attribute containing the array to explode (each element becomes a separate feature)",
+    },
+    "outputAttributeName": {
+      "description": "Name of the attribute to store the concatenated result",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -6779,13 +8160,54 @@ Explodes array attributes into separate features, creating one feature per array
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
+### Category
+* Feature
+
+## List Exploder
+### Type
+* processor
+### Description
+Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. A feature whose attribute is missing, empty, or not a list of key-value pairs produces nothing and is rejected instead.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "List Exploder Parameters",
+  "description": "Configures which list attribute is expanded into individual features.",
+  "type": "object",
+  "required": [
+    "sourceAttribute"
+  ],
+  "properties": {
+    "sourceAttribute": {
+      "title": "Source Attribute",
+      "description": "Attribute holding a list of key-value pairs, one entry per feature to create.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
 ### Category
 * Transform
 
-## ListIndexer
+## List Indexer
 ### Type
 * processor
 ### Description
@@ -6794,7 +8216,7 @@ Copies attributes from a specific list element to become the main attributes of 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListIndexer Parameters",
+  "title": "List Indexer Parameters",
   "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
   "type": "object",
   "required": [
@@ -6802,6 +8224,20 @@ Copies attributes from a specific list element to become the main attributes of 
     "listIndexToCopy"
   ],
   "properties": {
+    "listAttribute": {
+      "description": "List attribute to read from",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "listIndexToCopy": {
+      "description": "Index of the list element to copy (0-based)",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0.0
+    },
     "copiedAttributePrefix": {
       "description": "Optional prefix to add to copied attribute names",
       "default": null,
@@ -6817,20 +8253,6 @@ Copies attributes from a specific list element to become the main attributes of 
         "string",
         "null"
       ]
-    },
-    "listAttribute": {
-      "description": "List attribute to read from",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "listIndexToCopy": {
-      "description": "Index of the list element to copy (0-based)",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 0.0
     }
   },
   "definitions": {
@@ -6841,23 +8263,23 @@ Copies attributes from a specific list element to become the main attributes of 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
-## MVTWriter
+## MVT Writer
 ### Type
 * sink
 ### Description
-Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata.
+Writes features to Mapbox Vector Tiles (MVT) format.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MVTWriter Parameters",
-  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).",
+  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format.",
   "type": "object",
   "required": [
     "layerName",
@@ -6866,71 +8288,92 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     "output"
   ],
   "properties": {
-    "colonToUnderscore": {
-      "title": "Colon to Underscore",
-      "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "compressOutput": {
-      "title": "Compress Output",
-      "description": "Optional expression to determine whether to compress the output tiles",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Code"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "extent": {
-      "title": "Extent",
-      "description": "MVT tile resolution. Default is 4096.",
-      "type": [
-        "integer",
-        "null"
+    "output": {
+      "title": "Output Directory",
+      "description": "Output directory path or expression where the generated MVT tiles are written.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
       ],
-      "format": "uint32",
-      "minimum": 0.0
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "layerName": {
       "title": "Layer Name",
-      "description": "Name of the layer within the MVT tiles",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Code"
+      "description": "Name or expression for the layer within the generated tiles.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    },
-    "maxZoom": {
-      "title": "Maximum Zoom",
-      "description": "Maximum zoom level to generate tiles for",
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
+      }
     },
     "minZoom": {
       "title": "Minimum Zoom",
-      "description": "Minimum zoom level to generate tiles for",
+      "description": "Lowest zoom level to generate tiles for.",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
-    "output": {
-      "title": "Output",
-      "description": "Output directory path or expression for the generated MVT tiles",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Code"
+    "maxZoom": {
+      "title": "Maximum Zoom",
+      "description": "Highest zoom level to generate tiles for.",
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "compressOutput": {
+      "title": "Compressed Output Path",
+      "description": "Optional path where a compressed archive of the tiles is also written.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "schemaKey": {
       "title": "Schema Key",
-      "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
+      "description": "Attribute key used to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
       "type": [
         "string",
         "null"
@@ -6938,47 +8381,41 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "skipUnexposedAttributes": {
       "title": "Skip Unexposed Attributes",
-      "description": "Skip attributes with double underscore prefix",
+      "description": "Whether to skip attributes whose keys begin with a double underscore.",
       "type": [
         "boolean",
         "null"
       ]
-    }
-  },
-  "definitions": {
-    "Code": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "$ref": "#/definitions/CodeType"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
     },
-    "CodeType": {
-      "type": "string",
-      "enum": [
-        "flowExpr",
-        "string"
+    "colonToUnderscore": {
+      "title": "Colon to Underscore",
+      "description": "Whether to replace colons in attribute keys (such as those from XML namespaces) with underscores.",
+      "type": [
+        "boolean",
+        "null"
       ]
+    },
+    "extent": {
+      "title": "Tile Extent",
+      "description": "Coordinate grid resolution within each tile. Higher values preserve more positional precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 * schema
 ### Output Ports
 ### Category
 * Output
 
-## NeighborFinder
+## Neighbor Finder
 ### Type
 * processor
 ### Description
@@ -6987,10 +8424,43 @@ Finds the closest candidate features for each base feature based on spatial prox
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "NeighborFinder Parameters",
+  "title": "Neighbor Finder Parameters",
   "description": "Configuration for finding spatial neighbors between base and candidate features.",
   "type": "object",
   "properties": {
+    "numClosest": {
+      "description": "Number of closest neighbors to find per base feature. Must be >= 1.",
+      "default": 1,
+      "type": "integer",
+      "format": "uint",
+      "minimum": 1.0
+    },
+    "maxDistance": {
+      "description": "Maximum distance threshold for matching. If None, no distance limit is applied. Units depend on the distanceMetric: native units for Euclidean, meters for Haversine.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "distanceAttribute": {
+      "description": "Name of the attribute to store the computed distance to the nearest neighbor.",
+      "default": "_neighbor_distance",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "neighborIndexAttribute": {
+      "description": "Name of the attribute to store the neighbor index (0-based rank) when num_closest > 1 and merge_strategy is \"repeatBase\". Set to empty string to suppress.",
+      "default": "_neighbor_index",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
     "attributePrefix": {
       "description": "Prefix applied to transferred candidate attributes to avoid collisions.",
       "default": "_neighbor_",
@@ -7004,12 +8474,12 @@ Finds the closest candidate features for each base feature based on spatial prox
         "$ref": "#/definitions/Attribute"
       }
     },
-    "distanceAttribute": {
-      "description": "Name of the attribute to store the computed distance to the nearest neighbor.",
-      "default": "_neighbor_distance",
+    "mergeStrategy": {
+      "description": "Controls how multiple neighbors are represented on the output.",
+      "default": "closest",
       "allOf": [
         {
-          "$ref": "#/definitions/Attribute"
+          "$ref": "#/definitions/MergeStrategy"
         }
       ]
     },
@@ -7021,70 +8491,11 @@ Finds the closest candidate features for each base feature based on spatial prox
           "$ref": "#/definitions/DistanceMetric"
         }
       ]
-    },
-    "maxDistance": {
-      "description": "Maximum distance threshold for matching. If None, no distance limit is applied. Units depend on the distanceMetric: native units for Euclidean, meters for Haversine.",
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "mergeStrategy": {
-      "description": "Controls how multiple neighbors are represented on the output.",
-      "default": "closest",
-      "allOf": [
-        {
-          "$ref": "#/definitions/MergeStrategy"
-        }
-      ]
-    },
-    "neighborIndexAttribute": {
-      "description": "Name of the attribute to store the neighbor index (0-based rank) when num_closest > 1 and merge_strategy is \"repeatBase\". Set to empty string to suppress.",
-      "default": "_neighbor_index",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "numClosest": {
-      "description": "Number of closest neighbors to find per base feature. Must be >= 1.",
-      "default": 1,
-      "type": "integer",
-      "format": "uint",
-      "minimum": 1.0
     }
   },
   "definitions": {
     "Attribute": {
       "type": "string"
-    },
-    "DistanceMetric": {
-      "description": "Distance metric for computing spatial proximity.",
-      "oneOf": [
-        {
-          "description": "2D Euclidean distance using X and Y coordinates. Z is ignored.",
-          "type": "string",
-          "enum": [
-            "euclidean2d"
-          ]
-        },
-        {
-          "description": "3D Euclidean distance using X, Y, and Z coordinates.",
-          "type": "string",
-          "enum": [
-            "euclidean3d"
-          ]
-        },
-        {
-          "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.\n\nNote: Distance is computed between representative points (centroids). For accurate results, input features should be relatively small (e.g., buildings, local roads). Large geometries (e.g., countries, large water bodies) may produce inaccurate distances because their centroids may not represent their spatial extent well.",
-          "type": "string",
-          "enum": [
-            "haversine"
-          ]
-        }
-      ]
     },
     "MergeStrategy": {
       "description": "Merge strategy for handling multiple neighbors.",
@@ -7111,6 +8522,32 @@ Finds the closest candidate features for each base feature based on spatial prox
           ]
         }
       ]
+    },
+    "DistanceMetric": {
+      "description": "Distance metric for computing spatial proximity.",
+      "oneOf": [
+        {
+          "description": "2D Euclidean distance using X and Y coordinates. Z is ignored.",
+          "type": "string",
+          "enum": [
+            "euclidean2d"
+          ]
+        },
+        {
+          "description": "3D Euclidean distance using X, Y, and Z coordinates.",
+          "type": "string",
+          "enum": [
+            "euclidean3d"
+          ]
+        },
+        {
+          "description": "Great-circle distance treating X as longitude (degrees) and Y as latitude (degrees). Output is in meters. Intended for WGS-84 inputs.\n\nNote: Distance is computed between representative points (centroids). For accurate results, input features should be relatively small (e.g., buildings, local roads). Large geometries (e.g., countries, large water bodies) may produce inaccurate distances because their centroids may not represent their spatial extent well.",
+          "type": "string",
+          "enum": [
+            "haversine"
+          ]
+        }
+      ]
     }
   }
 }
@@ -7125,60 +8562,73 @@ Finds the closest candidate features for each base feature based on spatial prox
 ### Category
 * Geometry
 
-## NoopProcessor
+## Noop Processor
 ### Type
 * processor
 ### Description
-No-Operation Pass-Through Processor
+Passes features through unchanged.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Debug
 
-## NoopSink
+## Noop Sink
 ### Type
 * sink
 ### Description
-No-Operation Sink (Discard Features)
+Discards all incoming features.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Debug
 
-## NullAttributeMapper
+## Null Attribute Mapper
 ### Type
 * processor
 ### Description
-Replace null-like attribute values with configured defaults
+Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "NullAttributeMapperParams",
-  "description": "NullAttributeMapper parameters",
+  "title": "Null Attribute Mapper Parameters",
+  "description": "Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules.",
   "type": "object",
   "properties": {
-    "defaultReplacement": {
-      "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")",
-      "default": null
+    "scope": {
+      "title": "Scope",
+      "description": "Which attributes to inspect: only those named in the mappings, or every attribute on the feature.",
+      "default": "listed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Scope"
+        }
+      ]
     },
     "mappings": {
-      "description": "Per-attribute replacement rules",
+      "title": "Attribute Mappings",
+      "description": "Per-attribute rules describing how each null-like attribute is replaced, removed, or created.",
       "default": [],
       "type": "array",
       "items": {
         "$ref": "#/definitions/AttributeMapping"
       }
     },
+    "defaultReplacement": {
+      "title": "Default Replacement",
+      "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
+      "default": null
+    },
     "nullDefinition": {
-      "description": "Which states count as \"null\"",
+      "title": "Null Definition",
+      "description": "States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes.",
       "default": [
         "null",
         "missing"
@@ -7189,21 +8639,35 @@ Replace null-like attribute values with configured defaults
       }
     },
     "routeNullFeatures": {
-      "description": "Emit original features with nulls to hasNull port",
+      "title": "Route Null Features",
+      "description": "When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection.",
       "default": false,
       "type": "boolean"
-    },
-    "scope": {
-      "description": "Which attributes to inspect",
-      "default": "listed",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Scope"
-        }
-      ]
     }
   },
   "definitions": {
+    "Scope": {
+      "title": "Scope",
+      "description": "Which attributes the action inspects.",
+      "oneOf": [
+        {
+          "title": "Listed Attributes",
+          "description": "Inspects only the attributes named in the mappings list.",
+          "type": "string",
+          "enum": [
+            "listed"
+          ]
+        },
+        {
+          "title": "All Attributes",
+          "description": "Inspects every attribute on the feature.",
+          "type": "string",
+          "enum": [
+            "all"
+          ]
+        }
+      ]
+    },
     "AttributeMapping": {
       "description": "Per-attribute replacement mapping",
       "type": "object",
@@ -7212,61 +8676,41 @@ Replace null-like attribute values with configured defaults
       ],
       "properties": {
         "attribute": {
-          "description": "Name of the attribute to inspect",
+          "title": "Attribute",
+          "description": "Name of the attribute to inspect.",
           "type": "string"
         },
+        "replacement": {
+          "title": "Replacement",
+          "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+        },
         "onMissing": {
-          "description": "What to do when attribute is missing but not in nullDefinition",
+          "title": "On Missing",
+          "description": "Behavior when the attribute is absent and not treated as null-like by the null definition.",
           "default": "skip",
           "allOf": [
             {
               "$ref": "#/definitions/OnMissing"
             }
           ]
-        },
-        "replacement": {
-          "description": "Value to write when attribute is null-like null means remove the attribute"
         }
       }
     },
-    "NullKind": {
-      "description": "Defines what states count as \"null\"",
-      "oneOf": [
-        {
-          "description": "AttributeValue::Null",
-          "type": "string",
-          "enum": [
-            "null"
-          ]
-        },
-        {
-          "description": "Attribute key absent from the feature",
-          "type": "string",
-          "enum": [
-            "missing"
-          ]
-        },
-        {
-          "description": "AttributeValue::String(\"\")",
-          "type": "string",
-          "enum": [
-            "emptyString"
-          ]
-        }
-      ]
-    },
     "OnMissing": {
-      "description": "What to do when attribute is missing but not in nullDefinition",
+      "title": "On Missing",
+      "description": "Behavior when an inspected attribute is absent from the feature.",
       "oneOf": [
         {
-          "description": "Leave unchanged",
+          "title": "Skip",
+          "description": "Leaves the feature unchanged.",
           "type": "string",
           "enum": [
             "skip"
           ]
         },
         {
-          "description": "Write replacement value, creating the attribute",
+          "title": "Create",
+          "description": "Adds the attribute using the mapping's replacement value.",
           "type": "string",
           "enum": [
             "create"
@@ -7274,21 +8718,32 @@ Replace null-like attribute values with configured defaults
         }
       ]
     },
-    "Scope": {
-      "description": "Scope of attributes to inspect",
+    "NullKind": {
+      "title": "Null Definition",
+      "description": "States that are treated as null-like.",
       "oneOf": [
         {
-          "description": "Only check attributes named in mappings",
+          "title": "Null Value",
+          "description": "An attribute present on the feature but holding an explicit null value.",
           "type": "string",
           "enum": [
-            "listed"
+            "null"
           ]
         },
         {
-          "description": "Check all attributes on the feature",
+          "title": "Missing Attribute",
+          "description": "An attribute that is absent from the feature.",
           "type": "string",
           "enum": [
-            "all"
+            "missing"
+          ]
+        },
+        {
+          "title": "Empty String",
+          "description": "An attribute holding a text value with no characters.",
+          "type": "string",
+          "enum": [
+            "emptyString"
           ]
         }
       ]
@@ -7297,110 +8752,137 @@ Replace null-like attribute values with configured defaults
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
-* hasNull
+* features
+* has-null
 * rejected
 ### Category
 * Attribute
 
-## ObjReader
+## OBJ Reader
 ### Type
 * source
 ### Description
-Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials
+Reads 3D models from Wavefront OBJ files, including vertices, faces, normals, texture coordinates, and materials.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ObjReader Parameters",
+  "title": "OBJ Reader Parameters",
   "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions.",
   "type": "object",
   "properties": {
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "includeNormals": {
-      "title": "Include Normals",
-      "description": "Include vertex normal data in the output geometry",
+    "parseMaterials": {
+      "title": "Parse Materials",
+      "description": "Parses material definitions from MTL files referenced in the OBJ file.",
       "default": true,
       "type": "boolean"
-    },
-    "includeTexcoords": {
-      "title": "Include Texture Coordinates",
-      "description": "Include texture coordinate (UV) data in the output geometry",
-      "default": true,
-      "type": "boolean"
-    },
-    "inline": {
-      "title": "Inline Content",
-      "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "materialFile": {
       "title": "Material File",
       "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    },
-    "mergeGroups": {
-      "title": "Merge Groups",
-      "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
-      "default": false,
-      "type": "boolean"
-    },
-    "parseMaterials": {
-      "title": "Parse Materials",
-      "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
-      "default": true,
-      "type": "boolean"
+      }
     },
     "triangulate": {
       "title": "Triangulate",
-      "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
+      "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation.",
       "default": false,
       "type": "boolean"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+    },
+    "mergeGroups": {
+      "title": "Merge Groups",
+      "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object.",
+      "default": false,
+      "type": "boolean"
+    },
+    "includeTexcoords": {
+      "title": "Include Texture Coordinates",
+      "description": "Includes texture coordinate (UV) data in the output geometry.",
+      "default": true,
+      "type": "boolean"
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
-* File
-* 3D
+* Input
 
-## ObjWriter
+## OBJ Writer
 ### Type
 * sink
 ### Description
@@ -7419,11 +8901,24 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
     "output": {
       "title": "Output Path",
       "description": "Expression for the output file path where the OBJ file will be written",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "writeMaterials": {
       "title": "Write Materials",
@@ -7452,16 +8947,11 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
         "null"
       ]
     }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
@@ -7471,18 +8961,18 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
 ### Type
 * processor
 ### Description
-Apply Coordinate Offsets to Geometry
+Shifts every geometry coordinate by a fixed amount along each axis.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Offsetter Parameters",
-  "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
+  "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame.",
   "type": "object",
   "properties": {
     "offsetX": {
       "title": "X Offset",
-      "description": "Offset to add to all X coordinates (longitude)",
+      "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -7491,7 +8981,7 @@ Apply Coordinate Offsets to Geometry
     },
     "offsetY": {
       "title": "Y Offset",
-      "description": "Offset to add to all Y coordinates (latitude)",
+      "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -7500,7 +8990,7 @@ Apply Coordinate Offsets to Geometry
     },
     "offsetZ": {
       "title": "Z Offset",
-      "description": "Offset to add to all Z coordinates (elevation)",
+      "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -7511,13 +9001,13 @@ Apply Coordinate Offsets to Geometry
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## OrientationExtractor
+## Orientation Extractor
 ### Type
 * processor
 ### Description
@@ -7551,35 +9041,38 @@ Extract Polygon Orientation to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## OutputRouter
+## Output Router
 ### Type
 * processor
 ### Description
-Action for last port forwarding for sub-workflows.
+Forwards features from a sub-workflow back to the parent workflow.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OutputRouter",
+  "title": "Output Router Parameters",
+  "description": "Configuration for returning features to the parent workflow.",
   "type": "object",
   "required": [
     "routingPort"
   ],
   "properties": {
     "routingPort": {
+      "title": "Routing Port",
+      "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow.",
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Filter
@@ -7592,9 +9085,9 @@ Flattens hierarchical PLATEAU3 building attributes into flat structure for analy
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7606,9 +9099,9 @@ Extracts BuildingInstallationGeometryType
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7634,11 +9127,11 @@ This processor validates building usage attributes by checking for the presence 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * lBldgError
 * codeError
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7650,9 +9143,9 @@ Initializes dictionaries for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -7665,9 +9158,9 @@ Validates domain of definition of CityGML features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -7680,9 +9173,9 @@ Extracts maxLod
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7694,9 +9187,9 @@ Check Xlink for Tran
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7708,9 +9201,9 @@ Extracts UDX folders from cityGML path
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -7723,7 +9216,7 @@ Detect unmatched xlink for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * unMatchedXlinkFrom
@@ -7743,15 +9236,24 @@ Extracts attributes from XML fragments based on a schema definition
   "title": "XmlAttributeExtractorParam",
   "type": "object",
   "properties": {
-    "addNsprefixToFeatureTypes": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "cityCode": {
       "type": [
         "string",
+        "null"
+      ]
+    },
+    "targetPackages": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "addNsprefixToFeatureTypes": {
+      "type": [
+        "boolean",
         "null"
       ]
     },
@@ -7775,21 +9277,12 @@ Extracts attributes from XML fragments based on a schema definition
         "string",
         "null"
       ]
-    },
-    "targetPackages": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "string"
-      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * attributeFeature
 * summary
@@ -7818,9 +9311,9 @@ Flatten attributes for building feature
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * schema
 ### Category
 * PLATEAU
@@ -7833,9 +9326,9 @@ Checks BuildingInstallation's geometry type
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7862,10 +9355,10 @@ Check connectivity between BuildingParts within the same Building using 3D bound
         }
       ]
     },
-    "fileIndexAttribute": {
-      "title": "File Index Attribute",
-      "description": "Attribute containing the file index (default: \"fileIndex\")",
-      "default": "fileIndex",
+    "partIdAttribute": {
+      "title": "Part ID Attribute",
+      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+      "default": "featureId",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -7882,10 +9375,10 @@ Check connectivity between BuildingParts within the same Building using 3D bound
         }
       ]
     },
-    "partIdAttribute": {
-      "title": "Part ID Attribute",
-      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-      "default": "featureId",
+    "fileIndexAttribute": {
+      "title": "File Index Attribute",
+      "description": "Attribute containing the file index (default: \"fileIndex\")",
+      "default": "fileIndex",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -7901,9 +9394,9 @@ Check connectivity between BuildingParts within the same Building using 3D bound
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 * PLATEAU
@@ -7924,22 +9417,35 @@ This processor validates building usage attributes by checking for the presence 
   ],
   "properties": {
     "codelistsPath": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      "description": "Expression evaluating to the PLATEAU codelists directory path.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * l0405BldgError
 * cityCodeError
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -7985,9 +9491,9 @@ Extracts city code information from PLATEAU4 codelists for local public authorit
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8007,15 +9513,6 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
     "epsgCode"
   ],
   "properties": {
-    "epsgCode": {
-      "title": "Target EPSG Code",
-      "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
     "errorAttribute": {
       "title": "Error Attribute Name",
       "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
@@ -8025,22 +9522,40 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
           "$ref": "#/definitions/Attribute"
         }
       ]
+    },
+    "epsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code for coordinate transformation from source EPSG 6697. Accepts integer or string expression.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * not_closed
 * incorrect_vertices
 * wrong_orientation
@@ -8059,7 +9574,7 @@ Checks if a CompositeSurface is continuous (all parts share edges)
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * passed
 * failed
@@ -8080,16 +9595,6 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
   "description": "Configure mesh code extraction for Japanese standard regional mesh",
   "type": "object",
   "properties": {
-    "epsgCode": {
-      "title": "EPSG Code",
-      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
-      "default": "6691",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
     "meshType": {
       "title": "Mesh Type",
       "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
@@ -8103,19 +9608,39 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
       "description": "Output attribute name for the mesh code",
       "default": "_meshcode",
       "type": "string"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+    },
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+      "default": {
+        "type": "flowExpr",
+        "value": "6691"
+      },
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -8135,27 +9660,35 @@ Validates domain of definition of CityGML features
   "properties": {
     "codelistsPath": {
       "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 * duplicateGmlIdStats
 ### Category
@@ -8192,7 +9725,7 @@ Validates individual surfaces of WaterBody features for TIN mesh quality
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * error
 * summary
@@ -8214,17 +9747,6 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
   "description": "Configuration for generating TIN surfaces from flood area polygons. This processor converts polygons to triangulated surfaces by: 1. Optionally grouping features by an attribute (e.g., udxDirs) 2. Combining all polygons in each group 3. Sampling points along polygon boundaries at regular intervals 4. Optionally adding interior grid points within polygons 5. Performing Delaunay triangulation to create a TIN surface 6. Filtering triangles to keep only those inside the original polygons",
   "type": "object",
   "properties": {
-    "groupBy": {
-      "description": "Attribute name to group features by before combining and triangulating. Features with the same value for this attribute will be processed together. If not specified, each feature is processed individually.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "pointSpacing": {
       "description": "Spacing between sampled points in meters (default: 50.0). Points are sampled along polygon boundaries and optionally on an interior grid at this spacing interval.",
       "type": [
@@ -8240,6 +9762,17 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
         "boolean",
         "null"
       ]
+    },
+    "groupBy": {
+      "description": "Attribute name to group features by before combining and triangulating. Features with the same value for this attribute will be processed together. If not specified, each feature is processed individually.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
@@ -8250,9 +9783,9 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8271,27 +9804,35 @@ Validates that gml:name elements have codeSpace attributes (coded values)
   "properties": {
     "cityGmlPath": {
       "description": "Expression to get the path to the CityGML file",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * gmlNameErrors
 * stats
 ### Category
@@ -8329,9 +9870,9 @@ Extracts maxLod
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8339,13 +9880,13 @@ Extracts maxLod
 ### Type
 * processor
 ### Description
-Detect missing attributes in PLATEAU4 features
+Detect missing attributes in PLATEAU features
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MissingAttributeDetector Parameters",
-  "description": "Configuration for detecting missing attributes in PLATEAU4 features.",
+  "description": "Configuration for detecting missing attributes in PLATEAU features.",
   "type": "object",
   "required": [
     "packageAttribute"
@@ -8363,7 +9904,7 @@ Detect missing attributes in PLATEAU4 features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * required
@@ -8383,7 +9924,7 @@ Extract object list
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ObjectListExtractor Parameters",
-  "description": "Configuration for extracting object lists from PLATEAU4 data.",
+  "description": "Configuration for extracting object lists from PLATEAU data.",
   "type": "object",
   "required": [
     "objectListPathAttribute"
@@ -8401,9 +9942,9 @@ Extract object list
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8424,8 +9965,37 @@ Inserts solar radiation measurement attributes into original CityGML files
     "outputDir"
   ],
   "properties": {
+    "outputDir": {
+      "description": "Output directory expression for modified CityGML files",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "gmlIdAttribute": {
       "description": "Attribute name on element features holding gml:id (default: \"gmlId\")",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pathAttribute": {
+      "description": "Attribute name on path features holding the file path (default: \"path\")",
       "default": null,
       "type": [
         "string",
@@ -8439,51 +10009,57 @@ Inserts solar radiation measurement attributes into original CityGML files
         "$ref": "#/definitions/MeasurementDef"
       }
     },
-    "outputDir": {
-      "description": "Output directory expression for modified CityGML files",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "pathAttribute": {
-      "description": "Attribute name on path features holding the file path (default: \"path\")",
+    "textureImagePath": {
+      "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)",
       "default": null,
       "type": [
-        "string",
+        "object",
         "null"
-      ]
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "sourceEpsg": {
       "description": "The projected CRS EPSG code used for rasterization (needed for UV computation)",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    },
-    "textureImagePath": {
-      "description": "Path to the solar radiation texture PNG (texture insertion skipped if absent)",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "MeasurementDef": {
       "description": "A single measurement attribute definition.",
       "type": "object",
@@ -8493,12 +10069,12 @@ Inserts solar radiation measurement attributes into original CityGML files
         "uom"
       ],
       "properties": {
-        "attribute": {
-          "description": "Feature attribute key holding the numeric value (e.g. \"totalSolarRadiation\")",
-          "type": "string"
-        },
         "name": {
           "description": "XML name attribute value (e.g. \"年間予測日射量\")",
+          "type": "string"
+        },
+        "attribute": {
+          "description": "Feature attribute key holding the numeric value (e.g. \"totalSolarRadiation\")",
           "type": "string"
         },
         "uom": {
@@ -8515,7 +10091,7 @@ Inserts solar radiation measurement attributes into original CityGML files
 * element
 * textureBounds
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8538,10 +10114,76 @@ Calculates solar position (altitude and azimuth) for geographic features using S
         "type"
       ],
       "properties": {
-        "outputBelowHorizon": {
-          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
-          "default": false,
-          "type": "boolean"
+        "type": {
+          "type": "string",
+          "enum": [
+            "time"
+          ]
+        },
+        "time": {
+          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
         "outputType": {
           "description": "Output type: unit normal vector or altitude/azimuth angles",
@@ -8552,39 +10194,10 @@ Calculates solar position (altitude and azimuth) for geographic features using S
             }
           ]
         },
-        "sourceEpsg": {
-          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "standardMeridian": {
-          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "time": {
-          "description": "Time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "time"
-          ]
+        "outputBelowHorizon": {
+          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
+          "default": false,
+          "type": "boolean"
         }
       }
     },
@@ -8599,18 +10212,125 @@ Calculates solar position (altitude and azimuth) for geographic features using S
         "type"
       ],
       "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "duration"
+          ]
+        },
+        "start": {
+          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
         "end": {
           "description": "End time expression evaluating to RFC 3339 format (e.g., \"2025-01-12T00:00:00Z\") or date-only format (e.g., \"2025-01-12\" or \"2025-01-12+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "step": {
+          "description": "Step value expression evaluating to an integer",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "stepUnit": {
+          "description": "Unit for the step value",
           "allOf": [
             {
-              "$ref": "#/definitions/Expr"
+              "$ref": "#/definitions/StepUnit"
             }
           ]
         },
-        "outputBelowHorizon": {
-          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
-          "default": false,
-          "type": "boolean"
+        "sourceEpsg": {
+          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "standardMeridian": {
+          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
+          "default": null,
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         },
         "outputType": {
           "description": "Output type: unit normal vector or altitude/azimuth angles",
@@ -8621,63 +10341,15 @@ Calculates solar position (altitude and azimuth) for geographic features using S
             }
           ]
         },
-        "sourceEpsg": {
-          "description": "Source EPSG code expression (required). Evaluates to int (e.g., 6677 for Japan Plane IX).",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "standardMeridian": {
-          "description": "Standard meridian in degrees (optional). If not provided, computed as round(longitude / 15) * 15.",
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "start": {
-          "description": "Start time expression evaluating to RFC 3339 format (e.g., \"2025-01-11T00:00:00Z\") or date-only format (e.g., \"2025-01-11\" or \"2025-01-11+09:00\"). When hours, minutes, and seconds are omitted they default to zero.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "step": {
-          "description": "Step value expression evaluating to an integer",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "stepUnit": {
-          "description": "Unit for the step value",
-          "allOf": [
-            {
-              "$ref": "#/definitions/StepUnit"
-            }
-          ]
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "duration"
-          ]
+        "outputBelowHorizon": {
+          "description": "Whether to output sun positions below the horizon (altitude < 0). Default: false.",
+          "default": false,
+          "type": "boolean"
         }
       }
     }
   ],
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "OutputType": {
       "description": "Output type for solar position calculation",
       "oneOf": [
@@ -8717,9 +10389,9 @@ Calculates solar position (altitude and azimuth) for geographic features using S
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -8728,7 +10400,7 @@ Calculates solar position (altitude and azimuth) for geographic features using S
 ### Type
 * processor
 ### Description
-Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
+Creates pairs of features from Area On Area Overlayer output for solid intersection testing
 ### Parameters
 ```json
 {
@@ -8736,26 +10408,26 @@ Creates pairs of features from AreaOnAreaOverlayer output for solid intersection
   "title": "SolidIntersectionTestPairCreatorParam",
   "type": "object",
   "properties": {
-    "gmlIdAttribute": {
-      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
-      "default": "gmlId",
-      "type": "string"
-    },
-    "listAttribute": {
-      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
-      "default": "list",
-      "type": "string"
-    },
     "pairIdAttribute": {
       "description": "Attribute name to store the pair ID (default: \"pair_id\")",
       "default": "pair_id",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")",
+      "default": "list",
+      "type": "string"
+    },
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * A
 * B
@@ -8778,18 +10450,30 @@ Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)
   ],
   "properties": {
     "cityGmlPath": {
-      "$ref": "#/definitions/Expr"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * passed
 * failed
@@ -8806,14 +10490,31 @@ Extracts UDX folders from cityGML path
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "UDXFolderExtractor Parameters",
-  "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.",
+  "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
   "type": "object",
   "required": [
     "cityGmlPath"
   ],
   "properties": {
     "cityGmlPath": {
-      "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "codelistsPath": {
       "anyOf": [
@@ -8839,17 +10540,14 @@ Extracts UDX folders from cityGML path
   "definitions": {
     "Attribute": {
       "type": "string"
-    },
-    "Expr": {
-      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -8862,7 +10560,7 @@ Detect unmatched Xlinks for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * unMatchedXlinkFrom
@@ -8883,6 +10581,12 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
   "description": "Configure unshared edge detection behavior",
   "type": "object",
   "properties": {
+    "tolerance": {
+      "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
+      "default": 0.1,
+      "type": "number",
+      "format": "double"
+    },
     "groupBy": {
       "description": "Group By Attributes. When specified, edge detection is performed independently within each group. Features with the same values for these attributes are grouped together.",
       "default": null,
@@ -8893,12 +10597,6 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "tolerance": {
-      "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
-      "default": 0.1,
-      "type": "number",
-      "format": "double"
     }
   },
   "definitions": {
@@ -8909,13 +10607,440 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * unshared
 ### Category
 * PLATEAU
 
-## PlanarityFilter
+## PLATEAU6.BuildingPartConnectivityChecker
+### Type
+* processor
+### Description
+Check connectivity between BuildingParts within the same Building using 3D boundary surface matching
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingPartConnectivityChecker Parameters",
+  "description": "Configure how to check connectivity between BuildingParts",
+  "type": "object",
+  "properties": {
+    "buildingIdAttribute": {
+      "title": "Building ID Attribute",
+      "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+      "default": "gmlId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "partIdAttribute": {
+      "title": "Part ID Attribute",
+      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+      "default": "featureId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "lodAttribute": {
+      "title": "LOD Attribute",
+      "description": "Attribute containing the Level of Detail (default: \"lod\")",
+      "default": "lod",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "fileIndexAttribute": {
+      "title": "File Index Attribute",
+      "description": "Attribute containing the file index (default: \"fileIndex\")",
+      "default": "fileIndex",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Feature
+* PLATEAU
+
+## PLATEAU6.BuildingUsageAttributeValidator
+### Type
+* processor
+### Description
+This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingUsageAttributeValidatorParam",
+  "type": "object",
+  "required": [
+    "codelistsPath"
+  ],
+  "properties": {
+    "codelistsPath": {
+      "description": "Expression evaluating to the PLATEAU codelists directory path.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* l0405BldgError
+* cityCodeError
+* features
+### Category
+* PLATEAU
+
+## PLATEAU6.DestinationMeshCodeExtractor
+### Type
+* processor
+### Description
+Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PLATEAU Destination MeshCode Extractor Parameters",
+  "description": "Configure mesh code extraction for Japanese standard regional mesh",
+  "type": "object",
+  "properties": {
+    "meshType": {
+      "title": "Mesh Type",
+      "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
+      "default": 3,
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "meshcodeAttr": {
+      "title": "Mesh Code Attribute Name",
+      "description": "Output attribute name for the mesh code",
+      "default": "_meshcode",
+      "type": "string"
+    },
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+      "default": {
+        "type": "flowExpr",
+        "value": "6691"
+      },
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* PLATEAU
+
+## PLATEAU6.DomainOfDefinitionValidator
+### Type
+* processor
+### Description
+Validates domain of definition of CityGML features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainOfDefinitionValidator Parameters",
+  "description": "Configuration for validating domain of definition of CityGML features.",
+  "type": "object",
+  "properties": {
+    "codelistsPath": {
+      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+* duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU6.MissingAttributeDetector
+### Type
+* processor
+### Description
+Detect missing attributes in PLATEAU features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MissingAttributeDetector Parameters",
+  "description": "Configuration for detecting missing attributes in PLATEAU features.",
+  "type": "object",
+  "required": [
+    "packageAttribute"
+  ],
+  "properties": {
+    "packageAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* summary
+* required
+* target
+* dataQualityC07
+* dataQualityC08
+### Category
+* PLATEAU
+
+## PLATEAU6.ObjectListExtractor
+### Type
+* processor
+### Description
+Extract object list
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ObjectListExtractor Parameters",
+  "description": "Configuration for extracting object lists from PLATEAU data.",
+  "type": "object",
+  "required": [
+    "objectListPathAttribute"
+  ],
+  "properties": {
+    "objectListPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* PLATEAU
+
+## PLATEAU6.SolidIntersectionTestPairCreator
+### Type
+* processor
+### Description
+Creates pairs of features from Area On Area Overlayer output for solid intersection testing
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolidIntersectionTestPairCreatorParam",
+  "type": "object",
+  "properties": {
+    "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
+      "default": "pair_id",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")",
+      "default": "list",
+      "type": "string"
+    },
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* A
+* B
+### Category
+* PLATEAU
+
+## PLATEAU6.UDXFolderExtractor
+### Type
+* processor
+### Description
+Extracts UDX folders from cityGML path
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UDXFolderExtractor Parameters",
+  "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
+  "type": "object",
+  "required": [
+    "cityGmlPath"
+  ],
+  "properties": {
+    "cityGmlPath": {
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "codelistsPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schemasPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* PLATEAU
+
+## PLATEAU6.UnmatchedXlinkDetector
+### Type
+* processor
+### Description
+Detect unmatched Xlinks for PLATEAU
+### Parameters
+* No parameters
+### Input Ports
+* features
+### Output Ports
+* summary
+* unMatchedXlinkFrom
+* unMatchedXlinkTo
+### Category
+* PLATEAU
+
+## Planarity Filter
 ### Type
 * processor
 ### Description
@@ -8944,17 +11069,26 @@ Filter Features by Geometry Planarity
     "threshold": {
       "title": "Threshold",
       "description": "The threshold value for planarity check. For covariance mode: the maximum allowed smallest eigenvalue of the covariance matrix. For height mode: the maximum allowed convex hull minimum height.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "PlanarityFilterType": {
       "description": "Filter type for planarity check",
       "oneOf": [
@@ -8978,28 +11112,29 @@ Filter Features by Geometry Planarity
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * planarity
 * notplanarity
 ### Category
 * Geometry
 
-## PolygonNormalExtractor
+## Polygon Normal Extractor
 ### Type
 * processor
 ### Description
-Extract normal vectors and other properties for polygon features
+Extracts the surface normal, signed 2D area, slope and azimuth from polygon features and stores them as attributes.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
+* rejected
 ### Category
 * Geometry
 
-## PythonScriptProcessor
+## Python Script Processor
 ### Type
 * processor
 ### Description
@@ -9011,17 +11146,55 @@ Execute Python Scripts with Geospatial Data Processing
   "title": "PythonScriptProcessorParam",
   "type": "object",
   "properties": {
+    "script": {
+      "title": "Inline Script",
+      "description": "Python script code to execute inline",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "pythonFile": {
       "title": "Python File",
       "description": "Path to a Python script file (supports file://, http://, https://, gs://, etc.)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "pythonPath": {
       "title": "Python Path",
@@ -9029,18 +11202,6 @@ Execute Python Scripts with Geospatial Data Processing
       "type": [
         "string",
         "null"
-      ]
-    },
-    "script": {
-      "title": "Inline Script",
-      "description": "Python script code to execute inline",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
       ]
     },
     "timeoutSeconds": {
@@ -9053,77 +11214,82 @@ Execute Python Scripts with Geospatial Data Processing
       "format": "uint64",
       "minimum": 0.0
     }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Script
 * Python
 
-## RayIntersector
+## Ray Intersector
 ### Type
 * processor
 ### Description
-Computes intersection points between rays and geometries
+Computes intersection points between rays and geometries.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RayIntersectorParams",
-  "description": "RayIntersector Parameters",
+  "title": "Ray Intersector Parameters",
+  "description": "Configure how rays and geometries are paired and how intersection results are output.",
   "type": "object",
   "required": [
-    "pairId",
     "ray"
   ],
   "properties": {
-    "closestIntersectionOnly": {
-      "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
-      "default": null,
-      "anyOf": [
+    "ray": {
+      "title": "Ray",
+      "description": "Attributes on the ray features that hold the ray's origin and direction.",
+      "allOf": [
         {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
+          "$ref": "#/definitions/RayDefinition"
         }
       ]
     },
-    "geomId": {
-      "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit.",
+    "pairId": {
+      "title": "Pair ID",
+      "description": "Expression producing the key that pairs rays with geometries, so that only rays and geometries whose keys match are tested against each other. Omit it to test every ray against every geometry.",
       "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
+    },
+    "closestIntersectionOnly": {
+      "title": "Closest Intersection Only",
+      "description": "Whether to keep only the nearest hit per ray rather than every hit along it. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     },
     "includeRayOrigin": {
-      "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "title": "Include Ray Origin",
+      "description": "Whether an intersection at the ray's own origin counts as a hit. When false, intersections nearer than the tolerance are discarded. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     },
     "outputGeometryType": {
-      "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
+      "title": "Output Geometry Type",
+      "description": "Geometry to emit for each intersection.",
       "default": "pointOfIntersection",
       "allOf": [
         {
@@ -9131,63 +11297,43 @@ Computes intersection points between rays and geometries
         }
       ]
     },
-    "pairId": {
-      "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+    "geomId": {
+      "title": "Geometry ID",
+      "description": "Expression evaluated on each geometry feature to label it. When set, every intersection carries a `geom_id` attribute naming the geometry it hit.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    },
-    "ray": {
-      "description": "Defines how to extract ray data from feature attributes",
-      "allOf": [
-        {
-          "$ref": "#/definitions/RayDefinition"
-        }
-      ]
+      }
     },
     "tolerance": {
-      "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used.",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "title": "Tolerance",
+      "description": "Distance below which an intersection is treated as coincident with the ray's origin. Defaults to 1e-10.",
+      "default": 1e-10,
+      "type": "number",
+      "format": "double"
     }
   },
   "definitions": {
-    "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
-      "type": "string"
-    },
-    "OutputGeometryType": {
-      "description": "Output geometry type for ray intersection results",
-      "oneOf": [
-        {
-          "description": "Output a point at the intersection location (default behavior)",
-          "type": "string",
-          "enum": [
-            "pointOfIntersection"
-          ]
-        },
-        {
-          "description": "Output a line segment from ray origin to intersection point",
-          "type": "string",
-          "enum": [
-            "lineSegmentToIntersection"
-          ]
-        }
-      ]
-    },
     "RayDefinition": {
-      "description": "Defines how ray data is extracted from feature attributes.",
+      "title": "Ray Definition",
+      "description": "Attributes that hold a ray's origin and direction.",
       "type": "object",
       "required": [
         "dirX",
@@ -9198,32 +11344,9 @@ Computes intersection points between rays and geometries
         "posZ"
       ],
       "properties": {
-        "dirX": {
-          "description": "Attribute containing ray direction X component",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            }
-          ]
-        },
-        "dirY": {
-          "description": "Attribute containing ray direction Y component",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            }
-          ]
-        },
-        "dirZ": {
-          "description": "Attribute containing ray direction Z component",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            }
-          ]
-        },
         "posX": {
-          "description": "Attribute containing ray origin X coordinate",
+          "title": "Origin X Attribute",
+          "description": "Attribute holding the X coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -9231,7 +11354,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "posY": {
-          "description": "Attribute containing ray origin Y coordinate",
+          "title": "Origin Y Attribute",
+          "description": "Attribute holding the Y coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -9239,7 +11363,35 @@ Computes intersection points between rays and geometries
           ]
         },
         "posZ": {
-          "description": "Attribute containing ray origin Z coordinate",
+          "title": "Origin Z Attribute",
+          "description": "Attribute holding the Z coordinate of the ray's origin.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "dirX": {
+          "title": "Direction X Attribute",
+          "description": "Attribute holding the X component of the ray's direction.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "dirY": {
+          "title": "Direction Y Attribute",
+          "description": "Attribute holding the Y component of the ray's direction.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        },
+        "dirZ": {
+          "title": "Direction Z Attribute",
+          "description": "Attribute holding the Z component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -9247,6 +11399,30 @@ Computes intersection points between rays and geometries
           ]
         }
       }
+    },
+    "Attribute": {
+      "type": "string"
+    },
+    "OutputGeometryType": {
+      "description": "Output geometry type for ray intersection results",
+      "oneOf": [
+        {
+          "title": "Point of Intersection",
+          "description": "Emits a point at the location where the ray meets the geometry.",
+          "type": "string",
+          "enum": [
+            "pointOfIntersection"
+          ]
+        },
+        {
+          "title": "Line Segment to Intersection",
+          "description": "Emits a line running from the ray's origin to the intersection point.",
+          "type": "string",
+          "enum": [
+            "lineSegmentToIntersection"
+          ]
+        }
+      ]
     }
   }
 }
@@ -9256,7 +11432,7 @@ Computes intersection points between rays and geometries
 * geom
 ### Output Ports
 * intersection
-* no_intersection
+* no-intersection
 * rejected
 ### Category
 * Geometry
@@ -9265,66 +11441,17 @@ Computes intersection points between rays and geometries
 ### Type
 * processor
 ### Description
-Refine Complex Geometries into Simple Geometries
+Refines complex geometry types into simpler primitives.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
-* remain
+* features
 ### Category
 * Geometry
 
-## RhaiCaller
-### Type
-* processor
-### Description
-Executes Rhai script expressions to conditionally process and transform features
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RhaiCaller Parameters",
-  "description": "Configuration for executing Rhai scripts on features with conditional processing.",
-  "type": "object",
-  "required": [
-    "isTarget",
-    "process"
-  ],
-  "properties": {
-    "isTarget": {
-      "description": "Rhai script expression to determine if the feature should be processed (returns boolean)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "process": {
-      "description": "Rhai script expression to process and transform the feature when target condition is met",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Transform
-
-## Rotator3D
+## Rotator 3D
 ### Type
 * processor
 ### Description
@@ -9333,7 +11460,7 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Rotator3D Parameters",
+  "title": "Rotator 3D Parameters",
   "description": "Configure the rotation for a 3D polygon",
   "type": "object",
   "required": [
@@ -9351,9 +11478,6 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
     }
   },
   "definitions": {
-    "Expr": {
-      "type": "string"
-    },
     "RotationParam": {
       "description": "Rotation specification",
       "oneOf": [
@@ -9370,59 +11494,131 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
             "type"
           ],
           "properties": {
-            "fromX": {
-              "description": "X component of the source direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "fromY": {
-              "description": "Y component of the source direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "fromZ": {
-              "description": "Z component of the source direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "toX": {
-              "description": "X component of the target direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "toY": {
-              "description": "Y component of the target direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "toZ": {
-              "description": "Z component of the target direction vector",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
             "type": {
               "type": "string",
               "enum": [
                 "fromToVectors"
               ]
+            },
+            "fromX": {
+              "description": "X component of the source direction vector",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "fromY": {
+              "description": "Y component of the source direction vector",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "fromZ": {
+              "description": "Z component of the source direction vector",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "toX": {
+              "description": "X component of the target direction vector",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "toY": {
+              "description": "Y component of the target direction vector",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "toZ": {
+              "description": "Z component of the target direction vector",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           }
         },
@@ -9437,43 +11633,91 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
             "type"
           ],
           "properties": {
-            "angle": {
-              "description": "Rotation angle in degrees",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "axisX": {
-              "description": "X component of the rotation axis",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "axisY": {
-              "description": "Y component of the rotation axis",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
-            "axisZ": {
-              "description": "Z component of the rotation axis",
-              "allOf": [
-                {
-                  "$ref": "#/definitions/Expr"
-                }
-              ]
-            },
             "type": {
               "type": "string",
               "enum": [
                 "axisAngle"
               ]
+            },
+            "axisX": {
+              "description": "X component of the rotation axis",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "axisY": {
+              "description": "Y component of the rotation axis",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "axisZ": {
+              "description": "Z component of the rotation axis",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "angle": {
+              "description": "Rotation angle in degrees",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
           }
         }
@@ -9483,18 +11727,88 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
 
-## ShapefileReader
+## SQL Reader
 ### Type
 * source
 ### Description
-Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)
+Reads features from a SQL database.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SQL Reader Parameters",
+  "description": "Configure the SQL query and database connection for reading features from a database",
+  "type": "object",
+  "required": [
+    "databaseUrl",
+    "sql"
+  ],
+  "properties": {
+    "sql": {
+      "title": "SQL Query",
+      "description": "SQL query expression to execute for retrieving data",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "databaseUrl": {
+      "title": "Database URL",
+      "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* features
+### Category
+* Input
+
+## Shapefile Reader
+### Type
+* source
+### Description
+Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files).
 ### Parameters
 ```json
 {
@@ -9503,69 +11817,90 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
   "type": "object",
   "properties": {
-    "allowEmptyPath": {
-      "title": "Allow Null Path",
-      "description": "If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
-      "default": false,
-      "type": "boolean"
-    },
-    "dataset": {
-      "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
+      "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, else from the code page the .dbf header declares, otherwise UTF-8 (UTF-16 is not supported).",
       "type": [
         "string",
         "null"
       ]
     },
-    "force2d": {
+    "force2D": {
       "title": "Force 2D",
-      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values).",
       "default": false,
       "type": "boolean"
+    },
+    "allowEmptyPath": {
+      "title": "Allow Null Path",
+      "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
+      "default": false,
+      "type": "boolean"
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     },
     "inline": {
       "title": "Inline Content",
       "description": "Expression that returns the file content as text instead of reading from a file path",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
-## ShapefileWriter
+## Shapefile Writer
 ### Type
 * sink
 ### Description
-Writes geographic features to ESRI Shapefile format with optional grouping
+Writes features to ESRI Shapefile format, optionally grouping them into separate files.
 ### Parameters
 ```json
 {
@@ -9577,8 +11912,56 @@ Writes geographic features to ESRI Shapefile format with optional grouping
     "output"
   ],
   "properties": {
+    "output": {
+      "title": "Output Directory",
+      "description": "Output directory path or expression where the generated Shapefile files are written.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "compressOutput": {
+      "title": "Compressed Output Directory",
+      "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "groupBy": {
-      "description": "Optional attributes to group features by, creating separate files for each group",
+      "title": "Group By",
+      "description": "Attributes to group features by, writing a separate file for each distinct group.",
       "type": [
         "array",
         "null"
@@ -9586,33 +11969,22 @@ Writes geographic features to ESRI Shapefile format with optional grouping
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "output": {
-      "description": "Output path or expression for the Shapefile to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
 
-## SolidBoundaryValidator
+## Solid Boundary Validator
 ### Type
 * processor
 ### Description
@@ -9631,22 +12003,29 @@ Validates the Solid Boundary Geometry
     "tolerance": {
       "title": "Tolerance",
       "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and face triangulation.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * success
 * failed
@@ -9654,22 +12033,38 @@ Validates the Solid Boundary Geometry
 ### Category
 * Geometry
 
-## SpatialFilter
+## Spatial Filter
 ### Type
 * processor
 ### Description
-Filter Features by Spatial Relationship
+Filters candidate features based on their spatial relationship to filter geometry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SpatialFilter Parameters",
+  "title": "Spatial Filter Parameters",
   "description": "Configure spatial relationship testing between filter and candidate geometries",
   "type": "object",
   "properties": {
+    "predicate": {
+      "title": "Spatial Predicate",
+      "description": "The spatial relationship to test between filter and candidate geometries.",
+      "default": "intersects",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SpatialPredicate"
+        }
+      ]
+    },
+    "passOnMultipleMatches": {
+      "title": "Pass on Multiple Matches",
+      "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
+      "default": true,
+      "type": "boolean"
+    },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+      "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
       "default": false,
       "type": "boolean"
     },
@@ -9684,7 +12079,7 @@ Filter Features by Spatial Relationship
     },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of matching filters",
+      "description": "Optional attribute name to store the number of matching filters.",
       "default": null,
       "anyOf": [
         {
@@ -9694,28 +12089,9 @@ Filter Features by Spatial Relationship
           "type": "null"
         }
       ]
-    },
-    "passOnMultipleMatches": {
-      "title": "Pass on Multiple Matches",
-      "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
-      "default": true,
-      "type": "boolean"
-    },
-    "predicate": {
-      "title": "Spatial Predicate",
-      "description": "The spatial relationship to test between filter and candidate geometries",
-      "default": "intersects",
-      "allOf": [
-        {
-          "$ref": "#/definitions/SpatialPredicate"
-        }
-      ]
     }
   },
   "definitions": {
-    "Attribute": {
-      "type": "string"
-    },
     "SpatialPredicate": {
       "oneOf": [
         {
@@ -9782,6 +12158,9 @@ Filter Features by Spatial Relationship
           ]
         }
       ]
+    },
+    "Attribute": {
+      "type": "string"
     }
   }
 }
@@ -9796,66 +12175,17 @@ Filter Features by Spatial Relationship
 ### Category
 * Filter
 
-## SqlReader
-### Type
-* source
-### Description
-Read Features from SQL Database
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SQL Reader Parameters",
-  "description": "Configure the SQL query and database connection for reading features from a database",
-  "type": "object",
-  "required": [
-    "databaseUrl",
-    "sql"
-  ],
-  "properties": {
-    "databaseUrl": {
-      "title": "Database URL",
-      "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "sql": {
-      "title": "SQL Query",
-      "description": "SQL query expression to execute for retrieving data",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-### Output Ports
-* default
-### Category
-* Input
-
-## StatisticsCalculator
+## Statistics Calculator
 ### Type
 * processor
 ### Description
-Calculates statistical aggregations on feature attributes with customizable expressions
+Groups features by one or more attributes and computes an aggregate statistic (count, sum, minimum, maximum, or mean) for each group, emitting one feature per group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "StatisticsCalculator Parameters",
-  "description": "Configuration for calculating statistical aggregations on feature attributes.",
+  "title": "Statistics Calculator Parameters",
+  "description": "Defines the grouping attributes and the statistics computed for each group.",
   "type": "object",
   "required": [
     "calculations"
@@ -9863,15 +12193,15 @@ Calculates statistical aggregations on feature attributes with customizable expr
   "properties": {
     "calculations": {
       "title": "Calculations",
-      "description": "List of statistical calculations to perform on grouped features",
+      "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Calculation"
       }
     },
     "groupBy": {
-      "title": "Group by",
-      "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.",
+      "title": "Group By",
+      "description": "Attributes to group features by before aggregating. When omitted, all input features form a single group.",
       "type": [
         "array",
         "null"
@@ -9881,8 +12211,8 @@ Calculates statistical aggregations on feature attributes with customizable expr
       }
     },
     "groupId": {
-      "title": "Group id",
-      "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.",
+      "title": "Group ID",
+      "description": "Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -9894,49 +12224,116 @@ Calculates statistical aggregations on feature attributes with customizable expr
     }
   },
   "definitions": {
-    "Attribute": {
-      "type": "string"
-    },
     "Calculation": {
       "type": "object",
       "required": [
-        "expr",
         "newAttribute"
       ],
       "properties": {
-        "expr": {
-          "title": "Calculation to perform",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
         "newAttribute": {
-          "title": "New attribute name",
+          "title": "New Attribute Name",
+          "description": "Name of the output attribute that stores the computed statistic.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
             }
           ]
+        },
+        "aggregation": {
+          "title": "Aggregation Method",
+          "description": "Statistic to compute across each group. Defaults to sum.",
+          "default": "sum",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AggregationMethod"
+            }
+          ]
+        },
+        "expr": {
+          "title": "Value Expression",
+          "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
         }
       }
     },
-    "Expr": {
+    "Attribute": {
       "type": "string"
+    },
+    "AggregationMethod": {
+      "oneOf": [
+        {
+          "title": "Count",
+          "description": "Counts the number of features in each group. The value expression is not required and is ignored.",
+          "type": "string",
+          "enum": [
+            "count"
+          ]
+        },
+        {
+          "title": "Sum",
+          "description": "Adds the value expression across all features in each group.",
+          "type": "string",
+          "enum": [
+            "sum"
+          ]
+        },
+        {
+          "title": "Minimum",
+          "description": "Keeps the smallest value of the expression in each group.",
+          "type": "string",
+          "enum": [
+            "min"
+          ]
+        },
+        {
+          "title": "Maximum",
+          "description": "Keeps the largest value of the expression in each group.",
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        {
+          "title": "Mean",
+          "description": "Averages the value of the expression across all features in each group.",
+          "type": "string",
+          "enum": [
+            "mean"
+          ]
+        }
+      ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * complete
 ### Category
 * Attribute
 
-## ThreeDimensionBoxReplacer
+## Three Dimension Box Replacer
 ### Type
 * processor
 ### Description
@@ -9957,33 +12354,6 @@ Replace Geometry with 3D Box from Attributes
     "minZ"
   ],
   "properties": {
-    "maxX": {
-      "title": "Maximum X Attribute",
-      "description": "Name of attribute containing the maximum X coordinate",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "maxY": {
-      "title": "Maximum Y Attribute",
-      "description": "Name of attribute containing the maximum Y coordinate",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "maxZ": {
-      "title": "Maximum Z Attribute",
-      "description": "Name of attribute containing the maximum Z coordinate",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
     "minX": {
       "title": "Minimum X Attribute",
       "description": "Name of attribute containing the minimum X coordinate",
@@ -10010,6 +12380,33 @@ Replace Geometry with 3D Box from Attributes
           "$ref": "#/definitions/Attribute"
         }
       ]
+    },
+    "maxX": {
+      "title": "Maximum X Attribute",
+      "description": "Name of attribute containing the maximum X coordinate",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "maxY": {
+      "title": "Maximum Y Attribute",
+      "description": "Name of attribute containing the maximum Y coordinate",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "maxZ": {
+      "title": "Maximum Z Attribute",
+      "description": "Name of attribute containing the maximum Z coordinate",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -10020,59 +12417,66 @@ Replace Geometry with 3D Box from Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## ThreeDimensionForcer
+## Three Dimension Forcer
 ### Type
 * processor
 ### Description
-Convert 2D Geometry to 3D by Adding Z-Coordinates
+Adds Z-coordinates to 2D geometries to produce 3D output.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreeDimensionForcer Parameters",
-  "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+  "title": "Three Dimension Forcer Parameters",
+  "description": "Configure the elevation applied to 2D geometry and how existing Z values are treated.",
   "type": "object",
   "properties": {
     "elevation": {
       "title": "Elevation",
-      "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
         },
-        {
-          "type": "null"
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
-      "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
-      "default": false,
+      "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+      "default": true,
       "type": "boolean"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## ThreeDimensionPlanarityRotator
+## Three Dimension Planarity Rotator
 ### Type
 * processor
 ### Description
@@ -10080,14 +12484,14 @@ Rotates a single or a set of 2D geometries in 3D space to align them horizontall
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
 
-## ThreeDimensionRotator
+## Three Dimension Rotator
 ### Type
 * processor
 ### Description
@@ -10112,96 +12516,176 @@ Rotate 3D Geometry Around Arbitrary Axis
     "angleDegree": {
       "title": "Angle in Degrees",
       "description": "Rotation angle in degrees around the specified axis",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    },
-    "directionX": {
-      "title": "Direction X",
-      "description": "X component of the rotation axis direction vector",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "directionY": {
-      "title": "Direction Y",
-      "description": "Y component of the rotation axis direction vector",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "directionZ": {
-      "title": "Direction Z",
-      "description": "Z component of the rotation axis direction vector",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
+      }
     },
     "originX": {
       "title": "Origin X",
       "description": "X coordinate of the rotation origin point",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "originY": {
       "title": "Origin Y",
       "description": "Y coordinate of the rotation origin point",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
+      }
     },
     "originZ": {
       "title": "Origin Z",
       "description": "Z coordinate of the rotation origin point",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
+    },
+    "directionX": {
+      "title": "Direction X",
+      "description": "X component of the rotation axis direction vector",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "directionY": {
+      "title": "Direction Y",
+      "description": "Y component of the rotation axis direction vector",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "directionZ": {
+      "title": "Direction Z",
+      "description": "Z component of the rotation axis direction vector",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## TwoDimensionForcer
+## Two Dimension Forcer
 ### Type
 * processor
 ### Description
-Force 3D Geometry to 2D by Removing Z-Coordinates
+Removes Z-coordinates from 3D geometries to produce 2D output.
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
+* rejected
 ### Category
 * Geometry
 
-## VertexCounter
+## Vertex Counter
 ### Type
 * processor
 ### Description
@@ -10235,13 +12719,13 @@ Count Geometry Vertices to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## VertexRemover
+## Vertex Remover
 ### Type
 * processor
 ### Description
@@ -10249,24 +12733,24 @@ Remove Redundant Vertices from Geometry
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
 
-## VerticalReprojector
+## Vertical Reprojector
 ### Type
 * processor
 ### Description
-Reproject Vertical Coordinates Between Datums
+Reprojects the vertical coordinate of feature geometry between vertical datums.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Vertical Reprojector Parameters",
-  "description": "Configure the type of vertical datum conversion to apply",
+  "description": "Configure which vertical datum conversion to apply.",
   "type": "object",
   "required": [
     "reprojectorType"
@@ -10274,7 +12758,7 @@ Reproject Vertical Coordinates Between Datums
   "properties": {
     "reprojectorType": {
       "title": "Reprojector Type",
-      "description": "The type of vertical coordinate transformation to apply",
+      "description": "Vertical datum conversion applied to each geometry's Z coordinate.",
       "allOf": [
         {
           "$ref": "#/definitions/VerticalReprojectorType"
@@ -10284,35 +12768,42 @@ Reproject Vertical Coordinates Between Datums
   },
   "definitions": {
     "VerticalReprojectorType": {
-      "type": "string",
-      "enum": [
-        "jgd2011ToWgs84"
+      "oneOf": [
+        {
+          "title": "JGD2011 to WGS 84",
+          "description": "Converts JGD2011 orthometric heights to WGS 84 ellipsoidal heights using the Japanese geoid model.",
+          "type": "string",
+          "enum": [
+            "jgd2011ToWgs84"
+          ]
+        }
       ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
-## XMLFragmenter
+## XML Fragmenter
 ### Type
 * processor
 ### Description
-Fragments large XML documents into smaller pieces based on specified element patterns
+Splits an XML document into features by matching element names, emitting one feature per matched element with its XML text, tag name, and element and parent identifiers as attributes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "XMLFragmenter Parameters",
-  "description": "Configuration for fragmenting XML documents into smaller pieces.",
+  "title": "XML Fragmenter Parameters",
+  "description": "Configures where the XML document comes from and which of its elements become features.",
   "oneOf": [
     {
-      "description": "URL-based source configuration for XML fragmenting",
+      "title": "XML File",
+      "description": "Reads the XML document from the file path or URL held in the attribute.",
       "type": "object",
       "required": [
         "attribute",
@@ -10321,19 +12812,131 @@ Fragments large XML documents into smaller pieces based on specified element pat
         "source"
       ],
       "properties": {
-        "attribute": {
-          "$ref": "#/definitions/Attribute"
-        },
-        "elementsToExclude": {
-          "$ref": "#/definitions/Expr"
-        },
-        "elementsToMatch": {
-          "$ref": "#/definitions/Expr"
-        },
         "source": {
           "type": "string",
           "enum": [
-            "url"
+            "file"
+          ]
+        },
+        "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "XML Text",
+      "description": "Uses the attribute value itself as the XML document.",
+      "type": "object",
+      "required": [
+        "attribute",
+        "elementsToExclude",
+        "elementsToMatch",
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        },
+        "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
           ]
         }
       }
@@ -10342,30 +12945,28 @@ Fragments large XML documents into smaller pieces based on specified element pat
   "definitions": {
     "Attribute": {
       "type": "string"
-    },
-    "Expr": {
-      "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Transform
 
-## XMLValidator
+## XML Validator
 ### Type
 * processor
 ### Description
-Validates XML documents against XSD schemas with success/failure routing
+Validates XML documents for well-formed syntax, namespace declarations, or compliance with the XSD schemas they reference. Details of any errors found are added to an `xmlError` attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "XmlValidatorParam",
+  "title": "XML Validator Parameters",
+  "description": "Configures which XML document is validated and how thoroughly.",
   "type": "object",
   "required": [
     "attribute",
@@ -10374,46 +12975,97 @@ Validates XML documents against XSD schemas with success/failure routing
   ],
   "properties": {
     "attribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "XML Attribute",
+      "description": "Attribute holding the XML document: the file path or URL to read, or the XML text itself, depending on the input type.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     },
     "inputType": {
-      "$ref": "#/definitions/XmlInputType"
+      "title": "Input Type",
+      "description": "Whether the attribute holds the location of the document or the document itself.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/XmlInputType"
+        }
+      ]
     },
     "validationType": {
-      "$ref": "#/definitions/ValidationType"
+      "title": "Validation Type",
+      "description": "Checks to run against the document.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ValidationType"
+        }
+      ]
     }
   },
   "definitions": {
     "Attribute": {
       "type": "string"
     },
-    "ValidationType": {
-      "type": "string",
-      "enum": [
-        "syntax",
-        "syntaxAndNamespace",
-        "syntaxAndSchema"
+    "XmlInputType": {
+      "oneOf": [
+        {
+          "title": "XML File",
+          "description": "Reads the document from the file path or URL held in the attribute.",
+          "type": "string",
+          "enum": [
+            "file"
+          ]
+        },
+        {
+          "title": "XML Text",
+          "description": "Uses the attribute value itself as the document.",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        }
       ]
     },
-    "XmlInputType": {
-      "type": "string",
-      "enum": [
-        "file",
-        "text"
+    "ValidationType": {
+      "oneOf": [
+        {
+          "title": "Syntax",
+          "description": "Checks that the document is well-formed XML.",
+          "type": "string",
+          "enum": [
+            "syntax"
+          ]
+        },
+        {
+          "title": "Syntax and Namespace",
+          "description": "Also checks that every namespace prefix used by an element is declared on that element or an ancestor, and that unprefixed elements have a default namespace.",
+          "type": "string",
+          "enum": [
+            "syntaxAndNamespace"
+          ]
+        },
+        {
+          "title": "Syntax and Schema",
+          "description": "Also validates the document against the XSD schemas named by its `xsi:schemaLocation`. Unreachable remote schemas are skipped, as those locations are hints per the XML Schema specification.",
+          "type": "string",
+          "enum": [
+            "syntaxAndSchema"
+          ]
+        }
       ]
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * success
 * failed
 ### Category
 * Transform
 
-## XmlWriter
+## XML Writer
 ### Type
 * sink
 ### Description
@@ -10430,32 +13082,41 @@ Writes features to XML files.
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the XML file to create",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "title": "Output File",
+      "description": "Output path or expression for the XML file to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
 
-## ZipFileWriter
+## Zip File Writer
 ### Type
 * sink
 ### Description
-Writes features to a zip file
+Compresses files referenced by incoming features into a single ZIP archive.
 ### Parameters
 ```json
 {
@@ -10468,23 +13129,223 @@ Writes features to a zip file
   ],
   "properties": {
     "output": {
-      "description": "Output path",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
+      "title": "Output File",
+      "description": "Output path or expression for the ZIP archive to create.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
         }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
+      }
     }
   }
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
+
+## glTF Reader
+### Type
+* source
+### Description
+Reads 3D models from glTF 2.0 files, including meshes, nodes, scenes, and geometry primitives.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "glTF Reader Parameters",
+  "type": "object",
+  "properties": {
+    "mergeMeshes": {
+      "title": "Merge Meshes",
+      "description": "Combines all meshes from the glTF file into a single output feature.",
+      "default": false,
+      "type": "boolean"
+    },
+    "includeNodes": {
+      "title": "Include Nodes",
+      "description": "Includes node hierarchy information from the glTF scene graph in feature attributes.",
+      "default": true,
+      "type": "boolean"
+    },
+    "featureClassAttribute": {
+      "title": "Feature Class Attribute",
+      "description": "Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "featureGranularity": {
+      "title": "Feature Granularity",
+      "description": "What one output feature represents. `mesh` (the default) emits one feature per glTF mesh. `featureId` splits each mesh into one feature per EXT_mesh_features feature ID, attaching that object's EXT_structural_metadata properties; files without EXT_mesh_features still yield one feature per mesh.",
+      "default": "mesh",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureGranularity"
+        }
+      ]
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "FeatureGranularity": {
+      "title": "Feature Granularity",
+      "description": "Controls what one output feature represents.",
+      "oneOf": [
+        {
+          "description": "One feature per glTF mesh (or per node instance). Structural-metadata properties are not surfaced, because they are per object, not per mesh.",
+          "type": "string",
+          "enum": [
+            "mesh"
+          ]
+        },
+        {
+          "description": "One feature per `EXT_mesh_features` feature ID, each carrying that object's `EXT_structural_metadata` properties. Files without `EXT_mesh_features` still yield one feature per mesh.",
+          "type": "string",
+          "enum": [
+            "featureId"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* features
+### Category
+* Input
+
+## glTF Writer
+### Type
+* sink
+### Description
+Writes 3D features to GLTF format with optional texture attachment
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "glTF Writer Parameters",
+  "description": "Configuration for writing features to GLTF 3D format.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "attachTexture": {
+      "description": "Whether to attach texture information to the GLTF model",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "dracoCompression": {
+      "description": "Apply Draco compression to the geometry",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "schemaKey": {
+      "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+### Category
+* File

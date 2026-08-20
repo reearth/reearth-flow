@@ -1,0 +1,23 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: reearth-flow
+  namespace: reearth
+  description: DAG workflow execution engine for geospatial data (Rust engine + Go
+    GraphQL server + React UI)
+  annotations:
+    github.com/project-slug: reearth/reearth-flow
+  links:
+  - url: https://github.com/reearth/reearth-flow
+    title: GitHub
+    icon: github
+  tags:
+  - rust
+  - go
+  - react
+  - workflow
+  - dag
+spec:
+  type: service
+  lifecycle: production
+  owner: reearth/flow

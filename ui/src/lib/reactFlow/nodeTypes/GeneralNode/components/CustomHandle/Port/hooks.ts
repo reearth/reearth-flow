@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { config } from "@flow/config";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+import useDoubleClick from "@flow/hooks/useDoubleClick";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
-  DebugRunState,
+  AvailableIntermediateData,
   SelectedIntermediateData,
   useCurrentProject,
 } from "@flow/stores";
@@ -13,13 +15,12 @@ export default ({
   nodeId,
   nodeData,
   portName,
-  readonly,
 }: {
   nodeId: string;
   nodeData: NodeData;
   portName: string;
-  readonly: boolean;
 }) => {
+  const { canViewIntermediateData } = useEditorContext();
   const [currentProject] = useCurrentProject();
   const { api } = config();
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
@@ -51,7 +52,7 @@ export default ({
 
   useEffect(() => {
     if (
-      readonly ||
+      !canViewIntermediateData ||
       debugJobState?.status !== "completed" ||
       !debugJobState?.jobId ||
       !dataUrl
@@ -83,80 +84,138 @@ export default ({
       controller.abort();
     };
   }, [
-    readonly,
+    canViewIntermediateData,
     debugJobState?.status,
     debugJobState?.jobId,
     dataUrl,
     hasIntermediateData,
   ]);
 
-  const handleClick = useCallback(async () => {
-    if (!dataUrl) return;
+  const writtenForJobRef = useRef<string | null>(null);
 
-    const newDebugRunState: DebugRunState = {
-      ...debugRunState,
-      jobs:
-        debugRunState?.jobs?.map((job) => {
-          if (job.projectId !== currentProject?.id) return job;
+  useEffect(() => {
+    const jobId = debugJobState?.jobId;
+    if (!hasIntermediateData || !jobId || !currentProject?.id) return;
+    const writeKey = `${nodeId}:${portName}:${jobId}`;
+    if (writtenForJobRef.current === writeKey) return;
+    writtenForJobRef.current = writeKey;
 
-          const currentData = job.selectedIntermediateData ?? [];
-          const isCurrentlySelected = currentData.find(
-            (sid) => sid.nodeId === nodeId && sid.portName === portName,
-          );
-
-          let newSelectedIntermediateData:
-            | SelectedIntermediateData[]
-            | undefined;
-          let newFocusedURL: string | undefined;
-
-          if (isCurrentlySelected) {
-            const filtered = currentData.filter(
-              (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
-            );
-            newSelectedIntermediateData = filtered;
-
-            const removedIndex = currentData.findIndex(
-              (sid) => sid.nodeId === nodeId && sid.portName === portName,
-            );
-            if (removedIndex >= 0 && filtered.length > 0) {
-              newFocusedURL =
-                removedIndex < filtered.length
-                  ? filtered[removedIndex].url
-                  : filtered[removedIndex - 1]?.url;
-            }
-          } else {
-            const nodeName =
-              nodeData.customizations?.customName ||
-              nodeData.officialName ||
-              nodeId;
-            newSelectedIntermediateData = [
-              ...currentData,
-              {
-                nodeId,
-                url: dataUrl,
-                portName,
-                displayName: `${nodeName} (${portName})`,
-              },
-            ];
-          }
-
-          return {
-            ...job,
-            focusedIntermediateData: newFocusedURL ?? dataUrl,
-            selectedIntermediateData: newSelectedIntermediateData,
-          };
-        }) ?? [],
-    };
-    await updateValue(newDebugRunState);
+    updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
+        if (job.projectId !== currentProject.id) return job;
+        const existing: AvailableIntermediateData[] =
+          job.availableIntermediateData ?? [];
+        if (
+          existing.some((e) => e.nodeId === nodeId && e.portName === portName)
+        )
+          return job;
+        return {
+          ...job,
+          availableIntermediateData: [...existing, { nodeId, portName }],
+        };
+      }),
+    }));
   }, [
-    dataUrl,
-    debugRunState,
-    currentProject,
+    hasIntermediateData,
+    debugJobState?.jobId,
+    currentProject?.id,
     nodeId,
     portName,
-    nodeData,
     updateValue,
   ]);
 
-  return { hasIntermediateData, isSelected, jobStatus, handleClick };
+  const selectIntermediateData = useCallback(async () => {
+    if (!dataUrl) return;
+
+    await updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
+        if (job.projectId !== currentProject?.id) return job;
+
+        const currentData = job.selectedIntermediateData ?? [];
+        const isCurrentlySelected = currentData.some(
+          (sid) => sid.nodeId === nodeId && sid.portName === portName,
+        );
+        const nodeName =
+          nodeData.customizations?.customName ||
+          nodeData.officialName ||
+          nodeId;
+        const displayName = `${nodeName} (${portName})`;
+
+        const newSelectedIntermediateData: SelectedIntermediateData[] =
+          isCurrentlySelected
+            ? currentData.map((sid) =>
+                sid.nodeId === nodeId && sid.portName === portName
+                  ? { ...sid, url: dataUrl, displayName }
+                  : sid,
+              )
+            : [...currentData, { nodeId, url: dataUrl, portName, displayName }];
+
+        return {
+          ...job,
+          focusedIntermediateData: dataUrl,
+          selectedIntermediateData: newSelectedIntermediateData,
+        };
+      }),
+    }));
+  }, [dataUrl, currentProject, nodeId, portName, nodeData, updateValue]);
+
+  const removeIntermediateData = useCallback(async () => {
+    if (!dataUrl) return;
+    await updateValue((prev) => ({
+      ...prev,
+      jobs: (prev.jobs ?? []).map((job) => {
+        if (job.projectId !== currentProject?.id) return job;
+
+        const currentData = job.selectedIntermediateData ?? [];
+        const isCurrentlySelected = currentData.some(
+          (sid) => sid.nodeId === nodeId && sid.portName === portName,
+        );
+
+        if (!isCurrentlySelected) return job;
+
+        const removed = currentData.find(
+          (sid) => sid.nodeId === nodeId && sid.portName === portName,
+        );
+        const filtered = currentData.filter(
+          (sid) => !(sid.nodeId === nodeId && sid.portName === portName),
+        );
+
+        let newFocusedURL = job.focusedIntermediateData;
+        if (job.focusedIntermediateData === removed?.url) {
+          newFocusedURL = undefined;
+          if (filtered.length > 0) {
+            const removedIndex = currentData.findIndex(
+              (sid) => sid.nodeId === nodeId && sid.portName === portName,
+            );
+            newFocusedURL =
+              removedIndex < filtered.length
+                ? filtered[removedIndex].url
+                : filtered[removedIndex - 1]?.url;
+          }
+        }
+
+        return {
+          ...job,
+          focusedIntermediateData: newFocusedURL,
+          selectedIntermediateData: filtered,
+        };
+      }),
+    }));
+  }, [dataUrl, currentProject, nodeId, portName, updateValue]);
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
+    selectIntermediateData,
+    removeIntermediateData,
+    250,
+  );
+
+  return {
+    hasIntermediateData,
+    handleDoubleClick,
+    isSelected,
+    jobStatus,
+    handleSingleClick,
+  };
 };

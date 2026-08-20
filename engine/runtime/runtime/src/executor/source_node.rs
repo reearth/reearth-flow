@@ -1,20 +1,17 @@
 use std::{
     collections::HashSet,
-    env,
     fmt::Debug,
     future::Future,
     pin::pin,
     sync::{atomic::AtomicU64, Arc},
-    time::{self, Duration},
+    time,
 };
 
-use once_cell::sync::Lazy;
 use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
 use futures::{future::select_all, future::Either, Stream, StreamExt};
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::{
     runtime::Handle,
@@ -35,14 +32,6 @@ use crate::{
 use super::execution_dag::ExecutionDag;
 use super::node::Node;
 
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
-});
-
 /// The source operation collector.
 #[derive(Debug)]
 pub struct SourceNode<F> {
@@ -57,7 +46,7 @@ pub struct SourceNode<F> {
     /// The runtime to run the source in.
     runtime: Arc<Handle>,
 
-    expr_engine: Arc<Engine>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     sandbox_root: Uri,
@@ -88,7 +77,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 
         for (index, source_runner) in source_runners.into_iter().enumerate() {
             let ctx = NodeContext::new(
-                Arc::clone(&self.expr_engine),
+                Arc::clone(&self.variables),
                 Arc::clone(&self.storage_resolver),
                 Arc::clone(&self.kv_store),
                 self.event_hub.clone(),
@@ -144,9 +133,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         status: NodeStatus::Completed,
                         feature_id: None,
                     });
-
-                    tracing::info!("Waiting for final status to propagate for all source nodes");
-                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
                 } else if let Err(ref e) = result {
                     event_hub.error_log_with_node_info(
                         Some(node_span.clone()),
@@ -178,7 +164,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
             {
                 Either::Left((_, _)) => {
                     let ctx = NodeContext::new(
-                        Arc::clone(&self.expr_engine),
+                        Arc::clone(&self.variables),
                         Arc::clone(&self.storage_resolver),
                         Arc::clone(&self.kv_store),
                         self.event_hub.clone(),
@@ -192,9 +178,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                             feature_id: None,
                         });
                     }
-
-                    tracing::info!("Waiting for final status to propagate for all source nodes");
-                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                     send_to_all_nodes(&self.sources, ctx)?;
                     self.event_hub.send(Event::SourceFlushed);
@@ -214,7 +197,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 num_running_sources -= 1;
                                 if num_running_sources == 0 {
                                     let ctx = NodeContext::new(
-                                        Arc::clone(&self.expr_engine),
+                                        Arc::clone(&self.variables),
                                         Arc::clone(&self.storage_resolver),
                                         Arc::clone(&self.kv_store),
                                         self.event_hub.clone(),
@@ -228,9 +211,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                             feature_id: None,
                                         });
                                     }
-
-                                    tracing::info!("Waiting for final status to propagate for all source nodes");
-                                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                                     send_to_all_nodes(&self.sources, ctx)?;
                                     self.event_hub.send(Event::SourceFlushed);
@@ -247,12 +227,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     status: NodeStatus::Failed,
                                     feature_id: None,
                                 });
-
-                                tracing::info!(
-                                    "Waiting for failed status to propagate for source node {}",
-                                    self.sources[index].channel_manager.owner().id
-                                );
-                                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                                 return Err(ExecutionError::Source(e));
                             }
@@ -289,7 +263,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                             source.channel_manager.send_op(ExecutorContext::new(
                                 feature.clone(),
                                 port.clone(),
-                                Arc::clone(&self.expr_engine),
+                                Arc::clone(&self.variables),
                                 Arc::clone(&self.storage_resolver),
                                 Arc::clone(&self.kv_store),
                                 self.event_hub.clone(),
@@ -410,7 +384,7 @@ pub async fn create_source_node<F>(
         receivers,
         shutdown,
         runtime,
-        expr_engine: Arc::clone(&ctx.expr_engine),
+        variables: Arc::clone(&ctx.variables),
         storage_resolver: Arc::clone(&ctx.storage_resolver),
         kv_store: Arc::clone(&ctx.kv_store),
         sandbox_root: ctx.sandbox_root.clone(),

@@ -5,6 +5,8 @@ import {
   Math as CesiumMath,
 } from "cesium";
 
+import { gmlGeometriesOf, readCoord } from "./cityGmlGeometryToPrimitives";
+
 export const getFeatureBoundingSphereFromBounds = (gmlGeometries: any[]) => {
   let minX = Infinity;
   let minY = Infinity;
@@ -19,23 +21,21 @@ export const getFeatureBoundingSphereFromBounds = (gmlGeometries: any[]) => {
 
     for (const polygon of geom.polygons) {
       for (const coord of polygon.exterior || []) {
-        if (
-          coord &&
-          typeof coord.x === "number" &&
-          typeof coord.y === "number"
-        ) {
-          const z = typeof coord.z === "number" ? coord.z : 0;
+        // Either coordinate form: `{ x, y, z }` from the legacy transform,
+        // `[lon, lat, z]` from the new-geometry one.
+        const position = readCoord(coord);
+        if (!position) continue;
+        const [x, y, z] = position;
 
-          minX = Math.min(minX, coord.x);
-          minY = Math.min(minY, coord.y);
-          minZ = Math.min(minZ, z);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        minZ = Math.min(minZ, z);
 
-          maxX = Math.max(maxX, coord.x);
-          maxY = Math.max(maxY, coord.y);
-          maxZ = Math.max(maxZ, z);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        maxZ = Math.max(maxZ, z);
 
-          found = true;
-        }
+        found = true;
       }
     }
   }
@@ -61,10 +61,11 @@ export const zoomToBoundingSphere = (
   cesiumViewerRef: any,
   duration: number,
 ) => {
-  const gmlGeometries =
-    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-
-  if (!Array.isArray(gmlGeometries)) return;
+  // The same normalization the renderer uses, so the camera reaches a
+  // new-format CityGML feature too: it has no `gmlGeometries` of its own, its
+  // surfaces are read off `coordinates`.
+  const gmlGeometries = gmlGeometriesOf(geometry);
+  if (!gmlGeometries) return;
 
   const sphere = getFeatureBoundingSphereFromBounds(gmlGeometries);
   if (!sphere) return;
@@ -74,15 +75,14 @@ export const zoomToBoundingSphere = (
     Math.max(sphere.radius * 1.2, 10),
   );
 
-  cesiumViewerRef.current?.cesiumElement.camera.flyToBoundingSphere(
-    paddedSphere,
-    {
-      duration,
-      offset: new HeadingPitchRange(
-        0,
-        CesiumMath.toRadians(-35),
-        paddedSphere.radius * 2.5,
-      ),
-    },
-  );
+  const ce = cesiumViewerRef.current?.cesiumElement;
+  if (!ce || ce.isDestroyed()) return;
+  ce.camera.flyToBoundingSphere(paddedSphere, {
+    duration,
+    offset: new HeadingPitchRange(
+      0,
+      CesiumMath.toRadians(-35),
+      paddedSphere.radius * 2.5,
+    ),
+  });
 };

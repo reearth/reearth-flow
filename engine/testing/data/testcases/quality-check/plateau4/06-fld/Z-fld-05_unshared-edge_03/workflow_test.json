@@ -1,5 +1,6 @@
 {
   "description": "Only unshared edges detected (reported in CSV but excluded from error count) — passes as OK",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {

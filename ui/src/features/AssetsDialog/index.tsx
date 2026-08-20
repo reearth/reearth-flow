@@ -55,6 +55,8 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
     searchTerm,
     layoutView,
     isCreatingAsset,
+    uploadingTitle,
+    uploadPercent,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,
@@ -100,7 +102,8 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
                 />
                 <Select
                   value={currentSortValue}
-                  onValueChange={handleSortChange}>
+                  onValueChange={(v) => v != null && handleSortChange(v)}
+                  items={sortOptions}>
                   <SelectTrigger className="h-[36px] w-[150px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -174,7 +177,10 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
               </>
             ) : (
               <div className="h-full">
-                <LoadingSkeleton title={t("Uploading Asset...")} />
+                <LoadingSkeleton
+                  title={uploadingTitle}
+                  progress={uploadPercent}
+                />
               </div>
             )}
             {assets && assets.length > 0 && (

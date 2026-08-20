@@ -24,8 +24,8 @@ describe("convertEdges", () => {
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
-      fromPort: "default",
-      toPort: "default",
+      fromPort: "features",
+      toPort: "features",
     });
     expect(typeof result[0].id).toBe("string");
     expect(result[0].id).not.toBe("");
@@ -49,8 +49,8 @@ describe("convertEdges", () => {
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
-      fromPort: "default",
-      toPort: "default",
+      fromPort: "features",
+      toPort: "features",
     });
     expect(result[1]).toMatchObject({
       from: "B",
@@ -71,8 +71,8 @@ describe("convertEdges", () => {
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
-      fromPort: "default",
-      toPort: "default",
+      fromPort: "features",
+      toPort: "features",
     });
   });
 
@@ -118,8 +118,8 @@ describe("convertEdges", () => {
     expect(result[0]).toMatchObject({
       from: "A",
       to: "B",
-      fromPort: "default",
-      toPort: "default",
+      fromPort: "features",
+      toPort: "features",
     });
     expect(result[1]).toMatchObject({
       from: "B",
@@ -131,12 +131,12 @@ describe("convertEdges", () => {
       from: "C",
       to: "D",
       fromPort: "output",
-      toPort: "default",
+      toPort: "features",
     });
     expect(result[3]).toMatchObject({
       from: "D",
       to: "E",
-      fromPort: "default",
+      fromPort: "features",
       toPort: "input",
     });
 

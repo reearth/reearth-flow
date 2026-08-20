@@ -5,7 +5,7 @@ import {
   FileIcon,
   CircleIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -37,6 +37,8 @@ import { FieldContext } from "../../utils/fieldUtils";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "../ValueEditorDialog/components/FlowExprCodeEditor";
+import { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
+import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 
 export type CodeValue = {
   type: "flowExpr" | "string";
@@ -48,6 +50,7 @@ type DialogMode = "assets" | "cms" | undefined;
 type Props = {
   open: boolean;
   fieldContext: FieldContext;
+  attributeSuggestions?: AutocompleteSuggestion[];
   onClose: () => void;
   onValueSubmit?: (value: CodeValue) => void;
 };
@@ -55,14 +58,29 @@ type Props = {
 const FlowExprEditorDialog: React.FC<Props> = ({
   open,
   fieldContext,
+  attributeSuggestions,
   onClose,
   onValueSubmit,
 }) => {
   const t = useT();
 
   const initialCode = fieldContext.value as CodeValue | undefined;
+
+  const allowedTypes = (fieldContext.schema as any)?.properties?.type?.enum as
+    | string[]
+    | undefined;
+  const flowExprAllowed = !allowedTypes || allowedTypes.includes("flowExpr");
+  const stringAllowed = !allowedTypes || allowedTypes.includes("string");
+
+  const defaultType: "flowExpr" | "string" = flowExprAllowed
+    ? "flowExpr"
+    : "string";
   const [codeType, setCodeType] = useState<"flowExpr" | "string">(
-    initialCode?.type ?? "flowExpr",
+    initialCode?.type === "flowExpr" && flowExprAllowed
+      ? "flowExpr"
+      : initialCode?.type === "string" && stringAllowed
+        ? "string"
+        : defaultType,
   );
   const [codeValue, setCodeValue] = useState(initialCode?.value ?? "");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -73,6 +91,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const variableSuggestions = useMemo(
+    () => toVariableAutocompleteSuggestions(workflowVariables),
+    [workflowVariables],
+  );
 
   const insertAtCursor = useCallback(
     (text: string) => {
@@ -87,32 +109,25 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleAssetSelect = useCallback(
     (asset: Asset) => {
-      // In FlowExpr, wrap asset URLs with Url(...) in expression mode
-      const snippet =
-        codeType === "flowExpr" ? `Url("${asset.url}")` : asset.url;
-      insertAtCursor(snippet);
+      insertAtCursor(asset.url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleCmsItemValue = useCallback(
     (url: string) => {
-      const snippet = codeType === "flowExpr" ? `Url("${url}")` : url;
-      insertAtCursor(snippet);
+      insertAtCursor(url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleVariableSelect = useCallback(
     (variableName: string) => {
-      // FlowExpr uses env("VAR") — Rhai uses env.get("VAR")
-      const snippet =
-        codeType === "flowExpr" ? `env("${variableName}")` : variableName;
-      insertAtCursor(snippet);
+      insertAtCursor(`variables["${variableName}"]`);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleSubmit = useCallback(() => {
@@ -130,11 +145,8 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent
-          size={isFullscreen ? "full" : "3xl"}
-          onInteractOutside={(e) => e.preventDefault()}
-          hideCloseButton>
+      <Dialog open={open} disablePointerDismissal onOpenChange={onClose}>
+        <DialogContent size={isFullscreen ? "full" : "3xl"} hideCloseButton>
           <DialogHeader>
             <DialogTitle className="relative flex h-[52px] items-center justify-between">
               <div className="flex flex-1 gap-4">
@@ -157,32 +169,39 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                     <CmsLogo className="h-4 w-4" />
                     {t("CMS Integration")}
                   </Button>
-                  {workflowVariables && workflowVariables.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <CircleIcon className="h-4 w-4" />
-                          {t("Variables")}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-64">
-                        {workflowVariables.map((variable) => (
-                          <DropdownMenuItem
-                            key={variable.id}
-                            onClick={() => handleVariableSelect(variable.name)}
-                            className="flex flex-col items-start">
-                            <div className="font-mono text-sm">
-                              {variable.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {variable.type} •{" "}
-                              {variable.defaultValue || t("No value set")}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  {workflowVariables &&
+                    workflowVariables.length > 0 &&
+                    flowExprAllowed &&
+                    codeType === "flowExpr" && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="outline" size="sm">
+                              <CircleIcon className="h-4 w-4" />
+                              {t("Variables")}
+                            </Button>
+                          }
+                        />
+                        <DropdownMenuContent align="end" className="w-64">
+                          {workflowVariables.map((variable) => (
+                            <DropdownMenuItem
+                              key={variable.id}
+                              onClick={() =>
+                                handleVariableSelect(variable.name)
+                              }
+                              className="flex flex-col items-start">
+                              <div className="font-mono text-sm">
+                                {variable.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {variable.type} •{" "}
+                                {variable.defaultValue || t("No value set")}
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                 </div>
               </div>
               <IconButton
@@ -208,13 +227,17 @@ const FlowExprEditorDialog: React.FC<Props> = ({
             value={codeType}
             onValueChange={(v) => setCodeType(v as "flowExpr" | "string")}
             className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[70vh]"}`}>
-            {/* Mode toggle */}
-            <div className="flex shrink-0 gap-1 border-b px-4 py-2">
-              <TabsList className="flex gap-2">
-                <TabsTrigger value="flowExpr">{t("Expression")}</TabsTrigger>
-                <TabsTrigger value="string">{t("Literal string")}</TabsTrigger>
-              </TabsList>
-            </div>
+            {/* Mode toggle — only shown when more than one type is allowed */}
+            {flowExprAllowed && stringAllowed && (
+              <div className="flex shrink-0 gap-1 border-b px-4 py-2">
+                <TabsList className="flex gap-2">
+                  <TabsTrigger value="flowExpr">{t("Expression")}</TabsTrigger>
+                  <TabsTrigger value="string">
+                    {t("Literal string")}
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            )}
 
             {/* Editor areas */}
             <TabsContent
@@ -225,7 +248,11 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 className="size-full"
                 value={codeValue}
                 onChange={setCodeValue}
-                placeholder={t('e.g. Url(env("BASE_DIR")) / value("filename")')}
+                attributeSuggestions={attributeSuggestions}
+                variableSuggestions={variableSuggestions}
+                placeholder={t(
+                  'e.g. Url(variables.get("BASE_DIR")) / "filename"',
+                )}
               />
             </TabsContent>
             <TabsContent
@@ -245,7 +272,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'TEMP: FlowExpr: use value("attr"), env("VAR"), Url(...), math::sqrt(...). Expressions are still in early stages and may change without deprecation. Avoid using complex expressions until the API is stabilized.',
+                    'FlowExpr: variables["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
                   )}
                 </span>
               ) : (

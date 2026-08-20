@@ -1,6 +1,11 @@
-import { type ValidationError } from "./RhaiValidator";
-
-export type { ValidationError };
+export type ValidationError = {
+  line: number;
+  column: number;
+  length: number;
+  message: string;
+  severity: "error" | "warning";
+  type: "syntax" | "semantic" | "undefined-variable" | "invalid-function";
+};
 
 class FlowExprValidator {
   private code: string;

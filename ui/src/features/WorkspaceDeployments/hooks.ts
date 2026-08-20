@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-import { useDebouncedSearch } from "@flow/hooks";
+import { usePagination } from "@flow/hooks";
 import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -26,33 +26,25 @@ export default () => {
   const [deploymentToBeRun, setDeploymentToBeRun] = useState<
     Deployment | undefined
   >(undefined);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
-    DeploymentOrderBy.UpdatedAt,
-  );
-  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
   const { useGetDeployments, useDeleteDeployment, executeDeployment } =
     useDeployment();
 
-  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
-    initialSearchTerm: "",
-    delay: 300,
-    onDebounced: () => {
-      refetch();
-    },
+  const {
+    page,
+    totalPages,
+    isFetching,
+    currentPage,
+    currentSortValue,
+    isDebouncingSearch,
+    setCurrentPage,
+    setCurrentOrderDir,
+    setSearchTerm,
+    handleSortChange,
+  } = usePagination({
+    useDataQuery: useGetDeployments,
+    workspaceId: currentWorkspace?.id,
+    defaultOrderBy: DeploymentOrderBy.UpdatedAt,
   });
-
-  const { page, refetch, isFetching } = useGetDeployments(
-    currentWorkspace?.id,
-    searchTerm,
-    {
-      page: currentPage,
-      orderDir: currentOrderDir,
-      orderBy: currentOrderBy,
-    },
-  );
 
   const sortOptions = [
     {
@@ -80,25 +72,6 @@ export default () => {
       label: t("Z To A"),
     },
   ];
-
-  useEffect(() => {
-    (async () => {
-      await refetch();
-    })();
-  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
-
-  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
-
-  const handleSortChange = useCallback((newSortValue: string) => {
-    const [orderBy, orderDir] = newSortValue.split("_") as [
-      DeploymentOrderBy,
-      OrderDirection,
-    ];
-    setCurrentOrderBy(orderBy);
-    setCurrentOrderDir(orderDir);
-  }, []);
-
-  const totalPages = page?.totalPages as number;
 
   const {
     location: { pathname },

@@ -27,7 +27,7 @@ func setupProject(t *testing.T, permissionChecker *mockPermissionChecker, worksp
 	return &Project{
 		projectRepo:       memory.NewProject(),
 		workspaceRepo:     workspaceRepo,
-		transaction:       &usecasex.NopTransaction{},
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
 		permissionChecker: permissionChecker,
 	}
 }

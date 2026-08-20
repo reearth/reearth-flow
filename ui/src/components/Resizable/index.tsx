@@ -1,4 +1,4 @@
-import { DragHandleDots2Icon } from "@radix-ui/react-icons";
+import { DotsSixVerticalIcon } from "@phosphor-icons/react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
 import { cn } from "@flow/lib/utils";
@@ -33,8 +33,8 @@ const ResizableHandle = ({
     )}
     {...props}>
     {withHandle && (
-      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
-        <DragHandleDots2Icon className="size-2.5" />
+      <div className="z-10 flex h-6 w-3 items-center justify-center rounded-sm border bg-border">
+        <DotsSixVerticalIcon className="size-2.5" />
       </div>
     )}
   </ResizablePrimitive.Separator>

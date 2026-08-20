@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use reearth_flow_common::csv::{
     auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
 };
-use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -18,11 +18,7 @@ pub struct CsvReaderParam {
     /// Skip this many rows from the beginning to find the header row (0 = first row is header)
     pub(crate) offset: Option<usize>,
     /// # Header Row Count
-    /// Number of consecutive rows that make up the header (default: 1).
-    /// When 0, no header rows are read and column names are auto-generated
-    /// as "column1", "column2", etc.
-    /// When greater than 1, column names are formed by joining non-empty values
-    /// from each header row with "_".
+    /// Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as "column1", "column2", and so on; when greater than 1, names are formed by joining values from each header row with "_".
     pub(crate) header_rows: Option<usize>,
     /// # Geometry Configuration
     /// Optional configuration for parsing geometry from CSV columns
@@ -30,6 +26,7 @@ pub struct CsvReaderParam {
     pub(crate) geometry: Option<GeometryConfig>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub(crate) async fn read_csv(
     delimiter: Delimiter,
     content: &Bytes,
@@ -82,7 +79,7 @@ pub(crate) async fn read_csv(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await

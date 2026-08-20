@@ -4,6 +4,14 @@ on:
     branches: [main, release/*, release]
   pull_request:
 
+# Cancel a previous in-progress run when a new commit is pushed to the same
+# pull request, so rapid pushes don't queue up duplicate runs. Pushes to
+# main/release branches are NOT cancelled — every released commit must be
+# fully validated.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   id-token: write
@@ -18,6 +26,7 @@ jobs:
       subscriber: ${{ steps.subscriber.outputs.any_changed }}
       ui: ${{ steps.ui.outputs.any_changed }}
       websocket: ${{ steps.websocket.outputs.any_changed }}
+      websocket_go: ${{ steps.websocket_go.outputs.any_changed }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -32,6 +41,7 @@ jobs:
         with:
           files: |
             server/api/**
+            server/db/**
             engine/schema/**
             .github/workflows/ci.yml
             .github/workflows/ci_api.yml
@@ -54,13 +64,13 @@ jobs:
             server/api/internal/rbac/**
             .github/workflows/ci.yml
             .github/workflows/ci_policies.yml
-            .github/workflows/update_policies_and_deploy_cerbos.yml
       - name: changed files for subscriber
         id: subscriber
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
           files: |
             server/subscriber/**
+            server/db/**
             .github/workflows/ci.yml
             .github/workflows/ci_subscriber.yml
             .github/workflows/build_deploy_subscriber.yml
@@ -70,6 +80,7 @@ jobs:
         with:
           files: |
             ui/**
+            engine/schema/feature-intermediate.schema.json
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
             .github/workflows/build_deploy_ui.yml
@@ -82,6 +93,15 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_websocket.yml
             .github/workflows/build_deploy_websocket.yml
+      - name: changed files for websocket-go
+        id: websocket_go
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
+        with:
+          files: |
+            server/websocket-go/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_websocket_go.yml
+            .github/workflows/build_deploy_websocket_go.yml
 
   ci-api:
     needs: prepare
@@ -107,6 +127,10 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.websocket == 'true'
     uses: ./.github/workflows/ci_websocket.yml
+  ci-websocket-go:
+    needs: prepare
+    if: needs.prepare.outputs.websocket_go == 'true'
+    uses: ./.github/workflows/ci_websocket_go.yml
 
   ci:
     runs-on: ubuntu-latest
@@ -117,6 +141,7 @@ jobs:
       - ci-subscriber
       - ci-ui
       - ci-websocket
+      - ci-websocket-go
     if: "!failure()"
     steps:
       - name: Harden Runner
@@ -225,7 +250,21 @@ jobs:
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit 
+    secrets: inherit
+  build-and-deploy-websocket-go:
+    needs:
+      - ci
+      - ci-websocket-go
+      - ci-collect-info
+    uses: ./.github/workflows/build_deploy_websocket_go.yml
+    if: ${{ !failure() && needs.ci-websocket-go.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    with:
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+    secrets: inherit
   build-docker-push-worker:
     needs:
       - ci
@@ -240,15 +279,6 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
-  update-policies-and-deploy-cerbos:
-    needs:
-      - ci
-      - ci-policies
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_policies_cerbos.yml
-    if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
-    secrets: inherit
-
   prepare-info-pr:
     runs-on: ubuntu-latest
     if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}

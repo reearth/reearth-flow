@@ -5,6 +5,7 @@ import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { CURSOR_COLORS, DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import type { YDocMetadataMap, YDocMetadataValue } from "@flow/types";
 
 import { useAuth } from "../auth";
 import { useUser } from "../gql";
@@ -69,23 +70,24 @@ export default ({
         }
 
         setYAwareness(yWebSocketProvider.awareness);
-        const metadata = yDoc.getMap("metadata");
+        const docMetadata: YDocMetadataMap =
+          yDoc.getMap<YDocMetadataValue>("metadata");
 
         yWebSocketProvider.on("sync", () => {
-          if (!metadata.get("initialized")) {
+          if (!docMetadata.get("initialized")) {
             // Within a transaction, set the flag and perform initialization.
             yDoc.transact(() => {
               const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
               // This check is only necessary to avoid duplicate workflows on older projects.
               if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
               // Only one client should set this flag.
-              if (!metadata.get("initialized")) {
+              if (!docMetadata.get("initialized")) {
                 const yWorkflow = yWorkflowConstructor(
                   DEFAULT_ENTRY_GRAPH_ID,
                   "Main Workflow",
                 );
                 yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
-                metadata.set("initialized", true);
+                docMetadata.set("initialized", true);
               }
             });
           }
@@ -99,16 +101,16 @@ export default ({
         const handleRollbackInProgress = (event: Y.YMapEvent<any>) => {
           if (
             event.changes.keys.has("rollbackInProgress") &&
-            metadata.get("rollbackInProgress") === true
+            docMetadata.get("rollbackInProgress") === true
           ) {
             setIsSynced(false);
           }
         };
 
-        metadata.observe(handleRollbackInProgress);
+        docMetadata.observe(handleRollbackInProgress);
 
         yDoc.on("destroy", () => {
-          metadata.unobserve(handleRollbackInProgress);
+          docMetadata.unobserve(handleRollbackInProgress);
         });
       })();
     }

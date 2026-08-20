@@ -13,7 +13,6 @@ version.workspace = true
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
-reearth-flow-eval-expr.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
@@ -24,6 +23,7 @@ chrono.workspace = true
 crossbeam.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+indexmap.workspace = true
 nutype.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
@@ -42,3 +42,5 @@ zstd.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+reearth-flow-action-source.workspace = true
+tempfile.workspace = true

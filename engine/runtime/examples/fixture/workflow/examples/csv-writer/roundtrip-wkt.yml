@@ -11,11 +11,12 @@ graphs:
       - id: a0f40a3e-61d3-48e2-a328-e7226c2ad2a1
         name: CsvReader
         type: action
-        action: CsvReader
+        action: CSV Reader
         with:
           format: csv
-          inline: |
-            env.get("inputCsv")
+          inline:
+            type: flowExpr
+            value: variables["inputCsv"]
           geometry:
             geometryMode: wkt
             column: geometry
@@ -24,10 +25,12 @@ graphs:
       - id: b5e66920-24c0-4c70-ae16-6be1ed3b917a
         name: CsvWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
-          output: ./output-roundtrip-wkt.csv
+          output:
+            type: string
+            value: ./output-roundtrip-wkt.csv
           geometry:
             geometryMode: wkt
             column: geometry
@@ -36,5 +39,5 @@ graphs:
       - id: d064cf52-705f-443a-b2de-6795266c541a
         from: a0f40a3e-61d3-48e2-a328-e7226c2ad2a1
         to: b5e66920-24c0-4c70-ae16-6be1ed3b917a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

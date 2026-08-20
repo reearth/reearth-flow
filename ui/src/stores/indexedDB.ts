@@ -1,5 +1,5 @@
 import { CLIPBOARD_EXPIRATION_TIME } from "@flow/global-constants";
-import { JobStatus, NodeExecution } from "@flow/types";
+import { JobStatus } from "@flow/types";
 
 export type GeneralState = {
   clipboard: any | undefined;
@@ -12,13 +12,28 @@ export type SelectedIntermediateData = {
   displayName?: string;
 };
 
+export type AvailableIntermediateData = {
+  nodeId: string;
+  portName: string;
+};
+
+export type GraphSnapshot = {
+  nodeHashes: Record<string, Record<string, string>>;
+  nodeIds: Record<string, string[]>;
+  edgeSignatures: Record<string, string[]>;
+  subworkflowBridges: [string, string][];
+};
+
 export type JobState = {
   projectId: string;
   jobId: string;
   status: JobStatus;
-  nodeExecutions?: NodeExecution[];
   focusedIntermediateData?: string;
   selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
+  availableIntermediateData?: AvailableIntermediateData[];
+  graphSnapshot?: GraphSnapshot;
+  isRunStale?: boolean;
+  staleNodeIds?: string[];
 };
 
 export type DebugRunState = {

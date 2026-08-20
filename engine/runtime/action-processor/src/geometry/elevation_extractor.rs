@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use schemars::JsonSchema;
@@ -19,11 +19,11 @@ pub struct ElevationExtractorFactory;
 
 impl ProcessorFactory for ElevationExtractorFactory {
     fn name(&self) -> &str {
-        "ElevationExtractor"
+        "Elevation Extractor"
     }
 
     fn description(&self) -> &str {
-        "Extract Z-Coordinate Elevation to Attribute"
+        "Extracts the elevation of a feature's geometry and stores it in an attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -39,11 +39,11 @@ impl ProcessorFactory for ElevationExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -76,12 +76,12 @@ impl ProcessorFactory for ElevationExtractorFactory {
 }
 
 /// # Elevation Extractor Parameters
-/// Configure where to store the extracted elevation value from geometry coordinates
+/// Configure where the extracted elevation is stored.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ElevationExtractorParam {
     /// # Output Attribute
-    /// Name of the attribute where the extracted elevation value will be stored
+    /// Attribute to store the elevation in.
     output_attribute: Attribute,
 }
 
@@ -95,6 +95,7 @@ impl Processor for ElevationExtractor {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -102,60 +103,36 @@ impl Processor for ElevationExtractor {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            return Ok(());
+
+        // A geometry carrying no elevation has none to extract. That is nothing
+        // to do rather than a failure, so the feature passes through untouched —
+        // but without the attribute. Writing zero, as this used to, invents a
+        // value indistinguishable from a real sea-level one. The unified geometry
+        // model draws the same line: a planar leaf's `elevation()` is `None`.
+        let elevation = match &geometry.value {
+            GeometryValue::None | GeometryValue::FlowGeometry2D(_) => None,
+            GeometryValue::FlowGeometry3D(geometry) => Some(geometry.elevation()),
+            GeometryValue::CityGmlGeometry(geometry) => Some(geometry.elevation()),
         };
-        match &geometry.value {
-            GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
-            }
-            GeometryValue::FlowGeometry2D(geometry) => {
-                let mut feature = feature.clone();
-                feature.insert(
-                    &self.output_attribute,
-                    AttributeValue::Number(
-                        serde_json::Number::from_f64(geometry.elevation()).ok_or(
-                            GeometryProcessorError::ElevationExtractor(
-                                "Failed to convert elevation to number".to_string(),
-                            ),
-                        )?,
+
+        let feature = match elevation {
+            Some(elevation) => {
+                let number = serde_json::Number::from_f64(elevation).ok_or(
+                    GeometryProcessorError::ElevationExtractor(
+                        "Failed to convert elevation to number".to_string(),
                     ),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            }
-            GeometryValue::FlowGeometry3D(geometry) => {
+                )?;
                 let mut feature = feature.clone();
-                feature.insert(
-                    &self.output_attribute,
-                    AttributeValue::Number(
-                        serde_json::Number::from_f64(geometry.elevation()).ok_or(
-                            GeometryProcessorError::ElevationExtractor(
-                                "Failed to convert elevation to number".to_string(),
-                            ),
-                        )?,
-                    ),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                feature.insert(&self.output_attribute, AttributeValue::Number(number));
+                feature
             }
-            GeometryValue::CityGmlGeometry(geometry) => {
-                let mut feature = feature.clone();
-                feature.insert(
-                    &self.output_attribute,
-                    AttributeValue::Number(
-                        serde_json::Number::from_f64(geometry.elevation()).ok_or(
-                            GeometryProcessorError::ElevationExtractor(
-                                "Failed to convert elevation to number".to_string(),
-                            ),
-                        )?,
-                    ),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-            }
-        }
+            None => feature.clone(),
+        };
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -165,6 +142,6 @@ impl Processor for ElevationExtractor {
     }
 
     fn name(&self) -> &str {
-        "ElevationExtractor"
+        "Elevation Extractor"
     }
 }

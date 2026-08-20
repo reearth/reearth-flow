@@ -4,7 +4,6 @@ include = [
   "runtime/*/Cargo.toml",
   "cli/Cargo.toml",
   "worker/Cargo.toml",
-  "plateau-gis-quality-checker/src-tauri/Cargo.toml",
 ]
 
 [formatting]

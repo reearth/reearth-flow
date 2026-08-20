@@ -1,18 +1,15 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, Expr, Feature, GeometryValue};
-use rhai::AST;
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_types::{Attribute, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::errors::SinkError;
 
@@ -21,7 +18,7 @@ pub struct ObjWriterFactory;
 
 impl SinkFactory for ObjWriterFactory {
     fn name(&self) -> &str {
-        "ObjWriter"
+        "OBJ Writer"
     }
 
     fn description(&self) -> &str {
@@ -37,7 +34,7 @@ impl SinkFactory for ObjWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -51,7 +48,7 @@ impl SinkFactory for ObjWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params: ObjWriterParam = if let Some(with) = with.clone() {
+        let params: ObjWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -64,14 +61,14 @@ impl SinkFactory for ObjWriterFactory {
             );
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = expr_engine
-            .compile(params.output.as_ref())
-            .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
-
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
+            .eval_string_variables_only(ctx.variables.clone())
+            .map_err(|e| SinkError::BuildFactory(format!("Failed to evaluate `output`: {e:?}")))?;
         let sink = ObjWriter {
             output,
-            global_params: with,
             buffer: Vec::new(),
             write_materials: params.write_materials.unwrap_or(true),
             write_normals: params.write_normals.unwrap_or(true),
@@ -88,7 +85,7 @@ impl SinkFactory for ObjWriterFactory {
 pub struct ObjWriterParam {
     /// # Output Path
     /// Expression for the output file path where the OBJ file will be written
-    output: Expr,
+    output: Code,
     /// # Write Materials
     /// Enable writing of material (MTL) file alongside the OBJ file
     #[serde(default)]
@@ -105,8 +102,7 @@ pub struct ObjWriterParam {
 
 #[derive(Debug, Clone)]
 pub struct ObjWriter {
-    output: AST,
-    global_params: Option<HashMap<String, Value>>,
+    output: String,
     buffer: Vec<Feature>,
     write_materials: bool,
     write_normals: bool,
@@ -115,31 +111,22 @@ pub struct ObjWriter {
 
 impl Sink for ObjWriter {
     fn name(&self) -> &str {
-        "ObjWriter"
+        "OBJ Writer"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         self.buffer.push(ctx.feature);
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let path = self.output.as_str();
 
-        let scope = expr_engine.new_scope();
-        if let Some(ref params) = self.global_params {
-            for (k, v) in params {
-                scope.set(k.as_str(), v.clone());
-            }
-        }
+        let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, path)?;
 
-        let path = scope
-            .eval_ast::<String>(&self.output)
-            .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
-
-        let (obj_content, mtl_content) = features_to_obj(&self.buffer, self, &path)?;
-
-        let obj_out = crate::SinkOutput::from_path(&ctx, &path)
+        let obj_out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
             .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
         obj_out
             .write(Bytes::from(obj_content))
@@ -147,8 +134,9 @@ impl Sink for ObjWriter {
 
         if self.write_materials && !mtl_content.is_empty() {
             let mtl_path = path.replace(".obj", ".mtl");
-            let mtl_out = crate::SinkOutput::from_path(&ctx, &mtl_path)
-                .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
+            let mtl_out =
+                crate::SinkOutput::new(&ctx.sandbox_root, &mtl_path, &ctx.storage_resolver)
+                    .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
             mtl_out
                 .write(Bytes::from(mtl_content))
                 .map_err(|e| SinkError::ObjWriter(e.to_string()))?;
@@ -158,6 +146,7 @@ impl Sink for ObjWriter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn features_to_obj(
     features: &[Feature],
     writer: &ObjWriter,
@@ -167,7 +156,7 @@ fn features_to_obj(
     let mut mtl_output = String::new();
     let mut materials: IndexMap<String, Material> = IndexMap::new();
 
-    obj_output.push_str("# Generated by Re:Earth Flow ObjWriter\n");
+    obj_output.push_str("# Generated by Re:Earth Flow OBJ Writer\n");
 
     if writer.write_materials {
         // Extract filename from path and generate MTL reference
@@ -540,7 +529,7 @@ fn extract_material_name(
 
 fn generate_mtl_content(materials: &IndexMap<String, Material>) -> String {
     let mut output = String::new();
-    output.push_str("# Generated by Re:Earth Flow ObjWriter\n\n");
+    output.push_str("# Generated by Re:Earth Flow OBJ Writer\n\n");
 
     for (name, material) in materials {
         output.push_str(&format!("newmtl {name}\n"));
@@ -580,6 +569,7 @@ mod tests {
     };
     use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_generate_simple_obj() {
         let mut features = Vec::new();
@@ -621,12 +611,8 @@ mod tests {
 
         features.push(feature);
 
-        let expr_engine = reearth_flow_eval_expr::engine::Engine::new();
-        let output_ast = expr_engine.compile("\"/tmp/test.obj\"").unwrap();
-
         let writer = ObjWriter {
-            output: output_ast,
-            global_params: None,
+            output: "/tmp/test.obj".to_string(),
             buffer: Vec::new(),
             write_materials: true,
             write_normals: true,
@@ -636,7 +622,7 @@ mod tests {
         let (obj_content, mtl_content) =
             features_to_obj(&features, &writer, "/tmp/test.obj").unwrap();
 
-        assert!(obj_content.contains("# Generated by Re:Earth Flow ObjWriter"));
+        assert!(obj_content.contains("# Generated by Re:Earth Flow OBJ Writer"));
         assert!(obj_content.contains("o pyramid"));
         assert!(obj_content.contains("v 0 0 0"));
         assert!(obj_content.contains("v 1 0 0"));
@@ -644,7 +630,7 @@ mod tests {
         assert!(obj_content.contains("vn "));
         assert!(obj_content.contains("f "));
 
-        assert!(mtl_content.contains("# Generated by Re:Earth Flow ObjWriter"));
+        assert!(mtl_content.contains("# Generated by Re:Earth Flow OBJ Writer"));
         assert!(mtl_content.contains("newmtl material_pyramid"));
 
         println!("Generated OBJ:\n{obj_content}");

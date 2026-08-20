@@ -1,14 +1,13 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use indexmap::IndexMap;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
-use rhai::Dynamic;
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,11 +20,11 @@ pub struct FeatureCreatorFactory;
 
 impl SourceFactory for FeatureCreatorFactory {
     fn name(&self) -> &str {
-        "FeatureCreator"
+        "Feature Creator"
     }
 
     fn description(&self) -> &str {
-        "Generate Custom Features Using Scripts"
+        "Creates features from a script expression that returns one or more attribute maps."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,12 +35,16 @@ impl SourceFactory for FeatureCreatorFactory {
         &["Input"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["scripting"]
+    }
+
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -64,7 +67,18 @@ impl SourceFactory for FeatureCreatorFactory {
             )
             .into());
         };
-        Ok(Box::new(processor))
+        let creator = processor
+            .creator
+            .compile()
+            .map_err(|e| {
+                SourceError::FeatureCreatorFactory(format!("Failed to compile params: {e:?}"))
+            })?
+            .eval_variables_only(ctx.variables.clone())
+            .map_err(|e| {
+                SourceError::FeatureCreatorFactory(format!("Failed to evaluate creator: {e:?}"))
+            })?;
+        let compiled = FeatureCreatorCompiledParam { creator };
+        Ok(Box::new(FeatureCreatorSource { params: compiled }))
     }
 }
 
@@ -74,16 +88,26 @@ impl SourceFactory for FeatureCreatorFactory {
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCreator {
     /// # Script Expression
-    /// Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.
-    creator: Expr,
+    /// Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.
+    creator: Code<{ CodeType::FlowExpr as u32 }>,
+}
+
+#[derive(Debug, Clone)]
+struct FeatureCreatorCompiledParam {
+    creator: AttributeValue,
+}
+
+#[derive(Debug, Clone)]
+struct FeatureCreatorSource {
+    params: FeatureCreatorCompiledParam,
 }
 
 #[async_trait::async_trait]
-impl Source for FeatureCreator {
+impl Source for FeatureCreatorSource {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "FeatureCreator"
+        "Feature Creator"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -92,58 +116,48 @@ impl Source for FeatureCreator {
 
     async fn start(
         &mut self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let new_value = scope
-            .eval::<Dynamic>(self.creator.to_string().as_str())
-            .map_err(|e| {
-                crate::errors::SourceError::FeatureCreator(format!("Failed to evaluate: {e}"))
-            })?;
-        if new_value.is::<rhai::Map>() {
-            if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                let attributes = new_value
-                    .iter()
-                    .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
+        match self.params.creator.clone() {
+            AttributeValue::Map(map) => {
+                let attributes = map
+                    .into_iter()
+                    .map(|(k, v)| (Attribute::new(k), v))
                     .collect::<IndexMap<Attribute, AttributeValue>>();
                 let feature = Feature::from(attributes);
                 sender
                     .send((
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
-                    .map_err(|e| crate::errors::SourceError::FeatureCreator(format!("{e:?}")))?;
-            } else {
-                return Err(
-                    SourceError::FeatureCreator("Failed to convert to map".to_string()).into(),
-                );
+                    .map_err(|e| SourceError::FeatureCreator(format!("{e:?}")))?;
             }
-        } else if new_value.is::<rhai::Array>() {
-            let array_values = new_value.clone().into_array().map_err(|e| {
-                crate::errors::SourceError::FeatureCreator(format!("Failed to convert: {e}"))
-            })?;
-            for new_value in array_values {
-                if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                    let attributes = new_value
-                        .iter()
-                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                        .collect::<IndexMap<Attribute, AttributeValue>>();
-                    let feature = Feature::from(attributes);
-                    sender
-                        .send((
-                            DEFAULT_PORT.clone(),
-                            IngestionMessage::OperationEvent { feature },
-                        ))
-                        .await
-                        .map_err(|e| {
-                            crate::errors::SourceError::FeatureCreator(format!("{e:?}"))
-                        })?;
+            AttributeValue::Array(arr) => {
+                for item in arr {
+                    if let AttributeValue::Map(map) = item {
+                        let attributes = map
+                            .into_iter()
+                            .map(|(k, v)| (Attribute::new(k), v))
+                            .collect::<IndexMap<Attribute, AttributeValue>>();
+                        let feature = Feature::from(attributes);
+                        sender
+                            .send((
+                                FEATURES_PORT.clone(),
+                                IngestionMessage::OperationEvent { feature },
+                            ))
+                            .await
+                            .map_err(|e| SourceError::FeatureCreator(format!("{e:?}")))?;
+                    }
                 }
             }
-            return Ok(());
+            _ => {
+                return Err(SourceError::FeatureCreator(
+                    "Expected map or array from creator".to_string(),
+                )
+                .into());
+            }
         }
         Ok(())
     }

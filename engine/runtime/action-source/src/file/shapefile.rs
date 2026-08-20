@@ -22,7 +22,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -32,7 +32,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::{ShapefileError, SourceError},
-    file::reader::runner::{get_content, FileReaderCommonParam},
+    file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
 
 /// Character encoding for shapefile DBF files
@@ -96,11 +96,11 @@ pub(crate) struct ShapefileReaderFactory;
 
 impl SourceFactory for ShapefileReaderFactory {
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)"
+        "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -112,22 +112,22 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["shapefile"]
+        &["shapefile", "vector"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: ShapefileReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::ShapefileReaderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -144,14 +144,31 @@ impl SourceFactory for ShapefileReaderFactory {
             )
             .into());
         };
-        let reader = ShapefileReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = ShapefileReaderCompiledParam {
+            common: params.common_property.compile(&ctx).map_err(|e| {
+                SourceError::ShapefileReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            encoding: params.encoding,
+            force_2d: params.force_2d,
+            allow_empty_path: params.allow_empty_path,
+        };
+        Ok(Box::new(ShapefileReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct ShapefileReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    encoding: Option<String>,
+    force_2d: bool,
+    allow_empty_path: bool,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct ShapefileReader {
-    pub(super) params: ShapefileReaderParam,
+    params: ShapefileReaderCompiledParam,
 }
 
 /// # ShapefileReader Parameters
@@ -164,39 +181,14 @@ pub(super) struct ShapefileReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     /// # Character Encoding
-    ///
-    /// Character encoding for attribute data in the DBF file.
-    /// If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.
-    ///
-    /// Supported encodings include:
-    /// - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles)
-    /// - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874
-    /// - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16
-    /// - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030
-    /// - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh
-    ///
-    /// All encoding labels are case-insensitive and support common variations
-    /// (e.g., "UTF-8", "UTF8", "utf8" all work).
-    ///
-    /// UTF-16 is not supported due to byte-level handling requirements.
-    /// If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.
-    ///
-    /// Examples:
-    /// - `"UTF-8"` - Modern standard
-    /// - `"Windows-1252"` - Common for Western European legacy data
-    /// - `"ISO-8859-1"` - Latin-1, common in older shapefiles
-    /// - `"Shift-JIS"` - Japanese data
-    ///
-    /// Priority order: encoding parameter > .cpg file > UTF-8 default
+    /// Character encoding for attribute data in the DBF file, such as "UTF-8", "Shift-JIS", or "Windows-1252"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).
     pub(super) encoding: Option<String>,
     /// # Force 2D
-    /// If true, forces all geometries to be 2D (ignoring Z values)
-    #[serde(default)]
+    /// If true, forces all geometries to be 2D (ignoring Z values).
+    #[serde(default, rename = "force2D", alias = "force2d")]
     pub(super) force_2d: bool,
     /// # Allow Null Path
-    /// If true, a dataset expression that evaluates to null (Rhai `()`) produces zero features
-    /// instead of an error. This is useful for optional shapefile inputs where the path may
-    /// not be configured.
+    /// If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.
     #[serde(default, alias = "allowEmptyPath")]
     pub(super) allow_empty_path: bool,
 }
@@ -206,13 +198,14 @@ impl Source for ShapefileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -220,32 +213,26 @@ impl Source for ShapefileReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        // When allow_empty_path is set and no inline content is provided,
-        // a null dataset expression means "no input".
-        if self.params.allow_empty_path && self.params.common_property.inline.is_none() {
-            if let Some(ref dataset) = self.params.common_property.dataset {
-                let scope = ctx.expr_engine.new_scope();
-                if let Ok(val) = ctx
-                    .expr_engine
-                    .eval_scope::<rhai::Dynamic>(dataset.as_ref(), &scope)
-                {
-                    if val.is_unit() {
-                        return Ok(());
-                    }
-                }
-            }
+        // When allow_empty_path is set and the dataset resolved to null at build time,
+        // treat as "no input" and skip silently.
+        if self.params.allow_empty_path
+            && self.params.common.dataset.is_none()
+            && self.params.common.inline.is_none()
+        {
+            return Ok(());
         }
 
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         read_shapefile(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_shapefile(
     content: &Bytes,
-    params: &ShapefileReaderParam,
+    params: &ShapefileReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let (shapes_and_records, epsg_code) = if is_zip_file(content) {
@@ -264,7 +251,7 @@ async fn read_shapefile(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await

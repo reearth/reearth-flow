@@ -5,16 +5,17 @@ import (
 	"errors"
 	"net/http"
 	"net/http/pprof"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	apiotel "github.com/reearth/reearth-flow/api/internal/app/otel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	echoSwagger "github.com/swaggo/echo-swagger"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
 	_ "github.com/reearth/reearth-flow/api/internal/app/docs" // swagger docs
 )
@@ -35,7 +36,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.Logger = logger
 	e.Use(
 		middleware.Recover(),
-		otelecho.Middleware("reearth-flow"),
+		apiotel.Middleware(tracerServiceName),
 		echo.WrapMiddleware(appx.RequestIDMiddleware()),
 		logger.AccessLogger(),
 		middleware.Gzip(),
@@ -49,6 +50,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	if len(origins) > 0 {
 		e.Use(
 			middleware.CORSWithConfig(middleware.CORSConfig{
+				// Skip trigger routes — they manage their own permissive CORS policy.
+				Skipper: func(c echo.Context) bool {
+					return strings.HasPrefix(c.Path(), "/api/triggers")
+				},
 				AllowOrigins: origins,
 			}),
 		)
@@ -116,7 +121,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		apiPrivate.POST("/signup/verify/:code", SignupVerify())
 		apiPrivate.POST("/password-reset", PasswordReset())
 	}
-	if err := initActionsData(ctx); err != nil {
+	if err := initActionsData(ctx, cfg.Gateways.File); err != nil {
 		log.Errorf("Failed to initialize actions data: %v", err)
 	}
 	SetupActionRoutes(e)
@@ -131,8 +136,14 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	return e
 }
 
-func initActionsData(_ context.Context) error {
-	for lang := range supportedLangs {
+func initActionsData(_ context.Context, repo actionsReader) error {
+	actionsRepo = repo
+	// Warm the base schema (empty lang) and each translated variant.
+	langs := []string{""}
+	for lang := range translatedLangs {
+		langs = append(langs, lang)
+	}
+	for _, lang := range langs {
 		if _, err := loadActionsData(lang); err != nil {
 			log.Errorf("Failed to load actions data for language %s: %v", lang, err)
 		}

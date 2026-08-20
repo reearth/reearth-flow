@@ -8,31 +8,36 @@ graphs:
       - id: b1a91180-ab88-4c1a-aab5-48c242a218da
         name: Source-Json-Reader-01
         type: action
-        action: JsonReader
+        action: JSON Reader
         with:
-          dataset: |
-            "ram:///fixture/testdata/http/caller/test_data.json"
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/http/caller/test_data.json
 
       - id: b1a91180-ab88-4c1a-aab5-48c242a218db
         name: HTTP-Caller
         type: action
-        action: HTTPCaller
+        action: HTTP Caller
         with:
-          url: |
-            "https://jsonplaceholder.typicode.com/${env.get('__value').api_endpoint}"
+          url:
+            type: flowExpr
+            value: '"https://jsonplaceholder.typicode.com/" + attributes["api_endpoint"]'
           method: GET
           authentication:
             type: bearer
-            token: |
-              env.get('__value').auth_token
+            token:
+              type: flowExpr
+              value: attributes["auth_token"]
           customHeaders:
             - name: "X-User-ID"
-              value: |
-                env.get('__value').user_id
+              value:
+                type: flowExpr
+                value: attributes["user_id"]
           queryParameters:
             - name: "format"
-              value: |
-                "json"
+              value:
+                type: string
+                value: "json"
           response:
             responseBodyAttribute: "_response"
             statusCodeAttribute: "_status"
@@ -45,21 +50,22 @@ graphs:
       - id: b1a91180-ab88-4c1a-aab5-48c242a218dc
         name: Sink-Json-Writer-01
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
-          output: |
-            "{{ env.outputFilePath }}"
+          output:
+            type: flowExpr
+            value: 'variables["outputFilePath"]'
 
     edges:
       - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
         from: b1a91180-ab88-4c1a-aab5-48c242a218da
         to: b1a91180-ab88-4c1a-aab5-48c242a218db
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
         from: b1a91180-ab88-4c1a-aab5-48c242a218db
         to: b1a91180-ab88-4c1a-aab5-48c242a218dc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 

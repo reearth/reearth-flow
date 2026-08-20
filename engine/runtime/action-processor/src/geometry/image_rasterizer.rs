@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
@@ -11,9 +10,11 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{material::Texture, Attributes, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    material::Texture, Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,19 +22,31 @@ use url::Url;
 
 use super::errors::GeometryProcessorError;
 
-static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("texture-coordinates"));
 static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
-static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureBounds"));
+static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("texture-bounds"));
 
 /// Overlap resolution strategy for rasterized pixels
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum OnOverlap {
+    /// # Take Last
+    /// Keeps the colour of the last polygon drawn over the pixel.
     TakeLast,
+    /// # Take First
+    /// Keeps the colour of the first polygon drawn over the pixel.
     TakeFirst,
-    Max(Expr),
-    Min(Expr),
-    /// Saturating-add RGB channels of all overlapping polygons.
+    /// # Maximum
+    /// Keeps the colour of the overlapping polygon whose expression evaluates
+    /// highest.
+    Max(Code<{ CodeType::FlowExpr as u32 }>),
+    /// # Minimum
+    /// Keeps the colour of the overlapping polygon whose expression evaluates
+    /// lowest.
+    Min(Code<{ CodeType::FlowExpr as u32 }>),
+    /// # Sum
+    /// Adds the RGB channels of every overlapping polygon, saturating at full
+    /// intensity.
     Sum,
 }
 
@@ -68,11 +81,11 @@ pub(super) struct ImageRasterizerFactory;
 
 impl ProcessorFactory for ImageRasterizerFactory {
     fn name(&self) -> &str {
-        "ImageRasterizer"
+        "Image Rasterizer"
     }
 
     fn description(&self) -> &str {
-        "Convert vector geometries to raster image format"
+        "Converts vector geometries to a raster image using configurable overlap resolution."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -84,24 +97,25 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["raster", "image", "texture"]
+        &["raster"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
+        vec![FEATURES_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             TEXTURED_PORT.clone(),
             BOUNDS_PORT.clone(),
+            REJECTED_PORT.clone(),
         ]
     }
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -118,17 +132,44 @@ impl ProcessorFactory for ImageRasterizerFactory {
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ImageRasterizerFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
+            // Every parameter is optional, so an absent `with` block is valid.
+            ImageRasterizerParam::default()
+        };
+
+        let evaluated_save_path = params
+            .save_to
+            .map(|code| {
+                code.compile()
+                    .map_err(|e| {
+                        GeometryProcessorError::ImageRasterizerFactory(format!(
+                            "Failed to compile save_to: {e:?}"
+                        ))
+                    })?
+                    .eval_string_variables_only(ctx.variables.clone())
+                    .map_err(|e| {
+                        GeometryProcessorError::ImageRasterizerFactory(format!(
+                            "Failed to evaluate save_to: {e:?}"
+                        ))
+                    })
+            })
+            .transpose()?;
+
+        let overlap_value_ast = match &params.on_overlap {
+            Some(OnOverlap::Max(code)) | Some(OnOverlap::Min(code)) => {
+                Some(code.clone().compile().map_err(|e| {
+                    GeometryProcessorError::ImageRasterizerFactory(format!(
+                        "Failed to compile overlap expression: {e:?}"
+                    ))
+                })?)
+            }
+            _ => None,
         };
 
         let process = ImageRasterizer {
             width: params.image_width,
-            save_to: params.save_to,
             on_overlap: params.on_overlap,
-            evaluated_save_path: None,
+            evaluated_save_path,
+            overlap_value_ast,
             geometry_polygons: GeometryPolygons::new(),
             texture_coord_features: Vec::new(),
         };
@@ -137,21 +178,26 @@ impl ProcessorFactory for ImageRasterizerFactory {
 }
 
 /// # Image Rasterizer Parameters
-/// Configure how to convert vector geometries to raster images
+/// Configure the size of the rendered image, where it is written, and how
+/// overlapping geometries are resolved.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ImageRasterizerParam {
-    /// The width of image
+    /// # Image Width
+    /// Width of the output image in pixels. The height follows from the extent
+    /// of the input geometries, preserving their aspect ratio.
     #[serde(default = "default_image_width")]
     image_width: u32,
 
     /// # Save To
-    /// Optional path expression to save the generated image. If not provided, uses default cache directory.
+    /// Path to write the generated image to. When omitted, the image is written
+    /// to the cache directory.
     #[serde(default)]
-    save_to: Option<Expr>,
+    save_to: Option<Code>,
 
     /// # On Overlap
-    /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.
+    /// How to colour a pixel covered by more than one geometry. When omitted,
+    /// overlapping geometries are drawn in the order they arrive.
     #[serde(default)]
     on_overlap: Option<OnOverlap>,
 }
@@ -159,9 +205,9 @@ struct ImageRasterizerParam {
 #[derive(Debug, Clone)]
 struct ImageRasterizer {
     width: u32,
-    save_to: Option<Expr>,
     on_overlap: Option<OnOverlap>,
     evaluated_save_path: Option<String>,
+    overlap_value_ast: Option<CompiledCode>,
     geometry_polygons: GeometryPolygons,
     texture_coord_features: Vec<Feature>,
 }
@@ -234,46 +280,44 @@ impl Default for ImageRasterizerParam {
 }
 
 impl Processor for ImageRasterizer {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
-        // Evaluate save_to expression on first feature if not already done
-        if self.evaluated_save_path.is_none() {
-            if let Some(ref save_to_expr) = self.save_to {
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let scope = expr_engine.new_scope();
-                let path = scope
-                    .eval::<String>(save_to_expr.as_ref())
-                    .unwrap_or_else(|_| save_to_expr.as_ref().to_string());
-                self.evaluated_save_path = Some(path);
-            }
-        }
-
         // Check which port the feature came from
         if ctx.port == *TEXTURE_COORDS_PORT {
-            // Features from textureCoords port are collected for UV assignment
+            // Features from the texture-coordinates port are collected for UV assignment
             self.texture_coord_features.push(feature.clone());
         } else {
-            // Features from default port are used to build the rasterized image
+            // Features from the features port are used to build the rasterized image
             // Extract color and geometry to accumulate in GeometryPolygons
-            if let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) {
+            let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) else {
+                // Nothing to draw from this feature. Dropping it silently would
+                // leave it unaccounted for, so it goes to `rejected`.
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    "rasterize rejected: feature has no drawable polygon geometry".to_string(),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            };
+            {
                 // Evaluate overlap expression if configured
-                if let Some(ref on_overlap) = self.on_overlap {
-                    if let Some(expr) = match on_overlap {
-                        OnOverlap::Max(e) | OnOverlap::Min(e) => Some(e),
-                        _ => None,
-                    } {
-                        let scope = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
-                        if let Ok(val) = scope.eval::<f64>(expr.as_ref()) {
-                            polygon.overlap_value = Some(OverlapValue::Number(val));
-                        } else {
-                            let scope2 = feature.new_scope(Arc::clone(&ctx.expr_engine), &None);
-                            if let Ok(val) = scope2.eval::<String>(expr.as_ref()) {
-                                polygon.overlap_value = Some(OverlapValue::String(val));
+                if matches!(
+                    self.on_overlap,
+                    Some(OnOverlap::Max(_)) | Some(OnOverlap::Min(_))
+                ) {
+                    if let Some(ref ast) = self.overlap_value_ast {
+                        let variables = ctx.variables.clone();
+                        if let Ok(attr_val) = ast.eval(feature, variables) {
+                            if let Some(n) = attr_val.as_f64() {
+                                polygon.overlap_value = Some(OverlapValue::Number(n));
+                            } else if let Some(s) = attr_val.as_string() {
+                                polygon.overlap_value = Some(OverlapValue::String(s));
                             }
                         }
                     }
@@ -285,6 +329,7 @@ impl Processor for ImageRasterizer {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -387,7 +432,7 @@ impl Processor for ImageRasterizer {
                         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                             &ctx,
                             feature.clone(),
-                            DEFAULT_PORT.clone(),
+                            FEATURES_PORT.clone(),
                         ));
 
                         // Send textured feature to textured port
@@ -420,7 +465,7 @@ impl Processor for ImageRasterizer {
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                         &ctx,
                         feature,
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                     ));
                 }
             }
@@ -443,7 +488,7 @@ impl Processor for ImageRasterizer {
     }
 
     fn name(&self) -> &str {
-        "ImageRasterizer"
+        "Image Rasterizer"
     }
 }
 
@@ -1059,6 +1104,7 @@ impl GeometryPolygons {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPolygon> {
     // Extract color information from the feature attributes
     let r = feature
@@ -1131,6 +1177,7 @@ fn extract_geometry_polygon_from_feature(feature: &Feature) -> Option<GeometryPo
 }
 
 // Helper function to extract coordinates from the feature's geometry field
+#[cfg(not(feature = "new-geometry"))]
 fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Vec<(f64, f64)>>> {
     // Access the geometry field of the feature
     match &feature.geometry.value {
@@ -1187,6 +1234,7 @@ fn extract_coordinates_from_feature_geometry(feature: &Feature) -> Option<Vec<Ve
 
 /// Assigns texture coordinates to a feature's CityGmlGeometry based on the rasterized image boundary.
 /// Also sets the texture reference on each polygon to point to the generated image.
+#[cfg(not(feature = "new-geometry"))]
 fn assign_texture_coordinates(
     feature: &Feature,
     boundary: &CoordinatesBoundary,
@@ -1279,6 +1327,7 @@ fn assign_texture_coordinates(
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn case01() {
         use std::fs::File;

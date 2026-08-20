@@ -13,7 +13,6 @@ with:
   prcs: null
   startTime: null
   endTime: null
-  workerArtifactPath: null
   outputReflection: false
   considerDEM: false
   dailySunDataPath: null
@@ -72,13 +71,13 @@ graphs:
   - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
-      routingPort: default
+      routingPort: features
   - id: c7315341-26b3-4405-9d02-039d721cd225
     name: DirectoryDecompressor
     type: action
-    action: DirectoryDecompressor
+    action: Directory Decompressor
     with:
       archiveAttributes:
       - codelists
@@ -86,34 +85,37 @@ graphs:
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
-      sourceDataset: |
-        env.get("__value").cityGmlPath
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
     name: FeatureFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
+        outputPort: features
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       groupBy:
@@ -129,128 +131,135 @@ graphs:
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
-      routingPort: default
+      routingPort: features
   edges:
   - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
     from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
     to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
     from: c7315341-26b3-4405-9d02-039d721cd225
     to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
     from: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     to: 9d04983e-e84e-4622-b0c6-827d7afad720
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
     from: 9d04983e-e84e-4622-b0c6-827d7afad720
     to: 712e4c72-950d-466d-9598-19f299668e7e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
     from: f3465c78-59fa-4307-bc02-67c46c2ddd98
     to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
     from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 - id: b2f4a1c8-7e3d-4b9a-8c5f-1a2e3b4c5d6e
   name: CloudFactorCalculator
   nodes:
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: DailySunDataReader
     type: action
-    action: CsvReader
+    action: CSV Reader
     with:
       format: tsv
-      dataset: |
-        env.get("dailySunDataPath")
+      dataset:
+        type: flowExpr
+        value: variables["dailySunDataPath"]
   - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
     name: ParseDateAndCalcDayTime
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: year
-        expr: |
-          env.get("__value")["年月日"].split("/")[0]
+        expr:
+          type: flowExpr
+          value: attributes["年月日"].split("/")[0]
       - attribute: month
-        expr: |
-          let month = env.get("__value")["年月日"].split("/")[1];
-          if month[0] == "0" { month[1..] } else { month }
+        expr:
+          type: flowExpr
+          value: |
+            month = attributes["年月日"].split("/")[1];
+            if month[0] == "0" { month[1:] } else { month }
       - attribute: day
-        expr: |
-          let day = env.get("__value")["年月日"].split("/")[2];
-          if day[0] == "0" { day[1..] } else { day }
+        expr:
+          type: flowExpr
+          value: |
+            day = attributes["年月日"].split("/")[2];
+            if day[0] == "0" { day[1:] } else { day }
       - attribute: dayTime
-        expr: |
-          let sunrise_str = env.get("__value")["出"];
-          let sunset_str = env.get("__value")["入り"];
-          let sunrise_parts = sunrise_str.split(":");
-          let sunset_parts = sunset_str.split(":");
-          let sunrise_hour = if sunrise_parts.len() > 0 { parse_float(sunrise_parts[0]) } else { 0.0 };
-          let sunrise_min = if sunrise_parts.len() > 1 { parse_float(sunrise_parts[1]) } else { 0.0 };
-          let sunset_hour = if sunset_parts.len() > 0 { parse_float(sunset_parts[0]) } else { 0.0 };
-          let sunset_min = if sunset_parts.len() > 1 { parse_float(sunset_parts[1]) } else { 0.0 };
-          let sunrise_hours = sunrise_hour + sunrise_min / 60.0;
-          let sunset_hours = sunset_hour + sunset_min / 60.0;
-          sunset_hours - sunrise_hours
+        expr:
+          type: flowExpr
+          value: |
+            sunrise_str = attributes["出"];
+            sunset_str = attributes["入り"];
+            sunrise_parts = sunrise_str.split(":");
+            sunset_parts = sunset_str.split(":");
+            sunrise_hour = if len(sunrise_parts) > 0 { float(sunrise_parts[0]) } else { 0.0 };
+            sunrise_min = if len(sunrise_parts) > 1 { float(sunrise_parts[1]) } else { 0.0 };
+            sunset_hour = if len(sunset_parts) > 0 { float(sunset_parts[0]) } else { 0.0 };
+            sunset_min = if len(sunset_parts) > 1 { float(sunset_parts[1]) } else { 0.0 };
+            sunrise_hours = sunrise_hour + sunrise_min / 60.0;
+            sunset_hours = sunset_hour + sunset_min / 60.0;
+            sunset_hours - sunrise_hours
   - id: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
     name: MonthlyDayTimeAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - year
       - month
       calculations:
       - newAttribute: monthlyDayTimeSumInHours
-        expr: |
-          env.get("__value")["dayTime"]
+        expr:
+          type: flowExpr
+          value: attributes["dayTime"]
   - id: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
     name: MonthlyWeatherDataReader
     type: action
-    action: CsvReader
+    action: CSV Reader
     with:
       format: csv
       encoding: Shift-JIS
       offset: 3
       headerRows: 2
-      dataset: |
-        env.get("monthlyWeatherDataPath")
+      dataset:
+        type: flowExpr
+        value: variables["monthlyWeatherDataPath"]
   - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
     name: PrepareWeatherDataForMerge
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: year
-        expr: |
-          env.get("__value")["年"]
+        valueAttribute: 年
       - attribute: month
-        expr: |
-          env.get("__value")["月"]
+        valueAttribute: 月
       - attribute: 日照時間(時間)
-        expr: |
-          env.get("__value")["日照時間(時間)"]
+        valueAttribute: 日照時間(時間)
   - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
     name: MergeMonthlyData
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - year
@@ -261,7 +270,7 @@ graphs:
   - id: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
     name: CalcSunnyRatio
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: sunnyRatio
@@ -279,85 +288,87 @@ graphs:
   - id: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
     name: CloudFactorOutput
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
-      routingPort: default
+      routingPort: features
   edges:
   - id: e1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     from: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     to: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
     from: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
     to: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
     from: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
     to: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
     from: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
     to: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
     from: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
     to: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
     from: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
     to: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e7a8b9c0-d1e2-4f3a-4b5c-6d7e8f9a0b1c
     from: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
     to: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 - id: f1e2d3c4-b5a6-4798-8c9d-0e1f2a3b4c5d
   name: AdequatePlaceJudgment
   nodes:
   - id: a0000000-0000-0000-0000-000000000001
     name: BuildingRadiationInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: buildingRadiation
   - id: a0000000-0000-0000-0000-000000000002
     name: BuildingAttrInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: buildingAttr
   - id: a0000000-0000-0000-0000-000000000003
     name: LandRadiationInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: landRadiation
   - id: a0000000-0000-0000-0000-000000000004
     name: DemTriangleInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: demTriangle
   - id: 00000005-0000-0000-0000-000000000030
     name: BuildingTotalCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy: []
       calculations:
       - newAttribute: totalBuildingCount
-        expr: '1'
+        expr:
+          type: flowExpr
+          value: '1'
   - id: 00000005-0000-0000-0000-000000000031
     name: AddBroadcastKey
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _bcastKey
@@ -368,7 +379,7 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000032
     name: BuildingRadiationSorter
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
       - totalSolarRadiation
@@ -376,14 +387,14 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000033
     name: BuildingRankCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: solarRank
   - id: 00000005-0000-0000-0000-000000000034
     name: AddBroadcastKeyToRanked
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _bcastKey
@@ -394,7 +405,7 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000035
     name: TotalCountMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - _bcastKey
@@ -403,7 +414,7 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000036
     name: BuildingAttrMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -412,28 +423,30 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000001
     name: RestrictZone1ShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
-      dataset: |
-        env.get("restrictAreaPath1")
+      dataset:
+        type: flowExpr
+        value: variables.get("restrictAreaPath1")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000002
     name: RestrictZone1Reprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000007-0000-0000-0000-000000000005
     name: InZone1FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone1
@@ -444,7 +457,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000006
     name: InZone1FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone1
@@ -455,7 +468,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000007
     name: Zone1Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -464,28 +477,30 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000011
     name: RestrictZone2ShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
-      dataset: |
-        env.get("restrictAreaPath2")
+      dataset:
+        type: flowExpr
+        value: variables.get("restrictAreaPath2")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000012
     name: RestrictZone2Reprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000007-0000-0000-0000-000000000015
     name: InZone2FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone2
@@ -496,7 +511,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000016
     name: InZone2FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone2
@@ -507,7 +522,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000017
     name: Zone2Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -516,28 +531,30 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000021
     name: RestrictZone3ShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
-      dataset: |
-        env.get("restrictAreaPath3")
+      dataset:
+        type: flowExpr
+        value: variables.get("restrictAreaPath3")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000022
     name: RestrictZone3Reprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000007-0000-0000-0000-000000000025
     name: InZone3FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone3
@@ -548,7 +565,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000026
     name: InZone3FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone3
@@ -559,7 +576,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000027
     name: Zone3Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -568,22 +585,24 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000030
     name: SnowShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
-      dataset: |
-        env.get("snowDepthShapefilePath")
+      dataset:
+        type: flowExpr
+        value: variables.get("snowDepthShapefilePath")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000031
     name: SnowShapefileReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
       mergeFilterAttributes: true
@@ -591,7 +610,7 @@ graphs:
   - id: 00000007-0000-0000-0000-000000000034
     name: SnowMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -600,7 +619,7 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000060
     name: BuildingJudgmentComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: result_1_1_1
@@ -608,7 +627,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            thresh = env.get("solarRadiationThreshold", 0.0);
+            thresh = variables.get("solarRadiationThreshold", 0.0);
             rad = attributes.get("totalSolarRadiation", -1.0);
             if thresh <= 0.0 or rad < 0.0 { "-" }
             else if rad < thresh { "×" } else { "○" }
@@ -617,7 +636,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            pct = env.get("lowerPercent", 0.0);
+            pct = variables.get("lowerPercent", 0.0);
             rad = attributes.get("totalSolarRadiation", -1.0);
             if pct <= 0.0 or rad < 0.0 { "-" } else {
               rank = attributes.get("solarRank", 0);
@@ -629,12 +648,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            m = env.get("bldgStructureToExclude");
+            m = variables.get("bldgStructureToExclude");
             if m == null { "-" } else {
               any_active = m.get("木造・土蔵造") or m.get("鉄骨鉄筋コンクリート造") or m.get("鉄筋コンクリート造") or m.get("鉄骨造") or m.get("軽量鉄骨造") or m.get("レンガ造等") or m.get("非木造") or m.get("不明");
               if not any_active { "-" } else {
                 st_raw = attributes.get("structureType", "-1");
-                if type(st_raw) == "string" { st = int(st_raw); } else { st = st_raw; }
+                if type(st_raw) == str { st = int(st_raw); } else { st = st_raw; }
                 if st == 601 { excluded = m.get("木造・土蔵造"); }
                 else if st == 602 { excluded = m.get("鉄骨鉄筋コンクリート造"); }
                 else if st == 603 { excluded = m.get("鉄筋コンクリート造"); }
@@ -651,8 +670,8 @@ graphs:
         value:
           type: flowExpr
           value: |
-            lb = env.get("floorsBelow", -1);
-            ub = env.get("upperFloors", -1);
+            lb = variables.get("floorsBelow", -1);
+            ub = variables.get("upperFloors", -1);
             fc = attributes.get("floorCount", -1);
             if (lb == -1 and ub == -1) or fc < 0 { "-" }
             else if lb != -1 and fc <= lb { "×" }
@@ -663,7 +682,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableTsunamiCheck", false) { "-" } else {
+            if not variables.get("enableTsunamiCheck", false) { "-" } else {
               h = attributes.get("bldgHeight", -1.0);
               th = attributes.get("tsunamiHeight", 0.0);
               if h < 0.0 or th <= 0.0 { "-" }
@@ -674,7 +693,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableFloodCheck", false) { "-" } else {
+            if not variables.get("enableFloodCheck", false) { "-" } else {
               h = attributes.get("bldgHeight", -1.0);
               fd = attributes.get("floodDepth", 0.0);
               if h < 0.0 or fd <= 0.0 { "-" }
@@ -685,7 +704,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableLandslideCheck", false) { "-" } else {
+            if not variables.get("enableLandslideCheck", false) { "-" } else {
               flag = attributes.get("landslideFlag", false);
               if flag { "×" } else { "○" }
             }
@@ -694,18 +713,18 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("snowDepthShapefilePath");
+            path = variables.get("snowDepthShapefilePath");
             if path == null { "-" } else {
               depth_cm = attributes.get("snow_G02_058");
               if depth_cm == null { "-" } else {
                 depth = depth_cm / 100.0;
-                s = env.get("snowLoad", 0.0);
+                s = variables.get("snowLoad", 0.0);
                 if s > 0.0 {
-                  dp = env.get("snowUnitWeight", 0.0);
+                  dp = variables.get("snowUnitWeight", 0.0);
                   load = depth * dp / 9.80665;
                   if load >= s { "×" } else { "○" }
                 } else {
-                  thresh = env.get("snowDepthThreshold", -1.0);
+                  thresh = variables.get("snowDepthThreshold", -1.0);
                   if thresh > 0.0 and depth >= thresh { "×" } else { "○" }
                 }
               }
@@ -715,14 +734,14 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath1");
-            hThresh = env.get("restrictHeight1", -1.0);
+            path = variables.get("restrictAreaPath1");
+            hThresh = variables.get("restrictHeight1", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone1", 0);
               if inZone == 0 { "○" } else {
                 h = attributes.get("bldgHeight", -1.0);
                 if h >= 0.0 and h < hThresh { "○" } else {
-                  dir = env.get("restrictDirection1", -1.0);
+                  dir = variables.get("restrictDirection1", -1.0);
                   if dir < 0.0 { "×" } else {
                     sm = attributes.get("dirMatchSum1", 0);
                     if sm > 0 { "×" } else { "○" }
@@ -735,14 +754,14 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath2");
-            hThresh = env.get("restrictHeight2", -1.0);
+            path = variables.get("restrictAreaPath2");
+            hThresh = variables.get("restrictHeight2", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone2", 0);
               if inZone == 0 { "○" } else {
                 h = attributes.get("bldgHeight", -1.0);
                 if h >= 0.0 and h < hThresh { "○" } else {
-                  dir = env.get("restrictDirection2", -1.0);
+                  dir = variables.get("restrictDirection2", -1.0);
                   if dir < 0.0 { "×" } else {
                     sm = attributes.get("dirMatchSum2", 0);
                     if sm > 0 { "×" } else { "○" }
@@ -755,14 +774,14 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath3");
-            hThresh = env.get("restrictHeight3", -1.0);
+            path = variables.get("restrictAreaPath3");
+            hThresh = variables.get("restrictHeight3", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone3", 0);
               if inZone == 0 { "○" } else {
                 h = attributes.get("bldgHeight", -1.0);
                 if h >= 0.0 and h < hThresh { "○" } else {
-                  dir = env.get("restrictDirection3", -1.0);
+                  dir = variables.get("restrictDirection3", -1.0);
                   if dir < 0.0 { "×" } else {
                     sm = attributes.get("dirMatchSum3", 0);
                     if sm > 0 { "×" } else { "○" }
@@ -773,7 +792,7 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000063
     name: BuildingPriorityComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: priority
@@ -802,68 +821,76 @@ graphs:
   - id: 00000005-0000-0000-0000-000000000061
     name: BuildingJudgmentMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: 建物ID
-        expr: env.get("__value")["gmlId"]
+        valueAttribute: gmlId
       - attribute: 優先度
-        expr: env.get("__value")["priority"]
+        valueAttribute: priority
       - attribute: 適否1_1_1
-        expr: env.get("__value")["result_1_1_1"]
+        valueAttribute: result_1_1_1
       - attribute: 適否1_1_2
-        expr: env.get("__value")["result_1_1_2"]
+        valueAttribute: result_1_1_2
       - attribute: 適否1_2
-        expr: env.get("__value")["result_1_2"]
+        valueAttribute: result_1_2
       - attribute: 適否1_3
-        expr: env.get("__value")["result_1_3"]
+        valueAttribute: result_1_3
       - attribute: 適否2_1
-        expr: env.get("__value")["result_2_1"]
+        valueAttribute: result_2_1
       - attribute: 適否2_2
-        expr: env.get("__value")["result_2_2"]
+        valueAttribute: result_2_2
       - attribute: 適否2_3
-        expr: env.get("__value")["result_2_3"]
+        valueAttribute: result_2_3
       - attribute: 適否2_4
-        expr: env.get("__value")["result_2_4"]
+        valueAttribute: result_2_4
       - attribute: 適否3_1
-        expr: env.get("__value")["result_3_1"]
+        valueAttribute: result_3_1
       - attribute: 適否3_2
-        expr: env.get("__value")["result_3_2"]
+        valueAttribute: result_3_2
       - attribute: 適否3_3
-        expr: env.get("__value")["result_3_3"]
+        valueAttribute: result_3_3
   - id: 00000005-0000-0000-0000-000000000062
     name: BuildingJudgmentWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "適地判定結果.csv")
+      output:
+        type: string
+        value: 適地判定結果.csv
   - id: 00000006-0000-0000-0000-000000000002
     name: LandRadiationAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatch1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatch2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatch3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch3", 0)
   - id: 00000006-0000-0000-0000-000000000003
     name: LandJudgmentComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: result_1_1_1
@@ -871,7 +898,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            thresh = env.get("solarRadiationThreshold", 0.0);
+            thresh = variables.get("solarRadiationThreshold", 0.0);
             rad = attributes.get("totalSolarRadiation", -1.0);
             if thresh <= 0.0 or rad < 0.0 { "-" }
             else if rad < thresh { "×" } else { "○" }
@@ -905,7 +932,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableLandslideCheck", false) { "-" } else {
+            if not variables.get("enableLandslideCheck", false) { "-" } else {
               flag = attributes.get("landslideFlag", false);
               if flag { "×" } else { "○" }
             }
@@ -914,18 +941,18 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("snowDepthShapefilePath");
+            path = variables.get("snowDepthShapefilePath");
             if path == null { "-" } else {
               depth_cm = attributes.get("snow_G02_058");
               if depth_cm == null { "-" } else {
                 depth = depth_cm / 100.0;
-                s = env.get("snowLoad", 0.0);
+                s = variables.get("snowLoad", 0.0);
                 if s > 0.0 {
-                  dp = env.get("snowUnitWeight", 0.0);
+                  dp = variables.get("snowUnitWeight", 0.0);
                   load = depth * dp / 9.80665;
                   if load >= s { "×" } else { "○" }
                 } else {
-                  thresh = env.get("snowDepthThreshold", -1.0);
+                  thresh = variables.get("snowDepthThreshold", -1.0);
                   if thresh > 0.0 and depth >= thresh { "×" } else { "○" }
                 }
               }
@@ -935,12 +962,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath1");
-            hThresh = env.get("restrictHeight1", -1.0);
+            path = variables.get("restrictAreaPath1");
+            hThresh = variables.get("restrictHeight1", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone1", 0);
               if inZone == 0 { "○" } else {
-                dir = env.get("restrictDirection1", -1.0);
+                dir = variables.get("restrictDirection1", -1.0);
                 if dir < 0.0 { "×" } else {
                   sm = attributes.get("dirMatchSum1", 0);
                   if sm > 0 { "×" } else { "○" }
@@ -952,12 +979,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath2");
-            hThresh = env.get("restrictHeight2", -1.0);
+            path = variables.get("restrictAreaPath2");
+            hThresh = variables.get("restrictHeight2", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone2", 0);
               if inZone == 0 { "○" } else {
-                dir = env.get("restrictDirection2", -1.0);
+                dir = variables.get("restrictDirection2", -1.0);
                 if dir < 0.0 { "×" } else {
                   sm = attributes.get("dirMatchSum2", 0);
                   if sm > 0 { "×" } else { "○" }
@@ -969,12 +996,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath3");
-            hThresh = env.get("restrictHeight3", -1.0);
+            path = variables.get("restrictAreaPath3");
+            hThresh = variables.get("restrictHeight3", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone3", 0);
               if inZone == 0 { "○" } else {
-                dir = env.get("restrictDirection3", -1.0);
+                dir = variables.get("restrictDirection3", -1.0);
                 if dir < 0.0 { "×" } else {
                   sm = attributes.get("dirMatchSum3", 0);
                   if sm > 0 { "×" } else { "○" }
@@ -984,7 +1011,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000006
     name: LandPriorityComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: priority
@@ -1007,47 +1034,48 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000004
     name: LandJudgmentMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: 土地ID
-        expr: env.get("__value")["gmlId"]
+        valueAttribute: gmlId
       - attribute: 優先度
-        expr: env.get("__value")["priority"]
+        valueAttribute: priority
       - attribute: 適否1_1_1
-        expr: env.get("__value")["result_1_1_1"]
+        valueAttribute: result_1_1_1
       - attribute: 適否1_1_2
-        expr: env.get("__value")["result_1_1_2"]
+        valueAttribute: result_1_1_2
       - attribute: 適否1_2
-        expr: env.get("__value")["result_1_2"]
+        valueAttribute: result_1_2
       - attribute: 適否1_3
-        expr: env.get("__value")["result_1_3"]
+        valueAttribute: result_1_3
       - attribute: 適否2_1
-        expr: env.get("__value")["result_2_1"]
+        valueAttribute: result_2_1
       - attribute: 適否2_2
-        expr: env.get("__value")["result_2_2"]
+        valueAttribute: result_2_2
       - attribute: 適否2_3
-        expr: env.get("__value")["result_2_3"]
+        valueAttribute: result_2_3
       - attribute: 適否2_4
-        expr: env.get("__value")["result_2_4"]
+        valueAttribute: result_2_4
       - attribute: 適否3_1
-        expr: env.get("__value")["result_3_1"]
+        valueAttribute: result_3_1
       - attribute: 適否3_2
-        expr: env.get("__value")["result_3_2"]
+        valueAttribute: result_3_2
       - attribute: 適否3_3
-        expr: env.get("__value")["result_3_3"]
+        valueAttribute: result_3_3
   - id: 00000006-0000-0000-0000-000000000005
     name: LandJudgmentWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "土地適地判定結果.csv")
+      output:
+        type: string
+        value: 土地適地判定結果.csv
   - id: 00000006-0000-0000-0000-000000000010
     name: LandSnowSpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
       mergeFilterAttributes: true
@@ -1055,7 +1083,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000011
     name: LandSnowMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -1064,13 +1092,13 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000021
     name: LandZone1SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000006-0000-0000-0000-000000000022
     name: LandInZone1FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone1
@@ -1081,7 +1109,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000023
     name: LandInZone1FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone1
@@ -1092,7 +1120,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000024
     name: LandZone1Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -1101,13 +1129,13 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000031
     name: LandZone2SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000006-0000-0000-0000-000000000032
     name: LandInZone2FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone2
@@ -1118,7 +1146,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000033
     name: LandInZone2FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone2
@@ -1129,7 +1157,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000034
     name: LandZone2Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -1138,13 +1166,13 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000041
     name: LandZone3SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000006-0000-0000-0000-000000000042
     name: LandInZone3FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone3
@@ -1155,7 +1183,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000043
     name: LandInZone3FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: inZone3
@@ -1166,7 +1194,7 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000044
     name: LandZone3Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -1176,87 +1204,87 @@ graphs:
   - id: ea000000-0000-0000-0000-000000000001
     from: a0000000-0000-0000-0000-000000000001
     to: 00000005-0000-0000-0000-000000000032
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ea000000-0000-0000-0000-000000000002
     from: a0000000-0000-0000-0000-000000000001
     to: 00000005-0000-0000-0000-000000000030
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ea000000-0000-0000-0000-000000000003
     from: a0000000-0000-0000-0000-000000000002
     to: 00000005-0000-0000-0000-000000000036
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: ea000000-0000-0000-0000-000000000004
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000005
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000006
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000007
     from: a0000000-0000-0000-0000-000000000002
     to: 00000007-0000-0000-0000-000000000033
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000008
     from: a0000000-0000-0000-0000-000000000003
     to: 00000006-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ea000000-0000-0000-0000-000000000009
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000021
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000010
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000031
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000011
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000041
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: ea000000-0000-0000-0000-000000000012
     from: a0000000-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: e0000005-0000-0000-0000-000000000042
     from: 00000005-0000-0000-0000-000000000030
     to: 00000005-0000-0000-0000-000000000031
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000043
     from: 00000005-0000-0000-0000-000000000031
     to: 00000005-0000-0000-0000-000000000035
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000005-0000-0000-0000-000000000044
     from: 00000005-0000-0000-0000-000000000032
     to: 00000005-0000-0000-0000-000000000033
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000045
     from: 00000005-0000-0000-0000-000000000033
     to: 00000005-0000-0000-0000-000000000034
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000046
     from: 00000005-0000-0000-0000-000000000034
     to: 00000005-0000-0000-0000-000000000035
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000005-0000-0000-0000-000000000047
     from: 00000005-0000-0000-0000-000000000035
@@ -1287,121 +1315,121 @@ graphs:
     from: 00000007-0000-0000-0000-000000000034
     to: 00000005-0000-0000-0000-000000000060
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000055
     from: 00000005-0000-0000-0000-000000000060
     to: 00000005-0000-0000-0000-000000000063
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000053
     from: 00000005-0000-0000-0000-000000000063
     to: 00000005-0000-0000-0000-000000000061
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000054
     from: 00000005-0000-0000-0000-000000000061
     to: 00000005-0000-0000-0000-000000000062
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000001
     from: 00000007-0000-0000-0000-000000000001
     to: 00000007-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000002
     from: 00000007-0000-0000-0000-000000000001
     to: 00000007-0000-0000-0000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000007-0000-0000-0000-000000000004
     from: 00000007-0000-0000-0000-000000000004
     to: 00000007-0000-0000-0000-000000000005
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000005
     from: 00000007-0000-0000-0000-000000000004
     to: 00000007-0000-0000-0000-000000000006
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000006
     from: 00000007-0000-0000-0000-000000000005
     to: 00000007-0000-0000-0000-000000000007
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000007-0000-0000-0000-000000000007
     from: 00000007-0000-0000-0000-000000000006
     to: 00000007-0000-0000-0000-000000000007
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000007-0000-0000-0000-000000000011
     from: 00000007-0000-0000-0000-000000000011
     to: 00000007-0000-0000-0000-000000000012
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000012
     from: 00000007-0000-0000-0000-000000000011
     to: 00000007-0000-0000-0000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000007-0000-0000-0000-000000000014
     from: 00000007-0000-0000-0000-000000000014
     to: 00000007-0000-0000-0000-000000000015
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000015
     from: 00000007-0000-0000-0000-000000000014
     to: 00000007-0000-0000-0000-000000000016
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000016
     from: 00000007-0000-0000-0000-000000000015
     to: 00000007-0000-0000-0000-000000000017
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000007-0000-0000-0000-000000000017
     from: 00000007-0000-0000-0000-000000000016
     to: 00000007-0000-0000-0000-000000000017
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000007-0000-0000-0000-000000000021
     from: 00000007-0000-0000-0000-000000000021
     to: 00000007-0000-0000-0000-000000000022
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000022
     from: 00000007-0000-0000-0000-000000000021
     to: 00000007-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000007-0000-0000-0000-000000000024
     from: 00000007-0000-0000-0000-000000000024
     to: 00000007-0000-0000-0000-000000000025
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000025
     from: 00000007-0000-0000-0000-000000000024
     to: 00000007-0000-0000-0000-000000000026
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000026
     from: 00000007-0000-0000-0000-000000000025
     to: 00000007-0000-0000-0000-000000000027
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000007-0000-0000-0000-000000000027
     from: 00000007-0000-0000-0000-000000000026
     to: 00000007-0000-0000-0000-000000000027
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000007-0000-0000-0000-000000000030
     from: 00000007-0000-0000-0000-000000000030
     to: 00000007-0000-0000-0000-000000000031
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000007-0000-0000-0000-000000000031
     from: 00000007-0000-0000-0000-000000000030
     to: 00000007-0000-0000-0000-000000000033
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000007-0000-0000-0000-000000000033
     from: 00000007-0000-0000-0000-000000000033
@@ -1416,57 +1444,57 @@ graphs:
   - id: e0000006-0000-0000-0000-00000000006a
     from: 00000006-0000-0000-0000-000000000002
     to: 00000006-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000006-0000-0000-0000-000000000061
     from: 00000007-0000-0000-0000-000000000002
     to: 00000006-0000-0000-0000-000000000021
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000006-0000-0000-0000-000000000063
     from: 00000006-0000-0000-0000-000000000021
     to: 00000006-0000-0000-0000-000000000022
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000064
     from: 00000006-0000-0000-0000-000000000021
     to: 00000006-0000-0000-0000-000000000023
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000065
     from: 00000006-0000-0000-0000-000000000022
     to: 00000006-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000006-0000-0000-0000-000000000066
     from: 00000006-0000-0000-0000-000000000023
     to: 00000006-0000-0000-0000-000000000024
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000006-0000-0000-0000-000000000068
     from: 00000007-0000-0000-0000-000000000012
     to: 00000006-0000-0000-0000-000000000031
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000006-0000-0000-0000-000000000070
     from: 00000006-0000-0000-0000-000000000031
     to: 00000006-0000-0000-0000-000000000032
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000071
     from: 00000006-0000-0000-0000-000000000031
     to: 00000006-0000-0000-0000-000000000033
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000072
     from: 00000006-0000-0000-0000-000000000032
     to: 00000006-0000-0000-0000-000000000034
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000006-0000-0000-0000-000000000073
     from: 00000006-0000-0000-0000-000000000033
     to: 00000006-0000-0000-0000-000000000034
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000006-0000-0000-0000-000000000074
     from: 00000006-0000-0000-0000-000000000024
@@ -1476,27 +1504,27 @@ graphs:
   - id: e0000006-0000-0000-0000-000000000076
     from: 00000007-0000-0000-0000-000000000022
     to: 00000006-0000-0000-0000-000000000041
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000006-0000-0000-0000-000000000078
     from: 00000006-0000-0000-0000-000000000041
     to: 00000006-0000-0000-0000-000000000042
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000079
     from: 00000006-0000-0000-0000-000000000041
     to: 00000006-0000-0000-0000-000000000043
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000080
     from: 00000006-0000-0000-0000-000000000042
     to: 00000006-0000-0000-0000-000000000044
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000006-0000-0000-0000-000000000081
     from: 00000006-0000-0000-0000-000000000043
     to: 00000006-0000-0000-0000-000000000044
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000006-0000-0000-0000-000000000082
     from: 00000006-0000-0000-0000-000000000034
@@ -1506,7 +1534,7 @@ graphs:
   - id: e0000006-0000-0000-0000-000000000083
     from: 00000007-0000-0000-0000-000000000031
     to: 00000006-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000006-0000-0000-0000-000000000085
     from: 00000006-0000-0000-0000-000000000010
@@ -1527,40 +1555,42 @@ graphs:
     from: 00000006-0000-0000-0000-000000000011
     to: 00000006-0000-0000-0000-000000000003
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000091
     from: 00000006-0000-0000-0000-000000000003
     to: 00000006-0000-0000-0000-000000000006
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000089
     from: 00000006-0000-0000-0000-000000000006
     to: 00000006-0000-0000-0000-000000000004
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000090
     from: 00000006-0000-0000-0000-000000000004
     to: 00000006-0000-0000-0000-000000000005
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
   name: main
   nodes:
   - id: 00000001-0000-0000-0000-000000000001
     name: BldgFeatureCreator
     type: action
-    action: FeatureCreator
+    action: Feature Creator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("bldgCityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("bldgCityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": variables.get("bldgCityGmlPath"),
+              "cityCode": variables.get("cityCode") or variables.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": variables.get("cityCode") or variables.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
+            },
+          ]
   - id: 00000001-0000-0000-0000-000000000111
     name: FolderAndFilePathReader
     type: subGraph
@@ -1568,22 +1598,24 @@ graphs:
   - id: 00000002-0000-0000-0000-000000000001
     name: DEMFeatureCreator
     type: action
-    action: FeatureCreator
+    action: Feature Creator
     with:
-      creator: |
-        [
-          #{
-            cityGmlPath: env.get("demCityGmlPath"),
-            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("demCityGmlPath"))[0..5],
-            codelists: env.get("codelistsPath") ?? env.get("codelists"),
-            schemas: env.get("schemasPath") ?? env.get("schemas"),
-          },
-        ]
+      creator:
+        type: flowExpr
+        value: |
+          [
+            {
+              "cityGmlPath": variables.get("demCityGmlPath"),
+              "cityCode": variables.get("cityCode") or variables.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": variables.get("cityCode") or variables.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
+            },
+          ]
   - id: 00000002-0000-0000-0000-000000000002
     name: DEMDirectoryDecompressor
     type: action
-    action: DirectoryDecompressor
+    action: Directory Decompressor
     with:
       archiveAttributes:
       - codelists
@@ -1591,28 +1623,31 @@ graphs:
   - id: 00000002-0000-0000-0000-000000000003
     name: DEMFeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
-      sourceDataset: |
-        env.get("__value")["cityGmlPath"]
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
       extractArchive: true
       destPrefix: udx
   - id: 00000002-0000-0000-0000-000000000004
     name: DEMFeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value").extension == "gml"
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["extension"] == "gml"
+        outputPort: features
   - id: 00000002-0000-0000-0000-000000000005
     name: DEMPLATEAU4UDXFolderExtractor
     type: action
     action: PLATEAU4.UDXFolderExtractor
     with:
-      cityGmlPath: |
-        env.get("__value")["path"]
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
       codelistsPath: codelists
       schemasPath: schemas
   - id: 00000002-0000-0000-0000-000000000006
@@ -1621,130 +1656,140 @@ graphs:
     action: PLATEAU4.CityGmlMeshBuilder
     with:
       errorAttribute: _validation_error
-      epsgCode: |
-        env.get("prcs")
+      epsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000001-0000-0000-0000-000000000002
     name: CityGmlReader
     type: action
-    action: FeatureCityGmlReader
+    action: Feature CityGML Reader
     with:
-      codelistsPath: env.get("__value").codelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["codelists"]
       flatten: true
-      dataset: |
-        env.get("__value")["path"]
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
   - id: 00000001-0000-0000-0000-00000000003a
     name: LodFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          let lod = env.get("__value").lod;
-          lod == 1 || lod == "1";
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] in [1, "1"]
         outputPort: lod1
-      - expr: |
-          let lod = env.get("__value").lod;
-          lod == 2 || lod == "2";
-        outputPort: default
-      - expr: |
-          let lod = env.get("__value").lod;
-          lod == 3 || lod == "3";
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] in [2, "2"]
+        outputPort: features
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] in [3, "3"]
         outputPort: lod3
-      - expr: |
-          let lod = env.get("__value").lod;
-          lod == 4 || lod == "4";
+      - expr:
+          type: flowExpr
+          value: attributes["lod"] in [4, "4"]
         outputPort: lod4
   - id: 00000001-0000-0000-0000-00000000003b
     name: KeepFeatureType
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: featureType
-        expr: env.get("__value").featureType
+        valueAttribute: featureType
       - attribute: gmlId
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
   - id: 00000001-0000-0000-0000-000000000004
     name: GeometryPartExtractor
     type: action
-    action: GeometryPartExtractor
+    action: Geometry Part Extractor
   - id: 00000001-0000-0000-0000-000000000041
     name: SurfaceIdCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: surfaceId
   - id: 00000001-0000-0000-0000-000000000005
     name: HorizontalReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000004-0000-0000-0000-000000000001
     name: RoofFilterShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
-      dataset: |
-        env.get("roofFilterShapefilePath")
+      dataset:
+        type: flowExpr
+        value: variables.get("roofFilterShapefilePath")
       force2D: true
       allowEmptyPath: true
   - id: 00000004-0000-0000-0000-000000000002
     name: RoofFilterReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      sourceEpsgCode: |
-        env.get("roofFilterEpsgCode")
-      targetEpsgCode: |
-        env.get("prcs")
+      sourceEpsgCode:
+        type: flowExpr
+        value: variables["roofFilterEpsgCode"]
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000004-0000-0000-0000-000000000003
     name: AreaSpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
   - id: 00000004-0000-0000-0000-000000000004
     name: OccluderSurfaceFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] != "bldg:Building";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] != "bldg:Building"
+        outputPort: features
   - id: 00000001-0000-0000-0000-000000000006
     name: GeometrySplitter
     type: action
-    action: GeometrySplitter
+    action: Geometry Splitter
     with:
       splitLevel: polygon
   - id: 00000001-0000-0000-0000-000000000008
     name: PolygonNormalExtractor
     type: action
-    action: PolygonNormalExtractor
+    action: Polygon Normal Extractor
   - id: 00000001-0000-0000-0000-000000000009
     name: GridDivider
     type: action
-    action: GridDivider
+    action: Grid Divider
     with:
-      unitSquareSize: 1.0
-      keepSquareOnly: true
+      cellSize: 1.0
+      completeCellsOnly: true
   - id: 00000001-0000-0000-0000-00000000000a
     name: FilterRoofSurfaces
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
+        outputPort: features
   - id: 00000001-0000-0000-0000-000000000029
     name: GridCellIdCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: cellId
@@ -1754,19 +1799,24 @@ graphs:
     action: PLATEAU4.SolarPositionCalculator
     with:
       type: duration
-      start: |
-        env.get("startTime")
-      end: |
-        env.get("endTime")
-      step: '1'
+      start:
+        type: flowExpr
+        value: variables["startTime"]
+      end:
+        type: flowExpr
+        value: variables["endTime"]
+      step:
+        type: flowExpr
+        value: 1
       stepUnit: hour
-      sourceEpsg: |
-        env.get("prcs")
+      sourceEpsg:
+        type: flowExpr
+        value: variables["prcs"]
       outputType: both
   - id: 00000001-0000-0000-0000-000000000040
     name: ConvertDateTimeToIntegers
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: year
@@ -1796,7 +1846,7 @@ graphs:
   - id: 00000001-0000-0000-0000-00000000000c
     name: AreaCalculator
     type: action
-    action: AreaCalculator
+    action: Area Calculator
     with:
       areaType: slopedArea
       outputAttribute: cellArea
@@ -1804,77 +1854,75 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000031
     name: GeometryRemover
     type: action
-    action: GeometryRemover
+    action: Geometry Remover
   - id: 00000001-0000-0000-0000-000000000032
     name: PreRayAttributeMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: gmlId
-        expr: env.get("__value").gmlId
+        valueAttribute: gmlId
       - attribute: surfaceId
-        expr: env.get("__value").surfaceId
+        valueAttribute: surfaceId
       - attribute: cellId
-        expr: env.get("__value").cellId
+        valueAttribute: cellId
       - attribute: year
-        expr: env.get("__value").year
+        valueAttribute: year
       - attribute: month
-        expr: env.get("__value").month
+        valueAttribute: month
       - attribute: slope
-        expr: env.get("__value").slope
+        valueAttribute: slope
       - attribute: solarAltitude
-        expr: env.get("__value").solarAltitude
+        valueAttribute: solarAltitude
       - attribute: solarTime
-        expr: env.get("__value").solarTime
+        valueAttribute: solarTime
       - attribute: cellArea
-        expr: env.get("__value").cellArea
+        valueAttribute: cellArea
       - attribute: cosTheta
-        expr: env.get("__value").cosTheta
+        valueAttribute: cosTheta
       - attribute: groundReflectivity
-        expr: env.get("__value").groundReflectivity
+        valueAttribute: groundReflectivity
       - attribute: rayOriginX
-        expr: env.get("__value").rayOriginX
+        valueAttribute: rayOriginX
       - attribute: rayOriginY
-        expr: env.get("__value").rayOriginY
+        valueAttribute: rayOriginY
       - attribute: rayOriginZ
-        expr: env.get("__value").rayOriginZ
+        valueAttribute: rayOriginZ
       - attribute: solarDirectionX
-        expr: env.get("__value").solarDirectionX
+        valueAttribute: solarDirectionX
       - attribute: solarDirectionY
-        expr: env.get("__value").solarDirectionY
+        valueAttribute: solarDirectionY
       - attribute: solarDirectionZ
-        expr: env.get("__value").solarDirectionZ
+        valueAttribute: solarDirectionZ
       - attribute: normalX
-        expr: env.get("__value").normalX
+        valueAttribute: normalX
       - attribute: normalY
-        expr: env.get("__value").normalY
+        valueAttribute: normalY
       - attribute: normalZ
-        expr: env.get("__value").normalZ
+        valueAttribute: normalZ
       - attribute: featureType
-        expr: env.get("__value").featureType
+        valueAttribute: featureType
       - attribute: azimuth
-        expr: env.get("__value").azimuth
+        valueAttribute: azimuth
       - attribute: dirMatch1
-        expr: env.get("__value").dirMatch1
+        valueAttribute: dirMatch1
       - attribute: dirMatch2
-        expr: env.get("__value").dirMatch2
+        valueAttribute: dirMatch2
       - attribute: dirMatch3
-        expr: env.get("__value").dirMatch3
+        valueAttribute: dirMatch3
       - attribute: _grid_col
-        expr: env.get("__value")._grid_col
+        valueAttribute: _grid_col
       - attribute: _grid_row
-        expr: env.get("__value")._grid_row
+        valueAttribute: _grid_row
   - id: 00000001-0000-0000-0000-000000000010
     name: RayIntersectorShadow
     type: action
-    action: RayIntersector
+    action: Ray Intersector
     with:
-      pairId: |
-        "all"
-      closestIntersectionOnly: 'true'
-      includeRayOrigin: 'false'
-      tolerance: '0.01'
+      closestIntersectionOnly: true
+      includeRayOrigin: false
+      tolerance: 0.01
       outputGeometryType: lineSegmentToIntersection
       ray:
         posX: rayOriginX
@@ -1886,41 +1934,47 @@ graphs:
   - id: 00000003-0000-0000-0000-000000000001
     name: SnowCSVReader
     type: action
-    action: CsvReader
+    action: CSV Reader
     with:
       format: csv
-      dataset: |
-        env.get("snowDepthDataPath")
+      dataset:
+        type: flowExpr
+        value: variables["snowDepthDataPath"]
       offset: 1
       headerRows: 0
   - id: 00000003-0000-0000-0000-000000000002
     name: SnowFeatureFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["column1"] == "9";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["column1"] == "9"
+        outputPort: features
   - id: 00000003-0000-0000-0000-000000000003
     name: SnowAttributeMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: month
-        expr: |
-          parse_int(env.get("__value")["column2"])
+        expr:
+          type: flowExpr
+          value: int(attributes["column2"])
       - attribute: date
-        expr: |
-          parse_int(env.get("__value")["column3"])
+        expr:
+          type: flowExpr
+          value: int(attributes["column3"])
       - attribute: groundReflectivity
-        expr: |
-          if parse_float(env.get("__value")["column29"]) < 10.0 { 0.1 } else { 0.7 }
+        expr:
+          type: flowExpr
+          value: |
+            if float(attributes["column29"]) < 10.0 { 0.1 } else { 0.7 }
   - id: 00000003-0000-0000-0000-000000000004
     name: SnowFactorMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - month
@@ -1931,7 +1985,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000011
     name: ComputeCosTheta
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: cosTheta
@@ -1950,7 +2004,7 @@ graphs:
   - id: 00000001-0000-0000-0000-00000000001d
     name: ComputeRadiation
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: radiationSunny
@@ -1958,19 +2012,19 @@ graphs:
         value:
           type: flowExpr
           value: |
-            p = env["monthlyTransmissivity"][attributes["month"] - 1];
+            p = variables["monthlyTransmissivity"][attributes["month"] - 1];
             h_rad = attributes["solarAltitude"] * math.pi / 180.0;
             m = 1.0 / math.sin(h_rad);
             beta_m = p ** m;
-            DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+            DT = variables["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
             dN = 1 - beta_m;
             dD = 1 - 1.4 * math.log(p);
-            SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+            SH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
             tilt_rad = attributes["slope"] * math.pi / 180.0;
             ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-            TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+            TH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
             RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
             DT + ST + RT
@@ -1979,19 +2033,19 @@ graphs:
         value:
           type: flowExpr
           value: |
-            p = 1.0 - env["monthlyTransmissivity"][attributes["month"] - 1];
+            p = 1.0 - variables["monthlyTransmissivity"][attributes["month"] - 1];
             h_rad = attributes["solarAltitude"] * math.pi / 180.0;
             m = 1.0 / math.sin(h_rad);
             beta_m = p ** m;
-            DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+            DT = variables["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
             dN = 1 - beta_m;
             dD = 1 - 1.4 * math.log(p);
-            SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+            SH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
             tilt_rad = attributes["slope"] * math.pi / 180.0;
             ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-            TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+            TH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
             RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
             DT + ST + RT
@@ -2002,7 +2056,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000051
     name: MonthlyDTAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - year
@@ -2015,15 +2069,17 @@ graphs:
       - _grid_row
       calculations:
       - newAttribute: radiationSunnySum
-        expr: |
-          env.get("__value")["radiationSunny"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationSunny"]
       - newAttribute: radiationCloudySum
-        expr: |
-          env.get("__value")["radiationCloudy"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationCloudy"]
   - id: 00000001-0000-0000-0000-000000000052
     name: CloudFactorDTMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - year
@@ -2034,7 +2090,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000053
     name: CalcradiationPerMonth
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: radiationPerMonth
@@ -2049,7 +2105,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000071
     name: TotalRadiationAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - cellId
@@ -2060,38 +2116,46 @@ graphs:
       - _grid_row
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
   - id: 00000001-0000-0000-0000-000000000074
     name: SurfaceRadiationAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - surfaceId
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatch1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatch2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatch3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatch3", 0)
   - id: 00000001-0000-0000-0000-000000000075
     name: SolarAttributeMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - surfaceId
@@ -2100,7 +2164,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000073
     name: AddSolarSchemaAttributes
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: 予測日射量
@@ -2117,16 +2181,16 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: env["startTime"]
+          value: variables["startTime"]
       - attribute: シミュレーション終了日時
         method: create
         value:
           type: flowExpr
-          value: env["endTime"]
+          value: variables["endTime"]
   - id: 00000001-0000-0000-0000-000000000070
     name: NormalizeRadiationForColorMapping
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: normalizedRadiation
@@ -2134,7 +2198,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            start_str = env["startTime"];
+            start_str = variables["startTime"];
             s_date_parts = start_str.split("-");
             s_year = float(s_date_parts[0]);
             s_month = float(s_date_parts[1]);
@@ -2143,7 +2207,7 @@ graphs:
             s_y = s_year + 4800.0 - s_a;
             s_m = s_month + 12.0 * s_a - 3.0;
             s_jdn = s_day_val + math.floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math.floor(s_y / 4.0) - math.floor(s_y / 100.0) + math.floor(s_y / 400.0) - 32045.0;
-            end_str = env["endTime"];
+            end_str = variables["endTime"];
             e_date_parts = end_str.split("-");
             e_year = float(e_date_parts[0]);
             e_month = float(e_date_parts[1]);
@@ -2155,17 +2219,17 @@ graphs:
             num_days_raw = e_jdn - s_jdn;
             if num_days_raw <= 0.0 { num_days = 1.0 } else { num_days = num_days_raw };
             dt = attributes.get("totalSolarRadiation", 0.0);
-            max_rad = env.get("maxRadiationPerDay", 7.5);
+            max_rad = variables.get("maxRadiationPerDay", 7.5);
             t_raw = dt / num_days / max_rad;
             if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
   - id: 00000001-0000-0000-0000-00000000005f
     name: CellTwoDimensionForcer
     type: action
-    action: TwoDimensionForcer
+    action: Two Dimension Forcer
   - id: 00000001-0000-0000-0000-000000000060
     name: RadiationToColorMapper
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: color_r
@@ -2200,7 +2264,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000068
     name: CellGeometryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - cellId
@@ -2209,51 +2273,57 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000069
     name: CellBoundsExtractor
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       zmax: maxZ
   - id: 00000001-0000-0000-0000-00000000006c
     name: TextureBuildingFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] != "bldg:Building";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] != "bldg:Building"
+        outputPort: features
   - id: 00000001-0000-0000-0000-00000000006a
     name: FilterRoofForTexture
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
+        outputPort: features
   - id: 00000001-0000-0000-0000-000000000061
     name: ImageRasterizer
     type: action
-    action: ImageRasterizer
+    action: Image Rasterizer
     with:
       imageWidth: 2048
-      saveTo: |
-        file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
+      saveTo:
+        type: string
+        value: roof_radiation_texture.png
       onOverlap:
-        max: |
-          env.get("__value")["maxZ"]
+        max:
+          type: flowExpr
+          value: attributes["maxZ"]
   - id: 00000001-0000-0000-0000-000000000062
     name: TexturedHorizontalReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      sourceEpsgCode: |
-        env.get("prcs")
-      targetEpsgCode: |
-        6697
+      sourceEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
+      targetEpsgCode:
+        type: flowExpr
+        value: 6697
   - id: 00000001-0000-0000-0000-000000000063
     name: TexturedBoundsExtractor
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       xmax: _xmax
@@ -2264,7 +2334,7 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000064
     name: TexturedCenterCoords
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -2280,13 +2350,13 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000065
     name: TexturedVerticalReprojector
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: 00000001-0000-0000-0000-000000000066
     name: Textured3DTilesWriter
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -2294,25 +2364,25 @@ graphs:
       attachTexture: true
       dracoCompression: false
       output:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "textured_roof_3dtiles"
+        type: string
+        value: textured_roof_3dtiles
       compressOutput:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "textured_roof_3dtiles.zip"
+        type: string
+        value: textured_roof_3dtiles.zip
   - id: 00000004-0000-0000-0000-000000000010
     name: ReflectionOutputFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          let v = env.get("outputReflection");
-          v == true || v == "true";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: variables["outputReflection"] == true or variables["outputReflection"] == "true"
+        outputPort: features
   - id: 00000001-0000-0000-0000-000000000013
     name: ComputeReflection
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: reflectDirX
@@ -2333,15 +2403,14 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000014
     name: RayIntersectorReflect
     type: action
-    action: RayIntersector
+    action: Ray Intersector
     with:
-      pairId: |
-        "all"
-      closestIntersectionOnly: 'true'
-      includeRayOrigin: 'false'
-      tolerance: '0.01'
-      geomId: |
-        env.get("__value")["gmlId"] ?? ""
+      closestIntersectionOnly: true
+      includeRayOrigin: false
+      tolerance: 0.01
+      geomId:
+        type: flowExpr
+        value: attributes.get("gmlId", "")
       ray:
         posX: rayOriginX
         posY: rayOriginY
@@ -2352,7 +2421,7 @@ graphs:
   - id: 00000001-0000-0000-0000-00000000001b
     name: ReflectionBoundsExtractor
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: reflectHitX
       ymin: reflectHitY
@@ -2363,15 +2432,16 @@ graphs:
   - id: 00000001-0000-0000-0000-000000000016
     name: ReflectionWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "反射シミュレーション結果.csv")
+      output:
+        type: string
+        value: 反射シミュレーション結果.csv
   - id: 00000001-0000-0000-0000-0000000000d0
     name: RoofAreaCalculator
     type: action
-    action: AreaCalculator
+    action: Area Calculator
     with:
       areaType: slopedArea
       outputAttribute: surfaceArea
@@ -2379,30 +2449,32 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000d1
     name: SurfaceAreaAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - surfaceId
       - gmlId
       calculations:
       - newAttribute: totalSurfaceArea
-        expr: |
-          env.get("__value")["surfaceArea"]
+        expr:
+          type: flowExpr
+          value: attributes["surfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d2
     name: BuildingAreaAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - gmlId
       calculations:
       - newAttribute: totalRoofArea
-        expr: |
-          env.get("__value")["totalSurfaceArea"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSurfaceArea"]
   - id: 00000001-0000-0000-0000-0000000000d3
     name: BuildingAreaMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - gmlId
@@ -2411,7 +2483,7 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000d4
     name: SurfaceAreaMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - surfaceId
@@ -2420,153 +2492,177 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000c0
     name: BuildingRadiationAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - gmlId
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["radiationPerMonth"]
+        expr:
+          type: flowExpr
+          value: attributes["radiationPerMonth"]
       - newAttribute: totalSolarPower
-        expr: |
-          let dt = env.get("__value")["radiationPerMonth"] ?? 0.0;
-          dt * env.get("photovoltaicConversionEfficiency") * env.get("lossConstant")
+        expr:
+          type: flowExpr
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
       - newAttribute: dirMatchSum1
-        expr: env.get("__value")["dirMatchSum1"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum1", 0)
       - newAttribute: dirMatchSum2
-        expr: env.get("__value")["dirMatchSum2"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum2", 0)
       - newAttribute: dirMatchSum3
-        expr: env.get("__value")["dirMatchSum3"] ?? 0
+        expr:
+          type: flowExpr
+          value: attributes.get("dirMatchSum3", 0)
   - id: 00000001-0000-0000-0000-0000000000c5
     name: BuildingPotentialMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: 建物ID
-        expr: env.get("__value")["gmlId"]
+        valueAttribute: gmlId
       - attribute: 太陽日射量(kWh)
-        expr: env.get("__value")["totalSolarRadiation"]
+        valueAttribute: totalSolarRadiation
       - attribute: 太陽日射量(kWh/m2)
-        expr: |
-          let area = env.get("__value")["totalRoofArea"] ?? 0.0;
-          if area > 0.0 { env.get("__value")["totalSolarRadiation"] / area } else { 0.0 }
+        expr:
+          type: flowExpr
+          value: |
+            area = attributes.get("totalRoofArea", 0.0);
+            if area > 0.0 { attributes["totalSolarRadiation"] / area } else { 0.0 }
       - attribute: 太陽発電量(kWh)
-        expr: env.get("__value")["totalSolarPower"]
+        valueAttribute: totalSolarPower
       - attribute: 太陽発電量(kWh/m2)
-        expr: |
-          let area = env.get("__value")["totalRoofArea"] ?? 0.0;
-          if area > 0.0 { env.get("__value")["totalSolarPower"] / area } else { 0.0 }
+        expr:
+          type: flowExpr
+          value: |
+            area = attributes.get("totalRoofArea", 0.0);
+            if area > 0.0 { attributes["totalSolarPower"] / area } else { 0.0 }
       - attribute: 受光面積(m2)
-        expr: env.get("__value")["totalRoofArea"] ?? 0.0
+        valueAttribute: totalRoofArea
   - id: 00000001-0000-0000-0000-0000000000c1
     name: BuildingPotentialWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "建物ポテンシャル推計結果.csv")
+      output:
+        type: string
+        value: 建物ポテンシャル推計結果.csv
   - id: 00000001-0000-0000-0000-0000000000c6
     name: SurfaceRadiationMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: 建物ID
-        expr: env.get("__value")["gmlId"]
+        valueAttribute: gmlId
       - attribute: 屋根ID
-        expr: env.get("__value")["surfaceId"]
+        valueAttribute: surfaceId
       - attribute: 単位面積あたりの日射量(kWh/m2)
-        expr: |
-          let area = env.get("__value")["totalSurfaceArea"] ?? 0.0;
-          if area > 0.0 { env.get("__value")["totalSolarRadiation"] / area } else { 0.0 }
+        expr:
+          type: flowExpr
+          value: |
+            area = attributes.get("totalSurfaceArea", 0.0);
+            if area > 0.0 { attributes["totalSolarRadiation"] / area } else { 0.0 }
       - attribute: 対象面全体の日射量(kWh)
-        expr: env.get("__value")["totalSolarRadiation"]
+        valueAttribute: totalSolarRadiation
       - attribute: 太陽発電量(kWh)
-        expr: env.get("__value")["totalSolarPower"]
+        valueAttribute: totalSolarPower
       - attribute: 受光面積(m2)
-        expr: env.get("__value")["totalSurfaceArea"] ?? 0.0
+        valueAttribute: totalSurfaceArea
   - id: 00000001-0000-0000-0000-0000000000c2
     name: SurfaceRadiationWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "面別日射量.csv")
+      output:
+        type: string
+        value: 面別日射量.csv
   - id: 00000001-0000-0000-0000-0000000000c7
     name: ReflectionMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: 建物/土地ID
-        expr: env.get("__value")["gmlId"] ?? ""
+        valueAttribute: gmlId
       - attribute: 屋根ID
-        expr: env.get("__value")["surfaceId"] ?? ""
+        valueAttribute: surfaceId
       - attribute: 日時
-        expr: env.get("__value")["solarTime"] ?? ""
+        valueAttribute: solarTime
       - attribute: 反射元_座標.X(m)
-        expr: env.get("__value")["rayOriginX"]
+        valueAttribute: rayOriginX
       - attribute: 反射元_座標.Y(m)
-        expr: env.get("__value")["rayOriginY"]
+        valueAttribute: rayOriginY
       - attribute: 反射元_座標.Z(m)
-        expr: env.get("__value")["rayOriginZ"]
+        valueAttribute: rayOriginZ
       - attribute: 反射先_座標.X(m)
-        expr: env.get("__value")["reflectHitX"]
+        valueAttribute: reflectHitX
       - attribute: 反射先_座標.Y(m)
-        expr: env.get("__value")["reflectHitY"]
+        valueAttribute: reflectHitY
       - attribute: 反射先_座標.Z(m)
-        expr: env.get("__value")["reflectHitZ"]
+        valueAttribute: reflectHitZ
       - attribute: 反射先
-        expr: env.get("__value")["geomId"] ?? ""
+        expr:
+          type: flowExpr
+          value: attributes.get("geomId", "")
   - id: 00000001-0000-0000-0000-0000000000c3
     name: AreaAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy: []
       calculations:
       - newAttribute: buildingCount
-        expr: |
-          1
+        expr:
+          type: flowExpr
+          value: '1'
       - newAttribute: areaTotalSolarRadiation
-        expr: |
-          env.get("__value")["totalSolarRadiation"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarRadiation"]
       - newAttribute: areaTotalSolarPower
-        expr: |
-          env.get("__value")["totalSolarPower"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarPower"]
       - newAttribute: areaTotalRoofArea
-        expr: |
-          env.get("__value")["totalRoofArea"]
+        expr:
+          type: flowExpr
+          value: attributes["totalRoofArea"]
   - id: 00000001-0000-0000-0000-0000000000c8
     name: AreaAggregationMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: 対象範囲内建物数
-        expr: env.get("__value")["buildingCount"]
+        valueAttribute: buildingCount
       - attribute: 太陽放射量推計(kWh/m2)
-        expr: |
-          let area = env.get("__value")["areaTotalRoofArea"] ?? 0.0;
-          if area > 0.0 { env.get("__value")["areaTotalSolarRadiation"] / area } else { 0.0 }
+        expr:
+          type: flowExpr
+          value: |
+            area = attributes.get("areaTotalRoofArea", 0.0);
+            if area > 0.0 { attributes["areaTotalSolarRadiation"] / area } else { 0.0 }
       - attribute: 太陽発電量推計(kWh)
-        expr: env.get("__value")["areaTotalSolarPower"]
+        valueAttribute: areaTotalSolarPower
   - id: 00000001-0000-0000-0000-0000000000c4
     name: AreaAggregationWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "集計結果.csv")
+      output:
+        type: string
+        value: 集計結果.csv
   - id: 00000001-0000-0000-0000-0000000000a0
     name: BoundsExtractorByLod1
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -2577,7 +2673,7 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000a1
     name: AttributeManagerXYByLod1
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -2593,13 +2689,13 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000a2
     name: VerticalReprojectorByLod1
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: 00000001-0000-0000-0000-0000000000a3
     name: Cesium3DTilesWriterByLod1
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -2607,15 +2703,15 @@ graphs:
       attachTexture: false
       dracoCompression: false
       output:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "bldg_lod1"
+        type: string
+        value: bldg_lod1
       compressOutput:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "bldg_lod1.zip"
+        type: string
+        value: bldg_lod1.zip
   - id: 00000001-0000-0000-0000-0000000000a4
     name: BoundsExtractorByLod3
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -2626,7 +2722,7 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000a5
     name: AttributeManagerXYByLod3
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -2642,13 +2738,13 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000a6
     name: VerticalReprojectorByLod3
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: 00000001-0000-0000-0000-0000000000a7
     name: Cesium3DTilesWriterByLod3
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -2656,15 +2752,15 @@ graphs:
       attachTexture: false
       dracoCompression: false
       output:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "bldg_lod3"
+        type: string
+        value: bldg_lod3
       compressOutput:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "bldg_lod3.zip"
+        type: string
+        value: bldg_lod3.zip
   - id: 00000001-0000-0000-0000-0000000000a8
     name: BoundsExtractorByLod4
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -2675,7 +2771,7 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000a9
     name: AttributeManagerXYByLod4
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -2691,13 +2787,13 @@ graphs:
   - id: 00000001-0000-0000-0000-0000000000aa
     name: VerticalReprojectorByLod4
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: 00000001-0000-0000-0000-0000000000ab
     name: Cesium3DTilesWriterByLod4
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -2705,18 +2801,19 @@ graphs:
       attachTexture: false
       dracoCompression: false
       output:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "bldg_lod4"
+        type: string
+        value: bldg_lod4
       compressOutput:
-        type: flowExpr
-        value: Url(env["workerArtifactPath"]) / "bldg_lod4.zip"
+        type: string
+        value: bldg_lod4.zip
   - id: 00000001-0000-0000-0000-0000000000e0
     name: CityGmlAttributeInserter
     type: action
     action: PLATEAU4.SolarCityGmlAttributeInserter
     with:
-      outputDir: |
-        file::join_path(env.get("workerArtifactPath"), "citygml")
+      outputDir:
+        type: string
+        value: citygml
       pathAttribute: path
       gmlIdAttribute: gmlId
       measurements:
@@ -2726,84 +2823,104 @@ graphs:
       - name: 年間予測発電量
         attribute: totalSolarPower
         uom: kWh
-      textureImagePath: |
-        file::join_path(env.get("workerArtifactPath"), "roof_radiation_texture.png")
-      sourceEpsg: |
-        env.get("prcs")
+      textureImagePath:
+        type: string
+        value: roof_radiation_texture.png
+      sourceEpsg:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000001-0000-0000-0000-0000000000e1
     name: CityGmlZipFileWriter
     type: action
-    action: ZipFileWriter
+    action: Zip File Writer
     with:
-      output: |
-        file::join_path(env.get("workerArtifactPath"), "citygml_bldg.zip")
+      output:
+        type: string
+        value: citygml_bldg.zip
   - id: 00000005-0000-0000-0000-000000000001
     name: BuildingFeatureFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:Building";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:Building"
+        outputPort: features
   - id: 00000005-0000-0000-0000-000000000002
     name: BuildingAttrExtractor
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: gmlId
-        expr: env.get("__value")["gmlId"]
+        valueAttribute: gmlId
       - attribute: bldgHeight
-        expr: |
-          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-          cga["bldg:measuredHeight"] ?? -1.0
+        expr:
+          type: flowExpr
+          value: |
+            cga = attributes.get("cityGmlAttributes", {});
+            cga.get("bldg:measuredHeight", -1.0)
       - attribute: structureType
-        expr: |
-          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-          let detail = cga["uro:BuildingDetailAttribute"] ?? [];
-          if detail.len() > 0 { detail[0]["uro:buildingStructureType_code"] ?? -1 } else { -1 }
+        expr:
+          type: flowExpr
+          value: |
+            cga = attributes.get("cityGmlAttributes", {});
+            detail = cga.get("uro:BuildingDetailAttribute", []);
+            if len(detail) > 0 { detail[0].get("uro:buildingStructureType_code", -1) } else { -1 }
       - attribute: floodDepth
-        expr: |
-          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-          let max_d = 0.0;
-          for list in [cga["uro:RiverFloodingRiskAttribute"] ?? [], cga["uro:InlandFloodingRiskAttribute"] ?? [], cga["uro:HighTideRiskAttribute"] ?? []] {
-            for item in list { let d = item["uro:depth"] ?? 0.0; if d > max_d { max_d = d; } }
-          }
-          max_d
+        expr:
+          type: flowExpr
+          value: |
+            cga = attributes.get("cityGmlAttributes", {});
+            max_d = 0.0;
+            for item in cga.get("uro:RiverFloodingRiskAttribute", []) + cga.get("uro:InlandFloodingRiskAttribute", []) + cga.get("uro:HighTideRiskAttribute", []) {
+              d = item.get("uro:depth", 0.0);
+              if d > max_d { max_d = d }
+            }
+            max_d
       - attribute: tsunamiHeight
-        expr: |
-          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-          let list = cga["uro:TsunamiRiskAttribute"] ?? [];
-          let max_d = 0.0;
-          for item in list { let d = item["uro:depth"] ?? 0.0; if d > max_d { max_d = d; } }
-          max_d
+        expr:
+          type: flowExpr
+          value: |
+            cga = attributes.get("cityGmlAttributes", {});
+            list = cga.get("uro:TsunamiRiskAttribute", []);
+            max_d = 0.0;
+            for item in list {
+              d = item.get("uro:depth", 0.0);
+              if d > max_d { max_d = d }
+            }
+            max_d
       - attribute: landslideFlag
-        expr: |
-          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-          let v = cga["uro:LandSlideRiskAttribute"] ?? ();
-          v != ()
+        expr:
+          type: flowExpr
+          value: |
+            cga = attributes.get("cityGmlAttributes", {});
+            "uro:LandSlideRiskAttribute" in cga
       - attribute: floorCount
-        expr: |
-          let cga = env.get("__value")["cityGmlAttributes"] ?? #{};
-          cga["bldg:storeysAboveGround"] ?? -1
+        expr:
+          type: flowExpr
+          value: |
+            cga = attributes.get("cityGmlAttributes", {});
+            cga.get("bldg:storeysAboveGround", -1)
   - id: 00000002-0000-0000-0000-000000000013
     name: DEMConsiderFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("considerDEM") == true;
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: variables["considerDEM"] == true
+        outputPort: features
   - id: 00000002-0000-0000-0000-000000000007
     name: DEMGeometrySplitter
     type: action
-    action: GeometrySplitter
+    action: Geometry Splitter
   - id: 00000002-0000-0000-0000-000000000008
     name: DEMFeatureTypeAssigner
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: featureType
@@ -2815,18 +2932,19 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: '"land_" + str(attributes.get("_relief_index", attributes.get("_split_index", 0)))'
+          value: '"land_" + str(attributes.get("_relief_index", attributes.get("__split_idx", 0)))'
   - id: 00000002-0000-0000-0000-000000000009
     name: DEMTriangleReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
-      targetEpsgCode: |
-        env.get("prcs")
+      targetEpsgCode:
+        type: flowExpr
+        value: variables["prcs"]
   - id: 00000005-0000-0000-0000-000000000020
     name: AzimuthDirectionFlags
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: dirMatch1
@@ -2834,7 +2952,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env.get("restrictDirection1", -1.0);
+            dir = variables.get("restrictDirection1", -1.0);
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth", 0.0);
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2847,7 +2965,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env.get("restrictDirection2", -1.0);
+            dir = variables.get("restrictDirection2", -1.0);
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth", 0.0);
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2860,7 +2978,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env.get("restrictDirection3", -1.0);
+            dir = variables.get("restrictDirection3", -1.0);
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth", 0.0);
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2871,38 +2989,42 @@ graphs:
   - id: 00000002-0000-0000-0000-00000000000b
     name: FeatureTypeRouter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
         outputPort: bldg
-      - expr: |
-          env.get("__value")["featureType"] == "dem:Triangle";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "dem:Triangle"
         outputPort: dem
   - id: 00000002-0000-0000-0000-00000000000a
     name: DEMGridDivider
     type: action
-    action: GridDivider
+    action: Grid Divider
     with:
-      unitSquareSize: 5.0
-      keepSquareOnly: false
+      cellSize: 5.0
+      completeCellsOnly: false
   - id: 00000002-0000-0000-0000-00000000000c
     name: TotalRadiationTypeRouter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
         outputPort: bldg
-      - expr: |
-          env.get("__value")["featureType"] == "dem:Triangle";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "dem:Triangle"
         outputPort: dem
   - id: 00000002-0000-0000-0000-00000000000d
     name: DEMGridKeyAssigner
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _dem_grid_key
@@ -2913,34 +3035,38 @@ graphs:
   - id: 00000002-0000-0000-0000-00000000000e
     name: DEMCellRadiationMerger
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - _dem_grid_key
       - featureType
       calculations:
       - newAttribute: totalSolarRadiation
-        expr: |
-          env.get("__value")["totalSolarRadiation"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarRadiation"]
       - newAttribute: totalSolarPower
-        expr: |
-          env.get("__value")["totalSolarPower"]
+        expr:
+          type: flowExpr
+          value: attributes["totalSolarPower"]
   - id: 00000002-0000-0000-0000-00000000000f
     name: GridCellTypeRouter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
         outputPort: bldg
-      - expr: |
-          env.get("__value")["featureType"] == "dem:Triangle";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "dem:Triangle"
         outputPort: dem
   - id: 00000002-0000-0000-0000-000000000010
     name: DEMGridKeyAssigner2
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _dem_grid_key
@@ -2951,19 +3077,21 @@ graphs:
   - id: 00000002-0000-0000-0000-000000000011
     name: DEMColorTypeRouter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
         outputPort: bldg
-      - expr: |
-          env.get("__value")["featureType"] == "dem:Triangle";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "dem:Triangle"
         outputPort: dem
   - id: 00000002-0000-0000-0000-000000000012
     name: DEMCellGeometryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - _dem_grid_key
@@ -2972,15 +3100,17 @@ graphs:
   - id: 00000006-0000-0000-0000-000000000001
     name: LandAreaSeparator
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-      - expr: |
-          env.get("__value")["featureType"] == "dem:Triangle";
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "dem:Triangle"
         outputPort: land
-      - expr: |
-          env.get("__value")["featureType"] == "bldg:RoofSurface";
-        outputPort: default
+      - expr:
+          type: flowExpr
+          value: attributes["featureType"] == "bldg:RoofSurface"
+        outputPort: features
   - id: 00000008-0000-0000-0000-000000000001
     name: AdequatePlaceJudgment
     type: subGraph
@@ -2989,198 +3119,198 @@ graphs:
   - id: e0000001-0000-0000-0000-000000000001
     from: 00000001-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-000000000111
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000101
     from: 00000001-0000-0000-0000-000000000111
     to: 00000001-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000002
     from: 00000001-0000-0000-0000-000000000002
     to: 00000001-0000-0000-0000-00000000003a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000003a
     from: 00000001-0000-0000-0000-00000000003a
     to: 00000001-0000-0000-0000-00000000003b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000003b
     from: 00000001-0000-0000-0000-00000000003b
     to: 00000001-0000-0000-0000-000000000004
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000004
     from: 00000001-0000-0000-0000-000000000004
     to: 00000001-0000-0000-0000-000000000041
     fromPort: extracted
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000041
     from: 00000001-0000-0000-0000-000000000041
     to: 00000001-0000-0000-0000-000000000005
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000004-0000-0000-0000-000000000001
     from: 00000004-0000-0000-0000-000000000001
     to: 00000004-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000004-0000-0000-0000-000000000002
     from: 00000004-0000-0000-0000-000000000002
     to: 00000004-0000-0000-0000-000000000003
-    fromPort: default
+    fromPort: features
     toPort: filter
   - id: e0000005-0000-0000-0000-000000000010
     from: 00000001-0000-0000-0000-000000000005
     to: 00000001-0000-0000-0000-000000000006
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000012
     from: 00000001-0000-0000-0000-000000000006
     to: 00000001-0000-0000-0000-00000000000a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000013
     from: 00000001-0000-0000-0000-00000000000a
     to: 00000004-0000-0000-0000-000000000003
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: e0000005-0000-0000-0000-000000000011
     from: 00000001-0000-0000-0000-000000000006
     to: 00000004-0000-0000-0000-000000000004
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000014
     from: 00000004-0000-0000-0000-000000000003
     to: 00000001-0000-0000-0000-000000000008
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000006
     from: 00000001-0000-0000-0000-000000000008
     to: 00000005-0000-0000-0000-000000000020
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000008
     from: 00000005-0000-0000-0000-000000000020
     to: 00000002-0000-0000-0000-00000000000b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000009
     from: 00000002-0000-0000-0000-00000000000b
     to: 00000001-0000-0000-0000-000000000009
     fromPort: bldg
-    toPort: default
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000000a
     from: 00000002-0000-0000-0000-00000000000b
     to: 00000002-0000-0000-0000-00000000000a
     fromPort: dem
-    toPort: default
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000000b
     from: 00000002-0000-0000-0000-00000000000a
     to: 00000001-0000-0000-0000-000000000029
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000000a
     from: 00000001-0000-0000-0000-000000000009
     to: 00000001-0000-0000-0000-000000000029
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000029
     from: 00000001-0000-0000-0000-000000000029
     to: 00000001-0000-0000-0000-00000000000c
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000040
     from: 00000001-0000-0000-0000-00000000000c
     to: 00000001-0000-0000-0000-00000000000b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000000b
     from: 00000001-0000-0000-0000-00000000000b
     to: 00000001-0000-0000-0000-000000000040
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000000c
     from: 00000001-0000-0000-0000-000000000040
     to: 00000001-0000-0000-0000-000000000031
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000030
     from: 00000001-0000-0000-0000-000000000031
     to: 00000001-0000-0000-0000-000000000011
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000004-0000-0000-0000-000000000004
     from: 00000004-0000-0000-0000-000000000004
     to: 00000001-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: geom
   - id: e0000001-0000-0000-0000-000000000010
     from: 00000001-0000-0000-0000-000000000032
     to: 00000001-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: ray
   - id: e0000001-0000-0000-0000-000000000035
     from: 00000001-0000-0000-0000-000000000010
     to: 00000001-0000-0000-0000-00000000001d
-    fromPort: no_intersection
-    toPort: default
+    fromPort: no-intersection
+    toPort: features
   - id: e0000003-0000-0000-0000-000000000004
     from: 00000001-0000-0000-0000-000000000011
     to: 00000003-0000-0000-0000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000001-0000-0000-0000-00000000001c
     from: 00000003-0000-0000-0000-000000000004
     to: 00000001-0000-0000-0000-000000000032
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000050
     from: 00000001-0000-0000-0000-00000000001d
     to: 00000001-0000-0000-0000-000000000051
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000051
     from: 00000001-0000-0000-0000-000000000051
     to: 00000001-0000-0000-0000-000000000052
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000001-0000-0000-0000-000000000052
     from: 00000001-0000-0000-0000-000000000050
     to: 00000001-0000-0000-0000-000000000052
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000001-0000-0000-0000-000000000053
     from: 00000001-0000-0000-0000-000000000052
     to: 00000001-0000-0000-0000-000000000053
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000003-0000-0000-0000-000000000001
     from: 00000003-0000-0000-0000-000000000001
     to: 00000003-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000003-0000-0000-0000-000000000002
     from: 00000003-0000-0000-0000-000000000002
     to: 00000003-0000-0000-0000-000000000003
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000003-0000-0000-0000-000000000003
     from: 00000003-0000-0000-0000-000000000003
     to: 00000003-0000-0000-0000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000001-0000-0000-0000-000000000013
     from: 00000001-0000-0000-0000-000000000010
     to: 00000004-0000-0000-0000-000000000010
-    fromPort: no_intersection
-    toPort: default
+    fromPort: no-intersection
+    toPort: features
   - id: e0000004-0000-0000-0000-000000000011
     from: 00000004-0000-0000-0000-000000000010
     to: 00000001-0000-0000-0000-000000000013
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000014
     from: 00000004-0000-0000-0000-000000000003
     to: 00000001-0000-0000-0000-000000000014
@@ -3189,98 +3319,98 @@ graphs:
   - id: e0000001-0000-0000-0000-000000000015
     from: 00000001-0000-0000-0000-000000000013
     to: 00000001-0000-0000-0000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: ray
   - id: e0000001-0000-0000-0000-000000000016
     from: 00000001-0000-0000-0000-000000000014
     to: 00000001-0000-0000-0000-00000000001b
     fromPort: intersection
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000001b
     from: 00000001-0000-0000-0000-00000000001b
     to: 00000001-0000-0000-0000-0000000000c7
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c7
     from: 00000001-0000-0000-0000-0000000000c7
     to: 00000001-0000-0000-0000-000000000016
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000050
     from: 00000001-0000-0000-0000-000000000053
     to: 00000006-0000-0000-0000-000000000001
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000071
     from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-000000000071
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000011
     from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-000000000071
     fromPort: land
-    toPort: default
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000000c
     from: 00000001-0000-0000-0000-000000000071
     to: 00000002-0000-0000-0000-00000000000c
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000000d
     from: 00000002-0000-0000-0000-00000000000c
     to: 00000001-0000-0000-0000-000000000070
     fromPort: bldg
-    toPort: default
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000000e
     from: 00000002-0000-0000-0000-00000000000c
     to: 00000002-0000-0000-0000-00000000000d
     fromPort: dem
-    toPort: default
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000000f
     from: 00000002-0000-0000-0000-00000000000d
     to: 00000002-0000-0000-0000-00000000000e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000010
     from: 00000002-0000-0000-0000-00000000000e
     to: 00000001-0000-0000-0000-000000000070
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000073
     from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-000000000074
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000074
     from: 00000001-0000-0000-0000-000000000074
     to: 00000001-0000-0000-0000-000000000075
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000001-0000-0000-0000-000000000075
     from: 00000001-0000-0000-0000-00000000006a
     to: 00000001-0000-0000-0000-000000000075
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000001-0000-0000-0000-000000000076
     from: 00000001-0000-0000-0000-000000000075
     to: 00000001-0000-0000-0000-000000000073
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000077
     from: 00000001-0000-0000-0000-000000000073
     to: 00000001-0000-0000-0000-000000000061
-    fromPort: default
-    toPort: textureCoordinates
+    fromPort: features
+    toPort: texture-coordinates
   - id: e0000001-0000-0000-0000-000000000070
     from: 00000001-0000-0000-0000-000000000070
     to: 00000001-0000-0000-0000-000000000060
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000012
     from: 00000001-0000-0000-0000-000000000029
     to: 00000002-0000-0000-0000-00000000000f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000013
     from: 00000002-0000-0000-0000-00000000000f
     to: 00000001-0000-0000-0000-000000000068
@@ -3290,17 +3420,17 @@ graphs:
     from: 00000002-0000-0000-0000-00000000000f
     to: 00000002-0000-0000-0000-000000000010
     fromPort: dem
-    toPort: default
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000015
     from: 00000002-0000-0000-0000-000000000010
     to: 00000002-0000-0000-0000-000000000012
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000002-0000-0000-0000-000000000016
     from: 00000001-0000-0000-0000-000000000060
     to: 00000002-0000-0000-0000-000000000011
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000017
     from: 00000002-0000-0000-0000-000000000011
     to: 00000001-0000-0000-0000-000000000068
@@ -3315,236 +3445,236 @@ graphs:
     from: 00000002-0000-0000-0000-000000000012
     to: 00000001-0000-0000-0000-000000000069
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000060
     from: 00000001-0000-0000-0000-000000000068
     to: 00000001-0000-0000-0000-000000000069
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000006c
     from: 00000001-0000-0000-0000-000000000069
     to: 00000001-0000-0000-0000-00000000005f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000061
     from: 00000001-0000-0000-0000-00000000005f
     to: 00000001-0000-0000-0000-000000000061
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000062
     from: 00000004-0000-0000-0000-000000000003
     to: 00000001-0000-0000-0000-00000000006c
     fromPort: passed
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000006e
     from: 00000001-0000-0000-0000-00000000006c
     to: 00000001-0000-0000-0000-00000000006a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-00000000006b
     from: 00000001-0000-0000-0000-00000000006a
     to: 00000001-0000-0000-0000-000000000062
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000063
     from: 00000001-0000-0000-0000-000000000061
     to: 00000001-0000-0000-0000-000000000062
     fromPort: textured
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000064
     from: 00000001-0000-0000-0000-000000000062
     to: 00000001-0000-0000-0000-000000000063
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000065
     from: 00000001-0000-0000-0000-000000000063
     to: 00000001-0000-0000-0000-000000000064
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000066
     from: 00000001-0000-0000-0000-000000000064
     to: 00000001-0000-0000-0000-000000000065
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-000000000067
     from: 00000001-0000-0000-0000-000000000065
     to: 00000001-0000-0000-0000-000000000066
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c0
     from: 00000006-0000-0000-0000-000000000001
     to: 00000001-0000-0000-0000-0000000000c0
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c1
     from: 00000001-0000-0000-0000-0000000000c0
     to: 00000001-0000-0000-0000-0000000000d3
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000001-0000-0000-0000-0000000000c5
     from: 00000001-0000-0000-0000-0000000000c5
     to: 00000001-0000-0000-0000-0000000000c1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c2
     from: 00000001-0000-0000-0000-000000000074
     to: 00000001-0000-0000-0000-0000000000d4
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: e0000001-0000-0000-0000-0000000000c6
     from: 00000001-0000-0000-0000-0000000000c6
     to: 00000001-0000-0000-0000-0000000000c2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c3
     from: 00000001-0000-0000-0000-0000000000d3
     to: 00000001-0000-0000-0000-0000000000c3
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c4
     from: 00000001-0000-0000-0000-0000000000c3
     to: 00000001-0000-0000-0000-0000000000c8
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000c8
     from: 00000001-0000-0000-0000-0000000000c8
     to: 00000001-0000-0000-0000-0000000000c4
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000d0
     from: 00000001-0000-0000-0000-00000000000a
     to: 00000001-0000-0000-0000-0000000000d0
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000d1
     from: 00000001-0000-0000-0000-0000000000d0
     to: 00000001-0000-0000-0000-0000000000d1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000d2
     from: 00000001-0000-0000-0000-0000000000d1
     to: 00000001-0000-0000-0000-0000000000d2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000d3
     from: 00000001-0000-0000-0000-0000000000d2
     to: 00000001-0000-0000-0000-0000000000d3
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000001-0000-0000-0000-0000000000d4
     from: 00000001-0000-0000-0000-0000000000d3
     to: 00000001-0000-0000-0000-0000000000c5
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000d5
     from: 00000001-0000-0000-0000-0000000000d1
     to: 00000001-0000-0000-0000-0000000000d4
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: e0000001-0000-0000-0000-0000000000d6
     from: 00000001-0000-0000-0000-0000000000d4
     to: 00000001-0000-0000-0000-0000000000c6
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a0
     from: 00000001-0000-0000-0000-00000000003a
     to: 00000001-0000-0000-0000-0000000000a0
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a1
     from: 00000001-0000-0000-0000-0000000000a0
     to: 00000001-0000-0000-0000-0000000000a1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a2
     from: 00000001-0000-0000-0000-0000000000a1
     to: 00000001-0000-0000-0000-0000000000a2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a3
     from: 00000001-0000-0000-0000-0000000000a2
     to: 00000001-0000-0000-0000-0000000000a3
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a4
     from: 00000001-0000-0000-0000-00000000003a
     to: 00000001-0000-0000-0000-0000000000a4
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a5
     from: 00000001-0000-0000-0000-0000000000a4
     to: 00000001-0000-0000-0000-0000000000a5
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a6
     from: 00000001-0000-0000-0000-0000000000a5
     to: 00000001-0000-0000-0000-0000000000a6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a7
     from: 00000001-0000-0000-0000-0000000000a6
     to: 00000001-0000-0000-0000-0000000000a7
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a8
     from: 00000001-0000-0000-0000-00000000003a
     to: 00000001-0000-0000-0000-0000000000a8
     fromPort: lod4
-    toPort: default
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000a9
     from: 00000001-0000-0000-0000-0000000000a8
     to: 00000001-0000-0000-0000-0000000000a9
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000aa
     from: 00000001-0000-0000-0000-0000000000a9
     to: 00000001-0000-0000-0000-0000000000aa
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000001-0000-0000-0000-0000000000ab
     from: 00000001-0000-0000-0000-0000000000aa
     to: 00000001-0000-0000-0000-0000000000ab
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000001
     from: 00000002-0000-0000-0000-000000000001
     to: 00000002-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000002
     from: 00000002-0000-0000-0000-000000000002
     to: 00000002-0000-0000-0000-000000000003
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000003
     from: 00000002-0000-0000-0000-000000000003
     to: 00000002-0000-0000-0000-000000000004
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000004
     from: 00000002-0000-0000-0000-000000000004
     to: 00000002-0000-0000-0000-000000000005
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000005
     from: 00000002-0000-0000-0000-000000000005
     to: 00000002-0000-0000-0000-000000000006
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-000000000006
     from: 00000002-0000-0000-0000-000000000006
     to: 00000001-0000-0000-0000-000000000010
-    fromPort: default
+    fromPort: features
     toPort: geom
   - id: e0000002-0000-0000-0000-000000000007
     from: 00000002-0000-0000-0000-000000000006
     to: 00000001-0000-0000-0000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: geom
   - id: e0000001-0000-0000-0000-0000000000e0
     from: 00000001-0000-0000-0000-000000000111
     to: 00000001-0000-0000-0000-0000000000e0
-    fromPort: default
+    fromPort: features
     toPort: path
   - id: e0000001-0000-0000-0000-0000000000e1
     from: 00000001-0000-0000-0000-0000000000d3
@@ -3554,57 +3684,57 @@ graphs:
   - id: e0000001-0000-0000-0000-0000000000e3
     from: 00000001-0000-0000-0000-000000000061
     to: 00000001-0000-0000-0000-0000000000e0
-    fromPort: textureBounds
+    fromPort: texture-bounds
     toPort: textureBounds
   - id: e0000001-0000-0000-0000-0000000000e2
     from: 00000001-0000-0000-0000-0000000000e0
     to: 00000001-0000-0000-0000-0000000000e1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000001
     from: 00000001-0000-0000-0000-00000000003a
     to: 00000005-0000-0000-0000-000000000001
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000002
     from: 00000005-0000-0000-0000-000000000001
     to: 00000005-0000-0000-0000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000005-0000-0000-0000-000000000003
     from: 00000005-0000-0000-0000-000000000002
     to: 00000008-0000-0000-0000-000000000001
-    fromPort: default
+    fromPort: features
     toPort: buildingAttr
   - id: e0000006-0000-0000-0000-000000000001
     from: 00000002-0000-0000-0000-000000000006
     to: 00000002-0000-0000-0000-000000000013
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000002-0000-0000-0000-00000000001a
     from: 00000002-0000-0000-0000-000000000013
     to: 00000002-0000-0000-0000-000000000007
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000002
     from: 00000002-0000-0000-0000-000000000007
     to: 00000002-0000-0000-0000-000000000008
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000003
     from: 00000002-0000-0000-0000-000000000008
     to: 00000002-0000-0000-0000-000000000009
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e0000006-0000-0000-0000-000000000004
     from: 00000002-0000-0000-0000-000000000009
     to: 00000004-0000-0000-0000-000000000003
-    fromPort: default
+    fromPort: features
     toPort: candidate
   - id: e0000005-0000-0000-0000-000000000040
     from: 00000001-0000-0000-0000-0000000000c0
     to: 00000008-0000-0000-0000-000000000001
-    fromPort: default
+    fromPort: features
     toPort: buildingRadiation
   - id: e0000006-0000-0000-0000-000000000051
     from: 00000006-0000-0000-0000-000000000001
@@ -3614,5 +3744,5 @@ graphs:
   - id: e0000006-0000-0000-0000-000000000060
     from: 00000002-0000-0000-0000-000000000009
     to: 00000008-0000-0000-0000-000000000001
-    fromPort: default
+    fromPort: features
     toPort: demTriangle

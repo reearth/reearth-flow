@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use schemars::JsonSchema;
@@ -20,7 +20,7 @@ pub struct VertexCounterFactory;
 
 impl ProcessorFactory for VertexCounterFactory {
     fn name(&self) -> &str {
-        "VertexCounter"
+        "Vertex Counter"
     }
 
     fn description(&self) -> &str {
@@ -36,11 +36,11 @@ impl ProcessorFactory for VertexCounterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -88,6 +88,7 @@ pub struct VertexCounter {
 }
 
 impl Processor for VertexCounter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -96,12 +97,12 @@ impl Processor for VertexCounter {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()))
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()))
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 let mut feature = feature.clone();
@@ -109,7 +110,7 @@ impl Processor for VertexCounter {
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.coords_count().into()),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geometry) => {
                 let mut feature = feature.clone();
@@ -117,7 +118,7 @@ impl Processor for VertexCounter {
                     self.output_attribute.clone(),
                     AttributeValue::Number(geometry.coords_count().into()),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(geometry) => {
                 let vertex_count: usize = geometry
@@ -141,12 +142,13 @@ impl Processor for VertexCounter {
                     self.output_attribute.clone(),
                     AttributeValue::Number(vertex_count.into()),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
         }
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -156,7 +158,7 @@ impl Processor for VertexCounter {
     }
 
     fn name(&self) -> &str {
-        "VertexCounter"
+        "Vertex Counter"
     }
 }
 
@@ -170,6 +172,7 @@ mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{feature::Attributes, Attribute, Feature, Geometry, GeometryValue};
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_point_2d() {
         let noop = NoopChannelForwarder::default();
@@ -201,6 +204,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_linestring_2d() {
         let noop = NoopChannelForwarder::default();
@@ -233,6 +237,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_polygon_2d() {
         let noop = NoopChannelForwarder::default();
@@ -273,6 +278,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_polygon_with_hole() {
         let noop = NoopChannelForwarder::default();
@@ -321,6 +327,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_empty_geometry() {
         let noop = NoopChannelForwarder::default();

@@ -23,6 +23,7 @@ export type WorkflowVarAwareness = {
 
 export type EditorContextType = {
   isLocked: boolean;
+  canViewIntermediateData: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onNodeSettings?: (_e: MouseEvent | undefined, nodeId: string) => void;
   currentYWorkflow?: YWorkflow;
@@ -33,6 +34,7 @@ export type EditorContextType = {
   awarenessSelectionsMap?: AwarenessSelectionsMap;
   yDoc?: Doc | null;
   workflowVarAwareness?: WorkflowVarAwareness;
+  staleNodeIds?: Set<string>;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

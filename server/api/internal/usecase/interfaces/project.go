@@ -39,9 +39,17 @@ type RunProjectParam struct {
 	Parameters    []*parameter.Parameter
 }
 
+type PreviewSchemaParam struct {
+	Workflow   *file.File
+	SampleSize *int
+	Parameters []*parameter.Parameter
+	ProjectID  id.ProjectID
+}
+
 var (
 	ErrProjectAliasIsNotSet    error = errors.New("project alias is not set")
 	ErrProjectAliasAlreadyUsed error = errors.New("project alias is already used by another project")
+	ErrWorkflowFileRequired    error = errors.New("workflow file is required")
 )
 
 type Project interface {
@@ -51,4 +59,5 @@ type Project interface {
 	Update(context.Context, UpdateProjectParam) (*project.Project, error)
 	Delete(context.Context, id.ProjectID) error
 	Run(context.Context, RunProjectParam) (*job.Job, error)
+	PreviewSchema(context.Context, PreviewSchemaParam) (*job.Job, error)
 }

@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
@@ -95,11 +95,11 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![FEATURES_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn build(
@@ -450,7 +450,11 @@ impl AttributeFlattener {
             .unwrap_or(false);
 
         if !is_risk_package {
-            if let Some(gml_id) = feature.get("gml_id").or_else(|| feature.get("gmlId")) {
+            if let Some(gml_id) = feature
+                .get("gml_id")
+                .or_else(|| feature.get("gmlId"))
+                .or_else(|| feature.get("__citygml_gml_id"))
+            {
                 citygml_attributes.insert("gml:id".to_string(), gml_id.clone());
             }
 
@@ -468,7 +472,10 @@ impl AttributeFlattener {
         }
 
         // feature_type
-        if let Some(feature_type) = feature.get("featureType") {
+        if let Some(feature_type) = feature
+            .get("featureType")
+            .or_else(|| feature.get("__citygml_feature_type"))
+        {
             citygml_attributes.insert("feature_type".to_string(), feature_type.clone());
         }
     }
@@ -515,7 +522,10 @@ impl AttributeFlattener {
             // add common attributes AFTER swapping with parent attributes
             Self::insert_common_attributes(feature, &mut parent_attr);
             // replace feature_type with attributes["featureType"]
-            if let Some(feature_type) = feature.get("featureType") {
+            if let Some(feature_type) = feature
+                .get("featureType")
+                .or_else(|| feature.get("__citygml_feature_type"))
+            {
                 feature.update_feature_type(feature_type.to_string());
             }
             parent_attr
@@ -674,7 +684,7 @@ impl AttributeFlattener {
             for child in children {
                 let flattened_child = self.flatten_feature(child)?;
                 fw.send(
-                    ctx.new_with_feature_and_port(flattened_child.clone(), DEFAULT_PORT.clone()),
+                    ctx.new_with_feature_and_port(flattened_child.clone(), FEATURES_PORT.clone()),
                 );
 
                 // Recursively process this child's buffered children
@@ -789,6 +799,7 @@ impl AttributeFlattener {
         // for example dmGeometricAttribute should find attributes from their parent feature type
         let lookup_key = feature
             .get("featureType")
+            .or_else(|| feature.get("__citygml_feature_type"))
             .and_then(|v| v.as_string())
             .and_then(|feature_type| {
                 if let Some(AttributeValue::String(package)) = feature.get("package") {
@@ -902,7 +913,7 @@ impl Processor for AttributeFlattener {
 
         // Process this feature immediately
         let flattened_feature = self.flatten_feature(feature)?;
-        fw.send(ctx.new_with_feature_and_port(flattened_feature.clone(), DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(flattened_feature.clone(), FEATURES_PORT.clone()));
 
         // Check if this feature has any buffered children and process them recursively
         if let Some(feature_id) = flattened_feature.feature_id() {
@@ -948,7 +959,7 @@ impl Processor for AttributeFlattener {
     }
 
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 }
 

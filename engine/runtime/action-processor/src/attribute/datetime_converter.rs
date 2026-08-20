@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::datetime::DateTime;
 use reearth_flow_types::AttributeValue;
@@ -22,7 +22,7 @@ pub(super) struct DateTimeConverterFactory;
 
 impl ProcessorFactory for DateTimeConverterFactory {
     fn name(&self) -> &str {
-        "DateTimeConverter"
+        "Date Time Converter"
     }
 
     fn description(&self) -> &str {
@@ -38,11 +38,11 @@ impl ProcessorFactory for DateTimeConverterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), Port::new(FAILED_PORT)]
+        vec![FEATURES_PORT.clone(), Port::new(FAILED_PORT)]
     }
 
     fn build(
@@ -73,6 +73,55 @@ impl ProcessorFactory for DateTimeConverterFactory {
         let processor = DateTimeConverter { params };
         Ok(Box::new(processor))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+        use reearth_flow_types::Attribute;
+
+        let params = parse_params(with)?;
+
+        let input = inputs
+            .get(&FEATURES_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        // Type produced on the success path depends on the output format.
+        let produced_type = match params.output_format {
+            DateTimeOutputFormat::Auto => AttrType::DateTime,
+            DateTimeOutputFormat::Rfc3339
+            | DateTimeOutputFormat::Date
+            | DateTimeOutputFormat::Custom(_) => AttrType::String,
+            DateTimeOutputFormat::UnixS | DateTimeOutputFormat::UnixMs => AttrType::Number,
+        };
+
+        // `default` (success) port: the conversion succeeded, so the output
+        // attribute is Always present with the produced type.
+        let out_name = params
+            .output_attribute
+            .clone()
+            .unwrap_or_else(|| params.attribute.clone());
+        let mut default_schema = input.clone();
+        default_schema.insert(Attribute::new(out_name), AttrField::always(produced_type));
+
+        // `failed` port: the feature passes through untouched.
+        Some(HashMap::from([
+            (FEATURES_PORT.clone(), default_schema),
+            (Port::new(FAILED_PORT), input),
+        ]))
+    }
+}
+
+/// Deserialize the `DateTimeConverterParam` from the node's `with` params,
+/// mirroring the deserialization done in `build`. Returns `None` when `with`
+/// is absent or the params don't deserialize (inference not possible).
+fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<DateTimeConverterParam> {
+    let with = with.as_ref()?;
+    let value = serde_json::to_value(with).ok()?;
+    serde_json::from_value::<DateTimeConverterParam>(value).ok()
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +129,7 @@ struct DateTimeConverter {
     params: DateTimeConverterParam,
 }
 
-/// # DateTimeConverter Parameters
+/// # Date Time Converter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DateTimeConverterParam {
@@ -100,7 +149,7 @@ pub struct DateTimeConverterParam {
     pub output_attribute: Option<String>,
 }
 
-/// Input format options for DateTimeConverter
+/// Input format options for Date Time Converter
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DateTimeInputFormat {
@@ -121,7 +170,7 @@ pub enum DateTimeInputFormat {
     Custom(String),
 }
 
-/// Output format options for DateTimeConverter
+/// Output format options for Date Time Converter
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DateTimeOutputFormat {
@@ -182,7 +231,7 @@ impl Processor for DateTimeConverter {
         feature.insert(output_attr, output_value);
 
         // Send to output port
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
 
         Ok(())
     }
@@ -196,7 +245,7 @@ impl Processor for DateTimeConverter {
     }
 
     fn name(&self) -> &str {
-        "DateTimeConverter"
+        "Date Time Converter"
     }
 }
 
@@ -331,12 +380,113 @@ fn format_datetime(dt: &DateTime, format: &DateTimeOutputFormat) -> AttributeVal
 mod tests {
     use super::*;
     use chrono::{Datelike, TimeZone};
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+    use reearth_flow_types::Attribute;
     use reearth_flow_types::{Attributes, Feature};
+    use serde_json::json;
 
     fn create_test_feature(attr_name: &str, value: AttributeValue) -> Feature {
         let mut feature = Feature::new_with_attributes(Attributes::new());
         feature.insert(attr_name.to_string(), value);
         feature
+    }
+
+    fn with_from(value: Value) -> Option<HashMap<String, Value>> {
+        Some(serde_json::from_value(value).unwrap())
+    }
+
+    fn inputs_with(schema: AttrSchema) -> HashMap<Port, AttrSchema> {
+        let mut inputs = HashMap::new();
+        inputs.insert(FEATURES_PORT.clone(), schema);
+        inputs
+    }
+
+    #[test]
+    fn infer_auto_format_adds_datetime() {
+        let with = with_from(json!({ "attribute": "ts", "outputFormat": "auto" }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("ts".to_string()),
+            AttrField::always(AttrType::String),
+        );
+
+        let out = DateTimeConverterFactory
+            .infer_output_schema(&inputs_with(input), &with)
+            .expect("inference should succeed");
+
+        let default = out
+            .get(&FEATURES_PORT.clone())
+            .expect("default port present");
+        assert_eq!(
+            default.fields.get(&Attribute::new("ts".to_string())),
+            Some(&AttrField::always(AttrType::DateTime))
+        );
+
+        let failed = out.get(&Port::new("failed")).expect("failed port present");
+        assert_eq!(
+            failed.fields.get(&Attribute::new("ts".to_string())),
+            Some(&AttrField::always(AttrType::String))
+        );
+    }
+
+    #[test]
+    fn infer_unix_format_adds_number_to_output_attribute() {
+        let with = with_from(json!({
+            "attribute": "ts",
+            "outputFormat": "unix_s",
+            "outputAttribute": "epoch"
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("ts".to_string()),
+            AttrField::always(AttrType::DateTime),
+        );
+
+        let out = DateTimeConverterFactory
+            .infer_output_schema(&inputs_with(input), &with)
+            .expect("inference should succeed");
+
+        let default = out
+            .get(&FEATURES_PORT.clone())
+            .expect("default port present");
+        assert_eq!(
+            default.fields.get(&Attribute::new("ts".to_string())),
+            Some(&AttrField::always(AttrType::DateTime))
+        );
+        assert_eq!(
+            default.fields.get(&Attribute::new("epoch".to_string())),
+            Some(&AttrField::always(AttrType::Number))
+        );
+
+        let failed = out.get(&Port::new("failed")).expect("failed port present");
+        assert!(!failed
+            .fields
+            .contains_key(&Attribute::new("epoch".to_string())));
+    }
+
+    #[test]
+    fn infer_rfc3339_is_string() {
+        let with = with_from(json!({ "attribute": "ts", "outputFormat": "rfc3339" }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("ts".to_string()),
+            AttrField::always(AttrType::DateTime),
+        );
+
+        let out = DateTimeConverterFactory
+            .infer_output_schema(&inputs_with(input), &with)
+            .expect("inference should succeed");
+
+        let default = out
+            .get(&FEATURES_PORT.clone())
+            .expect("default port present");
+        assert_eq!(
+            default.fields.get(&Attribute::new("ts".to_string())),
+            Some(&AttrField::always(AttrType::String))
+        );
     }
 
     #[test]

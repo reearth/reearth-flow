@@ -1,13 +1,13 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_sql::SqlAdapter;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,11 +20,11 @@ pub struct SqlReaderFactory;
 
 impl SourceFactory for SqlReaderFactory {
     fn name(&self) -> &str {
-        "SqlReader"
+        "SQL Reader"
     }
 
     fn description(&self) -> &str {
-        "Read Features from SQL Database"
+        "Reads features from a SQL database."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -40,11 +40,11 @@ impl SourceFactory for SqlReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -66,7 +66,30 @@ impl SourceFactory for SqlReaderFactory {
             .into());
         };
 
-        Ok(Box::new(SqlReader { param }))
+        let vars = ctx.variables.clone();
+        let compiled = SqlReaderCompiledParam {
+            sql: param
+                .sql
+                .compile()
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to compile sql: {e:?}"))
+                })?
+                .eval_string_variables_only(vars.clone())
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to evaluate sql: {e:?}"))
+                })?,
+            database_url: param
+                .database_url
+                .compile()
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to compile database_url: {e:?}"))
+                })?
+                .eval_string_variables_only(vars)
+                .map_err(|e| {
+                    SourceError::SqlReaderFactory(format!("Failed to evaluate database_url: {e:?}"))
+                })?,
+        };
+        Ok(Box::new(SqlReader { param: compiled }))
     }
 }
 
@@ -77,15 +100,21 @@ impl SourceFactory for SqlReaderFactory {
 pub struct SqlReaderParam {
     /// # SQL Query
     /// SQL query expression to execute for retrieving data
-    pub(super) sql: Expr,
+    pub(super) sql: Code,
     /// # Database URL
     /// Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)
-    pub(super) database_url: Expr,
+    pub(super) database_url: Code,
+}
+
+#[derive(Debug, Clone)]
+struct SqlReaderCompiledParam {
+    sql: String,
+    database_url: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct SqlReader {
-    param: SqlReaderParam,
+    param: SqlReaderCompiledParam,
 }
 
 #[async_trait::async_trait]
@@ -93,7 +122,7 @@ impl Source for SqlReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "SqlReader"
+        "SQL Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -102,26 +131,16 @@ impl Source for SqlReader {
 
     async fn start(
         &mut self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let database_url = scope
-            .eval::<String>(self.param.database_url.to_string().as_str())
+        let adapter = SqlAdapter::new(self.param.database_url.clone(), 10)
+            .await
             .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
+                crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {e}"))
             })?;
-        let sql = scope
-            .eval::<String>(self.param.sql.to_string().as_str())
-            .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
-            })?;
-        let adapter = SqlAdapter::new(database_url, 10).await.map_err(|e| {
-            crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {e}"))
-        })?;
         let result = adapter
-            .fetch_many(sql.as_str())
+            .fetch_many(self.param.sql.as_str())
             .await
             .map_err(|e| crate::errors::SourceError::SqlReader(format!("Failed to fetch: {e}")))?;
         let features = result
@@ -131,7 +150,7 @@ impl Source for SqlReader {
         for feature in features {
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

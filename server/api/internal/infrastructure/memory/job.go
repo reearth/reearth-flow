@@ -190,6 +190,10 @@ func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job
 		if debug := j.Debug(); debug == nil || !*debug {
 			continue
 		}
+		// Exclude preview-schema jobs from run history (mirrors mongo.FindByProject).
+		if j.Mode() == job.ModePreviewSchema {
+			continue
+		}
 		result = append(result, j)
 	}
 	return result, nil

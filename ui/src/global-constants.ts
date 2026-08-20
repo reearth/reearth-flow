@@ -1,6 +1,6 @@
 export const DEFAULT_ENTRY_GRAPH_ID = "main";
-export const DEFAULT_EDGE_PORT = "default";
-export const DEFAULT_ROUTING_PORT = "default";
+export const DEFAULT_EDGE_PORT = "features";
+export const DEFAULT_ROUTING_PORT = "features";
 export const DEFAULT_NODE_SIZE = { width: 150, height: 25 };
 export const DEFAULT_GRID_SIZE = 16.5;
 export const DEFAULT_LAYOUT_X_SPACING = DEFAULT_GRID_SIZE * 5; // 82.5px — 5 grid units

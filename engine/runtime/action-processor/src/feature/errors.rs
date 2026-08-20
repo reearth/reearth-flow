@@ -31,16 +31,16 @@ pub(super) enum FeatureProcessorError {
     FileCityGml3ReaderFactory(String),
     #[error("Feature CityGml3 Reader error: {0}")]
     FileCityGml3Reader(String),
+    #[error("Feature CityGml2 Reader Factory error: {0}")]
+    FileCityGml2ReaderFactory(String),
+    #[error("Feature CityGml2 Reader error: {0}")]
+    FileCityGml2Reader(String),
     #[error("Feature File Reader Factory error: {0}")]
     FileReaderFactory(String),
     #[error("Feature File Csv Reader error: {0}")]
     FileCsvReader(String),
     #[error("Feature File Json Reader error: {0}")]
     FileJsonReader(String),
-    #[error("RhaiCallerFactory error: {0}")]
-    RhaiCallerFactory(String),
-    #[error("RhaiCaller error: {0}")]
-    RhaiCaller(String),
     #[error("FeatureFilePathExtractorFactory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("FeatureFilePathExtractor error: {0}")]
@@ -57,6 +57,10 @@ pub(super) enum FeatureProcessorError {
     FeatureWriterFactory(String),
     #[error("FeatureWriter error: {0}")]
     FeatureWriter(String),
+    #[error("FeatureGeoJsonWriterFactory error: {0}")]
+    FeatureGeoJsonWriterFactory(String),
+    #[error("FeatureGeoJsonWriter error: {0}")]
+    FeatureGeoJsonWriter(String),
     #[error("BuildingPartConnectivityCheckerFactory error: {0}")]
     BuildingPartConnectivityCheckerFactory(String),
     #[error("BuildingPartConnectivityChecker error: {0}")]

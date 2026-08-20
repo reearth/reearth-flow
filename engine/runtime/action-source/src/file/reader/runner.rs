@@ -5,7 +5,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::executor_operation::NodeContext;
 
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::Expr;
+use reearth_flow_types::{AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,59 +13,70 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct FileReaderCommonParam {
     /// # File Path
-    /// Expression that returns the path to the input file (e.g., "data.csv" or variable reference)
-    pub(crate) dataset: Option<Expr>,
+    /// Expression that returns the path to the input file, either a literal path or a variable reference.
+    pub(crate) dataset: Option<Code>,
     /// # Inline Content
     /// Expression that returns the file content as text instead of reading from a file path
-    pub(crate) inline: Option<Expr>,
+    pub(crate) inline: Option<Code>,
 }
 
-pub(crate) fn get_input_path(
-    ctx: &NodeContext,
-    common_property: &FileReaderCommonParam,
-) -> Result<Option<Uri>, String> {
-    let Some(path) = &common_property.dataset else {
-        return Ok(None);
-    };
-    let scope = ctx.expr_engine.new_scope();
-    let path = ctx
-        .expr_engine
-        .eval_scope::<String>(path.as_ref(), &scope)
-        .unwrap_or_else(|_| path.to_string());
-    if path.is_empty() {
-        return Ok(None);
+impl FileReaderCommonParam {
+    pub(crate) fn compile(self, ctx: &NodeContext) -> Result<FileReaderCompiledParam, String> {
+        let dataset = self
+            .dataset
+            .map(|c| {
+                let compiled = c.compile().map_err(|e| format!("dataset compile: {e}"))?;
+                match compiled.eval_variables_only(ctx.variables.clone()) {
+                    Ok(AttributeValue::Null) => Ok::<Option<String>, String>(None),
+                    _ => {
+                        let s = compiled
+                            .eval_string_variables_only(ctx.variables.clone())
+                            .map_err(|e| format!("dataset eval: {e}"))?;
+                        Ok(if s.is_empty() { None } else { Some(s) })
+                    }
+                }
+            })
+            .transpose()?
+            .flatten();
+        let inline = self
+            .inline
+            .map(|c| {
+                let compiled = c.compile().map_err(|e| format!("inline compile: {e}"))?;
+                let s = compiled
+                    .eval_string_variables_only(ctx.variables.clone())
+                    .map_err(|e| format!("inline eval: {e}"))?;
+                Ok::<Bytes, String>(Bytes::from(s))
+            })
+            .transpose()?;
+        Ok(FileReaderCompiledParam { dataset, inline })
     }
-    let uri = Uri::from_str(path.as_str());
-    let Ok(uri) = uri else {
-        return Err("Invalid path".to_string());
-    };
-    Ok(Some(uri))
 }
 
-fn get_inline_content(
-    ctx: &NodeContext,
-    common_property: &FileReaderCommonParam,
-) -> Result<Option<Bytes>, String> {
-    let Some(inline) = &common_property.inline else {
+#[derive(Debug, Clone)]
+pub struct FileReaderCompiledParam {
+    /// Pre-evaluated dataset path; `None` means absent or expression evaluated to null.
+    pub(crate) dataset: Option<String>,
+    /// Pre-evaluated inline content; `None` means not provided.
+    pub(crate) inline: Option<Bytes>,
+}
+
+pub(crate) fn get_input_path(param: &FileReaderCompiledParam) -> Result<Option<Uri>, String> {
+    let Some(ref path) = param.dataset else {
         return Ok(None);
     };
-    let scope = ctx.expr_engine.new_scope();
-    let content = ctx
-        .expr_engine
-        .eval_scope::<String>(inline.as_ref(), &scope)
-        .unwrap_or_else(|_| inline.to_string());
-    Ok(Some(Bytes::from(content)))
+    Uri::from_str(path.as_str())
+        .map(Some)
+        .map_err(|e| format!("Invalid path {path:?}: {e}"))
 }
 
 pub(crate) async fn get_content(
-    ctx: &NodeContext,
-    common_property: &FileReaderCommonParam,
+    param: &FileReaderCompiledParam,
     storage_resolver: Arc<StorageResolver>,
 ) -> Result<Bytes, String> {
-    if let Some(content) = get_inline_content(ctx, common_property)? {
-        return Ok(content);
+    if let Some(ref content) = param.inline {
+        return Ok(content.clone());
     }
-    if let Some(input_path) = get_input_path(ctx, common_property)? {
+    if let Some(input_path) = get_input_path(param)? {
         let storage = storage_resolver
             .resolve(&input_path)
             .map_err(|e| format!("{e:?}"))?;

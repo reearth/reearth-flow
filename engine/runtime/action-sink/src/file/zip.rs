@@ -8,8 +8,8 @@ use reearth_flow_common::{dir, zip};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{AttributeValue, Expr};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_types::{AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,11 +21,11 @@ pub(crate) struct ZipFileWriterFactory;
 
 impl SinkFactory for ZipFileWriterFactory {
     fn name(&self) -> &str {
-        "ZipFileWriter"
+        "Zip File Writer"
     }
 
     fn description(&self) -> &str {
-        "Writes features to a zip file"
+        "Compresses files referenced by incoming features into a single ZIP archive."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -37,11 +37,11 @@ impl SinkFactory for ZipFileWriterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system", "compression"]
+        &["file", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -50,7 +50,7 @@ impl SinkFactory for ZipFileWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -72,9 +72,18 @@ impl SinkFactory for ZipFileWriterFactory {
             )
             .into());
         };
-
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::ZipFileWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_variables_only(ctx.variables.clone())
+            .map_err(|e| {
+                SinkError::ZipFileWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = ZipFileWriter {
-            output: params.output,
+            output,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -83,7 +92,7 @@ impl SinkFactory for ZipFileWriterFactory {
 
 #[derive(Debug, Clone)]
 struct ZipFileWriter {
-    output: Expr,
+    output: String,
     buffer: Vec<Uri>,
 }
 
@@ -93,13 +102,14 @@ struct ZipFileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {
-    /// Output path
-    output: Expr,
+    /// # Output File
+    /// Output path or expression for the ZIP archive to create.
+    output: Code,
 }
 
 impl Sink for ZipFileWriter {
     fn name(&self) -> &str {
-        "ZipFileWriter"
+        "Zip File Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
@@ -115,11 +125,8 @@ impl Sink for ZipFileWriter {
         if self.buffer.is_empty() {
             return Ok(());
         }
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.output.as_ref())
-            .unwrap_or_else(|_| self.output.as_ref().to_string());
-        let out = crate::SinkOutput::from_path(&ctx, &path)
+        let path = self.output.as_str();
+        let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let temp_dir_path = dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
         dir::move_files_with_structure(&temp_dir_path, &self.buffer)?;

@@ -7,7 +7,7 @@ import {
 import { isDefined } from "../isDefined";
 
 /**
- * Converts literal escape sequences to actual characters for Rhai engine compatibility on the engine.
+ * Converts literal escape sequences to actual characters for expression engine compatibility on the engine.
  * This fixes the issue where UI sends \\n but engine expects actual newline characters.
  */
 const convertEscapeSequences = (obj: any): any => {
@@ -36,6 +36,27 @@ const convertEscapeSequences = (obj: any): any => {
   return obj;
 };
 
+const isEmptyParamValue = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === "") return true;
+
+  if (
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "value" in value &&
+    "type" in value
+  ) {
+    const inner = (value as { value: unknown }).value;
+    return inner === undefined || inner === null || inner === "";
+  }
+
+  return false;
+};
+
+const stripEmptyParams = (params: Record<string, any>): Record<string, any> =>
+  Object.fromEntries(
+    Object.entries(params).filter(([, value]) => !isEmptyParamValue(value)),
+  );
+
 export const convertNodes = (nodes?: Node[]) => {
   if (!nodes) return [];
 
@@ -52,7 +73,7 @@ export const convertNodes = (nodes?: Node[]) => {
       };
 
       if (data.params) {
-        n.with = convertEscapeSequences(data.params);
+        n.with = convertEscapeSequences(stripEmptyParams(data.params));
       }
 
       if (type === "subworkflow") {

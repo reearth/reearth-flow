@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -13,19 +13,19 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::csv;
-use super::reader::runner::get_content;
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CsvReaderFactory;
 
 impl SourceFactory for CsvReaderFactory {
     fn name(&self) -> &str {
-        "CsvReader"
+        "CSV Reader"
     }
 
     fn description(&self) -> &str {
-        "Read Features from CSV or TSV File"
+        "Reads features from CSV and TSV files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -41,18 +41,18 @@ impl SourceFactory for CsvReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: CsvReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::CsvReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -67,14 +67,31 @@ impl SourceFactory for CsvReaderFactory {
             )
             .into());
         };
-        let reader = CsvReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = CsvReaderCompiledParam {
+            common: params.common_property.compile(&ctx).map_err(|e| {
+                SourceError::CsvReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            property: params.property,
+            format: params.format,
+            encoding: params.encoding,
+        };
+        Ok(Box::new(CsvReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct CsvReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    property: csv::CsvReaderParam,
+    format: CsvFormat,
+    encoding: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct CsvReader {
-    params: CsvReaderParam,
+    params: CsvReaderCompiledParam,
 }
 
 /// # CsvReader Parameters
@@ -82,26 +99,15 @@ pub(super) struct CsvReader {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvReaderParam {
+    /// # File Format
+    /// Delimiter format of the input file.
+    format: CsvFormat,
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     #[serde(flatten)]
     property: csv::CsvReaderParam,
-    /// # File Format
-    /// Choose the delimiter format for the input file
-    format: CsvFormat,
     /// # Character Encoding
-    ///
-    /// Character encoding for the CSV/TSV file.
-    /// If not specified, defaults to UTF-8.
-    ///
-    /// Supported encodings include:
-    /// - **UTF-8** - Unicode UTF-8 (default)
-    /// - **Shift-JIS** - Japanese encoding
-    /// - **EUC-JP** - Japanese encoding
-    /// - **Windows Code Pages** - Windows-1250 through Windows-1258
-    /// - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16
-    ///
-    /// All encoding labels are case-insensitive.
+    /// Character encoding of the input file, such as "UTF-8" or "Shift-JIS". Defaults to UTF-8 when omitted; labels are case-insensitive.
     encoding: Option<String>,
 }
 
@@ -130,21 +136,21 @@ impl Source for CsvReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CsvReader"
+        "CSV Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         csv::read_csv(
             self.params.format.delimiter(),
             &content,

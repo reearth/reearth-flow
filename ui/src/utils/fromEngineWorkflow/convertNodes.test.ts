@@ -27,6 +27,7 @@ describe("convertNodes", () => {
     builtin: true,
     parameter: {},
     type: "testAction",
+    tags: ["test"],
     inputPorts: ["input1"],
     outputPorts: ["output1"],
   };
@@ -168,7 +169,7 @@ describe("convertNodes", () => {
         id: "node1",
         name: "Action Node",
         type: "action",
-        action: "FeatureCreator",
+        action: "Feature Creator",
       },
       {
         id: "sub1",

@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str::FromStr;
 
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use itertools::Itertools;
 use reearth_flow_common::{
     uri::Uri,
@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use serde_json::Value;
@@ -42,11 +42,11 @@ impl ProcessorFactory for TranXLinkCheckerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -100,7 +100,7 @@ impl Processor for TranXLinkChecker {
 
         let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
 
-        let transformer = StreamTransformer::new(&xml_content)
+        let transformer = Transformer::from(xml_content.as_str())
             .with_root_namespaces()
             .map_err(|e| {
                 PlateauProcessorError::TranXLinkChecker(format!(
@@ -226,7 +226,7 @@ impl Processor for TranXLinkChecker {
                                 .collect(),
                         ),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
                 if !lod3_trf_gml_ids.is_empty() {
                     let lod3_trf_gml_ids: HashSet<_> = lod3_trf_gml_ids.into_iter().collect();
@@ -258,7 +258,7 @@ impl Processor for TranXLinkChecker {
                                 .collect(),
                         ),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
             })
             .for_each()

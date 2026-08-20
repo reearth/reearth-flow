@@ -14,24 +14,27 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440010
         name: Generate-User-IDs
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
-          creator: |
-            [
-              #{ user_id: 1 },
-              #{ user_id: 2 },
-              #{ user_id: 3 }
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"user_id": 1},
+                {"user_id": 2},
+                {"user_id": 3}
+              ]
 
       # Make HTTP GET requests to fetch user data
       - id: 550e8400-e29b-41d4-a716-446655440020
         name: Fetch-User-Data
         type: action
-        action: HTTPCaller
+        action: HTTP Caller
         with:
           # Dynamic URL using feature attributes
-          url: |
-            "https://jsonplaceholder.typicode.com/users/" + env.get("__value").user_id
+          url:
+            type: flowExpr
+            value: 'str(Url("https://jsonplaceholder.typicode.com/users/") / attributes["user_id"])'
 
           method: GET
 
@@ -56,23 +59,24 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440030
         name: Save-Results
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
-          output: |
-            "{{ env.outputFilePath }}"
+          output:
+            type: flowExpr
+            value: 'variables["outputFilePath"]'
 
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440100
         from: 550e8400-e29b-41d4-a716-446655440010
         to: 550e8400-e29b-41d4-a716-446655440020
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 550e8400-e29b-41d4-a716-446655440101
         from: 550e8400-e29b-41d4-a716-446655440020
         to: 550e8400-e29b-41d4-a716-446655440030
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run --workflow runtime/examples/fixture/workflow/http_caller_basic.yml --var outputFilePath=/tmp/http_output.json

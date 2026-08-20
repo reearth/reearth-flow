@@ -17,9 +17,11 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Code, CompiledCode, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -27,19 +29,25 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
-    file::reader::runner::{get_content, FileReaderCommonParam},
+    file::reader::runner::{
+        get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
+    },
 };
+
+#[cfg(feature = "new-geometry")]
+#[path = "obj_next.rs"]
+mod obj_next;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ObjReaderFactory;
 
 impl SourceFactory for ObjReaderFactory {
     fn name(&self) -> &str {
-        "ObjReader"
+        "OBJ Reader"
     }
 
     fn description(&self) -> &str {
-        "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials"
+        "Reads 3D models from Wavefront OBJ files, including vertices, faces, normals, texture coordinates, and materials."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -47,22 +55,26 @@ impl SourceFactory for ObjReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File", "3D"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["obj", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: ObjReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::ObjReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -77,17 +89,45 @@ impl SourceFactory for ObjReaderFactory {
             )
             .into());
         };
-        let reader = ObjReader { params };
-        Ok(Box::new(reader))
+        let compiled = ObjReaderCompiledParam {
+            common: params.common.compile(&ctx).map_err(|e| {
+                SourceError::ObjReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            parse_materials: params.parse_materials,
+            material_file: params
+                .material_file
+                .map(|c: Code| c.compile())
+                .transpose()
+                .map_err(|e| {
+                    SourceError::ObjReaderFactory(format!("Failed to compile material_file: {e:?}"))
+                })?,
+            triangulate: params.triangulate,
+            merge_groups: params.merge_groups,
+            include_texcoords: params.include_texcoords,
+        };
+        Ok(Box::new(ObjReader { params: compiled }))
     }
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct ObjReader {
-    params: ObjReaderParam,
+pub(super) struct ObjReaderCompiledParam {
+    pub(super) common: FileReaderCompiledParam,
+    pub(super) parse_materials: bool,
+    pub(super) material_file: Option<CompiledCode>,
+    pub(super) triangulate: bool,
+    pub(super) merge_groups: bool,
+    // Only read by the new-geometry path (`obj_next::face_uv`); the
+    // not(new-geometry) world does not carry UVs onto the geometry.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    pub(super) include_texcoords: bool,
 }
 
-/// # ObjReader Parameters
+#[derive(Debug, Clone)]
+pub(super) struct ObjReader {
+    params: ObjReaderCompiledParam,
+}
+
+/// # OBJ Reader Parameters
 ///
 /// Configuration for reading Wavefront OBJ 3D model files with support for
 /// vertices, faces, normals, texture coordinates, and material definitions.
@@ -98,32 +138,27 @@ pub(super) struct ObjReaderParam {
     pub(super) common: FileReaderCommonParam,
 
     /// # Parse Materials
-    /// Enable parsing of material definitions from MTL files referenced in the OBJ file
+    /// Parses material definitions from MTL files referenced in the OBJ file.
     #[serde(default = "default_true")]
     pub(super) parse_materials: bool,
 
     /// # Material File
     /// Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.
     #[serde(default)]
-    pub(super) material_file: Option<Expr>,
+    pub(super) material_file: Option<Code>,
 
     /// # Triangulate
-    /// Convert polygons with more than 3 vertices into triangles using fan triangulation
+    /// Converts polygons with more than 3 vertices into triangles using fan triangulation.
     #[serde(default)]
     pub(super) triangulate: bool,
 
     /// # Merge Groups
-    /// Merge all groups and objects into a single feature instead of creating separate features per group/object
+    /// Merges all groups and objects into a single feature instead of creating separate features per group or object.
     #[serde(default)]
     pub(super) merge_groups: bool,
 
-    /// # Include Normals
-    /// Include vertex normal data in the output geometry
-    #[serde(default = "default_true")]
-    pub(super) include_normals: bool,
-
     /// # Include Texture Coordinates
-    /// Include texture coordinate (UV) data in the output geometry
+    /// Includes texture coordinate (UV) data in the output geometry.
     #[serde(default = "default_true")]
     pub(super) include_texcoords: bool,
 }
@@ -137,67 +172,85 @@ impl Source for ObjReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ObjReader"
+        "OBJ Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let content = get_content(&ctx, &self.params.common, storage_resolver.clone()).await?;
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
 
         read_obj(&ctx, storage_resolver, &content, &self.params, sender)
+            .await
+            .map_err(Into::<BoxedError>::into)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
+        obj_next::read(&ctx, storage_resolver, &content, &self.params, &sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }
 }
 
 #[derive(Debug, Clone, Default)]
-struct ObjData {
-    vertices: Vec<[f64; 3]>,
-    normals: Vec<[f64; 3]>,
-    texcoords: Vec<[f64; 3]>,
-    faces: Vec<Face>,
-    groups: Vec<String>,
-    objects: Vec<String>,
-    material_libs: Vec<String>,
-    comments: Vec<String>,
+pub(super) struct ObjData {
+    pub(super) vertices: Vec<[f64; 3]>,
+    pub(super) normals: Vec<[f64; 3]>,
+    pub(super) texcoords: Vec<[f64; 3]>,
+    pub(super) faces: Vec<Face>,
+    pub(super) groups: Vec<String>,
+    pub(super) objects: Vec<String>,
+    pub(super) material_libs: Vec<String>,
+    pub(super) comments: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct Face {
-    vertices: Vec<FaceVertex>,
-    group: Option<String>,
-    object: Option<String>,
-    material: Option<String>,
-    smoothing_group: Option<String>,
+pub(super) struct Face {
+    pub(super) vertices: Vec<FaceVertex>,
+    pub(super) group: Option<String>,
+    pub(super) object: Option<String>,
+    pub(super) material: Option<String>,
+    pub(super) smoothing_group: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-struct FaceVertex {
-    vertex_index: i32,
-    texture_index: Option<i32>,
-    normal_index: Option<i32>,
+pub(super) struct FaceVertex {
+    pub(super) vertex_index: i32,
+    pub(super) texture_index: Option<i32>,
+    pub(super) normal_index: Option<i32>,
 }
 
 #[derive(Debug, Clone, Default)]
-struct Material {
-    name: String,
-    ambient: Option<[f32; 3]>,
-    diffuse: Option<[f32; 3]>,
-    specular: Option<[f32; 3]>,
-    shininess: Option<f32>,
-    transparency: Option<f32>,
-    illumination: Option<i32>,
-    texture_map: Option<String>,
+pub(super) struct Material {
+    pub(super) name: String,
+    pub(super) ambient: Option<[f32; 3]>,
+    pub(super) diffuse: Option<[f32; 3]>,
+    pub(super) specular: Option<[f32; 3]>,
+    pub(super) shininess: Option<f32>,
+    pub(super) transparency: Option<f32>,
+    pub(super) illumination: Option<i32>,
+    pub(super) texture_map: Option<String>,
+    // Resolved absolute Uri of `map_Kd`, relative to the MTL file's directory.
+    // Populated by `parse_mtl`; used by the new-geometry appearance path.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    pub(super) texture_uri: Option<Uri>,
 }
 
 fn safe_f64_to_number(value: f64) -> serde_json::Number {
@@ -298,31 +351,29 @@ fn extract_material_properties(
     (materials_array, material_properties)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_obj(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     content: &Bytes,
-    params: &ObjReaderParam,
+    params: &ObjReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), SourceError> {
     let obj_data = parse_obj_content(content)?;
 
-    let obj_uri = if let Some(dataset) = &params.common.dataset {
-        Uri::from_str(dataset.to_string().trim_matches('"'))
-            .unwrap_or_else(|_| Uri::from_str("file://./unknown.obj").unwrap())
-    } else {
-        Uri::from_str("file://./unknown.obj").unwrap()
-    };
+    let obj_uri = get_input_path(&params.common)
+        .map_err(SourceError::ObjReader)?
+        .unwrap_or_else(|| Uri::from_str("file://./unknown.obj").unwrap());
 
     let materials = if params.parse_materials {
         let mut all_materials = HashMap::new();
 
-        if let Some(external_mtl_expr) = &params.material_file {
-            let scope = ctx.expr_engine.new_scope();
-            let external_mtl = ctx
-                .expr_engine
-                .eval_scope::<String>(external_mtl_expr.as_ref(), &scope)
-                .unwrap_or_else(|_| external_mtl_expr.to_string());
+        if let Some(ref material_file) = params.material_file {
+            let external_mtl = material_file
+                .eval_string_variables_only(ctx.variables.clone())
+                .map_err(|e| {
+                    SourceError::ObjReader(format!("Failed to evaluate material_file: {e:?}"))
+                })?;
             let mtl_uri =
                 resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, &external_mtl)
                     .await?;
@@ -430,7 +481,7 @@ async fn read_obj(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
@@ -503,7 +554,7 @@ async fn read_obj(
 
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
@@ -514,7 +565,7 @@ async fn read_obj(
     Ok(())
 }
 
-fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
+pub(super) fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
     let reader = BufReader::new(&content[..]);
     let mut obj_data = ObjData::default();
 
@@ -713,7 +764,7 @@ fn parse_face_vertex(vertex_str: &str) -> Result<FaceVertex, String> {
     })
 }
 
-async fn resolve_material_path(
+pub(super) async fn resolve_material_path(
     _ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     obj_uri: &Uri,
@@ -751,7 +802,23 @@ async fn resolve_material_path(
     Ok(None)
 }
 
-async fn parse_mtl(
+/// Resolves a `map_Kd` texture path to an absolute [`Uri`], relative to the
+/// MTL file's directory. Pure string join, no I/O.
+pub(super) fn join_texture_uri(mtl_uri: &Uri, tex: &str) -> Option<Uri> {
+    // Already absolute (has a scheme), e.g. `gs://bucket/tex.png`.
+    // Checked on the raw string: `Uri::from_str` always succeeds for
+    // relative paths too (it resolves them against CWD into a `file://`
+    // URI), so testing the parsed Uri's string would defeat this check.
+    if tex.contains("://") {
+        return Uri::from_str(tex).ok();
+    }
+    // Resolve relative to the MTL file's directory using the path-aware
+    // `parent` + `join` (separator-safe), rather than string-splitting on '/'
+    // which breaks on Windows where `Uri` normalizes to the OS separator.
+    mtl_uri.parent()?.join(tex).ok()
+}
+
+pub(super) async fn parse_mtl(
     _ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     mtl_uri: &Uri,
@@ -767,15 +834,19 @@ async fn parse_mtl(
         .bytes()
         .await
         .map_err(|e| SourceError::ObjReader(format!("Failed to read MTL file content: {e}")))?;
-    let content = content.to_vec();
-    let reader = BufReader::new(&content[..]);
+    let content = String::from_utf8(content.to_vec())
+        .map_err(|e| SourceError::ObjReader(format!("Error reading MTL file: {e}")))?;
+    Ok(parse_mtl_str(&content, mtl_uri))
+}
+
+/// The sync line-parsing core of [`parse_mtl`], split out so the MTL-to-material
+/// mapping is unit-testable without a storage resolver (no I/O here; `parse_mtl`
+/// reads the MTL bytes and hands the decoded string to this function).
+pub(super) fn parse_mtl_str(content: &str, mtl_uri: &Uri) -> HashMap<String, Material> {
     let mut materials = HashMap::new();
     let mut current_material: Option<Material> = None;
 
-    for line in reader.lines() {
-        let line =
-            line.map_err(|e| SourceError::ObjReader(format!("Error reading MTL file: {e}")))?;
-
+    for line in content.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
@@ -855,7 +926,9 @@ async fn parse_mtl(
             }
             "map_Kd" if parts.len() >= 2 => {
                 if let Some(ref mut mat) = current_material {
-                    mat.texture_map = Some(parts[1..].join(" "));
+                    let tex = parts[1..].join(" ");
+                    mat.texture_uri = join_texture_uri(mtl_uri, &tex);
+                    mat.texture_map = Some(tex);
                 }
             }
             _ => {}
@@ -866,13 +939,13 @@ async fn parse_mtl(
         materials.insert(mat.name.clone(), mat);
     }
 
-    Ok(materials)
+    materials
 }
 
 fn create_geometry_from_faces(
     obj_data: &ObjData,
     faces: &[Face],
-    params: &ObjReaderParam,
+    params: &ObjReaderCompiledParam,
 ) -> Result<Geometry, SourceError> {
     let mut polygons = Vec::new();
 
@@ -937,7 +1010,6 @@ fn create_geometry_from_faces(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::Expr;
 
     #[test]
     fn test_parse_simple_obj() {
@@ -1006,16 +1078,15 @@ f 1 2 3 4
 
         let obj_data = parse_obj_content(&Bytes::from_static(obj_content)).unwrap();
 
-        let params = ObjReaderParam {
-            common: FileReaderCommonParam {
-                dataset: Some(Expr::new("\"test.obj\"")),
+        let params = ObjReaderCompiledParam {
+            common: FileReaderCompiledParam {
+                dataset: None,
                 inline: None,
             },
             parse_materials: false,
             material_file: None,
             triangulate: true,
             merge_groups: false,
-            include_normals: true,
             include_texcoords: true,
         };
 
@@ -1048,16 +1119,15 @@ f -4 -3 -2 -1
         assert_eq!(face.vertices[2].vertex_index, -2);
         assert_eq!(face.vertices[3].vertex_index, -1);
 
-        let params = ObjReaderParam {
-            common: FileReaderCommonParam {
-                dataset: Some(Expr::new("\"test.obj\"")),
+        let params = ObjReaderCompiledParam {
+            common: FileReaderCompiledParam {
+                dataset: None,
                 inline: None,
             },
             parse_materials: false,
             material_file: None,
             triangulate: false,
             merge_groups: false,
-            include_normals: true,
             include_texcoords: true,
         };
 
@@ -1124,6 +1194,14 @@ f 4 5 6
             safe_f64_to_number(f64::NEG_INFINITY),
             serde_json::Number::from(0)
         );
+    }
+
+    #[test]
+    fn map_kd_resolves_relative_to_mtl_dir() {
+        // join_texture_uri is the pure resolver extracted in Step 3.
+        let mtl = Uri::from_str("file:///data/models/scene.mtl").unwrap();
+        let uri = join_texture_uri(&mtl, "textures/brick.png").unwrap();
+        assert_eq!(uri.to_string(), "file:///data/models/textures/brick.png");
     }
 
     #[test]

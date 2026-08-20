@@ -10,6 +10,20 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = []
+
+# Debug-only intermediate-data form: the leaves keep their derived `serde`, which
+# writes the raw internal representation. Off by default, where each leaf's
+# `feature_write.rs` supplies the production form instead.
+debug-geom-feature-write = []
+
+# Emits `JsonSchema` for the production intermediate-data form. Incompatible with
+# `debug-geom-feature-write`.
+schema = ["dep:schemars"]
+
 [dependencies]
 reearth-flow-common.workspace = true
 
@@ -20,20 +34,35 @@ approx.workspace = true
 bvh.workspace = true
 bytes.workspace = true
 clipper-sys.workspace = true
+directories.workspace = true
 earcut.workspace = true
+enum_dispatch.workspace = true
 float_next_after.workspace = true
 geo-buffer.workspace = true
 geo-types.workspace = true
 geojson.workspace = true
 i_overlay.workspace = true
+indexmap.workspace = true
 kiddo.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
 parking_lot.workspace = true
+proj-sys.workspace = true
 rayon.workspace = true
 robust.workspace = true
 rstar.workspace = true
+schemars = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
+smallvec.workspace = true
+spade.workspace = true
 strum_macros.workspace = true
 thiserror.workspace = true
+
+[build-dependencies]
+hex.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true

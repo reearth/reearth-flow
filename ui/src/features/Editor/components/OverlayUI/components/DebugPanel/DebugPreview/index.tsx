@@ -26,7 +26,6 @@ import useHooks from "./hooks";
 type Props = {
   selectedOutputData: any;
   debugJobState?: JobState;
-  onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
   selectedFeatureId: string | null;
   // enableClustering?: boolean;
@@ -43,7 +42,6 @@ const DebugPreview: React.FC<Props> = ({
   debugJobState,
   selectedOutputData,
   dataURLs,
-  onConvertedSelectedFeature,
   cesiumViewerRef,
   selectedFeatureId,
   onSelectedFeature,
@@ -108,11 +106,10 @@ const DebugPreview: React.FC<Props> = ({
     [featureMap],
   );
 
-  const convertedSelectedFeature = useMemo(() => {
-    const converted = convertFeature(selectedFeatureId);
-    onConvertedSelectedFeature(converted);
-    return converted;
-  }, [selectedFeatureId, onConvertedSelectedFeature, convertFeature]);
+  const convertedSelectedFeature = useMemo(
+    () => convertFeature(selectedFeatureId),
+    [selectedFeatureId, convertFeature],
+  );
 
   const {
     showSelectedFeatureOnly,
@@ -146,14 +143,16 @@ const DebugPreview: React.FC<Props> = ({
                 )}
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    className="w-[25px]"
-                    tooltipText={t("Additional actions")}
-                    tooltipOffset={12}
-                    icon={<DotsThreeVerticalIcon size={18} />}
-                  />
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={
+                    <IconButton
+                      className="w-[25px]"
+                      tooltipText={t("Additional actions")}
+                      tooltipOffset={12}
+                      icon={<DotsThreeVerticalIcon size={18} />}
+                    />
+                  }
+                />
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleGeoViewerReset}>
                     <CornersOutIcon />
@@ -210,14 +209,16 @@ const DebugPreview: React.FC<Props> = ({
                 )}
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    className="w-[25px]"
-                    tooltipText={t("Additional actions")}
-                    tooltipOffset={12}
-                    icon={<DotsThreeVerticalIcon size={18} />}
-                  />
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={
+                    <IconButton
+                      className="w-[25px]"
+                      tooltipText={t("Additional actions")}
+                      tooltipOffset={12}
+                      icon={<DotsThreeVerticalIcon size={18} />}
+                    />
+                  }
+                />
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleThreeJsReset}>
                     <TargetIcon />

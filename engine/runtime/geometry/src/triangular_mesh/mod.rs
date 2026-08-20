@@ -1,0 +1,285 @@
+//! TriangularMesh leaves.
+//!
+//! Vertex-pool format: the triangles are represented by three indices into a
+//! shared vertex pool. The index list uses a dynamic width chosen from
+//! `vertices.len() - 1` at construction.
+//!
+//! Comes in 2D and 3D variants. The 2D variant carries `vertices: Vec<[f64; 2]>`
+//! plus the one optional elevation the whole surface lies at, matching the 2D leaf
+//! convention.
+
+#[cfg(feature = "debug-geom-feature-write")]
+use serde::{Deserialize, Serialize};
+
+use crate::appearance::Appearance;
+use crate::coordinate::CoordinateFrame;
+use crate::index::IndexBuffer;
+
+mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
+mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
+
+/// A triangle mesh in 2D space, lying at a single optional elevation.
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TriangularMesh2D {
+    /// Coordinate frame these vertices are expressed in.
+    frame: CoordinateFrame,
+    vertices: Vec<[f64; 2]>,
+    /// The elevation the whole mesh lies at. `None` = pure 2D.
+    z: Option<f64>,
+    /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle is
+    /// wound counter-clockwise in canonical orientation (see [`crate::coordinate`]:
+    /// judged after applying the frame's orientation sign, not by the raw signed
+    /// area of the stored coordinates); triangles carry no interior rings.
+    indices: IndexBuffer<3>,
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
+    appearance: Option<Appearance>,
+}
+
+/// The coordinate-free data of a 3D triangle mesh: the vertex pool, triangle
+/// index list and appearance, with no frame of its own.
+///
+/// Shared by two hosts that each supply the frame: the standalone
+/// [`TriangularMesh3D`] leaf pairs this with its own [`CoordinateFrame`], while a
+/// [`Solid`](crate::solid::Solid) shell stores it directly and takes the one
+/// frame from the enclosing `Solid` — so a solid and its boundaries cannot
+/// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
+/// [`RasterData`](crate::appearance::RasterData) split.
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TriangularMesh3DData {
+    vertices: Vec<[f64; 3]>,
+    /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle's
+    /// canonical outward normal is its right-hand-rule normal times the frame's
+    /// orientation sign (see [`crate::coordinate`]).
+    indices: IndexBuffer<3>,
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
+    appearance: Option<Appearance>,
+}
+
+/// A triangle mesh in 3D space: coordinate-free mesh data plus the frame it is
+/// expressed in.
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TriangularMesh3D {
+    /// Coordinate frame the mesh data is expressed in.
+    frame: CoordinateFrame,
+    /// coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
+    /// shell stores directly.
+    data: TriangularMesh3DData,
+}
+
+impl TriangularMesh3DData {
+    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
+    /// shell bound itself without exposing the raw layout.
+    #[inline]
+    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+        &self.vertices
+    }
+}
+
+impl TriangularMesh2D {
+    /// The coordinate frame these vertices are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 2]] {
+        &self.vertices
+    }
+
+    /// The elevation the mesh lies at, or `None` when it is pure 2D.
+    #[inline]
+    pub fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+
+    /// The number of triangles in the mesh.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.indices.len()
+    }
+
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.indices.iter_u32()
+    }
+
+    /// Borrow the appearance, if any.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.appearance
+    }
+
+    /// Mutably borrow the appearance, to set, clear, or edit it in place.
+    #[inline]
+    pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
+        &mut self.appearance
+    }
+}
+
+impl TriangularMesh3DData {
+    /// The vertex pool, mutable.
+    pub(crate) fn vertices_mut(&mut self) -> &mut [[f64; 3]] {
+        &mut self.vertices
+    }
+}
+
+impl TriangularMesh3D {
+    /// The coordinate frame the mesh data is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The number of triangles in the mesh.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.data.indices.len()
+    }
+
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.data.triangles()
+    }
+
+    /// Borrow the appearance, if any.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.data.appearance
+    }
+
+    /// Mutably borrow the appearance, to set, clear, or edit it in place.
+    #[inline]
+    pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
+        &mut self.data.appearance
+    }
+
+    /// Consume the mesh, yielding its coordinate-free data for use as a
+    /// [`Solid`](crate::solid::Solid) shell.
+    #[inline]
+    pub fn into_data(self) -> TriangularMesh3DData {
+        self.data
+    }
+
+    /// Borrow the coordinate-free mesh data, for the predicate views.
+    #[inline]
+    pub(crate) fn data(&self) -> &TriangularMesh3DData {
+        &self.data
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 3]] {
+        self.data.vertices()
+    }
+}
+
+impl TriangularMesh3DData {
+    /// The number of triangles.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.indices.len()
+    }
+
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.indices.iter_u32()
+    }
+
+    /// Drop the appearance.
+    pub(crate) fn remove_appearance(&mut self) {
+        self.appearance = None;
+    }
+
+    /// Drop all back-side appearance, keeping only the front; see
+    /// [`crate::appearance::make_front_only`].
+    pub(crate) fn make_front_only(&mut self) {
+        crate::appearance::make_front_only(&mut self.appearance);
+    }
+}
+
+// Tessellation is defined only for `Polygon` / `PolygonMesh`.
+crate::unsupported!(TriangularMesh2D: Triangulate);
+crate::unsupported!(TriangularMesh3D: Triangulate);
+
+// Triangles carry no interior rings, so the hole count is always zero.
+crate::unsupported!(TriangularMesh2D: CountHoles);
+crate::unsupported!(TriangularMesh3D: CountHoles);
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::appearance::{
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSet, UvSource,
+    };
+    use crate::test_support::bare;
+
+    fn uv(side: Side) -> UvSet {
+        UvSet {
+            side,
+            channel: ChannelId::default(),
+            uv: UvSource::Explicit(Box::new([])),
+        }
+    }
+
+    #[test]
+    fn triangles_yields_widened_index_triples() {
+        let m = TriangularMesh3DData::from_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 1, 3, 2],
+        )
+        .unwrap();
+        let tris: Vec<[u32; 3]> = m.triangles().collect();
+        assert_eq!(tris, vec![[0, 1, 2], [1, 3, 2]]);
+    }
+
+    #[test]
+    fn make_front_only_drops_back_binding_and_uv() {
+        let mut m = TriangularMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        let theme = ThemeId(Arc::from("t"));
+        m.appearance = Some(Appearance::from_parts(
+            vec![bare(), bare()],
+            vec![ThemeBinding {
+                theme: theme.clone(),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+                uv_sets: vec![uv(Side::Front), uv(Side::Back)],
+            }],
+            theme,
+        ));
+
+        m.make_front_only();
+
+        let app = m.appearance.as_ref().unwrap();
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
+    }
+}

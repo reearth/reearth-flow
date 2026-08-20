@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -25,7 +25,7 @@ pub(super) struct BoundaryExtractorFactory;
 
 impl ProcessorFactory for BoundaryExtractorFactory {
     fn name(&self) -> &str {
-        "BoundaryExtractor"
+        "Boundary Extractor"
     }
 
     fn description(&self) -> &str {
@@ -41,11 +41,11 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -73,7 +73,34 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     }
 }
 
-/// # BoundaryExtractor Parameters
+// AUDIT NOTE (left by the Geometry A batch, 2026-07-30). This action has not been
+// audited yet. The observations below came from reading this file while deciding
+// something else, so treat them as leads to CHECK, not conclusions to apply —
+// verify each against the code and the standard before acting, and disagree freely
+// if the reading is wrong.
+//
+// 1. Suspected silent data loss. When `keepEmptyBoundaries` is false — the default —
+//    a feature whose boundary cannot be extracted appears to be dropped entirely:
+//    no port receives it and there is no `rejected` port. CityGML geometry looks
+//    worst affected, since the match arm for it extracts nothing at all, so every
+//    CityGML feature may vanish by default. Confirm by tracing each `None` branch
+//    in `process`. If it holds, §4.3 wants a `rejected` port.
+// 2. If `rejected` is added, re-examine whether `keepEmptyBoundaries` should exist
+//    at all. It reads as a routing decision expressed as a parameter, which ports
+//    already express; §3.5 would call that implementation leakage. Check whether any
+//    workflow relies on it before removing.
+// 3. `exteriorOnly` looks like a genuine semantic choice worth keeping, but it is
+//    negatively framed. Consider inverting it to `includeHoles` (default true).
+// 4. The description is three sentences, has no terminating period, and leaks
+//    implementation detail — see §2.
+//
+// Cross-check before consolidating this with any other action: its shape is one
+// feature in, one feature out with the geometry replaced. Geometry Part Extractor
+// and Hole Extractor instead emit one feature per part. Ports are declared
+// statically by the factory and cannot vary by parameter, so merging actions of
+// different shapes forces dead ports onto the node.
+
+/// # Boundary Extractor Parameters
 ///
 /// Configuration for extracting boundaries from geometries.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
@@ -94,6 +121,7 @@ struct BoundaryExtractor {
 }
 
 impl Processor for BoundaryExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -104,7 +132,7 @@ impl Processor for BoundaryExtractor {
 
         if geometry.is_empty() {
             if self.params.keep_empty_boundaries {
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             }
             return Ok(());
         }
@@ -141,16 +169,17 @@ impl Processor for BoundaryExtractor {
         if let Some(new_geo) = new_geometry {
             let mut new_feature = feature.clone();
             new_feature.geometry = new_geo;
-            fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         } else if self.params.keep_empty_boundaries {
             let mut new_feature = feature.clone();
             new_feature.geometry = Arc::new(Geometry::default());
-            fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         }
 
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -160,7 +189,7 @@ impl Processor for BoundaryExtractor {
     }
 
     fn name(&self) -> &str {
-        "BoundaryExtractor"
+        "Boundary Extractor"
     }
 
     fn num_threads(&self) -> usize {

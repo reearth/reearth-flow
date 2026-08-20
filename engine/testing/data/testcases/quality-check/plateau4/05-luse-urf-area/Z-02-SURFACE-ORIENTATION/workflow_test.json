@@ -1,5 +1,6 @@
 {
   "description": "Test for plateau4 05 surface orientation error.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
   "workflowVariables": [
     {

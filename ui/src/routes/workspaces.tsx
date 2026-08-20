@@ -1,4 +1,4 @@
-import { TooltipProvider } from "@radix-ui/react-tooltip";
+import { TooltipProvider } from "@flow/components";
 import {
   createFileRoute,
   Outlet,

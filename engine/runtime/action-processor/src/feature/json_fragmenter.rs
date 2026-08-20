@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr};
 
 use reearth_flow_common::{json::find_by_json_path, uri::Uri};
 use reearth_flow_runtime::{
@@ -6,9 +6,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -21,7 +21,7 @@ pub(super) struct JSONFragmenterFactory;
 
 impl ProcessorFactory for JSONFragmenterFactory {
     fn name(&self) -> &str {
-        "JSONFragmenter"
+        "JSON Fragmenter"
     }
 
     fn description(&self) -> &str {
@@ -37,11 +37,11 @@ impl ProcessorFactory for JSONFragmenterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -93,7 +93,7 @@ pub(crate) struct JSONFragmenterOptions {
     reject_no_fragments: bool,
 }
 
-/// # JSONFragmenter Parameters
+/// # JSON Fragmenter Parameters
 ///
 /// Configuration for fragmenting JSON documents into individual features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -112,7 +112,7 @@ pub enum JSONFragmenterParam {
     #[serde(rename = "fileUrl")]
     FileUrl {
         /// Expression evaluating to the file path or URL containing JSON
-        path: Expr,
+        path: Code,
         #[serde(flatten)]
         options: JSONFragmenterOptions,
     },
@@ -169,20 +169,19 @@ impl Processor for JSONFragmenter {
                 }
             },
             JSONFragmenterParam::FileUrl { path, .. } => {
-                let expr_engine = Arc::clone(&ctx.expr_engine);
-                let scope = feature.new_scope(expr_engine.clone(), &None);
-                let path_ast = expr_engine
-                    .compile(path.to_string().as_str())
+                let url_str = path
+                    .compile()
                     .map_err(|e| {
                         FeatureProcessorError::JSONFragmenter(format!(
                             "Failed to compile path expression: {e:?}"
                         ))
+                    })?
+                    .eval_string(feature, ctx.variables.clone())
+                    .map_err(|e| {
+                        FeatureProcessorError::JSONFragmenter(format!(
+                            "Failed to evaluate path expression: {e:?}"
+                        ))
                     })?;
-                let url_str: String = scope.eval_ast(&path_ast).map_err(|e| {
-                    FeatureProcessorError::JSONFragmenter(format!(
-                        "Failed to evaluate path expression: {e:?}"
-                    ))
-                })?;
                 let url = Uri::from_str(&url_str).map_err(|e| {
                     FeatureProcessorError::JSONFragmenter(format!("Invalid URL: {e:?}"))
                 })?;
@@ -225,7 +224,7 @@ impl Processor for JSONFragmenter {
             if opts.reject_no_fragments {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             } else {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             return Ok(());
         }
@@ -264,7 +263,7 @@ impl Processor for JSONFragmenter {
                 }
             }
 
-            fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         }
 
         Ok(())
@@ -279,7 +278,7 @@ impl Processor for JSONFragmenter {
     }
 
     fn name(&self) -> &str {
-        "JSONFragmenter"
+        "JSON Fragmenter"
     }
 }
 
@@ -408,7 +407,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, attribute_params("$[*]"));
 
         assert_eq!(features.len(), 2);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
 
         let body0 = features[0]
             .attributes
@@ -443,7 +442,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, attribute_params("$.data.users[*]"));
 
         assert_eq!(features.len(), 3);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
     }
 
     #[test]
@@ -549,9 +548,10 @@ mod tests {
         let (_, ports) = run_processor(&feature, attribute_params("$.data[*]"));
 
         assert_eq!(ports.len(), 1);
-        assert_eq!(ports[0], DEFAULT_PORT.clone());
+        assert_eq!(ports[0], FEATURES_PORT.clone());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserves_input_attributes() {
         let mut feature = make_feature_with_json(r#"[{"x": 1}]"#);
@@ -582,7 +582,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, attribute_params("$.Depth"));
 
         assert_eq!(features.len(), 1);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
         let json_type = features[0]
             .attributes
             .get(&Attribute::new("json_type"))
@@ -633,7 +633,7 @@ mod tests {
         // Build params via serde so the Expr nutype is constructed correctly
         let params: JSONFragmenterParam = serde_json::from_value(serde_json::json!({
             "inputSource": "fileUrl",
-            "path": format!("\"{}\"", file_uri),
+            "path": {"type": "flowExpr", "value": format!("\"{}\"", file_uri)},
             "jsonQuery": "$[*]",
             "flattenQueryResult": true
         }))
@@ -643,7 +643,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, params);
 
         assert_eq!(features.len(), 2);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
         assert_eq!(
             features[0].attributes.get(&Attribute::new("name")),
             Some(&AttributeValue::String("Alice".to_string()))
@@ -658,7 +658,7 @@ mod tests {
     fn test_file_url_missing_file_returns_error() {
         let params: JSONFragmenterParam = serde_json::from_value(serde_json::json!({
             "inputSource": "fileUrl",
-            "path": "\"file:///nonexistent/path/data.json\"",
+            "path": {"type": "flowExpr", "value": "\"file:///nonexistent/path/data.json\""},
             "jsonQuery": "$[*]"
         }))
         .unwrap();

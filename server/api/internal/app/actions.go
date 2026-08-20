@@ -24,15 +24,18 @@ const (
 )
 
 type Action struct {
-	Parameter   map[string]interface{} `json:"parameter"`
-	Name        string                 `json:"name"`
-	Type        ActionType             `json:"type"`
-	Description string                 `json:"description"`
-	InputPorts  []string               `json:"inputPorts"`
-	OutputPorts []string               `json:"outputPorts"`
-	Categories  []string               `json:"categories"`
-	Tags        []string               `json:"tags"`
-	Builtin     bool                   `json:"builtin"`
+	// Parameter is the action's JSON Schema, forwarded verbatim to preserve
+	// property order — encoding/json sorts map keys, which would reorder the
+	// fields the UI renders. Guarded by TestGetActionDetailsPreservesParameterOrder.
+	Parameter   json.RawMessage `json:"parameter" swaggertype:"object"`
+	Name        string          `json:"name"`
+	Type        ActionType      `json:"type"`
+	Description string          `json:"description"`
+	InputPorts  []string        `json:"inputPorts"`
+	OutputPorts []string        `json:"outputPorts"`
+	Categories  []string        `json:"categories"`
+	Tags        []string        `json:"tags"`
+	Builtin     bool            `json:"builtin"`
 }
 
 func (a *Action) Validate() error {
@@ -95,8 +98,11 @@ var (
 	actionsDataMap = make(map[string]ActionsData)
 	mutex          sync.RWMutex
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
-	supportedLangs = map[string]bool{
-		"en": true,
+	// translatedLangs are the languages that have a translation overlay and thus
+	// a dedicated actions_{lang}.json. Everything else — empty lang, "en", and
+	// any unknown/region variant — resolves to the base actions.json, which is
+	// the English source of truth generated directly from the Rust factories.
+	translatedLangs = map[string]bool{
 		"es": true,
 		"fr": true,
 		"ja": true,
@@ -104,12 +110,30 @@ var (
 	}
 )
 
-func loadActionsData(lang string) (ActionsData, error) {
-	if lang != "" && !supportedLangs[lang] {
-		return ActionsData{}, &loadError{err: fmt.Errorf("unsupported language: %s", lang), status: http.StatusBadRequest}
-	}
+// actionsReader reads a schema file (e.g. "actions_ja.json") from the env bucket's
+// "actions/" prefix. gateway.File satisfies it via ReadActions.
+type actionsReader interface {
+	ReadActions(context.Context, string) (io.ReadCloser, error)
+}
 
-	cacheKey := lang
+var (
+	// actionsRepo, when set, is the bucket-backed schema source. nil → GitHub.
+	actionsRepo actionsReader
+	// actionsFallbackBaseURL is used when actionsRepo is unset or a read fails
+	// (local dev / cold bucket). Overridable in tests.
+	actionsFallbackBaseURL = "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+)
+
+func loadActionsData(lang string) (ActionsData, error) {
+	// Only translated languages have their own schema file; every other value
+	// (including "en" and unknown langs) shares the base actions.json under the
+	// empty cache key so we don't cache duplicate copies of the same content.
+	filename := "actions.json"
+	cacheKey := ""
+	if translatedLangs[lang] {
+		filename = fmt.Sprintf("actions_%s.json", lang)
+		cacheKey = lang
+	}
 
 	// Try to get from cache first using read lock
 	mutex.RLock()
@@ -119,38 +143,9 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}
 	mutex.RUnlock()
 
-	// Fetch from GitHub without holding any lock so other requests are not blocked.
-	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
-	filename := "actions.json"
-	if lang != "" {
-		filename = fmt.Sprintf("actions_%s.json", lang)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+filename, nil)
+	body, err := fetchActionsFile(filename)
 	if err != nil {
-		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return ActionsData{}, &loadError{err: err, status: http.StatusBadGateway}
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Warnf("actions: error closing response body: %v", err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return ActionsData{}, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, baseURL+filename), status: http.StatusBadGateway}
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ActionsData{}, &loadError{err: err, status: http.StatusInternalServerError}
+		return ActionsData{}, err
 	}
 
 	var newData ActionsData
@@ -173,6 +168,53 @@ func loadActionsData(lang string) (ActionsData, error) {
 	return newData, nil
 }
 
+// fetchActionsFile returns the bytes of a schema file, preferring the bucket-backed
+// actionsRepo and falling back to GitHub (actionsFallbackBaseURL).
+func fetchActionsFile(filename string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if actionsRepo != nil {
+		rc, err := actionsRepo.ReadActions(ctx, filename)
+		if err == nil {
+			defer func() {
+				if cerr := rc.Close(); cerr != nil {
+					log.Warnf("actions: error closing reader: %v", cerr)
+				}
+			}()
+			body, rerr := io.ReadAll(rc)
+			if rerr != nil {
+				return nil, &loadError{err: rerr, status: http.StatusInternalServerError}
+			}
+			return body, nil
+		}
+		log.Warnf("actions: bucket read failed for %s, falling back to GitHub: %v", filename, err)
+	}
+
+	url := actionsFallbackBaseURL + filename
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, &loadError{err: err, status: http.StatusBadGateway}
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, &loadError{err: err, status: http.StatusBadGateway}
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.Warnf("actions: error closing response body: %v", cerr)
+		}
+	}()
+	if resp.StatusCode != http.StatusOK {
+		return nil, &loadError{err: fmt.Errorf("unexpected status %d fetching %s", resp.StatusCode, url), status: http.StatusBadGateway}
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, &loadError{err: err, status: http.StatusInternalServerError}
+	}
+	return body, nil
+}
+
 // listActions godoc
 // @Summary      List actions
 // @Description  Get a list of available workflow actions with optional filtering
@@ -181,9 +223,8 @@ func loadActionsData(lang string) (ActionsData, error) {
 // @Param        q         query     string  false  "Search query"
 // @Param        category  query     string  false  "Filter by category"
 // @Param        type      query     string  false  "Filter by action type (processor, source, sink)"
-// @Param        lang      query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Param        lang      query     string  false  "Language code (es, fr, ja, zh); any other value returns the base English schema"
 // @Success      200       {array}   ActionSummary  "List of actions"
-// @Failure      400       {object}  object         "Invalid language"
 // @Failure      500       {object}  object         "Internal server error"
 // @Failure      502       {object}  object         "Upstream fetch error"
 // @Router       /actions [get]
@@ -229,9 +270,8 @@ func listActions(c echo.Context) error {
 // @Tags         actions
 // @Produce      json
 // @Param        q     query     string  false  "Search query"
-// @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Param        lang  query     string  false  "Language code (es, fr, ja, zh); any other value returns the base English schema"
 // @Success      200   {object}  SegregatedActions  "Actions segregated by category and type"
-// @Failure      400   {object}  object             "Invalid language"
 // @Failure      500   {object}  object             "Internal server error"
 // @Failure      502   {object}  object             "Upstream fetch error"
 // @Router       /actions/segregated [get]
@@ -349,9 +389,8 @@ func containsCaseInsensitive(slice []string, s string) bool {
 // @Tags         actions
 // @Produce      json
 // @Param        id    path      string  true   "Action ID/Name"
-// @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Param        lang  query     string  false  "Language code (es, fr, ja, zh); any other value returns the base English schema"
 // @Success      200   {object}  Action  "Action details"
-// @Failure      400   {object}  object  "Invalid language"
 // @Failure      404   {object}  object  "Action not found"
 // @Failure      500   {object}  object  "Internal server error"
 // @Failure      502   {object}  object  "Upstream fetch error"

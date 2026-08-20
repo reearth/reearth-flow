@@ -26,7 +26,7 @@ gen-policies:
 swagger:
 	swag init -g cmd/reearth-flow/main.go -o internal/app/docs --parseDependency --parseInternal
 
-.PHONY: lint test e2e build run-app run-db gql gen-policies swagger all gen-thrift proto
+.PHONY: lint test e2e build run-app run-db gql gen-policies swagger all gen-thrift proto run-db-pg sqlc atlas-diff atlas-validate run-jaeger down-jaeger
 
 all: gen-thrift
 
@@ -40,4 +40,24 @@ proto:
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		pkg/cms/proto/schema.proto
 
+run-db-pg:
+	docker compose -f ./docker-compose.yml up -d reearth-flow-postgres
 
+run-jaeger:
+	docker rm -f reearth-flow-jaeger 2>/dev/null || true
+	docker run --rm -d --name reearth-flow-jaeger -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one:1.60
+
+down-jaeger:
+	docker rm -f reearth-flow-jaeger 2>/dev/null || true
+
+PG_DIR=internal/infrastructure/postgres
+DB_DIR=../db
+
+sqlc:
+	cd $(PG_DIR) && sqlc generate
+
+atlas-diff:
+	cd $(DB_DIR) && atlas migrate diff $(name) --env local
+
+atlas-validate:
+	cd $(DB_DIR) && atlas migrate validate --env local

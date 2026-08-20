@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -19,11 +19,11 @@ pub(super) struct DirectoryDecompressorFactory;
 
 impl ProcessorFactory for DirectoryDecompressorFactory {
     fn name(&self) -> &str {
-        "DirectoryDecompressor"
+        "Directory Decompressor"
     }
 
     fn description(&self) -> &str {
-        "Extracts and decompresses archive files from specified attributes"
+        "Decompresses zip and 7z archives referenced by feature attributes, replacing each attribute value with the path of the directory holding the extracted files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,15 +35,15 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system", "compression"]
+        &["file", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -80,16 +80,20 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
     }
 }
 
-/// # DirectoryDecompressor Parameters
+/// # Directory Decompressor Parameters
 ///
-/// Configures the extraction and decompression of archive files.
+/// Configures which attributes hold archives and how deeply the extracted directory is unwrapped.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct DirectoryDecompressorParam {
-    /// Attributes containing archive file paths to be extracted and decompressed
+    /// # Archive Attributes
+    /// Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with
+    /// the extracted directory path; attributes holding any other value are left unchanged.
     archive_attributes: Vec<Attribute>,
-    /// If true, recursively unwraps single-folder nesting until the directory contains
-    /// multiple items or files directly. If false (default), returns the root extraction folder as-is.
+    /// # Find Deepest Single Folder
+    /// Keeps unwrapping while the extracted directory contains nothing but a single subdirectory,
+    /// stopping at the first directory with multiple entries or a file. When disabled, only one
+    /// level of single-folder nesting is unwrapped.
     find_deepest_single_folder: Option<bool>,
 }
 
@@ -131,7 +135,7 @@ impl Processor for DirectoryDecompressor {
                 AttributeValue::String(root_output_path.to_string()),
             );
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -144,7 +148,7 @@ impl Processor for DirectoryDecompressor {
     }
 
     fn name(&self) -> &str {
-        "DirectoryDecompressor"
+        "Directory Decompressor"
     }
 }
 

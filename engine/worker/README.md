@@ -43,18 +43,18 @@ graphs:
           creator: |
             [
               #{
-                csvPath: file::join_path(env.get("workerAssetPath"), env.get("csvPath"))
+                csvPath: file::join_path(variables.get("workerAssetPath"), variables.get("csvPath"))
               },
             ]
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
-        name: FeatureReader
+        name: Feature Reader
         type: action
-        action: FeatureReader
+        action: Feature Reader
         with:
           format: tsv
           dataset: |
-            env.get("__value").csvPath
+            attributes["csvPath"]
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: JsonWriter
@@ -62,7 +62,7 @@ graphs:
         action: JsonWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("outputPath"))
+            file::join_path(variables.get("workerArtifactPath"), variables.get("outputPath"))
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -80,13 +80,13 @@ graphs:
 #### `workerAssetPath`
 * The path to the assets local directory.
 ``` yaml
-  env.get("workerAssetPath")
+  variables.get("workerAssetPath")
 ```
 
 #### `workerArtifactPath`
 * The path to the artifacts local directory.
 ``` yaml
-  env.get("workerArtifactPath")
+  variables.get("workerArtifactPath")
 ```
 
 ### PubSub

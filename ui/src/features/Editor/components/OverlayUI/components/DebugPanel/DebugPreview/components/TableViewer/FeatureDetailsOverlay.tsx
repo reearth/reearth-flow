@@ -1,6 +1,6 @@
 import {
   ArrowLeftIcon,
-  ArrowSquareOutIcon,
+  BracketsCurlyIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
 import {
@@ -10,6 +10,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -18,163 +19,90 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   IconButton,
+  Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import {
+  formatStructured,
+  isLargeValue,
+  toSearchableString,
+} from "@flow/utils/valueSummary";
+
+import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
   feature: any;
   onClose: () => void;
   handleShowFeatureDetails?: (feature: any) => void;
-  detectedGeometryType?: string | null;
 };
 
-/** Threshold for considering a value "large" — avoids JSON.stringify on huge objects */
-const LARGE_VALUE_THRESHOLD = 100;
-
-/** How many array items to show in the inline preview */
-const ARRAY_PREVIEW_ITEMS = 1;
-
-/** Maximum nesting depth for stringifyItem before truncating */
-const MAX_STRINGIFY_DEPTH = 3;
-
-/** Maximum array items to render at any depth in stringifyItem */
-const MAX_ARRAY_ITEMS = 3;
-
-/** Resolve a value that might be a JSON string into its parsed form */
-function resolveValue(value: unknown): unknown {
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (typeof parsed === "object" && parsed !== null) return parsed;
-    } catch {
-      // Not valid JSON
-    }
-  }
-  return value;
-}
-
-/** Estimate the number of leaf nodes in a value without serializing it */
-function estimateSize(value: unknown): number {
-  const resolved = resolveValue(value);
-  if (resolved == null || typeof resolved !== "object") return 1;
-  if (Array.isArray(resolved)) {
-    // For large arrays, just use length — don't recurse into every element
-    if (resolved.length > LARGE_VALUE_THRESHOLD) return resolved.length;
-    let sum = 0;
-    for (const item of resolved) {
-      sum += estimateSize(item);
-      if (sum > LARGE_VALUE_THRESHOLD) return sum;
-    }
-    return sum;
-  }
-  const entries = Object.entries(resolved);
-  if (entries.length > LARGE_VALUE_THRESHOLD) return entries.length;
-  let sum = 0;
-  for (const [, v] of entries) {
-    sum += estimateSize(v);
-    if (sum > LARGE_VALUE_THRESHOLD) return sum;
-  }
-  return sum;
-}
-
-/** Stringify a value with depth limiting (used for representative items in previews).
- *  Beyond maxDepth, nested structures are shown as `Array(N)` / `Object(N keys)`. */
-function stringifyItem(item: unknown, indent: string, depth = 0): string {
-  if (item == null) return "null";
-  if (typeof item !== "object") {
-    return typeof item === "string" ? JSON.stringify(item) : String(item);
-  }
-  if (Array.isArray(item)) {
-    if (item.length === 0) return "[]";
-    if (depth >= MAX_STRINGIFY_DEPTH) return `Array(${item.length})`;
-    const shown = item.slice(0, MAX_ARRAY_ITEMS);
-    const inner = shown
-      .map((el) => `${indent}  ${stringifyItem(el, indent + "  ", depth + 1)}`)
-      .join(",\n");
-    const remaining = item.length - MAX_ARRAY_ITEMS;
-    const suffix = remaining > 0 ? `,\n${indent}  ... (${remaining} more)` : "";
-    return `[\n${inner}${suffix}\n${indent}]`;
-  }
-  const entries = Object.entries(item);
-  if (entries.length === 0) return "{}";
-  if (depth >= MAX_STRINGIFY_DEPTH) return `Object(${entries.length} keys)`;
-  const inner = entries
-    .map(
-      ([k, v]) =>
-        `${indent}  ${k}: ${stringifyItem(v, indent + "  ", depth + 1)}`,
-    )
-    .join(",\n");
-  return `{\n${inner}\n${indent}}`;
-}
-
-/** Build a lightweight summary string for a large value without JSON.stringify */
-function summarizeValue(value: unknown): string {
-  const resolved = resolveValue(value);
-  if (Array.isArray(resolved)) {
-    const len = resolved.length;
-    if (len === 0) return "[] (empty array)";
-    // Show first item fully expanded so the user sees the complete schema
-    const preview = resolved
-      .slice(0, ARRAY_PREVIEW_ITEMS)
-      .map((item) => stringifyItem(item, "  "))
-      .join(",\n  ");
-    const remaining = len - ARRAY_PREVIEW_ITEMS;
-    const suffix = remaining > 0 ? `,\n  ... (${remaining} more items)` : "";
-    return `Array(${len}) [\n  ${preview}${suffix}\n]`;
-  }
-  if (typeof resolved === "object" && resolved !== null) {
-    const entries = Object.entries(resolved);
-    if (entries.length === 0) return "{} (empty object)";
-    const preview = entries
-      .slice(0, 8)
-      .map(([k, v]) => `  ${k}: ${stringifyItem(v, "  ")}`)
-      .join(",\n");
-    const remaining = entries.length - 8;
-    const suffix = remaining > 0 ? `,\n  ... (${remaining} more keys)` : "";
-    return `Object(${entries.length} keys) {\n${preview}${suffix}\n}`;
-  }
-  return String(resolved);
-}
-
-const FeatureDetailsOverlay: React.FC<Props> = ({
-  feature,
-  onClose,
-  detectedGeometryType,
-}) => {
+const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   const t = useT();
-  // Process feature properties for display
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Read the values behind the row rather than the row's own cell strings: a
+  // cell string is serialized to fit a cell, and a large one is a bounded
+  // preview that no longer parses back into the value it came from. See
+  // `_values` in `useDataColumnizer`.
   const processedFeature = useMemo(() => {
     if (!feature) return null;
 
-    const { ...properties } = feature;
+    const values = feature._values as
+      | {
+          geometry?: Record<string, unknown>;
+          attributes?: Record<string, unknown>;
+        }
+      | undefined;
 
-    // Filter out internal properties that aren't user-relevant
-    const filteredProperties = Object.fromEntries(
-      Object.entries(properties).filter(
-        ([key]) =>
-          !key.startsWith("_") && !key.startsWith("geometry") && key !== "id",
+    return {
+      id: feature.id,
+      attributes: values?.attributes ?? {},
+      geometry: values?.geometry ?? {},
+    };
+  }, [feature]);
+
+  const filteredFeature = useMemo(() => {
+    if (!processedFeature) return null;
+    if (!searchTerm) return processedFeature;
+
+    const lowerSearch = searchTerm.toLowerCase();
+
+    const filteredAttributes = Object.fromEntries(
+      Object.entries(processedFeature?.attributes || {}).filter(
+        ([key, value]) => {
+          const keyMatch = key.toLowerCase().includes(lowerSearch);
+          const valueMatch = toSearchableString(value)
+            .toLowerCase()
+            .includes(lowerSearch);
+          return keyMatch || valueMatch;
+        },
       ),
     );
 
-    // Filter out geometry properties
     const filteredGeometry = Object.fromEntries(
-      Object.entries(properties).filter(
-        ([key]) =>
-          !key.startsWith("_") && key.startsWith("geometry") && key !== "id",
+      Object.entries(processedFeature?.geometry || {}).filter(
+        ([key, value]) => {
+          const keyMatch = key.toLowerCase().includes(lowerSearch);
+          const valueMatch = toSearchableString(value)
+            .toLowerCase()
+            .includes(lowerSearch);
+          return keyMatch || valueMatch;
+        },
       ),
     );
 
     return {
-      id: feature.id,
-      attributes: filteredProperties,
+      ...processedFeature,
+      attributes: filteredAttributes,
       geometry: filteredGeometry,
     };
-  }, [feature]);
+  }, [processedFeature, searchTerm]);
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.focus();
+      scrollRef.current.focus({ preventScroll: true });
     }
   }, []);
 
@@ -201,29 +129,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         break;
     }
   };
-  const openRawInNewWindow = useCallback((label: string, value: unknown) => {
-    const resolved = resolveValue(value);
-    let json: string;
-    try {
-      json = JSON.stringify(resolved, null, 2);
-    } catch {
-      json = String(resolved);
-    }
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.title = label;
-    const pre = w.document.createElement("pre");
-    pre.style.fontFamily = "monospace";
-    pre.style.fontSize = "12px";
-    pre.style.padding = "16px";
-    pre.style.margin = "0";
-    pre.style.whiteSpace = "pre-wrap";
-    pre.style.wordBreak = "break-all";
-    pre.textContent = json;
-    w.document.body.style.margin = "0";
-    w.document.body.style.backgroundColor = "#1e1e2e";
-    w.document.body.style.color = "#cdd6f4";
-    w.document.body.appendChild(pre);
+  const [rawView, setRawView] = useState<{
+    label: string;
+    value: unknown;
+  } | null>(null);
+
+  const openRaw = useCallback((label: string, value: unknown) => {
+    setRawView({ label, value });
   }, []);
 
   if (!feature || !processedFeature) {
@@ -233,19 +145,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   const formatValue = (value: unknown): string => {
     if (value == null || value === undefined) return "—";
 
-    if (typeof value === "object") {
-      try {
-        return JSON.stringify(value, null, 2);
-      } catch {
-        return String(value);
-      }
-    }
+    if (typeof value === "object") return formatStructured(value);
 
     if (typeof value === "string") {
       try {
         const parsed = JSON.parse(value);
         if (typeof parsed === "object" && parsed !== null) {
-          return JSON.stringify(parsed, null, 2);
+          return formatStructured(parsed);
         }
       } catch {
         // Not valid JSON, return as-is
@@ -274,9 +180,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
     return null;
   };
 
-  const isLargeValue = (value: unknown): boolean =>
-    estimateSize(value) > LARGE_VALUE_THRESHOLD;
-
   const renderEntry = (
     label: string,
     value: unknown,
@@ -295,38 +198,44 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               variant="ghost"
               type="button"
               className="flex h-5 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => openRawInNewWindow(label, value)}>
-              <ArrowSquareOutIcon size={12} />
+              onClick={() => openRaw(label, value)}>
+              <BracketsCurlyIcon size={12} />
               {t("View raw")}
             </Button>
           )}
         </div>
         {large ? (
           <div className="max-h-60 overflow-y-auto rounded-md bg-muted/30 p-2">
-            <pre className="text-xs break-all whitespace-pre-wrap">
-              {summarizeValue(value)}
+            {/* `wrap-break-word`, never `break-all`: the latter wraps mid-token,
+                which splits a coordinate across lines in the middle of a
+                number and makes the value unreadable. */}
+            <pre className="text-xs wrap-break-word whitespace-pre-wrap">
+              {formatValue(value)}
             </pre>
           </div>
         ) : valueType === "object" || valueType === "array" ? (
           <Collapsible defaultOpen={true}>
-            <CollapsibleTrigger asChild className="w-full">
-              <Button
-                variant="ghost"
-                type="button"
-                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
-                aria-expanded="true">
-                <span className="group flex items-center text-xs font-medium text-muted-foreground">
-                  <CaretDownIcon
-                    size={12}
-                    className="mr-1 transition-transform group-data-[state=open]:rotate-180"
-                  />
-                  {valueType}
-                </span>
-              </Button>
-            </CollapsibleTrigger>
+            <CollapsibleTrigger
+              className="w-full"
+              render={
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                  aria-expanded="true">
+                  <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                    <CaretDownIcon
+                      size={12}
+                      className="mr-1 transition-transform group-data-[panel-open]:rotate-180"
+                    />
+                    {valueType}
+                  </span>
+                </Button>
+              }
+            />
             <CollapsibleContent>
               <div className="mt-1 rounded-md bg-muted/30 p-2">
-                <pre className="text-xs break-all whitespace-pre-wrap">
+                <pre className="text-xs wrap-break-word whitespace-pre-wrap">
                   {formatValue(value)}
                 </pre>
               </div>
@@ -334,7 +243,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
           </Collapsible>
         ) : (
           <div className="rounded-md bg-muted/30 p-2">
-            <pre className="text-xs break-all whitespace-pre-wrap">
+            <pre className="text-xs wrap-break-word whitespace-pre-wrap">
               {formatValue(value)}
             </pre>
           </div>
@@ -344,8 +253,20 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   };
 
   return (
-    <div className="absolute inset-y-0 -top-10 left-0 z-10 w-full rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
+    <div className="absolute inset-0 z-10 rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
       {/* Header */}
+      <div className="py-1">
+        <Input
+          placeholder={t("Search") + "..."}
+          value={searchTerm}
+          onChange={(e) => {
+            const value = String(e.target.value);
+            setSearchTerm(value);
+          }}
+          className="max-w-sm"
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
           <IconButton
@@ -355,11 +276,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             tooltipText={t("Back to table")}
           />
           <div className="flex items-center gap-2">
-            {detectedGeometryType && (
-              <span className="text-xs text-muted-foreground">
-                {detectedGeometryType}
-              </span>
-            )}
             <h3 className="text-sm">
               {t("Feature ID: ")} {processedFeature.id}
             </h3>
@@ -371,9 +287,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() =>
-              openRawInNewWindow(`Feature ${processedFeature.id}`, feature)
+              openRaw(`${t("Feature")} ${processedFeature.id}`, {
+                id: processedFeature.id,
+                geometry: processedFeature.geometry,
+                attributes: processedFeature.attributes,
+              })
             }>
-            <ArrowSquareOutIcon size={12} />
+            <BracketsCurlyIcon size={12} />
             {t("View all raw")}
           </Button>
         </div>
@@ -399,46 +319,41 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             </div>
           )}
           {/* Geometry */}
-          {Object.keys(processedFeature.geometry).length > 0 && (
+          {Object.keys(filteredFeature?.geometry || {}).length > 0 && (
             <div>
-              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-                {t("Geometry")}
-              </h4>
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {t("Geometry")}
+                </h4>
+              </div>
               <div className="space-y-3">
-                {Object.entries(processedFeature.geometry).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const geometryKey = key.replace(/^geometry/, "");
-
-                    return (
-                      <div key={key}>
-                        {renderEntry(geometryKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                {Object.entries(
+                  (filteredFeature?.geometry ?? {}) as Record<string, unknown>,
+                ).map(([key, value]) => (
+                  <div key={key}>
+                    {renderEntry(key, value, getValueType(value))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
           {/* Attributes */}
-          {Object.keys(processedFeature.attributes).length > 0 && (
+          {Object.keys(filteredFeature?.attributes || {}).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("Attributes")}
               </h4>
               <div className="space-y-3">
-                {Object.entries(processedFeature.attributes).map(
-                  ([key, value]) => {
-                    const valueType = getValueType(value);
-                    const attributeKey = key.replace(/^attributes/, "");
-
-                    return (
-                      <div key={key}>
-                        {renderEntry(attributeKey, value, valueType)}
-                      </div>
-                    );
-                  },
-                )}
+                {Object.entries(
+                  (filteredFeature?.attributes ?? {}) as Record<
+                    string,
+                    unknown
+                  >,
+                ).map(([key, value]) => (
+                  <div key={key}>
+                    {renderEntry(key, value, getValueType(value))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -453,6 +368,15 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             )}
         </div>
       </div>
+
+      {rawView && (
+        <RawJsonViewer
+          label={rawView.label}
+          value={rawView.value}
+          open={!!rawView}
+          onClose={() => setRawView(null)}
+        />
+      )}
     </div>
   );
 };

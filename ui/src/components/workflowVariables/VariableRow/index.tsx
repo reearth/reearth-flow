@@ -173,12 +173,11 @@ const VariableRow: React.FC<Props> = ({
             </div>
           </div>
           {showVariableDialog && (
-            <Dialog open onOpenChange={onVariableDialogClose}>
-              <DialogContent
-                size="lg"
-                position="center"
-                className="p-2"
-                onInteractOutside={(e) => e.preventDefault()}>
+            <Dialog
+              open
+              disablePointerDismissal
+              onOpenChange={onVariableDialogClose}>
+              <DialogContent size="lg" position="center" className="p-2">
                 <DialogHeader>
                   <DialogTitle>
                     <div className="flex items-center justify-between gap-2">

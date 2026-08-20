@@ -8,15 +8,14 @@ use std::{
 use async_zip::base::read::mem::ZipFileReader;
 use futures::AsyncReadExt;
 use reearth_flow_common::{dir, uri::Uri};
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::storage::Storage;
-use reearth_flow_types::{AttributeValue, Expr, Feature, FilePath};
+use reearth_flow_types::{AttributeValue, Code, Feature, FilePath};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -29,11 +28,11 @@ pub struct FilePathExtractorFactory;
 
 impl SourceFactory for FilePathExtractorFactory {
     fn name(&self) -> &str {
-        "FilePathExtractor"
+        "File Path Extractor"
     }
 
     fn description(&self) -> &str {
-        "Extracts file paths from directories or archives, creating features for each discovered file"
+        "Extracts file paths from directories or archives, creating features for each discovered file."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -45,15 +44,15 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system"]
+        &["file"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -76,8 +75,35 @@ impl SourceFactory for FilePathExtractorFactory {
             )
             .into());
         };
-        Ok(Box::new(processor))
+        let source_dataset = processor
+            .source_dataset
+            .compile()
+            .map_err(|e| {
+                SourceError::FilePathExtractorFactory(format!("Failed to compile params: {e:?}"))
+            })?
+            .eval_string_variables_only(ctx.variables.clone())
+            .map_err(|e| {
+                SourceError::FilePathExtractorFactory(format!(
+                    "Failed to evaluate source_dataset: {e:?}"
+                ))
+            })?;
+        let compiled = FilePathExtractorCompiledParam {
+            source_dataset,
+            extract_archive: processor.extract_archive,
+        };
+        Ok(Box::new(FilePathExtractorSource { params: compiled }))
     }
+}
+
+#[derive(Debug, Clone)]
+struct FilePathExtractorCompiledParam {
+    source_dataset: String,
+    extract_archive: bool,
+}
+
+#[derive(Debug, Clone)]
+struct FilePathExtractorSource {
+    params: FilePathExtractorCompiledParam,
 }
 
 pub async fn extract(
@@ -201,7 +227,7 @@ pub async fn extract(
     for feature in features {
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
@@ -218,18 +244,18 @@ pub async fn extract(
 pub struct FilePathExtractor {
     /// # Source Dataset
     /// Path or expression pointing to the source directory or archive file
-    source_dataset: Expr,
+    source_dataset: Code,
     /// # Extract Archive
-    /// Whether to extract files from archives (zip files, etc.) or just list them
+    /// When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.
     extract_archive: bool,
 }
 
 #[async_trait::async_trait]
-impl Source for FilePathExtractor {
+impl Source for FilePathExtractorSource {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "FilePathExtractor"
+        "File Path Extractor"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -241,7 +267,10 @@ impl Source for FilePathExtractor {
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        let source_dataset = get_expr_path(&self.source_dataset, ctx.expr_engine.clone())?;
+        let path = self.params.source_dataset.as_str();
+        let source_dataset = Uri::from_str(path).map_err(|e| {
+            crate::errors::SourceError::FilePathExtractor(format!("Invalid path {path:?}: {e}"))
+        })?;
         if self.is_extractable_archive(&source_dataset) {
             let root_output_path =
                 dir::project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
@@ -285,7 +314,7 @@ impl Source for FilePathExtractor {
                 let feature = Feature::from(attribute_value);
                 sender
                     .send((
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
@@ -296,7 +325,7 @@ impl Source for FilePathExtractor {
             let feature = Feature::from(attribute_value);
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
@@ -306,23 +335,11 @@ impl Source for FilePathExtractor {
     }
 }
 
-impl FilePathExtractor {
+impl FilePathExtractorSource {
     fn is_extractable_archive(&self, path: &Uri) -> bool {
-        self.extract_archive
+        self.params.extract_archive
             && !path.is_dir()
             && path.extension().is_some()
             && matches!(path.extension().unwrap(), "zip" | "7z" | "7zip")
     }
-}
-
-fn get_expr_path<T: AsRef<str> + std::fmt::Display>(
-    path: &T,
-    expr_engine: Arc<Engine>,
-) -> crate::errors::Result<Uri> {
-    let scope = expr_engine.new_scope();
-    let path = expr_engine
-        .eval_scope::<String>(path.as_ref(), &scope)
-        .unwrap_or_else(|_| path.to_string());
-    Uri::from_str(path.as_str())
-        .map_err(|_| crate::errors::SourceError::FilePathExtractor("Invalid path".to_string()))
 }

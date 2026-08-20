@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::GeometryValue;
 use serde_json::Value;
@@ -21,7 +21,7 @@ pub struct GeometryValueFilterFactory;
 
 impl ProcessorFactory for GeometryValueFilterFactory {
     fn name(&self) -> &str {
-        "GeometryValueFilter"
+        "Geometry Value Filter"
     }
 
     fn description(&self) -> &str {
@@ -37,7 +37,7 @@ impl ProcessorFactory for GeometryValueFilterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -91,6 +91,7 @@ impl Processor for GeometryValueFilter {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -126,7 +127,7 @@ impl Processor for GeometryValueFilter {
     }
 
     fn name(&self) -> &str {
-        "GeometryValueFilter"
+        "Geometry Value Filter"
     }
 }
 
@@ -140,6 +141,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_null() {
         let noop = NoopChannelForwarder::default();
@@ -156,6 +158,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_none() {
         let noop = NoopChannelForwarder::default();
@@ -172,6 +175,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_2d() {
         let noop = NoopChannelForwarder::default();
@@ -194,6 +198,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_3d() {
         let noop = NoopChannelForwarder::default();
@@ -217,6 +222,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_filter_geometry_citygml() {
         let noop = NoopChannelForwarder::default();

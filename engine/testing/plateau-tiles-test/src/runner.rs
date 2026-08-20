@@ -94,8 +94,14 @@ pub fn run_workflow(
     let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
     let ingress_state = Arc::clone(&feature_state);
 
+    // sandbox_root must resolve relative sink paths against the per-job
+    // artifact directory; using Runner::run (legacy file:/// sentinel) would
+    // make the engine try to write to the filesystem root.
+    let sandbox_root =
+        reearth_flow_common::uri::Uri::from_str(&format!("file://{}", flow_dir.display())).unwrap();
+
     tracing::info!("Starting workflow run...");
-    Runner::run(
+    Runner::run_with_sandbox_root(
         job_id,
         workflow,
         action_factories,
@@ -104,6 +110,7 @@ pub fn run_workflow(
         ingress_state,
         feature_state,
         None,
+        sandbox_root,
     )
     .unwrap();
 }

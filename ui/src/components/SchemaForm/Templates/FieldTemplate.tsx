@@ -71,7 +71,7 @@ const FieldTemplate = <
               <p className="shrink-0 font-light">{label}</p>
               {required && <p className="h-2 font-thin text-destructive">*</p>}
             </div>
-            <div className="flex-1">{children}</div>
+            <div className="min-w-0 flex-1">{children}</div>
           </div>
         ) : (
           children

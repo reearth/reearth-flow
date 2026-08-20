@@ -9,18 +9,20 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440102
         name: "FeatureCreator"
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
-          creator: |
-            [
-              #{ timestamp: "2021-01-01T00:00:00Z" },
-              #{ timestamp: "2021-06-15T12:30:45Z" },
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"timestamp": "2021-01-01T00:00:00Z"},
+                {"timestamp": "2021-06-15T12:30:45Z"},
+              ]
 
       - id: 550e8400-e29b-41d4-a716-446655440103
         name: "DateTimeConverter"
         type: action
-        action: DateTimeConverter
+        action: Date Time Converter
         with:
           attribute: timestamp
           inputFormat: auto
@@ -29,20 +31,20 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440104
         name: "Output"
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
-          output: |
-            file::join_path(env.get("workerArtifactPath"), "expected_output.json")
-
+          output:
+            type: string
+            value: expected_output.json
     edges:
       - id: 550e8400-e29b-41d4-a716-446655440105
         from: 550e8400-e29b-41d4-a716-446655440102
         to: 550e8400-e29b-41d4-a716-446655440103
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 550e8400-e29b-41d4-a716-446655440106
         from: 550e8400-e29b-41d4-a716-446655440103
         to: 550e8400-e29b-41d4-a716-446655440104
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

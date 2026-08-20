@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,15 +12,17 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::citygml;
-use super::reader::runner::{get_content, get_input_path};
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{
+    get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
+};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CityGmlReaderFactory;
 
 impl SourceFactory for CityGmlReaderFactory {
     fn name(&self) -> &str {
-        "CityGmlReader"
+        "CityGML Reader"
     }
 
     fn description(&self) -> &str {
@@ -40,18 +42,18 @@ impl SourceFactory for CityGmlReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: CityGmlReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::CityGmlReaderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -68,14 +70,27 @@ impl SourceFactory for CityGmlReaderFactory {
             )
             .into());
         };
-        let reader = CityGmlReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = CityGmlReaderCompiledParam {
+            common: params.common_property.compile(&ctx).map_err(|e| {
+                SourceError::CityGmlReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            property: params.property,
+        };
+        Ok(Box::new(CityGmlReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
+struct CityGmlReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    property: citygml::CityGmlReaderParam,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct CityGmlReader {
-    pub(super) params: CityGmlReaderParam,
+    params: CityGmlReaderCompiledParam,
 }
 
 /// # CityGmlReader Parameters
@@ -95,21 +110,22 @@ impl Source for CityGmlReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CityGmlReader"
+        "CityGML Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let input_path = get_input_path(&ctx, &self.params.common_property)?;
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let input_path = get_input_path(&self.params.common)?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         citygml::read_citygml(&content, input_path, &self.params.property, sender)
             .await
             .map_err(Into::<BoxedError>::into)

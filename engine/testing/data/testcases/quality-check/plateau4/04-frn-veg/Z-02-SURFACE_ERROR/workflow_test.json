@@ -1,6 +1,7 @@
 {
   "description": "Test for plateau4 surface errors.",
   "skip": true,
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
   "workflowVariables": [
     {

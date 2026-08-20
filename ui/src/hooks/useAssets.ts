@@ -1,12 +1,13 @@
-import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
-import { useDebouncedSearch } from "@flow/hooks";
+import { usePagination } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
 import { Asset, AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
+import { formatFileSize } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
@@ -19,26 +20,37 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     updateAsset,
     deleteAsset,
     isCreatingAsset,
+    uploadProgress,
   } = useAsset();
+
+  const uploadPercent = uploadProgress?.percent;
+  const uploadingTitle =
+    uploadProgress && uploadPercent !== undefined
+      ? t("Uploading Asset... {{loaded}} of {{total}}", {
+          loaded: formatFileSize(uploadProgress.loaded),
+          total: formatFileSize(uploadProgress.total),
+        })
+      : t("Uploading Asset...");
 
   const availableExtensions = ALLOWED_ASSET_IMPORT_EXTENSIONS.split(",").map(
     (ext) => ext.trim(),
   );
 
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
-    AssetOrderBy.CreatedAt,
-  );
-  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
-
-  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
-    initialSearchTerm: "",
-    delay: 300,
-    onDebounced: () => {
-      refetch();
-    },
+  const {
+    page,
+    totalPages,
+    isFetching,
+    currentPage,
+    currentSortValue,
+    searchTerm,
+    isDebouncingSearch,
+    setCurrentPage,
+    setSearchTerm,
+    handleSortChange,
+  } = usePagination({
+    useDataQuery: useGetAssets,
+    workspaceId,
+    defaultOrderBy: AssetOrderBy.CreatedAt,
   });
 
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
@@ -51,14 +63,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   );
 
   const [layoutView, setLayoutView] = useState<"list" | "grid">("grid");
-
-  const { page, refetch, isFetching } = useGetAssets(workspaceId, searchTerm, {
-    page: currentPage,
-    orderDir: currentOrderDir,
-    orderBy: currentOrderBy,
-  });
-
-  const totalPages = page?.totalPages as number;
 
   const assets = page?.assets;
   const sortOptions = [
@@ -84,14 +88,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       label: t("Size Large to Small"),
     },
   ];
-
-  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
-
-  useEffect(() => {
-    (async () => {
-      await refetch();
-    })();
-  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
 
   const handleGridView = () => setLayoutView("grid");
 
@@ -136,15 +132,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       setIsDeleting(false);
     }
   };
-
-  const handleSortChange = useCallback((newSortValue: string) => {
-    const [orderBy, orderDir] = newSortValue.split("_") as [
-      AssetOrderBy,
-      OrderDirection,
-    ];
-    setCurrentOrderBy(orderBy);
-    setCurrentOrderDir(orderDir);
-  }, []);
 
   const handleCopyUrlToClipBoard = useCallback(
     (url: string) => {
@@ -208,6 +195,8 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     searchTerm,
     layoutView,
     isCreatingAsset,
+    uploadingTitle,
+    uploadPercent,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,

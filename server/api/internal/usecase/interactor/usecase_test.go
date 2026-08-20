@@ -24,9 +24,13 @@ func TestRun(t *testing.T) {
 	err := errors.New("test")
 	a, b, c := &struct{}{}, &struct{}{}, &struct{}{}
 
+	newContainer := func(tr *usecasex.NopTransaction) *repo.Container {
+		return &repo.Container{Transaction: usecasex.NewTransactor(tr, 0)}
+	}
+
 	// regular1: without tx
 	tr := &usecasex.NopTransaction{}
-	r := &repo.Container{Transaction: tr}
+	r := newContainer(tr)
 	gota, gotb, gotc, goterr := Run3(
 		ctx, r,
 		Usecase(),
@@ -42,7 +46,7 @@ func TestRun(t *testing.T) {
 
 	// regular2: with tx
 	tr = &usecasex.NopTransaction{}
-	r.Transaction = tr
+	r = newContainer(tr)
 	_ = Run0(
 		ctx, r,
 		Usecase().Transaction(),
@@ -54,7 +58,7 @@ func TestRun(t *testing.T) {
 
 	// iregular1: the usecase returns an error
 	tr = &usecasex.NopTransaction{}
-	r.Transaction = tr
+	r = newContainer(tr)
 	goterr = Run0(
 		ctx, r,
 		Usecase().Transaction(),
@@ -67,9 +71,9 @@ func TestRun(t *testing.T) {
 
 	// iregular2: tx.Begin returns an error
 	tr = &usecasex.NopTransaction{}
-	r.Transaction = tr
 	tr.BeginError = err
 	tr.CommitError = nil
+	r = newContainer(tr)
 	goterr = Run0(
 		ctx, r,
 		Usecase().Transaction(),
@@ -82,9 +86,9 @@ func TestRun(t *testing.T) {
 
 	// iregular3: tx.End returns an error
 	tr = &usecasex.NopTransaction{}
-	r.Transaction = tr
 	tr.BeginError = nil
 	tr.CommitError = err
+	r = newContainer(tr)
 	goterr = Run0(
 		ctx, r,
 		Usecase().Transaction(),

@@ -10,3 +10,4 @@ export { default as ActionBar } from "./ActionBar";
 export { default as DebugActionBar } from "./DebugActionBar";
 export { default as VersionDialog } from "./Version";
 export { default as SearchActionBar } from "./SearchActionBar";
+export { default as LockedBadge } from "./LockedBadge";

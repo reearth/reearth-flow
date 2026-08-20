@@ -1,17 +1,12 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
-use reearth_flow_eval_expr::utils::dynamic_to_value;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Expr, Feature};
-use rhai::Dynamic;
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,7 +19,7 @@ pub(crate) struct JsonWriterFactory;
 
 impl SinkFactory for JsonWriterFactory {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn description(&self) -> &str {
@@ -44,7 +39,7 @@ impl SinkFactory for JsonWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -58,7 +53,7 @@ impl SinkFactory for JsonWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: JsonWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::JsonWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -71,8 +66,20 @@ impl SinkFactory for JsonWriterFactory {
             )
             .into());
         };
+        let output = params.output.compile().map_err(|e| {
+            SinkError::JsonWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
+        let compiled_converter = params
+            .converter
+            .as_ref()
+            .map(|code| code.compile())
+            .transpose()
+            .map_err(|e| {
+                SinkError::JsonWriterFactory(format!("Failed to compile `converter`: {e:?}"))
+            })?;
         let sink = JsonWriter {
-            params,
+            output,
+            compiled_converter,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -81,8 +88,9 @@ impl SinkFactory for JsonWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct JsonWriter {
-    pub(super) params: JsonWriterParam,
-    pub(super) buffer: HashMap<Uri, (SinkOutput, Vec<Feature>)>,
+    output: CompiledCode,
+    pub(super) compiled_converter: Option<CompiledCode>,
+    pub(super) buffer: HashMap<String, (SinkOutput, Vec<Feature>)>,
 }
 
 /// # JsonWriter Parameters
@@ -91,34 +99,35 @@ pub(super) struct JsonWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
-    /// Output path or expression for the JSON file to create
-    pub(super) output: Expr,
-    /// Optional converter expression to transform features before writing
-    pub(super) converter: Option<Expr>,
+    /// # Output File
+    /// Output path or expression for the JSON file to create.
+    pub(super) output: Code,
+    /// # Converter Expression
+    /// Expression that transforms features into the JSON value to write. When omitted, features are written as an array of their attributes.
+    pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 impl Sink for JsonWriter {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let node_ctx: NodeContext = ctx.clone().into();
-        let scope = node_ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let uri = Uri::from_str(&path)
-            .map_err(|e| SinkError::JsonWriter(format!("invalid path {:?}: {e}", path)))?;
+        let path = self
+            .output
+            .eval_string(&ctx.feature, ctx.variables.clone())
+            .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
+        let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
-        match self.buffer.entry(uri) {
+        match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {
                 e.get_mut().1.push(feature);
             }
             Entry::Vacant(e) => {
-                let out = SinkOutput::from_path(&node_ctx, &path)
-                    .map_err(|e| SinkError::JsonWriter(e.to_string()))?;
+                let out =
+                    SinkOutput::new(&node_ctx.sandbox_root, &path, &node_ctx.storage_resolver)
+                        .map_err(|e| SinkError::JsonWriter(e.to_string()))?;
                 e.insert((out, vec![feature]));
             }
         }
@@ -126,8 +135,14 @@ impl Sink for JsonWriter {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let variables = ctx.variables.clone();
         for (out, features) in self.buffer.values() {
-            write_json(out, &self.params, features, &ctx.expr_engine)?;
+            write_json(
+                out,
+                &self.compiled_converter,
+                features,
+                Arc::clone(&variables),
+            )?;
         }
         Ok(())
     }
@@ -135,31 +150,18 @@ impl Sink for JsonWriter {
 
 fn write_json(
     out: &SinkOutput,
-    params: &JsonWriterParam,
+    converter: &Option<CompiledCode>,
     features: &[Feature],
-    expr_engine: &Arc<Engine>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<(), crate::errors::SinkError> {
-    let json_value: serde_json::Value = if let Some(converter) = &params.converter {
-        let scope = expr_engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Array(
-            features
-                .iter()
-                .map(|feature| {
-                    serde_json::Value::Object(
-                        feature
-                            .attributes
-                            .iter()
-                            .map(|(k, v)| (k.clone().into_inner().to_string(), v.clone().into()))
-                            .collect::<serde_json::Map<_, _>>(),
-                    )
-                })
-                .collect::<Vec<_>>(),
-        );
-        scope.set("__features", value);
-        let convert = scope.eval::<Dynamic>(converter.as_ref()).map_err(|e| {
-            crate::errors::SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
-        })?;
-        dynamic_to_value(&convert)
+    let json_value: serde_json::Value = if let Some(converter) = converter {
+        let synthetic = create_batch_feature(features);
+        converter
+            .eval(&synthetic, variables)
+            .map_err(|e| {
+                crate::errors::SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
+            })?
+            .into()
     } else {
         let attributes = features
             .iter()

@@ -52,6 +52,17 @@ type runResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
+// probeSchemaRequest is the body for the dedicated /probe-schema route. It is
+// deliberately separate from runRequest: probe-schema is a distinct worker
+// subcommand and must not be expressed as a flag on /run.
+type probeSchemaRequest struct {
+	Variables   map[string]string `json:"variables,omitempty"`
+	SampleSize  *int              `json:"sample_size,omitempty"`
+	JobID       string            `json:"job_id"`
+	WorkflowURL string            `json:"workflow_url"`
+	ReportURL   string            `json:"report_url"`
+}
+
 // RunJob POSTs to the Cloud Run Service /run endpoint and blocks until the
 // workflow finishes. The service responds with a terminal status in the body.
 func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
@@ -105,6 +116,58 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 		}
 		return gateway.JobStatusFailed, fmt.Errorf(
 			"cloudrunworker: run failed (http %d): %s", resp.StatusCode, detail,
+		)
+	}
+}
+
+// PreviewSchema POSTs to the Cloud Run Service /probe-schema endpoint and blocks
+// until the probe finishes. The service runs `reearth-flow-worker probe-schema`,
+// writes the SchemaReport JSON to the job's GCS output path, and responds with a
+// terminal status in the body. This intentionally mirrors RunJob's auth/error
+// handling but targets a dedicated route, not the /run path.
+func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) (gateway.JobStatus, error) {
+	body := probeSchemaRequest{
+		JobID:       p.JobID.String(),
+		WorkflowURL: p.WorkflowURL,
+		ReportURL:   p.ReportURL,
+		Variables:   p.Variables,
+		SampleSize:  p.SampleSize,
+	}
+
+	buf, _ := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.serviceURL+"/probe-schema", bytes.NewReader(buf))
+	if err != nil {
+		return gateway.JobStatusFailed, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := w.httpClient.Do(req)
+	if err != nil {
+		// Connection dropped / instance reclaimed = infra failure.
+		return gateway.JobStatusFailed, err
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	var rr runResponse
+	_ = json.Unmarshal(raw, &rr)
+
+	switch rr.Status {
+	case "COMPLETED":
+		return gateway.JobStatusCompleted, nil
+	case "CANCELLED":
+		return gateway.JobStatusCancelled, nil
+	default:
+		detail := rr.Error
+		if detail == "" {
+			if len(raw) > 256 {
+				detail = string(raw[:256])
+			} else {
+				detail = string(raw)
+			}
+		}
+		return gateway.JobStatusFailed, fmt.Errorf(
+			"cloudrunworker: probe-schema failed (http %d): %s", resp.StatusCode, detail,
 		)
 	}
 }

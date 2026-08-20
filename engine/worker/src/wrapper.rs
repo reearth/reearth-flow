@@ -22,6 +22,46 @@ pub struct RunRequest {
     pub cancel_flag_uri: String,
 }
 
+/// Request body for `POST /probe-schema`.
+///
+/// Probe is read-only and fast: no work-root, no cancel-flag, no metadata.
+#[derive(Debug, Deserialize, Clone)]
+pub struct ProbeRequest {
+    /// Validated for path safety and passed to the worker CLI as `--job-id`
+    /// (published in the completion event so the server can finalize the job).
+    pub job_id: String,
+    pub workflow_url: String,
+    #[serde(default)]
+    pub variables: HashMap<String, String>,
+    #[serde(default)]
+    pub sample_size: Option<usize>,
+    /// Destination URI (gs://...) where the worker writes the JSON report.
+    pub report_url: String,
+}
+
+/// Build the argv (excluding the program name) for the
+/// `reearth-flow-worker probe-schema` subcommand.
+pub fn build_probe_args(req: &ProbeRequest) -> Vec<String> {
+    let mut args = vec![
+        "probe-schema".to_string(),
+        "--workflow".to_string(),
+        req.workflow_url.clone(),
+        "--report-url".to_string(),
+        req.report_url.clone(),
+        "--job-id".to_string(),
+        req.job_id.clone(),
+    ];
+    for (k, v) in &req.variables {
+        args.push("--var".to_string());
+        args.push(format!("{k}={v}"));
+    }
+    if let Some(n) = req.sample_size {
+        args.push("--sample-size".to_string());
+        args.push(n.to_string());
+    }
+    args
+}
+
 /// Build the argv (excluding the program name) for the `reearth-flow-worker` CLI.
 pub fn build_worker_args(req: &RunRequest) -> Vec<String> {
     let mut args = vec![
@@ -145,6 +185,68 @@ mod tests {
         assert!(args.windows(2).any(|w| w == ["--var", "A=1"]));
         assert!(args.windows(2).any(|w| w == ["--var", "B=2"]));
         assert_eq!(args.iter().filter(|a| *a == "--var").count(), 2);
+    }
+
+    #[test]
+    fn probe_args_required_only() {
+        let req = ProbeRequest {
+            job_id: "j1".into(),
+            workflow_url: "gs://b/wf.yml".into(),
+            variables: Default::default(),
+            sample_size: None,
+            report_url: "gs://b/reports/j1.json".into(),
+        };
+        assert_eq!(
+            build_probe_args(&req),
+            vec![
+                "probe-schema",
+                "--workflow",
+                "gs://b/wf.yml",
+                "--report-url",
+                "gs://b/reports/j1.json",
+                "--job-id",
+                "j1",
+            ]
+        );
+    }
+
+    #[test]
+    fn probe_args_with_sample_size_and_vars() {
+        let req = ProbeRequest {
+            job_id: "j1".into(),
+            workflow_url: "gs://b/wf.yml".into(),
+            variables: HashMap::from([("A".into(), "1".into()), ("B".into(), "2".into())]),
+            sample_size: Some(25),
+            report_url: "gs://b/reports/j1.json".into(),
+        };
+        let args = build_probe_args(&req);
+        // Subcommand first, required flags present including --report-url.
+        assert_eq!(args.first().map(String::as_str), Some("probe-schema"));
+        assert!(args
+            .windows(2)
+            .any(|w| w == ["--workflow", "gs://b/wf.yml"]));
+        assert!(args
+            .windows(2)
+            .any(|w| w == ["--report-url", "gs://b/reports/j1.json"]));
+        // Optional --sample-size mapped.
+        assert!(args.windows(2).any(|w| w == ["--sample-size", "25"]));
+        // Each variable becomes a repeated --var k=v pair.
+        assert!(args.windows(2).any(|w| w == ["--var", "A=1"]));
+        assert!(args.windows(2).any(|w| w == ["--var", "B=2"]));
+        assert_eq!(args.iter().filter(|a| *a == "--var").count(), 2);
+    }
+
+    #[test]
+    fn probe_args_omits_sample_size_when_absent() {
+        let req = ProbeRequest {
+            job_id: "j1".into(),
+            workflow_url: "gs://b/wf.yml".into(),
+            variables: Default::default(),
+            sample_size: None,
+            report_url: "gs://b/reports/j1.json".into(),
+        };
+        let args = build_probe_args(&req);
+        assert!(!args.iter().any(|a| a == "--sample-size"));
     }
 
     #[test]

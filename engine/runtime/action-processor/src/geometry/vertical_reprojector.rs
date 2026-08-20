@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -21,11 +21,11 @@ pub struct VerticalReprojectorFactory;
 
 impl ProcessorFactory for VerticalReprojectorFactory {
     fn name(&self) -> &str {
-        "VerticalReprojector"
+        "Vertical Reprojector"
     }
 
     fn description(&self) -> &str {
-        "Reproject Vertical Coordinates Between Datums"
+        "Reprojects the vertical coordinate of feature geometry between vertical datums."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -37,15 +37,15 @@ impl ProcessorFactory for VerticalReprojectorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["projection", "3d"]
+        &["coordinate-system", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -79,19 +79,24 @@ impl ProcessorFactory for VerticalReprojectorFactory {
     }
 }
 
+// TODO: add further vertical datum conversions. Only the JGD2011 geoid shift is
+// implemented, so this enum currently offers a single choice.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum VerticalReprojectorType {
+    /// # JGD2011 to WGS 84
+    /// Converts JGD2011 orthometric heights to WGS 84 ellipsoidal heights using
+    /// the Japanese geoid model.
     Jgd2011ToWgs84,
 }
 
 /// # Vertical Reprojector Parameters
-/// Configure the type of vertical datum conversion to apply
+/// Configure which vertical datum conversion to apply.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct VerticalReprojectorParam {
     /// # Reprojector Type
-    /// The type of vertical coordinate transformation to apply
+    /// Vertical datum conversion applied to each geometry's Z coordinate.
     reprojector_type: VerticalReprojectorType,
 }
 
@@ -105,6 +110,23 @@ impl Processor for VerticalReprojector {
         2
     }
 
+    // TODO(new-geometry): remove this action once the legacy geometry model is
+    // gone. Superseded by the Coordinate Frame Reprojector.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        _ctx: ExecutorContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(GeometryProcessorError::VerticalReprojector(
+            "Vertical Reprojector is not available under the new geometry model; use \
+             Coordinate Frame Reprojector instead."
+                .to_string(),
+        )
+        .into())
+    }
+
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -130,10 +152,11 @@ impl Processor for VerticalReprojector {
             }
             GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -143,6 +166,6 @@ impl Processor for VerticalReprojector {
     }
 
     fn name(&self) -> &str {
-        "VerticalReprojector"
+        "Vertical Reprojector"
     }
 }

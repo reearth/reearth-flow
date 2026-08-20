@@ -4,119 +4,129 @@ nodes:
   - id: dfcdb977-e929-41b9-a3de-e368d158b5b9
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
-      routingPort: default
+      routingPort: features
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
     name: PLATEAU4.DomainOfDefinitionValidator
     type: action
     action: PLATEAU4.DomainOfDefinitionValidator
     with:
-      codelistsPath: |
-        env.get("__value").dirCodelists
+      codelistsPath:
+        type: flowExpr
+        value: attributes["dirCodelists"]
 
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
-        - expr: |
-            env.get("__value").flag == "Summary"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "Summary"
           outputPort: summary
-        - expr: |
-            env.get("__value").flag == "CodeValidation"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "CodeValidation"
           outputPort: codeValidation
-        - expr: |
-            env.get("__value").flag == "inCorrectCodeSpace"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "inCorrectCodeSpace"
           outputPort: inCorrectCodeSpace
-        - expr: |
-            env.get("__value").flag == "ExtentsValidation"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "ExtentsValidation"
           outputPort: extentsValidation
-        - expr: |
-            env.get("__value").flag == "GMLID_NotWellFormed"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "GMLID_NotWellFormed"
           outputPort: gmlIdNotWellFormed
-        - expr: |
-            env.get("__value").flag == "GMLID_NotUnique"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "GMLID_NotUnique"
           outputPort: gmlIdNotUnique
-        - expr: |
-            env.get("__value").flag == "XLink_NoReference"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "XLink_NoReference"
           outputPort: xlinkNoReference
-        - expr: |
-            env.get("__value").flag == "XLink_InvalidObjectType"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "XLink_InvalidObjectType"
           outputPort: xLinkInvalidObjectType
-        - expr: |
-            env.get("__value").flag == "InvalidLodXGeometry"
+        - expr:
+            type: flowExpr
+            value: attributes["flag"] == "InvalidLodXGeometry"
           outputPort: invalidLodXGeometry
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     name: SummaryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summary
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d1
     name: CodeValidationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: codeValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
     name: InCorrectCodeSpaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: inCorrectCodeSpace
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: ExtentsValidationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: extentsValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d3
     name: GmlIdNotWellFormedRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: gmlIdNotWellFormed
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d4
     name: GmlIdNotUniqueRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: gmlIdNotUnique
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d5
     name: XlinkNoReferenceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: xlinkNoReference
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
     name: XlinkInvalidObjectTypeRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: xlinkInvalidObjectType
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     name: InvalidLodXGeometryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalidLodXGeometry
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
     name: FileStatsRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileStats
 
@@ -124,60 +134,60 @@ edges:
   - id: 7779cb5a-0dfc-4726-9c2f-6e32e196520d
     from: dfcdb977-e929-41b9-a3de-e368d158b5b9
     to: 747d2fa3-2527-4324-b630-92fba84a548c
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: d661eff9-2ee3-4735-ab36-ac2c662464fd
     from: 747d2fa3-2527-4324-b630-92fba84a548c
     to: 6f53b8d5-c238-471f-95c5-4987f1c315f2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb0
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     fromPort: summary
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb1
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d1
     fromPort: codeValidation
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb2
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     fromPort: extentsValidation
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb3
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d3
     fromPort: gmlIdNotWellFormed
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb4
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d4
     fromPort: gmlIdNotUnique
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb5
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d5
     fromPort: xlinkNoReference
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb6
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
     fromPort: xLinkInvalidObjectType
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb7
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     fromPort: invalidLodXGeometry
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb8
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
     fromPort: inCorrectCodeSpace
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb9
     from: 747d2fa3-2527-4324-b630-92fba84a548c
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
     fromPort: duplicateGmlIdStats
-    toPort: default
+    toPort: features

@@ -1,6 +1,6 @@
-import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
-import { Position } from "@xyflow/react";
-import { memo } from "react";
+import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
+import { Position, useUpdateNodeInternals } from "@xyflow/react";
+import { memo, useEffect, useMemo, useRef } from "react";
 
 import {
   Collapsible,
@@ -11,13 +11,14 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { NodeData } from "@flow/types";
 
+import SchemaIndicator from "../SchemaIndicator";
+
 import CustomHandle from "./CustomHandle";
 import Port from "./Port";
 import { getBreakClass } from "./utils";
 
 type Props = {
   id: string;
-  readonly: boolean;
   nodeType?: string;
   nodeData: NodeData;
   inputs?: string[];
@@ -30,7 +31,6 @@ const MIN_HANDLES_FOR_COLLAPSE = 5;
 
 const Handles: React.FC<Props> = ({
   id,
-  readonly,
   nodeType,
   nodeData,
   inputs,
@@ -44,9 +44,35 @@ const Handles: React.FC<Props> = ({
   const hasMoreThanFiveOutputHandles =
     outputs && outputs.length >= MIN_HANDLES_FOR_COLLAPSE;
 
+  /** React Flow caches handle positions and only re-measures when a node's size
+   * changes — not when a handle's id changes in place (e.g. a subworkflow
+   * pseudoport renamed by a collaborator). Without a nudge, edges to the
+   * changed handle can't resolve and drop until the canvas remounts. Re-measure
+   * whenever the handle set changes; skip the first render since mount is already measured.
+   */
+
+  const updateNodeInternals = useUpdateNodeInternals();
+  const handleSignature = useMemo(
+    () =>
+      `${inputs?.join(",") ?? ""}|${outputs?.join(",") ?? ""}|${nodeData.isCollapsed ? 1 : 0}`,
+    [inputs, outputs, nodeData.isCollapsed],
+  );
+
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    updateNodeInternals(id);
+  }, [id, handleSignature, updateNodeInternals]);
+
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
+        {nodeType === "reader" && (
+          <SchemaIndicator schema={nodeData.nodeMetadata?.schema} />
+        )}
         {nodeType !== "reader" &&
           hasMoreThanFiveInputHandles &&
           isCollapsed && (
@@ -153,7 +179,6 @@ const Handles: React.FC<Props> = ({
                       nodeId={id}
                       nodeData={nodeData}
                       portName={output}
-                      readonly={readonly}
                     />
                   ))}
                 </div>
@@ -169,7 +194,6 @@ const Handles: React.FC<Props> = ({
                 nodeId={id}
                 nodeData={nodeData}
                 portName={output}
-                readonly={readonly}
               />
             ))}
           </div>
@@ -208,13 +232,16 @@ const Handles: React.FC<Props> = ({
 
       {((nodeType !== "reader" && hasMoreThanFiveInputHandles) ||
         hasMoreThanFiveOutputHandles) && (
-        <CollapsibleTrigger asChild className="justify-center self-center">
-          <IconButton
-            onClick={() => onCollapsedToggle?.(!isCollapsed)}
-            className="h-6 w-6"
-            icon={!isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          />
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          className="justify-center self-center"
+          render={
+            <IconButton
+              onClick={() => onCollapsedToggle?.(!isCollapsed)}
+              className="h-6 w-6"
+              icon={!isCollapsed ? <CaretUpIcon /> : <CaretDownIcon />}
+            />
+          }
+        />
       )}
     </Collapsible>
   );

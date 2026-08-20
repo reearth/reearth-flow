@@ -40,7 +40,6 @@ PROJ library is required for coordinate system transformations (HorizontalReproj
 - `runtime/types/` - Core data structures (Feature, Geometry, Workflow definitions)
 - `runtime/action-*` - Action implementations (source, processor, sink, plateau-specific)
 - `runtime/geometry/` - Comprehensive 2D/3D geometry operations
-- `runtime/eval-expr/` - Rhai-based expression evaluation system
 - `cli/` - Command-line interface
 - `worker/` - Distributed execution worker component
 - `testing/` - Workflow integration tests and tile output validation tests
@@ -57,29 +56,9 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 
 ### Adding New Actions
 
+Before creating or modifying any action, read and apply the [Action Standard](dev-docs/action-standard.md). It governs names, descriptions, parameters, ports, and tags — all of which are user-facing and must meet the standard before the schema is regenerated.
+
 Use the `add-action` skill for a full step-by-step guide including i18n workflow.
-
-### Sandbox & sink writes
-
-Every executor context carries a `sandbox_root: Uri` field that bounds where
-sink actions are allowed to write. The chokepoint is
-`reearth_flow_action_sink::SinkOutput::from_path`, which validates the
-destination URI against `ctx.sandbox_root` via `sandbox::ensure_under` before
-acquiring a storage handle.
-
-**All sink-side writes MUST go through `SinkOutput`.** Calling
-`Storage::put_sync` (or any other raw I/O like `std::fs::write`) from a sink
-or sink-adjacent code path skips the check and reintroduces unbounded
-writes. If a new sink format or sidecar write is needed, route it through
-`SinkOutput::from_path` / `SinkOutput::join` / `SinkOutput::write`. Reviewers
-should flag any direct `put_sync` / `std::fs` calls in sink code as
-regressions.
-
-Production entrypoints (`Runner::run_with_sandbox_root`,
-`AsyncRunner::run_with_sandbox_root`) reject the `file:///` sentinel so a
-misconfigured `workerArtifactPath` cannot silently disable the sandbox.
-`Runner::run` (legacy / tests) intentionally uses that sentinel and bypasses
-the guard.
 
 ## Key Constraints
 
@@ -120,3 +99,5 @@ cargo make test
 ## Documentation
 
 - [Engine Architecture](dev-docs/architecture.md) - Runtime design, expression system, environment variables, debugging
+- [Action Standard](dev-docs/action-standard.md) - Naming, description, parameter, and port conventions for authoring and reviewing actions
+- [Geodetic Grids](runtime/geometry/grids/README.md) - Which geoid grids ship in the binary, how to change the set, and how to supply the rest

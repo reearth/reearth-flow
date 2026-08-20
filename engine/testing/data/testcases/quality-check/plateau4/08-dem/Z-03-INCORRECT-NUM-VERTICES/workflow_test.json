@@ -1,5 +1,6 @@
 {
   "description": "Test for plateau4 08 incorrect number of vertices.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "workflowVariables": [
     {
@@ -39,7 +40,7 @@
   ],
   "intermediateAssertions": [
     {
-      "outputPort": "21bb4a5e-5975-443b-8a38-6332789681dd.default",
+      "outputPort": "21bb4a5e-5975-443b-8a38-6332789681dd.features",
       "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
       "jsonFilter": "{attributes}"
     }

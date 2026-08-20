@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, str::FromStr, sync::Arc};
+use std::{collections::HashMap, io::Cursor, str::FromStr};
 
 use bytes::Bytes;
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
@@ -7,9 +7,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use reearth_flow_types::{Attribute, AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -21,11 +21,11 @@ pub(super) struct AttributeConversionTableFactory;
 
 impl ProcessorFactory for AttributeConversionTableFactory {
     fn name(&self) -> &str {
-        "AttributeConversionTable"
+        "Attribute Conversion Table"
     }
 
     fn description(&self) -> &str {
-        "Transform Feature Attributes Using Lookup Tables"
+        "Transforms feature attributes by looking up values in a conversion table loaded from a file or provided inline (CSV, TSV, or JSON)."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -41,11 +41,11 @@ impl ProcessorFactory for AttributeConversionTableFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -55,7 +55,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributeConversionTableParam = if let Some(with) = with.clone() {
+        let params: AttributeConversionTableParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::ConversionTableFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,17 +72,16 @@ impl ProcessorFactory for AttributeConversionTableFactory {
             )
             .into());
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let storage_resolver = &ctx.storage_resolver;
-        let scope = expr_engine.new_scope();
-        if let Some(with) = with {
-            for (k, v) in with.iter() {
-                scope.set(k, v.clone());
-            }
-        }
         let bytes = if let Some(dataset) = params.dataset {
-            let input_path = scope
-                .eval::<String>(dataset.to_string().as_str())
+            let input_path = dataset
+                .compile()
+                .map_err(|e| {
+                    super::errors::AttributeProcessorError::ConversionTable(format!(
+                        "Failed to compile dataset expression: {e:?}"
+                    ))
+                })?
+                .eval_string_variables_only(ctx.variables.clone())
                 .map_err(|e| {
                     super::errors::AttributeProcessorError::ConversionTable(format!(
                         "Failed to evaluate expr: {e}"
@@ -151,42 +150,53 @@ struct AttributeConversionTable {
     conversion_table_indexes: HashMap<String, HashMap<AttributeValue, uuid::Uuid>>,
 }
 
-/// # AttributeConversionTable Parameters
+/// # Attribute Conversion Table Parameters
+/// Configures the lookup table and the rules that map feature attribute values to replacement values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableParam {
+    /// # Table Format
+    /// Format used to parse the conversion table.
+    format: ConversionTableFormat,
     /// # Conversion Rules
-    /// List of rules defining how to map attributes using the conversion table
+    /// Rules that match feature attribute values against table columns and write the looked-up result back to the feature.
     rules: Vec<AttributeConversionTableRule>,
     /// # Dataset URI
-    /// Path or URI to external conversion table file
-    dataset: Option<Expr>,
-    /// # Inline Table Data
-    /// Conversion table data provided directly as string content
+    /// Path or URI of the conversion table file. Provide either this or inline data.
+    dataset: Option<Code>,
+    /// # Inline Table
+    /// Conversion table content provided directly as text. Used when no dataset URI is given.
     inline: Option<String>,
-    /// # Table Format
-    /// Format of the conversion table (CSV, TSV, or JSON)
-    format: ConversionTableFormat,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum ConversionTableFormat {
+    /// # CSV
+    /// Comma-separated values with a header row.
     Csv,
+    /// # TSV
+    /// Tab-separated values with a header row.
     Tsv,
+    /// # JSON
+    /// JSON array of objects, or a single object, where each object is a table row.
     Json,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableRule {
-    /// # Attributes to convert from
+    /// # Source Attributes
+    /// Feature attributes whose values form the key looked up in the table.
     feature_froms: Vec<Attribute>,
-    /// # Attribute to convert to
+    /// # Target Attribute
+    /// Feature attribute that receives the looked-up value.
     feature_to: Attribute,
-    /// # Keys to match in conversion table
+    /// # Lookup Key Columns
+    /// Table columns matched against the source attribute values.
     conversion_table_keys: Vec<String>,
-    /// # Attribute to convert to
+    /// # Result Column
+    /// Table column whose value is written to the target attribute.
     conversion_table_to: String,
 }
 
@@ -221,7 +231,7 @@ impl Processor for AttributeConversionTable {
             };
             feature.insert(&rule.feature_to, value);
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -234,7 +244,7 @@ impl Processor for AttributeConversionTable {
     }
 
     fn name(&self) -> &str {
-        "AttributeConversionTable"
+        "Attribute Conversion Table"
     }
 }
 

@@ -3,19 +3,18 @@ use std::io::{BufReader, Cursor};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+use fastxml::compat::{
+    create_context as fastxml_create_context, create_safe_context as fastxml_create_safe_context,
+    evaluate as fastxml_evaluate,
+};
 use fastxml::error::StructuredError;
 use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-use fastxml::schema::validator::{
-    StreamValidator, XmlSchemaValidationContext as FastXmlValidationContext,
-};
 use fastxml::schema::xsd::{
     compile_schemas, parse_xsd_multiple, parse_xsd_with_imports, register_builtin_types,
     SchemaResolver, XsdSchema,
 };
-use fastxml::{
-    create_context as fastxml_create_context, create_safe_context as fastxml_create_safe_context,
-    evaluate as fastxml_evaluate, parse as fastxml_parse, NodeType,
-};
+use fastxml::schema::Validator;
+use fastxml::{NodeType, Parser};
 use tracing::{debug, warn};
 
 use crate::str::to_hash;
@@ -34,12 +33,8 @@ pub use fastxml::XmlRoNode;
 pub type XmlContext = fastxml::xpath::XmlContext;
 
 pub struct XmlSchemaValidationContext {
-    inner: parking_lot::RwLock<FastXmlValidationContext>,
-    _marker: PhantomData<*mut ()>,
+    schema: Arc<CompiledSchema>,
 }
-
-unsafe impl Send for XmlSchemaValidationContext {}
-unsafe impl Sync for XmlSchemaValidationContext {}
 
 pub struct XmlSafeContext {
     inner: fastxml::xpath::XmlSafeContext,
@@ -79,7 +74,9 @@ impl XmlRoNamespace {
 }
 
 pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
-    fastxml_parse(xml.as_ref()).map_err(|e| crate::Error::Xml(format!("{e}")))
+    Parser::from(xml.as_ref())
+        .parse()
+        .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
@@ -161,7 +158,7 @@ pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeConte
 }
 
 pub fn collect_text_values(xpath_value: &XmlXpathValue) -> Vec<String> {
-    fastxml::collect_text_values(xpath_value)
+    fastxml::compat::collect_text_values(xpath_value)
 }
 
 /// Convert XPathResult to serde_json::Value
@@ -299,14 +296,15 @@ pub fn get_root_readonly_node(document: &XmlDocument) -> crate::Result<XmlRoNode
 }
 
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
-    fastxml::node_to_xml_string(document, node).map_err(|e| crate::Error::Xml(format!("{e}")))
+    fastxml::compat::node_to_xml_string(document, node)
+        .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn readonly_node_to_xml_string(
     document: &XmlDocument,
     node: &XmlRoNode,
 ) -> crate::Result<String> {
-    fastxml::readonly_node_to_xml_string(document, node)
+    fastxml::compat::readonly_node_to_xml_string(document, node)
         .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
@@ -341,22 +339,19 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(Stri
 pub fn create_xml_schema_validation_context(
     schema_location: String,
 ) -> crate::Result<XmlSchemaValidationContext> {
-    let ctx = fastxml::create_xml_schema_validation_context(schema_location)
-        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
-    Ok(XmlSchemaValidationContext {
-        inner: parking_lot::RwLock::new(ctx),
-        _marker: PhantomData,
-    })
+    // Fetch the schema from the given location and resolve its imports/includes.
+    create_validation_context_with_imports(&schema_location, None)
 }
 
 pub fn create_xml_schema_validation_context_from_buffer(
     schema: &[u8],
 ) -> crate::Result<XmlSchemaValidationContext> {
-    let ctx = fastxml::create_xml_schema_validation_context_from_buffer(schema)
+    // `from_xsd` compiles a single document and registers the built-in
+    // XSD/GML types automatically.
+    let compiled = CompiledSchema::from_xsd(schema)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
     Ok(XmlSchemaValidationContext {
-        inner: parking_lot::RwLock::new(ctx),
-        _marker: PhantomData,
+        schema: Arc::new(compiled),
     })
 }
 
@@ -368,10 +363,8 @@ pub fn create_xml_schema_validation_context_from_multiple(
 ) -> crate::Result<XmlSchemaValidationContext> {
     let compiled = parse_xsd_multiple(schemas)
         .map_err(|e| crate::Error::Xml(format!("Failed to parse schemas: {e:?}")))?;
-    let ctx = FastXmlValidationContext::new(compiled);
     Ok(XmlSchemaValidationContext {
-        inner: parking_lot::RwLock::new(ctx),
-        _marker: PhantomData,
+        schema: Arc::new(compiled),
     })
 }
 
@@ -415,10 +408,8 @@ pub fn create_validation_context_with_imports(
             ))
         })?;
 
-    let ctx = FastXmlValidationContext::new(compiled);
     Ok(XmlSchemaValidationContext {
-        inner: parking_lot::RwLock::new(ctx),
-        _marker: PhantomData,
+        schema: Arc::new(compiled),
     })
 }
 
@@ -438,10 +429,8 @@ pub fn create_validation_context_for_schema_locations(
     base_dir: Option<&std::path::Path>,
 ) -> crate::Result<XmlSchemaValidationContext> {
     let compiled = compile_schemas_from_locations(schema_locations, base_dir)?;
-    let ctx = FastXmlValidationContext::new(compiled);
     Ok(XmlSchemaValidationContext {
-        inner: parking_lot::RwLock::new(ctx),
-        _marker: PhantomData,
+        schema: Arc::new(compiled),
     })
 }
 
@@ -457,8 +446,11 @@ pub fn validate_document_by_schema_context(
     document: &XmlDocument,
     xsd_validator: &XmlSchemaValidationContext,
 ) -> crate::Result<Vec<StructuredError>> {
-    match xsd_validator.inner.read().validate(document) {
-        Ok(errors) => Ok(errors),
+    match Validator::from(document)
+        .schema(Arc::clone(&xsd_validator.schema))
+        .run()
+    {
+        Ok(report) => Ok(report.into_entries()),
         Err(e) => Err(crate::Error::Xml(format!("Validation error: {e:?}"))),
     }
 }
@@ -539,14 +531,15 @@ pub fn validate_xml_streaming(
     max_errors: usize,
 ) -> crate::Result<Vec<StructuredError>> {
     let reader = BufReader::new(Cursor::new(xml_bytes));
-    let mut validator = StreamValidator::new(Arc::clone(schema));
+    let mut validator = Validator::from_reader(reader).schema(Arc::clone(schema));
 
     if max_errors > 0 {
-        validator = validator.with_max_errors(max_errors);
+        validator = validator.max_errors(max_errors);
     }
 
     validator
-        .validate(reader)
+        .run()
+        .map(|report| report.into_entries())
         .map_err(|e| crate::Error::Xml(format!("Streaming validation failed: {e:?}")))
 }
 
@@ -563,7 +556,7 @@ pub fn validate_xml_streaming_from_schema_location(
     max_errors: usize,
 ) -> crate::Result<Vec<StructuredError>> {
     // First, parse just enough to get schema locations (quick-xml based, not full DOM)
-    let doc = fastxml_parse(xml_bytes).map_err(|e| crate::Error::Xml(format!("{e}")))?;
+    let doc = parse(xml_bytes)?;
     let locations = parse_schema_locations(&doc)?;
 
     if locations.is_empty() {
@@ -596,7 +589,7 @@ pub fn find_readonly_nodes_by_xpath(
     xpath: &str,
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
-    let result = fastxml::find_readonly_nodes_by_xpath(ctx, xpath, node)
+    let result = fastxml::compat::find_readonly_nodes_by_xpath(ctx, xpath, node)
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
     let result = result
         .into_iter()
@@ -610,7 +603,7 @@ pub fn find_safe_readonly_nodes_by_xpath(
     xpath: &str,
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
-    let result = fastxml::find_safe_readonly_nodes_by_xpath(&ctx.inner, xpath, node)
+    let result = fastxml::compat::find_safe_readonly_nodes_by_xpath(&ctx.inner, xpath, node)
         .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
     let result = result
         .into_iter()

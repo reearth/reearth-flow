@@ -1,13 +1,16 @@
-pub mod array;
-pub mod map;
+pub mod dict;
+mod itertools;
+mod json;
+pub mod list;
 pub mod math;
+mod regex;
 pub mod str;
-mod url;
-
+pub use itertools::builtin_itertools;
+pub use json::builtin_json;
 pub use math::builtin_math;
-pub use url::builtin_url;
+pub use regex::regex_type_value;
 
-use crate::core::error::InnerResult;
+use crate::core::error::Result;
 use crate::core::value::Value;
 
-pub(super) type MethodFn = fn(&[Value]) -> InnerResult<Value>;
+pub(super) type MethodFn = fn(&[Value]) -> Result<Value>;

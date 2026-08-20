@@ -45,7 +45,7 @@ export const CheckboxDefaultInput: React.FC<Props> = ({
   return (
     <RadioGroup
       value={typeof value === "string" ? value : ""}
-      onValueChange={onChange}>
+      onValueChange={(next) => onChange(next as string)}>
       {noDefaultOption && (
         <div className="flex items-center space-x-2">
           <RadioGroupItem value="" id="no-default" />

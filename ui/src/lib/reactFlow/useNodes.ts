@@ -1,6 +1,7 @@
 import {
   EdgeChange,
   NodeChange,
+  OnNodeDrag,
   OnNodesChange,
   XYPosition,
   getBezierPath,
@@ -295,8 +296,8 @@ export default ({
     [handleNodesDropInBatch, handleNodesChange],
   );
 
-  const handleNodeDragStop = useCallback(
-    (_evt: MouseEvent, node: Node, selectedNodes: Node[]) => {
+  const handleNodeDragStop: OnNodeDrag<Node> = useCallback(
+    (_evt, node, selectedNodes) => {
       if (node.type !== "batch") {
         handleDropInBatch(selectedNodes);
         if (node.type !== "note") {

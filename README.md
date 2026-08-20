@@ -13,7 +13,7 @@ Made with [contrib.rocks](https://contrib.rocks).
 
 ## Contact
 
-Re:Earth core comitters: [community@reearth.io](mailto:community@reearth.io)
+Re:Earth core committers: [community@reearth.io](mailto:community@reearth.io)
 
 ## License
 

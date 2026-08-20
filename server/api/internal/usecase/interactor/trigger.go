@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -25,7 +26,7 @@ type Trigger struct {
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
 	paramRepo         repo.Parameter
-	transaction       usecasex.Transaction
+	transaction       usecasex.Transactor
 	batch             gateway.Batch
 	file              gateway.File
 	job               interfaces.Job
@@ -49,20 +50,31 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 	}
 }
 
-func (i *Trigger) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
+func (i *Trigger) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action, workspaceID...)
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	triggers, err := i.triggerRepo.FindByIDs(ctx, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	return i.triggerRepo.FindByIDs(ctx, ids)
+	if len(triggers) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionAny, triggers[0].Workspace()); err != nil { // single-workspace batch assumption
+			return nil, err
+		}
+	}
+
+	return triggers, nil
 }
 
 func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionAny, id); err != nil {
 		return nil, nil, err
 	}
 
@@ -70,60 +82,60 @@ func (i *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	t, err := i.triggerRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if t == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionAny, t.Workspace()); err != nil {
 		return nil, err
 	}
 
-	return i.triggerRepo.FindByID(ctx, id)
+	return t, nil
 }
 
 func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate, param.WorkspaceID); err != nil {
 		return nil, err
 	}
 
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
+	var trg *trigger.Trigger
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if _, err := i.deploymentRepo.FindByID(ctx, param.DeploymentID); err != nil {
+			return err
 		}
-	}()
 
-	if _, err = i.deploymentRepo.FindByID(ctx, param.DeploymentID); err != nil {
-		return nil, err
-	}
+		t := trigger.New().
+			NewID().
+			Workspace(param.WorkspaceID).
+			Deployment(param.DeploymentID).
+			Description(param.Description).
+			EventSource(param.EventSource).
+			Enabled(param.Enabled).
+			CreatedAt(time.Now()).
+			UpdatedAt(time.Now())
 
-	t := trigger.New().
-		NewID().
-		Workspace(param.WorkspaceID).
-		Deployment(param.DeploymentID).
-		Description(param.Description).
-		EventSource(param.EventSource).
-		Enabled(param.Enabled).
-		CreatedAt(time.Now()).
-		UpdatedAt(time.Now())
+		switch param.EventSource {
+		case "TIME_DRIVEN":
+			t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
+		case "API_DRIVEN":
+			t = t.AuthToken(param.AuthToken)
+		}
 
-	if param.EventSource == "TIME_DRIVEN" {
-		t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
-	} else if param.EventSource == "API_DRIVEN" {
-		t = t.AuthToken(param.AuthToken)
-	}
+		if len(param.Variables) > 0 {
+			t = t.Variables(param.Variables)
+		}
 
-	if len(param.Variables) > 0 {
-		t = t.Variables(param.Variables)
-	}
+		var err error
+		trg, err = t.Build()
+		if err != nil {
+			return err
+		}
 
-	trg, err := t.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := i.triggerRepo.Save(ctx, trg); err != nil {
+		return i.triggerRepo.Save(ctx, trg)
+	}); err != nil {
 		return nil, err
 	}
 
@@ -135,25 +147,16 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		}
 	}
 
-	tx.Commit()
 	return trg, nil
 }
 
-func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
+func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (*job.Job, error) {
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
 	if err != nil {
 		return nil, err
+	}
+	if trigger == nil {
+		return nil, rerror.ErrNotFound
 	}
 
 	if !trigger.Enabled() {
@@ -163,11 +166,11 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// API-driven triggers use their own secret token as the auth mechanism.
 	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
-		if p.AuthenticationToken != *trigger.AuthToken() {
+		if trigger.AuthToken() == nil || p.AuthenticationToken != *trigger.AuthToken() {
 			return nil, fmt.Errorf("invalid auth token")
 		}
 	} else {
-		if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 			return nil, err
 		}
 	}
@@ -175,6 +178,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
+	}
+	if deployment == nil {
+		return nil, rerror.ErrNotFound
 	}
 
 	var projectParams map[string]variable.Variable
@@ -209,6 +215,8 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	deploymentID1 := deployment.ID()
 
+	// Built before the transaction: a retried closure would mint a new job ID and
+	// submit a second cloud job on every attempt.
 	j, err := job.New().
 		NewID().
 		Deployment(&deploymentID1).
@@ -224,8 +232,23 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if err != nil {
 		return nil, err
 	}
-	j.SetMetadataURL(metadataURL.String())
-	if err := i.jobRepo.Save(ctx, j); err != nil {
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+
+	// Update last triggered time
+	trigger.SetLastTriggered(time.Now())
+
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return err
+		}
+		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
+			log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
+			// Don't fail the job creation for this @pyshx
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
@@ -234,9 +257,12 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
+	// Submitted after commit so a retry cannot double-dispatch, and a failure here
+	// leaves a job the user can see rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
+		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}
 
@@ -246,40 +272,23 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
-	// Update last triggered time
-	trigger.SetLastTriggered(time.Now())
-	if err := i.triggerRepo.Save(ctx, trigger); err != nil {
-		log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
-		// Don't fail the job creation for this @pyshx
-	}
-
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
 		return nil, err
 	}
 
-	tx.Commit()
 	return j, nil
 }
 
 func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.ExecuteTimeDrivenTriggerParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
-		return nil, err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
 	if err != nil {
+		return nil, err
+	}
+	if trigger == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -294,6 +303,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
+	}
+	if deployment == nil {
+		return nil, rerror.ErrNotFound
 	}
 
 	var projectParams map[string]variable.Variable
@@ -322,6 +334,8 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 
 	deploymentID2 := deployment.ID()
 
+	// Built before the transaction: a retried closure would mint a new job ID and
+	// submit a second cloud job on every attempt.
 	j, err := job.New().
 		NewID().
 		Deployment(&deploymentID2).
@@ -337,8 +351,23 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	if err != nil {
 		return nil, err
 	}
-	j.SetMetadataURL(metadataURL.String())
-	if err := i.jobRepo.Save(ctx, j); err != nil {
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+
+	// Update last triggered time
+	trigger.SetLastTriggered(time.Now())
+
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return err
+		}
+		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
+			log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
+			// Don't fail the job creation for this @pyshx
+		}
+		return nil
+	}); err != nil {
 		return nil, err
 	}
 
@@ -347,9 +376,12 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
+	// Submitted after commit so a retry cannot double-dispatch, and a failure here
+	// leaves a job the user can see rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
+		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}
 
@@ -359,131 +391,119 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
-	// Update last triggered time
-	trigger.SetLastTriggered(time.Now())
-	if err := i.triggerRepo.Save(ctx, trigger); err != nil {
-		log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
-		// Don't fail the job creation for this @pyshx
-	}
-
+	// Started outside the transaction: it spawns a monitoring goroutine, which a
+	// retried closure would launch once per attempt.
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
 		return nil, err
 	}
 
-	tx.Commit()
 	return j, nil
 }
 
 func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
-		return nil, err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	t, err := i.triggerRepo.FindByID(ctx, param.ID)
+	trg, err := i.triggerRepo.FindByID(ctx, param.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	originalEventSource := t.EventSource()
-
-	if param.DeploymentID != nil {
-		if _, err = i.deploymentRepo.FindByID(ctx, *param.DeploymentID); err != nil {
-			return nil, err
-		}
-		t.SetDeployment(*param.DeploymentID)
+	if trg == nil {
+		return nil, rerror.ErrNotFound
 	}
-
-	if param.Description != nil {
-		t.SetDescription(*param.Description)
-	}
-
-	if param.EventSource == "TIME_DRIVEN" {
-		t.SetEventSource(trigger.EventSourceType(param.EventSource))
-		t.SetTimeInterval(trigger.TimeInterval(param.TimeInterval))
-		t.SetAuthToken("")
-	} else if param.EventSource == "API_DRIVEN" {
-		t.SetEventSource(trigger.EventSourceType(param.EventSource))
-		t.SetTimeInterval("")
-		t.SetAuthToken(param.AuthToken)
-	}
-
-	if param.Enabled != nil {
-		t.SetEnabled(*param.Enabled)
-	}
-
-	if param.Variables != nil {
-		t.SetVariables(param.Variables)
-	}
-
-	if err := i.triggerRepo.Save(ctx, t); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionEdit, trg.Workspace()); err != nil {
 		return nil, err
 	}
 
-	if i.scheduler != nil {
-		if originalEventSource == "TIME_DRIVEN" && t.EventSource() != "TIME_DRIVEN" {
-			if err := i.scheduler.DeleteScheduledJob(ctx, t.ID()); err != nil {
-				log.Errorf("Failed to delete scheduled job for trigger %s: %v", t.ID(), err)
+	var t *trigger.Trigger
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		t, err = i.triggerRepo.FindByID(ctx, param.ID)
+		if err != nil {
+			return err
+		}
+
+		originalEventSource := t.EventSource()
+
+		if param.DeploymentID != nil {
+			if _, err := i.deploymentRepo.FindByID(ctx, *param.DeploymentID); err != nil {
+				return err
 			}
-		} else if originalEventSource != "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
-			if err := i.scheduler.CreateScheduledJob(ctx, t); err != nil {
-				log.Errorf("Failed to create scheduled job for trigger %s: %v", t.ID(), err)
-			}
-		} else if originalEventSource == "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
-			if err := i.scheduler.UpdateScheduledJob(ctx, t); err != nil {
-				log.Errorf("Failed to update scheduled job for trigger %s: %v", t.ID(), err)
+			t.SetDeployment(*param.DeploymentID)
+		}
+
+		if param.Description != nil {
+			t.SetDescription(*param.Description)
+		}
+
+		switch param.EventSource {
+		case "TIME_DRIVEN":
+			t.SetEventSource(trigger.EventSourceType(param.EventSource))
+			t.SetTimeInterval(trigger.TimeInterval(param.TimeInterval))
+			t.SetAuthToken("")
+		case "API_DRIVEN":
+			t.SetEventSource(trigger.EventSourceType(param.EventSource))
+			t.SetTimeInterval("")
+			t.SetAuthToken(param.AuthToken)
+		}
+
+		if param.Enabled != nil {
+			t.SetEnabled(*param.Enabled)
+		}
+
+		if param.Variables != nil {
+			t.SetVariables(param.Variables)
+		}
+
+		if err := i.triggerRepo.Save(ctx, t); err != nil {
+			return err
+		}
+
+		if i.scheduler != nil {
+			if originalEventSource == "TIME_DRIVEN" && t.EventSource() != "TIME_DRIVEN" {
+				if err := i.scheduler.DeleteScheduledJob(ctx, t.ID()); err != nil {
+					log.Errorf("Failed to delete scheduled job for trigger %s: %v", t.ID(), err)
+				}
+			} else if originalEventSource != "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
+				if err := i.scheduler.CreateScheduledJob(ctx, t); err != nil {
+					log.Errorf("Failed to create scheduled job for trigger %s: %v", t.ID(), err)
+				}
+			} else if originalEventSource == "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
+				if err := i.scheduler.UpdateScheduledJob(ctx, t); err != nil {
+					log.Errorf("Failed to update scheduled job for trigger %s: %v", t.ID(), err)
+				}
 			}
 		}
-	}
 
-	tx.Commit()
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	return t, nil
 }
 
 func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
-		return err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return
-	}
-
-	ctx = tx.Context()
-	defer func() {
-		if err2 := tx.End(ctx); err == nil && err2 != nil {
-			err = err2
-		}
-	}()
-
-	trigger, err := i.triggerRepo.FindByID(ctx, id)
+	trg, err := i.triggerRepo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	if trigger.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
-		if err := i.scheduler.DeleteScheduledJob(ctx, id); err != nil {
-			log.Errorf("Failed to delete scheduled job for trigger %s: %v", id, err)
-		}
+	if trg == nil {
+		return rerror.ErrNotFound
 	}
-
-	if err := i.triggerRepo.Remove(ctx, id); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionDelete, trg.Workspace()); err != nil {
 		return err
 	}
 
-	tx.Commit()
-	return nil
+	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		trigger, err := i.triggerRepo.FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if trigger.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
+			if err := i.scheduler.DeleteScheduledJob(ctx, id); err != nil {
+				log.Errorf("Failed to delete scheduled job for trigger %s: %v", id, err)
+			}
+		}
+
+		return i.triggerRepo.Remove(ctx, id)
+	})
 }

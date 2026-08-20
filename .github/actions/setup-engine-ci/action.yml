@@ -1,0 +1,49 @@
+name: Set up engine CI environment
+description: |
+  Shared post-checkout setup for engine CI jobs: installs the pinned Rust
+  toolchain, restores the cargo cache, and installs the CLI tools needed by the
+  job. Defaults to cargo-make (used by every job); a job that needs extra tools
+  (e.g. lint needs taplo-cli) passes them via `tools`.
+
+  The calling job MUST run `step-security/harden-runner` and `actions/checkout`
+  before invoking this action — checkout is required for GitHub to locate this
+  local composite action, and harden-runner must precede any network egress.
+
+  Node.js, glb-decompress, and yaml-include are intentionally NOT installed
+  here — only the jobs that need them install them, to keep setup time minimal.
+
+inputs:
+  shared-key:
+    description: |
+      Rust cache shared-key. All engine CI jobs use the same key so that the
+      first job to finish a clean build seeds the cache for the others on the
+      next run.
+    required: false
+    default: engine-ci
+  rust-components:
+    description: Optional extra rustup components to install (comma-separated).
+    required: false
+    default: ""
+  tools:
+    description: |
+      Comma-separated CLI tools to install via taiki-e/install-action.
+      Defaults to cargo-make, which every job needs to run `cargo make`.
+      Jobs needing more (e.g. lint needs taplo-cli) override this.
+    required: false
+    default: cargo-make
+
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@2ea1b3bdd0261867664fd125505456a7b9c3385c # 1.93.1
+      with:
+        components: ${{ inputs.rust-components }}
+    - name: Cache cargo registry
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      with:
+        workspaces: engine
+        shared-key: ${{ inputs.shared-key }}
+    - name: install required tools
+      uses: taiki-e/install-action@74e87cbfa15a59692b158178d8905a61bf6fca95 # v2.75.20
+      with:
+        tool: ${{ inputs.tools }}

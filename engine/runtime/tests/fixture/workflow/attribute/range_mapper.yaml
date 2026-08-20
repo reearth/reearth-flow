@@ -10,22 +10,24 @@ graphs:
       - id: c1a91180-ab88-4c1a-aab5-48c242a218ea
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
-          creator: |
-            [
-              #{ id: "feature1", depth: 0.5 },
-              #{ id: "feature2", depth: 3.5 },
-              #{ id: "feature3", depth: 7.0 },
-              #{ id: "feature4", depth: 15.0 },
-              #{ id: "feature5", depth: 25.0 },
-              #{ id: "feature6", depth: 50.0 }
-            ]
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"id": "feature1", "depth": 0.5},
+                {"id": "feature2", "depth": 3.5},
+                {"id": "feature3", "depth": 7.0},
+                {"id": "feature4", "depth": 15.0},
+                {"id": "feature5", "depth": 25.0},
+                {"id": "feature6", "depth": 50.0}
+              ]
 
       - id: c1a91180-ab88-4c1a-aab5-48c242a218eb
         name: AttributeRangeMapper
         type: action
-        action: AttributeRangeMapper
+        action: Attribute Range Mapper
         with:
           inputAttribute: "depth"
           outputAttribute: "color"
@@ -53,20 +55,21 @@ graphs:
       - id: c1a91180-ab88-4c1a-aab5-48c242a218ec
         name: Sink-Json-Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
-          output: |
-            env.get("outputFilePath")
+          output:
+            type: flowExpr
+            value: 'variables["outputFilePath"]'
 
     edges:
       - id: 3379a497-9e4e-40fb-8361-d2eeeb491773
         from: c1a91180-ab88-4c1a-aab5-48c242a218ea
         to: c1a91180-ab88-4c1a-aab5-48c242a218eb
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 3379a497-9e4e-40fb-8361-d2eeeb491774
         from: c1a91180-ab88-4c1a-aab5-48c242a218eb
         to: c1a91180-ab88-4c1a-aab5-48c242a218ec
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

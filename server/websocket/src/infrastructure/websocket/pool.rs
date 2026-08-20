@@ -1,10 +1,12 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use dashmap::{DashMap, Entry};
 use tokio::sync::Mutex;
+use tokio::time::timeout;
 use tracing::{error, info, warn};
 use yrs::sync::{Awareness, DefaultProtocol};
 use yrs::updates::decoder::Decode;
@@ -18,11 +20,34 @@ use crate::infrastructure::redis::RedisStore;
 use crate::infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
 use crate::AwarenessRef;
 
+/// Parse a timeout (in whole seconds) from a raw value, falling back to `default_secs`
+/// when the value is absent or unparseable. Split out from `env_timeout` so the parsing
+/// is unit-testable without touching process env.
+fn parse_timeout(raw: Option<String>, default_secs: u64) -> Duration {
+    let secs = raw
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(default_secs);
+    Duration::from_secs(secs)
+}
+
+/// Read a timeout (in whole seconds) from an env var, falling back to `default_secs`.
+/// Kept well under the Cloud Run request timeout so a stalled load fails fast instead
+/// of holding the per-doc lock until the platform 504s.
+fn env_timeout(key: &str, default_secs: u64) -> Duration {
+    parse_timeout(std::env::var(key).ok(), default_secs)
+}
+
 #[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {
     store: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     buffer_capacity: usize,
+    /// Max time to load the GCS snapshot before failing the connection.
+    load_timeout: Duration,
+    /// Max time to read the Redis update stream; on elapse we proceed with the snapshot.
+    stream_read_timeout: Duration,
+    /// Max time to construct the BroadcastGroup (opens the dedicated Redis connection).
+    group_new_timeout: Duration,
 }
 
 impl BroadcastGroupManager {
@@ -31,13 +56,25 @@ impl BroadcastGroupManager {
             store,
             redis_store,
             buffer_capacity: 512,
+            load_timeout: env_timeout("REEARTH_FLOW_DOC_LOAD_TIMEOUT_SECS", 30),
+            stream_read_timeout: env_timeout("REEARTH_FLOW_STREAM_READ_TIMEOUT_SECS", 15),
+            group_new_timeout: env_timeout("REEARTH_FLOW_GROUP_NEW_TIMEOUT_SECS", 10),
         }
     }
 
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
-        self.store.load_doc_v2(doc_id, &mut txn).await?;
+        match timeout(self.load_timeout, self.store.load_doc_v2(doc_id, &mut txn)).await {
+            Ok(res) => res?,
+            Err(_) => {
+                return Err(anyhow::anyhow!(
+                    "GCS load_doc_v2 timed out after {:?} for doc '{}'",
+                    self.load_timeout,
+                    doc_id
+                ))
+            }
+        }
         drop(txn);
 
         let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
@@ -47,8 +84,13 @@ impl BroadcastGroupManager {
         let awareness_guard = awareness.write().await;
         let mut txn = awareness_guard.doc().transact_mut();
 
-        match self.redis_store.read_all_stream_data(doc_id).await {
-            Ok((updates, last_id)) => {
+        match timeout(
+            self.stream_read_timeout,
+            self.redis_store.read_all_stream_data(doc_id),
+        )
+        .await
+        {
+            Ok(Ok((updates, last_id))) => {
                 for update_data in &updates {
                     if let Ok(update) = Update::decode_v1(update_data) {
                         if let Err(e) = txn.apply_update(update) {
@@ -61,10 +103,17 @@ impl BroadcastGroupManager {
                     final_last_id = last_id;
                 }
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 warn!(
                     "Failed to read updates from Redis stream for document '{}': {}",
                     doc_id, e
+                );
+            }
+            Err(_) => {
+                warn!(
+                    "Reading Redis stream timed out after {:?} for document '{}'; \
+                     proceeding with GCS snapshot only",
+                    self.stream_read_timeout, doc_id
                 );
             }
         }
@@ -72,19 +121,26 @@ impl BroadcastGroupManager {
         drop(txn);
         drop(awareness_guard);
 
-        let group = Arc::new(
-            BroadcastGroup::new(
-                awareness,
-                self.buffer_capacity,
-                Arc::clone(&self.redis_store),
-                Arc::clone(&self.store),
-                BroadcastConfig {
-                    storage_enabled: true,
-                    doc_name: Some(doc_id.to_string()),
-                },
-            )
-            .await?,
+        let group_new = BroadcastGroup::new(
+            awareness,
+            self.buffer_capacity,
+            Arc::clone(&self.redis_store),
+            Arc::clone(&self.store),
+            BroadcastConfig {
+                storage_enabled: true,
+                doc_name: Some(doc_id.to_string()),
+            },
         );
+        let group = match timeout(self.group_new_timeout, group_new).await {
+            Ok(res) => Arc::new(res?),
+            Err(_) => {
+                return Err(anyhow::anyhow!(
+                    "BroadcastGroup::new timed out after {:?} for doc '{}'",
+                    self.group_new_timeout,
+                    doc_id
+                ))
+            }
+        };
 
         if final_last_id != "0" {
             let last_read_id = group.get_last_read_id();
@@ -102,6 +158,8 @@ pub struct BroadcastPool {
     groups: Arc<DashMap<String, Arc<BroadcastGroup>>>,
     locks: Arc<DashMap<String, Arc<Mutex<()>>>>,
     storage: Arc<CollaborativeStorage>,
+    /// Max time to shut a group down during cleanup before we give up and move on.
+    shutdown_timeout: Duration,
 }
 
 impl BroadcastPool {
@@ -116,6 +174,7 @@ impl BroadcastPool {
             groups: Arc::new(DashMap::new()),
             locks: Arc::new(DashMap::new()),
             storage,
+            shutdown_timeout: env_timeout("REEARTH_FLOW_SHUTDOWN_TIMEOUT_SECS", 30),
         }
     }
 
@@ -154,58 +213,53 @@ impl BroadcastPool {
     }
 
     async fn perform_cleanup(&self, doc_id: &str) {
+        // Hold the per-doc lock for the whole cleanup — including a *bounded* shutdown —
+        // so a concurrent ensure_group for this doc cannot create a fresh BroadcastGroup
+        // while the old one is still flushing/trimming the Redis stream and persisting to
+        // GCS (which would risk lost updates or a stream deleted mid-startup). The
+        // shutdown is timeout-bounded, so a stalled flush can no longer hold the lock
+        // indefinitely (the original 504 cause).
         let lock = self.get_or_create_lock(doc_id);
-        let guard = lock.lock_owned().await;
-        let mut should_remove_lock = false;
+        let guard = lock.lock().await;
 
-        if let Some(group) = self.groups.get(doc_id).map(|entry| entry.clone()) {
-            let active_connections = group.get_connections_count().await;
-            if active_connections == 0 {
-                if let Some((_, group)) = self.groups.remove(doc_id) {
-                    match group.shutdown().await {
-                        Ok(()) => {
-                            info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
-                        }
-                        Err(e) => {
-                            error!(
-                                "First shutdown attempt failed for doc_id '{}': {}. Retrying...",
-                                doc_id, e
-                            );
-                            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                            match group.shutdown().await {
-                                Ok(()) => {
-                                    info!(
-                                        "Shutdown BroadcastGroup for doc_id: {} (succeeded on retry)",
-                                        doc_id
-                                    );
-                                }
-                                Err(e) => {
-                                    error!(
-                                        "Final shutdown attempt failed for doc_id '{}': {}. \
-                                         Data may be recoverable from Redis stream.",
-                                        doc_id, e
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-                should_remove_lock = true;
-            } else {
-                info!(
-                    "Skipping cleanup for doc_id: {} ({} active connections)",
-                    doc_id, active_connections
-                );
+        let group = match self.groups.get(doc_id).map(|entry| entry.clone()) {
+            Some(group) => group,
+            None => {
+                drop(guard);
+                self.locks.remove(doc_id);
+                return;
             }
-        } else {
-            should_remove_lock = true;
+        };
+
+        if group.get_connections_count().await != 0 {
+            info!(
+                "Skipping cleanup for doc_id: {} (active connections)",
+                doc_id
+            );
+            // Group still in use — keep the group and lock entries.
+            return;
+        }
+
+        // Remove from the map first so no caller hands out a shutting-down group, then
+        // shut it down while still holding the lock so no fresh group is created for this
+        // doc until shutdown completes.
+        self.groups.remove(doc_id);
+        match timeout(self.shutdown_timeout, group.shutdown()).await {
+            Ok(Ok(())) => info!("Shutdown BroadcastGroup for doc_id: {}", doc_id),
+            Ok(Err(e)) => error!(
+                "Shutdown failed for doc_id '{}': {}. In-memory resources released; \
+                 unsaved state may be recoverable from the Redis stream.",
+                doc_id, e
+            ),
+            Err(_) => error!(
+                "Shutdown timed out after {:?} for doc_id '{}'. In-memory resources \
+                 released; unsaved state may be recoverable from the Redis stream.",
+                self.shutdown_timeout, doc_id
+            ),
         }
 
         drop(guard);
-
-        if should_remove_lock {
-            self.locks.remove(doc_id);
-        }
+        self.locks.remove(doc_id);
     }
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
@@ -315,5 +369,39 @@ impl BroadcastGroupHandle for BroadcastGroup {
         E: std::error::Error + Send + Sync + 'static,
     {
         self.listen(sink, stream, DefaultProtocol).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_timeout_falls_back_when_absent() {
+        assert_eq!(parse_timeout(None, 30), Duration::from_secs(30));
+    }
+
+    #[test]
+    fn parse_timeout_falls_back_when_unparseable() {
+        assert_eq!(
+            parse_timeout(Some("abc".into()), 15),
+            Duration::from_secs(15)
+        );
+        assert_eq!(
+            parse_timeout(Some(String::new()), 15),
+            Duration::from_secs(15)
+        );
+    }
+
+    #[test]
+    fn parse_timeout_uses_parsed_value() {
+        assert_eq!(
+            parse_timeout(Some("45".into()), 30),
+            Duration::from_secs(45)
+        );
+        assert_eq!(
+            parse_timeout(Some(" 5 ".into()), 30),
+            Duration::from_secs(5)
+        );
     }
 }

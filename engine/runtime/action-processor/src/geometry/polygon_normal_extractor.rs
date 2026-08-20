@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::Feature;
 use reearth_flow_types::{Attribute, AttributeValue, CityGmlGeometry, GeometryValue};
@@ -19,11 +19,11 @@ pub(super) struct PolygonNormalExtractorFactory;
 
 impl ProcessorFactory for PolygonNormalExtractorFactory {
     fn name(&self) -> &str {
-        "PolygonNormalExtractor"
+        "Polygon Normal Extractor"
     }
 
     fn description(&self) -> &str {
-        "Extract normal vectors and other properties for polygon features"
+        "Extracts the surface normal, signed 2D area, slope and azimuth from polygon features and stores them as attributes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,15 +35,15 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["normal", "3d"]
+        &["3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -61,6 +61,7 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
 struct PolygonNormalExtractor {}
 
 impl Processor for PolygonNormalExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -70,20 +71,26 @@ impl Processor for PolygonNormalExtractor {
         let geometry = feature.geometry.clone();
 
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
 
+        // A feature this action cannot measure is routed to `rejected` rather than
+        // failing the job: one stray non-polygon should not stop the run.
+        let reject = |reason: &str| {
+            ctx.event_hub.debug_log(
+                Some(ctx.error_span()),
+                format!("polygon normal rejected: {reason}"),
+            );
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+        };
+
         match &geometry.value {
             GeometryValue::None => {
-                return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                    "There is no 3D polygon".to_string(),
-                )));
+                reject("feature has no geometry");
             }
             GeometryValue::FlowGeometry2D(_geos) => {
-                return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                    "There is no 3D polygon".to_string(),
-                )));
+                reject("geometry is 2D; a 3D polygon is required");
             }
             GeometryValue::FlowGeometry3D(geos) => {
                 match geos {
@@ -97,7 +104,7 @@ impl Processor for PolygonNormalExtractor {
                             None,
                         )?;
 
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                     }
                     Geometry3D::MultiPolygon(multi_polygon) => {
                         for (index, polygon) in multi_polygon.iter().enumerate() {
@@ -110,23 +117,22 @@ impl Processor for PolygonNormalExtractor {
                             )?;
                         }
 
-                        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                     }
                     _ => {
-                        return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                            "There is no 3D polygon.".to_string(),
-                        )));
+                        reject("geometry is not a 3D polygon or multi-polygon");
                     }
                 }
             }
             GeometryValue::CityGmlGeometry(citygml) => {
-                self.handle_citygml_geometry(citygml, &mut feature, &ctx, fw)?;
+                self.handle_citygml_geometry(citygml, &mut feature, &ctx, fw, &reject)?;
             }
         }
 
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -136,7 +142,7 @@ impl Processor for PolygonNormalExtractor {
     }
 
     fn name(&self) -> &str {
-        "PolygonNormalExtractor"
+        "Polygon Normal Extractor"
     }
 }
 
@@ -158,6 +164,7 @@ impl PolygonNormalExtractor {
         feature: &mut Feature,
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
+        reject: &dyn Fn(&str),
     ) -> Result<(), BoxedError> {
         // Collect all polygons from all gml_geometries
         let polygons: Vec<&Polygon3D<f64>> = citygml
@@ -167,22 +174,22 @@ impl PolygonNormalExtractor {
             .collect();
 
         if polygons.is_empty() {
-            return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                "CityGmlGeometry contains no polygons".to_string(),
-            )));
+            reject("CityGML geometry contains no polygons");
+            return Ok(());
         }
 
+        // TODO: measure each polygon of a multi-polygon CityGML feature, as the
+        // FlowGeometry3D::MultiPolygon branch already does.
         if polygons.len() > 1 {
-            return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                "CityGmlGeometry with multiple polygons is not supported yet".to_string(),
-            )));
+            reject("CityGML geometry with multiple polygons is not supported yet");
+            return Ok(());
         }
 
         // Single polygon - calculate normal
         let normal_result = Self::calculate_normal_properties_3d(polygons[0]);
         Self::set_normal_features(normal_result, feature, None)?;
 
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
         Ok(())
     }
 

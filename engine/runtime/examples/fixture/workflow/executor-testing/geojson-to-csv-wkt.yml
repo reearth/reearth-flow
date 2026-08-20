@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 40000000-0000-0000-0000-000000000001
+name: "geojson-to-csv-wkt"
+entryGraphId: 40000000-0000-0000-0000-000000000010
+with:
+
+graphs:
+  - id: 40000000-0000-0000-0000-000000000010
+    name: main
+    nodes:
+      - id: 40000000-0000-0000-0000-000000000011
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          inline:
+            type: string
+            value: |
+              {
+                "type": "FeatureCollection",
+                "features": [
+                  {
+                    "type": "Feature",
+                    "properties": { "name": "tokyo" },
+                    "geometry": { "type": "Point", "coordinates": [139.7, 35.6] }
+                  },
+                  {
+                    "type": "Feature",
+                    "properties": { "name": "block" },
+                    "geometry": {
+                      "type": "Polygon",
+                      "coordinates": [
+                        [[139.0, 35.0], [140.0, 35.0], [140.0, 36.0], [139.0, 35.0]]
+                      ]
+                    }
+                  }
+                ]
+              }
+
+      - id: 40000000-0000-0000-0000-000000000012
+        name: CsvWriter
+        type: action
+        action: CSV Writer
+        with:
+          format: csv
+          output:
+            type: string
+            value: output.csv
+          geometry:
+            geometryMode: wkt
+            column: geometry
+
+    edges:
+      - id: 40000000-0000-0000-0000-000000000031
+        from: 40000000-0000-0000-0000-000000000011
+        to: 40000000-0000-0000-0000-000000000012
+        fromPort: features
+        toPort: features

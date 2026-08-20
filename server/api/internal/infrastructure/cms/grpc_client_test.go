@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	cmspb "github.com/eukarya-inc/reearth-proto/gen/go/cms/v1"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
+	cmspb "github.com/reearth/reearth-proto/gen/go/cms/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"

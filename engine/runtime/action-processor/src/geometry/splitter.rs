@@ -1,66 +1,118 @@
 use std::collections::HashMap;
-use std::io::{BufWriter, Write};
-use std::path::PathBuf;
 
-use reearth_flow_geometry::types::coordinate::Coordinate2D;
-use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
-use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_runtime::{
-    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{
-    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
-};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
-const FILE_BACKED_THRESHOLD: usize = 64;
 
 use super::errors::GeometryProcessorError;
 
-/// Split level for CityGML geometry
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum SplitLevel {
-    /// Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)
-    #[default]
-    Element,
-    /// Split down to individual polygons within each element
-    Polygon,
-}
+#[cfg(not(feature = "new-geometry"))]
+use std::io::{BufWriter, Write};
+#[cfg(not(feature = "new-geometry"))]
+use std::path::PathBuf;
 
-/// Parameters for GeometrySplitter
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_runtime::cache::executor_cache_subdir;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{
+    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
+};
+#[cfg(not(feature = "new-geometry"))]
+use schemars::JsonSchema;
+#[cfg(not(feature = "new-geometry"))]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::Split;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{Geometry as NextGeometry, GeometryCollection};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::{Attribute, AttributeValue};
+#[cfg(feature = "new-geometry")]
+use schemars::JsonSchema;
+#[cfg(feature = "new-geometry")]
+use serde::{Deserialize, Serialize};
+
+/// # Geometry Splitter Parameters
+/// Configure how multi-part geometries are split into individual features.
+#[cfg(feature = "new-geometry")]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometrySplitterParam {
-    /// Split level for CityGML geometry.
-    /// - "element": Split by surface elements (RoofSurface, WallSurface, etc.) - default
-    /// - "polygon": Split down to individual polygons within each element
+    /// # Group By
+    /// Attribute key to group split members by. Members sharing the same value
+    /// for this attribute are kept together in a single output feature instead
+    /// of being split into separate ones; members lacking the attribute are
+    /// still emitted individually.
+    #[serde(default)]
+    pub group_by: Option<String>,
+}
+
+/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
+#[cfg(not(feature = "new-geometry"))]
+const FILE_BACKED_THRESHOLD: usize = 64;
+
+/// Split level for CityGML geometry
+#[cfg(not(feature = "new-geometry"))]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum SplitLevel {
+    /// # Element
+    /// Splits by surface element, such as a roof surface or a wall surface.
+    #[default]
+    Element,
+    /// # Polygon
+    /// Splits further, down to the individual polygons within each surface element.
+    Polygon,
+}
+
+/// # Geometry Splitter Parameters
+/// Configure how multi-part geometries are split into individual features.
+#[cfg(not(feature = "new-geometry"))]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GeometrySplitterParam {
+    /// # Split Level
+    /// How far to split CityGML geometry. Applies only to CityGML; other geometry
+    /// types are always split into their individual parts.
     #[serde(default)]
     pub split_level: SplitLevel,
 }
 
+/// Factory for the Geometry Splitter processor.
 #[derive(Debug, Clone, Default)]
 pub struct GeometrySplitterFactory;
 
 impl ProcessorFactory for GeometrySplitterFactory {
     fn name(&self) -> &str {
-        "GeometrySplitter"
+        "Geometry Splitter"
     }
 
     fn description(&self) -> &str {
-        "Split Multi-Geometries into Individual Features"
+        "Splits multi-part geometries into individual single-geometry features."
     }
 
+    #[cfg(not(feature = "new-geometry"))]
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(GeometrySplitterParam))
+    }
+
+    #[cfg(feature = "new-geometry")]
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(GeometrySplitterParam))
     }
@@ -70,17 +122,18 @@ impl ProcessorFactory for GeometrySplitterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["split", "geometry"]
+        &[]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn build(
         &self,
         _ctx: NodeContext,
@@ -110,8 +163,37 @@ impl ProcessorFactory for GeometrySplitterFactory {
         };
         Ok(Box::new(process))
     }
+
+    #[cfg(feature = "new-geometry")]
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        let param: GeometrySplitterParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                GeometryProcessorError::GeometrySplitterFactory(format!(
+                    "Failed to serialize 'with' parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::GeometrySplitterFactory(format!(
+                    "Failed to deserialize 'with' parameter: {e}"
+                ))
+            })?
+        } else {
+            GeometrySplitterParam::default()
+        };
+        Ok(Box::new(GeometrySplitter {
+            group_by: param.group_by,
+        }))
+    }
 }
 
+/// Splits multi-part geometries into one feature per member.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone)]
 pub struct GeometrySplitter {
     split_level: SplitLevel,
@@ -119,6 +201,14 @@ pub struct GeometrySplitter {
     temp_dir: Option<PathBuf>,
 }
 
+/// Splits a collection, mesh, or point cloud into one feature per member.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone, Default)]
+pub struct GeometrySplitter {
+    group_by: Option<String>,
+}
+
+#[cfg(not(feature = "new-geometry"))]
 impl Drop for GeometrySplitter {
     fn drop(&mut self) {
         if let Some(ref dir) = self.temp_dir {
@@ -127,11 +217,13 @@ impl Drop for GeometrySplitter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
 }
 
 impl Processor for GeometrySplitter {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -142,7 +234,10 @@ impl Processor for GeometrySplitter {
         }
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
+        // Nothing to split, but the feature is still valid: pass it through
+        // rather than discarding it silently.
         if geometry.is_empty() {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
         match &geometry.value {
@@ -157,8 +252,46 @@ impl Processor for GeometrySplitter {
             }
             GeometryValue::None => {
                 // Pass through empty geometry
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let context = ctx.as_context();
+        let mut feature = ctx.feature;
+        // Take the geometry out (cloning the buffer only if it is shared) so each
+        // split member is forwarded as it is produced, without ever holding the
+        // whole decomposition in memory.
+        let geometry = std::mem::take(feature.geometry_mut());
+
+        if let (Some(key), NextGeometry::GeometryCollection(collection)) =
+            (&self.group_by, &geometry)
+        {
+            Self::emit_grouped(&context, &feature, collection, key, fw);
+            return Ok(());
+        }
+
+        let mut geometry = geometry;
+        let mut index = 0usize;
+        let result = geometry.split(&mut |member, attributes| {
+            index += 1;
+            Self::emit_split_member(&context, &feature, member, attributes, index, fw);
+        });
+        // Not a multi-part container: restore the geometry and pass through.
+        if result.is_err() {
+            feature.set_geometry(geometry);
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &context,
+                feature,
+                FEATURES_PORT.clone(),
+            ));
         }
         Ok(())
     }
@@ -172,10 +305,101 @@ impl Processor for GeometrySplitter {
     }
 
     fn name(&self) -> &str {
-        "GeometrySplitter"
+        "Geometry Splitter"
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl GeometrySplitter {
+    /// Split `collection`, keeping members that share the same `group_by` attribute
+    /// value together in one output feature instead of emitting each separately.
+    /// Members lacking that attribute are still emitted one per feature.
+    fn emit_grouped(
+        context: &reearth_flow_runtime::executor_operation::Context,
+        feature: &reearth_flow_types::Feature,
+        collection: &GeometryCollection,
+        group_by: &str,
+        fw: &ProcessorChannelForwarder,
+    ) {
+        let key = Attribute::new(group_by.to_string());
+        let members = collection.members();
+        let attrs = collection.member_attributes();
+        let member_attrs = |i: usize| attrs.get(i).cloned().unwrap_or_default();
+
+        let mut groups: indexmap::IndexMap<AttributeValue, Vec<usize>> = indexmap::IndexMap::new();
+        let mut units: Vec<usize> = Vec::new();
+        for i in 0..members.len() {
+            match member_attrs(i).get(&key) {
+                Some(value) => groups.entry(value.clone()).or_default().push(i),
+                None => units.push(i),
+            }
+        }
+
+        let mut index = 0usize;
+        // A member lacking `group_by` is emitted alone, as the unambiguous owner
+        // of its own attrs.
+        for i in units {
+            index += 1;
+            Self::emit_split_member(
+                context,
+                feature,
+                members[i].clone(),
+                member_attrs(i),
+                index,
+                fw,
+            );
+        }
+        // A grouped member's own attrs have no single owner once merged, so only
+        // `group_by` itself (guaranteed identical across the group) promotes to
+        // the feature; each member's own attrs stay attached on the nested
+        // `GeometryCollection`.
+        for (value, indices) in groups {
+            index += 1;
+            let group_members: Vec<NextGeometry> =
+                indices.iter().map(|&i| members[i].clone()).collect();
+            let group_attrs: Vec<_> = indices.iter().map(|&i| member_attrs(i)).collect();
+
+            let mut representative_attrs = reearth_flow_types::Attributes::new();
+            representative_attrs.insert(key.clone(), value);
+            let geometry = if group_members.len() == 1 {
+                group_members.into_iter().next().unwrap()
+            } else {
+                NextGeometry::GeometryCollection(
+                    GeometryCollection::with_attributes(group_members, group_attrs)
+                        .expect("attrs is built one-per-member"),
+                )
+            };
+            Self::emit_split_member(context, feature, geometry, representative_attrs, index, fw);
+        }
+    }
+
+    /// Emit one split-off member as its own feature: clone `feature`, replace its
+    /// geometry with `member`, merge in `attributes`, and tag it with its position
+    /// among its siblings.
+    fn emit_split_member(
+        context: &reearth_flow_runtime::executor_operation::Context,
+        feature: &reearth_flow_types::Feature,
+        member: NextGeometry,
+        attributes: reearth_flow_types::Attributes,
+        index: usize,
+        fw: &ProcessorChannelForwarder,
+    ) {
+        let mut new_feature = feature.clone();
+        new_feature.set_geometry(member);
+        new_feature.extend(attributes);
+        new_feature.insert(
+            "__split_idx",
+            AttributeValue::Number(serde_json::Number::from(index)),
+        );
+        fw.send(ExecutorContext::new_with_context_feature_and_port(
+            context,
+            new_feature,
+            FEATURES_PORT.clone(),
+        ));
+    }
+}
+
+#[cfg(not(feature = "new-geometry"))]
 impl GeometrySplitter {
     fn process_flow_geometry_2d(
         &self,
@@ -191,12 +415,12 @@ impl GeometrySplitter {
                 for (index, polygon) in polygons.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             Geometry2D::MultiLineString(multi_line_string) => {
@@ -206,17 +430,17 @@ impl GeometrySplitter {
                 for (index, line_string) in line_strings.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             _ => {
                 // For non-multi geometries, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             }
         }
         Ok(())
@@ -236,12 +460,12 @@ impl GeometrySplitter {
                 for (index, polygon) in polygons.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             Geometry3D::MultiLineString(multi_line_string) => {
@@ -251,12 +475,12 @@ impl GeometrySplitter {
                 for (index, line_string) in line_strings.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry3D(Geometry3D::LineString(line_string));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             Geometry3D::TriangularMesh(mesh) => {
@@ -264,7 +488,7 @@ impl GeometrySplitter {
             }
             _ => {
                 // For non-multi geometries, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             }
         }
         Ok(())
@@ -298,12 +522,12 @@ impl GeometrySplitter {
                 let polygon = Polygon3D::new(ring, vec![]);
                 let mut new_feature = ctx.feature.clone();
                 new_feature.insert(
-                    Attribute::new("_split_index"),
+                    Attribute::new("__split_idx"),
                     AttributeValue::Number(serde_json::Number::from(index + 1)),
                 );
                 new_feature.geometry_mut().value =
                     GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             return Ok(());
         }
@@ -320,7 +544,7 @@ impl GeometrySplitter {
             let polygon = Polygon3D::new(ring, vec![]);
             let mut new_feature = ctx.feature.clone();
             new_feature.insert(
-                Attribute::new("_split_index"),
+                Attribute::new("__split_idx"),
                 AttributeValue::Number(serde_json::Number::from(index + 1)),
             );
             new_feature.geometry_mut().value =
@@ -330,7 +554,7 @@ impl GeometrySplitter {
         }
         writer.flush()?;
 
-        fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
+        fw.send_file(output_path, FEATURES_PORT.clone(), ctx.as_context());
         Ok(())
     }
 
@@ -397,7 +621,7 @@ impl GeometrySplitter {
         new_geometry.value = GeometryValue::CityGmlGeometry(split_feature);
         fw.send(ctx.new_with_feature_and_port(
             Feature::new_with_attributes_and_geometry(attributes, new_geometry),
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
         ));
 
         Ok(())
@@ -499,7 +723,7 @@ impl GeometrySplitter {
             new_geometry.value = GeometryValue::CityGmlGeometry(single_citygml);
             fw.send(ctx.new_with_feature_and_port(
                 Feature::new_with_attributes_and_geometry(attributes, new_geometry),
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
 

@@ -103,16 +103,6 @@ func (b *BatchRepo) SubmitJob(
 	previousJobID *id.JobID,
 	startNodeID *uuid.UUID,
 ) (string, error) {
-	formattedJobID := formatJobID(jobID.String())
-
-	jobName := fmt.Sprintf(
-		"projects/%s/locations/%s/jobs/%s",
-		b.config.ProjectID,
-		b.config.Region,
-		formattedJobID,
-	)
-	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
-
 	binaryPath := b.config.BinaryPath
 	if binaryPath == "" {
 		binaryPath = "reearth-flow-worker"
@@ -126,15 +116,8 @@ func (b *BatchRepo) SubmitJob(
 		flagArgs = append(flagArgs, fmt.Sprintf("--start-node-id %s", startNodeID.String()))
 	}
 
-	var varArgs []string
-	if len(variables) > 0 {
-		for k, v := range variables {
-			varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
-		}
-	}
-
 	flagString := strings.Join(flagArgs, " ")
-	varString := strings.Join(varArgs, " ")
+	varString := strings.Join(varArgs(variables), " ")
 	workflowCommand := fmt.Sprintf(
 		"%s --workflow %q --metadata-path %q %s %s",
 		binaryPath,
@@ -143,6 +126,76 @@ func (b *BatchRepo) SubmitJob(
 		flagString,
 		varString,
 	)
+
+	return b.submitCommand(ctx, jobID, projectID, workflowCommand, "Run reearth-flow workflow with metadata")
+}
+
+// SubmitProbeJob dispatches a Batch job invoking the `probe-schema` subcommand.
+// It mirrors SubmitJob's command assembly but builds a distinct CLI string and
+// does not pass a metadata path (the probe does not consume metadata).
+func (b *BatchRepo) SubmitProbeJob(
+	ctx context.Context,
+	jobID id.JobID,
+	workflowsURL string,
+	variables map[string]string,
+	sampleSize *int,
+	reportURL string,
+	projectID id.ProjectID,
+	workspaceID accountsid.WorkspaceID,
+) (string, error) {
+	binaryPath := b.config.BinaryPath
+	if binaryPath == "" {
+		binaryPath = "reearth-flow-worker"
+	}
+
+	var sampleArg string
+	if sampleSize != nil {
+		sampleArg = fmt.Sprintf("--sample-size %d", *sampleSize)
+	}
+
+	varString := strings.Join(varArgs(variables), " ")
+	workflowCommand := fmt.Sprintf(
+		"%s probe-schema --workflow %q --report-url %q %s %s",
+		binaryPath,
+		workflowsURL,
+		reportURL,
+		sampleArg,
+		varString,
+	)
+
+	return b.submitCommand(ctx, jobID, projectID, workflowCommand, "Probe reearth-flow workflow schema")
+}
+
+// varArgs renders workflow variables as repeatable --var=k=v flags.
+func varArgs(variables map[string]string) []string {
+	if len(variables) == 0 {
+		return nil
+	}
+	args := make([]string, 0, len(variables))
+	for k, v := range variables {
+		args = append(args, fmt.Sprintf("--var=%s=%v", k, v))
+	}
+	return args
+}
+
+// submitCommand builds and creates a Batch job running workflowCommand. It holds
+// the shared allocation/compute/logging assembly used by both run and probe jobs.
+func (b *BatchRepo) submitCommand(
+	ctx context.Context,
+	jobID id.JobID,
+	projectID id.ProjectID,
+	workflowCommand string,
+	displayName string,
+) (string, error) {
+	formattedJobID := formatJobID(jobID.String())
+
+	jobName := fmt.Sprintf(
+		"projects/%s/locations/%s/jobs/%s",
+		b.config.ProjectID,
+		b.config.Region,
+		formattedJobID,
+	)
+	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
 
 	commands := []string{
 		"/bin/sh",
@@ -159,7 +212,7 @@ func (b *BatchRepo) SubmitJob(
 		Executable: &batchpb.Runnable_Container_{
 			Container: runnableContainer,
 		},
-		DisplayName:      "Run reearth-flow workflow with metadata",
+		DisplayName:      displayName,
 		IgnoreExitStatus: false,
 		Background:       false,
 		AlwaysRun:        false,

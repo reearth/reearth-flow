@@ -49,7 +49,9 @@ jobs:
       - name: Setup Cerbos
         uses: cerbos/cerbos-setup-action@53d0a0d03111685bd355b2be6d75a2d0948c22de # v1.9.8
         with:
-          version: '0.40.0'
+          # cerbos-setup-action v1.9.x requires a leading `v` in the version
+          # string (Zod regex `^v\d+\.\d+\.\d+`). Bare `0.40.0` fails parse.
+          version: 'v0.40.0'
 
       - name: Validate Cerbos policies
         run: |

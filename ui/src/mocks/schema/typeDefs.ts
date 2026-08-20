@@ -497,6 +497,17 @@ export const typeDefs = `
     file: Upload!
   }
 
+  input PreviewSchemaInput {
+    projectId: ID!
+    workspaceId: ID!
+    file: Upload!
+    sampleSize: Int
+  }
+
+  type PreviewSchemaPayload {
+    job: Job!
+  }
+
   # Input Types - Parameter
   input DeclareParameterInput {
     name: String!
@@ -735,6 +746,7 @@ export const typeDefs = `
     updateProject(input: UpdateProjectInput!): ProjectPayload
     deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
     runProject(input: RunProjectInput!): RunProjectPayload
+    previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
 
     # Parameter mutations
     declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!

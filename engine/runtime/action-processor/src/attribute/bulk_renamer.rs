@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, Feature};
 use regex::Regex;
@@ -17,11 +17,11 @@ pub(super) struct BulkAttributeRenamerFactory;
 
 impl ProcessorFactory for BulkAttributeRenamerFactory {
     fn name(&self) -> &str {
-        "BulkAttributeRenamer"
+        "Bulk Attribute Renamer"
     }
 
     fn description(&self) -> &str {
-        "Rename Feature Attributes in Bulk"
+        "Renames feature attributes in bulk by adding or removing a prefix or suffix, or replacing text."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -33,11 +33,11 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -65,7 +65,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
             .into());
         };
 
-        let regex = if params.rename_action == RenameAction::StringReplace {
+        let regex = if params.rename_action == RenameAction::ReplaceText {
             if let Some(ref find) = params.text_to_find {
                 Some(Regex::new(find).map_err(|e| {
                     AttributeProcessorError::BulkRenamerFactory(format!(
@@ -74,7 +74,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
                 })?)
             } else {
                 return Err(AttributeProcessorError::BulkRenamerFactory(
-                    "Missing 'text_to_find' parameter for StringReplace action".to_string(),
+                    "Missing 'textToFind' parameter for the replaceText action".to_string(),
                 )
                 .into());
             }
@@ -93,55 +93,57 @@ struct BulkAttributeRenamer {
     regex: Option<Regex>,
 }
 
-/// # BulkAttributeRenamer Parameters
-/// Configure how to rename feature attributes in bulk operations
+/// # Bulk Attribute Renamer Parameters
+/// Selects which attributes to rename and how their names are transformed.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct BulkAttributeRenamerParam {
-    /// # Which Attributes to Rename
-    /// Choose whether to rename all attributes or only selected ones
+    /// # Rename Scope
+    /// Scope of the rename operation: all attributes or a selected subset.
     rename_type: RenameType,
     /// # Rename Operation
-    /// The type of renaming operation to perform on the attribute names
+    /// Transformation applied to each attribute name.
     rename_action: RenameAction,
-    /// # Text Pattern to Find
-    /// Regular expression pattern to match when using "Replace Text" operation
-    text_to_find: Option<String>,
     /// # Text Value
-    /// The text to add as prefix/suffix, remove, or use as replacement
+    /// Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation.
     rename_value: String,
+    /// # Text Pattern to Find
+    /// Regular expression matched against attribute names. Required for the replaceText operation.
+    text_to_find: Option<String>,
     /// # Selected Attribute Names
-    /// List of specific attribute names to rename (required when "Selected Attributes" is chosen)
+    /// Attribute names to rename. Required when the rename scope is set to a selected subset.
     selected_attributes: Option<Vec<String>>,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 enum RenameType {
     /// # All Attributes
-    /// Rename all attributes in the feature
+    /// Renames every attribute on the feature.
     All,
     /// # Selected Attributes
-    /// Rename only specific attributes listed below
+    /// Renames only the attributes listed in selectedAttributes.
     Selected,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 enum RenameAction {
     /// # Add Prefix
-    /// Add text to the beginning of attribute names
+    /// Prepends the text value to each attribute name.
     AddPrefix,
     /// # Add Suffix
-    /// Add text to the end of attribute names
+    /// Appends the text value to each attribute name.
     AddSuffix,
     /// # Remove Prefix
-    /// Remove text from the beginning of attribute names
+    /// Removes the text value from the start of each attribute name.
     RemovePrefix,
     /// # Remove Suffix
-    /// Remove text from the end of attribute names
+    /// Removes the text value from the end of each attribute name.
     RemoveSuffix,
     /// # Replace Text
-    /// Find and replace text using regular expressions
-    StringReplace,
+    /// Replaces text matched by the find pattern with the text value, using regular expressions.
+    ReplaceText,
 }
 
 impl Processor for BulkAttributeRenamer {
@@ -159,7 +161,7 @@ impl Processor for BulkAttributeRenamer {
             feature.remove(&attr);
         }
 
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -172,7 +174,7 @@ impl Processor for BulkAttributeRenamer {
     }
 
     fn name(&self) -> &str {
-        "BulkAttributeRenamer"
+        "Bulk Attribute Renamer"
     }
 }
 
@@ -219,7 +221,7 @@ impl BulkAttributeRenamer {
             RenameAction::AddSuffix => Ok(format!("{}{}", attr_name, self.params.rename_value)),
             RenameAction::RemovePrefix => self.remove_prefix(attr_name),
             RenameAction::RemoveSuffix => self.remove_suffix(attr_name),
-            RenameAction::StringReplace => self.string_replace(attr_name),
+            RenameAction::ReplaceText => self.string_replace(attr_name),
         }
     }
 

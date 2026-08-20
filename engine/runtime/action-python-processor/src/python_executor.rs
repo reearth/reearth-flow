@@ -13,9 +13,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use reearth_flow_types::{Attribute, AttributeValue, Code};
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ pub struct PythonScriptProcessorFactory;
 
 impl ProcessorFactory for PythonScriptProcessorFactory {
     fn name(&self) -> &str {
-        "PythonScriptProcessor"
+        "Python Script Processor"
     }
 
     fn description(&self) -> &str {
@@ -58,11 +58,11 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -102,12 +102,44 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .into());
         }
 
+        let variables = ctx.variables.clone();
+        let script = params
+            .script
+            .map(|c| {
+                c.compile()
+                    .map_err(|e| {
+                        PythonProcessorError::FactoryError(format!("Failed to compile script: {e}"))
+                    })?
+                    .eval_string_variables_only(variables.clone())
+                    .map_err(|e| {
+                        PythonProcessorError::FactoryError(format!(
+                            "Failed to evaluate script: {e}"
+                        ))
+                    })
+            })
+            .transpose()?;
+        let python_file = params
+            .python_file
+            .map(|c| {
+                c.compile()
+                    .map_err(|e| {
+                        PythonProcessorError::FactoryError(format!(
+                            "Failed to compile pythonFile: {e}"
+                        ))
+                    })?
+                    .eval_string_variables_only(variables)
+                    .map_err(|e| {
+                        PythonProcessorError::FactoryError(format!(
+                            "Failed to evaluate pythonFile: {e}"
+                        ))
+                    })
+            })
+            .transpose()?;
         let processor = PythonScriptProcessor {
-            script: params.script,
-            python_file: params.python_file,
+            script,
+            python_file,
             python_path: params.python_path.unwrap_or_else(|| "python3".to_string()),
             timeout_seconds: params.timeout_seconds.unwrap_or(30),
-            ctx,
         };
 
         Ok(Box::new(processor))
@@ -116,11 +148,10 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
 
 #[derive(Debug, Clone)]
 struct PythonScriptProcessor {
-    script: Option<Expr>,
-    python_file: Option<Expr>,
+    script: Option<String>,
+    python_file: Option<String>,
     python_path: String,
     timeout_seconds: u64,
-    ctx: NodeContext,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -133,7 +164,7 @@ struct PythonScriptProcessorParam {
         title = "Inline Script",
         description = "Python script code to execute inline"
     )]
-    script: Option<Expr>,
+    script: Option<Code>,
 
     /// # Python File
     /// Path to a Python script file (supports file://, http://, https://, gs://, etc.)
@@ -142,7 +173,7 @@ struct PythonScriptProcessorParam {
         title = "Python File",
         description = "Path to a Python script file (supports file://, http://, https://, gs://, etc.)"
     )]
-    python_file: Option<Expr>,
+    python_file: Option<Code>,
 
     /// # Python Path
     /// Path to Python interpreter executable (e.g., python3, /usr/bin/python3.11)
@@ -273,6 +304,7 @@ fn flow_geometry_2d_to_geojson(geometry: &FlowGeometry2D<f64>) -> serde_json::Va
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn feature_to_geojson(feature: &Feature) -> serde_json::Value {
     let properties: serde_json::Map<String, serde_json::Value> = feature
         .attributes
@@ -610,6 +642,7 @@ fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonPr
 }
 
 impl Processor for PythonScriptProcessor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -622,17 +655,10 @@ impl Processor for PythonScriptProcessor {
             PythonProcessorError::SerializationError(format!("Failed to serialize feature: {e}"))
         })?;
 
-        let expr_engine = &self.ctx.expr_engine;
-        let scope = expr_engine.new_scope();
-
         let script_content = if let Some(inline_script) = &self.script {
-            expr_engine
-                .eval_scope::<String>(inline_script.as_ref(), &scope)
-                .unwrap_or_else(|_| inline_script.to_string())
+            inline_script.clone()
         } else if let Some(python_file_path) = &self.python_file {
-            let path_str = expr_engine
-                .eval_scope::<String>(python_file_path.as_ref(), &scope)
-                .unwrap_or_else(|_| python_file_path.to_string());
+            let path_str = python_file_path.clone();
 
             let uri = Uri::from_str(&path_str).map_err(|e| {
                 PythonProcessorError::ExecutionError(format!("Invalid file path: {e}"))
@@ -841,7 +867,7 @@ print(json.dumps(output))
                         }
                     }
 
-                    fw.send(ctx.new_with_feature_and_port(output_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(output_feature, FEATURES_PORT.clone()));
                 }
             }
         } else {
@@ -864,12 +890,13 @@ print(json.dumps(output))
                 }
             }
 
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         }
 
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -879,7 +906,7 @@ print(json.dumps(output))
     }
 
     fn name(&self) -> &str {
-        "PythonScriptProcessor"
+        "Python Script Processor"
     }
 }
 
@@ -895,6 +922,7 @@ mod tests {
     use serde_json::json;
     use std::collections::HashMap;
 
+    #[cfg(not(feature = "new-geometry"))]
     fn create_test_feature() -> Feature {
         let mut attributes = IndexMap::new();
         attributes.insert(
@@ -926,7 +954,7 @@ mod tests {
         let mut with = HashMap::new();
         with.insert(
             "script".to_string(),
-            json!("properties['result'] = 'success'"),
+            json!({"type": "string", "value": "properties['result'] = 'success'"}),
         );
 
         let result = factory.build(
@@ -938,7 +966,7 @@ mod tests {
 
         assert!(result.is_ok());
         let processor = result.unwrap();
-        assert_eq!(processor.name(), "PythonScriptProcessor");
+        assert_eq!(processor.name(), "Python Script Processor");
     }
 
     #[test]
@@ -980,9 +1008,12 @@ mod tests {
         let mut with = HashMap::new();
         with.insert(
             "script".to_string(),
-            json!("properties['result'] = 'success'"),
+            json!({"type": "string", "value": "properties['result'] = 'success'"}),
         );
-        with.insert("pythonFile".to_string(), json!("file:///path/to/script.py"));
+        with.insert(
+            "pythonFile".to_string(),
+            json!({"type": "string", "value": "file:///path/to/script.py"}),
+        );
 
         let result = factory.build(
             ctx,
@@ -1018,6 +1049,7 @@ mod tests {
         assert!(geojson.is_null());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_feature_to_geojson() {
         let feature = create_test_feature();
@@ -1243,7 +1275,7 @@ mod tests {
     fn test_processor_factory_metadata() {
         let factory = PythonScriptProcessorFactory;
 
-        assert_eq!(factory.name(), "PythonScriptProcessor");
+        assert_eq!(factory.name(), "Python Script Processor");
         assert_eq!(
             factory.description(),
             "Execute Python Scripts with Geospatial Data Processing"

@@ -6,9 +6,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Expr, Geometry, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,7 +24,7 @@ impl ProcessorFactory for ExtruderFactory {
     }
 
     fn description(&self) -> &str {
-        "Extrude 2D Polygons into 3D Solids"
+        "Extrudes a polygon geometry vertically by a given distance to produce a solid geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -40,21 +40,21 @@ impl ProcessorFactory for ExtruderFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: ExtruderParam = if let Some(with) = with.clone() {
+        let params: ExtruderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ExtruderFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -72,33 +72,28 @@ impl ProcessorFactory for ExtruderFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let expr = &params.distance;
-        let template_ast = expr_engine
-            .compile(expr.as_ref())
+        let distance = params
+            .distance
+            .compile()
             .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{e:?}")))?;
-        let process = Extruder {
-            global_params: with,
-            distance: template_ast,
-        };
-        Ok(Box::new(process))
+        Ok(Box::new(Extruder { distance }))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Extruder {
-    global_params: Option<HashMap<String, serde_json::Value>>,
-    distance: rhai::AST,
+    distance: CompiledCode,
 }
 
 /// # Extruder Parameters
-/// Configure how to extrude 2D polygons into 3D solid geometries
+/// Configure how far each polygon is extruded.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtruderParam {
     /// # Distance
-    /// The vertical distance (height) to extrude the polygon. Can be a constant value or an expression
-    distance: Expr,
+    /// Height to extrude the polygon by, as a constant or an expression
+    /// evaluated per feature.
+    distance: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 impl Processor for Extruder {
@@ -106,30 +101,41 @@ impl Processor for Extruder {
         2
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let Ok(height) = scope.eval_ast::<f64>(&self.distance) else {
-            return Err(GeometryProcessorError::Extruder(
-                "Failed to evaluate distance".to_string(),
-            )
-            .into());
+        let height = self
+            .distance
+            .eval_float(feature, ctx.variables.clone())
+            .map_err(|e| {
+                GeometryProcessorError::Extruder(format!("Failed to evaluate distance: {e:?}"))
+            })?;
+
+        // A feature this action cannot extrude is routed to `rejected` rather
+        // than failing the job: one stray geometry should not stop the run.
+        // A polygon with no elevation is rejected too — extruding it would have
+        // to invent a base elevation. Use a Three Dimension Forcer upstream to
+        // set that base deliberately.
+        let reject = |reason: &str| {
+            ctx.event_hub.debug_log(
+                Some(ctx.error_span()),
+                format!("extrude rejected: {reason}"),
+            );
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
         };
-        let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());
-        };
-        let geom_inner = (**geometry).clone();
+
+        let geom_inner = (*feature.geometry).clone();
         let GeometryValue::FlowGeometry3D(flow_geometry) = &geom_inner.value else {
-            return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
+            reject("geometry is absent or carries no elevation");
+            return Ok(());
         };
         let FlowGeometry3D::Polygon(polygon) = flow_geometry else {
-            return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
+            reject("geometry is not a polygon");
+            return Ok(());
         };
         let solid = polygon.extrude(height);
         let geometry = Geometry {
@@ -138,10 +144,11 @@ impl Processor for Extruder {
         };
         let mut feature = feature.clone();
         feature.geometry = Arc::new(geometry);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,

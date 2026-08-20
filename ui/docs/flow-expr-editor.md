@@ -6,9 +6,10 @@ The FlowExpr editor is a custom code editor built from a plain `<textarea>` with
 
 | File                            | Role                                                                              |
 | ------------------------------- | --------------------------------------------------------------------------------- |
-| `FlowExprCodeEditor.tsx`        | Main component — composes all layers, manages validation debounce, scroll sync    |
+| `FlowExprCodeEditor.tsx`        | Main component — composes all layers, owns caret state, validation debounce       |
 | `FlowExprSyntaxHighlighter.tsx` | Hand-written tokenizer → colored `<span>` elements                                |
 | `FlowExprAutocomplete.tsx`      | Dropdown positioned via canvas text measurement                                   |
+| `flowExprAttributeContext.ts`   | `getCompletionContext` — what is being completed at the caret                     |
 | `FlowExprValidator.ts`          | Client-side bracket matching + unclosed string detection                          |
 | `flowExprConstants.ts`          | Keywords, built-in functions, math functions, operators, autocomplete suggestions |
 | `constants.ts`                  | Shared `AutocompleteSuggestion` type                                              |
@@ -44,13 +45,37 @@ The `math::fnName` tokens are classified as `namespace` + `operator` (`::`) + `i
 
 ## Autocomplete
 
-`FlowExprAutocomplete.tsx` positions the dropdown by:
+### Completion context
 
-1. Finding the cursor word start/end
-2. Measuring text width with a `canvas` element using the textarea's computed font
-3. Combining that with `paddingLeft`, `lineHeight`, and `scrollTop` offsets
+`getCompletionContext(text, caret)` in `flowExprAttributeContext.ts` is the single source of truth for what is being completed. It returns:
 
-Autocomplete suggestions in `flowExprConstants.ts` use `{{cursor}}` as a placeholder in `insertText`. The editor replaces `{{cursor}}` with an empty string and positions the cursor at that index after insertion.
+- `kind` — `attribute` when the caret is inside an open `attributes["…` accessor, otherwise `general`
+- `prefix` — the text used to filter, taken **only from before the caret**
+- `start` / `end` — the span a chosen suggestion replaces. `end` runs to the end of the token (the closing quote for attributes, the end of the identifier segment otherwise), so accepting mid-word overwrites the rest of the word instead of duplicating it
+
+Filtering and insertion both read this one object, so the list can never be matched against text the insertion won't touch. In attribute mode the name is delimited by the quote rather than by word characters, so names containing spaces or hyphens complete correctly.
+
+### Visibility
+
+The editor owns two pieces of state: `caret` (mirrored from the textarea so context recomputes when the caret moves, not just when text changes) and `autocompleteArmed`.
+
+- **Armed** by any edit — which is why backspacing back to a matching prefix brings suggestions back, and why a prefix that matches nothing is not a dead end
+- **Disarmed** by Escape, by moving the caret without editing (arrow keys, clicks), and by accepting a suggestion
+- Accepting a suggestion that leaves the caret inside an `attributes["…"]` accessor re-arms, chaining the accessor completion straight into the attribute list. Accepting an attribute _name_ is excluded, since the caret ends up in the same place and the list would never close
+
+The dropdown renders only when armed **and** there are matching suggestions. Suggestions are derived with `useMemo` rather than stored in state, so recomputing them cannot schedule a render — an unrelated re-render of the Editor can no longer reset the highlighted item. `selectedIndex` resets only when the offered labels actually change.
+
+`readerAttributeSuggestions` (`usePreviewSchema/index.ts`) is keyed on its own contents because `rawWorkflows` is rebuilt from the yjs doc on every render; without that, the prop identity changed constantly.
+
+### Keyboard
+
+Arrow/Enter/Tab are handled from the **textarea's own** `onKeyDown`, delegated to the dropdown through a ref handle that returns whether it consumed the key. It claims keys only while something is shown, so Enter/Tab/arrows elsewhere in the dialog keep working. Escape is the exception: it needs a capture-phase document listener to beat the Dialog's own handler, and that listener is mounted only while the dropdown is visible so Escape can still close the dialog otherwise.
+
+### Positioning
+
+The dropdown is placed by measuring the text before `context.start` with a `canvas` element using the textarea's computed font, combined with `paddingLeft`, `lineHeight`, and scroll offsets. It re-measures on textarea scroll. Soft-wrapped lines are not accounted for.
+
+Suggestions in `flowExprConstants.ts` use `{{cursor}}` as a placeholder in `insertText`. The editor strips it and parks the caret at that index after insertion — applied in a layout effect once the controlled value lands, since React otherwise leaves the caret at the end of the textarea.
 
 ## Validator
 
@@ -59,7 +84,7 @@ Autocomplete suggestions in `flowExprConstants.ts` use `{{cursor}}` as a placeho
 - **Bracket matching** — tracks `(`, `[`, `{` on a stack; reports unmatched or mismatched brackets
 - **Unclosed strings** — detects `"` with no closing `"` on the same line (FlowExpr strings are single-line)
 
-It does **not** type-check, evaluate, or validate identifiers — it cannot know the workflow context (feature attributes, env vars, available actions). Do not add semantic validation here.
+It does **not** type-check, evaluate, or validate identifiers — it cannot know the workflow context (feature attributes, workflow variables, available actions). Do not add semantic validation here.
 
 Validation runs on a 300 ms debounce after each change.
 

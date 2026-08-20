@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -19,15 +19,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
-use super::reader::runner::get_content;
-use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
+use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CzmlReaderFactory;
 
 impl SourceFactory for CzmlReaderFactory {
     fn name(&self) -> &str {
-        "CzmlReader"
+        "CZML Reader"
     }
 
     fn description(&self) -> &str {
@@ -43,18 +43,18 @@ impl SourceFactory for CzmlReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
         _state: Option<Vec<u8>>,
     ) -> Result<Box<dyn Source>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: CzmlReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SourceError::CzmlReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -69,17 +69,34 @@ impl SourceFactory for CzmlReaderFactory {
             )
             .into());
         };
-        let reader = CzmlReader { params };
-        Ok(Box::new(reader))
+        let compiled_params = CzmlReaderCompiledParam {
+            common: params.common_property.compile(&ctx).map_err(|e| {
+                SourceError::CzmlReaderFactory(format!("Failed to compile params: {e:?}"))
+            })?,
+            force_2d: params.force_2d,
+            skip_document_packet: params.skip_document_packet,
+            time_sampling: params.time_sampling,
+        };
+        Ok(Box::new(CzmlReader {
+            params: compiled_params,
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct CzmlReader {
-    pub(super) params: CzmlReaderParam,
+struct CzmlReaderCompiledParam {
+    common: FileReaderCompiledParam,
+    force_2d: bool,
+    skip_document_packet: bool,
+    time_sampling: TimeSamplingStrategy,
 }
 
-/// # CzmlReader Parameters
+#[derive(Debug, Clone)]
+pub(super) struct CzmlReader {
+    params: CzmlReaderCompiledParam,
+}
+
+/// # CZML Reader Parameters
 ///
 /// Configuration for reading CZML files as geographic features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -97,7 +114,7 @@ pub(super) struct CzmlReaderParam {
     pub(super) skip_document_packet: bool,
     /// # Time Sampling Strategy
     /// How to handle time-dynamic properties in CZML packets.
-    /// Defaults to "preserveRaw" for lossless round-trip with CzmlWriter.
+    /// Defaults to "preserveRaw" for lossless round-trip with CZML Writer.
     #[serde(default)]
     pub(super) time_sampling: TimeSamplingStrategy,
 }
@@ -121,7 +138,7 @@ pub(super) enum TimeSamplingStrategy {
     /// geometry uses the first sample, `czml.timeseries` holds all position
     /// samples as a JSON array, and all other CZML packet properties (point,
     /// path, orientation, ellipsoid, etc.) are preserved as `czml.<key>`
-    /// attributes for faithful round-trip through CzmlWriter.
+    /// attributes for faithful round-trip through CZML Writer.
     #[default]
     PreserveRaw,
 }
@@ -131,13 +148,14 @@ impl Source for CzmlReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CzmlReader"
+        "CZML Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,
@@ -145,16 +163,17 @@ impl Source for CzmlReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
+        let content = get_content(&self.params.common, storage_resolver).await?;
         read_czml(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 async fn read_czml(
     content: &Bytes,
-    params: &CzmlReaderParam,
+    params: &CzmlReaderCompiledParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let text = String::from_utf8(content.to_vec())
@@ -180,7 +199,7 @@ async fn read_czml(
         for feature in features {
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
@@ -277,9 +296,10 @@ fn extract_extra_czml_properties(
 
 /// Convert a CZML packet into one or more features depending on the time
 /// sampling strategy.
+#[cfg(not(feature = "new-geometry"))]
 fn packet_to_features(
     packet: &Value,
-    params: &CzmlReaderParam,
+    params: &CzmlReaderCompiledParam,
 ) -> Result<Vec<Feature>, crate::errors::SourceError> {
     let force_2d = params.force_2d;
     let base_attributes = extract_common_attributes(packet);
@@ -409,6 +429,7 @@ fn parse_time_value(value: &Value) -> Option<(f64, Option<String>)> {
 }
 
 /// Build features from time-tagged position data according to the sampling strategy.
+#[cfg(not(feature = "new-geometry"))]
 fn build_timeseries_features(
     ts: &TimeTaggedPosition,
     base_attributes: &indexmap::IndexMap<Attribute, AttributeValue>,
@@ -974,6 +995,7 @@ mod tests {
         assert_eq!(ts.samples[1].lon, -76.0);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_preserve_raw_strategy() {
         let ts = TimeTaggedPosition {
@@ -1023,6 +1045,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_static() {
         let packet = serde_json::json!({
@@ -1032,8 +1055,8 @@ mod tests {
                 "cartographicDegrees": [-75.0, 40.0, 100.0]
             }
         });
-        let params = CzmlReaderParam {
-            common_property: FileReaderCommonParam {
+        let params = CzmlReaderCompiledParam {
+            common: FileReaderCompiledParam {
                 dataset: None,
                 inline: None,
             },
@@ -1045,6 +1068,7 @@ mod tests {
         assert_eq!(features.len(), 1);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_packet_to_features_timeseries() {
         let packet = serde_json::json!({
@@ -1059,8 +1083,8 @@ mod tests {
                 ]
             }
         });
-        let params = CzmlReaderParam {
-            common_property: FileReaderCommonParam {
+        let params = CzmlReaderCompiledParam {
+            common: FileReaderCompiledParam {
                 dataset: None,
                 inline: None,
             },

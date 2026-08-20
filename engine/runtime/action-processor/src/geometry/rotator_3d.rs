@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use nalgebra::Vector3;
 use reearth_flow_geometry::{
@@ -12,9 +12,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Expr, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,7 +26,7 @@ pub struct Rotator3DFactory;
 
 impl ProcessorFactory for Rotator3DFactory {
     fn name(&self) -> &str {
-        "Rotator3D"
+        "Rotator 3D"
     }
 
     fn description(&self) -> &str {
@@ -42,21 +42,21 @@ impl ProcessorFactory for Rotator3DFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: Rotator3DParam = if let Some(with) = with.clone() {
+        let params: Rotator3DParam = if let Some(with) = with {
             let value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::Rotator3DFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -74,38 +74,33 @@ impl ProcessorFactory for Rotator3DFactory {
             .into());
         };
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let compile = |expr: &Expr| {
-            expr_engine
-                .compile(expr.as_ref())
+        let compile = |expr: Code<{ CodeType::FlowExpr as u32 }>| {
+            expr.compile()
                 .map_err(|e| GeometryProcessorError::Rotator3DFactory(format!("{e:?}")))
         };
 
-        let rotation = match &params.rotation {
+        let rotation = match params.rotation {
             RotationParam::FromToVectors(p) => RotationAST::FromToVectors {
-                from_x: compile(&p.from_x)?,
-                from_y: compile(&p.from_y)?,
-                from_z: compile(&p.from_z)?,
-                to_x: compile(&p.to_x)?,
-                to_y: compile(&p.to_y)?,
-                to_z: compile(&p.to_z)?,
+                from_x: compile(p.from_x)?,
+                from_y: compile(p.from_y)?,
+                from_z: compile(p.from_z)?,
+                to_x: compile(p.to_x)?,
+                to_y: compile(p.to_y)?,
+                to_z: compile(p.to_z)?,
             },
             RotationParam::AxisAngle(p) => RotationAST::AxisAngle {
-                axis_x: compile(&p.axis_x)?,
-                axis_y: compile(&p.axis_y)?,
-                axis_z: compile(&p.axis_z)?,
-                angle: compile(&p.angle)?,
+                axis_x: compile(p.axis_x)?,
+                axis_y: compile(p.axis_y)?,
+                axis_z: compile(p.axis_z)?,
+                angle: compile(p.angle)?,
             },
         };
 
-        Ok(Box::new(Rotator3D {
-            global_params: with,
-            rotation,
-        }))
+        Ok(Box::new(Rotator3D { rotation }))
     }
 }
 
-/// # Rotator3D Parameters
+/// # Rotator 3D Parameters
 /// Configure the rotation for a 3D polygon
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -129,57 +124,57 @@ pub enum RotationParam {
 #[serde(rename_all = "camelCase")]
 pub struct FromToVectorsParam {
     /// X component of the source direction vector
-    pub from_x: Expr,
+    pub from_x: Code<{ CodeType::FlowExpr as u32 }>,
     /// Y component of the source direction vector
-    pub from_y: Expr,
+    pub from_y: Code<{ CodeType::FlowExpr as u32 }>,
     /// Z component of the source direction vector
-    pub from_z: Expr,
+    pub from_z: Code<{ CodeType::FlowExpr as u32 }>,
     /// X component of the target direction vector
-    pub to_x: Expr,
+    pub to_x: Code<{ CodeType::FlowExpr as u32 }>,
     /// Y component of the target direction vector
-    pub to_y: Expr,
+    pub to_y: Code<{ CodeType::FlowExpr as u32 }>,
     /// Z component of the target direction vector
-    pub to_z: Expr,
+    pub to_z: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AxisAngleParam {
     /// X component of the rotation axis
-    pub axis_x: Expr,
+    pub axis_x: Code<{ CodeType::FlowExpr as u32 }>,
     /// Y component of the rotation axis
-    pub axis_y: Expr,
+    pub axis_y: Code<{ CodeType::FlowExpr as u32 }>,
     /// Z component of the rotation axis
-    pub axis_z: Expr,
+    pub axis_z: Code<{ CodeType::FlowExpr as u32 }>,
     /// Rotation angle in degrees
-    pub angle: Expr,
+    pub angle: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone)]
 enum RotationAST {
     FromToVectors {
-        from_x: rhai::AST,
-        from_y: rhai::AST,
-        from_z: rhai::AST,
-        to_x: rhai::AST,
-        to_y: rhai::AST,
-        to_z: rhai::AST,
+        from_x: CompiledCode,
+        from_y: CompiledCode,
+        from_z: CompiledCode,
+        to_x: CompiledCode,
+        to_y: CompiledCode,
+        to_z: CompiledCode,
     },
     AxisAngle {
-        axis_x: rhai::AST,
-        axis_y: rhai::AST,
-        axis_z: rhai::AST,
-        angle: rhai::AST,
+        axis_x: CompiledCode,
+        axis_y: CompiledCode,
+        axis_z: CompiledCode,
+        angle: CompiledCode,
     },
 }
 
 #[derive(Debug, Clone)]
 pub struct Rotator3D {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     rotation: RotationAST,
 }
 
 impl Processor for Rotator3D {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -193,7 +188,11 @@ impl Processor for Rotator3D {
             return Ok(());
         }
 
-        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let variables = ctx.variables.clone();
+        let eval_f64 = |code: &CompiledCode| -> Result<f64, BoxedError> {
+            code.eval_float(feature, variables.clone())
+                .map_err(|e| GeometryProcessorError::Rotator3D(format!("{e:?}")).into())
+        };
         let rotation_matrix = match &self.rotation {
             RotationAST::FromToVectors {
                 from_x,
@@ -203,16 +202,8 @@ impl Processor for Rotator3D {
                 to_y,
                 to_z,
             } => {
-                let from = Vector3::new(
-                    scope.eval_ast::<f64>(from_x)?,
-                    scope.eval_ast::<f64>(from_y)?,
-                    scope.eval_ast::<f64>(from_z)?,
-                );
-                let to = Vector3::new(
-                    scope.eval_ast::<f64>(to_x)?,
-                    scope.eval_ast::<f64>(to_y)?,
-                    scope.eval_ast::<f64>(to_z)?,
-                );
+                let from = Vector3::new(eval_f64(from_x)?, eval_f64(from_y)?, eval_f64(from_z)?);
+                let to = Vector3::new(eval_f64(to_x)?, eval_f64(to_y)?, eval_f64(to_z)?);
                 rotation_from_vectors(from, to)
             }
             RotationAST::AxisAngle {
@@ -221,12 +212,8 @@ impl Processor for Rotator3D {
                 axis_z,
                 angle,
             } => {
-                let axis = Vector3::new(
-                    scope.eval_ast::<f64>(axis_x)?,
-                    scope.eval_ast::<f64>(axis_y)?,
-                    scope.eval_ast::<f64>(axis_z)?,
-                );
-                let angle_deg = scope.eval_ast::<f64>(angle)?;
+                let axis = Vector3::new(eval_f64(axis_x)?, eval_f64(axis_y)?, eval_f64(axis_z)?);
+                let angle_deg = eval_f64(angle)?;
                 rotation_from_axis_angle(axis, angle_deg)
             }
         };
@@ -246,7 +233,7 @@ impl Processor for Rotator3D {
                 feature.geometry_mut().value = GeometryValue::FlowGeometry3D(
                     reearth_flow_geometry::types::geometry::Geometry3D::Polygon(rotated),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(city_gml) => {
                 if city_gml.gml_geometries.len() != 1
@@ -262,7 +249,7 @@ impl Processor for Rotator3D {
                 new_city_gml.gml_geometries[0].polygons[0] = rotated;
                 let mut feature = feature.clone();
                 feature.geometry_mut().value = GeometryValue::CityGmlGeometry(new_city_gml);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -272,6 +259,7 @@ impl Processor for Rotator3D {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -281,7 +269,7 @@ impl Processor for Rotator3D {
     }
 
     fn name(&self) -> &str {
-        "Rotator3D"
+        "Rotator 3D"
     }
 }
 

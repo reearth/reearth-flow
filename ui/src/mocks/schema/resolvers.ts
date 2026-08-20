@@ -9,6 +9,7 @@ import {
   type WorkspaceFragment,
   type UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
+
 import { mockAssets } from "../data/asset";
 import {
   mockCmsProjects,
@@ -912,6 +913,44 @@ export const resolvers = {
           });
         }
       }, 2000);
+
+      return { job: newJob };
+    },
+
+    previewSchema: (_: any, args: { input: any }) => {
+      const { input } = args;
+      const project = projects.find((p) => p.id === input.projectId);
+
+      if (!project) {
+        throw new Error("Project not found");
+      }
+
+      const jobId = generateId("job");
+      const newJob: JobFragment = {
+        id: jobId,
+        workspaceId: input.workspaceId,
+        status: "PENDING",
+        debug: false,
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        outputURLs: [],
+        userFacingLogsURL: null,
+        deployment: null,
+      };
+
+      jobs.push(newJob);
+
+      // Simulate the probe completing with a schema-report artifact.
+      setTimeout(() => {
+        const jobIndex = jobs.findIndex((j) => j.id === jobId);
+        if (jobIndex !== -1) {
+          jobs[jobIndex].status = "COMPLETED";
+          jobs[jobIndex].completedAt = new Date().toISOString();
+          jobs[jobIndex].outputURLs = [
+            `https://artifacts.reearth-flow.com/artifacts/${jobId}/schema/schema-report.json`,
+          ];
+        }
+      }, 1500);
 
       return { job: newJob };
     },

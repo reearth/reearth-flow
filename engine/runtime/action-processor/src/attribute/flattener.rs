@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -19,11 +19,11 @@ pub(super) struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 
     fn description(&self) -> &str {
-        "Flatten Nested Object Attributes into Top-Level Attributes"
+        "Flattens map-valued attributes into individual top-level attributes, replacing each map with its key-value entries."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,15 +35,15 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["hierarchy"]
+        &[]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -81,12 +81,13 @@ struct AttributeFlattener {
     params: AttributeFlattenerParam,
 }
 
-/// # AttributeFlattener Parameters
+/// # Attribute Flattener Parameters
+/// Configures which map-valued attributes are expanded into top-level attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeFlattenerParam {
     /// # Attributes to Flatten
-    /// Map/object attributes that should be flattened - their nested properties will become top-level attributes
+    /// Map-valued attributes to expand; each nested key becomes a top-level attribute and the original map is removed. Non-map attributes are left unchanged.
     attributes: Vec<Attribute>,
 }
 
@@ -111,7 +112,7 @@ impl Processor for AttributeFlattener {
                 }
             }
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -124,7 +125,7 @@ impl Processor for AttributeFlattener {
     }
 
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 }
 
@@ -162,7 +163,7 @@ mod test {
             assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().unwrap().clone(),
-                DEFAULT_PORT.clone()
+                FEATURES_PORT.clone()
             );
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();

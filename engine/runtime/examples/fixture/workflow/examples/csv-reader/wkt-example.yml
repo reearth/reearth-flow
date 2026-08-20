@@ -11,11 +11,12 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1a1
         name: CsvReader
         type: action
-        action: CsvReader
+        action: CSV Reader
         with:
           format: csv
-          inline: |
-            env.get("csvFile")
+          inline:
+            type: flowExpr
+            value: variables["csvFile"]
           geometry:
             geometryMode: wkt
             column: geometry
@@ -24,13 +25,15 @@ graphs:
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906a
         name: GeoJsonWriter
         type: action
-        action: GeoJsonWriter
+        action: GeoJSON Writer
         with:
-          output: ./output-wkt.geojson
+          output:
+            type: string
+            value: ./output-wkt.geojson
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540a
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a1
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

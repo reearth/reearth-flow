@@ -1,62 +1,13 @@
 use crate::align_cesium::load_tileset;
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
+use crate::tileset::collect_tile_contents;
 use indexmap::IndexMap;
 use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-
-/// Recursively extract GLB paths from the tileset tile tree.
-fn collect_glb_paths(
-    tile: &Value,
-    tileset_dir: &Path,
-    out: &mut Vec<PathBuf>,
-) -> Result<(), String> {
-    // Single content
-    if let Some(content) = tile.get("content") {
-        if let Some(uri) = content.get("uri").and_then(|u| u.as_str()) {
-            if uri.ends_with(".glb") {
-                let glb_path = tileset_dir.join(uri);
-                if !glb_path.exists() {
-                    return Err(format!(
-                        "GLB file referenced in tileset does not exist: {:?}",
-                        glb_path
-                    ));
-                }
-                out.push(glb_path);
-            }
-        }
-    }
-
-    // Multiple contents
-    if let Some(contents) = tile.get("contents").and_then(|c| c.as_array()) {
-        for content_item in contents {
-            if let Some(uri) = content_item.get("uri").and_then(|u| u.as_str()) {
-                if uri.ends_with(".glb") {
-                    let glb_path = tileset_dir.join(uri);
-                    if !glb_path.exists() {
-                        return Err(format!(
-                            "GLB file referenced in tileset does not exist: {:?}",
-                            glb_path
-                        ));
-                    }
-                    out.push(glb_path);
-                }
-            }
-        }
-    }
-
-    // Recurse into children
-    if let Some(children) = tile.get("children").and_then(|c| c.as_array()) {
-        for child in children {
-            collect_glb_paths(child, tileset_dir, out)?;
-        }
-    }
-
-    Ok(())
-}
 
 /// Loads all Cesium 3D Tiles feature attributes from a tileset directory,
 /// keyed by feature identifier (via `make_feature_key`).
@@ -65,10 +16,13 @@ pub fn load_cesium_attr(tileset_dir: &Path) -> Result<IndexMap<String, Value>, S
     let tileset_info = load_tileset(tileset_dir)?;
     let dir_name = tileset_dir.file_name().and_then(|n| n.to_str());
 
-    let mut glb_paths = Vec::new();
-    if let Some(root) = tileset_info.content.get("root") {
-        collect_glb_paths(root, tileset_dir, &mut glb_paths)?;
-    }
+    let mut glb_paths: Vec<PathBuf> = match tileset_info.content.get("root") {
+        Some(root) => collect_tile_contents(tileset_dir, root)?
+            .into_iter()
+            .map(|c| c.path)
+            .collect(),
+        None => Vec::new(),
+    };
     glb_paths.sort();
 
     let mut ret: IndexMap<String, Value> = IndexMap::new();
@@ -127,11 +81,29 @@ pub fn write_cesium_json(
         })
         .collect();
 
-    let json = serde_json::to_string_pretty(&Value::Object(normalized))
-        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    let sorted = sort_json_keys_recursive(Value::Object(normalized));
+
+    let json =
+        serde_json::to_string_pretty(&sorted).map_err(|e| format!("Failed to serialize: {}", e))?;
 
     fs::write(output_path, &json)
         .map_err(|e| format!("Failed to write {}: {}", output_path.display(), e))?;
 
     Ok(())
+}
+
+/// Recursively sorts object keys so the truth file's diff is stable across runs.
+fn sort_json_keys_recursive(value: Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut sorted: serde_json::Map<String, Value> = map
+                .into_iter()
+                .map(|(k, v)| (k, sort_json_keys_recursive(v)))
+                .collect();
+            sorted.sort_keys();
+            Value::Object(sorted)
+        }
+        Value::Array(arr) => Value::Array(arr.into_iter().map(sort_json_keys_recursive).collect()),
+        other => other,
+    }
 }

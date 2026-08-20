@@ -1,5 +1,6 @@
 {
   "description": "Detect invalid gml:id",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {

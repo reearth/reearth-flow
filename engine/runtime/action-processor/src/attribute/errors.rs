@@ -29,6 +29,8 @@ pub(super) enum AttributeProcessorError {
     FilePathInfoExtractor(String),
     #[error("StatisticsCalculator Factory error: {0}")]
     StatisticsCalculatorFactory(String),
+    #[error("StatisticsCalculator error: {0}")]
+    StatisticsCalculator(String),
     #[error("Attribute Mapper Factory error: {0}")]
     MapperFactory(String),
     #[error("Attribute Flattener error: {0}")]
@@ -51,6 +53,8 @@ pub(super) enum AttributeProcessorError {
     DateTimeConverterFactory(String),
     #[error("Attribute DateTimeConverter error: {0}")]
     DateTimeConverter(String),
+    #[error("Attribute Table Extractor error: {0}")]
+    TableExtractorFactory(String),
 }
 
 #[allow(dead_code)]

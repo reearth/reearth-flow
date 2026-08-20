@@ -1,7 +1,7 @@
-// Workflow-level integration tests for NeighborFinder processor
+// Workflow-level integration tests for Neighbor Finder processor
 // ==============================================================
 //
-// These tests verify the end-to-end behavior of the NeighborFinder processor
+// These tests verify the end-to-end behavior of the Neighbor Finder processor
 // using real geometry data loaded from GeoJSON files.
 
 use reearth_flow_action_log::factory::LoggerFactory;
@@ -13,14 +13,15 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use tempfile::tempdir;
 
 use crate::helper::BUILTIN_ACTION_FACTORIES;
 
-/// Test: NeighborFinder with GeoJSON input - explicit proximity matching verification
+/// Test: Neighbor Finder with GeoJSON input - explicit proximity matching verification
 ///
-/// This test verifies that the NeighborFinder processor correctly:
+/// This test verifies that the Neighbor Finder processor correctly:
 /// 1. Reads geometry from GeoJSON files
 /// 2. Calculates 2D Euclidean distances between points
 /// 3. Identifies the nearest neighbor (closest candidate to base)
@@ -84,13 +85,11 @@ fn test_proximity_search_with_geojson() {
         )
         .unwrap();
 
-    // Merge workflow variables
-    let output_path = temp_dir.path().join("result.json");
-    let output_uri_str = format!("file://{}", output_path.to_str().unwrap());
+    // Merge workflow variables — output is a relative path, joined against sandbox_root
     workflow
         .merge_with(HashMap::from([(
             "outputPath".to_string(),
-            output_uri_str.clone(),
+            "result.json".to_string(),
         )]))
         .unwrap();
 
@@ -109,8 +108,10 @@ fn test_proximity_search_with_geojson() {
     let feature_state =
         Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
 
-    // Run the workflow
-    Runner::run(
+    // Run the workflow with sandbox_root = temp_dir so relative paths resolve there
+    let sandbox_root = Uri::from_str(&format!("file://{}/", temp_dir.path().to_str().unwrap()))
+        .expect("sandbox_root URI must be valid");
+    Runner::run_with_sandbox_root(
         uuid::Uuid::new_v4(),
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
@@ -119,10 +120,13 @@ fn test_proximity_search_with_geojson() {
         ingress_state,
         feature_state,
         None,
+        sandbox_root,
     )
     .expect("Workflow execution should succeed");
 
-    // Read the result
+    // Read the result from the temp directory
+    let output_path = temp_dir.path().join("result.json");
+    let output_uri_str = format!("file://{}", output_path.to_str().unwrap());
     let output_uri = Uri::for_test(&output_uri_str);
     let storage = storage_resolver.resolve(&output_uri).unwrap();
     let result = storage

@@ -358,6 +358,13 @@ type Me struct {
 type Mutation struct {
 }
 
+type NamedSnapshot struct {
+	SnapshotNumber int       `json:"snapshotNumber"`
+	Label          string    `json:"label"`
+	Timestamp      time.Time `json:"timestamp"`
+	Size           int64     `json:"size"`
+}
+
 type NodeExecution struct {
 	ID          ID         `json:"id"`
 	JobID       ID         `json:"jobId"`
@@ -421,6 +428,18 @@ type ParameterUpdateItem struct {
 	Public       bool          `json:"public"`
 	DefaultValue any           `json:"defaultValue,omitempty"`
 	Config       JSON          `json:"config,omitempty"`
+}
+
+type PreviewSchemaInput struct {
+	ProjectID   ID                   `json:"projectId"`
+	WorkspaceID ID                   `json:"workspaceId"`
+	File        graphql.Upload       `json:"file"`
+	Parameters  []*RunParameterInput `json:"parameters,omitempty"`
+	SampleSize  *int                 `json:"sampleSize,omitempty"`
+}
+
+type PreviewSchemaPayload struct {
+	Job *Job `json:"job"`
 }
 
 type PreviewSnapshot struct {

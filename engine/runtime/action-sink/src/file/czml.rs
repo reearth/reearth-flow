@@ -16,8 +16,8 @@ use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{Context, ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, GeometryValue};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,7 +31,7 @@ pub(crate) struct CzmlWriterFactory;
 
 impl SinkFactory for CzmlWriterFactory {
     fn name(&self) -> &str {
-        "CzmlWriter"
+        "CZML Writer"
     }
 
     fn description(&self) -> &str {
@@ -47,7 +47,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -56,7 +56,7 @@ impl SinkFactory for CzmlWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -75,9 +75,29 @@ impl SinkFactory for CzmlWriterFactory {
             .into());
         };
         params.sanitize();
-
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_variables_only(ctx.variables.clone())
+            .map_err(|e| {
+                SinkError::CzmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = CzmlWriter {
-            params,
+            params: CzmlWriterCompiledParam {
+                output,
+                group_by: params.group_by,
+                time_field: params.time_field,
+                epoch: params.epoch,
+                interpolation_algorithm: params.interpolation_algorithm,
+                interpolation_degree: params.interpolation_degree,
+                group_timeseries_by: params.group_timeseries_by,
+                color_attribute: params.color_attribute,
+                opacity: params.opacity,
+                height_attribute: params.height_attribute,
+            },
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -85,12 +105,26 @@ impl SinkFactory for CzmlWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct CzmlWriterCompiledParam {
+    pub(super) output: String,
+    pub(super) group_by: Option<Vec<Attribute>>,
+    pub(super) time_field: Option<Attribute>,
+    pub(super) epoch: Option<String>,
+    pub(super) interpolation_algorithm: InterpolationAlgorithm,
+    pub(super) interpolation_degree: u32,
+    pub(super) group_timeseries_by: Option<Attribute>,
+    pub(super) color_attribute: Option<Attribute>,
+    pub(super) opacity: u8,
+    pub(super) height_attribute: Option<Attribute>,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct CzmlWriter {
-    pub(super) params: CzmlWriterParam,
+    pub(super) params: CzmlWriterCompiledParam,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-/// # CzmlWriter Parameters
+/// # CZML Writer Parameters
 ///
 /// Configuration for writing geographic features to CZML files. Supports both
 /// static entities and time-dynamic entities with interpolated position samples.
@@ -105,7 +139,7 @@ pub(crate) struct CzmlWriter {
 ///
 /// ### Example with ISO 8601 timestamps:
 /// ```yaml
-/// - action: CzmlWriter
+/// - action: CZML Writer
 ///   with:
 ///     output: "vehicles.czml"
 ///     timeField: "timestamp"           # Contains "2024-01-01T00:00:00Z", etc.
@@ -116,7 +150,7 @@ pub(crate) struct CzmlWriter {
 ///
 /// ### Example with numeric time offsets:
 /// ```yaml
-/// - action: CzmlWriter
+/// - action: CZML Writer
 ///   with:
 ///     output: "sensors.czml"
 ///     timeField: "timeOffset"          # Contains numeric values: 0, 60, 120, etc.
@@ -129,7 +163,7 @@ pub(crate) struct CzmlWriter {
 pub(crate) struct CzmlWriterParam {
     /// # Output File Path
     /// Path where the CZML file will be written
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// # Group By Attributes
     /// Attributes used to group features into separate CZML files
     pub(super) group_by: Option<Vec<Attribute>>,
@@ -144,7 +178,7 @@ pub(crate) struct CzmlWriterParam {
     ///
     /// **Example workflow configuration:**
     /// ```yaml
-    /// - action: CzmlWriter
+    /// - action: CZML Writer
     ///   with:
     ///     output: "output.czml"
     ///     timeField: "timestamp"
@@ -279,9 +313,10 @@ impl std::fmt::Display for InterpolationAlgorithm {
 
 impl Sink for CzmlWriter {
     fn name(&self) -> &str {
-        "CzmlWriter"
+        "CZML Writer"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -301,21 +336,17 @@ impl Sink for CzmlWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let base = crate::SinkOutput::from_path(&ctx, &path)
-            .map_err(crate::errors::SinkError::czml_writer)?;
-
+        let path = self.params.output.clone();
         for (key, features) in self.buffer.iter() {
-            let out = if *key == AttributeValue::Null {
-                base.clone()
+            let out_path = if *key == AttributeValue::Null {
+                path.clone()
             } else {
-                base.join(&format!("{}.json", to_hash(key.to_string().as_str())))
-                    .map_err(crate::errors::SinkError::czml_writer)?
+                format!("{}/{}.json", path, to_hash(key.to_string().as_str()))
             };
+            let out = crate::SinkOutput::new(&ctx.sandbox_root, &out_path, &ctx.storage_resolver)
+                .map_err(crate::errors::SinkError::czml_writer)?;
 
             let is_grouped_timeseries =
                 self.params.group_timeseries_by.is_some() && self.params.time_field.is_some();
@@ -391,9 +422,10 @@ impl Sink for CzmlWriter {
 
 /// Build a CZML document from features with embedded `czml.*` attributes
 /// (produced by the reader's `PreserveRaw` strategy).
+#[cfg(not(feature = "new-geometry"))]
 fn build_embedded_czml(
     features: &[Feature],
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
 ) -> Result<Vec<u8>, BoxedError> {
     let per_entity_mode = params.time_field.is_some() && params.group_timeseries_by.is_none();
 
@@ -511,9 +543,10 @@ fn build_embedded_czml(
 /// When `params` provides `time_field` and `global_end` is set, per-entity availability
 /// is computed. Polygon geometry is auto-converted when no graphic property exists.
 /// `effective_epoch` is the epoch to use for numeric time conversion (may be auto-detected).
+#[cfg(not(feature = "new-geometry"))]
 fn build_embedded_packet(
     feature: &Feature,
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
     global_end: Option<&str>,
     effective_epoch: Option<&str>,
 ) -> Result<Value, BoxedError> {
@@ -688,9 +721,10 @@ fn build_embedded_packet(
 }
 
 /// Build a CZML document with time-dynamic entities grouped by attribute.
+#[cfg(not(feature = "new-geometry"))]
 fn build_timeseries_czml(
     features: &[Feature],
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
     _ctx: &NodeContext,
 ) -> Result<Vec<u8>, BoxedError> {
     let time_field = params
@@ -784,10 +818,11 @@ fn build_timeseries_czml(
 }
 
 /// Build a single CZML packet for a time-dynamic entity from grouped features.
+#[cfg(not(feature = "new-geometry"))]
 fn build_entity_packet(
     entity_id: &str,
     features: &[&Feature],
-    params: &CzmlWriterParam,
+    params: &CzmlWriterCompiledParam,
 ) -> Result<Value, BoxedError> {
     let time_field = params.time_field.as_ref().unwrap();
 
@@ -963,6 +998,7 @@ fn build_entity_packet(
     Ok(packet)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn extract_point_coords(feature: &Feature) -> Option<(f64, f64, f64)> {
     match &feature.geometry.value {
         GeometryValue::FlowGeometry3D(Geometry3D::Point(p)) => Some((p.x(), p.y(), p.z())),
@@ -1117,7 +1153,11 @@ fn hex_to_rgba(hex: &str, alpha: u8) -> Option<[u8; 4]> {
 }
 
 /// Convert a Feature's polygon geometry to a styled CZML polygon JSON value.
-fn feature_geometry_to_polygon_json(feature: &Feature, params: &CzmlWriterParam) -> Option<Value> {
+#[cfg(not(feature = "new-geometry"))]
+fn feature_geometry_to_polygon_json(
+    feature: &Feature,
+    params: &CzmlWriterCompiledParam,
+) -> Option<Value> {
     let czml_polygon = match &feature.geometry.value {
         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(poly)) => polygon_to_czml_polygon(poly),
         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)) => {
@@ -1243,6 +1283,7 @@ fn build_properties_bag(feature: &Feature) -> Option<Value> {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
     let Some(parent_id) = feature.feature_id() else {
         ctx.event_hub
@@ -1319,6 +1360,7 @@ mod tests {
     use reearth_flow_geometry::types::polygon::Polygon;
     use reearth_flow_types::Geometry;
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_feature_3d(lon: f64, lat: f64, height: f64) -> Feature {
         Feature::new_with_attributes_and_geometry(
             indexmap::IndexMap::new(),
@@ -1331,9 +1373,9 @@ mod tests {
         )
     }
 
-    fn make_timeseries_params() -> CzmlWriterParam {
-        CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+    fn make_timeseries_params() -> CzmlWriterCompiledParam {
+        CzmlWriterCompiledParam {
+            output: "/tmp/test.czml".to_string(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
@@ -1346,6 +1388,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_entity_packet_basic() {
         let params = make_timeseries_params();
@@ -1388,6 +1431,7 @@ mod tests {
         assert!(packet["availability"].as_str().is_some());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_embedded_feature_with_timeseries() -> Feature {
         let mut f = make_feature_3d(139.6917, 35.6895, 50.0);
         f.insert(
@@ -1435,6 +1479,7 @@ mod tests {
         f
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_embedded_static_feature() -> Feature {
         let mut f = make_feature_3d(139.7454, 35.6586, 333.0);
         f.insert(
@@ -1452,9 +1497,9 @@ mod tests {
         f
     }
 
-    fn make_default_params() -> CzmlWriterParam {
-        CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+    fn make_default_params() -> CzmlWriterCompiledParam {
+        CzmlWriterCompiledParam {
+            output: "/tmp/test.czml".to_string(),
             group_by: None,
             time_field: None,
             epoch: None,
@@ -1467,6 +1512,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_embedded_packet_timeseries() {
         let f = make_embedded_feature_with_timeseries();
@@ -1492,6 +1538,7 @@ mod tests {
         assert!(packet["availability"].as_str().unwrap().contains('/'));
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_embedded_packet_static() {
         let f = make_embedded_static_feature();
@@ -1512,24 +1559,14 @@ mod tests {
         assert!(packet.get("availability").is_none());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_embedded_czml_document() {
         let f1 = make_embedded_feature_with_timeseries();
         let f2 = make_embedded_static_feature();
         let features = vec![f1, f2];
 
-        let params = CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
-            group_by: None,
-            time_field: None,
-            epoch: None,
-            interpolation_algorithm: InterpolationAlgorithm::default(),
-            interpolation_degree: 1,
-            group_timeseries_by: None,
-            color_attribute: None,
-            opacity: default_opacity(),
-            height_attribute: None,
-        };
+        let params = make_default_params();
 
         let buffer = build_embedded_czml(&features, &params).unwrap();
         let czml: Vec<Value> = serde_json::from_slice(&buffer).unwrap();
@@ -1547,11 +1584,12 @@ mod tests {
         assert_eq!(czml[2]["id"], "static-poi");
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_entity_packet_numeric_times() {
         // Test with numeric time values and no explicit epoch
-        let params = CzmlWriterParam {
-            output: Expr::new("/tmp/test.czml".to_string()),
+        let params = CzmlWriterCompiledParam {
+            output: "/tmp/test.czml".to_string(),
             group_by: None,
             time_field: Some(Attribute::new("timestamp")),
             epoch: None, // No explicit epoch - should auto-generate
@@ -1614,6 +1652,7 @@ mod tests {
         assert_eq!(hex_to_rgba("#fff", 180), None); // too short
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn make_polygon_2d_feature() -> Feature {
         let coords: Vec<Coordinate<f64, NoValue>> = vec![
             (139.75, 35.68).into(),
@@ -1640,6 +1679,7 @@ mod tests {
         f
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_feature_geometry_to_polygon_2d() {
         let f = make_polygon_2d_feature();
@@ -1663,6 +1703,7 @@ mod tests {
         assert_eq!(pv["outline"], true);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_polygon_with_styling() {
         let mut f = make_polygon_2d_feature();
@@ -1675,7 +1716,7 @@ mod tests {
             AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap()),
         );
 
-        let params = CzmlWriterParam {
+        let params = CzmlWriterCompiledParam {
             color_attribute: Some(Attribute::new("fill_color")),
             opacity: 180,
             height_attribute: Some(Attribute::new("depth")),
@@ -1697,6 +1738,7 @@ mod tests {
         assert_eq!(polygon_val["closeTop"], true);
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_per_entity_availability() {
         let mut f1 = make_polygon_2d_feature();
@@ -1712,7 +1754,7 @@ mod tests {
             AttributeValue::String("7200".into()), // 2 hour offset
         );
 
-        let params = CzmlWriterParam {
+        let params = CzmlWriterCompiledParam {
             time_field: Some(Attribute::new("start_time")),
             epoch: Some("2024-01-01T00:00:00Z".into()),
             ..make_default_params()
@@ -1744,6 +1786,7 @@ mod tests {
         assert!(czml[1].get("point").is_none());
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_build_properties_bag() {
         let mut f = make_feature_3d(139.7, 35.7, 0.0);

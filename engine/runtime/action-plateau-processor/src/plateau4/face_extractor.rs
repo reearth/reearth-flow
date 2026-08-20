@@ -1,5 +1,5 @@
 use super::errors::PlateauProcessorError;
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml;
@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -51,7 +51,7 @@ impl ProcessorFactory for FaceExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -301,6 +301,7 @@ impl FaceExtractor {
         Ok(coords)
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process_xml(
         &mut self,
         ctx: &ExecutorContext,
@@ -316,7 +317,7 @@ impl FaceExtractor {
         let collected: Rc<RefCell<Vec<(String, String)>>> = Rc::new(RefCell::new(Vec::new()));
         let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
 
-        let transformer = StreamTransformer::new(&xml_content)
+        let transformer = Transformer::from(xml_content.as_str())
             .with_root_namespaces()
             .map_err(|e| {
                 PlateauProcessorError::FaceExtractor(format!(
@@ -525,6 +526,7 @@ impl FaceExtractor {
 }
 
 impl Processor for FaceExtractor {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -569,6 +571,7 @@ impl Processor for FaceExtractor {
         Ok(())
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

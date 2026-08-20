@@ -4,8 +4,8 @@ use std::vec;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -19,11 +19,11 @@ pub(crate) struct ShapefileWriterFactory;
 
 impl SinkFactory for ShapefileWriterFactory {
     fn name(&self) -> &str {
-        "ShapefileWriter"
+        "Shapefile Writer"
     }
 
     fn description(&self) -> &str {
-        "Writes geographic features to ESRI Shapefile format with optional grouping"
+        "Writes features to ESRI Shapefile format, optionally grouping them into separate files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,11 +35,11 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["shapefile"]
+        &["shapefile", "vector"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -48,12 +48,12 @@ impl SinkFactory for ShapefileWriterFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: ShapefileWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::ShapefileWriterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -70,9 +70,19 @@ impl SinkFactory for ShapefileWriterFactory {
             )
             .into());
         };
-
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| {
+                SinkError::ShapefileWriterFactory(format!("Failed to compile `output`: {e:?}"))
+            })?
+            .eval_string_variables_only(ctx.variables.clone())
+            .map_err(|e| {
+                SinkError::ShapefileWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+            })?;
         let sink = ShapefileWriter {
-            params,
+            output,
+            group_by: params.group_by,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -81,7 +91,8 @@ impl SinkFactory for ShapefileWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ShapefileWriter {
-    pub(super) params: ShapefileWriterParam,
+    output: String,
+    group_by: Option<Vec<Attribute>>,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -91,21 +102,24 @@ pub(crate) struct ShapefileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShapefileWriterParam {
-    /// Output path or expression for the Shapefile to create
-    pub(super) output: Expr,
-    /// Optional attributes to group features by, creating separate files for each group
+    /// # Output Directory
+    /// Output directory path or expression where the generated Shapefile files are written.
+    pub(super) output: Code,
+    /// # Group By
+    /// Attributes to group features by, writing a separate file for each distinct group.
     pub(super) group_by: Option<Vec<Attribute>>,
 }
 
 impl Sink for ShapefileWriter {
     fn name(&self) -> &str {
-        "ShapefileWriter"
+        "Shapefile Writer"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
-        let key = if let Some(group_by) = &self.params.group_by {
+        let key = if let Some(group_by) = &self.group_by {
             if group_by.is_empty() {
                 AttributeValue::Null
             } else {
@@ -121,15 +135,18 @@ impl Sink for ShapefileWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let scope = ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let base = crate::SinkOutput::from_path(&ctx, &path)
-            .map_err(|e| SinkError::ShapefileWriter(e.to_string()))?;
+        let path = self.output.as_str();
         for (key, features) in self.buffer.iter() {
-            pipeline::pipeline(&ctx.as_context(), &base, key, features)?;
+            pipeline::pipeline(
+                &ctx.as_context(),
+                &ctx.sandbox_root,
+                path,
+                key,
+                features,
+                &ctx.storage_resolver,
+            )?;
         }
         Ok(())
     }

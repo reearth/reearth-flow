@@ -581,6 +581,11 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
+        // Release background resources first and unconditionally: cancel per-connection
+        // tasks and abort the Redis subscriber task before the fallible Redis/GCS
+        // bookkeeping below. The abort is synchronous (try_lock), so it runs to
+        // completion even if an outer timeout later cancels this future.
+        self.cancel_token.cancel();
         if let Ok(mut guard) = self.shutdown_handle.try_lock() {
             if let Some(handle) = guard.take() {
                 handle.shutdown_sync();

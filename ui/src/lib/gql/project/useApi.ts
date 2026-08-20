@@ -5,6 +5,7 @@ import {
   DeleteProject,
   EngineReadyWorkflow,
   GetProject,
+  PreviewSchema,
   Project,
   RunProject,
   UpdateProject,
@@ -25,6 +26,7 @@ export const useProject = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
+    previewSchemaMutation,
     copyProjectMutation,
     importProjectMutation,
     useGetProjectsQuery,
@@ -162,6 +164,41 @@ export const useProject = () => {
     }
   };
 
+  const previewSchema = async (
+    projectId: string,
+    workspaceId: string,
+    engineReadyWorkflow: EngineReadyWorkflow,
+    sampleSize?: number,
+  ): Promise<PreviewSchema> => {
+    const { mutateAsync, ...rest } = previewSchemaMutation;
+
+    try {
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
+      const data = await mutateAsync({
+        projectId,
+        workspaceId,
+        file: formData,
+        sampleSize,
+      });
+      // Intentionally quiet: this fires automatically on reader param save,
+      // so a success toast on every save would be noisy.
+      return { job: data.job, ...rest };
+    } catch (err) {
+      console.error("error", err);
+      toast({
+        title: t("Schema Preview Failed"),
+        description: t(
+          "There was an error when probing the reader's attribute schema.",
+        ),
+        variant: "destructive",
+      });
+      return { job: undefined, ...rest };
+    }
+  };
+
   const copyProject = async (
     projectId: string,
     source: string,
@@ -215,6 +252,7 @@ export const useProject = () => {
     updateProject,
     deleteProject,
     runProject,
+    previewSchema,
     copyProject,
     importProject,
   };

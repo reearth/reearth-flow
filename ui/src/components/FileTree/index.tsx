@@ -1,5 +1,5 @@
+import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { CaretRightIcon, Icon } from "@phosphor-icons/react";
-import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { XYPosition } from "@xyflow/react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import useResizeObserver from "use-resize-observer";
@@ -138,7 +138,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
               <li key={item.id}>
                 {item.children ? (
                   <AccordionPrimitive.Root
-                    type="multiple"
+                    multiple
                     defaultValue={expandedItemIds}>
                     <AccordionPrimitive.Item value={item.id}>
                       <AccordionTrigger
@@ -257,7 +257,7 @@ const AccordionTrigger = forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex w-full flex-1 items-center py-2 transition-all [&[data-state=open]>svg]:last:rotate-90",
+        "flex w-full flex-1 items-center py-2 transition-all [&[data-panel-open]>svg]:last:rotate-90",
         className,
       )}
       {...props}>
@@ -266,22 +266,22 @@ const AccordionTrigger = forwardRef<
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
+AccordionTrigger.displayName = "AccordionTrigger";
 
 const AccordionContent = forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
+  React.ElementRef<typeof AccordionPrimitive.Panel>,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Panel>
 >(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Content
+  <AccordionPrimitive.Panel
     ref={ref}
     className={cn(
-      "overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down",
+      "overflow-hidden text-sm transition-all data-ending-style:animate-accordion-up data-open:animate-accordion-down",
       className,
     )}
     {...props}>
     <div className="pt-0 pb-1">{children}</div>
-  </AccordionPrimitive.Content>
+  </AccordionPrimitive.Panel>
 ));
-AccordionContent.displayName = AccordionPrimitive.Content.displayName;
+AccordionContent.displayName = "AccordionContent";
 
 export { Tree, type TreeDataItem };

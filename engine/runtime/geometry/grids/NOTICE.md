@@ -1,0 +1,35 @@
+# Third-party geodetic grids
+
+This product embeds 27 geodetic grid files (22.1 MiB) taken from the PROJ-data 1.24.0 distribution (<https://github.com/OSGeo/PROJ-data>). Each is redistributed under the licence its publisher applied to it, reproduced below. Generated from `MANIFEST.tsv` by `render_notice.py`; do not edit by hand. See [README.md](README.md) for how the set is maintained.
+
+The Japanese grids are used with the permission of the Geospatial Information Authority of Japan recorded in the PROJ-data source distribution: 測量法に基づく国土地理院長承認(使用)R 2JHs 501.
+
+| Grid | Publisher | Country | Licence |
+|---|---|---|---|
+| `at_bev_GV_Hoehengrid_plus_Geoid_V2.tif` | [Austria Bundesamt für Eich- und Vermessungswessen (BEV)](http://www.bev.gv.at/portal/page?_pageid=713,2157075&_dad=portal&_schema=PORTAL) | Austria | CC-BY-4.0 |
+| `be_ign_hBG18.tif` | [Institut Géographique National (IGN) Belgium](http://www.ngi.be) | Belgium | CC-BY-4.0 |
+| `cz_cuzk_CR-2005.tif` | [ČÚZK](https://geoportal.cuzk.cz/) | Czech Republic | CC-BY-4.0 |
+| `dk_sdfi_dvr90_2023.tif` | [Agency for Data Supply and Infrastructure (SDFI)](https://sdfi.dk) | Denmark | CC-BY-4.0 |
+| `fi_nls_fin2023n2000.tif` | [National Land Survey of Finland](https://www.maanmittauslaitos.fi) | Finland | CC-BY-4.0 |
+| `fr_ign_RAF20.tif` | [Institut Géographique National (IGN) France](http://www.ign.fr/) | France | Open License France - https://www.etalab.gouv.fr/wp-content/uploads/2014/05/Open_Licence.pdf |
+| `de_bkg_gcg2016.tif` | [BKG](https://gdz.bkg.bund.de/index.php/default/digitale-geodaten.html) | Germany | CC-BY-4.0 |
+| `hu_bme_geoid2014.tif` | [Budapest University of Technology and Economics - Department of Geodesy and Surveying](https://geod.bme.hu/geod/hirek?language=en) | Hungary | CC-BY-SA-4.0 |
+| `is_lmi_Icegeoid_ISN2016.tif` | [2017-2019, National Land Survey of Iceland](https://atlas.lmi.is/LmiData/index.php?id=626468364600) | Iceland | CC-BY-4.0 |
+| `jp_gsi_gsigeo2011.tif` | [Geospatial Information Authority of Japan](https://www.gsi.go.jp/) | Japan | CC-BY-4.0 |
+| `jp_gsi_jpgeo2024.tif` | [Geospatial Information Authority of Japan](https://www.gsi.go.jp/) | Japan | CC-BY-4.0 |
+| `lv_lgia_lv14.tif` | [Latvian Geospatial Information Agency](https://www.lgia.gov.lv/) | Latvia | CC-BY-4.0 |
+| `nl_nsgi_nlgeo2018.tif` | [Nederlandse Samenwerking Geodetische Infrastructuur (NSGI)](https://www.nsgi.nl/) | Netherlands | CC-BY-4.0 |
+| `no_kv_HREF2018B_NN2000_EUREF89.tif` | [Kartverket (SK)](https://www.kartverket.no/) | Norway | CC-BY-4.0 |
+| `pl_gugik_geoid2021-PL-EVRF2007-NH.tif` | [Główny Urząd Geodezji i Kartografii](https://www.gov.pl/web/gugik/) | Poland | CC-BY-4.0 |
+| `pt_dgt_GeodPT08.tif` | [Direcao Geral de Territorio](http://www.dgterritorio.pt/) | Portugal | CC-BY-4.0 |
+| `sk_gku_Slovakia_ETRS89h_to_EVRF2007.tif` | [2014, GKU Slovakia](https://www.geoportal.sk/en/) | Slovakia | CC-BY-4.0 |
+| `si_gurs_SLO-VRP2016-Koper.tif` | [Geodetska uprava Republika Slovenija (GURS)](http://www.gu.gov.si) | Slovenia | CC-BY-4.0 |
+| `es_ign_egm08-rednap-canarias.tif` | [Instituto Geográfico Nacional (IGN) Spain](https://www.ign.es/) | Spain | CC-BY-4.0 |
+| `es_ign_egm08-rednap.tif` | [Instituto Geográfico Nacional (IGN) Spain](https://www.ign.es/) | Spain | CC-BY-4.0 |
+| `se_lantmateriet_SWEN17_RH2000.tif` | [Lantmäteriet](https://www.lantmateriet.se/) | Sweden | CC0-1.0 |
+| `ch_swisstopo_chgeo2004_ETRS89_LHN95.tif` | [Swisstopo](https://www.swisstopo.admin.ch/en/knowledge-facts/surveying-geodesy/reference-frames/transformations-position.html) | Switzerland | CC0-1.0 |
+| `ch_swisstopo_chgeo2004_ETRS89_LN02.tif` | [Swisstopo](https://www.swisstopo.admin.ch/en/knowledge-facts/surveying-geodesy/reference-frames/transformations-position.html) | Switzerland | CC0-1.0 |
+| `us_nga_egm96_15.tif` | [Disclaimed](http://earth-info.nga.mil/) | USA | Public domain |
+| `uk_os_OSGM15_Belfast.tif` | [Ordnance Survey UK](https://www.ordnancesurvey.co.uk/) | United Kingdom | BSD-2-Clause |
+| `uk_os_OSGM15_GB.tif` | [Ordnance Survey UK](https://www.ordnancesurvey.co.uk/) | United Kingdom | BSD-2-Clause |
+| `uk_os_OSGM15_Malin.tif` | [Ordnance Survey UK](https://www.ordnancesurvey.co.uk/) | United Kingdom | BSD-2-Clause |

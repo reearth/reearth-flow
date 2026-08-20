@@ -1,4 +1,4 @@
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { XIcon } from "@phosphor-icons/react";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
@@ -72,7 +72,7 @@ const VersionDialog: React.FC<Props> = ({
         '[data-slot="dropdown-menu-content"]',
       );
 
-      const isDialogClick = target?.closest?.("#dialog-content");
+      const isDialogClick = target?.closest?.('[data-slot="dialog-content"]');
 
       if (
         dialogRef.current &&
@@ -101,7 +101,7 @@ const VersionDialog: React.FC<Props> = ({
       <div
         ref={dialogRef}
         className={`relative flex h-[90vh] w-[90vw] flex-col overflow-hidden rounded-lg bg-card shadow-lg transition-all duration-170 ease-in-out  ${animate ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}>
-        <div className="flex items-center justify-between border-b p-6">
+        <div className="flex items-center justify-between p-6">
           <h2 className="rounded-t-lg text-xl leading-none tracking-tight dark:font-thin">
             {t("Viewing Version: {{version}}", {
               version:
@@ -113,7 +113,7 @@ const VersionDialog: React.FC<Props> = ({
             variant={"ghost"}
             className="z-10 h-fit p-0 opacity-70 hover:bg-card hover:opacity-100 dark:font-thin"
             onClick={handleDialogClose}>
-            <Cross2Icon className="size-5" />
+            <XIcon className="size-5" />
           </Button>
         </div>
         <div className="flex flex-1 overflow-hidden">
@@ -128,7 +128,7 @@ const VersionDialog: React.FC<Props> = ({
               />
             )}
           </div>
-          <div className="relative flex h-full w-[30vw] max-w-[500px] min-w-[320px] flex-col border-l">
+          <div className="relative flex h-full w-[30vw] max-w-[500px] min-w-[320px] flex-col">
             <div className="text-md pt-4 pl-4 dark:font-thin">
               {t("Version History")}
             </div>
@@ -146,7 +146,7 @@ const VersionDialog: React.FC<Props> = ({
                 />
               )}
             </div>
-            <div className="absolute bottom-0 left-0 flex w-full justify-end border-t bg-secondary p-2">
+            <div className="absolute bottom-0 left-0 flex w-full justify-end border-t border-accent bg-secondary p-2">
               <Button
                 disabled={
                   !selectedProjectSnapshotVersion ||

@@ -1,12 +1,10 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 
-use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,7 +18,7 @@ pub(crate) struct ExcelWriterFactory;
 
 impl SinkFactory for ExcelWriterFactory {
     fn name(&self) -> &str {
-        "ExcelWriter"
+        "Excel Writer"
     }
 
     fn description(&self) -> &str {
@@ -36,7 +34,7 @@ impl SinkFactory for ExcelWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -50,7 +48,7 @@ impl SinkFactory for ExcelWriterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
+        let params: ExcelWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::ExcelWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
@@ -65,8 +63,12 @@ impl SinkFactory for ExcelWriterFactory {
             )
             .into());
         };
+        let output = params.output.compile().map_err(|e| {
+            SinkError::ExcelWriterFactory(format!("Failed to compile `output`: {e:?}"))
+        })?;
         let sink = ExcelWriter {
-            params,
+            output,
+            sheet_name: params.sheet_name,
             buffer: Default::default(),
         };
         Ok(Box::new(sink))
@@ -75,44 +77,47 @@ impl SinkFactory for ExcelWriterFactory {
 
 #[derive(Debug, Clone)]
 pub(super) struct ExcelWriter {
-    pub(super) params: ExcelWriterParam,
-    pub(super) buffer: HashMap<Uri, (crate::SinkOutput, Vec<Feature>)>,
+    output: CompiledCode,
+    sheet_name: Option<String>,
+    pub(super) buffer: HashMap<String, (crate::SinkOutput, Vec<Feature>)>,
 }
 
-/// # ExcelWriter Parameters
+/// # Excel Writer Parameters
 ///
 /// Configuration for writing features to Microsoft Excel format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
     /// Output path or expression for the Excel file to create
-    pub(super) output: Expr,
+    pub(super) output: Code,
     /// Sheet name (defaults to "Sheet1")
     pub(super) sheet_name: Option<String>,
 }
 
 impl Sink for ExcelWriter {
     fn name(&self) -> &str {
-        "ExcelWriter"
+        "Excel Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let node_ctx: NodeContext = ctx.clone().into();
-        let scope = node_ctx.expr_engine.new_scope();
-        let path = scope
-            .eval::<String>(self.params.output.as_ref())
-            .unwrap_or_else(|_| self.params.output.as_ref().to_string());
-        let uri = Uri::from_str(&path)
-            .map_err(|e| SinkError::ExcelWriterFactory(format!("invalid path {:?}: {e}", path)))?;
+        let path = self
+            .output
+            .eval_string(&ctx.feature, ctx.variables.clone())
+            .map_err(|e| SinkError::ExcelWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
+        let node_ctx: NodeContext = ctx.into();
         use std::collections::hash_map::Entry;
-        match self.buffer.entry(uri) {
+        match self.buffer.entry(path.clone()) {
             Entry::Occupied(mut e) => {
                 e.get_mut().1.push(feature);
             }
             Entry::Vacant(e) => {
-                let out = crate::SinkOutput::from_path(&node_ctx, &path)
-                    .map_err(|e| SinkError::ExcelWriterFactory(e.to_string()))?;
+                let out = crate::SinkOutput::new(
+                    &node_ctx.sandbox_root,
+                    &path,
+                    &node_ctx.storage_resolver,
+                )
+                .map_err(|e| SinkError::ExcelWriter(e.to_string()))?;
                 e.insert((out, vec![feature]));
             }
         }
@@ -122,7 +127,7 @@ impl Sink for ExcelWriter {
     fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
         for (out, features) in self.buffer.values() {
             let old_params = OldExcelWriterParam {
-                sheet_name: self.params.sheet_name.clone(),
+                sheet_name: self.sheet_name.clone(),
             };
             write_excel(out, &old_params, features)?;
         }

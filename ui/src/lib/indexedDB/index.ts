@@ -6,7 +6,6 @@ import {
   openDatabase,
   STORE_NAME,
 } from "@flow/stores";
-import { generateUUID } from "@flow/utils";
 
 // Simple type for subscribers
 type Subscriber<T> = (value: T) => void;
@@ -138,16 +137,14 @@ export function useIndexedDB<T extends InitialStateKeys>(
       | Partial<AppState[T]>
       | ((prevState: AppState[T]) => AppState[T]),
   ): Promise<void> => {
-    // Get queue ID
-    const queueId = generateUUID();
-
-    // Initialize the queue if it doesn't exist
-    if (!updateQueues[queueId]) {
-      updateQueues[queueId] = Promise.resolve();
+    // Queue per store key so concurrent writes to the same key are serialized.
+    const queueKey = `${STORE_NAME}-${key}`;
+    if (!updateQueues[queueKey]) {
+      updateQueues[queueKey] = Promise.resolve();
     }
 
     // Create a new promise that will execute after the current queue
-    const updatePromise = updateQueues[queueId].then(async () => {
+    const updatePromise = updateQueues[queueKey].then(async () => {
       try {
         // Get the current value from DB
         const currentValue = await getFromDB(key);
@@ -184,7 +181,7 @@ export function useIndexedDB<T extends InitialStateKeys>(
     });
 
     // Update the queue reference to include this operation
-    updateQueues[queueId] = updatePromise.catch(() => {
+    updateQueues[queueKey] = updatePromise.catch(() => {
       // Catch errors to allow the queue to continue
       return;
     });

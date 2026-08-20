@@ -15,11 +15,27 @@ name = "reearth-flow"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["new-geometry"]
 memory-stats = [
   "reearth-flow-action-plateau-processor/memory-stats",
   "reearth-flow-action-processor/memory-stats",
 ]
+# Temporary migration flag, on by default. TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-python-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-feature-view/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
+
+# Debug-only intermediate-data form; see reearth-flow-geometry.
+debug-geom-feature-write = ["reearth-flow-types/debug-geom-feature-write"]
+
+# Enables `schema-feature`, which emits the production intermediate-data JSON schema.
+schema = ["reearth-flow-geometry/schema"]
 
 [dependencies]
 reearth-flow-action-log.workspace = true
@@ -29,6 +45,8 @@ reearth-flow-action-python-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true
 reearth-flow-common.workspace = true
+reearth-flow-feature-view.workspace = true
+reearth-flow-geometry.workspace = true
 reearth-flow-runner.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
@@ -40,6 +58,7 @@ bytes.workspace = true
 clap.workspace = true
 colored.workspace = true
 directories.workspace = true
+indexmap.workspace = true
 indoc.workspace = true
 json-subscriber.workspace = true
 num_cpus.workspace = true
@@ -55,3 +74,6 @@ tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

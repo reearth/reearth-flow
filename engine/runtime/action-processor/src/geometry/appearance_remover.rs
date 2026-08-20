@@ -1,26 +1,33 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
+
+#[cfg(not(feature = "new-geometry"))]
+use std::sync::Arc;
+
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Feature, GeometryValue};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::RemoveAppearance;
 
 #[derive(Debug, Clone, Default)]
 pub struct AppearanceRemoverFactory;
 
 impl ProcessorFactory for AppearanceRemoverFactory {
     fn name(&self) -> &str {
-        "AppearanceRemover"
+        "Appearance Remover"
     }
 
     fn description(&self) -> &str {
-        "Removes appearance information (materials, textures) from CityGML geometry"
+        "Discards the materials, textures, and texture coordinates carried by a feature's geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,11 +43,11 @@ impl ProcessorFactory for AppearanceRemoverFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -58,6 +65,7 @@ impl ProcessorFactory for AppearanceRemoverFactory {
 pub struct AppearanceRemover;
 
 impl Processor for AppearanceRemover {
+    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -86,7 +94,19 @@ impl Processor for AppearanceRemover {
             _ => feature.clone(),
         };
 
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let mut feature = ctx.feature.clone();
+        feature.geometry_mut().remove_appearance();
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -99,6 +119,6 @@ impl Processor for AppearanceRemover {
     }
 
     fn name(&self) -> &str {
-        "AppearanceRemover"
+        "Appearance Remover"
     }
 }

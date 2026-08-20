@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearthx/authserver"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/mongox"
+	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -43,7 +44,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		ProjectAccess: NewProjectAccess(client),
 		Role:          accountmongo.NewRole(client), // TODO: Delete this once the permission check migration is complete.
 		Lock:          lock,
-		Transaction:   client.Transaction(),
+		Transaction:   usecasex.NewTransactor(client.Transaction(), 2),
 		Trigger:       NewTrigger(client),
 		Workflow:      NewWorkflow(client),
 		Workspace:     account.Workspace,

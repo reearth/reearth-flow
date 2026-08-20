@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use fastxml::transform::StreamTransformer;
+use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -16,7 +16,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use serde::{Deserialize, Serialize};
@@ -134,7 +134,7 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -220,7 +220,7 @@ impl Processor for UnmatchedXlinkDetector {
         let summary = Rc::new(RefCell::new(Summary::default()));
         let stream_error: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
 
-        let transformer = StreamTransformer::new(&xml_content)
+        let transformer = Transformer::from(xml_content.as_str())
             .with_root_namespaces()
             .map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetector(format!(

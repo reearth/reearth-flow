@@ -11,7 +11,6 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -32,14 +31,6 @@ use crate::{
 use super::receiver_loop::init_select;
 use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
-
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
-});
 
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
@@ -80,7 +71,7 @@ pub struct ProcessorNode<F> {
     process_duration_us: Arc<AtomicU64>,
     /// Sum of squared process() durations in microseconds (for std dev).
     process_duration_sq_us: Arc<AtomicU64>,
-    expr_engine: Arc<Engine>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
@@ -133,7 +124,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             "node.name" = node_name.as_str(),
         );
 
-        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let variables = Arc::clone(&ctx.variables);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
         let sandbox_root = ctx.sandbox_root.clone();
@@ -162,7 +153,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             features_processed: Arc::new(AtomicU64::new(0)),
             process_duration_us: Arc::new(AtomicU64::new(0)),
             process_duration_sq_us: Arc::new(AtomicU64::new(0)),
-            expr_engine,
+            variables,
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
@@ -219,7 +210,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         processor
             .write()
             .initialize(NodeContext::new(
-                self.expr_engine.clone(),
+                self.variables.clone(),
                 self.storage_resolver.clone(),
                 self.kv_store.clone(),
                 self.event_hub.clone(),
@@ -310,14 +301,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         feature_id: None,
                     });
 
-                    tracing::info!(
-                        "Waiting for final status to propagate for processor node {}",
-                        self.node_handle.id
-                    );
-                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
-
                     let terminate_result = self.on_terminate(NodeContext::new(
-                        self.expr_engine.clone(),
+                        self.variables.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
@@ -336,7 +321,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
                     return terminate_result;
                 }
-                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+                // Polling-backoff for the busy-wait that drains `thread_counter`
+                // after all inputs have terminated. A 100µs sleep keeps CPU usage
+                // negligible (~10,000 polls/sec at most) while still being fast
+                // enough that detection latency for the counter reaching 0 is
+                // imperceptible. `yield_now()` would spin at ~100% CPU on cores
+                // with no other runnable threads, which can stretch into seconds
+                // for large processors.
+                std::thread::sleep(Duration::from_micros(100));
                 continue;
             }
             let index = sel.ready();

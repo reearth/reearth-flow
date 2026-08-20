@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 
 use reearth_flow_types::{Code, CompiledCode, Feature};
@@ -20,11 +20,11 @@ pub(super) struct AttributeManagerFactory;
 
 impl ProcessorFactory for AttributeManagerFactory {
     fn name(&self) -> &str {
-        "AttributeManager"
+        "Attribute Manager"
     }
 
     fn description(&self) -> &str {
-        "Create, Convert, Rename, and Remove Feature Attributes"
+        "Creates, converts, renames, or removes feature attributes based on a configurable list of operations."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,11 +36,11 @@ impl ProcessorFactory for AttributeManagerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -72,6 +72,73 @@ impl ProcessorFactory for AttributeManagerFactory {
         let process = AttributeManager { operations };
         Ok(Box::new(process))
     }
+
+    fn infer_output_schema(
+        &self,
+        inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
+        with: &Option<HashMap<String, Value>>,
+    ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
+        use reearth_flow_types::Attribute;
+
+        let params = parse_params(with)?;
+
+        let mut out = inputs
+            .get(&FEATURES_PORT.clone())
+            .cloned()
+            .unwrap_or_else(AttrSchema::open);
+
+        // Inference must NOT over-claim presence relative to the conditional
+        // runtime in `process_feature`: Create/Convert/Rename are all applied
+        // conditionally (eval failure, missing source, destination collision),
+        // so we stay conservative about whether a key is present.
+        for op in &params.operations {
+            let attr = Attribute::new(op.attribute.clone());
+            match op.method {
+                // Create/Convert derive the value from an expression whose type
+                // we can't analyze statically -> Unknown.
+                // Runtime: Create overwrites on success (else warns + skips);
+                // Convert requires the source present and keeps the original on
+                // failure. So an already-present key stays present (downgrade is
+                // unwarranted), but a key that wasn't there only appears when the
+                // expression succeeds -> Maybe.
+                Method::Create | Method::Convert => {
+                    if let Some(existing) = out.fields.get_mut(&attr) {
+                        existing.ty = AttrType::Unknown;
+                    } else {
+                        out.insert(attr, AttrField::maybe(AttrType::Unknown));
+                    }
+                }
+                // Rename's destination name is an expression -> not statically
+                // knowable, and the runtime keeps the source when eval fails or
+                // the destination already exists. So downgrade the source to
+                // Maybe (it might be removed, might not) rather than dropping it,
+                // and mark the schema open (an unknown-named attr may appear).
+                Method::Rename => {
+                    if let Some(existing) = out.fields.get_mut(&attr) {
+                        existing.presence = Presence::Maybe;
+                    }
+                    out.open = true;
+                }
+                // Remove deletes the key when present (and is a no-op when absent),
+                // so dropping it from the schema is correct.
+                Method::Remove => {
+                    out.fields.shift_remove(&attr);
+                }
+            }
+        }
+
+        Some(HashMap::from([(FEATURES_PORT.clone(), out)]))
+    }
+}
+
+/// Deserialize the `AttributeManagerParam` from the node's `with` params,
+/// mirroring the deserialization done in `build`. Returns `None` when `with`
+/// is absent or the params don't deserialize (inference not possible).
+fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<AttributeManagerParam> {
+    let with = with.as_ref()?;
+    let value = serde_json::to_value(with).ok()?;
+    serde_json::from_value::<AttributeManagerParam>(value).ok()
 }
 
 #[derive(Debug, Clone)]
@@ -79,33 +146,44 @@ struct AttributeManager {
     operations: Vec<Operate>,
 }
 
-/// # AttributeManager Parameters
+/// # Attribute Manager Parameters
+/// Defines the ordered list of operations that create, convert, rename, or remove feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeManagerParam {
     /// # Attribute Operations
-    /// List of operations to perform on feature attributes (create, convert, rename, remove)
+    /// Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression.
     operations: Vec<Operation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Operation {
-    /// # Attribute name
+    /// # Attribute Name
+    /// Name of the attribute to create, convert, rename, or remove.
     attribute: String,
-    /// # Operation to perform
+    /// # Method
+    /// Operation to apply to the attribute.
     method: Method,
     /// # Value
-    /// Value to use for the operation
+    /// Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove.
     value: Option<Code>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum Method {
+    /// # Convert
+    /// Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged.
     Convert,
+    /// # Create
+    /// Sets the attribute to the result of the value expression, creating it or overwriting any existing value.
     Create,
+    /// # Rename
+    /// Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists.
     Rename,
+    /// # Remove
+    /// Removes the attribute from the feature.
     Remove,
 }
 
@@ -134,9 +212,9 @@ impl Processor for AttributeManager {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let env_vars = ctx.expr_engine.vars();
-        let feature = process_feature(ctx.as_context(), &ctx.feature, &self.operations, env_vars);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        let variables = ctx.variables.clone();
+        let feature = process_feature(ctx.as_context(), &ctx.feature, &self.operations, variables);
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -149,7 +227,7 @@ impl Processor for AttributeManager {
     }
 
     fn name(&self) -> &str {
-        "AttributeManager"
+        "Attribute Manager"
     }
 }
 
@@ -157,7 +235,7 @@ fn process_feature(
     ctx: Context,
     feature: &Feature,
     operations: &[Operate],
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Feature {
     let mut result = feature.clone();
     for operation in operations {
@@ -167,7 +245,7 @@ fn process_feature(
                     continue;
                 }
                 if let Some(code) = code {
-                    match code.eval(feature, Arc::clone(&env_vars)) {
+                    match code.eval(feature, Arc::clone(&variables)) {
                         Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
@@ -180,7 +258,7 @@ fn process_feature(
             }
             Operate::Create { code, attribute } => {
                 if let Some(code) = code {
-                    match code.eval(feature, Arc::clone(&env_vars)) {
+                    match code.eval(feature, Arc::clone(&variables)) {
                         Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
@@ -195,7 +273,7 @@ fn process_feature(
                 if !feature.contains_key(attribute) {
                     continue;
                 }
-                match new_key.eval_string(feature, Arc::clone(&env_vars)) {
+                match new_key.eval_string(feature, Arc::clone(&variables)) {
                     Ok(new_key_str) => {
                         if feature.contains_key(&new_key_str) {
                             continue;
@@ -270,4 +348,119 @@ fn convert_single_operation(operations: &[Operation]) -> super::errors::Result<V
         result.push(value);
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
+    use reearth_flow_types::Attribute;
+    use serde_json::json;
+
+    fn with_from(value: Value) -> Option<HashMap<String, Value>> {
+        Some(serde_json::from_value(value).unwrap())
+    }
+
+    #[test]
+    fn infer_create_adds_unknown_attribute() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "foo", "method": "create", "value": null }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("bar".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(FEATURES_PORT.clone(), input);
+
+        let out = AttributeManagerFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&FEATURES_PORT.clone())
+            .expect("default port present");
+
+        assert_eq!(
+            schema.fields.get(&Attribute::new("bar".to_string())),
+            Some(&AttrField::always(AttrType::String))
+        );
+        // "foo" was not present on input, so Create only produces it when the
+        // expression succeeds -> Maybe, not Always.
+        assert_eq!(
+            schema.fields.get(&Attribute::new("foo".to_string())),
+            Some(&AttrField::maybe(AttrType::Unknown))
+        );
+    }
+
+    #[test]
+    fn infer_remove_drops_attribute() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "a", "method": "remove", "value": null }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        input.insert(
+            Attribute::new("b".to_string()),
+            AttrField::always(AttrType::Number),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(FEATURES_PORT.clone(), input);
+
+        let out = AttributeManagerFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&FEATURES_PORT.clone())
+            .expect("default port present");
+
+        assert!(!schema.fields.contains_key(&Attribute::new("a".to_string())));
+        assert_eq!(
+            schema.fields.get(&Attribute::new("b".to_string())),
+            Some(&AttrField::always(AttrType::Number))
+        );
+    }
+
+    #[test]
+    fn infer_rename_downgrades_source_and_sets_open() {
+        let with = with_from(json!({
+            "operations": [
+                { "attribute": "a", "method": "rename", "value": { "type": "string", "value": "new_name" } }
+            ]
+        }));
+
+        let mut input = AttrSchema::empty();
+        input.insert(
+            Attribute::new("a".to_string()),
+            AttrField::always(AttrType::String),
+        );
+        let mut inputs = HashMap::new();
+        inputs.insert(FEATURES_PORT.clone(), input);
+
+        let out = AttributeManagerFactory
+            .infer_output_schema(&inputs, &with)
+            .expect("inference should succeed");
+        let schema = out
+            .get(&FEATURES_PORT.clone())
+            .expect("default port present");
+
+        // The runtime keeps the source key when eval fails or the destination
+        // already exists, so the source is downgraded to Maybe rather than
+        // dropped. Its type is unchanged.
+        assert_eq!(
+            schema.fields.get(&Attribute::new("a".to_string())),
+            Some(&AttrField::maybe(AttrType::String))
+        );
+        // The destination name is an expression, so the schema is open.
+        assert!(schema.open);
+    }
 }

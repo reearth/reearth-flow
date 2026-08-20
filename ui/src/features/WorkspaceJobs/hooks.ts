@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { useDebouncedSearch } from "@flow/hooks";
+import { usePagination } from "@flow/hooks";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -14,32 +14,27 @@ export default () => {
   const t = useT();
   const [openJobRunDialog, setOpenJobRunDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrderBy, setCurrentOrderBy] = useState<JobOrderBy>(
-    JobOrderBy.StartedAt,
-  );
-  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
   const { useGetJobs } = useJob();
 
-  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
-    initialSearchTerm: "",
-    delay: 300,
-    onDebounced: () => {
-      refetch();
-    },
+  const {
+    page,
+    totalPages,
+    isFetching,
+    currentPage,
+    currentSortValue,
+    searchTerm,
+    isDebouncingSearch,
+    setCurrentPage,
+    setCurrentOrderDir,
+    setSearchTerm,
+    handleSortChange,
+  } = usePagination({
+    useDataQuery: useGetJobs,
+    workspaceId: currentWorkspace?.id,
+    defaultOrderBy: JobOrderBy.StartedAt,
   });
 
-  const { page, refetch, isFetching } = useGetJobs(
-    currentWorkspace?.id,
-    searchTerm,
-    {
-      page: currentPage,
-      orderBy: currentOrderBy,
-      orderDir: currentOrderDir,
-    },
-  );
+  const jobs = page?.jobs;
 
   const sortOptions = [
     {
@@ -60,18 +55,6 @@ export default () => {
     },
   ];
 
-  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
-
-  useEffect(() => {
-    (async () => {
-      await refetch();
-    })();
-  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
-
-  const totalPages = page?.totalPages as number;
-
-  const jobs = page?.jobs;
-
   const handleJobSelect = useCallback(
     (job: Job) =>
       navigate({
@@ -79,15 +62,6 @@ export default () => {
       }),
     [currentWorkspace, navigate],
   );
-
-  const handleSortChange = useCallback((newSortValue: string) => {
-    const [orderBy, orderDir] = newSortValue.split("_") as [
-      JobOrderBy,
-      OrderDirection,
-    ];
-    setCurrentOrderBy(orderBy);
-    setCurrentOrderDir(orderDir);
-  }, []);
 
   return {
     ref,

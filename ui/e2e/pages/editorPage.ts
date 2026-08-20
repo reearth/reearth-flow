@@ -19,7 +19,18 @@ export class EditorPage {
   readonly edges: Locator;
   readonly actionPicker: Locator;
   readonly paramsDialog: Locator;
+  readonly flowExprDialog: Locator;
   readonly confirmDialog: Locator;
+  readonly deployButton: Locator;
+  readonly deployPopover: Locator;
+  readonly deployDescriptionInput: Locator;
+  readonly deploySubmitButton: Locator;
+  readonly deploymentCreatedToast: Locator;
+  readonly deploymentUpdatedToast: Locator;
+  readonly debugBar: Locator;
+  readonly debugStatusDot: Locator;
+  readonly debugPanel: Locator;
+  readonly debugOutputDataButton: Locator;
 
   constructor(private page: Page) {
     this.canvas = page.locator(".react-flow");
@@ -32,7 +43,36 @@ export class EditorPage {
     this.paramsDialog = page
       .getByRole("dialog")
       .filter({ hasText: "Action Editor" });
+    this.flowExprDialog = page
+      .getByRole("dialog")
+      .filter({ hasText: "FlowExpr Editor" });
     this.confirmDialog = page.getByRole("alertdialog");
+    this.deployButton = page
+      .locator("#right-top > div > div")
+      .last()
+      .locator("button")
+      .first();
+    this.deployPopover = page
+      .getByRole("dialog")
+      .filter({ hasText: "Deploy Project" });
+    this.deployDescriptionInput = this.deployPopover.getByPlaceholder(
+      "Give your deployment a meaningful description...",
+    );
+    this.deploySubmitButton = this.deployPopover.getByRole("button", {
+      name: /^(Deploy|Update)$/,
+    });
+    this.deploymentCreatedToast = page.getByText("Deployment Created", {
+      exact: true,
+    });
+    this.deploymentUpdatedToast = page.getByText("Deployment Updated", {
+      exact: true,
+    });
+    this.debugBar = page.locator("#right-top > div > div").first();
+    this.debugStatusDot = this.debugBar.locator(".size-3.rounded-full");
+    this.debugPanel = page.locator("#middle-bottom-debug-panel");
+    this.debugOutputDataButton = this.debugPanel.getByRole("button", {
+      name: /Output data \(\d+\)/,
+    });
   }
 
   toolButton(tool: ToolId): Locator {
@@ -53,6 +93,21 @@ export class EditorPage {
 
   async isInEditor(): Promise<boolean> {
     return /\/projects\/[^/]+$/.test(new URL(this.page.url()).pathname);
+  }
+
+  async gotoProjectPath(projectPath: string) {
+    await this.page.goto(projectPath);
+    await this.waitForLoaded();
+  }
+
+  nodesOfType(type: ToolId): Locator {
+    return this.page.locator(`.react-flow__node-${type}`);
+  }
+
+  edgeBetween(sourceNodeId: string, targetNodeId: string): Locator {
+    return this.page.locator(
+      `.react-flow__edge[aria-label="Edge from ${sourceNodeId} to ${targetNodeId}"]`,
+    );
   }
 
   async nodeCount(): Promise<number> {
@@ -120,9 +175,54 @@ export class EditorPage {
     return name;
   }
 
-  async connectNodes(source: Locator, target: Locator) {
-    const sourceHandle = source.locator(".react-flow__handle-right").first();
-    const targetHandle = target.locator(".react-flow__handle-left").first();
+  async addSpecificActionNode(
+    tool: ActionToolId,
+    actionName: string,
+    target?: Point,
+  ) {
+    const before = await this.nodes.count();
+    await this.dragToolToCanvas(tool, target);
+    await expect(this.actionPicker).toBeVisible();
+
+    await this.actionPicker.getByPlaceholder(/^Search/).fill(actionName);
+
+    const action = this.actionPicker
+      .locator("span")
+      .filter({ hasText: new RegExp(`^${actionName}$`) })
+      .first();
+    await expect(action).toBeVisible();
+    await action.dblclick();
+
+    await expect(this.actionPicker).toBeHidden();
+    await expect(this.nodes).toHaveCount(before + 1);
+  }
+
+  async actionNodeIds(): Promise<string[]> {
+    return this.nodes.evaluateAll((els) =>
+      els
+        .map((e) => e.getAttribute("data-id") ?? "")
+        .filter((id) => id.length > 0),
+    );
+  }
+
+  async addActionNodeAndGet(
+    tool: ActionToolId,
+    actionName: string,
+    target?: Point,
+  ): Promise<Locator> {
+    const before = new Set(await this.actionNodeIds());
+    await this.addSpecificActionNode(tool, actionName, target);
+    const created = (await this.actionNodeIds()).find((id) => !before.has(id));
+    if (!created) {
+      throw new Error(`Could not resolve created node id for ${actionName}`);
+    }
+    return this.page.locator(`.react-flow__node[data-id="${created}"]`);
+  }
+
+  private async dragHandleToHandle(
+    sourceHandle: Locator,
+    targetHandle: Locator,
+  ) {
     const from = await sourceHandle.boundingBox();
     const to = await targetHandle.boundingBox();
     if (!from || !to) throw new Error("Connection handles not found");
@@ -135,10 +235,48 @@ export class EditorPage {
     await this.page.mouse.move(fromX, fromY);
     await this.page.mouse.down();
     await this.page.mouse.move((fromX + toX) / 2, (fromY + toY) / 2, {
-      steps: 8,
+      steps: 10,
     });
-    await this.page.mouse.move(toX, toY, { steps: 8 });
+    await this.page.mouse.move(toX, toY, { steps: 10 });
+    await this.page.mouse.move(toX, toY);
     await this.page.mouse.up();
+  }
+
+  private async connectAndVerify(sourceHandle: Locator, targetHandle: Locator) {
+    const before = await this.edges.count();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.dragHandleToHandle(sourceHandle, targetHandle);
+      try {
+        await expect(this.edges).toHaveCount(before + 1, { timeout: 3000 });
+        return;
+      } catch {
+        await this.clickPane();
+      }
+    }
+    throw new Error("Failed to create edge after 3 attempts");
+  }
+
+  async connectNodes(source: Locator, target: Locator) {
+    await this.connectAndVerify(
+      source.locator(".react-flow__handle-right").first(),
+      target.locator(".react-flow__handle-left").first(),
+    );
+  }
+
+  async connectFromPort(
+    source: Locator,
+    target: Locator,
+    sourcePortId: string,
+    targetPortId = "features",
+  ) {
+    await this.connectAndVerify(
+      source.locator(
+        `.react-flow__handle-right[data-handleid="${sourcePortId}"]`,
+      ),
+      target.locator(
+        `.react-flow__handle-left[data-handleid="${targetPortId}"]`,
+      ),
+    );
   }
 
   async selectNode(node: Locator) {
@@ -154,6 +292,17 @@ export class EditorPage {
   async openNodeParams(node: Locator) {
     await node.dblclick();
     await expect(this.paramsDialog).toBeVisible();
+  }
+
+  async openNodeParamsForm(node: Locator) {
+    await this.openNodeParams(node);
+    const paramsTab = this.paramsDialog.getByRole("tab", {
+      name: "Parameters",
+    });
+    await paramsTab.waitFor({ state: "visible", timeout: 20_000 });
+    if ((await paramsTab.getAttribute("data-state")) !== "active") {
+      await paramsTab.click();
+    }
   }
 
   async setNodeCustomization(node: Locator, value: string): Promise<string> {
@@ -184,6 +333,109 @@ export class EditorPage {
     await expect(this.paramsDialog).toBeHidden();
   }
 
+  paramFieldRow(label: string): Locator {
+    return this.paramsDialog
+      .locator("div.flex.flex-1.items-center.gap-6")
+      .filter({ has: this.page.getByText(label, { exact: true }) });
+  }
+
+  async setParamText(fieldId: string, value: string) {
+    const input = this.paramsDialog.locator(`#${fieldId}`);
+    await input.waitFor({ state: "visible" });
+    await input.fill(value);
+  }
+
+  async setParamSelect(label: string, option: string) {
+    await this.paramFieldRow(label).getByRole("button").first().click();
+    await this.page
+      .getByRole("menuitem", { name: option, exact: true })
+      .click();
+  }
+
+  private async fillFlowExprDialog(
+    tab: "Expression" | "Literal string",
+    value: string,
+  ) {
+    await expect(this.flowExprDialog).toBeVisible();
+
+    const tabTrigger = this.flowExprDialog.getByRole("tab", { name: tab });
+    const hasTab = await tabTrigger
+      .waitFor({ state: "visible", timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasTab) await tabTrigger.click();
+
+    const textarea = this.flowExprDialog.locator("textarea:visible").first();
+    await textarea.waitFor({ state: "visible" });
+    await textarea.fill(value);
+
+    await this.flowExprDialog.getByRole("button", { name: "Apply" }).click();
+    await expect(this.flowExprDialog).toBeHidden();
+  }
+
+  async setParamFlowExpr(label: string, expression: string, nth = 0) {
+    await this.paramFieldRow(label)
+      .nth(nth)
+      .getByRole("button")
+      .first()
+      .click();
+    await this.fillFlowExprDialog("Expression", expression);
+  }
+
+  async setParamLiteralString(fieldLabel: string, value: string) {
+    await this.paramFieldRow(fieldLabel).getByRole("button").first().click();
+    await this.fillFlowExprDialog("Literal string", value);
+  }
+
+  async setParamCheckbox(fieldId: string, checked: boolean) {
+    // Base UI checkboxes put the id on a hidden native input; click the
+    // adjacent role=checkbox element instead.
+    const box = this.paramsDialog
+      .locator(`input#${fieldId}`)
+      .locator('xpath=preceding-sibling::*[@role="checkbox"][1]')
+      .first();
+    await box.waitFor({ state: "visible" });
+    const isChecked =
+      (await box.getAttribute("aria-checked")) === "true" ||
+      (await box.getAttribute("data-checked")) !== null;
+    if (isChecked !== checked) await box.click();
+  }
+
+  async setParamCodeString(label: string, value: string) {
+    const input = this.paramFieldRow(label).locator("input").first();
+    await input.waitFor({ state: "visible" });
+    await input.fill(value);
+  }
+
+  async addParamArrayItem() {
+    await this.paramsDialog.getByRole("button", { name: "Add item" }).click();
+  }
+
+  async setCsvCoordinateGeometry(
+    xColumn: string,
+    yColumn: string,
+    epsg?: number,
+  ) {
+    await this.paramsDialog
+      .getByRole("button")
+      .filter({ hasText: /WKT Column|Coordinate Columns/ })
+      .first()
+      .click();
+    await this.page
+      .getByRole("menuitem", { name: "Coordinate Columns", exact: true })
+      .click();
+    await this.setParamText("root_geometry_xColumn", xColumn);
+    await this.setParamText("root_geometry_yColumn", yColumn);
+    if (epsg !== undefined) {
+      await this.setParamText("root_geometry_epsg", String(epsg));
+    }
+  }
+
+  async submitParams() {
+    await this.paramsDialog.getByRole("button", { name: "Update" }).click();
+    await expect(this.paramsDialog).toBeHidden();
+  }
+
   async deleteSelected() {
     await this.page.keyboard.press("Backspace");
     const confirmed = await this.confirmDialog
@@ -204,6 +456,22 @@ export class EditorPage {
 
   async redo() {
     await this.page.keyboard.press("ControlOrMeta+Shift+z");
+  }
+
+  async boxSelect(from: Point, to: Point) {
+    await this.page.keyboard.down("Shift");
+    await this.page.mouse.move(from.x, from.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, {
+      steps: 8,
+    });
+    await this.page.mouse.move(to.x, to.y, { steps: 8 });
+    await this.page.mouse.up();
+    await this.page.keyboard.up("Shift");
+  }
+
+  async copySelected() {
+    await this.page.keyboard.press("ControlOrMeta+c");
   }
 
   contextMenuItem(label: string): Locator {
@@ -232,5 +500,47 @@ export class EditorPage {
   async openSubworkflow(node: Locator) {
     await this.openNodeContextMenu(node);
     await this.contextMenuItem("Open Subworkflow").click();
+  }
+
+  async openDeployPopover() {
+    await this.deployButton.click();
+    await expect(this.deployDescriptionInput).toBeVisible();
+  }
+
+  async deploy(description: string) {
+    await this.openDeployPopover();
+    await this.deployDescriptionInput.fill(description);
+    await this.deploySubmitButton.click();
+    await expect(this.deploymentCreatedToast).toBeVisible({ timeout: 30_000 });
+    await expect(this.deployDescriptionInput).toBeHidden();
+  }
+
+  async updateDeployment(newDescription: string) {
+    await this.openDeployPopover();
+    await expect(this.deploySubmitButton).toHaveText("Update", {
+      timeout: 15_000,
+    });
+    await this.deployDescriptionInput.fill(newDescription);
+    await this.deploySubmitButton.click();
+    await expect(this.deploymentUpdatedToast).toBeVisible({ timeout: 30_000 });
+    await expect(this.deployDescriptionInput).toBeHidden();
+  }
+
+  async startDebugRun() {
+    await this.debugBar.locator("button").first().click();
+    const startButton = this.page.getByRole("button", {
+      name: "Start",
+      exact: true,
+    });
+    await expect(startButton).toBeVisible();
+    await startButton.click();
+  }
+
+  async waitForDebugRunToComplete(timeout = 300_000) {
+    await expect(this.debugStatusDot).toHaveClass(
+      /bg-success|bg-destructive|bg-warning/,
+      { timeout },
+    );
+    await expect(this.debugStatusDot).toHaveClass(/bg-success/);
   }
 }

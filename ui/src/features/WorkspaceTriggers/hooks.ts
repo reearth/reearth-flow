@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import { useDebouncedSearch } from "@flow/hooks";
+import { usePagination } from "@flow/hooks";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -31,30 +31,23 @@ export default () => {
   } = useRouterState();
 
   const tab = getTab(pathname);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrderBy, setCurrentOrderBy] = useState<TriggerOrderBy>(
-    TriggerOrderBy.UpdatedAt,
-  );
-  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
 
-  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
-    initialSearchTerm: "",
-    delay: 300,
-    onDebounced: () => {
-      refetch();
-    },
+  const {
+    page,
+    totalPages,
+    isFetching,
+    currentPage,
+    currentSortValue,
+    isDebouncingSearch,
+    setCurrentPage,
+    setCurrentOrderDir,
+    setSearchTerm,
+    handleSortChange,
+  } = usePagination({
+    useDataQuery: useGetTriggers,
+    workspaceId: currentWorkspace?.id,
+    defaultOrderBy: TriggerOrderBy.UpdatedAt,
   });
-  const { page, refetch, isFetching } = useGetTriggers(
-    currentWorkspace?.id,
-    searchTerm,
-    {
-      page: currentPage,
-      orderDir: currentOrderDir,
-      orderBy: currentOrderBy,
-    },
-  );
 
   const sortOptions = [
     {
@@ -75,24 +68,6 @@ export default () => {
     },
   ];
 
-  useEffect(() => {
-    (async () => {
-      await refetch();
-    })();
-  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
-
-  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
-
-  const handleSortChange = useCallback((newSortValue: string) => {
-    const [orderBy, orderDir] = newSortValue.split("_") as [
-      TriggerOrderBy,
-      OrderDirection,
-    ];
-    setCurrentOrderBy(orderBy);
-    setCurrentOrderDir(orderDir);
-  }, []);
-
-  const totalPages = page?.totalPages as number;
   const triggers = page?.triggers;
 
   const selectedTrigger = useMemo(

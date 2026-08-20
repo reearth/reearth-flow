@@ -16,14 +16,13 @@ use super::{
     lod_filter::FeatureLodFilterFactory,
     merger::FeatureMergerFactory,
     reader::{
-        citygml::processor::FeatureCityGmlReaderFactory,
-        citygml3::processor::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
+        citygml::processor::FeatureCityGmlReaderFactory, citygml2::FeatureCityGml2ReaderFactory,
+        citygml3::FeatureCityGml3ReaderFactory, FeatureReaderFactory,
     },
-    rhai::RhaiCallerFactory,
     sorter::FeatureSorterFactory,
     transformer::FeatureTransformerFactory,
     type_filter::FeatureTypeFilterFactory,
-    writer::FeatureWriterFactory,
+    writer::{geojson::FeatureGeoJsonWriterFactory, FeatureWriterFactory},
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -35,7 +34,6 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FeatureTransformerFactory>::default(),
         Box::<FeatureCounterFactory>::default(),
         Box::<FeatureReaderFactory>::default(),
-        Box::<RhaiCallerFactory>::default(),
         Box::<ListConcatenatorFactory>::default(),
         Box::<ListExploderFactory>::default(),
         Box::<ListIndexerFactory>::default(),
@@ -44,7 +42,9 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FeatureLodFilterFactory>::default(),
         Box::<FeatureDuplicateFilterFactory>::default(),
         Box::<FeatureWriterFactory>::default(),
+        Box::<FeatureGeoJsonWriterFactory>::default(),
         Box::<FeatureCityGmlReaderFactory>::default(),
+        Box::<FeatureCityGml2ReaderFactory>::default(),
         Box::<FeatureCityGml3ReaderFactory>::default(),
         Box::<JSONFragmenterFactory>::default(),
     ];

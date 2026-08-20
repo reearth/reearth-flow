@@ -1,19 +1,18 @@
-use crate::core::error::InnerResult;
-use crate::core::eval::{default_env, eval, eval_eq};
+use crate::core::eval::{default_env, env_bind, eval, eval_eq};
 use crate::core::parser::parse;
 use crate::core::value::Value;
 use crate::Result;
 
-pub(crate) fn values_equal(a: &Value, b: &Value) -> InnerResult<bool> {
+pub(crate) fn values_equal(a: &Value, b: &Value) -> Result<bool> {
     eval_eq(a.clone(), b.clone())
 }
 
 pub(crate) fn try_run(input: &str, vars: &[(&str, Value)]) -> Result<Value> {
-    let mut env = default_env();
+    let env = default_env();
     for (k, v) in vars {
-        env.insert(k.to_string(), v.clone());
+        env_bind(&env, *k, v.clone());
     }
-    eval(&parse(input).unwrap(), &mut env)
+    eval(&parse(input).unwrap(), &env)
 }
 
 pub(crate) fn run(input: &str, vars: &[(&str, Value)]) -> Value {

@@ -11,9 +11,9 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -25,11 +25,11 @@ pub struct XmlFragmenterFactory;
 
 impl ProcessorFactory for XmlFragmenterFactory {
     fn name(&self) -> &str {
-        "XMLFragmenter"
+        "XML Fragmenter"
     }
 
     fn description(&self) -> &str {
-        "Fragments large XML documents into smaller pieces based on specified element patterns"
+        "Splits an XML document into features by matching element names, emitting one feature per matched element with its XML text, tag name, and element and parent identifiers as attributes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -45,21 +45,21 @@ impl ProcessorFactory for XmlFragmenterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: XmlFragmenterParam = if let Some(with) = with.clone() {
+        let params: XmlFragmenterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 XmlProcessorError::FragmenterFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
@@ -76,24 +76,18 @@ impl ProcessorFactory for XmlFragmenterFactory {
             )
             .into());
         };
-        let XmlFragmenterParam::Url { property } = &params;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let elements_to_match_ast = expr_engine
-            .compile(property.elements_to_match.to_string().as_str())
-            .map_err(|e| {
-                XmlProcessorError::FragmenterFactory(format!(
-                    "Failed to comple expr engine with {e:?}"
-                ))
-            })?;
-        let elements_to_exclude_ast = expr_engine
-            .compile(property.elements_to_exclude.to_string().as_str())
-            .map_err(|e| {
-                XmlProcessorError::FragmenterFactory(format!(
-                    "Failed to comple expr engine with {e:?}"
-                ))
-            })?;
+        let property = params.property();
+        let elements_to_match_ast = property.elements_to_match.compile().map_err(|e| {
+            XmlProcessorError::FragmenterFactory(format!(
+                "Failed to compile elements_to_match expression: {e:?}"
+            ))
+        })?;
+        let elements_to_exclude_ast = property.elements_to_exclude.compile().map_err(|e| {
+            XmlProcessorError::FragmenterFactory(format!(
+                "Failed to compile elements_to_exclude expression: {e:?}"
+            ))
+        })?;
         let process = XmlFragmenter {
-            global_params: with,
             params,
             elements_to_match_ast,
             elements_to_exclude_ast,
@@ -104,32 +98,56 @@ impl ProcessorFactory for XmlFragmenterFactory {
 
 #[derive(Debug, Clone)]
 pub struct XmlFragmenter {
-    global_params: Option<HashMap<String, serde_json::Value>>,
     params: XmlFragmenterParam,
-    elements_to_match_ast: rhai::AST,
-    elements_to_exclude_ast: rhai::AST,
+    elements_to_match_ast: CompiledCode,
+    elements_to_exclude_ast: CompiledCode,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertySchema {
-    pub(super) elements_to_match: Expr,
-    pub(super) elements_to_exclude: Expr,
+    /// # Elements to Match
+    /// Expression returning the list of element names whose subtrees are emitted as fragments.
+    /// Names include the namespace prefix as written in the document, such as `bldg:Building`.
+    pub(super) elements_to_match: Code<{ CodeType::FlowExpr as u32 }>,
+    /// # Elements to Exclude
+    /// Expression returning the list of element names to skip even when they also appear in the
+    /// matched elements. Return an empty list to match everything.
+    pub(super) elements_to_exclude: Code<{ CodeType::FlowExpr as u32 }>,
+    /// # XML Attribute
+    /// Attribute holding the XML document: the file path or URL to read when the source is a
+    /// file, or the XML text itself when the source is text.
     pub(super) attribute: Attribute,
 }
 
-/// # XMLFragmenter Parameters
+/// # XML Fragmenter Parameters
 ///
-/// Configuration for fragmenting XML documents into smaller pieces.
+/// Configures where the XML document comes from and which of its elements become features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "source", rename_all = "camelCase")]
 pub enum XmlFragmenterParam {
-    #[serde(rename = "url")]
-    /// URL-based source configuration for XML fragmenting
-    Url {
+    /// # XML File
+    /// Reads the XML document from the file path or URL held in the attribute.
+    File {
         #[serde(flatten)]
         property: PropertySchema,
     },
+    /// # XML Text
+    /// Uses the attribute value itself as the XML document.
+    Text {
+        #[serde(flatten)]
+        property: PropertySchema,
+    },
+}
+
+impl XmlFragmenterParam {
+    fn property(&self) -> &PropertySchema {
+        match self {
+            XmlFragmenterParam::File { property } | XmlFragmenterParam::Text { property } => {
+                property
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -176,19 +194,15 @@ impl Processor for XmlFragmenter {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        match &self.params {
-            XmlFragmenterParam::Url { property } => {
-                send_xml_fragment(
-                    &ctx,
-                    fw,
-                    &self.global_params,
-                    &ctx.feature,
-                    &property.attribute,
-                    &self.elements_to_match_ast,
-                    &self.elements_to_exclude_ast,
-                )?;
-            }
-        }
+        send_xml_fragment(
+            &ctx,
+            fw,
+            &ctx.feature,
+            &self.params,
+            &self.elements_to_match_ast,
+            &self.elements_to_exclude_ast,
+            ctx.variables.clone(),
+        )?;
         Ok(())
     }
 
@@ -201,65 +215,54 @@ impl Processor for XmlFragmenter {
     }
 
     fn name(&self) -> &str {
-        "XmlFragmenter"
+        "XML Fragmenter"
     }
 }
 
 fn send_xml_fragment(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
-    global_params: &Option<HashMap<String, serde_json::Value>>,
     feature: &Feature,
-    attribute: &Attribute,
-    elements_to_match_ast: &rhai::AST,
-    elements_to_exclude_ast: &rhai::AST,
+    params: &XmlFragmenterParam,
+    elements_to_match_ast: &CompiledCode,
+    elements_to_exclude_ast: &CompiledCode,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<()> {
     let t_total = Instant::now();
 
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
-    let expr_engine = Arc::clone(&ctx.expr_engine);
 
-    let scope = feature.new_scope(expr_engine.clone(), global_params);
-    let elements_to_match = scope
-        .eval_ast::<rhai::Array>(elements_to_match_ast)
+    let elements_to_match = match elements_to_match_ast
+        .eval(feature, variables.clone())
         .map_err(|e| {
             XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
-        })?;
-    let elements_to_match = elements_to_match
-        .iter()
-        .map(|v| v.clone().into_string().unwrap_or_default())
-        .collect::<Vec<String>>();
-    if elements_to_match.is_empty() {
-        return Ok(());
-    }
-
-    let elements_to_exclude = scope
-        .eval_ast::<rhai::Array>(elements_to_exclude_ast)
-        .map_err(|e| {
-            XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
-        })?;
-    let elements_to_exclude = elements_to_exclude
-        .iter()
-        .map(|v| v.clone().into_string().unwrap_or_default())
-        .collect::<Vec<String>>();
-
-    let url = match feature.get(attribute) {
-        Some(AttributeValue::String(url)) => {
-            Uri::from_str(url).map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?
+        })? {
+        AttributeValue::Array(arr) => arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
+        _ => {
+            return Err(XmlProcessorError::Fragmenter(
+                "elements_to_match must be an array".to_string(),
+            ))
         }
-        _ => return Err(XmlProcessorError::Fragmenter("No url found".to_string())),
     };
-    let storage = storage_resolver
-        .resolve(&url)
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let bytes = storage
-        .get_sync(&url.path())
-        .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
-    let raw_xml =
-        std::str::from_utf8(&bytes).map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
     if elements_to_match.is_empty() {
         return Ok(());
     }
+
+    let elements_to_exclude =
+        match elements_to_exclude_ast
+            .eval(feature, variables)
+            .map_err(|e| {
+                XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
+            })? {
+            AttributeValue::Array(arr) => {
+                arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>()
+            }
+            _ => {
+                return Err(XmlProcessorError::Fragmenter(
+                    "elements_to_exclude must be an array".to_string(),
+                ))
+            }
+        };
 
     let excluded: HashSet<String> = elements_to_exclude.into_iter().collect();
     let mut match_tags = Vec::new();
@@ -275,7 +278,47 @@ fn send_xml_fragment(
     }
 
     let t_gen = Instant::now();
-    let result = generate_fragment_streaming(ctx, fw, feature, &url, raw_xml, &match_tags);
+    // `scope` namespaces the generated xmlId/xmlParentId hashes. A document read from a file is
+    // scoped by its location; XML held in an attribute has none, so the carrying feature is used.
+    let result = match params {
+        XmlFragmenterParam::File { property } => {
+            let url = match feature.get(&property.attribute) {
+                Some(AttributeValue::String(url)) => Uri::from_str(url)
+                    .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?,
+                _ => {
+                    return Err(XmlProcessorError::Fragmenter(format!(
+                        "No XML file path or URL found in attribute `{}`",
+                        property.attribute
+                    )))
+                }
+            };
+            let storage = storage_resolver
+                .resolve(&url)
+                .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+            let bytes = storage
+                .get_sync(&url.path())
+                .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+            let raw_xml = std::str::from_utf8(&bytes)
+                .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?;
+            generate_fragment_streaming(ctx, fw, feature, url.as_ref(), raw_xml, &match_tags)
+        }
+        XmlFragmenterParam::Text { property } => {
+            let Some(AttributeValue::String(raw_xml)) = feature.get(&property.attribute) else {
+                return Err(XmlProcessorError::Fragmenter(format!(
+                    "No XML text found in attribute `{}`",
+                    property.attribute
+                )));
+            };
+            generate_fragment_streaming(
+                ctx,
+                fw,
+                feature,
+                &format!("feature:{}", feature.id),
+                raw_xml,
+                &match_tags,
+            )
+        }
+    };
     tracing::debug!(
         target: "perf",
         total_ms = %t_total.elapsed().as_millis(),
@@ -289,7 +332,7 @@ fn generate_fragment_streaming(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     feature: &Feature,
-    uri: &Uri,
+    scope: &str,
     raw_xml: &str,
     match_tags: &[String],
 ) -> Result<()> {
@@ -322,12 +365,12 @@ fn generate_fragment_streaming(
                     .to_string();
 
                 if match_tags_set.contains(name.as_str()) {
-                    let xml_id = compute_xml_id_from_start_event(uri, e, &name);
+                    let xml_id = compute_xml_id_from_start_event(scope, e, &name);
 
                     // Compute parent_id from the immediate parent element on the stack
                     let xml_parent_id = parent_stack
                         .last()
-                        .map(|parent| compute_parent_id_from_stack(uri, parent));
+                        .map(|parent| compute_parent_id_from_stack(scope, parent));
 
                     // Collect existing xmlns prefixes on this element to avoid duplicates
                     let existing_ns: HashSet<String> = e
@@ -392,7 +435,7 @@ fn generate_fragment_streaming(
                         .for_each(|(k, v)| {
                             value.attributes_mut().insert(k, v);
                         });
-                    fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(value, FEATURES_PORT.clone()));
                     // Matched element's subtree is fully consumed; do NOT push to parent_stack
                 } else {
                     // Non-matched element: push to stack for parent lookups
@@ -434,7 +477,7 @@ struct ElementInfo {
 }
 
 /// Compute parent ID from stack entry (same logic as compute_parent_xml_id)
-fn compute_parent_id_from_stack(uri: &Uri, parent: &ElementInfo) -> String {
+fn compute_parent_id_from_stack(scope: &str, parent: &ElementInfo) -> String {
     // Check for 'id' attribute
     for (key, val) in &parent.attrs {
         if key == "id" {
@@ -459,7 +502,7 @@ fn compute_parent_id_from_stack(uri: &Uri, parent: &ElementInfo) -> String {
         .collect();
     attrs.sort_by(|a, b| a.0.cmp(&b.0));
     let key_values: Vec<String> = attrs.iter().map(|(k, v)| format!("{k}={v}")).collect();
-    to_hash(format!("{}:{}[{}]", uri, parent.qname, key_values.join(",")).as_str())
+    to_hash(format!("{}:{}[{}]", scope, parent.qname, key_values.join(",")).as_str())
 }
 
 /// Build a string of xmlns declarations to inject (only those not already present)
@@ -501,7 +544,7 @@ fn inject_ns_into_opening_tag(raw_slice: &str, ns_inject: &str) -> String {
 
 /// Compute xml_id from a quick_xml BytesStart event (same logic as compute_xml_id_from_editable_node)
 fn compute_xml_id_from_start_event(
-    uri: &Uri,
+    scope: &str,
     e: &quick_xml::events::BytesStart,
     name: &str,
 ) -> String {
@@ -529,7 +572,7 @@ fn compute_xml_id_from_start_event(
         })
         .collect();
     key_values.sort();
-    to_hash(format!("{}:{}[{}]", uri, name, key_values.join(",")).as_str())
+    to_hash(format!("{}:{}[{}]", scope, name, key_values.join(",")).as_str())
 }
 
 #[cfg(test)]
@@ -549,7 +592,7 @@ mod tests {
         let uri = Uri::from_str("file:///test.xml").unwrap();
         let tags: Vec<String> = match_tags.iter().map(|s| s.to_string()).collect();
 
-        generate_fragment_streaming(&ctx, &fw, &feature, &uri, raw_xml, &tags)
+        generate_fragment_streaming(&ctx, &fw, &feature, uri.as_ref(), raw_xml, &tags)
             .expect("generate_fragment_streaming should succeed");
 
         match &fw {

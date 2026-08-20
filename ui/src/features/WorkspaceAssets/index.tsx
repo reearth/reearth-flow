@@ -49,6 +49,8 @@ const AssetsManager: React.FC = () => {
     searchTerm,
     layoutView,
     isCreatingAsset,
+    uploadingTitle,
+    uploadPercent,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,
@@ -95,7 +97,10 @@ const AssetsManager: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-[36px] max-w-sm"
               />
-              <Select value={currentSortValue} onValueChange={handleSortChange}>
+              <Select
+                value={currentSortValue}
+                onValueChange={(v) => v != null && handleSortChange(v)}
+                items={sortOptions}>
                 <SelectTrigger className="h-[36px] w-[150px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -162,7 +167,7 @@ const AssetsManager: React.FC = () => {
           </div>
         ) : (
           <div className="h-full">
-            <LoadingSkeleton title={t("Uploading Asset...")} />
+            <LoadingSkeleton title={uploadingTitle} progress={uploadPercent} />
           </div>
         )}
         {assets && assets.length > 0 && (

@@ -6,17 +6,17 @@
   },
   "intermediateAssertions": [
     {
-      "outputPort": "40000000-0000-0000-0000-000000000011.default",
+      "outputPort": "40000000-0000-0000-0000-000000000011.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },
     {
-      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000021.default",
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000021.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },
     {
-      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.40000000-0000-0000-0000-000000000031.default",
+      "outputPort": "40000000-0000-0000-0000-000000000012.40000000-0000-0000-0000-000000000022.40000000-0000-0000-0000-000000000031.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },
@@ -51,12 +51,12 @@
       "jsonFilter": "{attributes}"
     },
     {
-      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000041.default",
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000041.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },
     {
-      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.40000000-0000-0000-0000-000000000031.default",
+      "outputPort": "40000000-0000-0000-0000-000000000013.40000000-0000-0000-0000-000000000042.40000000-0000-0000-0000-000000000031.features",
       "expectedFile": "../expected_all.jsonl",
       "jsonFilter": "{attributes}"
     },

@@ -1,5 +1,5 @@
-// import { Viewer as CesiumViewerType } from "cesium";
 import {
+  UrlTemplateImageryProvider,
   BoundingSphere,
   defined,
   SceneMode,
@@ -7,21 +7,29 @@ import {
 } from "cesium";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ImageryLayer,
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
   Viewer,
   ViewerProps,
 } from "resium";
 
+import { config } from "@flow/config";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
+import { initializeSentinel } from "@flow/services/sentinel";
 
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
+import { isCityGmlGeometry } from "./utils/cityGmlGeometryToPrimitives";
+
+// const REEARTH_TERRAIN_URL =
+//   "https://terrain.reearth.land/cesium-mesh/ellipsoid";
+const ESRI_WORLD_IMAGERY_URL =
+  "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
   timeline: false,
-  // baseLayerPicker: false,
-  // sceneModePicker: false,
+  baseLayerPicker: false,
   fullscreenButton: false,
   sceneModePicker: false,
   infoBox: false,
@@ -31,8 +39,48 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   requestRenderMode: true,
   maximumRenderTimeChange: Infinity,
   navigationHelpButton: false,
-  creditContainer: document.createElement("none"),
+  baseLayer: false,
 };
+
+// Currently disabled as some rendering issues and data accuracy have been observed with clampToGround and terrain enabled
+
+// const TerrainController: React.FC<{ show3DTerrain: boolean }> = ({
+//   show3DTerrain,
+// }) => {
+//   const { viewer } = useCesium();
+
+//   useEffect(() => {
+//     if (!viewer || viewer.isDestroyed()) return;
+//     let cancelled = false;
+
+//     if (show3DTerrain) {
+//       CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL, {
+//         requestVertexNormals: true,
+//         requestWaterMask: false,
+//       })
+//         .then((terrainProvider) => {
+//           if (cancelled || viewer.isDestroyed()) return;
+//           viewer.terrainProvider = terrainProvider;
+//           viewer.scene.requestRender();
+//         })
+//         .catch((e) => {
+//           console.error("Failed to load Re:Earth terrain:", e);
+//           if (cancelled || viewer.isDestroyed()) return;
+//           viewer.terrainProvider = new EllipsoidTerrainProvider();
+//           viewer.scene.requestRender();
+//         });
+//     } else {
+//       viewer.terrainProvider = new EllipsoidTerrainProvider();
+//       viewer.scene.requestRender();
+//     }
+
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [viewer, show3DTerrain]);
+
+//   return null;
+// };
 
 type Props = {
   fileContent: any | null;
@@ -58,16 +106,34 @@ const CesiumViewer: React.FC<Props> = ({
   setCityGmlBoundingSphere,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const { tileServerBaseUrl, tileServerToken } = config();
+  const [sentinelReady, setSentinelReady] = useState(
+    !(tileServerBaseUrl && tileServerToken),
+  );
 
   useEffect(() => {
     if (isLoaded) return;
     setIsLoaded(true);
   }, [isLoaded]);
 
+  useEffect(() => {
+    if (!tileServerBaseUrl || !tileServerToken) return;
+
+    let cancelled = false;
+    initializeSentinel().finally(() => {
+      if (!cancelled) setSentinelReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tileServerBaseUrl, tileServerToken]);
+
   const pickOriginalId = useCallback(
     (movement: any) => {
       if (!viewerRef?.current?.cesiumElement) return null;
       const cesiumViewer = viewerRef.current.cesiumElement;
+      if (cesiumViewer.isDestroyed()) return null;
       const pickedObject = cesiumViewer.scene.pick(movement.position);
       if (!defined(pickedObject) || !defined(pickedObject.id)) return null;
       const pickedId = pickedObject.id;
@@ -123,6 +189,25 @@ const CesiumViewer: React.FC<Props> = ({
     onDoubleClick,
   );
 
+  const baseImageryProvider = useMemo(() => {
+    if (tileServerBaseUrl && tileServerToken) {
+      if (!sentinelReady) return null;
+
+      return new UrlTemplateImageryProvider({
+        url: `${tileServerBaseUrl.replace(/\/$/, "")}/imagery/{z}/{x}/{y}.webp`,
+        minimumLevel: 0,
+        maximumLevel: 19,
+        credit: "© Google",
+      });
+    }
+    return new UrlTemplateImageryProvider({
+      url: ESRI_WORLD_IMAGERY_URL,
+      minimumLevel: 0,
+      maximumLevel: 19,
+      credit: "© Esri",
+    });
+  }, [tileServerBaseUrl, tileServerToken, sentinelReady]);
+
   // Separate features by geometry type
   const { geoJsonData, cityGmlData } = useMemo(() => {
     const features = fileContent?.features || [];
@@ -131,7 +216,11 @@ const CesiumViewer: React.FC<Props> = ({
     const cityGmlFeatures: any[] = [];
 
     for (const feature of features) {
-      if (feature?.geometry?.type === "CityGmlGeometry") {
+      // CityGML in either format belongs on the batched primitive renderer
+      // rather than the GeoJSON one: Cesium builds one Entity per polygon of a
+      // MultiPolygon, and a CityGML building is one polygon per surface, so the
+      // entity path turns a city block into hundreds of thousands of entities.
+      if (isCityGmlGeometry(feature?.geometry)) {
         cityGmlFeatures.push(feature);
       } else {
         geoJsonFeatures.push(feature);
@@ -158,6 +247,12 @@ const CesiumViewer: React.FC<Props> = ({
       }
       full
       {...defaultCesiumProps}>
+      {baseImageryProvider && (
+        <ImageryLayer imageryProvider={baseImageryProvider} />
+      )}
+      {/* <TerrainController
+        show3DTerrain={visualizerType === "3d-map" && !cityGmlData}
+      /> */}
       {onSelectedFeature && (
         <ScreenSpaceEventHandler>
           <ScreenSpaceEvent
@@ -179,6 +274,7 @@ const CesiumViewer: React.FC<Props> = ({
               geoJsonData={geoJsonData}
               selectedFeatureId={selectedFeatureId}
               showSelectedFeatureOnly={showSelectedFeatureOnly}
+              clampToGround={false}
             />
           )}
 

@@ -56,15 +56,17 @@ const SharedCanvasActions: React.FC<Props> = ({
         {t("Import into Workspace")}
       </Button>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            className="w-[25px]"
-            variant="ghost"
-            tooltipText={t("Additional actions")}
-            tooltipOffset={6}
-            icon={<DotsThreeVerticalIcon size={18} />}
-          />
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          render={
+            <IconButton
+              className="w-[25px]"
+              variant="ghost"
+              tooltipText={t("Additional actions")}
+              tooltipOffset={6}
+              icon={<DotsThreeVerticalIcon size={18} />}
+            />
+          }
+        />
         <DropdownMenuContent
           className="flex flex-col gap-2"
           align="start"

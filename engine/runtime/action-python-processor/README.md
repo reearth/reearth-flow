@@ -96,7 +96,7 @@ if get_geometry_type(geometry) == "MultiPoint":
 ```yaml
 - name: PythonProcessor
   type: action
-  action: PythonScriptProcessor
+  action: Python Script Processor
   with:
     script: |
       # Your Python code here

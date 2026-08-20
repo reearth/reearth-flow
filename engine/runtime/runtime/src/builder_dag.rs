@@ -113,11 +113,7 @@ impl BuilderDag {
     pub async fn new(ctx: NodeContext, dag_schemas: DagSchemas) -> Result<Self, ExecutionError> {
         let graph_id = dag_schemas.id;
         // Collect sources that may affect a node.
-        let mut affecting_sources = dag_schemas
-            .graph()
-            .node_indices()
-            .map(|node_index| dag_schemas.collect_ancestor_sources(node_index))
-            .collect::<Vec<_>>();
+        let mut affecting_sources = dag_schemas.affecting_sources_per_node()?;
 
         // Prepare nodes and edges for consuming.
         let (nodes, edges) = dag_schemas.into_graph().into_nodes_edges();

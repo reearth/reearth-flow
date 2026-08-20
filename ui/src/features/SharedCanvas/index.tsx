@@ -56,6 +56,7 @@ const SharedCanvas: React.FC<Props> = ({
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked: true,
+      canViewIntermediateData: false,
       onNodeSettings: handleNodeSettings,
     }),
     [handleNodeSettings],
@@ -103,8 +104,8 @@ const SharedCanvas: React.FC<Props> = ({
                     <p className="font-light text-accent-foreground select-none">
                       {t("Shared Project")}
                     </p>
-                    <Tooltip delayDuration={0}>
-                      <TooltipTrigger>
+                    <Tooltip>
+                      <TooltipTrigger delay={0}>
                         <QuestionIcon weight="thin" size={14} />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[200px]" sideOffset={18}>

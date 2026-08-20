@@ -15,6 +15,7 @@ type Props = {
   geoJsonData: any | null;
   selectedFeatureId?: string | null;
   showSelectedFeatureOnly: boolean;
+  clampToGround: boolean;
 };
 
 type EntityRecord = {
@@ -74,12 +75,30 @@ const GeoJsonData: React.FC<Props> = ({
   geoJsonData,
   selectedFeatureId,
   showSelectedFeatureOnly,
+  clampToGround,
 }) => {
   const { viewer } = useCesium();
+  const latestViewerRef = useRef(viewer);
+  latestViewerRef.current = viewer;
+
   const [dataSourceKey, setDataSourceKey] = useState(0);
   const dataSourceRef = useRef<GeoJsonDataSource | null>(null);
   const prevSelectedRef = useRef<string | null>(null);
   const featureMapRef = useRef<Map<string, EntityRecord[]>>(new Map());
+  const hasEverLoadedRef = useRef(false);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  // Keep prop values in refs so callbacks that use them don't need them in deps,
+  // preventing handleLoad from being recreated (and re-called by Resium) on every selection.
+  const selectedFeatureIdRef = useRef(selectedFeatureId ?? null);
+  selectedFeatureIdRef.current = selectedFeatureId ?? null;
+  const showSelectedFeatureOnlyRef = useRef(showSelectedFeatureOnly);
+  showSelectedFeatureOnlyRef.current = showSelectedFeatureOnly;
 
   const sanitizedData = useMemo(() => {
     if (!geoJsonData) return null;
@@ -93,7 +112,7 @@ const GeoJsonData: React.FC<Props> = ({
   const updateVisibility = useCallback(() => {
     featureMapRef.current.forEach((records) => {
       records.forEach(({ entity }) => {
-        if (!showSelectedFeatureOnly) {
+        if (!showSelectedFeatureOnlyRef.current) {
           entity.show = true;
           return;
         }
@@ -101,10 +120,10 @@ const GeoJsonData: React.FC<Props> = ({
         const props = entity.properties?.getValue?.();
         const entityId = props?._originalId ?? entity.id;
 
-        entity.show = entityId === selectedFeatureId;
+        entity.show = entityId === selectedFeatureIdRef.current;
       });
     });
-  }, [selectedFeatureId, showSelectedFeatureOnly]);
+  }, []); // stable — reads props via refs
 
   const handleDeselectFeature = useCallback(
     (prevId: string) => {
@@ -162,30 +181,30 @@ const GeoJsonData: React.FC<Props> = ({
     [viewer],
   );
 
-  const flyTo = useCallback(
-    async (isInitial?: boolean) => {
-      const ds = dataSourceRef.current;
-      if (!ds || !viewer) return;
+  const flyTo = useCallback(async () => {
+    const ds = dataSourceRef.current;
+    if (!ds || !viewer || viewer.isDestroyed() || !isMountedRef.current) return;
 
-      if (!selectedFeatureId) {
-        await viewer.zoomTo(ds);
-        if (isInitial) {
-          viewer.scene.requestRender();
-        }
-        return;
-      }
-      const records = featureMapRef.current.get(selectedFeatureId);
+    try {
+      const selectedId = selectedFeatureIdRef.current;
+      const records = selectedId
+        ? featureMapRef.current.get(selectedId)
+        : undefined;
       const entity = records?.[0]?.entity;
 
       if (entity) {
-        await viewer.flyTo(entity, {
-          duration: isInitial ? 0 : 1.2,
-        });
+        await viewer.flyTo(entity, { duration: 0 });
+      } else if (!hasEverLoadedRef.current || selectedId) {
+        await viewer.zoomTo(ds);
       }
-      viewer.scene.requestRender();
-    },
-    [viewer, selectedFeatureId],
-  );
+    } catch {
+      console.log("FlyTo failed, likely due to invalid entity state");
+    } finally {
+      if (!viewer.isDestroyed() && isMountedRef.current) {
+        viewer.scene.requestRender();
+      }
+    }
+  }, [viewer]);
 
   const handleLoad = useCallback(
     async (ds: GeoJsonDataSource) => {
@@ -211,9 +230,31 @@ const GeoJsonData: React.FC<Props> = ({
       });
 
       updateVisibility();
-      await flyTo(true);
+
+      if (selectedFeatureIdRef.current) {
+        handleHighlightSelectedFeature(selectedFeatureIdRef.current);
+        prevSelectedRef.current = selectedFeatureIdRef.current;
+      }
+
+      await flyTo();
+
+      // Bail if unmounted during flyTo (e.g. switched to 3D data mid-flight).
+      if (!isMountedRef.current) return;
+
+      hasEverLoadedRef.current = true;
+
+      // Two renders: DataSourceDisplay may not commit entities until the frame after requestRender().
+      const v = latestViewerRef.current;
+      if (v && !v.isDestroyed()) {
+        v.scene.requestRender();
+        const renderAgain = () => {
+          v.scene.postRender.removeEventListener(renderAgain);
+          if (!v.isDestroyed() && isMountedRef.current) v.scene.requestRender();
+        };
+        v.scene.postRender.addEventListener(renderAgain);
+      }
     },
-    [updateVisibility, flyTo],
+    [updateVisibility, flyTo, handleHighlightSelectedFeature],
   );
 
   useEffect(() => {
@@ -235,8 +276,15 @@ const GeoJsonData: React.FC<Props> = ({
   ]);
 
   useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.scene.requestRender();
+  }, [dataSourceKey, viewer]);
+
+  // Re-run visibility whenever the filtering props change (updateVisibility itself is stable)
+  useEffect(() => {
     updateVisibility();
-  }, [updateVisibility]);
+    viewer?.scene.requestRender();
+  }, [selectedFeatureId, showSelectedFeatureOnly, updateVisibility, viewer]);
 
   if (!sanitizedData) return null;
 
@@ -245,6 +293,7 @@ const GeoJsonData: React.FC<Props> = ({
       key={dataSourceKey}
       data={sanitizedData}
       onLoad={handleLoad}
+      clampToGround={clampToGround}
     />
   );
 };
