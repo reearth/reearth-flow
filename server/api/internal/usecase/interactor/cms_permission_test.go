@@ -89,9 +89,9 @@ func (f *fakeCMSGateway) GetModelGeoJSONExportURL(_ context.Context, _ cms.Expor
 
 // sequenceChecker records the workspace ids of every CheckPermission call, in order.
 type sequenceChecker struct {
+	action string
 	calls  [][]accountsid.WorkspaceID
 	allow  bool
-	action string
 }
 
 func (s *sequenceChecker) CheckPermission(_ context.Context, _, action string, workspaceID ...accountsid.WorkspaceID) (bool, error) {
