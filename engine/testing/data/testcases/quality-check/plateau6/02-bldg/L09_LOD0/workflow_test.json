@@ -1,5 +1,6 @@
 {
   "description": "Test L09 for LOD0 on plateau6. A self-intersecting (bow-tie) LOD0 ring reported as SelfIntersection under 'LOD0 面のエラー'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

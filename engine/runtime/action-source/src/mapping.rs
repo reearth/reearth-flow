@@ -9,10 +9,15 @@ use crate::{
         citygml::CityGmlReaderFactory, csv::CsvReaderFactory, czml::CzmlReaderFactory,
         geojson::GeoJsonReaderFactory, geopackage::GeoPackageReaderFactory,
         gltf::GltfReaderFactory, json::JsonReaderFactory, obj::ObjReaderFactory,
-        path_extractor::FilePathExtractorFactory, shapefile::ShapefileReaderFactory,
+        path_extractor::FilePathExtractorFactory,
     },
     sql::SqlReaderFactory,
 };
+
+#[cfg(not(feature = "new-geometry"))]
+use crate::file::shapefile::ShapefileReaderFactory;
+#[cfg(feature = "new-geometry")]
+use crate::file::shapefile_next::ShapefileReaderFactory;
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn SourceFactory>> = vec![

@@ -1,6 +1,12 @@
 #![recursion_limit = "2048"]
 extern crate alloc;
 
+#[cfg(all(feature = "schema", feature = "debug-geom-feature-write"))]
+compile_error!(
+    "the `schema` feature describes the production intermediate-data form; \
+     disable `debug-geom-feature-write` to generate it"
+);
+
 pub mod algorithm;
 pub mod error;
 pub mod types;
@@ -53,13 +59,16 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
-    Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractHoles,
+    ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance, Reproject,
+    ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
 use ops::Split;
+#[cfg(feature = "new-geometry")]
+use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -77,7 +86,9 @@ use triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 
 /// The top-level geometry type: an absent `None`, a geometry in one of the two
 /// embedding dimensions, or a heterogeneous, cross-dimensional collection.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Geometry"))]
 pub enum Geometry {
     /// No geometry: a feature carrying attributes but no spatial payload. This
     /// is the default — an absent geometry, distinct from an empty collection.
@@ -90,11 +101,20 @@ pub enum Geometry {
 }
 
 /// Ordered members, each optionally carrying its own attributes.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "schema", schemars(title = "Geometry collection"))]
 pub struct GeometryCollection {
+    #[cfg_attr(feature = "schema", schemars(title = "Members"))]
     members: Vec<Geometry>,
     /// Per-member attributes parallel to `members`; empty = no member carries
     /// any. Child-scoped: not exposed as the feature's own attributes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
+    #[cfg_attr(feature = "schema", schemars(title = "Per-member attributes"))]
     attrs: Vec<Attributes>,
 }
 
@@ -163,11 +183,14 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[cfg_attr(
@@ -176,15 +199,21 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles,
+        Footprint
     )
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "2D geometry"))]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
     LineString(LineString2D),
@@ -211,11 +240,14 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[cfg_attr(
@@ -224,15 +256,21 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles,
+        Footprint
     )
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "3D geometry"))]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
     PointCloud(Box<PointCloud>),
@@ -453,6 +491,59 @@ impl RemoveAppearance for GeometryCollection {
     }
 }
 
+impl CountHoles for Geometry {
+    fn count_holes(&self) -> usize {
+        match self {
+            // An absent geometry has no faces, so no holes.
+            Geometry::None => 0,
+            Geometry::Euclidean2D(g) => g.count_holes(),
+            Geometry::Euclidean3D(g) => g.count_holes(),
+            Geometry::GeometryCollection(c) => c.count_holes(),
+        }
+    }
+}
+
+impl CountHoles for GeometryCollection {
+    fn count_holes(&self) -> usize {
+        self.members.iter().map(Geometry::count_holes).sum()
+    }
+}
+
+impl ExtractHoles for Geometry {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        match self {
+            // An absent geometry has no faces to take apart.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "extract_holes",
+            }),
+            Geometry::Euclidean2D(g) => g.extract_holes(emit),
+            Geometry::Euclidean3D(g) => g.extract_holes(emit),
+            Geometry::GeometryCollection(c) => c.extract_holes(emit),
+        }
+    }
+}
+
+impl ExtractHoles for GeometryCollection {
+    /// Deaggregate: each member is taken apart on its own, and one that is not
+    /// area geometry is emitted as [`ExtractedPart::Rejected`] rather than failing
+    /// the whole collection.
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        for member in &self.members {
+            if member.extract_holes(emit).is_err() {
+                emit(member.clone(), ExtractedPart::Rejected);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Split for Geometry {
     fn split(
         &mut self,
@@ -481,6 +572,39 @@ impl Split for GeometryCollection {
             emit,
         );
         Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Geometry {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.footprint(sink),
+            Geometry::Euclidean3D(g) => g.footprint(sink),
+            Geometry::GeometryCollection(c) => c.footprint(sink),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for GeometryCollection {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Geometry {
+    /// The footprint of this geometry on `plane`: every face projected and
+    /// dissolved into its union, curves and points projected as they are, as 2D
+    /// geometry in the plane's frame. See [`Footprint`] and
+    /// [`FootprintSink::finish`] for the contract, and [`FootprintPlane`] for
+    /// the frame each plane needs.
+    pub fn footprint_on(&self, plane: &FootprintPlane) -> Result<Geometry, FootprintError> {
+        let mut sink = FootprintSink::new(plane);
+        self.footprint(&mut sink)?;
+        sink.finish()
     }
 }
 
@@ -514,6 +638,48 @@ impl GeometryCollection {
             members,
             attrs: std::mem::take(&mut self.attrs),
         })
+    }
+}
+
+impl Coerce for Geometry {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no vertices to re-represent.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "coerce",
+            }),
+            Geometry::Euclidean2D(g) => g.coerce(target, cache),
+            Geometry::Euclidean3D(g) => g.coerce(target, cache),
+            Geometry::GeometryCollection(c) => c.coerce(target, cache),
+        }
+    }
+}
+
+impl Coerce for GeometryCollection {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        for member in self.members_mut() {
+            if let Ok(coerced) = member.coerce(target, cache) {
+                *member = coerced;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Err(UnsupportedOperation {
+                geometry: "GeometryCollection",
+                operation: "coerce",
+            });
+        }
+        Ok(Geometry::GeometryCollection(std::mem::take(self)))
     }
 }
 

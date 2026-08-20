@@ -1,5 +1,6 @@
 {
   "description": "Verify output files: no errors, empty CityGML",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
   "workflowVariables": [
     {

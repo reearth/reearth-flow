@@ -160,6 +160,41 @@ impl ConvertFrame for TriangularMesh3D {
     }
 }
 
+use crate::ops::{area_2d, emit_triangles_3d, ExtractHoles, ExtractedPart};
+
+// A triangle mesh is an aggregate of faces, so it deaggregates like a polygon
+// mesh. A triangle carries no interior ring, so every part is an outer shell.
+impl ExtractHoles for TriangularMesh2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        let elevation = self.elevation();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+                vertices[i as usize],
+            ];
+            emit(area_2d(frame, ring, elevation), ExtractedPart::Outershell);
+        }
+        Ok(())
+    }
+}
+
+impl ExtractHoles for TriangularMesh3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        emit_triangles_3d(self.frame(), self.vertices(), self.triangles(), emit);
+        Ok(())
+    }
+}
+
 impl Split for TriangularMesh2D {
     fn split(
         &mut self,
@@ -279,6 +314,157 @@ impl RemoveAppearance for TriangularMesh2D {
 impl RemoveAppearance for TriangularMesh3D {
     fn remove_appearance(&mut self) {
         *self.appearance_mut() = None;
+    }
+}
+
+use crate::line_string::{LineString2D, LineString3D};
+use crate::ops::coerce::{triangle_ring, unchanged, wrap_2d, wrap_3d};
+use crate::ops::triangulation::Cache;
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for TriangularMesh2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        _cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        let elevation = self.elevation();
+        match target {
+            CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
+            CoercionTarget::LineString => {
+                let parts = self
+                    .triangles()
+                    .map(|triangle| {
+                        let ring = triangle_ring(vertices, triangle);
+                        match elevation {
+                            None => Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                                frame.clone(),
+                                ring,
+                            )),
+                            Some(elevation) => Euclidean2DGeometry::LineString(
+                                LineString2D::from_coords_at_elevation(
+                                    frame.clone(),
+                                    ring,
+                                    elevation,
+                                ),
+                            ),
+                        }
+                    })
+                    .collect();
+                wrap_2d(parts).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::Polygon => {
+                let no_holes = Vec::<Vec<[f64; 2]>>::new();
+                let parts =
+                    self.triangles()
+                        .map(|triangle| {
+                            let ring = triangle_ring(vertices, triangle);
+                            match elevation {
+                                None => Euclidean2DGeometry::Polygon(Box::new(
+                                    Polygon2D::from_rings(frame.clone(), ring, no_holes.clone()),
+                                )),
+                                Some(elevation) => Euclidean2DGeometry::Polygon(Box::new(
+                                    Polygon2D::from_rings_at_elevation(
+                                        frame.clone(),
+                                        ring,
+                                        no_holes.clone(),
+                                        elevation,
+                                    ),
+                                )),
+                            }
+                        })
+                        .collect();
+                wrap_2d(parts).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for TriangularMesh3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        _cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        match target {
+            CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
+            CoercionTarget::LineString => {
+                let parts = self
+                    .triangles()
+                    .map(|triangle| {
+                        let ring = triangle_ring(vertices, triangle);
+                        Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                            frame.clone(),
+                            ring,
+                        ))
+                    })
+                    .collect();
+                wrap_3d(parts).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::Polygon => {
+                let parts = self
+                    .triangles()
+                    .map(|triangle| {
+                        let ring = triangle_ring(vertices, triangle);
+                        Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+                            frame.clone(),
+                            ring,
+                            Vec::<Vec<[f64; 3]>>::new(),
+                        )))
+                    })
+                    .collect();
+                wrap_3d(parts).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for TriangularMesh2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        let vertices = self.vertices();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+            ];
+            sink.push_face_2d(std::iter::once(&ring[..]), self.elevation());
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for TriangularMesh3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        self.data.footprint_faces(sink);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl TriangularMesh3DData {
+    /// Push every triangle into an entered `sink`.
+    pub(crate) fn footprint_faces(&self, sink: &mut FootprintSink<'_>) {
+        let vertices = self.vertices();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+            ];
+            sink.push_face_3d(std::iter::once(&ring[..]));
+        }
     }
 }
 

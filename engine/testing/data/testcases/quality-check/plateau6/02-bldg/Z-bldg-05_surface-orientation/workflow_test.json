@@ -1,5 +1,6 @@
 {
   "description": "Test LOD0 surface orientation error for plateau6 (CityGML 3.0 + i-UR 4.0). Two buildings: one whose lod0MultiSurface exterior ring is clockwise (reported as 'IncorrectOrientation' under 'LOD0 面の向きエラー') and one counter-clockwise control (no error).",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

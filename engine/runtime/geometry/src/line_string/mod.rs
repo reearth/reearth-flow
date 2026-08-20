@@ -16,20 +16,29 @@ mod ops;
 mod validation;
 
 /// A polyline in 2D space, lying at a single optional elevation (2.5D).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Polyline (2D)"))]
 pub struct LineString2D {
     /// Coordinate frame these coords are expressed in.
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinates"))]
     coords: Box<[[f64; 2]]>,
     /// The one elevation the whole chain lies at. `None` = pure 2D.
+    #[cfg_attr(feature = "schema", schemars(title = "Elevation"))]
     z: Option<f64>,
 }
 
 /// A polyline in 3D space.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Polyline (3D)"))]
 pub struct LineString3D {
     /// Coordinate frame these coords are expressed in.
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinates"))]
     coords: Box<[[f64; 3]]>,
 }
 
@@ -75,3 +84,10 @@ crate::unsupported!(LineString3D: Split);
 
 crate::unsupported!(LineString2D: RemoveAppearance);
 crate::unsupported!(LineString3D: RemoveAppearance);
+
+crate::unsupported!(LineString2D: CountHoles);
+crate::unsupported!(LineString3D: CountHoles);
+
+// A curve bounds no area, so there is nothing to take apart.
+crate::unsupported!(LineString2D: ExtractHoles);
+crate::unsupported!(LineString3D: ExtractHoles);

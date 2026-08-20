@@ -35,3 +35,16 @@ type snapshotResponse struct {
 type importDocumentRequest struct {
 	Data []int `json:"data"`
 }
+
+// snapshotItemResponse is one labelled snapshot; POST .../snapshots populates
+// only ID and Label.
+type snapshotItemResponse struct {
+	Label     string `json:"label"`
+	Timestamp string `json:"timestamp"`
+	ID        int64  `json:"id"`
+	Size      int64  `json:"size"`
+}
+
+type saveSnapshotRequest struct {
+	Label string `json:"label"`
+}

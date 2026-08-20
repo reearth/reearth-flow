@@ -102,7 +102,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .into());
         }
 
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let script = params
             .script
             .map(|c| {
@@ -110,7 +110,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
                     .map_err(|e| {
                         PythonProcessorError::FactoryError(format!("Failed to compile script: {e}"))
                     })?
-                    .eval_string_env_only(env_vars.clone())
+                    .eval_string_variables_only(variables.clone())
                     .map_err(|e| {
                         PythonProcessorError::FactoryError(format!(
                             "Failed to evaluate script: {e}"
@@ -127,7 +127,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
                             "Failed to compile pythonFile: {e}"
                         ))
                     })?
-                    .eval_string_env_only(env_vars)
+                    .eval_string_variables_only(variables)
                     .map_err(|e| {
                         PythonProcessorError::FactoryError(format!(
                             "Failed to evaluate pythonFile: {e}"

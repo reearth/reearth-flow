@@ -216,7 +216,7 @@ impl Processor for DestinationMeshCodeExtractor {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
-        let epsg_code = self.evaluate_epsg_code(feature, ctx.env_vars.clone())?;
+        let epsg_code = self.evaluate_epsg_code(feature, ctx.variables.clone())?;
 
         // Ensure proj instances are cached for this EPSG code
         ensure_proj_cached(&epsg_code)?;
@@ -310,9 +310,9 @@ impl DestinationMeshCodeExtractor {
     fn evaluate_epsg_code(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
-        let epsg_code = self.epsg_code_ast.eval(feature, env_vars).map_err(|e| {
+        let epsg_code = self.epsg_code_ast.eval(feature, variables).map_err(|e| {
             PlateauProcessorError::DestinationMeshCodeExtractor(format!(
                 "Failed to evaluate epsg_code expression: {e:?}"
             ))

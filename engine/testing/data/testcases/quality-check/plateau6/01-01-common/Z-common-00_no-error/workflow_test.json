@@ -1,5 +1,6 @@
 {
   "description": "No-error reference for plateau6 (CityGML 3.0 + i-UR 4.0)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

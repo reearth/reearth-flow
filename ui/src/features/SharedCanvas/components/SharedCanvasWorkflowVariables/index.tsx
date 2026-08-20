@@ -10,9 +10,10 @@ import {
   DialogTitle,
   DataTable as Table,
 } from "@flow/components";
-import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { AnyWorkflowVariable, Project } from "@flow/types";
+
+import useSharedWorkflowVariables from "../../useSharedWorkflowVariables";
 
 type Props = {
   isOpen: boolean;
@@ -29,8 +30,8 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  const { useGetWorkflowVariables } = useWorkflowVariables();
-  const { workflowVariables } = useGetWorkflowVariables(project?.id);
+  // Private variables are listed, but with their values redacted.
+  const { workflowVariables } = useSharedWorkflowVariables(project?.id);
 
   const handleCancel = () => {
     onCancel();

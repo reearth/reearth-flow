@@ -10,6 +10,7 @@
 //! plus the one optional elevation the whole surface lies at, matching the 2D leaf
 //! convention.
 
+#[cfg(feature = "debug-geom-feature-write")]
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::Appearance;
@@ -18,6 +19,8 @@ use crate::index::IndexBuffer;
 
 mod constructor;
 mod faces;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -26,7 +29,8 @@ pub(crate) use ops::build_open_rings;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, lying at a single
 /// optional elevation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolygonMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
@@ -62,7 +66,8 @@ pub struct PolygonMesh2D {
 /// frame from the enclosing `Solid` — so a solid and its boundaries cannot
 /// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
 /// [`RasterData`](crate::appearance::RasterData) split.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolygonMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// All rings of all faces concatenated; each face is its exterior ring then
@@ -87,7 +92,8 @@ pub struct PolygonMesh3DData {
 
 /// A connected, vertex-sharing polygon mesh in 3D space: coordinate-free mesh
 /// data plus the frame it is expressed in.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolygonMesh3D {
     /// Coordinate frame the mesh data is expressed in.
     frame: CoordinateFrame,
@@ -234,6 +240,13 @@ impl PolygonMesh3DData {
 }
 
 impl PolygonMesh3DData {
+    /// The number of hole rings across every face. Crate-internal: lets a
+    /// [`Solid`](crate::solid::Solid) shell count its own holes.
+    #[inline]
+    pub(crate) fn num_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+
     /// Drop the appearance.
     pub(crate) fn remove_appearance(&mut self) {
         self.appearance = None;

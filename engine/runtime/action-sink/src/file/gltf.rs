@@ -77,7 +77,7 @@ impl SinkFactory for GltfWriterSinkFactory {
             .output
             .compile()
             .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| SinkError::BuildFactory(e.to_string()))?;
         // Store as String — Uri::from_str at build time would silently join with CWD,
         // turning a relative path into an absolute URI that SinkOutput::new would reject.
@@ -716,10 +716,11 @@ mod tests {
     }
 
     #[test]
-    fn build_fails_when_output_expression_references_missing_env_var() {
+    fn build_fails_when_output_expression_references_missing_workflow_variable() {
         let ctx = NodeContext::default();
-        let with =
-            make_with(json!({"type": "flowExpr", "value": "env[\"nonexistent_output_dir\"]"}));
+        let with = make_with(
+            json!({"type": "flowExpr", "value": "variables[\"nonexistent_output_dir\"]"}),
+        );
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
@@ -728,7 +729,7 @@ mod tests {
         );
         assert!(
             result.is_err(),
-            "build must error when flowExpr references a missing env var"
+            "build must error when flowExpr references a missing workflow variable"
         );
     }
 }

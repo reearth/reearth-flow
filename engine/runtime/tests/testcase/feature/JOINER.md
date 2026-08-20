@@ -178,7 +178,7 @@ Currently the tests use EchoSink because:
 
 To add output verification with file assertions:
 1. Replace `EchoSink` with `JsonWriter` sinks in the workflows
-2. Configure output paths via `env.get("outputFilePath")` or similar
+2. Configure output paths via `variables.get("outputFilePath")` or similar
 3. Read and verify the output files in the test code
 
 Example improvement:

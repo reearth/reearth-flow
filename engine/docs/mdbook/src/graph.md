@@ -12,7 +12,7 @@ A graph is a data structure that consists of a finite set of nodes (or vertices)
     action: FilePathExtractor
     with:
       sourceDataset: |
-        env.get("cityGmlPath")
+        variables.get("cityGmlPath")
       extractArchive: true
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cb
     name: FeatureFilter01
@@ -21,7 +21,7 @@ A graph is a data structure that consists of a finite set of nodes (or vertices)
     with:
       conditions:
       - expr: |
-          env.get("__value").extension == "gml"
+          attributes["extension"] == "gml"
         outputPort: default
 ```
 

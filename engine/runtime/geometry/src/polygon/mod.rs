@@ -9,12 +9,15 @@
 //! recording where each interior ring starts (the exterior is the prefix up to
 //! the first hole, so it carries no offset of its own).
 
+#[cfg(feature = "debug-geom-feature-write")]
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::Appearance;
 use crate::coordinate::CoordinateFrame;
 
 mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -22,7 +25,8 @@ mod validation;
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
 /// A planar polygon face in 2D space, lying at a single optional elevation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
@@ -44,7 +48,8 @@ pub struct Polygon2D {
 }
 
 /// A planar polygon face in 3D space.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
@@ -96,6 +101,15 @@ impl Polygon2D {
         self.z
     }
 
+    /// The unsigned planar area of the face: the exterior ring's area minus the
+    /// area of the holes. Ring winding does not affect the result; elevation
+    /// does not contribute. Rings stored open are measured as if closed.
+    pub fn area(&self) -> f64 {
+        let exterior = ring_area(self.exterior());
+        let holes: f64 = self.interiors().map(ring_area).sum();
+        (exterior - holes).max(0.0)
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -107,6 +121,24 @@ impl Polygon2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
+}
+
+/// The unsigned shoelace area of one ring. Rings are stored as the builder
+/// received them, so a ring left open is measured with its closing edge
+/// restored; fewer than three vertices enclose nothing.
+fn ring_area(ring: &[[f64; 2]]) -> f64 {
+    if ring.len() < 3 {
+        return 0.0;
+    }
+    let mut sum: f64 = ring
+        .windows(2)
+        .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+        .sum();
+    let (first, last) = (ring[0], ring[ring.len() - 1]);
+    if first != last {
+        sum += last[0] * first[1] - first[0] * last[1];
+    }
+    sum.abs() / 2.0
 }
 
 impl Polygon3D {
@@ -154,3 +186,64 @@ impl Polygon3D {
 // A polygon is a single face, not a multi-part container.
 crate::unsupported!(Polygon2D: Split);
 crate::unsupported!(Polygon3D: Split);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A 2x2 square held away from the origin, so the closing edge carries a
+    /// non-zero shoelace term and an omitted one shows up in the result.
+    fn square(closed: bool) -> Polygon2D {
+        let mut ring = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0]];
+        if closed {
+            ring.push([1.0, 1.0]);
+        }
+        Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            ring,
+            Vec::<Vec<[f64; 2]>>::new(),
+        )
+    }
+
+    #[test]
+    fn a_ring_left_open_measures_the_same_as_a_closed_one() {
+        assert_eq!(square(true).area(), 4.0);
+        assert_eq!(square(false).area(), 4.0);
+    }
+
+    #[test]
+    fn winding_does_not_affect_the_area() {
+        let clockwise = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [0.0, 2.0], [2.0, 2.0], [2.0, 0.0], [0.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
+        assert_eq!(clockwise.area(), 4.0);
+    }
+
+    #[test]
+    fn holes_are_subtracted() {
+        let with_hole = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+            vec![vec![
+                [1.0, 1.0],
+                [2.0, 1.0],
+                [2.0, 2.0],
+                [1.0, 2.0],
+                [1.0, 1.0],
+            ]],
+        );
+        assert_eq!(with_hole.area(), 15.0);
+    }
+
+    #[test]
+    fn a_ring_too_short_to_enclose_anything_has_no_area() {
+        let degenerate = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [2.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
+        assert_eq!(degenerate.area(), 0.0);
+    }
+}

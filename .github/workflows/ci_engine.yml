@@ -77,35 +77,8 @@ jobs:
             exit 1
           fi
       # `cargo make clippy` builds `new-geometry`, whose `ktx2-rw` dep compiles
-      # KTX-Software from source. Only this job builds `new-geometry`.
-      - name: Install KTX build toolchain (cmake + libclang for ktx2-rw)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cmake clang libclang-dev
-        working-directory: /
-      - name: Cache KTX-Software source tarball
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          # Path and version are what ktx2-rw@0.2.4's build.rs hard-codes as its
-          # fallback; bump the key when ktx2-rw bumps KTX-Software.
-          path: /tmp/ktx-software-v4.4.0.tar.gz
-          key: ktx-software-v4.4.0
-      - name: Fetch and verify KTX-Software tarball (fallback for ktx2-rw build.rs)
-        env:
-          KTX_TARBALL: /tmp/ktx-software-v4.4.0.tar.gz
-          KTX_URL: https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.0.tar.gz
-          # sha256 of the GitHub source archive for KTX-Software v4.4.0. Bump
-          # alongside the cache key and path when ktx2-rw bumps KTX-Software.
-          KTX_SHA256: 3585d76edcdcbe3a671479686f8c81c1c10339f419e4b02a9a6f19cc6e4e0612
-        run: |
-          # Download only on a cache miss (or a poisoned cache entry that fails
-          # the pinned checksum), letting curl handle its own retries/backoff.
-          # The final sha256sum -c gates whatever ends up feeding build.rs.
-          if ! echo "${KTX_SHA256}  ${KTX_TARBALL}" | sha256sum -c - 2>/dev/null; then
-            curl -fsSL --retry 5 --retry-all-errors -o "${KTX_TARBALL}" "${KTX_URL}"
-            echo "${KTX_SHA256}  ${KTX_TARBALL}" | sha256sum -c -
-          fi
-        working-directory: /
+      # KTX-Software from source.
+      - uses: ./.github/actions/install-ktx-toolchain
       # NOTE: `cargo make check` was previously a separate step. It is a
       # strict subset of `cargo make clippy` (clippy implies check), so it is
       # not run here.
@@ -115,6 +88,8 @@ jobs:
         run: cargo make format -- --check
       - name: taplo
         run: cargo make format-taplo -- --check
+      - name: proj-grids attribution notice
+        run: cargo make proj-grids-notice -- --check
 
   validate-generated:
     name: validate generated files (schema + cms workflows)
@@ -162,6 +137,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
+      # This build enables `new-geometry`, whose `ktx2-rw` dep compiles
+      # KTX-Software from source.
+      - uses: ./.github/actions/install-ktx-toolchain
       - name: Cache XSD schema downloads
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -201,21 +179,27 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
-      - name: Install glb-decompress
-        # glb_decompress_draco transitively depends on `sharp`, whose postinstall
-        # script downloads libvips binaries from GitHub Releases. That download
-        # has flaked with 504s during peak GitHub traffic; retry up to 3 times
-        # before giving up so a single transient CDN blip doesn't fail CI.
-        run: |
-          for attempt in 1 2 3; do
-            if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
-              echo "glb-decompress install succeeded on attempt $attempt"
-              exit 0
-            fi
-            echo "Attempt $attempt failed; sleeping 15s before retry..."
-            sleep 15
-          done
-          echo "glb-decompress install failed after 3 attempts" >&2
-          exit 1
       - name: test-conv
         run: cargo make test-conv
+
+  test-conv-new-geometry:
+    name: test-conv-new-geometry (tile output validation, new-geometry)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      # This build enables `new-geometry`, whose `ktx2-rw` dep compiles
+      # KTX-Software from source.
+      - uses: ./.github/actions/install-ktx-toolchain
+      - name: test-conv-new-geometry
+        run: cargo make test-conv-new-geometry

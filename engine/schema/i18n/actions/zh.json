@@ -9,23 +9,38 @@
       "description": "计算多边形几何体的平面或坡面面积，并将结果作为属性添加",
       "parameterI18n": {
         "": {
-          "title": "AreaCalculator Parameters",
-          "description": "Configuration for calculating areas of geometries."
+          "title": "Area Calculator Parameters",
+          "description": "Configure how the area of each feature's geometry is measured and stored."
         },
         "areaType": {
-          "description": "Type of area calculation to perform (PlaneArea or SlopedArea)"
+          "title": "Area Type",
+          "description": "Whether to measure the flat projected area or the true sloped surface area. Has no effect on a geometry with no elevation, which is always flat."
         },
         "multiplier": {
-          "description": "Multiplier to scale the area values (default: 1.0)"
+          "title": "Multiplier",
+          "description": "Factor applied to the calculated area, for converting to another unit. Defaults to 1.0."
         },
         "outputAttribute": {
-          "description": "Name of the attribute to store the calculated area (default: \"area\")"
+          "title": "Output Attribute",
+          "description": "Attribute to store the calculated area in. Defaults to `area`."
+        }
+      },
+      "enumI18n": {
+        "AreaType": {
+          "planeArea": {
+            "title": "Planar Area",
+            "description": "Calculates the flat area of the geometry projected onto the XY plane."
+          },
+          "slopedArea": {
+            "title": "Sloped Area",
+            "description": "Calculates the true surface area, accounting for the slope of each face."
+          }
         }
       }
     },
     {
       "name": "Area On Area Overlayer",
-      "description": "在一个区域上叠加另一个区域",
+      "description": "将重叠区域细分为互不重叠的碎片，并记录覆盖每个碎片的输入实体数量。输入必须是不带高程的平面2D几何且共享同一坐标框架，请在上游放置Two Dimension Forcer或Coordinate Frame Reprojector进行展平或统一",
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer Parameters",
@@ -365,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间移动值。当目标路径包含多个片段时，会按需创建嵌套map",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Table Extractor 参数",
+          "description": "配置用于移动嵌套属性值的源/目标路径对照表"
+        },
+        "dataset": {
+          "title": "数据集URI",
+          "description": "抽取表文件的路径或URI。提供此项或内联数据二选一"
+        },
+        "inline": {
+          "title": "内联表",
+          "description": "直接以JSON形式提供的抽取表内容。在未提供数据集URI时使用"
+        },
+        "typeAttribute": {
+          "title": "要素类型属性",
+          "description": "其值用于选择表中应用于该要素的规则集的属性。默认为`__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
       "parameterI18n": {
@@ -385,31 +422,32 @@
       "description": "提取边界",
       "parameterI18n": {
         "": {
-          "title": "BoundsExtractor Parameters"
+          "title": "Bounds Extractor Parameters",
+          "description": "Configure the attribute names each bound is stored under. Every parameter is optional; a bound left unset is stored under its default name. The z bounds are written only when the geometry has an elevation."
         },
         "xmax": {
           "title": "Maximum X Attribute",
-          "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")"
+          "description": "Attribute to store the maximum X coordinate in. Defaults to `xmax`."
         },
         "xmin": {
           "title": "Minimum X Attribute",
-          "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")"
+          "description": "Attribute to store the minimum X coordinate in. Defaults to `xmin`."
         },
         "ymax": {
           "title": "Maximum Y Attribute",
-          "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")"
+          "description": "Attribute to store the maximum Y coordinate in. Defaults to `ymax`."
         },
         "ymin": {
           "title": "Minimum Y Attribute",
-          "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")"
+          "description": "Attribute to store the minimum Y coordinate in. Defaults to `ymin`."
         },
         "zmax": {
           "title": "Maximum Z Attribute",
-          "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")"
+          "description": "Attribute to store the maximum Z coordinate in. Defaults to `zmax`."
         },
         "zmin": {
           "title": "Minimum Z Attribute",
-          "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")"
+          "description": "Attribute to store the minimum Z coordinate in. Defaults to `zmin`."
         }
       }
     },
@@ -419,26 +457,26 @@
       "parameterI18n": {
         "": {
           "title": "Bufferer Parameters",
-          "description": "Configure how to create buffers around input geometries"
+          "description": "Configure the shape and extent of the buffer created around each geometry."
         },
         "bufferType": {
           "title": "Buffer Type",
-          "description": "The type of buffer to create around the input geometry"
+          "description": "Shape of buffer to create around the input geometry."
         },
         "distance": {
           "title": "Distance",
-          "description": "The distance to extend the buffer from the original geometry (in coordinate units)"
+          "description": "How far the buffer extends from the original geometry, in the units of the geometry's coordinate system. A negative distance contracts it."
         },
         "interpolationAngle": {
           "title": "Interpolation Angle",
-          "description": "The angle in degrees used for curve interpolation when creating rounded corners"
+          "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value."
         }
       },
       "enumI18n": {
         "BufferType": {
           "area2d": {
             "title": "2D Area Buffer",
-            "description": "Creates a 2D polygon buffer around the input geometry"
+            "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried."
           }
         }
       }
@@ -622,6 +660,14 @@
           "description": "Output path or expression for the CSV/TSV file to create"
         }
       },
+      "definitionI18n": {
+        "GeometryExportConfig": {
+          "epsgColumn": {
+            "title": "EPSG Column Name",
+            "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one)."
+          }
+        }
+      },
       "enumI18n": {
         "CsvFormat": {
           "csv": {
@@ -786,14 +832,6 @@
           "title": "图集大小",
           "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 2048。"
         },
-        "attachTexture": {
-          "title": "附加纹理",
-          "description": "是否在生成的瓦片中包含纹理信息"
-        },
-        "compressOutput": {
-          "title": "压缩输出路径",
-          "description": "压缩归档输出的可选路径"
-        },
         "computeFlatNormal": {
           "title": "计算平面法线",
           "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。"
@@ -801,14 +839,6 @@
         "dracoCompression": {
           "title": "Draco 压缩",
           "description": "使用 Draco 压缩。默认为 true。"
-        },
-        "maxZoom": {
-          "title": "最大缩放级别",
-          "description": "瓦片生成的最大缩放级别（0-24）"
-        },
-        "minZoom": {
-          "title": "最小缩放级别",
-          "description": "瓦片生成的最小缩放级别（0-24）"
         },
         "output": {
           "title": "输出路径",
@@ -821,6 +851,10 @@
         "skipUnexposedAttributes": {
           "title": "跳过未公开属性",
           "description": "跳过带有双下划线前缀的属性"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "纹素大小",
@@ -934,6 +968,39 @@
         "mode": {
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1068,11 +1135,11 @@
       "parameterI18n": {
         "": {
           "title": "Elevation Extractor Parameters",
-          "description": "Configure where to store the extracted elevation value from geometry coordinates"
+          "description": "Configure where the extracted elevation is stored."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the extracted elevation value will be stored"
+          "description": "Attribute to store the elevation in."
         }
       }
     },
@@ -1098,11 +1165,11 @@
       "parameterI18n": {
         "": {
           "title": "Extruder Parameters",
-          "description": "Configure how to extrude 2D polygons into 3D solid geometries"
+          "description": "Configure how far each polygon is extruded."
         },
         "distance": {
           "title": "Distance",
-          "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+          "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature."
         }
       }
     },
@@ -1158,9 +1225,9 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        "flattenLeafAttributes": {
+          "title": "展平叶属性",
+          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
         },
         "flattenSingleChildObjects": {
           "title": "展平单子对象节点",
@@ -1292,6 +1359,10 @@
         "output": {
           "title": "Output",
           "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
+        },
+        "writeCrs": {
+          "title": "Write CRS",
+          "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
         }
       }
     },
@@ -1443,7 +1514,7 @@
         "Transform": {
           "expr": {
             "title": "Expression",
-            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
+            "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }
@@ -1506,7 +1577,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
+      "description": "将要素的几何体替换为其底面轮廓：面在水平面或自定义平面上投影并融合的结果",
+      "parameterI18n": {
+        "": {
+          "title": "Footprint Replacer 参数",
+          "description": "配置几何体投影到的平面。几何体必须处于欧几里得坐标系或以长度为单位的坐标参考系中；投影后面积小于 1e-6 平方单位的面会被丢弃。"
+        },
+        "projectionPlane": {
+          "title": "投影平面",
+          "description": "几何体投影到的平面。默认为水平面。"
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
@@ -1541,77 +1622,51 @@
         "output": {
           "title": "Output File",
           "description": "Output path or expression for the GeoJSON file to create"
+        },
+        "writeCrs": {
+          "title": "Write CRS",
+          "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
         }
       }
     },
     {
       "name": "GeoPackage Reader",
-      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据",
+      "description": "从GeoPackage（.gpkg）文件读取矢量要素，或该文件的空间参考系与扩展元数据。",
       "parameterI18n": {
         "": {
           "title": "GeoPackage Reader Parameters",
           "description": "Configures which content to read from the GeoPackage file and how geometries are produced."
         },
-        "attributeFilter": {},
-        "batchSize": {},
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "force2D": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)."
+          "description": "Drops the Z value from every geometry, producing 2D output."
         },
-        "includeMetadata": {},
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "layerName": {
           "title": "Layer Name",
-          "description": "Name of the layer to read. When omitted, the first available layer is used."
+          "description": "Name of the layer to read. When omitted, every feature layer in the file is read."
         },
         "readMode": {
           "title": "Read Mode",
           "description": "Which content to read from the GeoPackage file. Defaults to reading vector features."
-        },
-        "spatialFilter": {},
-        "tileFormat": {
-          "title": "Tile Format",
-          "description": "Image format to decode when reading raster tiles. Defaults to PNG."
         }
       },
       "enumI18n": {
         "GeoPackageReadMode": {
-          "all": {
-            "title": "All",
-            "description": "Reads both vector features and raster tiles."
-          },
           "features": {
             "title": "Features",
-            "description": "Reads vector features (geometry and attributes)."
+            "description": "Reads vector features, each carrying its geometry and attributes."
           },
           "metadataOnly": {
             "title": "Metadata Only",
-            "description": "Reads only the file's metadata, without features or tiles."
-          },
-          "tiles": {
-            "title": "Tiles",
-            "description": "Reads raster tiles."
-          }
-        },
-        "TileFormat": {
-          "jpeg": {
-            "title": "JPEG",
-            "description": "Decodes tiles as JPEG images."
-          },
-          "png": {
-            "title": "PNG",
-            "description": "Decodes tiles as PNG images."
-          },
-          "webp": {
-            "title": "WebP",
-            "description": "Decodes tiles as WebP images."
+            "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record."
           }
         }
       }
@@ -1695,7 +1750,24 @@
           "description": "Configuration for coercing geometries to specific target types."
         },
         "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
+          "title": "Target Type",
+          "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged."
+        }
+      },
+      "enumI18n": {
+        "CoercionTarget": {
+          "lineString": {
+            "title": "Line String",
+            "description": "Replaces every face with the polylines of its boundary rings, holes included."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from."
+          },
+          "triangularMesh": {
+            "title": "Triangular Mesh",
+            "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated."
+          }
         }
       }
     },
@@ -1705,11 +1777,11 @@
       "parameterI18n": {
         "": {
           "title": "Geometry Extractor Parameters",
-          "description": "Configure where to store the extracted geometry data as a compressed attribute"
+          "description": "Configure where the serialized geometry is stored."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON"
+          "description": "Attribute to store the compressed geometry in. Geometry Replacer reads the same representation back onto a feature."
         }
       }
     },
@@ -1729,17 +1801,18 @@
       "parameterI18n": {
         "": {
           "title": "Geometry Part Extractor Parameters",
-          "description": "Configure which geometry parts to extract from 3D geometries"
+          "description": "Configure which kind of part is pulled out of each geometry."
         },
         "geometryPartType": {
           "title": "Part Type",
-          "description": "Type of geometry part to extract"
+          "description": "Kind of part to extract from the geometry."
         }
       },
       "enumI18n": {
         "GeometryPartType": {
           "surface": {
-            "description": "Extract surfaces as separate features"
+            "title": "Surface",
+            "description": "Emits each surface of the geometry as a separate feature."
           }
         }
       }
@@ -1754,11 +1827,11 @@
       "parameterI18n": {
         "": {
           "title": "Geometry Replacer Parameters",
-          "description": "Configure which attribute contains the geometry data to replace the feature's current geometry"
+          "description": "Configure which attribute holds the geometry that replaces the feature's current geometry."
         },
         "sourceAttribute": {
           "title": "Source Attribute",
-          "description": "Name of the attribute containing the compressed geometry data to use as the new geometry"
+          "description": "Attribute holding the compressed geometry to apply, as written by Geometry Extractor. The attribute is removed once its geometry has been applied, and a feature that does not carry it passes through unchanged. A feature whose stored geometry cannot be decoded is sent to the rejected port."
         }
       }
     },
@@ -1767,21 +1840,12 @@
       "description": "根据类型分割几何",
       "parameterI18n": {
         "": {
-          "title": "GeometrySplitterParam",
-          "description": "Parameters for GeometrySplitter"
+          "title": "Geometry Splitter Parameters",
+          "description": "Configure how multi-part geometries are split into individual features."
         },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attribute key to group split members by. Members sharing the same value for this attribute are kept together in a single output feature instead of being split into separate ones; members lacking the attribute are still emitted individually."
         }
       }
     },
@@ -1791,7 +1855,7 @@
       "parameterI18n": {
         "": {
           "title": "Geometry Validator Parameters",
-          "description": "Configure which validation checks to perform on feature geometries"
+          "description": "Configure which validation checks to perform on feature geometries."
         },
         "degenerateThresholds": {
           "title": "Degeneracy Thresholds",
@@ -1799,7 +1863,7 @@
         },
         "disabledOptionalChecks": {
           "title": "Disabled Optional Checks",
-          "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend."
+          "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs."
         },
         "duplicateTolerance": {
           "title": "Duplicate Point Tolerance",
@@ -1807,29 +1871,43 @@
         },
         "planarityThreshold": {
           "title": "Planarity Threshold",
-          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "Validation Types",
-          "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
+          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only)."
         }
       },
       "definitionI18n": {
         "DegenerateThresholds": {
           "minArea": {
-            "description": "Minimum area of a 2D geometry (face / ring)."
+            "title": "Minimum Area",
+            "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged."
           },
           "minLength": {
-            "description": "Minimum length of a 1D geometry (line / ring edge)."
+            "title": "Minimum Length",
+            "description": "Shortest length a 1D geometry (line or ring edge) may have before it is flagged."
           },
           "minVolume": {
-            "description": "Minimum volume of a 3D geometry (solid)."
+            "title": "Minimum Volume",
+            "description": "Smallest volume a 3D geometry (solid) may have before it is flagged."
           }
         }
       },
       "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
+        "OptionalCheck": {
+          "duplicatePoints": {
+            "title": "Duplicate Points",
+            "description": "Detection of coordinates that repeat within the geometry."
+          },
+          "orientable": {
+            "title": "Orientable",
+            "description": "Detection of surfaces whose faces cannot be given a consistent orientation."
+          },
+          "orientation": {
+            "title": "Orientation",
+            "description": "Detection of rings wound in the wrong direction."
+          },
+          "shellOrientation": {
+            "title": "Shell Orientation",
+            "description": "Detection of solid shells whose faces point the wrong way."
+          }
         }
       }
     },
@@ -1842,19 +1920,20 @@
       "description": "将多边形划分为规则网格单元",
       "parameterI18n": {
         "": {
-          "title": "GridDivider Parameters"
+          "title": "Grid Divider Parameters",
+          "description": "Configure the size of the grid cells and how features are grouped onto a shared grid."
+        },
+        "cellSize": {
+          "title": "Cell Size",
+          "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero."
+        },
+        "completeCellsOnly": {
+          "title": "Complete Cells Only",
+          "description": "Whether to emit only cells that are whole, discarding the partial cells left where the grid meets the edge of a geometry. Defaults to false."
         },
         "groupBy": {
           "title": "Group By Attributes",
-          "description": "Attributes used to group features - each group gets its own grid origin"
-        },
-        "keepSquareOnly": {
-          "title": "Keep Square Only",
-          "description": "If true, only output complete grid squares (discard edge pieces). Default: false"
-        },
-        "unitSquareSize": {
-          "title": "Unit Square Size",
-          "description": "Side length of each grid cell (in the same units as the geometry coordinates)"
+          "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds."
         }
       }
     },
@@ -2206,15 +2285,15 @@
       "parameterI18n": {
         "": {
           "title": "Horizontal Reprojector Parameters",
-          "description": "Configure the source and target coordinate systems for geometry reprojection"
+          "description": "Configure the source and target coordinate systems for geometry reprojection."
         },
         "sourceEpsgCode": {
           "title": "Source EPSG Code",
-          "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes."
+          "description": "EPSG code to reproject from, as a constant or an expression. Defaults to the EPSG code carried on the geometry, so setting it is only necessary when the geometry has none or carries the wrong one."
         },
         "targetEpsgCode": {
           "title": "Target EPSG Code",
-          "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes."
+          "description": "EPSG code to reproject into, as a constant such as \"4326\" or an expression referencing feature attributes."
         }
       }
     },
@@ -2224,26 +2303,35 @@
       "parameterI18n": {
         "": {
           "title": "Image Rasterizer Parameters",
-          "description": "Configure how to convert vector geometries to raster images"
+          "description": "Configure the size of the rendered image, where it is written, and how overlapping geometries are resolved."
         },
         "imageWidth": {
-          "description": "The width of image"
+          "title": "Image Width",
+          "description": "Width of the output image in pixels. The height follows from the extent of the input geometries, preserving their aspect ratio."
         },
         "onOverlap": {
           "title": "On Overlap",
-          "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel."
+          "description": "How to colour a pixel covered by more than one geometry. When omitted, overlapping geometries are drawn in the order they arrive."
         },
         "saveTo": {
           "title": "Save To",
-          "description": "Optional path expression to save the generated image. If not provided, uses default cache directory."
+          "description": "Path to write the generated image to. When omitted, the image is written to the cache directory."
         }
       },
       "enumI18n": {
         "OnOverlap": {
           "sum": {
-            "description": "Saturating-add RGB channels of all overlapping polygons."
+            "title": "Sum",
+            "description": "Adds the RGB channels of every overlapping polygon, saturating at full intensity."
           },
-          "takeLast": {}
+          "takeFirst": {
+            "title": "Take First",
+            "description": "Keeps the colour of the first polygon drawn over the pixel."
+          },
+          "takeLast": {
+            "title": "Take Last",
+            "description": "Keeps the colour of the last polygon drawn over the pixel."
+          }
         }
       }
     },
@@ -2313,7 +2401,7 @@
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表",
+      "description": "在相交处分割线，并将每个交点转换为携带相交各线合并属性的点实体。输入必须是不带高程的平面2D几何且共享同一坐标框架，请在上游放置Two Dimension Forcer或Coordinate Frame Reprojector进行展平或统一",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer Parameters",
@@ -2590,13 +2678,9 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "includeNormals": {
-          "title": "Include Normals",
-          "description": "Include vertex normal data in the output geometry"
-        },
         "includeTexcoords": {
           "title": "Include Texture Coordinates",
-          "description": "Include texture coordinate (UV) data in the output geometry"
+          "description": "Includes texture coordinate (UV) data in the output geometry."
         },
         "inline": {
           "title": "Inline Content",
@@ -2608,15 +2692,15 @@
         },
         "mergeGroups": {
           "title": "Merge Groups",
-          "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object"
+          "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object."
         },
         "parseMaterials": {
           "title": "Parse Materials",
-          "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file"
+          "description": "Parses material definitions from MTL files referenced in the OBJ file."
         },
         "triangulate": {
           "title": "Triangulate",
-          "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
+          "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation."
         }
       }
     },
@@ -3268,60 +3352,75 @@
       "description": "计算射线与几何体之间的交点",
       "parameterI18n": {
         "": {
-          "title": "RayIntersectorParams",
-          "description": "RayIntersector Parameters"
+          "title": "Ray Intersector Parameters",
+          "description": "Configure how rays and geometries are paired and how intersection results are output."
         },
         "closestIntersectionOnly": {
-          "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points."
+          "title": "Closest Intersection Only",
+          "description": "Whether to keep only the nearest hit per ray rather than every hit along it. Defaults to true."
         },
         "geomId": {
-          "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit."
+          "title": "Geometry ID",
+          "description": "Expression evaluated on each geometry feature to label it. When set, every intersection carries a `geom_id` attribute naming the geometry it hit."
         },
         "includeRayOrigin": {
-          "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance."
+          "title": "Include Ray Origin",
+          "description": "Whether an intersection at the ray's own origin counts as a hit. When false, intersections nearer than the tolerance are discarded. Defaults to true."
         },
         "outputGeometryType": {
-          "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point"
+          "title": "Output Geometry Type",
+          "description": "Geometry to emit for each intersection."
         },
         "pairId": {
-          "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other."
+          "title": "Pair ID",
+          "description": "Expression producing the key that pairs rays with geometries, so that only rays and geometries whose keys match are tested against each other. Omit it to test every ray against every geometry."
         },
         "ray": {
-          "description": "Defines how to extract ray data from feature attributes"
+          "title": "Ray",
+          "description": "Attributes on the ray features that hold the ray's origin and direction."
         },
         "tolerance": {
-          "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used."
+          "title": "Tolerance",
+          "description": "Distance below which an intersection is treated as coincident with the ray's origin. Defaults to 1e-10."
         }
       },
       "definitionI18n": {
         "RayDefinition": {
           "dirX": {
-            "description": "Attribute containing ray direction X component"
+            "title": "Direction X Attribute",
+            "description": "Attribute holding the X component of the ray's direction."
           },
           "dirY": {
-            "description": "Attribute containing ray direction Y component"
+            "title": "Direction Y Attribute",
+            "description": "Attribute holding the Y component of the ray's direction."
           },
           "dirZ": {
-            "description": "Attribute containing ray direction Z component"
+            "title": "Direction Z Attribute",
+            "description": "Attribute holding the Z component of the ray's direction."
           },
           "posX": {
-            "description": "Attribute containing ray origin X coordinate"
+            "title": "Origin X Attribute",
+            "description": "Attribute holding the X coordinate of the ray's origin."
           },
           "posY": {
-            "description": "Attribute containing ray origin Y coordinate"
+            "title": "Origin Y Attribute",
+            "description": "Attribute holding the Y coordinate of the ray's origin."
           },
           "posZ": {
-            "description": "Attribute containing ray origin Z coordinate"
+            "title": "Origin Z Attribute",
+            "description": "Attribute holding the Z coordinate of the ray's origin."
           }
         }
       },
       "enumI18n": {
         "OutputGeometryType": {
           "lineSegmentToIntersection": {
-            "description": "Output a line segment from ray origin to intersection point"
+            "title": "Line Segment to Intersection",
+            "description": "Emits a line running from the ray's origin to the intersection point."
           },
           "pointOfIntersection": {
-            "description": "Output a point at the intersection location (default behavior)"
+            "title": "Point of Intersection",
+            "description": "Emits a point at the location where the ray meets the geometry."
           }
         }
       }
@@ -3380,7 +3479,7 @@
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported)."
+          "description": "DBF 文件中属性数据的字符编码，例如 \"UTF-8\"、\"Shift-JIS\" 或 \"Windows-1252\"；标签不区分大小写。省略时，优先使用 .cpg 文件，其次使用 .dbf 头部声明的代码页，否则使用 UTF-8（不支持 UTF-16）。"
         },
         "force2D": {
           "title": "Force 2D",
@@ -3399,6 +3498,10 @@
         "": {
           "title": "ShapefileWriter Parameters",
           "description": "Configuration for writing features to ESRI Shapefile format."
+        },
+        "compressOutput": {
+          "title": "Compressed Output Directory",
+          "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files."
         },
         "groupBy": {
           "title": "Group By",
@@ -3586,16 +3689,16 @@
       "description": "通过添加Z坐标（高程）将2D几何体转换为3D",
       "parameterI18n": {
         "": {
-          "title": "ThreeDimensionForcer Parameters",
-          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
+          "title": "Three Dimension Forcer Parameters",
+          "description": "Configure the elevation applied to 2D geometry and how existing Z values are treated."
         },
         "elevation": {
           "title": "Elevation",
-          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
+          "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0."
         },
         "preserveExistingZ": {
           "title": "Preserve Existing Z Values",
-          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
+          "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation."
         }
       }
     },
@@ -3669,11 +3772,19 @@
       "parameterI18n": {
         "": {
           "title": "Vertical Reprojector Parameters",
-          "description": "Configure the type of vertical datum conversion to apply"
+          "description": "Configure which vertical datum conversion to apply."
         },
         "reprojectorType": {
           "title": "Reprojector Type",
-          "description": "The type of vertical coordinate transformation to apply"
+          "description": "Vertical datum conversion applied to each geometry's Z coordinate."
+        }
+      },
+      "enumI18n": {
+        "VerticalReprojectorType": {
+          "jgd2011ToWgs84": {
+            "title": "JGD2011 to WGS 84",
+            "description": "Converts JGD2011 orthometric heights to WGS 84 ellipsoidal heights using the Japanese geoid model."
+          }
         }
       }
     },
@@ -3768,15 +3879,23 @@
       "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元",
       "parameterI18n": {
         "": {
-          "title": "glTF ReaderParam"
+          "title": "glTF Reader Parameters"
         },
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
+        "featureClassAttribute": {
+          "title": "要素类别属性",
+          "description": "用于存储每个拆分要素的 EXT_structural_metadata 类别名称的属性键。若未设置，则不会将类别名称添加为属性"
+        },
+        "featureGranularity": {
+          "title": "要素粒度",
+          "description": "指定每个输出要素代表什么。默认值 `mesh` 会为每个 glTF 网格输出一个要素。`featureId` 会将每个网格按照 EXT_mesh_features 的要素 ID 拆分为多个要素，并附加该对象的 EXT_structural_metadata 属性；不包含 EXT_mesh_features 的文件仍然会为每个网格输出一个要素。"
+        },
         "includeNodes": {
           "title": "Include Nodes",
-          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+          "description": "Includes node hierarchy information from the glTF scene graph in feature attributes."
         },
         "inline": {
           "title": "Inline Content",
@@ -3784,11 +3903,17 @@
         },
         "mergeMeshes": {
           "title": "Merge Meshes",
-          "description": "If true, combines all meshes from the glTF file into a single output feature"
-        },
-        "triangulate": {
-          "title": "Triangulate",
-          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+          "description": "Combines all meshes from the glTF file into a single output feature."
+        }
+      },
+      "enumI18n": {
+        "FeatureGranularity": {
+          "featureId": {
+            "description": "按照 `EXT_mesh_features` 的每个要素 ID 输出一个要素，每个要素携带该对象的 `EXT_structural_metadata` 属性。不包含 `EXT_mesh_features` 的文件仍然会为每个网格输出一个要素。"
+          },
+          "mesh": {
+            "description": "每个 glTF 网格(或每个节点实例)对应一个要素。结构化元数据属性不会显示，因为它们是按对象而非按网格划分的。"
+          }
         }
       }
     },

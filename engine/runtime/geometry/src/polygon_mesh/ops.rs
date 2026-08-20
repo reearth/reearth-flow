@@ -553,7 +553,49 @@ impl PolygonMesh2D {
     }
 }
 
-use crate::ops::RemoveAppearance;
+use crate::ops::{
+    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+};
+
+// `interior_offsets` already spans every face, so the mesh-wide count is its
+// length — no per-face walk, and no risk of counting a ring twice.
+impl CountHoles for PolygonMesh2D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+impl CountHoles for PolygonMesh3D {
+    fn count_holes(&self) -> usize {
+        self.data().num_holes()
+    }
+}
+
+// A mesh is an aggregate of faces, so it deaggregates: every face contributes its
+// own outer shell, and its holes come out alongside.
+impl ExtractHoles for PolygonMesh2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        self.for_each_face_polygon(|face| {
+            emit_face_2d(&face, emit);
+        });
+        Ok(())
+    }
+}
+
+impl ExtractHoles for PolygonMesh3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        self.for_each_face_polygon(|face| {
+            emit_face_3d(&face, emit);
+        });
+        Ok(())
+    }
+}
 
 impl RemoveAppearance for PolygonMesh2D {
     fn remove_appearance(&mut self) {
@@ -564,6 +606,100 @@ impl RemoveAppearance for PolygonMesh2D {
 impl RemoveAppearance for PolygonMesh3D {
     fn remove_appearance(&mut self) {
         *self.appearance_mut() = None;
+    }
+}
+
+use crate::ops::coerce::{push_face_lines_2d, push_face_lines_3d, unchanged, wrap_2d, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for PolygonMesh2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_face_polygon(|face| {
+                    faces.push(Euclidean2DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_2d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_face_polygon(|face| push_face_lines_2d(&face, &mut lines));
+                wrap_2d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for PolygonMesh3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_face_polygon(|face| {
+                    faces.push(Euclidean3DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_3d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_face_polygon(|face| push_face_lines_3d(&face, &mut lines));
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for PolygonMesh2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        super::faces::for_each_face_coords(
+            self.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings| sink.push_face_2d(rings.iter().map(Vec::as_slice), self.elevation()),
+        );
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for PolygonMesh3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        self.data().footprint_faces(sink);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh3DData {
+    /// Push every face into an entered `sink`.
+    pub(crate) fn footprint_faces(&self, sink: &mut FootprintSink<'_>) {
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        super::faces::for_each_face_coords(
+            self.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings| sink.push_face_3d(rings.iter().map(Vec::as_slice)),
+        );
     }
 }
 

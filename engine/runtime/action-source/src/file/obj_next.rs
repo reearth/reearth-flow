@@ -90,7 +90,7 @@ async fn load_materials(
 
     if let Some(ref material_file) = params.material_file {
         let external_mtl = material_file
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
                 SourceError::ObjReader(format!("Failed to evaluate material_file: {e:?}"))
             })?;
@@ -195,7 +195,7 @@ fn face_uv(
     face: &Face,
     params: &ObjReaderCompiledParam,
 ) -> Option<Box<[[f64; 2]]>> {
-    if !params._include_texcoords {
+    if !params.include_texcoords {
         return None;
     }
     let mut uv = Vec::with_capacity(face.vertices.len());
@@ -340,8 +340,7 @@ fn test_params() -> ObjReaderCompiledParam {
         material_file: None,
         triangulate: false,
         merge_groups: false,
-        _include_normals: true,
-        _include_texcoords: true,
+        include_texcoords: true,
         common: FileReaderCompiledParam {
             dataset: None,
             inline: None,

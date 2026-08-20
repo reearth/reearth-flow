@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.467"
+version = "0.0.493"
 
 [profile.dev]
 opt-level = 0
@@ -56,6 +56,7 @@ reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-atlas = { path = "runtime/atlas" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-expr = { path = "runtime/expr" }
+reearth-flow-feature-view = { path = "runtime/feature-view" }
 reearth-flow-geometry = { path = "runtime/geometry" }
 reearth-flow-gltf = { path = "runtime/gltf" }
 reearth-flow-macros = { path = "runtime/macros" }
@@ -67,7 +68,8 @@ reearth-flow-state = { path = "runtime/state" }
 reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
-reearth-flow-worker = { path = "worker" }
+# Keeps `reearth-flow-tests` off the worker's `new-geometry` default.
+reearth-flow-worker = { path = "worker", default-features = false }
 
 nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = [
   "serde",
@@ -128,6 +130,8 @@ gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238
   "EXT_texture_webp",
   "extensions",
   "extras",
+  "KHR_texture_transform",
+  "KHR_materials_emissive_strength",
 ] }
 hashbrown = { version = "0.16.1", features = ["serde"] }
 hex = "0.4.3"

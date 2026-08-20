@@ -307,7 +307,7 @@ impl Processor for CoordinateFrameReprojector {
                 let feature = ctx.feature.clone();
                 if ctx.port != *BASE_POINT_PORT {
                     let base_point = code
-                        .eval(&ctx.feature, ctx.env_vars.clone())
+                        .eval(&ctx.feature, ctx.variables.clone())
                         .ok()
                         .as_ref()
                         .and_then(attribute_value_to_xyz);
@@ -328,7 +328,7 @@ impl Processor for CoordinateFrameReprojector {
             BasePointSource::FromPort { key } => {
                 let feature = &ctx.feature;
                 let matched_key = key
-                    .eval(feature, ctx.env_vars.clone())
+                    .eval(feature, ctx.variables.clone())
                     .ok()
                     .map(|v| v.to_string());
                 if ctx.port == *BASE_POINT_PORT {
@@ -405,7 +405,7 @@ fn representative_point(geometry: &Geometry) -> Option<[f64; 3]> {
 
 /// Parse an attribute value into an `[x, y, z]` triple. Accepts a two- or
 /// three-element numeric array; a two-element array is placed at `z = 0`.
-fn attribute_value_to_xyz(
+pub(crate) fn attribute_value_to_xyz(
     value: &reearth_flow_common::attribute::AttributeValue,
 ) -> Option<[f64; 3]> {
     use reearth_flow_common::attribute::AttributeValue;
