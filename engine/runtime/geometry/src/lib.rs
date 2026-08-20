@@ -59,9 +59,9 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractHoles,
-    ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance, Reproject,
-    ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
+    Aabb, Boundary, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractBoundary,
+    ExtractHoles, ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
+    Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -190,7 +190,8 @@ impl GeometryCollection {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        ExtractBoundary
     )
 )]
 #[cfg_attr(
@@ -208,6 +209,7 @@ impl GeometryCollection {
         RemoveAppearance,
         CountHoles,
         ExtractHoles,
+        ExtractBoundary,
         Footprint,
         Area
     )
@@ -248,7 +250,8 @@ pub enum Euclidean2DGeometry {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        ExtractBoundary
     )
 )]
 #[cfg_attr(
@@ -266,6 +269,7 @@ pub enum Euclidean2DGeometry {
         RemoveAppearance,
         CountHoles,
         ExtractHoles,
+        ExtractBoundary,
         Footprint,
         Area
     )
@@ -591,6 +595,37 @@ impl ExtractHoles for GeometryCollection {
             }
         }
         Ok(())
+    }
+}
+
+impl ExtractBoundary for Geometry {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no extent, so there is nothing to bound —
+            // which is not the same as being bounded by nothing.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "extract_boundary",
+            }),
+            Geometry::Euclidean2D(g) => g.extract_boundary(),
+            Geometry::Euclidean3D(g) => g.extract_boundary(),
+            Geometry::GeometryCollection(c) => c.extract_boundary(),
+        }
+    }
+}
+
+impl ExtractBoundary for GeometryCollection {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        ops::container_boundary(&self.members, &self.attrs, Some, |members, mut attrs| {
+            if members.is_empty() {
+                return Geometry::None;
+            }
+            if attrs.len() != members.len() {
+                attrs.clear();
+            }
+            Geometry::GeometryCollection(GeometryCollection { members, attrs })
+        })
+        .ok_or_else(ops::boundary::unsupported::<Self>)
     }
 }
 

@@ -740,6 +740,48 @@ impl Area for PolygonMesh3D {
     }
 }
 
+use crate::ops::boundary::{Boundary, ExtractBoundary};
+use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+
+fn csr_boundary_edges(
+    face_indices: &IndexBuffer<1>,
+    face_offsets: &IndexBuffer<1>,
+    interior_offsets: &IndexBuffer<1>,
+) -> BoundaryEdges {
+    let mut edges = BoundaryEdges::new();
+    super::faces::for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
+        edges.add_ring(ring)
+    });
+    edges
+}
+
+// A hole ring no neighbouring face fills is walked once, like any outer edge, so
+// it bounds the surface too.
+impl ExtractBoundary for PolygonMesh2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        Ok(surface_boundary_2d(
+            self.frame(),
+            self.vertices(),
+            self.elevation(),
+            csr_boundary_edges(face_indices, face_offsets, interior_offsets),
+        )
+        .into())
+    }
+}
+
+impl ExtractBoundary for PolygonMesh3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let (face_indices, face_offsets, interior_offsets) = self.data().csr_buffers();
+        Ok(surface_boundary_3d(
+            self.frame(),
+            self.vertices(),
+            csr_boundary_edges(face_indices, face_offsets, interior_offsets),
+        )
+        .into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -60,3 +60,7 @@ crate::unsupported!(Csg: Split);
 
 // The tree is unevaluated, so it has no boundary of its own to re-represent.
 crate::unsupported!(Csg: Coerce);
+
+// The tree is unevaluated, so the surface it would bound does not exist yet and
+// its operands' shells are not it.
+crate::unsupported!(Csg: ExtractBoundary);

@@ -11,6 +11,8 @@
 
 #[cfg(feature = "new-geometry")]
 pub mod area;
+
+pub mod boundary;
 pub mod coerce;
 #[cfg(feature = "new-geometry")]
 pub mod footprint;
@@ -21,6 +23,11 @@ pub mod triangulation;
 
 #[cfg(feature = "new-geometry")]
 pub use area::{area_report, Area, AreaFrame, AreaReport};
+
+pub(crate) use boundary::{
+    container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
+};
+pub use boundary::{Boundary, ExtractBoundary};
 pub use coerce::{Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
