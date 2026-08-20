@@ -403,19 +403,7 @@
     },
     {
       "name": "Boundary Extractor",
-      "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
-      "parameterI18n": {
-        "": {
-          "title": "Boundary Extractor Parameters",
-          "description": "Configuration for extracting boundaries from geometries."
-        },
-        "exteriorOnly": {
-          "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)"
-        },
-        "keepEmptyBoundaries": {
-          "description": "Whether to keep features with empty boundaries (default: false)"
-        }
-      }
+      "description": "将几何替换为其边界：曲线为其两个端点，曲面为其边界环，实体为其边界壳。"
     },
     {
       "name": "Bounds Extractor",

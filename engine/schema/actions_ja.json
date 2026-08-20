@@ -1061,36 +1061,24 @@
     {
       "name": "Boundary Extractor",
       "type": "processor",
-      "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Boundary Extractor パラメータ",
-        "description": "ジオメトリから境界を抽出する設定",
-        "type": "object",
-        "properties": {
-          "keepEmptyBoundaries": {
-            "description": "境界が空のフィーチャーを保持するか（デフォルト: false）",
-            "default": false,
-            "type": "boolean"
-          },
-          "exteriorOnly": {
-            "description": "ポリゴンの外周境界のみ抽出するか（穴を無視）（デフォルト: false）",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
+      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる。",
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "boundary",
+        "no-boundary",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d",
+        "spatial"
+      ]
     },
     {
       "name": "Bounds Extractor",

@@ -1036,32 +1036,15 @@ Moves values between nested map/list attribute paths, following a table of sourc
 ### Type
 * processor
 ### Description
-Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry
+Replaces a geometry with its boundary: the endpoints of a curve, the boundary rings of a surface, and the bounding shells of a volume.
 ### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Boundary Extractor Parameters",
-  "description": "Configuration for extracting boundaries from geometries.",
-  "type": "object",
-  "properties": {
-    "keepEmptyBoundaries": {
-      "description": "Whether to keep features with empty boundaries (default: false)",
-      "default": false,
-      "type": "boolean"
-    },
-    "exteriorOnly": {
-      "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
-      "default": false,
-      "type": "boolean"
-    }
-  }
-}
-```
+* No parameters
 ### Input Ports
 * features
 ### Output Ports
-* features
+* boundary
+* no-boundary
+* rejected
 ### Category
 * Geometry
 

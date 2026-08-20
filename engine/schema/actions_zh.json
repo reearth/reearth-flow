@@ -1061,36 +1061,24 @@
     {
       "name": "Boundary Extractor",
       "type": "processor",
-      "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Boundary Extractor Parameters",
-        "description": "Configuration for extracting boundaries from geometries.",
-        "type": "object",
-        "properties": {
-          "keepEmptyBoundaries": {
-            "description": "Whether to keep features with empty boundaries (default: false)",
-            "default": false,
-            "type": "boolean"
-          },
-          "exteriorOnly": {
-            "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
+      "description": "将几何替换为其边界：曲线为其两个端点，曲面为其边界环，实体为其边界壳。",
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "boundary",
+        "no-boundary",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d",
+        "spatial"
+      ]
     },
     {
       "name": "Bounds Extractor",
