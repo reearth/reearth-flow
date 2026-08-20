@@ -2496,6 +2496,10 @@
           "title": "Layer Name",
           "description": "Name of the layer within the MVT tiles"
         },
+        "maxTileBytes": {
+          "title": "Maximum Tile Size",
+          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+        },
         "maxZoom": {
           "title": "Maximum Zoom",
           "description": "Maximum zoom level to generate tiles for"

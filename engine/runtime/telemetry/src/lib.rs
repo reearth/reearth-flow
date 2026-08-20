@@ -6,11 +6,17 @@ use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::{MetricExporter, WithExportConfig};
 use opentelemetry_sdk::{
     metrics::{PeriodicReader, SdkMeterProvider},
-    trace::Tracer,
+    trace::{SdkTracerProvider, Tracer},
 };
 
-static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> =
-    Lazy::new(|| Mutex::new(env::var("OTEL_COLLECTOR_ENDPOINT").ok()));
+// Empty/whitespace treated as unset — deployment templating commonly leaves this env var as an empty string.
+static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> = Lazy::new(|| {
+    Mutex::new(
+        env::var("OTEL_COLLECTOR_ENDPOINT")
+            .ok()
+            .filter(|v| !v.trim().is_empty()),
+    )
+});
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -23,6 +29,7 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// Caller MUST call `shutdown()` on the returned provider before exit; dropping it (or `std::process::exit`) discards unflushed metrics.
 pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     let metrics = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => {
@@ -65,8 +72,9 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     Ok(metrics)
 }
 
-pub fn init_tracing(service_name: String) -> Result<Tracer> {
-    let tracer = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
+/// The `Tracer` alone can't shut down the exporter — caller MUST keep the provider alive and call `shutdown()` on it before exit, or buffered spans are lost.
+pub fn init_tracing(service_name: String) -> Result<(Tracer, SdkTracerProvider)> {
+    let tracer_provider = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_sdk::trace::SdkTracerProvider::builder()
             .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
             .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
@@ -102,5 +110,6 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
             )
             .build(),
     };
-    Ok(tracer.tracer(service_name.clone()))
+    let tracer = tracer_provider.tracer(service_name);
+    Ok((tracer, tracer_provider))
 }
