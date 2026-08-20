@@ -53,27 +53,6 @@ func (r *RedisStorage) tracedSet(ctx context.Context, key string, value interfac
 	return nil
 }
 
-func (r *RedisStorage) tracedLPush(ctx context.Context, key string, values ...interface{}) error {
-	ctx, span := r.tracer.Start(ctx, "redis.LPUSH",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("db.system", "redis"),
-			attribute.String("db.operation", "LPUSH"),
-			attribute.String("db.redis.key", key),
-			attribute.Int("db.redis.values_count", len(values)),
-		),
-	)
-	defer span.End()
-
-	if err := r.client.LPush(ctx, key, values...).Err(); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		span.RecordError(err)
-		return err
-	}
-	span.SetStatus(codes.Ok, "")
-	return nil
-}
-
 func (r *RedisStorage) tracedExpire(ctx context.Context, key string, expiration time.Duration) error {
 	ctx, span := r.tracer.Start(ctx, "redis.EXPIRE",
 		trace.WithSpanKind(trace.SpanKindClient),
