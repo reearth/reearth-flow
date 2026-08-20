@@ -18,6 +18,7 @@ func UsecaseMiddleware(r *repo.Container, g *gateway.Container, permissionChecke
 
 		uc := interactor.NewContainer(repos, g, permissionChecker, GQLClient, sharedJob, config)
 		ctx = adapter.AttachUsecases(ctx, &uc)
+		ctx = adapter.AttachPermissionVerdictMemo(ctx)
 		return ctx
 	})
 }
