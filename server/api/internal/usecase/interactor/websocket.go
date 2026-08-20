@@ -26,12 +26,10 @@ func NewWebsocket(client interfaces.WebsocketClient, projectRepo repo.Project, p
 	}
 }
 
-// authorize checks action against the project's owning workspace. projectID is
-// the project the document belongs to. Fails closed at every step.
+// authorize checks action against the project's owning workspace. Fails closed.
 //
-// ResourceProject, not ResourceProjectDocument: Cerbos denies actions on
-// resources absent from its policy store, and projectDocument was never
-// published there. TODO(reearth/reearth-flow#2360): move back once it is.
+// ResourceProject, not ResourceProjectDocument: Cerbos denies actions on resources
+// absent from its policy store, and projectDocument is not published there.
 func (i *Websocket) authorize(ctx context.Context, projectID string, action string) error {
 	pid, err := id.ProjectIDFrom(projectID)
 	if err != nil {
@@ -87,6 +85,15 @@ func (i *Websocket) SaveNamedSnapshot(ctx context.Context, docID, label string) 
 		return nil, err
 	}
 	return i.client.SaveNamedSnapshot(ctx, docID, label)
+}
+
+// GetSnapshotState reads one snapshot's state. ActionAny, not ActionEdit: read-only,
+// so restore's write is gated by the collaborative document path, not by this.
+func (i *Websocket) GetSnapshotState(ctx context.Context, docID string, snapshotNumber int) (*ws.SnapshotState, error) {
+	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+	return i.client.GetSnapshotState(ctx, docID, snapshotNumber)
 }
 
 // Rollback prunes every update above the target clock.

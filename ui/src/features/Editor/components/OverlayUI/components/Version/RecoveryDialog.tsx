@@ -2,55 +2,82 @@ import { XIcon } from "@phosphor-icons/react";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
-import { Button, LoadingSkeleton, LoadingSplashscreen } from "@flow/components";
+import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 
-import { VersionConfirmationDialog, VersionHistoryList } from "./components";
+import {
+  RecoveryVersionHistoryList,
+  VersionConfirmationDialog,
+} from "./components";
 import VersionEditorComponent from "./components/VersionEditorComponent";
-import useHooks from "./hooks";
+import useRecoveryHooks from "./recoveryHooks";
 
 type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
   onDialogClose: () => void;
+  onErrorReset?: () => void;
 };
 
-// Normal mode: user-meaningful named versions, with preview on select and
-// restore. Both are addressed by snapshotNumber through projectNamedSnapshot;
-// see ./hooks.ts for why that must never be confused with the update-log clock.
-//
-// The project-corruption recovery flow is a separate component working off the
-// raw update log: ./RecoveryDialog.tsx.
-const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
+// Recovery mode: the project-corruption error boundary
+// (workspaces.$workspaceId_.projects_.$projectId.lazy.tsx) renders this,
+// not the normal read-only Version panel (./index.tsx), when the project
+// will not open at all. It needs "get me back to any working state", so
+// it stays on the raw update log end to end (history/preview/rollback all
+// keyed on the same update-log `version`) rather than the snapshot list.
+// This is a restoration of the dialog's pre-snapshot-history behaviour,
+// kept as close to that original code as possible; do not repoint it at
+// NamedSnapshot data (see ./hooks.ts and ./recoveryHooks.ts for why those
+// two ID spaces are not interchangeable).
+const ProjectRecoveryDialog: React.FC<Props> = ({
+  project,
+  yDoc,
+  onDialogClose,
+  onErrorReset,
+}) => {
   const t = useT();
+  // No useEditorContext here: this dialog renders from the route's
+  // errorComponent, which replaces the whole route subtree, so it is mounted
+  // OUTSIDE any EditorProvider and the hook would throw on open. isLocked is
+  // meaningless in this flow anyway, since a project that will not open cannot
+  // be usefully edit-locked.
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
-    snapshots,
+    history,
     latestProjectSnapshotVersion,
-    isFetching,
-    isError,
+    previewDocRef,
     previewDocYWorkflows,
-    selectedSnapshotNumber,
+    selectedProjectSnapshotVersion,
+    isFetching,
     isLoadingPreview,
-    isRestoring,
+    isReverting,
+    isCorruptedVersion,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
-    onSnapshotSelect,
-    onSnapshotRestore,
-    destroyPreview,
-  } = useHooks({
-    projectId: project?.id ?? "",
-    yDoc,
-    onDialogClose,
-  });
+    onProjectRollback,
+    onVersionSelection,
+    onWorkflowCorruption,
+  } = useRecoveryHooks({ projectId: project?.id ?? "", yDoc, onDialogClose });
 
   const handleDialogClose = useCallback(() => {
-    destroyPreview();
+    previewDocRef.current?.destroy();
+    previewDocRef.current = null;
     setAnimate(false);
     onDialogClose();
-  }, [destroyPreview, onDialogClose]);
+  }, [previewDocRef, onDialogClose]);
+
+  const handleProjectRollback = useCallback(async () => {
+    try {
+      await onProjectRollback();
+      if (onErrorReset) {
+        onErrorReset();
+      }
+    } catch (error) {
+      console.error("Rollback failed:", error);
+    }
+  }, [onProjectRollback, onErrorReset]);
 
   useEffect(() => {
     setAnimate(true);
@@ -76,7 +103,11 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [handleDialogClose, openVersionConfirmationDialog]);
+  }, [
+    handleDialogClose,
+    openVersionConfirmationDialog,
+    selectedProjectSnapshotVersion,
+  ]);
 
   return (
     <div
@@ -88,13 +119,11 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
         className={`relative flex h-[90vh] w-[90vw] flex-col overflow-hidden rounded-lg bg-card shadow-lg transition-all duration-170 ease-in-out  ${animate ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}>
         <div className="flex items-center justify-between p-6">
           <h2 className="rounded-t-lg text-xl leading-none tracking-tight dark:font-thin">
-            {selectedSnapshotNumber !== null
-              ? t("Viewing Snapshot: {{snapshotNumber}}", {
-                  snapshotNumber: selectedSnapshotNumber,
-                })
-              : t("Viewing Version: {{version}}", {
-                  version: latestProjectSnapshotVersion?.version,
-                })}
+            {t("Viewing Version: {{version}}", {
+              version:
+                selectedProjectSnapshotVersion ??
+                latestProjectSnapshotVersion?.version,
+            })}
           </h2>
           <Button
             variant={"ghost"}
@@ -111,6 +140,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               <VersionEditorComponent
                 yDoc={yDoc}
                 previewDocYWorkflows={previewDocYWorkflows}
+                onWorkflowCorruption={onWorkflowCorruption}
               />
             )}
           </div>
@@ -122,39 +152,44 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               {isFetching ? (
                 <LoadingSkeleton />
               ) : (
-                <VersionHistoryList
+                <RecoveryVersionHistoryList
                   latestProjectSnapshotVersion={latestProjectSnapshotVersion}
-                  snapshots={snapshots}
-                  isError={isError}
-                  selectedSnapshotNumber={selectedSnapshotNumber}
-                  onSnapshotSelect={onSnapshotSelect}
+                  history={history}
+                  selectedProjectSnapshotVersion={
+                    selectedProjectSnapshotVersion
+                  }
+                  onVersionSelection={onVersionSelection}
                 />
               )}
             </div>
             <div className="absolute bottom-0 left-0 flex w-full justify-end border-t border-accent bg-secondary p-2">
               <Button
-                disabled={selectedSnapshotNumber === null || isLoadingPreview}
+                disabled={
+                  !selectedProjectSnapshotVersion ||
+                  isLoadingPreview ||
+                  isCorruptedVersion
+                }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>
-                {t("Restore")}
+                {t("Revert")}
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {isRestoring && <LoadingSplashscreen />}
+      {isReverting && <LoadingSplashscreen />}
       {openVersionConfirmationDialog &&
-        selectedSnapshotNumber !== null &&
-        !isRestoring && (
+        selectedProjectSnapshotVersion &&
+        !isReverting && (
           <VersionConfirmationDialog
-            selectedProjectSnapshotVersion={selectedSnapshotNumber}
+            selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
             onDialogClose={() => setOpenVersionConfirmationDialog(false)}
-            onProjectRollback={onSnapshotRestore}
+            onProjectRollback={handleProjectRollback}
           />
         )}
     </div>
   );
 };
 
-export default memo(VersionDialog);
+export default memo(ProjectRecoveryDialog);

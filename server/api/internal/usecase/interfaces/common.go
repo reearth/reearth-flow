@@ -13,11 +13,12 @@ const (
 )
 
 var (
-	ErrSceneIsLocked   error = errors.New("scene is locked")
-	ErrOperationDenied error = errors.New("operation denied")
-	ErrFileNotIncluded error = errors.New("file not included")
-	ErrFeatureNotFound error = errors.New("feature not found")
-	ErrInvalidOperator error = errors.New("invalid operator")
+	ErrSceneIsLocked    error = errors.New("scene is locked")
+	ErrOperationDenied  error = errors.New("operation denied")
+	ErrFileNotIncluded  error = errors.New("file not included")
+	ErrFeatureNotFound  error = errors.New("feature not found")
+	ErrInvalidOperator  error = errors.New("invalid operator")
+	ErrSnapshotNotFound error = errors.New("snapshot not found")
 )
 
 type Container struct {
