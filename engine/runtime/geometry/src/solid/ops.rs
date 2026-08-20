@@ -269,9 +269,32 @@ impl Footprint for Solid {
     }
 }
 
-// TODO(Task 4): sum every shell's boundary faces.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(Solid: Area);
+use crate::ops::area::{polygon_3d_projected_area, polygon_3d_surface_area};
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for Solid {
+    /// Every boundary face of every shell, the exterior's and each void's,
+    /// projected onto the XY plane and summed. A closed body's faces are summed
+    /// rather than unioned, so a cube covers twice its footprint — see the
+    /// module docs on [`Area`](crate::ops::Area).
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_boundary_face(|face| total += polygon_3d_projected_area(&face));
+        Ok(total)
+    }
+
+    /// The true surface of every shell, voids included: a void's faces are real
+    /// surfaces, so a hollow body has *more* surface than a solid one. That is
+    /// deliberately unlike a polygon's holes, which subtract.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_boundary_face(|face| total += polygon_3d_surface_area(&face));
+        Ok(total)
+    }
+}
 
 #[cfg(test)]
 mod tests {

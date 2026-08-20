@@ -425,4 +425,75 @@ mod tests {
         assert_eq!(m.projected_area().unwrap(), 0.0);
         assert_eq!(m.surface_area().unwrap(), 0.0);
     }
+
+    use crate::solid::{Shell, Solid};
+    use crate::triangular_mesh::TriangularMesh3DData;
+
+    /// A closed triangle shell over the axis-aligned box `[min, min + size]`.
+    /// Copied from `footprint_replacer.rs`'s test helper, which builds the same
+    /// twelve triangles.
+    fn box_shell(min: [f64; 3], size: [f64; 3]) -> TriangularMesh3DData {
+        let corners: Vec<[f64; 3]> = (0..8u32)
+            .map(|i| {
+                [
+                    min[0] + if i & 1 != 0 { size[0] } else { 0.0 },
+                    min[1] + if i & 2 != 0 { size[1] } else { 0.0 },
+                    min[2] + if i & 4 != 0 { size[2] } else { 0.0 },
+                ]
+            })
+            .collect();
+        #[rustfmt::skip]
+        const TRIS: [u32; 36] = [
+            0, 1, 3,  0, 3, 2,
+            4, 7, 5,  4, 6, 7,
+            0, 4, 5,  0, 5, 1,
+            2, 3, 7,  2, 7, 6,
+            0, 2, 6,  0, 6, 4,
+            1, 5, 7,  1, 7, 3,
+        ];
+        TriangularMesh3DData::from_parts(corners, TRIS).unwrap()
+    }
+
+    /// **Pin.** A unit cube covers 2.0 and has 6.0 of surface: the top and the
+    /// bottom each project to 1.0, the four walls project to zero-area lines,
+    /// and all six faces contribute their full area to the surface.
+    ///
+    /// This is deliberately not footprint semantics. The old geometry model's
+    /// action summed each CityGML polygon's own XY projection too, so a user
+    /// measuring a whole building has always got roughly twice its footprint.
+    /// Changing it would need a 2D union and would silently move every existing
+    /// workflow's numbers. Do not "correct" this test.
+    #[test]
+    fn a_unit_cube_covers_two_and_has_six_of_surface() {
+        let cube = Solid::from_exterior(
+            CoordinateFrame::Euclidean,
+            Shell::TriangularMesh(box_shell([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])),
+        );
+        assert!((cube.projected_area().unwrap() - 2.0).abs() < 1e-12);
+        assert!((cube.surface_area().unwrap() - 6.0).abs() < 1e-12);
+    }
+
+    /// A void's faces are real surfaces, so hollowing a body *adds* area. This
+    /// is deliberately unlike a polygon's holes, which subtract, and the
+    /// difference is recorded here so it is not mistaken for a bug.
+    #[test]
+    fn a_void_adds_area_where_a_polygon_hole_would_subtract() {
+        let solid = Solid::from_exterior(
+            CoordinateFrame::Euclidean,
+            Shell::TriangularMesh(box_shell([0.0, 0.0, 0.0], [2.0, 2.0, 2.0])),
+        );
+        let hollow = Solid::new(
+            CoordinateFrame::Euclidean,
+            Shell::TriangularMesh(box_shell([0.0, 0.0, 0.0], [2.0, 2.0, 2.0])),
+            vec![Shell::TriangularMesh(box_shell(
+                [0.5, 0.5, 0.5],
+                [1.0, 1.0, 1.0],
+            ))],
+        );
+        // Exterior alone: 6 faces of 2x2 = 24.
+        assert!((solid.surface_area().unwrap() - 24.0).abs() < 1e-12);
+        // Plus the void's own 6 unit faces = 30.
+        assert!((hollow.surface_area().unwrap() - 30.0).abs() < 1e-12);
+        assert!(hollow.surface_area().unwrap() > solid.surface_area().unwrap());
+    }
 }
