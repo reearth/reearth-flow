@@ -62,7 +62,7 @@ fn farthest_from_segment(points: &[[i32; 2]], start: usize, end: usize) -> (usiz
         let dist = if len_sq == 0.0 {
             (ex * ex + ey * ey).sqrt()
         } else {
-            let t = (ex * dx + ey * dy) / len_sq;
+            let t = ((ex * dx + ey * dy) / len_sq).clamp(0.0, 1.0);
             let (cx, cy) = (ax as f64 + t * dx, ay as f64 + t * dy);
             let (rx, ry) = (px as f64 - cx, py as f64 - cy);
             (rx * rx + ry * ry).sqrt()
@@ -75,7 +75,8 @@ fn farthest_from_segment(points: &[[i32; 2]], start: usize, end: usize) -> (usiz
     (best_idx, best_dist)
 }
 
-// Polygon rings never simplify below this many points, regardless of tolerance.
+// Polygon rings never simplify below this many points (as a closed ring, i.e.
+// including the duplicated closing vertex; 3 distinct vertices), regardless of tolerance.
 const RING_RETAIN: usize = 4;
 
 // Ramer-Douglas-Peucker over an open chain; the two endpoints are always kept.
@@ -108,55 +109,20 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i
         .collect()
 }
 
-// Index farthest (by squared distance) from `points[from]`, for splitting a
-// ring into two open chains DP can run over independently.
-fn farthest_from_point(points: &[[i32; 2]], from: usize) -> usize {
-    let [ax, ay] = points[from];
-    let mut best_idx = from;
-    let mut best_dist = -1.0;
-    for (i, &[x, y]) in points.iter().enumerate() {
-        if i == from {
-            continue;
-        }
-        let (dx, dy) = ((x - ax) as f64, (y - ay) as f64);
-        let dist = dx * dx + dy * dy;
-        if dist > best_dist {
-            best_dist = dist;
-            best_idx = i;
-        }
-    }
-    best_idx
-}
-
-// Real (Douglas-Peucker) simplification, not just collinear-point removal. A
-// cyclic ring has no fixed endpoints for DP to anchor on, so it's split into
-// two open chains at the point farthest from `points[0]`, each simplified
-// independently, then recombined (dropping the duplicated shared vertices).
 fn simplify(points: &[[i32; 2]], cyclic: bool) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
     }
-    let retain = if cyclic { RING_RETAIN } else { 0 };
     if !cyclic {
-        return douglas_peucker(points, SIMPLIFY_TOLERANCE, retain);
+        return douglas_peucker(points, SIMPLIFY_TOLERANCE, 0);
     }
 
-    let split = farthest_from_point(points, 0);
-    if split == 0 {
-        return douglas_peucker(points, SIMPLIFY_TOLERANCE, retain);
-    }
-    let chain_a = &points[0..=split];
-    let chain_b: Vec<[i32; 2]> = points[split..]
-        .iter()
-        .chain(points[0..1].iter())
-        .copied()
-        .collect();
-    let simp_a = douglas_peucker(chain_a, SIMPLIFY_TOLERANCE, retain);
-    let simp_b = douglas_peucker(&chain_b, SIMPLIFY_TOLERANCE, retain);
-    let mut out = simp_a[..simp_a.len() - 1].to_vec();
-    out.extend_from_slice(&simp_b[..simp_b.len() - 1]);
-    out
+    let mut closed = points.to_vec();
+    closed.push(points[0]);
+    let mut simplified = douglas_peucker(&closed, SIMPLIFY_TOLERANCE, RING_RETAIN);
+    simplified.pop();
+    simplified
 }
 
 // Grows `[min, max]` to cover `points`.
@@ -352,6 +318,16 @@ mod tests {
             tile.layers[0].features[0].geometry,
             build_candidate(extent, &feats[0]).unwrap().geometry
         );
+    }
+
+    #[test]
+    fn douglas_peucker_forced_retain_keeps_exactly_retain_distinct_points() {
+        // Identical points force every split via `kept < retain`, so if an index could ever
+        // be double-counted this would come up short of `retain`.
+        let points = vec![[0, 0]; 10];
+        let retain = 6;
+        let result = douglas_peucker(&points, 0.0, retain);
+        assert_eq!(result.len(), retain);
     }
 
     fn shoelace_f64(ring: &[[f64; 2]]) -> f64 {
