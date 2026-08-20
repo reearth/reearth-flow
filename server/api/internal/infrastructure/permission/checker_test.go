@@ -3,6 +3,7 @@ package permission
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient/cerbos"
@@ -33,6 +34,19 @@ type fakeWorkspaceRepo struct {
 
 func (f *fakeWorkspaceRepo) FindByID(_ context.Context, _ string) (*workspace.Workspace, error) {
 	return f.ws, f.err
+}
+
+// countingWorkspaceRepo counts FindByID calls to pin the checker's use of the
+// alias cache; bypassing the cache in resolveAlias would make this go RED.
+type countingWorkspaceRepo struct {
+	gqlworkspace.WorkspaceRepo
+	ws    *workspace.Workspace
+	calls int32
+}
+
+func (f *countingWorkspaceRepo) FindByID(_ context.Context, _ string) (*workspace.Workspace, error) {
+	atomic.AddInt32(&f.calls, 1)
+	return f.ws, nil
 }
 
 func TestChecker_SendsWorkspaceAlias_WhenWorkspaceIDProvided(t *testing.T) {
@@ -78,4 +92,19 @@ func TestChecker_PropagatesWorkspaceLookupError(t *testing.T) {
 
 	require.Error(t, err, "workspace lookup failure must fail closed (no allow)")
 	assert.False(t, allowed)
+}
+
+func TestChecker_CheckPermission_SecondCallSameWorkspace_MakesNoAdditionalWorkspaceLookup(t *testing.T) {
+	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
+	ws := workspace.New().NewID().Alias("acme").MustBuild()
+	wsRepo := &countingWorkspaceRepo{ws: ws}
+	c := NewChecker(cer, wsRepo, "flow")
+
+	_, err := c.CheckPermission(context.Background(), "deployment", "any", ws.ID())
+	require.NoError(t, err)
+
+	_, err = c.CheckPermission(context.Background(), "project", "edit", ws.ID())
+	require.NoError(t, err)
+
+	assert.Equal(t, int32(1), atomic.LoadInt32(&wsRepo.calls), "second CheckPermission for the same workspace must reuse the cached alias")
 }

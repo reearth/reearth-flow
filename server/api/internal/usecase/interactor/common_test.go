@@ -152,6 +152,38 @@ func TestCheckPermission_MemoErrorNotCached(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&checker.calls), "a checker error must never be memoized as a verdict")
 }
 
+// TestCheckPermission_MemoIsPerOperation_NotPerWebsocketConnection pins that
+// the memo is scoped to a single GraphQL operation, not to a websocket
+// connection. gqlgen's websocket transport derives every operation on a
+// connection from the ctx captured at the original upgrade request; the
+// server attaches a fresh memo per operation on top of that shared ctx (see
+// internal/app/graphql.go's AroundOperations hook) precisely so a long-lived
+// subscription connection cannot reuse a stale allow verdict across
+// operations.
+func TestCheckPermission_MemoIsPerOperation_NotPerWebsocketConnection(t *testing.T) {
+	setSkipPermissionCheck(false)
+	checker := &countingChecker{allow: true}
+	u := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	wsID := accountsid.NewWorkspaceID()
+
+	// connCtx simulates the ctx captured once at websocket upgrade; it is
+	// never itself given a memo directly here (that's the whole point: any
+	// operation deriving from it must attach its own before checking).
+	connCtx := adapter.AttachUser(context.Background(), u)
+
+	// Operation 1: two checks within it must be memoized (one Cerbos call).
+	op1Ctx := adapter.AttachPermissionVerdictMemo(connCtx)
+	require.NoError(t, checkPermission(op1Ctx, checker, "project", "create", wsID))
+	require.NoError(t, checkPermission(op1Ctx, checker, "project", "create", wsID))
+	assert.Equal(t, int32(1), atomic.LoadInt32(&checker.calls), "two checks within one operation must hit the checker once")
+
+	// Operation 2 on the SAME connection (same connCtx) with identical
+	// args must re-ask the checker rather than reuse operation 1's verdict.
+	op2Ctx := adapter.AttachPermissionVerdictMemo(connCtx)
+	require.NoError(t, checkPermission(op2Ctx, checker, "project", "create", wsID))
+	assert.Equal(t, int32(2), atomic.LoadInt32(&checker.calls), "a second operation on the same websocket connection must not reuse operation 1's cached verdict")
+}
+
 func TestCheckPermission_MemoDifferentiatesByKey(t *testing.T) {
 	setSkipPermissionCheck(false)
 	checker := &countingChecker{allow: true}
