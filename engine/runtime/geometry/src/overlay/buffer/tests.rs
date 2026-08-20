@@ -268,3 +268,15 @@ fn polygon_3d_keeps_a_downward_normal_and_its_hole() {
     }
     assert_close(area_3d(&result[0]), 120.0 + PI / 4.0 - 1.0, 0.05);
 }
+
+#[test]
+fn non_finite_distance_buffers_to_nothing() {
+    let square = polygon(&rect(0.0, 0.0, 1.0, 1.0), &[]);
+    let face = polygon_3d(&tilted_square(), &[]);
+    for distance in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert!(buffer_2d(&square, &style(distance)).unwrap().is_empty());
+        assert!(buffer_polygon_3d(&face, &style(distance))
+            .unwrap()
+            .is_empty());
+    }
+}
