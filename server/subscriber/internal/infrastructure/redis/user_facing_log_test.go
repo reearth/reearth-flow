@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -31,14 +32,29 @@ func TestRedisStorage_SaveUserFacingLogToRedis(t *testing.T) {
 
 	expectedKey := "userfacinglog:wf-123:job-456:2025-01-11T09:12:54.487779Z"
 	expectedVal := `{"workflowId":"wf-123","jobId":"job-456","timestamp":"2025-01-11T09:12:54.487779Z","level":"INFO","nodeName":"test-node","nodeId":"node-123","message":"Test user-facing log message"}`
+	expectedStreamKey := "userfacinglog:job-456"
+	expectedID := "1736586774487-*"
 
 	mClient.
 		On("Set", mock.Anything, expectedKey, expectedVal, 12*time.Hour).
+		Return(nil)
+	mClient.
+		On("XAdd", mock.Anything, redis.XAddArgs{
+			Stream: expectedStreamKey,
+			ID:     expectedID,
+			MaxLen: userFacingLogStreamMaxLen,
+			Approx: true,
+			Values: map[string]interface{}{"data": expectedVal},
+		}).
+		Return(nil)
+	mClient.
+		On("Expire", mock.Anything, expectedStreamKey, 12*time.Hour).
 		Return(nil)
 
 	err := rStorage.SaveUserFacingLogToRedis(ctx, event)
 	assert.NoError(t, err)
 	mClient.AssertExpectations(t)
+	assert.Equal(t, []string{"Set", "XAdd", "Expire"}, mClient.calls)
 }
 
 func TestRedisStorage_SaveUserFacingLogToRedis_Error(t *testing.T) {
@@ -61,4 +77,31 @@ func TestRedisStorage_SaveUserFacingLogToRedis_Error(t *testing.T) {
 	err := rStorage.SaveUserFacingLogToRedis(ctx, event)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to save user facing log to redis")
+	assert.Equal(t, []string{"Set"}, mClient.calls)
+}
+
+func TestRedisStorage_SaveUserFacingLogToRedis_StreamError(t *testing.T) {
+	ctx := context.Background()
+	mClient := new(mockRedisClient)
+	rStorage := NewRedisStorage(mClient)
+
+	event := &userfacinglog.UserFacingLogEvent{
+		WorkflowID: "wf-123",
+		JobID:      "job-456",
+		Timestamp:  time.Now(),
+		Level:      userfacinglog.UserFacingLogLevelInfo,
+		Message:    "Test message",
+	}
+
+	mClient.
+		On("Set", mock.Anything, mock.Anything, mock.Anything, 12*time.Hour).
+		Return(nil)
+	mClient.
+		On("XAdd", mock.Anything, mock.Anything).
+		Return(errors.New("redis xadd error"))
+
+	err := rStorage.SaveUserFacingLogToRedis(ctx, event)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to add user facing log to redis stream")
+	assert.Equal(t, []string{"Set", "XAdd"}, mClient.calls)
 }
