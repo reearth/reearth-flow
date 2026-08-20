@@ -716,4 +716,89 @@ mod tests {
         // WGS 84: degrees.
         assert!(!frame_area_is_linear(&CoordinateFrame::Crs(EpsgCode::from(4326))).unwrap());
     }
+
+    /// `walk` must recurse through all three container kinds — a
+    /// `GeometryCollection` holding a `Geometry::Euclidean3D(Collection3D)`
+    /// that itself holds the area-carrying member and the `Csg` — not stop at
+    /// the outermost. Every other nesting test in this module bottoms out at
+    /// `Euclidean3D(Collection)` directly; this one goes one level deeper.
+    #[test]
+    fn area_report_walks_through_a_geometry_collection() {
+        let inner = Collection3D::new(vec![
+            polygon_member(unit_square_3d()),
+            Euclidean3DGeometry::Csg(csg()),
+        ]);
+        let g = Geometry::GeometryCollection(GeometryCollection::new(vec![Geometry::Euclidean3D(
+            Euclidean3DGeometry::Collection(inner),
+        )]));
+        assert_eq!(
+            area_report(&g),
+            AreaReport {
+                frame: AreaFrame::One(CoordinateFrame::Euclidean),
+                skipped: 1,
+            }
+        );
+    }
+
+    /// `Mixed` is absorbing across three or more observations, not just a
+    /// comparison against the immediately previous frame: returning to an
+    /// already-seen frame after `Mixed` has been reached must not undo it, in
+    /// either order.
+    #[test]
+    fn mixed_is_absorbing_across_more_than_two_observations() {
+        let projected = || {
+            Polygon3D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::from(6677)),
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [1.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                Vec::<Vec<[f64; 3]>>::new(),
+            )
+        };
+
+        // A, B, A.
+        let a_b_a = Collection3D::new(vec![
+            polygon_member(unit_square_3d()),
+            polygon_member(projected()),
+            polygon_member(unit_square_3d()),
+        ]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(a_b_a));
+        assert_eq!(area_report(&g).frame, AreaFrame::Mixed);
+
+        // B, A, B.
+        let b_a_b = Collection3D::new(vec![
+            polygon_member(projected()),
+            polygon_member(unit_square_3d()),
+            polygon_member(projected()),
+        ]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(b_a_b));
+        assert_eq!(area_report(&g).frame, AreaFrame::Mixed);
+    }
+
+    /// A geometry that is present but carries no area at all — as opposed to
+    /// `Geometry::None` — still reports `Nothing`: "no frame to report" is
+    /// distinct from "a frame whose area happens to be zero".
+    #[test]
+    fn a_geometry_with_no_area_carrying_parts_reports_nothing() {
+        let point = Euclidean3DGeometry::Point(crate::point::Point3D::new(
+            CoordinateFrame::Euclidean,
+            [0.0, 0.0, 0.0],
+        ));
+        let line = Euclidean3DGeometry::LineString(crate::line_string::LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        ));
+        let c = Collection3D::new(vec![point, line]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c));
+        assert_eq!(
+            area_report(&g),
+            AreaReport {
+                frame: AreaFrame::Nothing,
+                skipped: 0,
+            }
+        );
+    }
 }
