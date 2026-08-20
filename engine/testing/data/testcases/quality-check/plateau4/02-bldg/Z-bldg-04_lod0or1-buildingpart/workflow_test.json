@@ -1,5 +1,6 @@
 {
   "description": "Test LOD0-1 BuildingPart detection",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

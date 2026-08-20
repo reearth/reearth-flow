@@ -10,6 +10,14 @@ use schemars::{
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
 
+// The new-world geometry walk lives in a sibling file, declared here as a child
+// module so it reaches this module's config types via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "writer_geometry_next.rs"]
+mod writer_geometry_next;
+#[cfg(feature = "new-geometry")]
+pub use writer_geometry_next::{export_geometry, extract_coordinates};
+
 /// # Geometry Export Configuration
 /// Configure how geometry data is written to CSV columns
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -19,6 +27,14 @@ pub struct GeometryExportConfig {
     /// Specify how geometry should be written to the CSV
     #[serde(flatten)]
     pub mode: GeometryExportMode,
+
+    /// # EPSG Column Name
+    /// Optional name of a column to write the geometry's EPSG code into.
+    /// Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).
+    #[serde(rename = "epsgColumn")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub epsg_column: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -154,7 +170,7 @@ impl JsonSchema for GeometryExportMode {
 
 /// Get the names of columns that will be used for geometry output
 pub fn get_geometry_column_names(config: &GeometryExportConfig) -> Vec<String> {
-    match &config.mode {
+    let mut cols = match &config.mode {
         GeometryExportMode::Wkt { column } => vec![column.clone()],
         GeometryExportMode::Coordinates {
             x_column,
@@ -167,10 +183,15 @@ pub fn get_geometry_column_names(config: &GeometryExportConfig) -> Vec<String> {
             }
             cols
         }
+    };
+    if let Some(epsg_column) = &config.epsg_column {
+        cols.push(epsg_column.clone());
     }
+    cols
 }
 
 /// Export geometry to column values based on configuration
+#[cfg(not(feature = "new-geometry"))]
 pub fn export_geometry(
     geometry: &Geometry,
     config: &GeometryExportConfig,
@@ -196,6 +217,10 @@ pub fn export_geometry(
                 }
             }
         }
+    }
+
+    if let (Some(epsg_column), Some(epsg)) = (&config.epsg_column, geometry.epsg) {
+        columns.insert(epsg_column.clone(), epsg.to_string());
     }
 
     Ok(columns)
@@ -441,6 +466,7 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, GeometryExportError> 
 
 /// Extract X, Y, Z coordinates from Point geometries
 /// Returns (x, y, optional z)
+#[cfg(not(feature = "new-geometry"))]
 pub fn extract_coordinates(
     geometry: &Geometry,
 ) -> Result<(f64, f64, Option<f64>), GeometryExportError> {
@@ -740,5 +766,108 @@ mod tests {
             result,
             Err(GeometryExportError::UnsupportedGeometryCollection)
         ));
+    }
+
+    // `extract_coordinates` had no test in either geometry world before this task.
+    // Gated off under `new-geometry`: these call the old-world entry point, which
+    // only exists in that configuration.
+    #[cfg(not(feature = "new-geometry"))]
+    mod coordinates {
+        use super::*;
+
+        fn geometry_2d(point: Point2D<f64>) -> Geometry {
+            Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(point)),
+            }
+        }
+
+        #[test]
+        fn a_2d_point_extracts_x_and_y_without_a_height() {
+            let geometry = geometry_2d(Point2D::from([1.5, 2.5]));
+            assert_eq!(extract_coordinates(&geometry).unwrap(), (1.5, 2.5, None));
+        }
+
+        #[test]
+        fn a_3d_point_extracts_its_height() {
+            let geometry = Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([
+                    1.0, 2.0, 3.0,
+                ]))),
+            };
+            assert_eq!(
+                extract_coordinates(&geometry).unwrap(),
+                (1.0, 2.0, Some(3.0))
+            );
+        }
+
+        #[test]
+        fn a_non_point_geometry_is_rejected() {
+            let geometry = Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(LineString2D::new(
+                    vec![
+                        Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+                        Coordinate::<f64, NoValue>::from([1.0, 1.0]),
+                    ],
+                ))),
+            };
+            assert!(matches!(
+                extract_coordinates(&geometry),
+                Err(GeometryExportError::NonPointGeometry)
+            ));
+        }
+
+        #[test]
+        fn an_absent_geometry_is_rejected() {
+            let geometry = Geometry {
+                epsg: None,
+                value: GeometryValue::None,
+            };
+            assert!(matches!(
+                extract_coordinates(&geometry),
+                Err(GeometryExportError::EmptyGeometry)
+            ));
+        }
+    }
+
+    // The EPSG column: `export_geometry` writes the geometry's `epsg` field
+    // straight into it when one is configured, and leaves the cell for `csv.rs`
+    // to pad with an empty string when the geometry names none.
+    #[cfg(not(feature = "new-geometry"))]
+    mod epsg_column {
+        use super::*;
+
+        fn config(epsg_column: &str) -> GeometryExportConfig {
+            GeometryExportConfig {
+                mode: GeometryExportMode::Wkt {
+                    column: "geometry".to_string(),
+                },
+                epsg_column: Some(epsg_column.to_string()),
+            }
+        }
+
+        #[test]
+        fn a_geometry_with_an_epsg_code_writes_it() {
+            let geometry = Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([1.0, 2.0]))),
+            };
+            let columns =
+                export_geometry(&geometry, &config("epsg")).expect("geometry expected to export");
+            assert_eq!(columns.get("epsg"), Some(&"4326".to_string()));
+        }
+
+        #[test]
+        fn a_geometry_with_no_epsg_code_writes_nothing() {
+            let geometry = Geometry {
+                epsg: None,
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([1.0, 2.0]))),
+            };
+            let columns =
+                export_geometry(&geometry, &config("epsg")).expect("geometry expected to export");
+            assert!(!columns.contains_key("epsg"));
+        }
     }
 }

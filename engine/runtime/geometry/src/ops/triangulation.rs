@@ -2,6 +2,7 @@
 //! [`Cache`] that lets repeated triangulations amortize their allocations.
 
 use earcut::Earcut;
+use spade::{ConstrainedDelaunayTriangulation, Point2, Triangulation};
 
 use crate::appearance::{Appearance, FaceBinding, ThemeBinding, UvSet, UvSource};
 
@@ -101,6 +102,135 @@ pub(crate) fn triangulate_3d(
     };
     earcut.earcut(verts.iter().map(|&v| projector.project(v)), holes, out);
     Some(normal)
+}
+
+/// Triangulate one planar 3D face with a constrained Delaunay triangulation
+/// (spade) instead of earcut. Same contract as [`triangulate_3d`], but the
+/// interior is filled with a proper Delaunay mesh, so a collinear-subdivided
+/// edge (a T-junction) does not produce the near-degenerate sliver triangles
+/// earcut emits, which the geometric predicates would otherwise read as spurious
+/// intersections. A pathological face whose boundary cannot be constrained (e.g.
+/// a self-intersecting ring, already reported by the ring-level check) falls back
+/// to earcut.
+pub(crate) fn triangulate_3d_cdt(
+    earcut: &mut Earcut<f64>,
+    verts: &[[f64; 3]],
+    num_outer: usize,
+    holes: &[u32],
+    out: &mut Vec<u32>,
+) -> Option<[f64; 3]> {
+    if num_outer < 3 {
+        out.clear();
+        return None;
+    }
+    let Some((projector, normal)) = Projector::fit(&verts[..num_outer]) else {
+        out.clear();
+        return None;
+    };
+    let pts: Vec<[f64; 2]> = verts.iter().map(|&v| projector.project(v)).collect();
+    if !cdt_fill(&pts, num_outer, holes, out) {
+        earcut.earcut(pts.iter().copied(), holes, out);
+    }
+    Some(normal)
+}
+
+/// Fill a projected planar polygon (exterior `pts[0..num_outer]`, then hole rings
+/// delimited by `holes`) with a constrained Delaunay triangulation, writing the
+/// interior triangles' corner indices (into `pts`) to `out`. Returns `false`,
+/// leaving `out` untouched, when the boundary cannot be constrained (a non-simple
+/// ring), so the caller can fall back.
+fn cdt_fill(pts: &[[f64; 2]], num_outer: usize, holes: &[u32], out: &mut Vec<u32>) -> bool {
+    let mut cdt: ConstrainedDelaunayTriangulation<Point2<f64>> =
+        ConstrainedDelaunayTriangulation::new();
+    let mut handles = Vec::with_capacity(pts.len());
+    for &[x, y] in pts {
+        match cdt.insert(Point2::new(x, y)) {
+            Ok(h) => handles.push(h),
+            Err(_) => return false,
+        }
+    }
+    let ring = |k: usize| -> (usize, usize) {
+        if k == 0 {
+            (0, num_outer)
+        } else {
+            let start = holes[k - 1] as usize;
+            let end = holes.get(k).copied().unwrap_or(pts.len() as u32) as usize;
+            (start, end)
+        }
+    };
+    for k in 0..=holes.len() {
+        let (start, end) = ring(k);
+        let n = end.saturating_sub(start);
+        if n < 2 {
+            continue;
+        }
+        for i in 0..n {
+            let a = handles[start + i];
+            let b = handles[start + (i + 1) % n];
+            if a == b {
+                continue;
+            }
+            if !cdt.can_add_constraint(a, b) {
+                return false;
+            }
+            cdt.add_constraint(a, b);
+        }
+    }
+    // spade vertex storage index -> polygon vertex index.
+    let mut mine = vec![0u32; handles.len()];
+    for (i, h) in handles.iter().enumerate() {
+        mine[h.index()] = i as u32;
+    }
+    out.clear();
+    for face in cdt.inner_faces() {
+        let vs = face.vertices();
+        let p = [vs[0].position(), vs[1].position(), vs[2].position()];
+        let centroid = [
+            (p[0].x + p[1].x + p[2].x) / 3.0,
+            (p[0].y + p[1].y + p[2].y) / 3.0,
+        ];
+        if point_in_polygon(centroid, pts, num_outer, holes) {
+            for v in vs {
+                out.push(mine[v.fix().index()]);
+            }
+        }
+    }
+    true
+}
+
+/// Even-odd point-in-polygon-with-holes test on the projected rings: inside the
+/// exterior ring and outside every hole.
+fn point_in_polygon(p: [f64; 2], pts: &[[f64; 2]], num_outer: usize, holes: &[u32]) -> bool {
+    let in_ring = |start: usize, end: usize| -> bool {
+        let n = end - start;
+        if n < 3 {
+            return false;
+        }
+        let mut inside = false;
+        let mut j = n - 1;
+        for i in 0..n {
+            let a = pts[start + i];
+            let b = pts[start + j];
+            if (a[1] > p[1]) != (b[1] > p[1])
+                && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]
+            {
+                inside = !inside;
+            }
+            j = i;
+        }
+        inside
+    };
+    if !in_ring(0, num_outer) {
+        return false;
+    }
+    for k in 0..holes.len() {
+        let start = holes[k] as usize;
+        let end = holes.get(k + 1).copied().unwrap_or(pts.len() as u32) as usize;
+        if in_ring(start, end) {
+            return false;
+        }
+    }
+    true
 }
 
 /// Expand a source geometry's appearance onto its triangulated mesh, consuming it.
@@ -262,4 +392,78 @@ pub(crate) fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
         return None;
     }
     Some([sum[0] / d, sum[1] / d, sum[2] / d])
+}
+
+#[cfg(test)]
+mod cdt_tests {
+    use super::*;
+
+    fn tri_area(c: [[f64; 3]; 3]) -> f64 {
+        let u = [c[1][0] - c[0][0], c[1][1] - c[0][1], c[1][2] - c[0][2]];
+        let v = [c[2][0] - c[0][0], c[2][1] - c[0][1], c[2][2] - c[0][2]];
+        let cr = [
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+        ];
+        0.5 * (cr[0] * cr[0] + cr[1] * cr[1] + cr[2] * cr[2]).sqrt()
+    }
+
+    fn total_area(verts: &[[f64; 3]], out: &[u32]) -> f64 {
+        out.chunks_exact(3)
+            .map(|c| {
+                tri_area([
+                    verts[c[0] as usize],
+                    verts[c[1] as usize],
+                    verts[c[2] as usize],
+                ])
+            })
+            .sum()
+    }
+
+    #[test]
+    fn cdt_avoids_sliver_on_collinear_subdivided_edge() {
+        // A triangle whose base (v0 -> v3) is subdivided at v1, v2 (collinear): a
+        // pentagon that is geometrically a triangle. earcut emits a near-zero-area
+        // sliver among v1, v2, v3; the CDT must not. Area = 0.5 * 3 * 2 = 3.
+        let verts = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [1.5, 2.0, 0.0],
+        ];
+        let mut earcut = Earcut::<f64>::default();
+        let mut out = Vec::new();
+        assert!(triangulate_3d_cdt(&mut earcut, &verts, 5, &[], &mut out).is_some());
+        assert!(!out.is_empty());
+        for c in out.chunks_exact(3) {
+            let a = tri_area([
+                verts[c[0] as usize],
+                verts[c[1] as usize],
+                verts[c[2] as usize],
+            ]);
+            assert!(a > 1e-6, "CDT emitted a sliver triangle (area {a})");
+        }
+        assert!((total_area(&verts, &out) - 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn cdt_fills_a_face_with_a_hole() {
+        // 4x4 square with a 2x2 hole: filled area = 16 - 4 = 12.
+        let verts = vec![
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [1.0, 3.0, 0.0],
+        ];
+        let mut earcut = Earcut::<f64>::default();
+        let mut out = Vec::new();
+        assert!(triangulate_3d_cdt(&mut earcut, &verts, 4, &[4], &mut out).is_some());
+        assert!((total_area(&verts, &out) - 12.0).abs() < 1e-9);
+    }
 }

@@ -29,8 +29,8 @@
 use super::edge_set::{operand_edges, operand_segment_count, Edge2, EdgeSet};
 use super::intersects::type_name_3d;
 use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
-use super::position::{areal_union_position, face_position, union_position};
-use super::view::{flatten_2d, require_common_frame, FaceView, Leaf2D, Operand2D};
+use super::position::{areal_union_position, face_interior_point, union_position};
+use super::view::{flatten_2d, require_common_frame, Leaf2D, Operand2D};
 use super::Result;
 use crate::ops::Aabb;
 use crate::Geometry;
@@ -232,50 +232,6 @@ fn piece_midpoints(u: [f64; 2], v: [f64; 2], edges: &EdgeSet) -> Vec<[f64; 2]> {
     cuts.windows(2)
         .map(|w| [(w[0][0] + w[1][0]) / 2.0, (w[0][1] + w[1][1]) / 2.0])
         .collect()
-}
-
-/// A point strictly inside the face, or `None` when the face has no interior.
-///
-/// Horizontal scanline construction: pick a scan height strictly between two
-/// adjacent vertex levels (so no edge endpoint lies on the line), collect the
-/// edge crossings of all rings, and take the midpoint of an even-odd interior
-/// interval. Every candidate is verified with [`face_position`] before being
-/// returned, so an exotic face can only fail to a `None`, never to a wrong
-/// point.
-fn face_interior_point(face: FaceView<'_>) -> Option<[f64; 2]> {
-    let mut levels: Vec<f64> = face
-        .rings()
-        .flat_map(|r| r.coords().map(|c| c[1]))
-        .collect();
-    levels.sort_by(f64::total_cmp);
-    levels.dedup();
-    if levels.len() < 2 {
-        return None;
-    }
-
-    for pair in levels.windows(2) {
-        let y = (pair[0] + pair[1]) / 2.0;
-        if !(y > pair[0] && y < pair[1]) {
-            continue; // adjacent levels too close for a strict midpoint
-        }
-        // Crossings of the scanline with every ring edge; no endpoint lies on
-        // it, so each edge either straddles cleanly or is skipped.
-        let mut xs: Vec<f64> = Vec::new();
-        for (s, t) in face.edges() {
-            if (s[1] < y && t[1] > y) || (t[1] < y && s[1] > y) {
-                xs.push(s[0] + (y - s[1]) * (t[0] - s[0]) / (t[1] - s[1]));
-            }
-        }
-        xs.sort_by(f64::total_cmp);
-        // Even-odd: [xs[0], xs[1]], [xs[2], xs[3]], … are interior intervals.
-        for span in xs.chunks_exact(2) {
-            let candidate = [(span[0] + span[1]) / 2.0, y];
-            if face_position(candidate, face) == CoordPos::Inside {
-                return Some(candidate);
-            }
-        }
-    }
-    None
 }
 
 /// The union of the operand's leaf boxes, `None` when every leaf is empty.
@@ -574,7 +530,10 @@ mod tests {
         let p = Polygon2D::from_rings(e(), outer, vec![hole]);
         let view = super::super::view::AreaView::from_polygon(&p);
         let sample = face_interior_point(view.face(0)).unwrap();
-        assert_eq!(face_position(sample, view.face(0)), CoordPos::Inside);
+        assert_eq!(
+            crate::predicates::position::face_position(sample, view.face(0)),
+            CoordPos::Inside
+        );
     }
 
     // --- linear / indexed strategy parity -------------------------------------

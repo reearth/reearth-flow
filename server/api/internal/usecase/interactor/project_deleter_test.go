@@ -39,6 +39,12 @@ func (m *mockWebsocketClient) GetHistoryByVersion(context.Context, string, int) 
 func (m *mockWebsocketClient) GetHistoryMetadata(context.Context, string) ([]*ws.HistoryMetadata, error) {
 	return nil, nil
 }
+func (m *mockWebsocketClient) GetNamedSnapshots(context.Context, string) ([]*ws.SnapshotMetadata, error) {
+	return nil, nil
+}
+func (m *mockWebsocketClient) SaveNamedSnapshot(context.Context, string, string) (*ws.SnapshotMetadata, error) {
+	return nil, nil
+}
 func (m *mockWebsocketClient) Rollback(context.Context, string, int) (*ws.Document, error) {
 	return nil, nil
 }

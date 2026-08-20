@@ -8,11 +8,28 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+pub mod coerce;
+#[cfg(feature = "new-geometry")]
+pub mod footprint;
+pub mod hole;
 pub mod reproject;
+pub mod split;
 pub mod triangulation;
 
-pub(crate) use reproject::axis_order_sign;
+pub use coerce::{Coerce, CoercionTarget};
+#[cfg(feature = "new-geometry")]
+pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
+pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
+pub(crate) use reproject::{
+    axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
+};
+pub use reproject::{esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
+pub use split::Split;
+
+use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
+use crate::error::Error;
 
 /// Returned by an operation a given geometry type does not support. Carries the
 /// concrete type name (via [`type_name`](core::any::type_name)) and the
@@ -244,6 +261,385 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
         cache: &mut crate::ops::triangulation::Cache,
     ) -> Result<crate::Geometry, UnsupportedOperation> {
         (**self).triangulate(cache)
+    }
+}
+
+/// Drop every material, binding and UV set a geometry carries, for every theme,
+/// leaving its coordinates and topology untouched. Total over the hierarchy: a
+/// type that carries no appearance inherits the no-op default.
+#[enum_dispatch::enum_dispatch]
+pub trait RemoveAppearance {
+    fn remove_appearance(&mut self) {}
+}
+
+impl<T: RemoveAppearance + ?Sized> RemoveAppearance for Box<T> {
+    fn remove_appearance(&mut self) {
+        (**self).remove_appearance()
+    }
+}
+
+/// Why a geometry could not be re-represented in a pure 2D embedding.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ForceTwoDimensionError {
+    /// The geometry type has no 2D counterpart (`Solid`, `Csg`, `PointCloud`).
+    UnsupportedGeometry(UnsupportedOperation),
+    /// The coordinate frame has no 2D counterpart, so the flattened coordinates
+    /// could not be tagged with a frame of matching dimensionality.
+    UnsupportedFrame(FrameDemotionError),
+}
+
+impl core::fmt::Display for ForceTwoDimensionError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ForceTwoDimensionError::UnsupportedGeometry(e) => e.fmt(f),
+            ForceTwoDimensionError::UnsupportedFrame(e) => e.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for ForceTwoDimensionError {}
+
+impl From<UnsupportedOperation> for ForceTwoDimensionError {
+    fn from(e: UnsupportedOperation) -> Self {
+        ForceTwoDimensionError::UnsupportedGeometry(e)
+    }
+}
+
+impl From<FrameDemotionError> for ForceTwoDimensionError {
+    fn from(e: FrameDemotionError) -> Self {
+        ForceTwoDimensionError::UnsupportedFrame(e)
+    }
+}
+
+/// Force a geometry into a pure 2D embedding by dropping the Z coordinate.
+///
+/// Any 2.5D per-vertex elevation is cleared too, so the op is idempotent. The
+/// coordinate frame is demoted alongside the coordinates so the two keep matching
+/// dimensionality: EPSG:6697 comes back as EPSG:6668, EPSG:4979 as EPSG:4326.
+/// Coordinate values are untouched by the retag — see
+/// [`CoordinateFrame::demote_to_2d`](crate::coordinate::CoordinateFrame::demote_to_2d).
+///
+/// Rejects a type with no 2D counterpart (`Solid`, `Csg`, `PointCloud`, which opt
+/// out via [`unsupported!`](crate::unsupported)) and a frame with none, such as a
+/// geocentric CRS whose Z is the rotation axis rather than a height. A rejected
+/// member rejects the collection containing it; the op never returns a partially
+/// converted collection.
+///
+/// Like [`Triangulate`], this consumes the leaf's buffers, leaving `self`
+/// moved-from on success. A leaf that empties `coords` must clear `z` with it to
+/// keep the two the same length, and must resolve its frame before touching
+/// either, so a rejected frame leaves it intact.
+#[enum_dispatch::enum_dispatch]
+pub trait ForceTwoDimension {
+    /// Re-represent this geometry in a 2D embedding. The default reports the type
+    /// as unsupported; a leaf opts in by overriding it.
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
+        Err(UnsupportedOperation {
+            geometry: core::any::type_name::<Self>(),
+            operation: "force_2d",
+        }
+        .into())
+    }
+}
+
+impl<T: ForceTwoDimension + ?Sized> ForceTwoDimension for Box<T> {
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
+        (**self).force_2d()
+    }
+}
+
+/// Shift every coordinate by a vector.
+///
+/// A general primitive carrying no frame semantics: translating a CRS geometry
+/// keeps it in the same CRS and a Euclidean one Euclidean. Frame changes are the
+/// job of [`Reproject`] and [`ConvertFrame`].
+#[enum_dispatch::enum_dispatch]
+pub trait Translate {
+    /// Add `delta` to every coordinate. For a 2D-embedded geometry, `delta`'s `z`
+    /// shifts the leaf's elevation when it carries one. The default body reports
+    /// the type as unsupported.
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        let _ = delta;
+        Err(Error::projection(format!(
+            "translate is not supported by `{}`",
+            core::any::type_name::<Self>()
+        )))
+    }
+}
+
+// The boxed enum variants (`Box<Polygon2D>`, `Box<Solid>`, …) need the trait on
+// the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
+impl<T: Translate + ?Sized> Translate for Box<T> {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        (**self).translate(delta)
+    }
+}
+
+/// Add `delta`'s `(x, y)` to a 2D coordinate buffer, and its `z` to the leaf's
+/// elevation when present. A leaf with no elevation does not acquire one.
+pub(crate) fn translate_2d(coords: &mut [[f64; 2]], z: &mut Option<f64>, delta: [f64; 3]) {
+    for c in coords.iter_mut() {
+        c[0] += delta[0];
+        c[1] += delta[1];
+    }
+    if let Some(elevation) = z {
+        *elevation += delta[2];
+    }
+}
+
+/// Add `delta` to a 3D coordinate buffer.
+pub(crate) fn translate_3d(coords: &mut [[f64; 3]], delta: [f64; 3]) {
+    for c in coords.iter_mut() {
+        c[0] += delta[0];
+        c[1] += delta[1];
+        c[2] += delta[2];
+    }
+}
+
+/// Convert a geometry's coordinate frame to `target`.
+///
+/// A CRS-to-CRS conversion reprojects (delegating to [`Reproject`]); supplying a
+/// `base_point` for it is an error, since the offset cannot apply. A conversion
+/// that crosses the Euclidean/CRS boundary translates
+/// by `base_point` (an offset in the CRS-side frame, defaulting to the origin)
+/// and retags: a Euclidean coordinate maps to `base_point + coordinate` in the
+/// CRS, a CRS coordinate to `coordinate - base_point` in Euclidean space. The
+/// bridge is a positional reinterpretation: coordinate values and ring winding
+/// are left unchanged, so a ring's orientation follows the axis order of the
+/// frame it is retagged into. A `Tangent` frame on either side is rejected.
+///
+/// Consumes its input and returns a [`Geometry`](crate::Geometry); only the
+/// reprojecting step changes a geometry's embedding.
+#[enum_dispatch::enum_dispatch]
+pub trait ConvertFrame {
+    /// Convert every coordinate to `target`, consuming `self` into the result.
+    /// The default body reports the type as unsupported.
+    fn convert_frame(
+        &mut self,
+        target: &crate::coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<crate::Geometry> {
+        let _ = (target, base_point, cache);
+        Err(Error::projection(format!(
+            "convert_frame is not supported by `{}`",
+            core::any::type_name::<Self>()
+        )))
+    }
+}
+
+impl<T: ConvertFrame + ?Sized> ConvertFrame for Box<T> {
+    fn convert_frame(
+        &mut self,
+        target: &crate::coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<crate::Geometry> {
+        (**self).convert_frame(target, base_point, cache)
+    }
+}
+
+/// The concrete step a leaf takes to reach a target frame from its current one.
+pub(crate) enum FrameStep {
+    /// Coordinates are already in the target frame.
+    Noop,
+    /// Reproject across CRSs to this EPSG code.
+    Reproject(EpsgCode),
+    /// Translate every coordinate by this offset, then adopt this frame.
+    Translate([f64; 3], CoordinateFrame),
+}
+
+/// Decide how a leaf currently in `src` reaches `target`, given the base point.
+/// Errors when either frame is a `Tangent` plane, or when a base point is
+/// supplied for a CRS-to-CRS step.
+pub(crate) fn plan_frame_step(
+    src: &CoordinateFrame,
+    target: &CoordinateFrame,
+    base_point: Option<[f64; 3]>,
+) -> crate::error::Result<FrameStep> {
+    let base = base_point.unwrap_or([0.0; 3]);
+    match (src, target) {
+        (CoordinateFrame::Crs(from), CoordinateFrame::Crs(to)) => {
+            if base_point.is_some() {
+                return Err(Error::projection(
+                    "a base point does not apply to a CRS-to-CRS reprojection",
+                ));
+            }
+            Ok(if from == to {
+                FrameStep::Noop
+            } else {
+                FrameStep::Reproject(*to)
+            })
+        }
+        (CoordinateFrame::Euclidean, CoordinateFrame::Crs(_)) => {
+            Ok(FrameStep::Translate(base, target.clone()))
+        }
+        (CoordinateFrame::Crs(_), CoordinateFrame::Euclidean) => Ok(FrameStep::Translate(
+            [-base[0], -base[1], -base[2]],
+            target.clone(),
+        )),
+        (CoordinateFrame::Euclidean, CoordinateFrame::Euclidean) => Ok(if base == [0.0; 3] {
+            FrameStep::Noop
+        } else {
+            FrameStep::Translate(base, target.clone())
+        }),
+        (CoordinateFrame::Tangent(_), _) | (_, CoordinateFrame::Tangent(_)) => Err(
+            Error::projection("cannot convert to or from a Tangent-plane frame"),
+        ),
+    }
+}
+
+#[cfg(test)]
+mod translate_tests {
+    use super::Translate;
+    use crate::coordinate::{CoordinateFrame, EpsgCode};
+    use crate::line_string::LineString3D;
+    use crate::point::Point3D;
+
+    #[test]
+    fn translate_preserves_frame() {
+        let mut p = Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), [1.0, 2.0, 3.0]);
+        p.translate([10.0, 20.0, 30.0]).unwrap();
+        assert_eq!(p.position(), [11.0, 22.0, 33.0]);
+        // A translation is frame-preserving: still the same CRS.
+        assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4979)));
+    }
+
+    #[test]
+    fn translate_shifts_every_coordinate() {
+        let mut ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+        );
+        ls.translate([2.0, 3.0, 100.0]).unwrap();
+        assert_eq!(ls.coords(), &[[2.0, 3.0, 100.0], [3.0, 4.0, 101.0]]);
+    }
+}
+
+#[cfg(test)]
+mod convert_frame_tests {
+    use super::{ConvertFrame, ReprojectionCache};
+    use crate::coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane};
+    use crate::point::Point3D;
+    use crate::{Euclidean3DGeometry, Geometry};
+
+    /// Unwrap a converted result back to the single 3D point these cases build.
+    fn point(g: Geometry) -> Point3D {
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => p,
+            other => panic!("expected a 3D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn euclidean_to_crs_adds_base_point() {
+        let mut cache = ReprojectionCache::new();
+        let p = point(
+            Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0])
+                .convert_frame(
+                    &CoordinateFrame::Crs(EpsgCode::new(6697)),
+                    Some([10.0, 20.0, 30.0]),
+                    &mut cache,
+                )
+                .unwrap(),
+        );
+        assert_eq!(p.position(), [11.0, 22.0, 33.0]);
+        assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(6697)));
+    }
+
+    #[test]
+    fn crs_to_euclidean_subtracts_base_point() {
+        let mut cache = ReprojectionCache::new();
+        let p = point(
+            Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(6697)),
+                [11.0, 22.0, 33.0],
+            )
+            .convert_frame(
+                &CoordinateFrame::Euclidean,
+                Some([10.0, 20.0, 30.0]),
+                &mut cache,
+            )
+            .unwrap(),
+        );
+        assert_eq!(p.position(), [1.0, 2.0, 3.0]);
+        assert_eq!(p.frame(), &CoordinateFrame::Euclidean);
+    }
+
+    #[test]
+    fn as_is_bridge_only_retags() {
+        let mut cache = ReprojectionCache::new();
+        let p = point(
+            Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0])
+                .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
+                .unwrap(),
+        );
+        assert_eq!(p.position(), [1.0, 2.0, 3.0]);
+        assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4979)));
+    }
+
+    #[test]
+    fn same_crs_is_noop() {
+        let mut cache = ReprojectionCache::new();
+        let p = point(
+            Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), [1.0, 2.0, 3.0])
+                .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
+                .unwrap(),
+        );
+        assert_eq!(p.position(), [1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn crs_to_crs_reprojects_without_a_base_point() {
+        let mut cache = ReprojectionCache::new();
+        // 4979 (geographic 3D) -> 4978 (ECEF) is a grid-free datum-identity transform.
+        let p = point(
+            Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(4979)),
+                [35.0, 139.0, 0.0],
+            )
+            .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4978)), None, &mut cache)
+            .unwrap(),
+        );
+        assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4978)));
+        // ECEF magnitude is ~ Earth radius.
+        let [x, y, z] = p.position();
+        let r = (x * x + y * y + z * z).sqrt();
+        assert!(
+            r > 6_000_000.0 && r < 6_500_000.0,
+            "unexpected ECEF radius {r}"
+        );
+    }
+
+    #[test]
+    fn crs_to_crs_with_a_base_point_is_rejected() {
+        let mut cache = ReprojectionCache::new();
+        let mut p = Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(4979)),
+            [35.0, 139.0, 0.0],
+        );
+        assert!(p
+            .convert_frame(
+                &CoordinateFrame::Crs(EpsgCode::new(4978)),
+                Some([999.0, 999.0, 999.0]),
+                &mut cache,
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn tangent_frame_is_rejected() {
+        let mut cache = ReprojectionCache::new();
+        let tangent = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Euclidean,
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+        let mut p = Point3D::new(tangent, [1.0, 2.0, 3.0]);
+        assert!(p
+            .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
+            .is_err());
     }
 }
 

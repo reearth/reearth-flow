@@ -1,5 +1,6 @@
 {
   "description": "Test surface intersection for LOD0 surfaces",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

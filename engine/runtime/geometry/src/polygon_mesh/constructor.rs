@@ -222,28 +222,21 @@ impl PolygonMesh2D {
         })
     }
 
-    /// Build a 2.5D mesh from `[x, y, z]` vertices (the `(x, y)` populate the pool,
-    /// the `z` a parallel elevation buffer) and index-list faces (no holes).
-    pub fn from_parts_with_elevation(
+    /// Build a 2.5D mesh: an `[x, y]` vertex pool lying wholly at `elevation`,
+    /// with index-list faces (no holes).
+    pub fn from_parts_at_elevation(
         frame: CoordinateFrame,
-        vertices: Vec<[f64; 3]>,
+        vertices: Vec<[f64; 2]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
+        elevation: f64,
     ) -> Result<Self, Error> {
         let (face_indices, face_offsets) = index_faces(vertices.len(), faces)?;
-        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
-        let mut xy = Vec::with_capacity(vertices.len());
-        let mut z = Vec::with_capacity(vertices.len());
-        for [x, y, elevation] in vertices {
-            xy.push([x, y]);
-            z.push(elevation);
-        }
-        let z = z.into_boxed_slice();
         let (face_indices, face_offsets, interior_offsets) =
-            pack_csr(xy.len(), face_indices, face_offsets, Vec::new());
+            pack_csr(vertices.len(), face_indices, face_offsets, Vec::new());
         Ok(Self {
             frame,
-            vertices: xy,
-            z: Some(z),
+            vertices,
+            z: Some(elevation),
             face_indices,
             face_offsets,
             interior_offsets,
@@ -788,16 +781,17 @@ mod tests {
     }
 
     #[test]
-    fn from_parts_with_elevation_splits_z() {
-        let verts = vec![[0., 0., 10.], [1., 0., 11.], [0., 1., 12.]];
-        let m = PolygonMesh2D::from_parts_with_elevation(
+    fn from_parts_at_elevation_keeps_one_height() {
+        let verts = vec![[0., 0.], [1., 0.], [0., 1.]];
+        let m = PolygonMesh2D::from_parts_at_elevation(
             CoordinateFrame::Euclidean,
             verts,
             vec![vec![0u32, 1, 2]],
+            10.,
         )
         .unwrap();
         assert_eq!(m.vertices, vec![[0., 0.], [1., 0.], [0., 1.]]);
-        assert_eq!(m.z.as_deref(), Some(&[10., 11., 12.][..]));
+        assert_eq!(m.elevation(), Some(10.));
     }
 
     #[test]

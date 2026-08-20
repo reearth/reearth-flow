@@ -16,7 +16,7 @@ use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
-use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
+use super::parser::{raw_gml_id, CityGmlVersion, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
 use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 
@@ -572,7 +572,7 @@ mod tests {
              </core:CityModel>"#
         );
         let url = Url::parse("file:///test.gml").unwrap();
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml.as_bytes(), &url).unwrap();
         let ParserOutput {
             pending,
@@ -962,7 +962,7 @@ mod tests {
              </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
            </bldg:Building></core:cityObjectMember>
          </core:CityModel>"#;
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V2);
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
             .unwrap();

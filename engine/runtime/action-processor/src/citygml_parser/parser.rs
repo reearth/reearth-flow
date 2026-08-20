@@ -9,6 +9,7 @@ use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
+pub use super::utils::CityGmlVersion;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
     XmlChild, XmlNode, EMPTY_NS_ID, XLINK_NS_ID,
@@ -41,6 +42,11 @@ pub enum ParseError {
     Malformed(String),
     #[error("No CityModel root element found")]
     NoCityModel,
+    #[error("CityModel root element doesn't match the expected CityGML version {expected:?}: found tag {found}")]
+    VersionMismatch {
+        expected: CityGmlVersion,
+        found: String,
+    },
     #[error("Unexpected end of file inside CityModel")]
     UnexpectedEof,
 }
@@ -51,12 +57,7 @@ pub struct Parser {
     raw_registry: RawRegistry,
     pub(super) ns_registry: NamespaceRegistry,
     pending: Vec<Arc<RawNode>>,
-}
-
-impl Default for Parser {
-    fn default() -> Self {
-        Self::new()
-    }
+    version: CityGmlVersion,
 }
 
 impl std::fmt::Debug for Parser {
@@ -69,11 +70,12 @@ impl std::fmt::Debug for Parser {
 }
 
 impl Parser {
-    pub fn new() -> Self {
+    pub fn new(version: CityGmlVersion) -> Self {
         Self {
             raw_registry: RawRegistry::new(),
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
+            version,
         }
     }
 
@@ -84,9 +86,21 @@ impl Parser {
         let mut buf = Vec::new();
         let source_url_arc = Arc::new(source_url.clone());
 
+        let core_ns_id = self.version.core_ns_id();
+
         loop {
             match next_event(&mut reader, &mut buf, &mut self.ns_registry)? {
-                OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => break,
+                OwnedEvent::Start { name, .. }
+                    if local_name(&name.0) == "CityModel" && name.1 == core_ns_id =>
+                {
+                    break
+                }
+                OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => {
+                    return Err(ParseError::VersionMismatch {
+                        expected: self.version,
+                        found: name.0,
+                    });
+                }
                 OwnedEvent::Eof => return Err(ParseError::NoCityModel),
                 _ => {}
             }
@@ -145,13 +159,13 @@ pub fn to_feature(
     citygml_attribute_key: Option<&str>,
     keep_attributes: bool,
     flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: &[String],
 ) -> Feature {
     let content = node_to_attribute_value(
         node,
         keep_attributes,
         flatten_single_child_objects,
-        flatten_measure_types,
+        flatten_leaf_attributes,
     );
     build_feature(
         &node.name.0,
@@ -180,14 +194,21 @@ fn single_object_child(node: &XmlNode) -> Option<&XmlNode> {
     sole
 }
 
-/// Detects a CityGML measure element: exactly one `uom` attribute, no element children, and text
-/// content that parses as a finite f64. Returns the parsed number and unit-of-measure string.
-fn is_measure_node(node: &XmlNode) -> Option<(serde_json::Number, String)> {
+/// Detects a leaf whose only XML attribute's local name is in `flatten_leaf_attributes`, with no
+/// element children and text content that parses as a finite f64 — e.g. `<con:value
+/// uom="m">10.5</con:value>` with `flatten_leaf_attributes = ["uom"]`. Returns the parsed number
+/// plus the attribute's local name and value. Caller-declared, so this asserts nothing about
+/// CityGML/measure semantics — it is purely a structural shape match.
+fn flatten_leaf_node(
+    node: &XmlNode,
+    flatten_leaf_attributes: &[String],
+) -> Option<(serde_json::Number, String, String)> {
     if node.attrs.len() != 1 {
         return None;
     }
-    let ((attr_qname, _), uom_val) = node.attrs.first()?;
-    if local_name(attr_qname) != "uom" {
+    let ((attr_qname, _), attr_val) = node.attrs.first()?;
+    let attr_local = local_name(attr_qname);
+    if !flatten_leaf_attributes.iter().any(|a| a == attr_local) {
         return None;
     }
     for child in &node.children {
@@ -208,29 +229,31 @@ fn is_measure_node(node: &XmlNode) -> Option<(serde_json::Number, String)> {
         .collect();
     let val: f64 = text.trim().parse().ok()?;
     let n = serde_json::Number::from_f64(val)?;
-    Some((n, uom_val.clone()))
+    Some((n, attr_local.to_string(), attr_val.clone()))
 }
 
 pub fn node_to_attribute_value(
     node: &XmlNode,
     keep_attributes: bool,
     flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: &[String],
 ) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
-    let mut uom_entries: HashMap<String, String> = HashMap::new();
+    let mut leaf_attr_entries: HashMap<String, String> = HashMap::new();
     let mut text_parts: Vec<String> = Vec::new();
 
     for child in &node.children {
         match child {
             XmlChild::Element(e) => {
-                if flatten_measure_types && !keep_attributes {
-                    if let Some((n, uom)) = is_measure_node(e) {
+                if !flatten_leaf_attributes.is_empty() && !keep_attributes {
+                    if let Some((n, attr_local, attr_val)) =
+                        flatten_leaf_node(e, flatten_leaf_attributes)
+                    {
                         elem_groups
                             .entry(e.name.0.clone())
                             .or_default()
                             .push(AttributeValue::Number(n));
-                        uom_entries.insert(format!("{}_uom", e.name.0), uom);
+                        leaf_attr_entries.insert(format!("{}_{attr_local}", e.name.0), attr_val);
                         continue;
                     }
                 }
@@ -239,7 +262,7 @@ pub fn node_to_attribute_value(
                         if let Some(gc) = single_object_child(e) {
                             (
                                 gc.name.0.clone(),
-                                node_to_attribute_value(gc, false, true, flatten_measure_types),
+                                node_to_attribute_value(gc, false, true, flatten_leaf_attributes),
                             )
                         } else {
                             (
@@ -248,7 +271,7 @@ pub fn node_to_attribute_value(
                                     e,
                                     keep_attributes,
                                     true,
-                                    flatten_measure_types,
+                                    flatten_leaf_attributes,
                                 ),
                             )
                         }
@@ -259,7 +282,7 @@ pub fn node_to_attribute_value(
                                 e,
                                 keep_attributes,
                                 flatten_single_child_objects,
-                                flatten_measure_types,
+                                flatten_leaf_attributes,
                             ),
                         )
                     };
@@ -270,7 +293,7 @@ pub fn node_to_attribute_value(
     }
 
     let has_attrs = keep_attributes && !node.attrs.is_empty();
-    if !has_attrs && elem_groups.is_empty() && uom_entries.is_empty() {
+    if !has_attrs && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
@@ -301,8 +324,8 @@ pub fn node_to_attribute_value(
         };
         map.insert(name, av);
     }
-    for (key, uom) in uom_entries {
-        map.insert(key, AttributeValue::String(uom));
+    for (key, val) in leaf_attr_entries {
+        map.insert(key, AttributeValue::String(val));
     }
 
     AttributeValue::Map(map)
@@ -609,7 +632,7 @@ mod tests {
     }
 
     fn parse_test(xml: &[u8]) -> Result<(), ParseError> {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url())
     }
 
@@ -638,7 +661,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let (pending, _, _) = parser.finish();
 
@@ -660,7 +683,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let (pending, raw_reg, _) = parser.finish();
         assert_eq!(gml_id_attr(&pending[0].attrs), Some("bldg001".to_string()));
@@ -681,7 +704,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let (_, raw_reg, _) = parser.finish();
 
@@ -705,7 +728,7 @@ mod tests {
         let url_a = Url::parse("file:///a.gml").unwrap();
         let url_b = Url::parse("file:///b.gml").unwrap();
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
         let (_, raw_reg, _) = parser.finish();
@@ -735,7 +758,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let (pending, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
@@ -768,7 +791,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let (pending, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
@@ -777,7 +800,7 @@ mod tests {
     #[test]
     fn node_to_attribute_value_pure_text() {
         let node = make_node("gml:name", GML_NS_ID, vec![], vec![text("Building A")]);
-        let av = node_to_attribute_value(&node, true, false, false);
+        let av = node_to_attribute_value(&node, true, false, &[]);
         assert_eq!(av, AttributeValue::String("Building A".to_string()));
     }
 
@@ -789,7 +812,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "n1")],
             vec![text("foo")],
         );
-        let av = node_to_attribute_value(&node, true, false, false);
+        let av = node_to_attribute_value(&node, true, false, &[]);
         let AttributeValue::Map(map) = av else {
             panic!("expected Map");
         };
@@ -811,7 +834,7 @@ mod tests {
             vec![("g:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, false) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, &[]) else {
             panic!("expected Map");
         };
         assert_eq!(
@@ -832,7 +855,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let (pending, _, _) = parser.finish();
 
@@ -857,7 +880,7 @@ mod tests {
                 elem(make_node("item", EMPTY_NS_ID, vec![], vec![text("b")])),
             ],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, false) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, &[]) else {
             panic!("expected Map");
         };
         let AttributeValue::Array(arr) = map.get("item").unwrap() else {
@@ -879,10 +902,70 @@ mod tests {
                 vec![text("only")],
             ))],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, false) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, false, &[]) else {
             panic!("expected Map");
         };
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
+    }
+
+    #[test]
+    fn node_to_attribute_value_flattens_arbitrary_leaf_attribute_name() {
+        // Regression test: flatten_leaf_attributes must not be hardcoded to "uom" — any
+        // caller-supplied attribute name should trigger the same collapsing.
+        let node = make_node(
+            "parent",
+            EMPTY_NS_ID,
+            vec![],
+            vec![elem(make_node(
+                "con:value",
+                EMPTY_NS_ID,
+                vec![("codeSpace", EMPTY_NS_ID, "m")],
+                vec![text("10.5")],
+            ))],
+        );
+        let AttributeValue::Map(map) =
+            node_to_attribute_value(&node, false, false, &["codeSpace".to_string()])
+        else {
+            panic!("expected Map");
+        };
+        assert_eq!(
+            map.get("con:value"),
+            Some(&AttributeValue::Number(
+                serde_json::Number::from_f64(10.5).unwrap()
+            ))
+        );
+        assert_eq!(
+            map.get("con:value_codeSpace"),
+            Some(&AttributeValue::String("m".to_string()))
+        );
+    }
+
+    #[test]
+    fn node_to_attribute_value_does_not_flatten_unlisted_attribute_name() {
+        let node = make_node(
+            "parent",
+            EMPTY_NS_ID,
+            vec![],
+            vec![elem(make_node(
+                "con:value",
+                EMPTY_NS_ID,
+                vec![("uom", EMPTY_NS_ID, "m")],
+                vec![text("10.5")],
+            ))],
+        );
+        let AttributeValue::Map(map) =
+            node_to_attribute_value(&node, false, false, &["codeSpace".to_string()])
+        else {
+            panic!("expected Map");
+        };
+        // Not in flatten_leaf_attributes, so the leaf collapses to its plain text content
+        // instead of a number, and the (dropped, since keep_attributes is false) `uom`
+        // attribute never gets a `_uom` sibling key.
+        assert_eq!(
+            map.get("con:value"),
+            Some(&AttributeValue::String("10.5".to_string()))
+        );
+        assert_eq!(map.get("con:value_uom"), None);
     }
 
     #[test]
@@ -893,7 +976,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, true, false, false);
+        let feature = to_feature(&node, None, true, false, &[]);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }

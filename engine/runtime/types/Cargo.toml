@@ -15,6 +15,9 @@ version.workspace = true
 # TODO: Remove after migration.
 new-geometry = ["reearth-flow-geometry/new-geometry"]
 
+# Debug-only intermediate-data form; see reearth-flow-geometry.
+debug-geom-feature-write = ["reearth-flow-geometry/debug-geom-feature-write"]
+
 [dependencies]
 reearth-flow-common.workspace = true
 reearth-flow-expr.workspace = true

@@ -16,12 +16,12 @@ graphs:
       - id: aae4eebe-21ab-48b9-a5fc-c141c0ead1a1
         name: Read Stations CSV
         type: action
-        action: CsvReader
+        action: CSV Reader
         with:
           format: csv
           inline:
             type: flowExpr
-            value: env.get("stations")
+            value: variables.get("stations")
           # lon/lat columns become Point geometry and are dropped from attributes.
           geometry:
             xColumn: lon
@@ -31,7 +31,7 @@ graphs:
       - id: a78a9422-2de7-4635-8a72-c256788055b2
         name: Derive Attributes
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: dailyRiders
@@ -50,7 +50,7 @@ graphs:
       - id: ce50d0c1-1997-4238-a07c-4f221056f5e3
         name: Write Stations GeoJSON
         type: action
-        action: GeoJsonWriter
+        action: GeoJSON Writer
         with:
           # Sink outputs must be relative paths; the engine resolves them
           # against the job's artifact sandbox and rejects absolute URIs.
@@ -62,10 +62,10 @@ graphs:
       - id: 0b12ab32-6f2a-427c-8459-f31fcf7f0f92
         from: aae4eebe-21ab-48b9-a5fc-c141c0ead1a1
         to: a78a9422-2de7-4635-8a72-c256788055b2
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 20c6bea5-89ce-40e4-93f5-8e20d65e8d0e
         from: a78a9422-2de7-4635-8a72-c256788055b2
         to: ce50d0c1-1997-4238-a07c-4f221056f5e3
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

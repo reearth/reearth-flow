@@ -32,8 +32,8 @@ graphs:
         type: action
         action: Bulk Attribute Renamer
         with:
-          renameType: Selected
-          renameAction: RemovePrefix
+          renameType: selected
+          renameAction: removePrefix
           renameValue: "foo"
           selectedAttributes: ["testAttribute1"]
           textToFind: null
@@ -45,7 +45,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["outputFilePath"]'
+            value: 'variables["outputFilePath"]'
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

@@ -82,7 +82,7 @@ fn validate_and_join(sandbox_root: &Uri, path: &str) -> Result<Uri, BoxedError> 
         return Err(format!(
             "sink output {path:?}: absolute URIs are not allowed. \
              Sink paths must be relative to the per-job artifact directory. \
-             If your workflow uses Url(env[\"workerArtifactPath\"]) / x, \
+             If your workflow uses Url(variables[\"workerArtifactPath\"]) / x, \
              replace the whole expression with just x — the engine joins \
              it internally."
         )

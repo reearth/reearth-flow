@@ -65,7 +65,7 @@ impl SinkFactory for ObjWriterFactory {
             .output
             .compile()
             .map_err(|e| SinkError::BuildFactory(format!("Failed to compile `output`: {e:?}")))?
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| SinkError::BuildFactory(format!("Failed to evaluate `output`: {e:?}")))?;
         let sink = ObjWriter {
             output,

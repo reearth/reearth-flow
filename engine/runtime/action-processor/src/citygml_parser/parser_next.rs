@@ -13,6 +13,7 @@ use url::Url;
 use super::geometry;
 use super::resolver::GeomRegistry;
 use super::srsname;
+pub use super::utils::CityGmlVersion;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
     NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
@@ -62,6 +63,11 @@ pub enum ParseError {
     Malformed(String),
     #[error("No CityModel root element found")]
     NoCityModel,
+    #[error("CityModel root element doesn't match the expected CityGML version {expected:?}: found tag {found}")]
+    VersionMismatch {
+        expected: CityGmlVersion,
+        found: String,
+    },
     #[error("Unexpected end of file inside CityModel")]
     UnexpectedEof,
 }
@@ -85,12 +91,7 @@ pub struct Parser {
     /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
     /// file with no entry declared no (or an unrecognized) srsName.
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
-}
-
-impl Default for Parser {
-    fn default() -> Self {
-        Self::new()
-    }
+    version: CityGmlVersion,
 }
 
 impl std::fmt::Debug for Parser {
@@ -104,13 +105,13 @@ impl std::fmt::Debug for Parser {
 }
 
 impl Parser {
-    pub fn new() -> Self {
-        Self::with_owner_tracking(true)
+    pub fn new(version: CityGmlVersion) -> Self {
+        Self::with_owner_tracking(true, version)
     }
 
     /// A parser that records geometry owner `gml:id`s only when `track_owners` is
     /// set; leave it off unless `flatten` will hoist children.
-    pub(super) fn with_owner_tracking(track_owners: bool) -> Self {
+    pub(super) fn with_owner_tracking(track_owners: bool, version: CityGmlVersion) -> Self {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
@@ -119,6 +120,7 @@ impl Parser {
             pending: Vec::new(),
             track_owners,
             srs_by_file: HashMap::new(),
+            version,
         }
     }
 
@@ -129,9 +131,21 @@ impl Parser {
         let mut buf = Vec::new();
         let source_url_arc = Arc::new(source_url.clone());
 
+        let core_ns_id = self.version.core_ns_id();
+
         loop {
             match next_event(&mut reader, &mut buf, &mut self.ns_registry)? {
-                OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => break,
+                OwnedEvent::Start { name, .. }
+                    if local_name(&name.0) == "CityModel" && name.1 == core_ns_id =>
+                {
+                    break
+                }
+                OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => {
+                    return Err(ParseError::VersionMismatch {
+                        expected: self.version,
+                        found: name.0,
+                    });
+                }
                 OwnedEvent::Eof => return Err(ParseError::NoCityModel),
                 _ => {}
             }
@@ -193,6 +207,7 @@ impl Parser {
                                 .insert(source_url_arc.as_str().to_string(), epsg);
                         }
                     } else {
+                        tracing::warn!(element = name.0, "citygml: unrecognized element, skipped");
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
                 }
@@ -268,28 +283,90 @@ pub(super) struct PendingFeature {
     pub(super) geoms: Vec<geometry::PendingGeom>,
 }
 
-pub fn to_feature(node: &XmlNode) -> Feature {
-    let content = node_to_attribute_value(node);
-    build_feature(&node.name.0, gml_id_attr(&node.attrs).as_deref(), content)
+pub fn to_feature(
+    node: &XmlNode,
+    citygml_attribute_key: Option<&str>,
+    flatten_leaf_attributes: &[String],
+) -> Feature {
+    let content = node_to_attribute_value(node, flatten_leaf_attributes);
+    build_feature(
+        &node.name.0,
+        gml_id_attr(&node.attrs).as_deref(),
+        content,
+        citygml_attribute_key,
+    )
 }
 
-pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
+/// A leaf whose only XML attribute's local name is in `flatten_leaf_attributes`
+/// and whose only content is numeric text — e.g. `<con:value uom="m">10.5</con:value>`
+/// with `flatten_leaf_attributes = ["uom"]` — collapses to a plain number, with
+/// the attribute's value carried on a sibling `{name}_{attribute}` key, instead
+/// of the generic `{"@uom": ..., "$": ...}` shape. Caller-declared, so this
+/// asserts nothing about CityGML/measure semantics — it is purely a structural
+/// shape match. Mirrors the legacy parser's `flatten_leaf_node` (`parser.rs`).
+fn flatten_leaf_node(
+    node: &XmlNode,
+    flatten_leaf_attributes: &[String],
+) -> Option<(serde_json::Number, String, String)> {
+    if node.attrs.len() != 1 {
+        return None;
+    }
+    let ((attr_qname, _), attr_val) = node.attrs.first()?;
+    let attr_local = local_name(attr_qname);
+    if !flatten_leaf_attributes.iter().any(|a| a == attr_local) {
+        return None;
+    }
+    for child in &node.children {
+        if matches!(child, XmlChild::Element(_)) {
+            return None;
+        }
+    }
+    let text: String = node
+        .children
+        .iter()
+        .filter_map(|c| match c {
+            XmlChild::Text(t) => Some(t.as_str()),
+            _ => None,
+        })
+        .collect();
+    let val: f64 = text.trim().parse().ok()?;
+    let n = serde_json::Number::from_f64(val)?;
+    Some((n, attr_local.to_string(), attr_val.clone()))
+}
+
+pub fn node_to_attribute_value(
+    node: &XmlNode,
+    flatten_leaf_attributes: &[String],
+) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
+    let mut leaf_attr_entries: HashMap<String, String> = HashMap::new();
     let mut text_parts: Vec<String> = Vec::new();
 
     for child in &node.children {
         match child {
             XmlChild::Element(e) => {
+                if !flatten_leaf_attributes.is_empty() {
+                    if let Some((n, attr_local, attr_val)) =
+                        flatten_leaf_node(e, flatten_leaf_attributes)
+                    {
+                        elem_groups
+                            .entry(e.name.0.clone())
+                            .or_default()
+                            .push(AttributeValue::Number(n));
+                        leaf_attr_entries.insert(format!("{}_{attr_local}", e.name.0), attr_val);
+                        continue;
+                    }
+                }
                 elem_groups
                     .entry(e.name.0.clone())
                     .or_default()
-                    .push(node_to_attribute_value(e));
+                    .push(node_to_attribute_value(e, flatten_leaf_attributes));
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
         }
     }
 
-    if node.attrs.is_empty() && elem_groups.is_empty() {
+    if node.attrs.is_empty() && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
@@ -301,6 +378,9 @@ pub fn node_to_attribute_value(node: &XmlNode) -> AttributeValue {
     }
     if !text_parts.is_empty() {
         map.insert("$".into(), AttributeValue::String(text_parts.join("")));
+    }
+    for (key, val) in leaf_attr_entries {
+        map.insert(key, AttributeValue::String(val));
     }
     for (name, mut values) in elem_groups {
         let av = if values.len() == 1 {
@@ -569,12 +649,24 @@ fn decode_utf8(bytes: &[u8], context: &str) -> Result<String, ParseError> {
         .map_err(|err| ParseError::Encoding(format!("invalid UTF-8 in {context}: {err}")))
 }
 
-fn build_feature(feature_type: &str, gml_id: Option<&str>, content: AttributeValue) -> Feature {
+fn build_feature(
+    feature_type: &str,
+    gml_id: Option<&str>,
+    content: AttributeValue,
+    citygml_attribute_key: Option<&str>,
+) -> Feature {
     let mut attrs = Attributes::new();
 
-    if let AttributeValue::Map(map) = content {
-        for (k, v) in map {
-            attrs.insert(Attribute::new(k), v);
+    match citygml_attribute_key {
+        Some(key) => {
+            attrs.insert(Attribute::new(key), content);
+        }
+        None => {
+            if let AttributeValue::Map(map) = content {
+                for (k, v) in map {
+                    attrs.insert(Attribute::new(k), v);
+                }
+            }
         }
     }
 
@@ -628,7 +720,7 @@ mod tests {
     }
 
     fn parse_test(xml: &[u8]) -> Result<(), ParseError> {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url())
     }
 
@@ -657,7 +749,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
 
@@ -679,7 +771,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput {
             pending,
@@ -704,7 +796,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput {
             raw_registry: raw_reg,
@@ -731,7 +823,7 @@ mod tests {
         let url_a = Url::parse("file:///a.gml").unwrap();
         let url_b = Url::parse("file:///b.gml").unwrap();
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
         let ParserOutput {
@@ -764,7 +856,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
@@ -785,7 +877,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { srs_by_file, .. } = parser.finish();
 
@@ -822,7 +914,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
@@ -831,7 +923,7 @@ mod tests {
     #[test]
     fn node_to_attribute_value_pure_text() {
         let node = make_node("gml:name", GML_NS_ID, vec![], vec![text("Building A")]);
-        let av = node_to_attribute_value(&node);
+        let av = node_to_attribute_value(&node, &[]);
         assert_eq!(av, AttributeValue::String("Building A".to_string()));
     }
 
@@ -843,7 +935,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "n1")],
             vec![text("foo")],
         );
-        let av = node_to_attribute_value(&node);
+        let av = node_to_attribute_value(&node, &[]);
         let AttributeValue::Map(map) = av else {
             panic!("expected Map");
         };
@@ -865,7 +957,7 @@ mod tests {
             vec![("g:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, &[]) else {
             panic!("expected Map");
         };
         assert_eq!(
@@ -886,7 +978,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
 
@@ -912,7 +1004,7 @@ mod tests {
                 elem(make_node("item", EMPTY_NS_ID, vec![], vec![text("b")])),
             ],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, &[]) else {
             panic!("expected Map");
         };
         let AttributeValue::Array(arr) = map.get("item").unwrap() else {
@@ -934,7 +1026,7 @@ mod tests {
                 vec![text("only")],
             ))],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, &[]) else {
             panic!("expected Map");
         };
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
@@ -948,7 +1040,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node);
+        let feature = to_feature(&node, None, &[]);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }

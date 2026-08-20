@@ -2,9 +2,9 @@ import * as Y from "yjs";
 
 import { Edge, Node } from "@flow/types";
 
-import { YWorkflow } from "../types";
+import { YNode, YWorkflow } from "../types";
 
-import { rebuildWorkflow } from "./rebuildWorkflow";
+import { reassembleNode, rebuildWorkflow } from "./rebuildWorkflow";
 import { yWorkflowConstructor } from "./yWorkflowConstructor";
 
 describe("rebuildWorkflow", () => {
@@ -72,6 +72,66 @@ describe("rebuildWorkflow", () => {
     expect(workflow.name).toEqual(name);
     expect(workflow.nodes).toEqual(nodes);
     expect(workflow.edges).toEqual(edges);
+  });
+
+  // Builds the exact poisoned-node shape decoded from the test-env doc:
+  // a node integrated in a Y.Doc whose `position` map holds the given x/y.
+  const makePoisonedYNode = (
+    officialName: string,
+    setPosition: (positionMap: Y.Map<unknown>) => void,
+  ): YNode => {
+    const yDoc = new Y.Doc();
+    const yNodes = yDoc.getMap<Y.Map<unknown>>("nodes");
+    const yNode = new Y.Map<unknown>();
+    yNode.set("id", `node-${officialName}`);
+    yNode.set("type", "transformer");
+    yNode.set("dragging", false);
+    const position = new Y.Map<unknown>();
+    yNode.set("position", position);
+    const data = new Y.Map<unknown>();
+    data.set("officialName", officialName);
+    yNode.set("data", data);
+    yNodes.set(`node-${officialName}`, yNode);
+    // Mutate the position AFTER integration, mirroring useYNode's raw
+    // `existingPosition.set("x", change.position.x)` write path.
+    setPosition(position);
+    return yNode as unknown as YNode;
+  };
+
+  test("reassembleNode returns a finite position when the stored position is NaN", () => {
+    // Reproduces the test-env room-open crash: screenToFlowPosition returns NaN
+    // when a node is added before the canvas pane is measured; the raw useYNode
+    // write persists it, and reassembleNode's `?? 0` does not catch NaN
+    // (NaN ?? 0 === NaN), so a NaN reaches ReactFlow and triggers the render loop.
+    const yNode = makePoisonedYNode("HorizontalReprojector", (position) => {
+      position.set("x", NaN);
+      position.set("y", NaN);
+    });
+
+    // Guard the reproduction: the stored value really is NaN.
+    expect((yNode.get("position") as Y.Map<number>).get("x")).toBeNaN();
+
+    const rebuilt = reassembleNode(yNode);
+
+    expect(Number.isFinite(rebuilt.position.x)).toBe(true);
+    expect(Number.isFinite(rebuilt.position.y)).toBe(true);
+    expect(rebuilt.position).toEqual({ x: 0, y: 0 });
+  });
+
+  test("reassembleNode returns a finite position when the position map is empty", () => {
+    // The sibling anomaly in the poisoned doc: a `position` Y.Map that exists
+    // but has no x/y keys. reassembleNode must still yield a finite point.
+    const yNode = makePoisonedYNode("VerticalReprojector", () => {
+      // intentionally set no x/y keys
+    });
+
+    expect([...(yNode.get("position") as Y.Map<number>).keys()]).toEqual([]);
+
+    const rebuilt = reassembleNode(yNode);
+
+    expect(Number.isFinite(rebuilt.position.x)).toBe(true);
+    expect(Number.isFinite(rebuilt.position.y)).toBe(true);
+    expect(rebuilt.position).toEqual({ x: 0, y: 0 });
   });
 
   test("should handle empty workflow", () => {

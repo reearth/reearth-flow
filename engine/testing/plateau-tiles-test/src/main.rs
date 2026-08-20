@@ -1,6 +1,7 @@
 use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::conv::raster3d as conv_raster3d;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
@@ -12,7 +13,9 @@ use plateau_tiles_test::tester::json_object_key_order::{self, KeyOrderConfig};
 use plateau_tiles_test::tester::mvt_lines::{self, MvtLinesConfig};
 use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
 use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
+use plateau_tiles_test::tester::output_files::{self, OutputFilesConfig};
 use plateau_tiles_test::tester::raster::{self, RasterConfig};
+use plateau_tiles_test::tester::raster3d::{self, Raster3dConfig};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
@@ -68,6 +71,10 @@ struct Tests {
     json_object_key_order: Option<KeyOrderConfig>,
     #[serde(default)]
     raster: Option<HashMap<String, RasterConfig>>,
+    #[serde(default)]
+    raster3d: Option<HashMap<String, Raster3dConfig>>,
+    #[serde(default)]
+    output_files: Option<HashMap<String, OutputFilesConfig>>,
 }
 
 fn pack_inputs(
@@ -77,33 +84,23 @@ fn pack_inputs(
 ) -> HashMap<&'static str, PathBuf> {
     tracing::debug!("packing citymodel zip...");
 
-    let citymodel_udx_dir = test_path.join("citymodel/udx");
-    assert!(citymodel_udx_dir.exists());
+    // Pack the whole citymodel (udx + codelists + schemas) into one archive so
+    // that, once extracted, each gml keeps codelists/schemas as siblings of its
+    // `udx` dir. The new CityGML reader resolves `codeSpace` relative to the gml,
+    // so the co-located layout is required; splitting codelists into a separate
+    // zip would break relative resolution.
+    let citymodel_dir = test_path.join(zip_stem);
+    assert!(citymodel_dir.join("udx").exists());
     let citymodel = output_dir.join(format!("{}.zip", zip_stem));
-    zip_dir(&citymodel_udx_dir, &citymodel).unwrap();
+    zip_dir(&citymodel_dir, &citymodel).unwrap();
 
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
-
-    let codelists_dir = test_path.join("citymodel/codelists");
-    if codelists_dir.exists() {
-        let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
-        zip_dir(&codelists_dir, &path).unwrap();
-        inputs.insert("codelists", path);
-    }
-
-    let schemas_dir = test_path.join("citymodel/schemas");
-    if schemas_dir.exists() {
-        let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
-        zip_dir(&schemas_dir, &path).unwrap();
-        inputs.insert("schemas", path);
-    }
-
     inputs
 }
 
-fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
-    let citymodel = test_path.join("citymodel");
+fn direct_inputs(test_path: &Path, zip_stem: &str) -> HashMap<&'static str, PathBuf> {
+    let citymodel = test_path.join(zip_stem);
     assert!(
         citymodel.exists(),
         "citymodel dir not found: {}",
@@ -114,6 +111,7 @@ fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
     inputs
 }
 
+#[cfg(not(feature = "new-geometry"))]
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/fld",
     "data-convert/plateau4/01-bldg/tako-machi",
@@ -148,6 +146,12 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/10-wtr/wtr",
     "data-convert/plateau4/11-gen/mvt",
     "examples/citygml-roundtrip/tun",
+];
+
+#[cfg(feature = "new-geometry")]
+const DEFAULT_TESTS: &[&str] = &[
+    "data-convert/plateau6/01-bldg/ward",
+    "data-convert/plateau6/01-bldg/osaka-ward",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -203,16 +207,20 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let _ = fs::remove_dir_all(&output_dir);
         fs::create_dir_all(&output_dir).unwrap();
 
-        // do not pack gml, codelists, schemas into zip if PLATEAU_TILES_TEST_NO_PACK=1 for quick local tests
-        let no_pack = env::var("PLATEAU_TILES_TEST_NO_PACK").ok().as_deref() == Some("1");
-        let inputs = if no_pack {
-            direct_inputs(&test_path)
-        } else {
-            let zip_stem = profile
-                .citygml_zip_name
-                .strip_suffix(".zip")
-                .unwrap_or(&profile.citygml_zip_name);
+        // Feed the citymodel directory directly by default. The new CityGML reader
+        // resolves `codeSpace` relative to each gml's own location, so codelists and
+        // schemas must sit alongside the gml; the real directory already has that
+        // layout, whereas packing splits them into separate zips. Opt into packing
+        // with PLATEAU_TILES_TEST_PACK=1 to exercise the archive-extraction path.
+        let zip_stem = profile
+            .citygml_zip_name
+            .strip_suffix(".zip")
+            .unwrap_or(&profile.citygml_zip_name);
+        let pack = env::var("PLATEAU_TILES_TEST_PACK").ok().as_deref() == Some("1");
+        let inputs = if pack {
             pack_inputs(&test_path, &output_dir, zip_stem)
+        } else {
+            direct_inputs(&test_path, zip_stem)
         };
 
         info!(
@@ -222,10 +230,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
-        let zip_stem = profile
-            .citygml_zip_name
-            .strip_suffix(".zip")
-            .unwrap_or(&profile.citygml_zip_name);
         let target_package = zip_stem
             .find("_op_")
             .map(|pos| zip_stem[pos + 4..].to_string());
@@ -323,6 +327,26 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if !profile.convs.raster3d.is_empty() {
+            run_test("convs_raster3d", &relative_path_display, || {
+                for entry in profile.convs.raster3d.values() {
+                    let tileset_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
+                    fs::create_dir_all(&png_dir)
+                        .map_err(|e| format!("Failed to create {:?}: {}", png_dir, e))?;
+                    let (w, h) = entry.size.dimensions();
+                    conv_raster3d::render_cameras_to_pngs(
+                        &tileset_dir,
+                        &png_dir,
+                        &entry.cameras,
+                        w,
+                        h,
+                    )?;
+                }
+                Ok(())
+            });
+        }
+
         if !profile.convs.cesium_attributes.is_empty() {
             run_test("convs_cesium_attributes", &relative_path_display, || {
                 for entry in profile.convs.cesium_attributes.values() {
@@ -351,6 +375,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
                 json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
+            });
+        }
+
+        if let Some(cfg) = &tests.output_files {
+            run_test("output_files", &relative_path_display, || {
+                for entry in cfg.values() {
+                    output_files::test_output_files(&flow_source_dir, entry)?;
+                }
+                Ok(())
             });
         }
 
@@ -393,6 +426,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 let id = id.clone();
                 run_test(&format!("raster/{}", id), &relative_path_display, || {
                     raster::test_raster(&truth_dir, &flow_png_dir, cfg)
+                });
+            }
+        }
+
+        if let Some(raster3d_tests) = &tests.raster3d {
+            for (id, cfg) in raster3d_tests {
+                let conv_entry = profile.convs.raster3d.get(id).unwrap_or_else(|| {
+                    panic!(
+                        "tests.raster3d.{} references missing convs.raster3d.{}",
+                        id, id
+                    )
+                });
+                let flow_png_dir = output_dir
+                    .join("flow_extracted")
+                    .join(&conv_entry.truth_path);
+                let truth_dir = truth_extracted_dir.join(&conv_entry.truth_path);
+                let id = id.clone();
+                run_test(&format!("raster3d/{}", id), &relative_path_display, || {
+                    raster3d::test_raster3d(&truth_dir, &flow_png_dir, cfg)
                 });
             }
         }

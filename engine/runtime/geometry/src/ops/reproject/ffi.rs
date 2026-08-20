@@ -8,12 +8,19 @@ use std::sync::OnceLock;
 
 use parking_lot::RwLock;
 
-use crate::coordinate::EpsgCode;
+use crate::coordinate::{EpsgCode, MissingTwoDimensionalForm};
+use crate::ops::reproject::grids;
 use proj_sys::{
-    proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create, proj_create_crs_to_crs, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
-    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_destroy, proj_errno, proj_errno_reset,
-    proj_trans, PJ, PJ_CONTEXT, PJ_COORD, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
+    proj_as_wkt, proj_context_destroy, proj_context_errno, proj_context_errno_string, proj_create,
+    proj_create_crs_to_crs_from_pj, proj_create_from_wkt, proj_crs_demote_to_2D,
+    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
+    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
+    proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_identify, proj_int_list_destroy,
+    proj_list_destroy, proj_list_get, proj_list_get_count, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_OBJ_LIST,
+    PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -104,31 +111,87 @@ impl ReprojectionCache {
 
 impl Entry {
     /// Build the PROJ transformation for the `(from, to)` EPSG pair.
+    ///
+    /// The transformation forbids ballpark fallback (`ALLOW_BALLPARK=NO`): a
+    /// ballpark silently omits the datum and geoid shift (leaving, for example,
+    /// an orthometric height untouched instead of converting it to an
+    /// ellipsoidal one), placing geometry tens of metres off. With ballpark
+    /// disallowed, any coordinate that has no accurate operation errors at
+    /// transform time instead. PROJ can only ballpark when a required grid is
+    /// absent or the build cannot read it.
     fn build(from: EpsgCode, to: EpsgCode) -> Result<Self> {
+        let ctx = grids::create_context()?;
         // SAFETY: each PROJ object is null-checked before use; errno is read
         // while the context is still alive; on any failure all objects created
-        // so far are freed before returning.
+        // so far are freed before returning. The source and target CRS objects
+        // are only needed to build the transformation and are freed once it is
+        // created.
         unsafe {
-            let ctx = proj_context_create();
-            if ctx.is_null() {
-                return Err(Error::projection("proj_context_create returned null"));
-            }
-
             let c_from = CString::new(format!("EPSG:{from}")).map_err(Error::projection)?;
             let c_to = CString::new(format!("EPSG:{to}")).map_err(Error::projection)?;
 
-            let pj = proj_create_crs_to_crs(ctx, c_from.as_ptr(), c_to.as_ptr(), ptr::null_mut());
-            if pj.is_null() {
+            let src = proj_create(ctx, c_from.as_ptr());
+            if src.is_null() {
                 let msg = ctx_errno_string(ctx);
                 proj_context_destroy(ctx);
                 return Err(Error::projection(format!(
-                    "failed to create transform EPSG:{from}->EPSG:{to}: {msg}"
+                    "failed to create CRS EPSG:{from}: {msg}"
                 )));
             }
+            let dst = proj_create(ctx, c_to.as_ptr());
+            if dst.is_null() {
+                let msg = ctx_errno_string(ctx);
+                proj_destroy(src);
+                proj_context_destroy(ctx);
+                return Err(Error::projection(format!(
+                    "failed to create CRS EPSG:{to}: {msg}"
+                )));
+            }
+
+            let allow_ballpark = CString::new("ALLOW_BALLPARK=NO").map_err(Error::projection)?;
+            let options = [allow_ballpark.as_ptr(), ptr::null()];
+            let pj =
+                proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), options.as_ptr());
+            if pj.is_null() {
+                let msg = ctx_errno_string(ctx);
+                let approximate = ballpark_path_exists(ctx, src, dst);
+                proj_destroy(src);
+                proj_destroy(dst);
+                proj_context_destroy(ctx);
+                return Err(Error::projection(if approximate {
+                    format!(
+                        "failed to create transform EPSG:{from}->EPSG:{to}: {msg}. PROJ can \
+                         relate them only by a ballpark operation, which is refused because it \
+                         would omit the datum shift: either a required grid is absent ({}), or \
+                         the EPSG registry publishes no accurate transformation between these \
+                         datums",
+                        grids::supply_hint()
+                    )
+                } else {
+                    format!(
+                        "failed to create transform EPSG:{from}->EPSG:{to}: {msg}. PROJ has no \
+                         operation between these CRSs at all, so no grid can supply one"
+                    )
+                }));
+            }
+            proj_destroy(src);
+            proj_destroy(dst);
 
             Ok(Self { from, to, ctx, pj })
         }
     }
+}
+
+/// Whether PROJ can relate `src` and `dst` once ballpark operations are allowed,
+/// which tells a missing grid apart from a datum pair with no accurate path.
+// SAFETY: `ctx`, `src` and `dst` must be valid, non-null PROJ objects.
+unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool {
+    let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
+    if pj.is_null() {
+        return false;
+    }
+    proj_destroy(pj);
+    true
 }
 
 /// Format a PROJ `errno` into its message string.
@@ -175,14 +238,11 @@ pub(crate) fn axis_order_sign(epsg: EpsgCode) -> Result<i8> {
 /// Compute the orientation sign of `epsg` directly from PROJ, without consulting
 /// or populating the cache.
 fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
+    let ctx = grids::create_context()?;
     // SAFETY: each PROJ object is null-checked before use and every path frees
     // the objects it created; the axis-direction strings are owned by `cs` and
     // read while it is alive.
     unsafe {
-        let ctx = proj_context_create();
-        if ctx.is_null() {
-            return Err(Error::projection("proj_context_create returned null"));
-        }
         let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
         let crs = proj_create(ctx, def.as_ptr());
         if crs.is_null() {
@@ -295,6 +355,235 @@ unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
     }
 }
 
+/// Process-wide memoization of CRS linear-unit-ness, keyed by EPSG code. Like
+/// the orientation sign, a CRS's axis units are fixed for the process.
+fn linear_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, bool>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// Whether `epsg`'s horizontal axes use a linear (length) unit rather than an
+/// angular one: geographic CRSs (degrees) are not linear; projected and
+/// geocentric CRSs (metres, feet, ...) are. Errors when the CRS is unknown.
+///
+/// Memoized per EPSG code.
+pub(crate) fn crs_is_linear(epsg: EpsgCode) -> Result<bool> {
+    if let Some(&linear) = linear_cache().read().get(&epsg) {
+        return Ok(linear);
+    }
+    let linear = crs_is_linear_uncached(epsg)?;
+    linear_cache().write().insert(epsg, linear);
+    Ok(linear)
+}
+
+/// Determine `epsg`'s horizontal-axis unit kind directly from PROJ, without the
+/// cache.
+fn crs_is_linear_uncached(epsg: EpsgCode) -> Result<bool> {
+    let ctx = grids::create_context()?;
+    // SAFETY: every PROJ object is null-checked and freed on all paths.
+    unsafe {
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+        let result = axis_unit_linear_for_crs(ctx, crs, epsg);
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// Whether a CRS's (horizontal) axes use a linear unit, descending into a
+/// compound CRS's horizontal sub-CRS when needed.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn axis_unit_linear_for_crs(
+    ctx: *mut PJ_CONTEXT,
+    crs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<bool> {
+    let cs = proj_crs_get_coordinate_system(ctx, crs);
+    if !cs.is_null() {
+        let result = cs_type_is_linear(ctx, cs, epsg);
+        proj_destroy(cs);
+        return result;
+    }
+    let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
+    if horizontal.is_null() {
+        return Err(Error::projection(format!(
+            "EPSG:{epsg} has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )));
+    }
+    let cs = proj_crs_get_coordinate_system(ctx, horizontal);
+    let result = if cs.is_null() {
+        Err(Error::projection(format!(
+            "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )))
+    } else {
+        let linear = cs_type_is_linear(ctx, cs, epsg);
+        proj_destroy(cs);
+        linear
+    };
+    proj_destroy(horizontal);
+    result
+}
+
+/// Whether a coordinate system uses linear (length) axes, from its PROJ
+/// coordinate-system type: a Cartesian CS (projected / geocentric) is linear, an
+/// ellipsoidal or spherical CS (geographic) is angular. This asks PROJ for the
+/// axis kind directly rather than matching unit names, so every length unit
+/// (metre, foot, and the long tail) classifies correctly, and a mixed CS such as
+/// a geographic-3D one (angular lat/lon plus a metre height axis) is still read
+/// as angular. Any other or unknown type errors, so the caller surfaces it
+/// rather than trusting an unsuitable frame.
+// SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
+unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<bool> {
+    #[allow(non_upper_case_globals)]
+    match proj_cs_get_type(ctx, cs) {
+        PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN => Ok(true),
+        PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL
+        | PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL => Ok(false),
+        other => Err(Error::projection(format!(
+            "EPSG:{epsg} has an unclassifiable coordinate-system type ({other})"
+        ))),
+    }
+}
+
+/// PROJ's determinate answer to "what is this CRS's 2D counterpart?".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TwoDimensionalCrs {
+    /// The 2D counterpart's EPSG code — the input code itself when it is already 2D.
+    Code(EpsgCode),
+    /// No usable 2D counterpart exists, with the reason why.
+    None(MissingTwoDimensionalForm),
+}
+
+/// A remembered demotion outcome: what PROJ answered, or the message explaining
+/// why it could not answer. Both are fixed properties of the EPSG code.
+type CachedDemotion = Result<TwoDimensionalCrs, String>;
+
+/// Process-wide memoization of 2D counterparts, keyed by EPSG code. Like the
+/// orientation sign, the answer is a fixed property of a CRS.
+///
+/// Failures are remembered too, unlike in the caches above: a rejection does not
+/// stop the run, so a stream sharing one unusable CRS would otherwise re-ask PROJ
+/// for every feature.
+fn demote_cache() -> &'static RwLock<HashMap<EpsgCode, CachedDemotion>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, CachedDemotion>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// The 2D counterpart of `epsg`: the horizontal component of a compound CRS, the
+/// 2D form of a geographic 3D one, and the code itself when it is already 2D.
+///
+/// [`TwoDimensionalCrs::None`] means there definitively is none, whereas `Err`
+/// means PROJ could not answer (unknown code, missing PROJ data). Callers report
+/// the two differently. Memoized, so a CRS costs one PROJ lookup per process.
+///
+/// The error is PROJ's bare message: the caller already names the EPSG code and
+/// the operation, so neither is repeated here.
+pub(crate) fn crs_demote_to_2d(epsg: EpsgCode) -> Result<TwoDimensionalCrs, String> {
+    if let Some(cached) = demote_cache().read().get(&epsg) {
+        return cached.clone();
+    }
+    let outcome = lookup_demotion(epsg)?;
+    demote_cache().write().insert(epsg, outcome.clone());
+    outcome
+}
+
+/// Ask PROJ for `epsg`'s 2D counterpart directly, without the cache.
+///
+/// The outer `Err` is a failure of the PROJ context itself, which says nothing
+/// about `epsg` and so must not be cached; the inner `Err` is PROJ's verdict on
+/// this code, which may be.
+fn lookup_demotion(epsg: EpsgCode) -> Result<CachedDemotion, String> {
+    let def = CString::new(format!("EPSG:{epsg}")).map_err(|e| e.to_string())?;
+    let ctx = grids::create_context().map_err(|e| e.to_string())?;
+    // SAFETY: every PROJ object is null-checked and freed on all paths.
+    unsafe {
+        let crs = proj_create(ctx, def.as_ptr());
+        let outcome = if crs.is_null() {
+            Err(format!(
+                "PROJ could not create it: {}",
+                ctx_errno_string(ctx)
+            ))
+        } else {
+            let outcome = demote_and_classify(ctx, crs);
+            proj_destroy(crs);
+            outcome
+        };
+        proj_context_destroy(ctx);
+        Ok(outcome)
+    }
+}
+
+/// Demote `crs` to 2D and classify what came back.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDemotion {
+    // A null name asks PROJ to derive the 2D CRS's name from the input's.
+    let demoted = proj_crs_demote_to_2D(ctx, ptr::null(), crs);
+    if demoted.is_null() {
+        return Err(format!(
+            "PROJ could not demote it: {}",
+            ctx_errno_string(ctx)
+        ));
+    }
+    let result = classify_demoted(ctx, demoted);
+    proj_destroy(demoted);
+    Ok(result)
+}
+
+/// Classify a demoted CRS: a two-axis CRS carrying an EPSG identifier is a usable
+/// 2D frame, anything else is not.
+///
+/// The geocentric case is matched first only for its specific message; PROJ
+/// demotes such a CRS to itself, so the axis count would reject it anyway.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimensionalCrs {
+    if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS {
+        return TwoDimensionalCrs::None(MissingTwoDimensionalForm::Geocentric);
+    }
+    let cs = proj_crs_get_coordinate_system(ctx, crs);
+    if cs.is_null() {
+        return TwoDimensionalCrs::None(MissingTwoDimensionalForm::NoCoordinateSystem);
+    }
+    let axes = proj_cs_get_axis_count(ctx, cs);
+    proj_destroy(cs);
+    if axes != 2 {
+        return TwoDimensionalCrs::None(MissingTwoDimensionalForm::StillThreeDimensional);
+    }
+    match epsg_identifier(crs) {
+        Some(code) => TwoDimensionalCrs::Code(code),
+        None => TwoDimensionalCrs::None(MissingTwoDimensionalForm::Unidentified),
+    }
+}
+
+/// The EPSG code `crs` declares as its first identifier, or `None` when it has
+/// none, the authority is not EPSG, or the code does not fit an [`EpsgCode`].
+// SAFETY: `crs` must be a valid, non-null PROJ object; the returned strings are
+// owned by it and are read while it is alive.
+unsafe fn epsg_identifier(crs: *const PJ) -> Option<EpsgCode> {
+    let authority = proj_get_id_auth_name(crs, 0);
+    let code = proj_get_id_code(crs, 0);
+    if authority.is_null() || code.is_null() {
+        return None;
+    }
+    if CStr::from_ptr(authority).to_string_lossy() != "EPSG" {
+        return None;
+    }
+    CStr::from_ptr(code)
+        .to_string_lossy()
+        .parse::<u16>()
+        .ok()
+        .map(EpsgCode::new)
+}
+
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
 /// `(East, North, Up)` basis, or `None` if it is not aligned to an axis.
 ///
@@ -312,6 +601,121 @@ fn canonical_axis(direction: &str) -> Option<(usize, f64)> {
         "geocentricy" => Some((1, 1.0)),
         "geocentricz" => Some((2, 1.0)),
         _ => None,
+    }
+}
+
+/// The EPSG code the CRS definition `wkt` denotes, or `None` when it denotes none
+/// unambiguously.
+pub fn identify_epsg(wkt: &str) -> Option<EpsgCode> {
+    let wkt = CString::new(wkt).ok()?;
+    let authority = CString::new("EPSG").ok()?;
+
+    // SAFETY: every PROJ object is null-checked before use and freed on every path.
+    unsafe {
+        let ctx = grids::create_context().ok()?;
+        let crs = proj_create_from_wkt(
+            ctx,
+            wkt.as_ptr(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        if crs.is_null() {
+            proj_context_destroy(ctx);
+            return None;
+        }
+
+        // A dialect carrying its authority code needs no search, and searching for
+        // it anyway finds it only weakly: PROJ rates a definition it exported
+        // itself 25 when the code it states is ignored.
+        let result = match epsg_identifier(crs) {
+            Some(declared) => Some(declared),
+            None => {
+                let mut confidences: *mut c_int = ptr::null_mut();
+                let candidates =
+                    proj_identify(ctx, crs, authority.as_ptr(), ptr::null(), &mut confidences);
+                let matched = exact_match(ctx, candidates, confidences);
+                if !confidences.is_null() {
+                    proj_int_list_destroy(confidences);
+                }
+                if !candidates.is_null() {
+                    proj_list_destroy(candidates);
+                }
+                matched
+            }
+        };
+
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// The EPSG code of the candidate PROJ matched exactly, if there is one.
+///
+// SAFETY: `ctx` must be valid; `candidates` and `confidences` must be the pair
+// `proj_identify` returned, `confidences` holding one entry per candidate.
+unsafe fn exact_match(
+    ctx: *mut PJ_CONTEXT,
+    candidates: *mut PJ_OBJ_LIST,
+    confidences: *mut c_int,
+) -> Option<EpsgCode> {
+    if candidates.is_null() || confidences.is_null() {
+        return None;
+    }
+    for i in 0..proj_list_get_count(candidates) {
+        if *confidences.offset(i as isize) != 100 {
+            continue;
+        }
+        let candidate = proj_list_get(ctx, candidates, i);
+        if candidate.is_null() {
+            continue;
+        }
+        let code = epsg_identifier(candidate);
+        proj_destroy(candidate);
+        if code.is_some() {
+            return code;
+        }
+    }
+    None
+}
+
+/// The ESRI WKT1 form of `epsg`, as PROJ's database defines it.
+pub fn esri_wkt1(epsg: EpsgCode) -> Result<String> {
+    // SAFETY: every PROJ object is null-checked before use and freed on every
+    // path; the WKT string is owned by `crs` and copied while it is alive.
+    unsafe {
+        let ctx = grids::create_context()?;
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+
+        let single_line = CString::new("MULTILINE=NO").map_err(Error::projection)?;
+        let options = [single_line.as_ptr(), ptr::null()];
+        let wkt = proj_as_wkt(
+            ctx,
+            crs,
+            PJ_WKT_TYPE_PJ_WKT1_ESRI,
+            options.as_ptr() as *mut *const c_char,
+        );
+        let result = if wkt.is_null() {
+            Err(Error::projection(format!(
+                "EPSG:{epsg} has no ESRI WKT1 form: {}",
+                ctx_errno_string(ctx)
+            )))
+        } else {
+            Ok(CStr::from_ptr(wkt).to_string_lossy().into_owned())
+        };
+
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
     }
 }
 
@@ -349,6 +753,136 @@ mod tests {
     #[test]
     fn unknown_crs_errors() {
         assert!(axis_order_sign(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn geographic_is_angular_projected_is_linear() {
+        let linear = |code: u16| crs_is_linear(EpsgCode::new(code)).unwrap();
+        assert!(!linear(4326)); // WGS84 geographic 2D (degrees)
+        assert!(!linear(4327)); // WGS84 geographic 3D: ellipsoidal CS, angular horizontal
+        assert!(!linear(6697)); // JGD2011 + height (degrees)
+        assert!(linear(6677)); // JGD2011 plane rectangular IX (metres)
+        assert!(linear(3857)); // Web Mercator (metres)
+        assert!(linear(4978)); // WGS84 geocentric (Cartesian, metres)
+        assert!(crs_is_linear(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn dutch_vertical_is_corrected_never_silently_wrong() {
+        // EPSG:7415 (Amersfoort / RD New + NAP height) carries an orthometric
+        // height; converting to WGS84 3D must add the ~46 m NL geoid separation,
+        // never return the input height as if it were ellipsoidal.
+        let mut cache = ReprojectionCache::new();
+        let [_, _, z] = cache
+            .transform(
+                EpsgCode::new(7415),
+                EpsgCode::new(4979),
+                [204000.0, 325300.0, 95.0],
+            )
+            .unwrap();
+        assert!(
+            z > 130.0,
+            "expected a geoid-corrected ellipsoidal height (~140 m), got {z}"
+        );
+    }
+
+    #[test]
+    fn a_pair_with_only_a_ballpark_path_says_so_rather_than_blaming_a_grid() {
+        // EPSG registers NAD83(CSRS) to WGS 84 only as a ballpark offset, so no
+        // grid makes EPSG:6649 -> 4979 accurate and none should be blamed.
+        let mut cache = ReprojectionCache::new();
+        let err = cache
+            .transform(
+                EpsgCode::new(6649),
+                EpsgCode::new(4979),
+                [45.5, -73.6, 50.0],
+            )
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("ballpark"), "unexpected error: {err}");
+    }
+
+    fn demote(code: u16) -> TwoDimensionalCrs {
+        crs_demote_to_2d(EpsgCode::new(code)).unwrap()
+    }
+
+    #[test]
+    fn three_dimensional_crs_demotes_to_its_horizontal_component() {
+        // Geographic 3D -> geographic 2D on the same datum.
+        assert_eq!(demote(4979), TwoDimensionalCrs::Code(EpsgCode::new(4326)));
+        // Compound -> its horizontal sub-CRS: EPSG:6697 is 6668 + 6695.
+        assert_eq!(demote(6697), TwoDimensionalCrs::Code(EpsgCode::new(6668)));
+        // A compound over a projected CRS resolves to that projected CRS.
+        assert_eq!(demote(5698), TwoDimensionalCrs::Code(EpsgCode::new(2154)));
+    }
+
+    #[test]
+    fn already_2d_crs_demotes_to_itself() {
+        for code in [4326u16, 6668, 6677, 3857] {
+            assert_eq!(demote(code), TwoDimensionalCrs::Code(EpsgCode::new(code)));
+        }
+    }
+
+    #[test]
+    fn geocentric_crs_has_no_2d_counterpart() {
+        // ECEF axes are not (horizontal, horizontal, vertical), so PROJ has no 2D
+        // form to hand back.
+        for code in [4978u16, 6666, 4936] {
+            assert_eq!(
+                demote(code),
+                TwoDimensionalCrs::None(MissingTwoDimensionalForm::Geocentric)
+            );
+        }
+    }
+
+    /// The ESRI dialect a `.prj` is written in states no authority code, so the
+    /// CRS is recognised from the definition itself.
+    #[test]
+    fn an_esri_definition_is_identified_from_its_definition() {
+        let wkt = r#"PROJCS["JGD_2011_Japan_Zone_9",GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",139.833333333333],PARAMETER["Scale_Factor",0.9999],PARAMETER["Latitude_Of_Origin",36.0],UNIT["Meter",1.0]]"#;
+        assert_eq!(identify_epsg(wkt), Some(EpsgCode::new(6677)));
+    }
+
+    /// A definition stating its own code is taken at its word. Searching for it
+    /// instead finds it only weakly, so the declared code has to win.
+    #[test]
+    fn a_declared_authority_code_is_taken_at_its_word() {
+        let wkt = esri_wkt1(EpsgCode::new(6677)).unwrap();
+        let gdal = wkt.replace("]]", r#"],AUTHORITY["EPSG","6677"]]"#);
+        assert_eq!(identify_epsg(&gdal), Some(EpsgCode::new(6677)));
+    }
+
+    /// A definition PROJ can only match inexactly is left unidentified.
+    #[test]
+    fn a_definition_matching_only_inexactly_identifies_nothing() {
+        let wkt = r#"PROJCS["MyLocalGrid",GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",139.833333333333],PARAMETER["Scale_Factor",0.9999],PARAMETER["Latitude_Of_Origin",36.0],UNIT["Meter",1.0]]"#;
+        assert_eq!(identify_epsg(wkt), None);
+    }
+
+    #[test]
+    fn a_crs_exports_the_esri_dialect_a_prj_is_written_in() {
+        let wkt = esri_wkt1(EpsgCode::new(4326)).unwrap();
+        assert_eq!(
+            wkt,
+            r#"GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]"#
+        );
+    }
+
+    #[test]
+    fn unknown_crs_is_indeterminate_rather_than_absent() {
+        // An unresolvable code must error, not report "no 2D counterpart": the
+        // caller treats the two differently.
+        assert!(crs_demote_to_2d(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn an_unresolvable_code_is_memoized() {
+        // EPSG:2 is not a real CRS and is used by no other test, so the cache
+        // entry observed here is this test's own.
+        let code = EpsgCode::new(2);
+        let first = crs_demote_to_2d(code).unwrap_err().to_string();
+        assert!(matches!(demote_cache().read().get(&code), Some(Err(_))));
+        assert_eq!(crs_demote_to_2d(code).unwrap_err().to_string(), first);
     }
 
     #[test]

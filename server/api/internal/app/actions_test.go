@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -55,31 +56,46 @@ func TestLoadActionsData_FallbackToHTTP(t *testing.T) {
 
 func TestLoadActionsData(t *testing.T) {
 	tests := []struct {
-		name    string
-		lang    string
-		wantErr bool
+		name     string
+		lang     string
+		cacheKey string
 	}{
-		{"Default language", "", false},
-		{"En1ish", "en", false},
-		{"Japanese", "ja", false},
-		{"Invalid language", "invalid", true},
+		{"Default language", "", ""},
+		{"English resolves to base", "en", ""},
+		{"Unknown language falls back to base", "invalid", ""},
+		{"Region variant falls back to base", "en-US", ""},
+		{"Japanese", "ja", "ja"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
 			data, err := loadActionsData(tt.lang)
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, data.Actions)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, data.Actions)
 
-				// Verify cache
-				assert.NotNil(t, actionsDataMap[tt.lang])
-				assert.Equal(t, data, actionsDataMap[tt.lang])
-			}
+			// Verify cache under the normalized key.
+			cached, ok := actionsDataMap[tt.cacheKey]
+			assert.True(t, ok)
+			assert.Equal(t, data, cached)
 		})
+	}
+}
+
+// TestLoadActionsData_EnAndUnknownUseBase asserts that "en" and any unknown
+// language resolve to the exact same content as the base schema and share a
+// single cache entry rather than caching duplicate copies.
+func TestLoadActionsData_EnAndUnknownUseBase(t *testing.T) {
+	resetTestData()
+	base, err := loadActionsData("")
+	assert.NoError(t, err)
+
+	for _, lang := range []string{"en", "en-US", "xx"} {
+		got, err := loadActionsData(lang)
+		assert.NoError(t, err)
+		assert.Equal(t, base, got, "lang %q should resolve to the base schema", lang)
+		_, cached := actionsDataMap[lang]
+		assert.False(t, cached, "lang %q must not get its own cache entry", lang)
 	}
 }
 
@@ -92,9 +108,9 @@ func TestListActions(t *testing.T) {
 		wantCode int
 	}{
 		{"Default language", "", "", http.StatusOK},
-		{"With language", "", "en", http.StatusOK},
+		{"English", "", "en", http.StatusOK},
 		{"Japanese language", "", "ja", http.StatusOK},
-		{"Invalid language", "", "invalid", http.StatusBadRequest},
+		{"Unknown language falls back to base", "", "invalid", http.StatusOK},
 	}
 
 	for _, tt := range tests {
@@ -169,18 +185,19 @@ func TestGetSegregatedActions(t *testing.T) {
 	tests := []struct {
 		name     string
 		lang     string
+		cacheKey string
 		wantCode int
 	}{
-		{"Default language", "", http.StatusOK},
-		{"English", "en", http.StatusOK},
-		{"Japanese", "ja", http.StatusOK},
-		{"Invalid language", "invalid", http.StatusBadRequest},
+		{"Default language", "", "", http.StatusOK},
+		{"English resolves to base", "en", "", http.StatusOK},
+		{"Japanese", "ja", "ja", http.StatusOK},
+		{"Unknown language falls back to base", "invalid", "", http.StatusOK},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: testActions}
+			actionsDataMap[tt.cacheKey] = ActionsData{Actions: testActions}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/actions/segregated?lang="+tt.lang, nil)
@@ -220,21 +237,22 @@ func TestGetActionDetails(t *testing.T) {
 	tests := []struct {
 		name     string
 		lang     string
+		cacheKey string
 		id       string
 		wantCode int
 	}{
-		{"Default language", "", testAction.Name, http.StatusOK},
-		{"English", "en", testAction.Name, http.StatusOK},
-		{"Japanese", "ja", testAction.Name, http.StatusOK},
-		{"Invalid language", "invalid", testAction.Name, http.StatusBadRequest},
-		{"Not found", "en", "NonExistent", http.StatusNotFound},
-		{"Hidden action returns 404", "", hiddenAction.Name, http.StatusNotFound},
+		{"Default language", "", "", testAction.Name, http.StatusOK},
+		{"English resolves to base", "en", "", testAction.Name, http.StatusOK},
+		{"Japanese", "ja", "ja", testAction.Name, http.StatusOK},
+		{"Unknown language falls back to base", "invalid", "", testAction.Name, http.StatusOK},
+		{"Not found", "en", "", "NonExistent", http.StatusNotFound},
+		{"Hidden action returns 404", "", "", hiddenAction.Name, http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: []Action{testAction, hiddenAction}}
+			actionsDataMap[tt.cacheKey] = ActionsData{Actions: []Action{testAction, hiddenAction}}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)
@@ -256,6 +274,86 @@ func TestGetActionDetails(t *testing.T) {
 			}
 		})
 	}
+}
+
+// jsonKeyOrder returns the keys of a JSON object in the order they appear in raw.
+func jsonKeyOrder(t *testing.T, raw json.RawMessage) []string {
+	t.Helper()
+
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	tok, err := dec.Token()
+	assert.NoError(t, err)
+	assert.Equal(t, json.Delim('{'), tok)
+
+	var keys []string
+	for dec.More() {
+		key, err := dec.Token()
+		if !assert.NoError(t, err) {
+			break
+		}
+		keys = append(keys, key.(string))
+
+		var skip json.RawMessage
+		if !assert.NoError(t, dec.Decode(&skip)) {
+			break
+		}
+	}
+	return keys
+}
+
+// Property order in a JSON Schema is meaningful — it drives the field order the
+// UI renders. Decoding Action.Parameter into a map would let encoding/json sort
+// the keys alphabetically on the way out, so it is kept as raw bytes.
+func TestGetActionDetailsPreservesParameterOrder(t *testing.T) {
+	// Deliberately not in alphabetical order, at both the top level and nested.
+	const parameter = `{` +
+		`"type":"object",` +
+		`"properties":{` +
+		`"method":{"type":"string"},` +
+		`"aggregateAttributes":{"type":"object","properties":{"newAttribute":{"type":"string"},"attribute":{"type":"string"}}},` +
+		`"calculationValue":{"type":"integer"},` +
+		`"calculation":{"type":"string"}` +
+		`}}`
+
+	resetTestData()
+	actionsDataMap[""] = ActionsData{Actions: []Action{{
+		Name:      "CSV Reader",
+		Type:      ActionTypeSource,
+		Parameter: json.RawMessage(parameter),
+	}}}
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/actions/:id")
+	c.SetParamNames("id")
+	c.SetParamValues("CSV Reader")
+
+	assert.NoError(t, getActionDetails(c))
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var response Action
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &response))
+
+	var served map[string]json.RawMessage
+	assert.NoError(t, json.Unmarshal(response.Parameter, &served))
+
+	assert.Equal(t,
+		[]string{"method", "aggregateAttributes", "calculationValue", "calculation"},
+		jsonKeyOrder(t, served["properties"]),
+		"top-level property order must survive the round trip")
+
+	var props map[string]json.RawMessage
+	assert.NoError(t, json.Unmarshal(served["properties"], &props))
+
+	var nested map[string]json.RawMessage
+	assert.NoError(t, json.Unmarshal(props["aggregateAttributes"], &nested))
+
+	assert.Equal(t,
+		[]string{"newAttribute", "attribute"},
+		jsonKeyOrder(t, nested["properties"]),
+		"nested property order must survive the round trip")
 }
 
 func TestGetActionDetailsNotFound(t *testing.T) {

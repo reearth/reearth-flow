@@ -15,6 +15,15 @@ cargo make schema-base        # regenerates actions.json and syncs i18n skeleton
 cargo make schema-translated  # regenerates per-language JSON files
 ```
 
+**Verify against the implementation before writing — do this first, every time.** A title or description must describe what the code actually does, not what the parameter name suggests or what a prior description claimed. Polishing text for clarity without reading the code produces confident, wrong documentation. Before adding or editing any title or description, read the factory's `build`, the parameter struct, and the action's execution path (`process`/`start`/`run`), and confirm each of the following:
+
+- **Every parameter is actually read and applied.** A parameter accepted but never used (e.g. stored into a field with a `_` prefix and never referenced) is a bug, not something to document — flag it for removal rather than writing a description for behavior that does not exist.
+- **Enum variants behave as their names and descriptions claim** — trace each variant to its branch in the code.
+- **Defaults, fallbacks, and "when omitted" behavior match the text** — confirm the actual default value and the code path taken when the parameter is absent.
+- **The description reflects real behavior** — what the action consumes, what it emits, and any side effects — including where inputs come from (e.g. a path read from the incoming feature vs. a fixed parameter).
+
+A description that reads well but misstates behavior is worse than no description. When the code and an existing description disagree, the code is the source of truth: fix the description (or fix the code and flag it), never copy the stale claim forward.
+
 See [engine/AGENTS.md](../AGENTS.md) for the full development workflow.
 
 ---
@@ -72,6 +81,16 @@ Verb-first, present tense, third-person singular — start directly with the ver
 - camelCase: `outputAttribute`, `targetEpsgCode`, `groupBy`
 - No abbreviations except universally understood ones: `epsg`, `crs`, `url`, `id` are fine; `attr`, `cfg`, `val` are not
 - No redundant type prefixes: `stringValue` → `value`
+
+**Names must be accurate.** The accuracy rule that governs titles and descriptions applies to the parameter name itself: it must describe what the parameter actually controls, and it must not carry a meaning the implementation contradicts. Check the name against the term the operation is known by outside this project — OGC Simple Features, PostGIS, JTS — and prefer that term when one exists.
+
+| ✗ | ✓ | Why |
+|---|---|---|
+| `unitSquareSize` | `cellSize` | a "unit square" has side 1, so `unitSquareSize: 5.0` contradicts itself; the established term is cell (or edge) size |
+| `keepSquareOnly` | `completeCellsOnly` | every cell is a square — the real distinction is complete vs. partial |
+| `mode` | `overlapBehavior` | names the mechanism, not what is being decided |
+
+This is easy to miss because a name can satisfy every rule above and still be wrong. Read it the way a first-time user will, with no access to the implementation.
 
 ### 3.2 Required vs optional
 
@@ -190,7 +209,7 @@ New categories can be added when a meaningful group of actions does not fit any 
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `json`, `list`, `logging`, `mapping`, `raster`, `routing`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
 New tags can be proposed when an established term does not adequately describe an action's domain. Avoid adding tags that duplicate an action's category.
 
@@ -199,6 +218,8 @@ New tags can be proposed when an established term does not adequately describe a
 ## 7. Review Checklist
 
 For each action, flag anything that violates the rules above. Only log issues — skip clean items.
+
+**First, verify against the implementation** (see "How to use this standard"): read the factory and execution path and confirm every parameter is actually used, enum variants and defaults behave as documented, and each title/description matches real behavior. Accuracy is checked before style — a well-worded but incorrect description is a defect, and a parameter that is accepted but never applied is flagged for removal, not documented.
 
 ```
 ActionName

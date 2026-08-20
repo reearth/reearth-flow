@@ -11,6 +11,8 @@ type WebsocketClient interface {
 	GetHistory(ctx context.Context, docID string) ([]*websocket.History, error)
 	GetHistoryByVersion(ctx context.Context, docID string, version int) (*websocket.History, error)
 	GetHistoryMetadata(ctx context.Context, docID string) ([]*websocket.HistoryMetadata, error)
+	GetNamedSnapshots(ctx context.Context, docID string) ([]*websocket.SnapshotMetadata, error)
+	SaveNamedSnapshot(ctx context.Context, docID, label string) (*websocket.SnapshotMetadata, error)
 	Rollback(ctx context.Context, id string, version int) (*websocket.Document, error)
 	FlushToGCS(ctx context.Context, id string) error
 	CreateSnapshot(ctx context.Context, docID string, version int, name string) (*websocket.Document, error)

@@ -90,7 +90,8 @@ pub(super) struct XmlWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct XmlWriterParam {
-    /// Output path or expression for the XML file to create
+    /// # Output File
+    /// Output path or expression for the XML file to create.
     pub(super) output: Code,
 }
 
@@ -102,7 +103,7 @@ impl Sink for XmlWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| SinkError::XmlWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();
@@ -146,7 +147,7 @@ pub(super) fn write_xml(
         .collect::<Vec<serde_json::Value>>();
 
     let mut writer = Writer::new(Vec::new());
-    writer.write_event(Event::Decl(BytesDecl::new("1.2", None, None)))?;
+    writer.write_event(Event::Decl(BytesDecl::new("1.0", None, None)))?;
     let start = BytesStart::new("features");
     let end = start.to_end();
     writer.write_event(Event::Start(start.clone()))?;

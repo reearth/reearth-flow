@@ -68,5 +68,7 @@ pub enum UvSource {
 /// A 3x4 world-to-texture projective matrix. Maps a homogeneous world position
 /// `(x, y, z, 1)` to `(s', t', q')`, with the texture coordinate recovered as
 /// `(s, t) = (s'/q', t'/q')`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "World-to-texture matrix"))]
 pub struct TexMatrix(pub [[f64; 4]; 3]);

@@ -5,6 +5,7 @@ use crate::ops::triangulation::Cache;
 use crate::ops::{
     Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
+use crate::triangular_mesh::TriangularMesh3DData;
 use crate::{Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Solid {
@@ -50,21 +51,43 @@ impl Shell {
     }
 }
 
+impl Solid {
+    /// Move the solid out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            exterior: std::mem::replace(
+                &mut self.exterior,
+                Shell::TriangularMesh(TriangularMesh3DData::empty()),
+            ),
+            interiors: std::mem::take(&mut self.interiors),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(self.take())))
+    }
+}
+
 impl Reproject for Solid {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut solid = self.take();
         if from != target {
-            reproject_shell(&mut self.exterior, from, target, cache)?;
-            for shell in &mut self.interiors {
+            reproject_shell(&mut solid.exterior, from, target, cache)?;
+            for shell in &mut solid.interiors {
                 reproject_shell(shell, from, target, cache)?;
             }
-            self.frame = CoordinateFrame::Crs(target);
+            solid.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
+            solid,
+        ))))
     }
 }
 
@@ -80,6 +103,170 @@ fn reproject_shell(
         Shell::TriangularMesh(data) => data.vertices_mut(),
     };
     transform_coords_3d(cache, from, target, vertices)
+}
+
+use crate::ops::{plan_frame_step, translate_3d, ConvertFrame, FrameStep, Translate};
+
+impl Translate for Solid {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            translate_3d(vertices, delta);
+        }
+        Ok(())
+    }
+}
+
+impl ConvertFrame for Solid {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<Geometry> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(self.take_geometry()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(self.take_geometry())
+            }
+        }
+    }
+}
+
+// A solid is a volume; flattening its boundary to 2D has no single well-defined
+// result, so it has no 2D counterpart.
+crate::unsupported!(Solid: ForceTwoDimension);
+
+use crate::ops::{
+    emit_face_3d, emit_triangles_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+};
+
+impl CountHoles for Solid {
+    /// The holes in the boundary faces of every shell. The void shells
+    /// themselves are hollow volumes rather than face boundaries, so they are
+    /// not counted; only the rings inside their faces are. A triangle-mesh shell
+    /// carries no rings and contributes nothing.
+    fn count_holes(&self) -> usize {
+        std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| match shell {
+                Shell::PolygonMesh(data) => data.num_holes(),
+                Shell::TriangularMesh(_) => 0,
+            })
+            .sum()
+    }
+}
+
+impl ExtractHoles for Solid {
+    /// Take apart the boundary faces of every shell. Matching [`CountHoles`], a
+    /// void shell is not itself a hole — it is a hollow volume — so it is not
+    /// emitted as one; its faces are taken apart like the exterior's.
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        let frame = self.frame();
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.for_each_face_polygon(frame, |face| {
+                    emit_face_3d(&face, emit);
+                }),
+                Shell::TriangularMesh(data) => {
+                    emit_triangles_3d(frame, data.vertices(), data.triangles(), emit)
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl RemoveAppearance for Solid {
+    fn remove_appearance(&mut self) {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.remove_appearance(),
+                Shell::TriangularMesh(data) => data.remove_appearance(),
+            }
+        }
+    }
+}
+
+use crate::ops::coerce::{push_face_lines_3d, triangle_ring, unchanged, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+use crate::polygon::Polygon3D;
+
+impl Solid {
+    /// Invoke `f` once per boundary face of the solid, the exterior shell's
+    /// faces first, then each void shell's. A triangle-mesh shell contributes
+    /// one closed triangle per face.
+    fn for_each_boundary_face(&self, mut f: impl FnMut(Polygon3D)) {
+        let frame = self.frame();
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.for_each_face_polygon(frame, &mut f),
+                Shell::TriangularMesh(data) => {
+                    let vertices = data.vertices();
+                    for triangle in data.triangles() {
+                        f(Polygon3D::from_rings(
+                            frame.clone(),
+                            triangle_ring(vertices, triangle),
+                            Vec::<Vec<[f64; 3]>>::new(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Coerce for Solid {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            // `Triangulate` on a volume yields a volume with a triangulated
+            // boundary, not a bare mesh — the result stays a `Solid`.
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_boundary_face(|face| {
+                    faces.push(Euclidean3DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_3d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_boundary_face(|face| push_face_lines_3d(&face, &mut lines));
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Solid {
+    /// Push the faces of every shell, voids included.
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.footprint_faces(sink),
+                Shell::TriangularMesh(data) => data.footprint_faces(sink),
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

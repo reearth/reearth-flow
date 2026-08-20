@@ -3,6 +3,13 @@ import { defineConfig } from "allure";
 export default defineConfig({
   name: "Re:Earth Flow E2E",
   output: "allure-report",
+  // Cross-run trends live in this single JSONL file (Allure 3 replaced the
+  // Allure 2 `history/` folder). The CI workflow restores it from GCS before
+  // generating and re-uploads it afterwards; `allure generate` reads it for
+  // trend/retry charts and appends the current run. Kept in sync with the
+  // 50-run cap on the dashboard index.json.
+  historyPath: "history.jsonl",
+  historyLimit: 50,
   plugins: {
     awesome: {
       options: {

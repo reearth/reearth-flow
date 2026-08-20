@@ -24,3 +24,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+
+[[example]]
+name = "pack_efficiency"
+required-features = ["new-geometry"]

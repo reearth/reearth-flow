@@ -7,6 +7,8 @@ pub mod file;
 pub mod geom_stats;
 pub mod profile_config;
 pub mod rasterize;
+pub mod render3d;
 pub mod runner;
 pub mod tester;
 pub mod tileset;
+pub mod tileset_mesh;

@@ -16,7 +16,7 @@ graphs:
           dataset:
             type: string
             value: ram:///fixture/testdata/file/writer/absolute_output_fails/test_geopackage.gpkg
-          readMode: all
+          readMode: features
 
       - id: 01234567-0000-0000-0000-000000000304
         name: WriteGeoPackage
@@ -29,7 +29,7 @@ graphs:
           tableName: test_features
           geometryColumn: geom
           srsId: 4326
-          geometryType: GEOMETRY
+          geometryType: geometry
           createSpatialIndex: true
           overwrite: true
 

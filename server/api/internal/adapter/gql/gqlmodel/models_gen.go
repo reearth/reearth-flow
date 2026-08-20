@@ -358,6 +358,13 @@ type Me struct {
 type Mutation struct {
 }
 
+type NamedSnapshot struct {
+	SnapshotNumber int       `json:"snapshotNumber"`
+	Label          string    `json:"label"`
+	Timestamp      time.Time `json:"timestamp"`
+	Size           int64     `json:"size"`
+}
+
 type NodeExecution struct {
 	ID          ID         `json:"id"`
 	JobID       ID         `json:"jobId"`

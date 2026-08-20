@@ -30,7 +30,7 @@ impl ProcessorFactory for BuffererFactory {
     }
 
     fn description(&self) -> &str {
-        "Create Buffer Around Features"
+        "Creates a buffer polygon around each input geometry at a specified distance."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -42,7 +42,7 @@ impl ProcessorFactory for BuffererFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["2d"]
+        &["spatial"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -80,27 +80,33 @@ impl ProcessorFactory for BuffererFactory {
     }
 }
 
+// TODO: add a `solid` buffer type. It needs a solid-buffering algorithm, and an
+// edge-resolution control to go with it, that the geometry crate does not have yet.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum BufferType {
     /// # 2D Area Buffer
-    /// Creates a 2D polygon buffer around the input geometry
+    /// Creates a flat polygon buffer around the input geometry, discarding any
+    /// elevation it carried.
     #[serde(rename = "area2d")]
     Area2D,
 }
 
 /// # Bufferer Parameters
-/// Configure how to create buffers around input geometries
+/// Configure the shape and extent of the buffer created around each geometry.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Bufferer {
     /// # Buffer Type
-    /// The type of buffer to create around the input geometry
+    /// Shape of buffer to create around the input geometry.
     buffer_type: BufferType,
     /// # Distance
-    /// The distance to extend the buffer from the original geometry (in coordinate units)
+    /// How far the buffer extends from the original geometry, in the units of
+    /// the geometry's coordinate system. A negative distance contracts it.
     distance: f64,
     /// # Interpolation Angle
-    /// The angle in degrees used for curve interpolation when creating rounded corners
+    /// Angular step in degrees used to approximate the rounded corners of a
+    /// buffered point or curve. A smaller angle produces a smoother outline.
+    /// Buffering a polygon does not use this value.
     interpolation_angle: f64,
 }
 
@@ -113,11 +119,8 @@ impl Processor for Bufferer {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
-            return Ok(());
-        };
         match &geometry.value {
+            // Nothing to buffer is not a failed buffer — pass it through.
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
@@ -127,7 +130,9 @@ impl Processor for Bufferer {
             GeometryValue::FlowGeometry3D(geos) => {
                 self.handle_3d_geometry(geos, feature, geometry, &ctx, fw);
             }
-            GeometryValue::CityGmlGeometry(_) => unimplemented!(),
+            GeometryValue::CityGmlGeometry(_) => {
+                reject(&ctx, fw, "buffering this geometry is not supported");
+            }
         }
         Ok(())
     }
@@ -144,6 +149,16 @@ impl Processor for Bufferer {
     fn name(&self) -> &str {
         "Bufferer"
     }
+}
+
+/// Route a feature the action cannot buffer to `rejected`. Emitting it on
+/// `features` would leave it indistinguishable from a buffered one, and a
+/// geometry this action does not handle should not panic the run.
+#[cfg(not(feature = "new-geometry"))]
+fn reject(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, reason: &str) {
+    ctx.event_hub
+        .debug_log(Some(ctx.error_span()), format!("buffer rejected: {reason}"));
+    fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
 }
 
 impl Bufferer {
@@ -212,6 +227,10 @@ impl Bufferer {
                         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                     }
                 }
+                // TODO: buffer these types too — see the note on the 3D arm below.
+                // They pass through unbuffered rather than going to `rejected`:
+                // no standard implementation treats a geometry type as
+                // un-bufferable, and a new port is unwired in existing workflows.
                 _ => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 }
@@ -271,6 +290,15 @@ impl Bufferer {
                         );
                     }
                 }
+                // TODO: buffer these types too. Projecting to 2D is correct —
+                // buffering is a planar operation everywhere (PostGIS: "This
+                // function ignores the Z dimension. It always gives a 2D result
+                // even when used on a 3D geometry") — but skipping the buffer is
+                // not: JTS defines `buffer()` on the base Geometry type, so every
+                // type has one. Multi-polygons in particular are buffered by the
+                // 2D path above and silently are not here, which means a distance
+                // tolerance is not applied to them. Fixing it moves quality-check
+                // results, so it is tracked separately.
                 _ => {
                     let value: Geometry2D = geos.clone().into();
                     let mut geometry = geometry.clone();

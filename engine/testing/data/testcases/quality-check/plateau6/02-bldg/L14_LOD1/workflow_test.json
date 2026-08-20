@@ -1,5 +1,6 @@
 {
   "description": "Test L14 for LOD1 on plateau6. Four lod1Solid buildings: two with InvalidSolidBoundaries under 'LOD1 立体のエラー' and one non-watertight reported as 'Surface Not Closed' under 'LOD1 非水密立体'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

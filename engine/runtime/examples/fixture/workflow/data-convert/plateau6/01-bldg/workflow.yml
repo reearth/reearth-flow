@@ -1,0 +1,622 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3f6d9c2a-1b7e-4a05-9c31-2d8e6f4a7b10
+name: "PLATEAU6-DataConvert-01-bldg-workflow"
+entryGraphId: 8f3a94c6-bb3e-4561-a405-09b65353986c
+with:
+  cityGmlPath:
+graphs:
+  - id: 8f3a94c6-bb3e-4561-a405-09b65353986c
+    name: entry_point
+    nodes:
+      - id: d733672a-56d5-4a85-ac1d-a61e1ba174f5
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city_gml_path": variables["cityGmlPath"],
+                },
+              ]
+
+      - id: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
+        name: FilePathExtractor
+        type: action
+        action: Feature File Path Extractor
+        with:
+          sourceDataset:
+            type: flowExpr
+            value: attributes["city_gml_path"]
+          extractArchive: true
+
+      - id: 8269fcb7-645d-4cc2-bb7e-215357fc960d
+        name: GmlFileFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
+              outputPort: features
+
+      - id: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        name: FeatureReaderByCityGml
+        type: action
+        action: Feature CityGML 3 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
+          cityGmlAttributesKey: cityGmlAttributes
+          flattenLeafAttributes:
+            - uom
+
+      - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        name: AttributeTableExtractor
+        type: action
+        action: Attribute Table Extractor
+        with:
+          inline: !include ../../../../config/plateau6_bldg_flatten_attributes.json
+
+      - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        name: AttributeFlattenerForCesiumProperties
+        type: action
+        action: Attribute Flattener
+        with:
+          attributes:
+            - attributes
+
+      - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        name: FeatureMergerForFlattenedAttributes
+        type: action
+        action: Feature Merger
+        with:
+          requestorAttribute:
+            - __citygml_gml_id
+          supplierAttribute:
+            - __citygml_gml_id
+
+      - id: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: city_code
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  attributes.get("uro:BuildingIDAttribute_uro:city_code") or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: __baseCityCode
+              method: create
+              value:
+                type: flowExpr
+                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: attributes
+              method: convert
+              value:
+                type: flowExpr
+                value: json.dumps(attributes["attributes"])
+
+      - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        name: AttributeConversionTableForWardName
+        type: action
+        action: Attribute Conversion Table
+        with:
+          format: csv
+          inline: !include ../../../../config/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["city_code"]
+              featureTo: "cityNameEn"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_en"
+            - featureFroms: ["city_code"]
+              featureTo: "__wardParentCode"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
+
+      - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        name: CityCodeBoundaryFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["city_code"] == attributes["__baseCityCode"] or attributes["__wardParentCode"] == attributes["__baseCityCode"]
+              outputPort: features
+
+      - id: 16247597-565a-40df-a8d4-7445468978fd
+        name: GeometrySplitterByLod
+        type: action
+        action: Geometry Splitter
+        with:
+          groupBy: "lod"
+
+      # Collapse to one row per (gmlId, lod) pair first: a building can have
+      # multiple geometry members at the same LOD, and the lodMask sum below
+      # is only valid (sum of distinct powers of two == OR) if each distinct
+      # lod contributes exactly once.
+      - id: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
+        name: LodDistinctAggregator
+        type: action
+        action: Attribute Aggregator
+        with:
+          method: count
+          aggregateAttributes:
+            - newAttribute: __citygml_gml_id
+              attribute: __citygml_gml_id
+            - newAttribute: lod
+              attribute: lod
+          calculationAttribute: _dupCount
+          calculationValue: 1
+
+      - id: d12d66b8-834d-4d8b-95cd-b978069add10
+        name: LodMaskAggregator
+        type: action
+        action: Attribute Aggregator
+        with:
+          method: count
+          aggregateAttributes:
+            - newAttribute: __citygml_gml_id
+              attribute: __citygml_gml_id
+          calculationAttribute: lodMask
+          calculation:
+            type: flowExpr
+            value: 1 << attributes["lod"]
+
+      - id: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        name: LodMaskJoiner
+        type: action
+        action: Feature Joiner
+        with:
+          joinType: left
+          requestorAttribute:
+            - __citygml_gml_id
+          supplierAttribute:
+            - __citygml_gml_id
+          conflictResolution: requestorWins
+
+      # City-wide highest LOD actually present, keyed by city_code. Caps which
+      # LOD branches emit at all: a branch only writes once some building in
+      # the city truly reaches that LOD, mirroring PLATEAU4's FeatureLodFilter
+      # (which groups by filterKey and only opens LOD-i once max_lod >= i),
+      # instead of always falling back and duplicating lower-LOD content into
+      # every higher-LOD tile set.
+      - id: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
+        name: CityMaxLodAggregator
+        type: action
+        action: Attribute Aggregator
+        with:
+          method: max
+          aggregateAttributes:
+            - newAttribute: city_code
+              attribute: city_code
+          calculationAttribute: city_max_lod
+          calculation:
+            type: flowExpr
+            value: attributes["lod"]
+
+      - id: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        name: CityMaxLodJoiner
+        type: action
+        action: Feature Joiner
+        with:
+          joinType: left
+          requestorAttribute:
+            - city_code
+          supplierAttribute:
+            - city_code
+          conflictResolution: requestorWins
+
+      - id: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: gml_id
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["__citygml_gml_id"]
+            - attribute: __output_base
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+                  suffix = "";
+                  if attributes["city_code"] != attributes["__baseCityCode"] {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];
+                  }
+                  city_gml + suffix
+            - attribute: _lod
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["lod"]
+
+      # --- LOD1 branch ---
+      - id: 04339391-dcfe-485a-9593-e12b0eddf864
+        name: FeatureFilterLod1
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == 1
+              outputPort: features
+
+      - id: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
+        name: BoundsExtractorByLod1
+        type: action
+        action: Bounds Extractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: d22ce8c5-4e85-416c-9fe9-84396ecb7399
+        name: AttributeManagerXYByLod1
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
+            - attribute: _y
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
+
+      - id: a4f07c6f-3972-4c4f-9e70-f93af486c78d
+        name: Cesium3DTilesWriterLod1
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          targetTileSize: 1048576
+          attachTexture: false
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod1.zip"
+
+      # --- LOD2 branch ---
+      - id: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
+        name: FeatureFilterLod2
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: |
+                  mask = attributes["lodMask"];
+                  best = 0;
+                  i = 1;
+                  while i <= 2 {
+                    if (mask & (1 << i)) != 0 { best = i; }
+                    i += 1;
+                  }
+                  attributes["city_max_lod"] >= 2 and attributes["lod"] == best
+              outputPort: features
+
+      - id: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        name: BoundsExtractorByLod2
+        type: action
+        action: Bounds Extractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        name: AttributeManagerXYByLod2
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
+            - attribute: _y
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
+
+      - id: e44e7208-c0a6-4bca-829c-5d2769dd49f3
+        name: Cesium3DTilesWriterLod2
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          targetTileSize: 1048576
+          attachTexture: true
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod2.zip"
+
+      - id: 0beef7bf-acac-4661-b325-fb8adea8739a
+        name: Cesium3DTilesWriterLod2NoTexture
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          targetTileSize: 1048576
+          textureCodec: Untextured
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod2_no_texture.zip"
+
+      # --- LOD3 branch ---
+      - id: acd88b8a-708a-4adf-ad6e-b471d934191d
+        name: FeatureFilterLod3
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: |
+                  mask = attributes["lodMask"];
+                  best = 0;
+                  i = 1;
+                  while i <= 3 {
+                    if (mask & (1 << i)) != 0 { best = i; }
+                    i += 1;
+                  }
+                  attributes["city_max_lod"] >= 3 and attributes["lod"] == best
+              outputPort: features
+
+      - id: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        name: BoundsExtractorByLod3
+        type: action
+        action: Bounds Extractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: cd167799-4d08-4256-8203-584c66f49d9b
+        name: AttributeManagerXYByLod3
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
+            - attribute: _y
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
+
+      - id: a7b575b0-8a0b-44d6-a80e-1fef936058df
+        name: Cesium3DTilesWriterLod3
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          targetTileSize: 1048576
+          attachTexture: true
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod3.zip"
+
+      - id: cfca323d-02e2-49a2-a327-d928746657a1
+        name: Cesium3DTilesWriterLod3NoTexture
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          targetTileSize: 1048576
+          textureCodec: Untextured
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod3_no_texture.zip"
+
+    edges:
+      - id: b312699e-9e9f-48e9-9624-512c788bdbe1
+        from: d733672a-56d5-4a85-ac1d-a61e1ba174f5
+        to: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
+        fromPort: features
+        toPort: features
+      - id: 4cb2b94f-ad10-496a-b870-4cf1470be53f
+        from: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
+        to: 8269fcb7-645d-4cc2-bb7e-215357fc960d
+        fromPort: features
+        toPort: features
+      - id: 499a3897-53db-4825-be5b-73414dbadfcf
+        from: 8269fcb7-645d-4cc2-bb7e-215357fc960d
+        to: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        fromPort: features
+        toPort: features
+      - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
+        from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        to: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        fromPort: features
+        toPort: features
+      - id: b4c6d8e0-2a4c-4e6a-8c0e-2a4c6e8a0b2c
+        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        fromPort: features
+        toPort: requestor
+      - id: c5d6e7f8-7a8b-4c9d-ae0f-2a3b4c5d6e70
+        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        fromPort: features
+        toPort: features
+      - id: d6e7f8a9-8b9c-4dae-bf10-3a4b5c6d7e81
+        from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        fromPort: features
+        toPort: supplier
+      - id: e7f8a9b0-9c0d-4ebf-a021-4b5c6d7e8f92
+        from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        fromPort: merged
+        toPort: features
+      - id: 8b3e5c1a-2f4d-4a6b-9c8e-1d0f3a5b7c9e
+        from: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        to: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        fromPort: features
+        toPort: features
+      - id: 5c7d9e1f-4a6b-4c8d-9e0f-2a3b5c7d9e1a
+        from: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        fromPort: features
+        toPort: features
+      - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        to: 16247597-565a-40df-a8d4-7445468978fd
+        fromPort: features
+        toPort: features
+      # split -> per-gmlId LOD mask (for cascade fallback) -> joined back onto each split feature
+      - id: 83373a03-9e03-4f12-b5c2-b72200d249bf
+        from: 16247597-565a-40df-a8d4-7445468978fd
+        to: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
+        fromPort: features
+        toPort: features
+      - id: 2b4c6d8e-0a1b-4c2d-8e3f-4a5b6c7d8e9f
+        from: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
+        to: d12d66b8-834d-4d8b-95cd-b978069add10
+        fromPort: features
+        toPort: features
+      - id: c9b71d8c-8e82-4a9a-81ea-8aa3dc9bd776
+        from: 16247597-565a-40df-a8d4-7445468978fd
+        to: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        fromPort: features
+        toPort: requestor
+      - id: 1cf95ad1-9f49-47d8-88f6-411eb6655c8b
+        from: d12d66b8-834d-4d8b-95cd-b978069add10
+        to: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        fromPort: features
+        toPort: supplier
+      # split -> per-city_code max LOD -> joined back onto each split feature
+      - id: 4e6a8c0d-2b3f-4e5a-8c1d-6f9b0a2c4e83
+        from: 16247597-565a-40df-a8d4-7445468978fd
+        to: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
+        fromPort: features
+        toPort: features
+      - id: 1a3c5e7f-9b0d-4a2c-8e4f-6a8c0e2b4d95
+        from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        to: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        fromPort: joined
+        toPort: requestor
+      - id: 2b4d6f80-0c1e-4b3d-9f5a-7b9d1f3c5e06
+        from: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
+        to: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        fromPort: features
+        toPort: supplier
+      # joined (lod + lodMask + cityMaxLod) -> per-lod filters
+      - id: 049298e4-f321-4db6-a266-6b8977eb4009
+        from: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        to: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
+        fromPort: joined
+        toPort: features
+      - id: 71f0a555-6c6d-4201-9e03-a2c8278bd5bf
+        from: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
+        to: 04339391-dcfe-485a-9593-e12b0eddf864
+        fromPort: features
+        toPort: features
+      - id: 6d8c644d-3f72-4634-b2f5-0b62a7d9b813
+        from: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
+        to: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
+        fromPort: features
+        toPort: features
+      - id: 9ae53fa9-ed12-46ce-b628-494d610d93f3
+        from: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
+        to: acd88b8a-708a-4adf-ad6e-b471d934191d
+        fromPort: features
+        toPort: features
+      # lod1 filter -> bounds extractor -> writer
+      - id: 6cf1b755-369a-4d11-a9a5-83d46118a459
+        from: 04339391-dcfe-485a-9593-e12b0eddf864
+        to: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
+        fromPort: features
+        toPort: features
+      - id: e4c7f444-5c2c-4bd1-9d24-393e85b65d1e
+        from: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
+        to: d22ce8c5-4e85-416c-9fe9-84396ecb7399
+        fromPort: features
+        toPort: features
+      - id: 550153be-925d-4199-9939-c021d05c2e5d
+        from: d22ce8c5-4e85-416c-9fe9-84396ecb7399
+        to: a4f07c6f-3972-4c4f-9e70-f93af486c78d
+        fromPort: features
+        toPort: features
+      # lod2 filter -> bounds extractor -> writer
+      - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+        from: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
+        to: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        fromPort: features
+        toPort: features
+      - id: 753ee3b2-bff4-480e-adbf-77e174f23fda
+        from: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        to: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        fromPort: features
+        toPort: features
+      - id: 11b9c258-2623-444a-8cb6-0d9115fa2183
+        from: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        to: e44e7208-c0a6-4bca-829c-5d2769dd49f3
+        fromPort: features
+        toPort: features
+      # lod2 bounds extractor -> no-texture writer
+      - id: 73ebe44d-1210-46ed-ada6-f6052353d6e9
+        from: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        to: 0beef7bf-acac-4661-b325-fb8adea8739a
+        fromPort: features
+        toPort: features
+      # lod3 filter -> bounds extractor -> writer
+      - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f
+        from: acd88b8a-708a-4adf-ad6e-b471d934191d
+        to: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        fromPort: features
+        toPort: features
+      - id: 44846f06-cb2e-4d7d-a473-9e36f5ea3a11
+        from: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        to: cd167799-4d08-4256-8203-584c66f49d9b
+        fromPort: features
+        toPort: features
+      - id: db01247a-6eb9-490d-bd4b-a1117489d1d9
+        from: cd167799-4d08-4256-8203-584c66f49d9b
+        to: a7b575b0-8a0b-44d6-a80e-1fef936058df
+        fromPort: features
+        toPort: features
+      # lod3 bounds extractor -> no-texture writer
+      - id: a8b14a8a-985e-4f04-9d8b-476491911c6d
+        from: cd167799-4d08-4256-8203-584c66f49d9b
+        to: cfca323d-02e2-49a2-a327-d928746657a1
+        fromPort: features
+        toPort: features

@@ -34,7 +34,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads and processes features from CityGML files with optional flattening"
+        "Reads CityGML features from a file path referenced by the incoming feature, optionally extracting nested child city objects as separate features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -191,7 +191,7 @@ impl Processor for FeatureCityGmlReader {
         let dataset = self.params.dataset.clone();
         let flatten = self.params.flatten;
         let codelists_url = self.params.codelists_path.as_ref().and_then(|code| {
-            code.eval_string(&feature, ctx.env_vars.clone())
+            code.eval_string(&feature, ctx.variables.clone())
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });

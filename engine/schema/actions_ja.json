@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する",
+      "description": "地物のジオメトリが持つマテリアル、テクスチャ、テクスチャ座標を削除する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -23,47 +23,60 @@
     {
       "name": "Area Calculator",
       "type": "processor",
-      "description": "ポリゴンジオメトリの平面または傾斜面積を計算し、結果を属性として追加する",
+      "description": "地物のジオメトリの平面または傾斜面積を計算し、属性として格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AreaCalculator パラメータ",
-        "description": "ジオメトリの面積計算を設定する",
+        "title": "Area Calculator パラメータ",
+        "description": "各地物のジオメトリの面積を計算し格納する方法を設定する",
         "type": "object",
         "properties": {
           "areaType": {
-            "description": "実行する面積計算のタイプ（平面面積または傾斜面積）",
+            "title": "面積タイプ",
+            "description": "平面投影面積と実際の傾斜表面積のどちらを計算するか。標高を持たないジオメトリは常に平面のため影響しない",
             "default": "planeArea",
             "allOf": [
               {
                 "$ref": "#/definitions/AreaType"
               }
-            ],
-            "title": "面積タイプ"
+            ]
           },
           "outputAttribute": {
-            "description": "計算された面積を格納する属性の名前",
+            "title": "出力属性",
+            "description": "計算された面積を格納する属性。デフォルトは `area`",
             "default": "area",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
-            ],
-            "title": "出力属性名"
+            ]
           },
           "multiplier": {
-            "description": "面積値をスケールするための乗数",
+            "title": "乗数",
+            "description": "計算された面積に適用する係数。単位を変換する場合に使用する。デフォルトは 1.0",
             "default": 1.0,
             "type": "number",
-            "format": "double",
-            "title": "乗数"
+            "format": "double"
           }
         },
         "definitions": {
           "AreaType": {
-            "type": "string",
-            "enum": [
-              "planeArea",
-              "slopedArea"
+            "oneOf": [
+              {
+                "title": "平面面積",
+                "description": "ジオメトリを XY 平面に投影した平坦な面積を計算する",
+                "type": "string",
+                "enum": [
+                  "planeArea"
+                ]
+              },
+              {
+                "title": "傾斜面積",
+                "description": "各面の傾斜を考慮した実際の表面積を計算する",
+                "type": "string",
+                "enum": [
+                  "slopedArea"
+                ]
+              }
             ]
           },
           "Attribute": {
@@ -81,15 +94,12 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [
-        "area",
-        "measurement"
-      ]
+      "tags": []
     },
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "あるエリアの上に別のエリアを重ね合わせる",
+      "description": "重なり合うエリアを重複のない断片に分割し、各断片を覆う入力地物の数を記録する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer パラメータ",
@@ -173,11 +183,11 @@
     {
       "name": "Attribute Aggregator",
       "type": "processor",
-      "description": "属性に基づいて地物をグルーピングする",
+      "description": "属性値で地物をグループ化し、グループごとに計算値を集計して1グループにつき1地物を出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeAggregator パラメータ",
-        "description": "属性値に基づいてフィーチャーをグループ化・集計する方法を設定する",
+        "title": "Attribute Aggregator パラメータ",
+        "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する",
         "type": "object",
         "required": [
           "aggregateAttributes",
@@ -185,15 +195,44 @@
           "method"
         ],
         "properties": {
+          "method": {
+            "title": "集計メソッド",
+            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Method"
+              }
+            ]
+          },
           "aggregateAttributes": {
-            "title": "集計する属性のリスト",
+            "title": "グループ化する属性",
+            "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AggregateAttribute"
             }
           },
+          "calculationAttribute": {
+            "title": "結果を格納する属性",
+            "description": "計算結果を格納する集計後地物の属性",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "calculationValue": {
+            "title": "計算に使用する値",
+            "description": "地物ごとの値として使う整数の定数。設定した場合は計算式より優先される",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
           "calculation": {
-            "title": "実行する計算",
+            "title": "計算式",
+            "description": "地物ごとに整数として評価される式。計算値が設定されていない場合の地物ごとの値として使う",
             "type": [
               "object",
               "null"
@@ -214,33 +253,37 @@
                 "type": "string"
               }
             }
-          },
-          "calculationValue": {
-            "title": "計算に使用する値",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "calculationAttribute": {
-            "title": "計算結果を格納する属性",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "method": {
-            "title": "集計メソッド",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
           }
         },
         "definitions": {
+          "Method": {
+            "oneOf": [
+              {
+                "title": "最大値",
+                "description": "グループ内の地物ごとの計算値の最大値を保持する",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "最小値",
+                "description": "グループ内の地物ごとの計算値の最小値を保持する",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "カウント",
+                "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              }
+            ]
+          },
           "AggregateAttribute": {
             "type": "object",
             "required": [
@@ -248,7 +291,8 @@
             ],
             "properties": {
               "newAttribute": {
-                "title": "作成する新規属性",
+                "title": "出力属性",
+                "description": "このグループ値を格納する集計後地物の属性名",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -256,7 +300,8 @@
                 ]
               },
               "attribute": {
-                "title": "使用する既存属性",
+                "title": "参照する既存属性",
+                "description": "グループ値を読み取る既存属性。グループ値の式が指定された場合は無視される",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -267,7 +312,8 @@
                 ]
               },
               "attributeValue": {
-                "title": "属性に使用する値",
+                "title": "グループ値の式",
+                "description": "グループ値を計算する式。両方設定した場合は既存属性より優先される",
                 "type": [
                   "object",
                   "null"
@@ -293,34 +339,6 @@
           },
           "Attribute": {
             "type": "string"
-          },
-          "Method": {
-            "oneOf": [
-              {
-                "title": "最大値",
-                "description": "グループ内の最大値を求める",
-                "type": "string",
-                "enum": [
-                  "max"
-                ]
-              },
-              {
-                "title": "最小値",
-                "description": "グループ内の最小値を求める",
-                "type": "string",
-                "enum": [
-                  "min"
-                ]
-              },
-              {
-                "title": "アイテム数をカウント",
-                "description": "グループ内のフィーチャー数をカウントする",
-                "type": "string",
-                "enum": [
-                  "count"
-                ]
-              }
-            ]
           }
         }
       },
@@ -335,7 +353,7 @@
         "Attribute"
       ],
       "tags": [
-        "aggregate"
+        "aggregation"
       ]
     },
     {
@@ -381,19 +399,29 @@
     {
       "name": "Attribute Conversion Table",
       "type": "processor",
-      "description": "ルックアップテーブルを使用して地物属性を変換する",
+      "description": "ファイルまたはインラインで指定した変換テーブルで値を照合し、地物属性を変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeConversionTable パラメータ",
+        "title": "Attribute Conversion Table パラメータ",
+        "description": "ルックアップテーブルと、地物属性値を置換値にマッピングするルールを設定する",
         "type": "object",
         "required": [
           "format",
           "rules"
         ],
         "properties": {
+          "format": {
+            "title": "テーブル形式",
+            "description": "変換テーブルの解析に使う形式",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ConversionTableFormat"
+              }
+            ]
+          },
           "rules": {
             "title": "変換ルール",
-            "description": "変換テーブルを使用して属性をマッピングするルールのリスト",
+            "description": "地物属性値をテーブルの列と照合し、照合結果を地物に書き戻すルール",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AttributeConversionTableRule"
@@ -401,7 +429,7 @@
           },
           "dataset": {
             "title": "データセット URI",
-            "description": "外部変換テーブルファイルのパスまたは URI",
+            "description": "変換テーブルファイルのパスまたは URI。これかインラインデータのいずれかを指定する",
             "type": [
               "object",
               "null"
@@ -425,24 +453,43 @@
             }
           },
           "inline": {
-            "title": "インラインテーブルデータ",
-            "description": "文字列として直接指定する変換テーブルデータ",
+            "title": "インラインテーブル",
+            "description": "テキストとして直接指定する変換テーブルの内容。データセット URI がない場合に使う",
             "type": [
               "string",
               "null"
             ]
-          },
-          "format": {
-            "title": "テーブル形式",
-            "description": "変換テーブルの形式（CSV、TSV、または JSON）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/ConversionTableFormat"
-              }
-            ]
           }
         },
         "definitions": {
+          "ConversionTableFormat": {
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "ヘッダー行付きのカンマ区切り値",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV",
+                "description": "ヘッダー行付きのタブ区切り値",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              {
+                "title": "JSON",
+                "description": "各オブジェクトが1行を表す、オブジェクトの JSON 配列または単一オブジェクト",
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            ]
+          },
           "AttributeConversionTableRule": {
             "type": "object",
             "required": [
@@ -453,7 +500,8 @@
             ],
             "properties": {
               "featureFroms": {
-                "title": "変換元属性",
+                "title": "元属性",
+                "description": "テーブルで照合するキーを構成する地物属性",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Attribute"
@@ -461,6 +509,7 @@
               },
               "featureTo": {
                 "title": "変換先属性",
+                "description": "照合した値を受け取る地物属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -468,28 +517,22 @@
                 ]
               },
               "conversionTableKeys": {
-                "title": "変換テーブルで照合するキー",
+                "title": "照合キー列",
+                "description": "元属性の値と照合するテーブルの列",
                 "type": "array",
                 "items": {
                   "type": "string"
                 }
               },
               "conversionTableTo": {
-                "title": "変換先属性",
+                "title": "結果の列",
+                "description": "変換先属性に書き込む値を持つテーブルの列",
                 "type": "string"
               }
             }
           },
           "Attribute": {
             "type": "string"
-          },
-          "ConversionTableFormat": {
-            "type": "string",
-            "enum": [
-              "csv",
-              "tsv",
-              "json"
-            ]
           }
         }
       },
@@ -590,10 +633,11 @@
     {
       "name": "Attribute Flattener",
       "type": "processor",
-      "description": "ネストされた属性のフラット化",
+      "description": "マップ値の属性を個々のトップレベル属性にフラット化し、各マップをそのキーと値のエントリで置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeFlattener パラメータ",
+        "title": "Attribute Flattener パラメータ",
+        "description": "どのマップ値属性をトップレベル属性に展開するかを設定する",
         "type": "object",
         "required": [
           "attributes"
@@ -601,7 +645,7 @@
         "properties": {
           "attributes": {
             "title": "フラット化する属性",
-            "description": "フラット化するマップ/オブジェクト属性。ネストされたプロパティがトップレベル属性になる。",
+            "description": "展開するマップ値の属性。各ネストされたキーがトップレベル属性になり、元のマップは削除される。マップ以外の属性はそのまま残る",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -624,17 +668,16 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [
-        "hierarchy"
-      ]
+      "tags": []
     },
     {
       "name": "Attribute Manager",
       "type": "processor",
-      "description": "フィーチャー属性の作成、変換、名前変更、削除",
+      "description": "設定した操作リストに基づいて地物属性を作成・変換・名前変更・削除する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeManager パラメータ",
+        "title": "Attribute Manager パラメータ",
+        "description": "地物属性を作成・変換・名前変更・削除する操作の順序付きリストを定義する",
         "type": "object",
         "required": [
           "operations"
@@ -642,7 +685,7 @@
         "properties": {
           "operations": {
             "title": "属性操作",
-            "description": "フィーチャー属性に対して実行する操作のリスト",
+            "description": "各地物に順番に適用する操作。各項目で対象の属性、適用するメソッド、任意の値式を指定する",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Operation"
@@ -659,10 +702,12 @@
             "properties": {
               "attribute": {
                 "title": "属性名",
+                "description": "作成・変換・名前変更・削除する属性の名前",
                 "type": "string"
               },
               "method": {
-                "title": "実行する操作",
+                "title": "メソッド",
+                "description": "属性に適用する操作",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Method"
@@ -671,7 +716,7 @@
               },
               "value": {
                 "title": "値",
-                "description": "操作に使用する値",
+                "description": "地物に対して評価される式。Create と Convert では新しい値を、Rename では新しい属性名を指定する。Remove では無視される",
                 "type": [
                   "object",
                   "null"
@@ -697,12 +742,39 @@
             }
           },
           "Method": {
-            "type": "string",
-            "enum": [
-              "convert",
-              "create",
-              "rename",
-              "remove"
+            "oneOf": [
+              {
+                "title": "変換",
+                "description": "既存の属性の値を値式の結果で置き換える。属性を持たない地物は変更されない",
+                "type": "string",
+                "enum": [
+                  "convert"
+                ]
+              },
+              {
+                "title": "作成",
+                "description": "属性を値式の結果に設定し、属性を作成するか既存の値を上書きする",
+                "type": "string",
+                "enum": [
+                  "create"
+                ]
+              },
+              {
+                "title": "名前変更",
+                "description": "値式が生成する名前に属性を変更する。属性が存在しない場合、または同名の属性が既に存在する場合はスキップされる",
+                "type": "string",
+                "enum": [
+                  "rename"
+                ]
+              },
+              {
+                "title": "削除",
+                "description": "属性を地物から削除する",
+                "type": "string",
+                "enum": [
+                  "remove"
+                ]
+              }
             ]
           }
         }
@@ -722,18 +794,19 @@
     {
       "name": "Attribute Mapper",
       "type": "processor",
-      "description": "属性をマッピングする",
+      "description": "地物の属性を、マッピングルールから構築した新しい属性セットで置き換える。各ルールは式・別の属性・ネストされたマップのエントリから値を導出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeMapper パラメータ",
+        "title": "Attribute Mapper パラメータ",
+        "description": "出力地物の属性を構築するマッピングルールを設定する",
         "type": "object",
         "required": [
           "mappers"
         ],
         "properties": {
           "mappers": {
-            "title": "属性マッパー",
-            "description": "式または値コピーで属性を変換するマッピングルールのリスト",
+            "title": "マッピングルール",
+            "description": "順序付きのルールのリスト。各ルールは1つ以上の出力属性を生成する。出力地物にはここで生成した属性のみが含まれる",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Mapper"
@@ -745,14 +818,16 @@
             "type": "object",
             "properties": {
               "attribute": {
-                "title": "属性名",
+                "title": "対象属性",
+                "description": "設定する属性の名前。値は式・元属性・親子ペアから取得する。空にすると複数値の式が使われる",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "expr": {
-                "title": "評価する式",
+                "title": "値の式",
+                "description": "属性値を生成するために評価する式。評価エラーの場合は null 値になる",
                 "type": [
                   "object",
                   "null"
@@ -776,28 +851,32 @@
                 }
               },
               "valueAttribute": {
-                "title": "値を取得する属性名",
+                "title": "元属性",
+                "description": "値をコピーする既存属性。属性が存在しない場合は null になる",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "parentAttribute": {
-                "title": "親属性名",
+                "title": "親属性",
+                "description": "コピーする値を含むマップ値の属性。子属性と一緒に使う",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "childAttribute": {
-                "title": "子属性名",
+                "title": "子属性",
+                "description": "対象属性に値をコピーする、親マップ内のキー",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "multipleExpr": {
-                "title": "複数属性を評価する式",
+                "title": "複数値の式",
+                "description": "マップを返す式。そのエントリが属性として追加される。対象属性が設定されていない場合に使う",
                 "type": [
                   "object",
                   "null"
@@ -917,6 +996,69 @@
       "tags": []
     },
     {
+      "name": "Attribute Table Extractor",
+      "type": "processor",
+      "description": "地物タイプ属性をキーとする移動元・移動先パスの対応表に従い、ネストされたマップまたはリスト属性の間で値を移動する。移動先パスのセグメントが2つ以上の場合、必要に応じてネストしたマップを作成する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Attribute Table Extractor パラメータ",
+        "description": "ネストされた属性値を移動するために使う移動元・移動先パスの対応表を設定する",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "データセットURI",
+            "description": "抽出テーブルファイルのパスまたはURI。これかインラインデータのいずれかを指定する",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "インラインテーブル",
+            "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
+          },
+          "typeAttribute": {
+            "title": "地物タイプ属性",
+            "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": [
+        "mapping"
+      ]
+    },
+    {
       "name": "Boundary Extractor",
       "type": "processor",
       "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
@@ -953,15 +1095,16 @@
     {
       "name": "Bounds Extractor",
       "type": "processor",
-      "description": "境界を抽出する",
+      "description": "地物のジオメトリのバウンディングボックス座標を抽出し、名前付き属性として格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BoundsExtractor パラメータ",
+        "title": "Bounds Extractor パラメータ",
+        "description": "各境界値を格納する属性名を設定する。すべてのパラメータは任意で、未設定の境界値はデフォルトの名前で格納される。Z の境界値はジオメトリが標高を持つ場合のみ書き込まれる",
         "type": "object",
         "properties": {
           "xmin": {
             "title": "X 最小値属性",
-            "description": "X 座標の最小値を格納する属性名（デフォルト: \"xmin\"）",
+            "description": "X 座標の最小値を格納する属性。デフォルトは `xmin`",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -973,7 +1116,7 @@
           },
           "xmax": {
             "title": "X 最大値属性",
-            "description": "X 座標の最大値を格納する属性名（デフォルト: \"xmax\"）",
+            "description": "X 座標の最大値を格納する属性。デフォルトは `xmax`",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -985,7 +1128,7 @@
           },
           "ymin": {
             "title": "Y 最小値属性",
-            "description": "Y 座標の最小値を格納する属性名（デフォルト: \"ymin\"）",
+            "description": "Y 座標の最小値を格納する属性。デフォルトは `ymin`",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -997,7 +1140,7 @@
           },
           "ymax": {
             "title": "Y 最大値属性",
-            "description": "Y 座標の最大値を格納する属性名（デフォルト: \"ymax\"）",
+            "description": "Y 座標の最大値を格納する属性。デフォルトは `ymax`",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -1009,7 +1152,7 @@
           },
           "zmin": {
             "title": "Z 最小値属性",
-            "description": "Z 座標の最小値を格納する属性名（デフォルト: \"zmin\"）",
+            "description": "Z 座標の最小値を格納する属性。デフォルトは `zmin`",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -1021,7 +1164,7 @@
           },
           "zmax": {
             "title": "Z 最大値属性",
-            "description": "Z 座標の最大値を格納する属性名（デフォルト: \"zmax\"）",
+            "description": "Z 座標の最大値を格納する属性。デフォルトは `zmax`",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -1054,11 +1197,11 @@
     {
       "name": "Bufferer",
       "type": "processor",
-      "description": "ジオメトリの周囲にバッファを作成する",
+      "description": "各入力ジオメトリの周囲に、指定した距離のバッファポリゴンを作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Bufferer パラメータ",
-        "description": "入力ジオメトリの周囲にバッファを作成する方法を設定する",
+        "description": "各ジオメトリの周囲に作成するバッファの形状と範囲を設定する",
         "type": "object",
         "required": [
           "bufferType",
@@ -1068,7 +1211,7 @@
         "properties": {
           "bufferType": {
             "title": "バッファタイプ",
-            "description": "入力ジオメトリに作成するバッファの種類",
+            "description": "入力ジオメトリの周囲に作成するバッファの形状",
             "allOf": [
               {
                 "$ref": "#/definitions/BufferType"
@@ -1077,13 +1220,13 @@
           },
           "distance": {
             "title": "距離",
-            "description": "元のジオメトリからバッファを拡張する距離（座標単位）",
+            "description": "元のジオメトリからバッファを広げる距離。ジオメトリの座標系の単位で指定する。負の値を指定すると縮小する",
             "type": "number",
             "format": "double"
           },
           "interpolationAngle": {
             "title": "補間角度",
-            "description": "丸角を作成する際の曲線補間に使用する角度（度）",
+            "description": "点や曲線のバッファの丸みを近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。ポリゴンのバッファではこの値は使用されない",
             "type": "number",
             "format": "double"
           }
@@ -1093,7 +1236,7 @@
             "oneOf": [
               {
                 "title": "2D エリアバッファ",
-                "description": "入力ジオメトリの周囲に 2D ポリゴンバッファを作成する",
+                "description": "入力ジオメトリの周囲に平坦なポリゴンバッファを作成し、標高は破棄する",
                 "type": "string",
                 "enum": [
                   "area2d"
@@ -1115,17 +1258,17 @@
         "Geometry"
       ],
       "tags": [
-        "2d"
+        "spatial"
       ]
     },
     {
       "name": "Bulk Attribute Renamer",
       "type": "processor",
-      "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
+      "description": "プレフィックスやサフィックスの追加・削除、またはテキスト置換により地物属性を一括で名前変更する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BulkAttributeRenamer パラメータ",
-        "description": "フィーチャー属性を一括リネームする方法を設定する",
+        "title": "Bulk Attribute Renamer パラメータ",
+        "description": "名前変更する属性と、その名前の変換方法を選択する",
         "type": "object",
         "required": [
           "renameAction",
@@ -1134,8 +1277,8 @@
         ],
         "properties": {
           "renameType": {
-            "title": "リネーム対象",
-            "description": "すべての属性をリネームするか、選択した属性のみをリネームするかを選択する",
+            "title": "名前変更の範囲",
+            "description": "名前変更の対象範囲。すべての属性か、選択した一部の属性か",
             "allOf": [
               {
                 "$ref": "#/definitions/RenameType"
@@ -1143,30 +1286,30 @@
             ]
           },
           "renameAction": {
-            "title": "リネーム操作",
-            "description": "属性名に対して実行するリネーム操作の種類",
+            "title": "名前変更操作",
+            "description": "各属性名に適用する変換",
             "allOf": [
               {
                 "$ref": "#/definitions/RenameAction"
               }
             ]
           },
+          "renameValue": {
+            "title": "テキスト値",
+            "description": "選択した操作に応じて、プレフィックス／サフィックスとして追加・削除、または置換に使用するテキスト",
+            "type": "string"
+          },
           "textToFind": {
             "title": "検索テキストパターン",
-            "description": "「テキストを置換」操作で使用する正規表現パターン",
+            "description": "属性名に対して照合する正規表現。replaceText 操作では必須",
             "type": [
               "string",
               "null"
             ]
           },
-          "renameValue": {
-            "title": "テキスト値",
-            "description": "プレフィックス/サフィックスとして追加・削除、または置換に使用するテキスト",
-            "type": "string"
-          },
           "selectedAttributes": {
             "title": "選択した属性名",
-            "description": "リネームする属性名のリスト（「選択した属性」を選んだ場合に必須）",
+            "description": "名前変更する属性名。名前変更の範囲を選択した一部に設定した場合は必須",
             "type": [
               "array",
               "null"
@@ -1181,18 +1324,18 @@
             "oneOf": [
               {
                 "title": "すべての属性",
-                "description": "フィーチャーのすべての属性をリネームする",
+                "description": "地物のすべての属性を名前変更する",
                 "type": "string",
                 "enum": [
-                  "All"
+                  "all"
                 ]
               },
               {
                 "title": "選択した属性",
-                "description": "以下に列挙した特定の属性のみをリネームする",
+                "description": "selectedAttributes に列挙した属性のみを名前変更する",
                 "type": "string",
                 "enum": [
-                  "Selected"
+                  "selected"
                 ]
               }
             ]
@@ -1201,42 +1344,42 @@
             "oneOf": [
               {
                 "title": "プレフィックスを追加",
-                "description": "属性名の先頭にテキストを追加する",
+                "description": "各属性名の先頭にテキスト値を追加する",
                 "type": "string",
                 "enum": [
-                  "AddPrefix"
+                  "addPrefix"
                 ]
               },
               {
                 "title": "サフィックスを追加",
-                "description": "属性名の末尾にテキストを追加する",
+                "description": "各属性名の末尾にテキスト値を追加する",
                 "type": "string",
                 "enum": [
-                  "AddSuffix"
+                  "addSuffix"
                 ]
               },
               {
                 "title": "プレフィックスを削除",
-                "description": "属性名の先頭からテキストを削除する",
+                "description": "各属性名の先頭からテキスト値を削除する",
                 "type": "string",
                 "enum": [
-                  "RemovePrefix"
+                  "removePrefix"
                 ]
               },
               {
                 "title": "サフィックスを削除",
-                "description": "属性名の末尾からテキストを削除する",
+                "description": "各属性名の末尾からテキスト値を削除する",
                 "type": "string",
                 "enum": [
-                  "RemoveSuffix"
+                  "removeSuffix"
                 ]
               },
               {
                 "title": "テキストを置換",
-                "description": "正規表現を使用してテキストを検索・置換する",
+                "description": "正規表現を使用して、検索パターンに一致するテキストをテキスト値で置換する",
                 "type": "string",
                 "enum": [
-                  "StringReplace"
+                  "replaceText"
                 ]
               }
             ]
@@ -1376,7 +1519,7 @@
     {
       "name": "CSV Reader",
       "type": "source",
-      "description": "CSVファイルから地物を読み取る",
+      "description": "CSV および TSV ファイルから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvReader パラメータ",
@@ -1388,7 +1531,7 @@
         "properties": {
           "format": {
             "title": "ファイル形式",
-            "description": "入力ファイルの区切り形式を選択する",
+            "description": "入力ファイルの区切り形式",
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
@@ -1397,7 +1540,7 @@
           },
           "encoding": {
             "title": "文字エンコーディング",
-            "description": "CSV/TSV ファイルの文字エンコーディング。未指定の場合は UTF-8。\n\nサポートされるエンコーディング: - **UTF-8** - Unicode UTF-8（デフォルト）- **Shift-JIS** - 日本語エンコーディング - **EUC-JP** - 日本語エンコーディング - **Windows コードページ** - Windows-1250〜Windows-1258 - **ISO-8859 ファミリー** - ISO-8859-1〜ISO-8859-16\n\nエンコーディングラベルは大文字・小文字を区別しない。",
+            "description": "入力ファイルの文字エンコーディング（例: \"UTF-8\" や \"Shift-JIS\"）。未指定時は UTF-8 で、ラベルは大文字小文字を区別しない",
             "type": [
               "string",
               "null"
@@ -1405,7 +1548,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -1465,7 +1608,7 @@
           },
           "headerRows": {
             "title": "ヘッダー行数",
-            "description": "ヘッダーを構成する連続した行数（デフォルト: 1）。0 の場合はヘッダー行を読まず、列名は \"column1\"、\"column2\" などと自動生成される。2 以上の場合、各ヘッダー行の空でない値を \"_\" で結合して列名とする。",
+            "description": "ヘッダーを構成する連続した行数（デフォルト: 1）。0 の場合は列名を \"column1\"、\"column2\" のように自動生成し、1 より大きい場合は各ヘッダー行の値を \"_\" で連結して列名とする",
             "type": [
               "integer",
               "null"
@@ -1591,7 +1734,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvWriter パラメータ",
-        "description": "フィーチャーを CSV/TSV ファイルに書き出す設定",
+        "description": "地物をCSV/TSVファイルに書き出す設定",
         "type": "object",
         "required": [
           "format",
@@ -1599,7 +1742,8 @@
         ],
         "properties": {
           "output": {
-            "description": "作成する CSV/TSV ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するCSV/TSVファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -1620,7 +1764,8 @@
             }
           },
           "format": {
-            "description": "ファイル形式: csv（カンマ区切り）または tsv（タブ区切り）",
+            "title": "ファイル形式",
+            "description": "書き出すファイル形式: CSV（カンマ区切り）またはTSV（タブ区切り）",
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
@@ -1629,7 +1774,7 @@
           },
           "geometry": {
             "title": "ジオメトリ設定",
-            "description": "CSV 列にジオメトリをエクスポートするための設定（任意）",
+            "description": "CSV列にジオメトリをエクスポートするための設定（任意）",
             "anyOf": [
               {
                 "$ref": "#/definitions/GeometryExportConfig"
@@ -1710,7 +1855,17 @@
                   }
                 }
               }
-            ]
+            ],
+            "properties": {
+              "epsgColumn": {
+                "title": "EPSG Column Name",
+                "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         }
       },
@@ -1760,7 +1915,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.czml\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -2083,20 +2238,19 @@
     {
       "name": "Cesium 3D Tiles Writer",
       "type": "sink",
-      "description": "地物をファイルに書き出す",
+      "description": "地物を3D Web可視化向けのCesium 3D Tiles形式に書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Cesium3DTilesWriter パラメータ",
+        "description": "地物をCesium 3D Tilesに書き出す設定",
         "type": "object",
         "required": [
-          "maxZoom",
-          "minZoom",
           "output"
         ],
         "properties": {
           "output": {
             "title": "出力パス",
-            "description": "3D タイルを書き出すディレクトリパス",
+            "description": "3D Tilesを書き出すディレクトリパス",
             "type": "object",
             "format": "code",
             "required": [
@@ -2116,83 +2270,134 @@
               }
             }
           },
-          "minZoom": {
-            "title": "最小ズームレベル",
-            "description": "タイル生成の最小ズームレベル（0〜24）",
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "maxZoom": {
-            "title": "最大ズームレベル",
-            "description": "タイル生成の最大ズームレベル（0〜24）",
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "attachTexture": {
-            "title": "テクスチャを添付",
-            "description": "生成するタイルにテクスチャ情報を含めるか",
+          "targetTileSize": {
+            "title": "Target Tile Size",
+            "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
             "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "compressOutput": {
-            "title": "圧縮出力パス",
-            "description": "圧縮アーカイブ出力の出力先パス（任意）",
-            "type": [
-              "object",
+              "integer",
               "null"
             ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "format": "uint64",
+            "minimum": 0.0
           },
           "dracoCompression": {
             "title": "Draco 圧縮",
-            "description": "Draco 圧縮を使用する。デフォルトは true。",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）",
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "フラット法線を計算",
-            "description": "ライティング用にポリゴンごとのフラット法線を計算する。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないため、ビューアー側でフラット法線を導出する必要がある。",
+            "description": "ライティング用にポリゴンごとのフラット法線を計算するか。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないためビューアー側でフラット法線を導出する必要がある",
+            "default": true,
+            "type": "boolean"
+          },
+          "texelSize": {
+            "title": "テクセルサイズ",
+            "description": "目標とするテクセルサイズ（メートル毎ピクセル）。これより細かいテクスチャはこの値までダウンサンプリングされる。デフォルトは 0 で、テクスチャの詳細を最大限維持する。",
             "type": [
-              "boolean",
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "atlasSize": {
+            "title": "アトラスサイズ",
+            "description": "テクスチャアトラスの最大寸法（ピクセル）。これを超えるテクスチャは追加のアトラスページに分割され、単一のテクスチャがこれより大きい場合は収まるようにダウンサンプリングされる。デフォルトは 2048。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "maximum": 65536.0,
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "アトラスの縁取り",
+            "description": "隣接する領域間のバイリニアにじみを防ぐため、アトラス内の各テクスチャ領域の周囲に描画する縁取りのピクセル数。デフォルトは 0（無効）。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "maximum": 65536.0,
+            "minimum": 0.0
+          },
+          "textureCodec": {
+            "title": "テクスチャコーデック",
+            "description": "アトラスページの画像コーデック。デフォルトは `KTX2/ETC1S`。テクスチャを付与しない場合は `Untextured` を選択する。",
+            "default": "KTX2/ETC1S",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              }
+            ]
+          },
+          "schemaKey": {
+            "title": "スキーマキー",
+            "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべての地物は同一ファイルに書き出される。この属性は出力から除外される",
+            "type": [
+              "string",
               "null"
             ]
           },
           "skipUnexposedAttributes": {
             "title": "非公開属性をスキップ",
-            "description": "ダブルアンダースコアで始まる属性をスキップする",
+            "description": "ダブルアンダースコアで始まる属性をスキップするか",
             "type": [
               "boolean",
               "null"
             ]
           },
-          "schemaKey": {
-            "title": "スキーマキー",
-            "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべてのフィーチャーは同一ファイルに書き出される。この属性は出力から除外される。",
+          "arrayMapSeparator": {
+            "title": "配列/マップの区切り文字",
+            "description": "ネストされた配列またはマップ属性をメタデータの列に平坦化する際、その子キーやインデックスと連結するための区切り文字。未設定の場合、配列およびマップ属性は出力から完全に除外されます。",
             "type": [
               "string",
               "null"
+            ]
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "title": "Texture Codec",
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "Basis Universal UASTC スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。高品質だがファイルは大きい。",
+                "type": "string",
+                "enum": [
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "Basis Universal ETC1S スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。ファイルは小さく、品質は低め。",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
+                ]
+              },
+              {
+                "description": "PNG。アルファ付きの可逆圧縮。",
+                "type": "string",
+                "enum": [
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG。非可逆で不透明（アルファは破棄される）。",
+                "type": "string",
+                "enum": [
+                  "JPEG"
+                ]
+              },
+              {
+                "description": "テクスチャを付与しない。テクスチャ付きジオメトリはニュートラルカラーで描画される。",
+                "type": "string",
+                "enum": [
+                  "Untextured"
+                ]
+              }
             ]
           }
         }
@@ -2207,8 +2412,8 @@
         "Output"
       ],
       "tags": [
-        "3d-tiles",
-        "3d"
+        "3d",
+        "tiling"
       ]
     },
     {
@@ -2223,7 +2428,7 @@
         "properties": {
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -2272,6 +2477,8 @@
             }
           },
           "flatten": {
+            "title": "地物ツリーをフラット化",
+            "description": "有効にすると、ネストされた子都市オブジェクトをそれぞれ個別の地物として抽出し、各地物に `parentId` と `parentType` 属性を付与する（デフォルト: false）。",
             "type": [
               "boolean",
               "null"
@@ -2299,13 +2506,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
+        "description": "地物をCityGML 2.0ファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "出力ファイルパスの式",
+            "title": "出力ファイル",
+            "description": "作成するCityGMLファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -2325,8 +2534,18 @@
               }
             }
           },
+          "prettyPrint": {
+            "title": "整形出力",
+            "description": "読みやすさのため出力をインデントするか（デフォルト: true）",
+            "default": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "lodFilter": {
-            "description": "含める LOD レベル（例: [0, 1, 2]）。空の場合はすべての LOD を含む。",
+            "title": "LODフィルター",
+            "description": "含めるLODレベル（例: [0, 1, 2]）。空の場合はすべてのレベルを含む",
             "default": null,
             "type": [
               "array",
@@ -2339,7 +2558,8 @@
             }
           },
           "epsgCode": {
-            "description": "座標参照系の EPSG コード",
+            "title": "EPSGコード",
+            "description": "出力に記録する座標参照系のEPSGコード",
             "default": null,
             "type": [
               "integer",
@@ -2347,14 +2567,6 @@
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "prettyPrint": {
-            "description": "インデント付きでフォーマット出力するか（デフォルト: true）",
-            "default": true,
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         }
       },
@@ -2374,7 +2586,7 @@
     {
       "name": "Clipper",
       "type": "processor",
-      "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する",
+      "description": "候補地物を境界ジオメトリでクリップし、内側と外側の部分に分けて出力する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2390,7 +2602,7 @@
         "Geometry"
       ],
       "tags": [
-        "2d"
+        "spatial"
       ]
     },
     {
@@ -2585,6 +2797,190 @@
       "tags": []
     },
     {
+      "name": "Coordinate Frame Reprojector",
+      "type": "processor",
+      "description": "Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Coordinate Frame Reprojector Parameters",
+        "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D.",
+        "type": "object",
+        "required": [
+          "destinationFrame"
+        ],
+        "properties": {
+          "destinationFrame": {
+            "title": "Destination Frame",
+            "description": "Coordinate frame to convert geometry into.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DestinationFrame"
+              }
+            ]
+          },
+          "epsgCode": {
+            "title": "EPSG Code",
+            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint16",
+            "minimum": 0.0
+          },
+          "basePointSource": {
+            "title": "Base Point",
+            "description": "How coordinates bridge the Euclidean/CRS boundary.",
+            "default": {
+              "type": "asIs"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/BasePoint"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DestinationFrame": {
+            "description": "The destination coordinate frame kind.",
+            "oneOf": [
+              {
+                "title": "CRS",
+                "description": "Reproject to a coordinate reference system identified by an EPSG code.",
+                "type": "string",
+                "enum": [
+                  "crs"
+                ]
+              },
+              {
+                "title": "Euclidean",
+                "description": "Convert to a non-georeferenced Euclidean frame.",
+                "type": "string",
+                "enum": [
+                  "euclidean"
+                ]
+              }
+            ]
+          },
+          "BasePoint": {
+            "description": "How coordinates bridge the Euclidean/CRS boundary, carrying the input each mode needs. Ignored for a pure CRS-to-CRS reprojection.",
+            "oneOf": [
+              {
+                "title": "As Is",
+                "description": "Reinterpret coordinate values unchanged across the boundary.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "asIs"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Value",
+                "description": "Offset by a base point given as an expression evaluating to `[x, y, z]`.",
+                "type": "object",
+                "required": [
+                  "basePoint",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "value"
+                    ]
+                  },
+                  "basePoint": {
+                    "title": "Base Point",
+                    "description": "Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's declared axis order.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "From Port",
+                "description": "Offset by a base point taken from the base-point input port, matched to each feature by a key.",
+                "type": "object",
+                "required": [
+                  "matchKey",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fromPort"
+                    ]
+                  },
+                  "matchKey": {
+                    "title": "Match Key",
+                    "description": "Expression identifying which base-point feature applies to a given feature. Evaluated against both streams.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features",
+        "base-point"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
+    },
+    {
       "name": "Date Time Converter",
       "type": "processor",
       "description": "日時値を異なるフォーマット間で変換する",
@@ -2774,25 +3170,27 @@
     {
       "name": "Directory Decompressor",
       "type": "processor",
-      "description": "アーカイブからディレクトリを展開する",
+      "description": "地物の属性が参照する zip・7z アーカイブを展開し、各属性値を展開先ディレクトリのパスに置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "DirectoryDecompressor パラメータ",
-        "description": "アーカイブファイルの展開と解凍を設定する",
+        "title": "Directory Decompressor パラメータ",
+        "description": "どの属性がアーカイブを保持するか、展開先ディレクトリをどこまで展開するかを設定する",
         "type": "object",
         "required": [
           "archiveAttributes"
         ],
         "properties": {
           "archiveAttributes": {
-            "description": "展開・解凍するアーカイブファイルパスを含む属性",
+            "title": "アーカイブ属性",
+            "description": ".zip・.7z・.7zip アーカイブのパスを保持する属性。各属性は展開先ディレクトリのパスに置き換えられ、それ以外の値を保持する属性は変更されない",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
             }
           },
           "findDeepestSingleFolder": {
-            "description": "true の場合、ディレクトリに複数のアイテムやファイルが直接含まれるまで単一フォルダーのネストを再帰的に展開する。false（デフォルト）の場合、ルート展開フォルダーをそのまま返す。",
+            "title": "最深の単一フォルダーを探索",
+            "description": "展開先ディレクトリの中身が単一のサブディレクトリのみである間は展開を続け、複数のエントリまたはファイルを含む最初のディレクトリで停止する。無効の場合は単一フォルダーのネストを1階層のみ展開する",
             "type": [
               "boolean",
               "null"
@@ -2816,7 +3214,7 @@
         "File"
       ],
       "tags": [
-        "file-system",
+        "file",
         "compression"
       ]
     },
@@ -2949,11 +3347,11 @@
     {
       "name": "Elevation Extractor",
       "type": "processor",
-      "description": "地物の最初のZ座標値を抽出し、属性として格納する",
+      "description": "地物のジオメトリの標高を抽出し、属性として格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ElevationExtractor パラメータ",
-        "description": "ジオメトリ座標から抽出した標高値の格納先を設定する",
+        "title": "Elevation Extractor パラメータ",
+        "description": "抽出した標高の格納先を設定する",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -2961,7 +3359,7 @@
         "properties": {
           "outputAttribute": {
             "title": "出力属性",
-            "description": "抽出した標高値を格納する属性名",
+            "description": "標高を格納する属性",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3045,11 +3443,11 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "ポリゴンを一定の距離で押し出す（エクストルード）",
+      "description": "ポリゴンジオメトリを指定した距離だけ垂直に押し出し、ソリッドジオメトリを生成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder パラメータ",
-        "description": "2D ポリゴンを 3D ソリッドジオメトリに押し出す方法を設定する",
+        "description": "各ポリゴンを押し出す距離を設定する",
         "type": "object",
         "required": [
           "distance"
@@ -3057,7 +3455,7 @@
         "properties": {
           "distance": {
             "title": "距離",
-            "description": "ポリゴンを押し出す垂直距離（高さ）。定数値または式で指定可能。",
+            "description": "ポリゴンを押し出す高さ。定数、または地物ごとに評価される式で指定する",
             "type": "object",
             "format": "code",
             "required": [
@@ -3083,7 +3481,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -3128,7 +3527,7 @@
           },
           "extractTags": {
             "title": "タグの抽出",
-            "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。",
+            "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する",
             "default": [],
             "type": "array",
             "items": {
@@ -3137,25 +3536,25 @@
           },
           "keepAttributes": {
             "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
             "default": true,
             "type": "boolean"
           },
           "flattenSingleChildObjects": {
             "title": "単一子オブジェクトノードのフラット化",
-            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。",
+            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           },
           "flattenMeasureTypes": {
             "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。",
+            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
-            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull",
             "default": null,
             "type": [
               "string",
@@ -3172,9 +3571,12 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML 3 Reader",
@@ -3231,11 +3633,14 @@
             "default": false,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "リーフ属性のフラット化",
+            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
@@ -3263,7 +3668,7 @@
     {
       "name": "Feature CityGML Reader",
       "type": "processor",
-      "description": "CityGMLファイルから地物を読み取る",
+      "description": "受け取った地物が参照するファイルパスから CityGML 地物を読み取り、任意でネストされた子都市オブジェクトを個別の地物として抽出する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGmlReader パラメータ",
@@ -3407,7 +3812,7 @@
     {
       "name": "Feature Creator",
       "type": "source",
-      "description": "式に基づいて地物を作成する",
+      "description": "1 つ以上の属性マップを返すスクリプト式から地物を作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCreator パラメータ",
@@ -3419,7 +3824,7 @@
         "properties": {
           "creator": {
             "title": "スクリプト式",
-            "description": "マップ（単一フィーチャー）またはマップの配列（複数フィーチャー）を返すスクリプト式を記述する。各マップはフィーチャー属性をキーと値のペアで表す。",
+            "description": "マップ（単一地物）またはマップの配列（複数地物）を返すスクリプト式。各マップは地物の属性をキーと値のペアで保持する",
             "type": "object",
             "format": "code",
             "required": [
@@ -3448,7 +3853,9 @@
       "categories": [
         "Input"
       ],
-      "tags": []
+      "tags": [
+        "scripting"
+      ]
     },
     {
       "name": "Feature Duplicate Filter",
@@ -3470,20 +3877,19 @@
     {
       "name": "Feature File Path Extractor",
       "type": "processor",
-      "description": "地物からファイルパスを抽出する",
+      "description": "データセットのパスを展開し、ファイル1件につき1地物を出力する。ディレクトリは再帰的に一覧し、zip・7z アーカイブは必要に応じて展開する。各地物にはファイルの path・name・extension 属性と入力地物の属性が付与される",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureFilePathExtractor パラメータ",
-        "description": "データセットからファイルパスを抽出し、アーカイブを展開する方法を設定する",
+        "title": "Feature File Path Extractor パラメータ",
+        "description": "どのデータセットをファイル地物に展開するか、アーカイブを展開するかを設定する",
         "type": "object",
         "required": [
-          "extractArchive",
           "sourceDataset"
         ],
         "properties": {
           "sourceDataset": {
             "title": "ソースデータセット",
-            "description": "ソースデータセットのパスまたは URL を取得する式",
+            "description": "展開対象のファイル・ディレクトリ・アーカイブのパスまたは URL を返す式。ディレクトリは再帰的に一覧され、それ以外のパスは1地物になる",
             "type": "object",
             "format": "code",
             "required": [
@@ -3505,12 +3911,13 @@
           },
           "extractArchive": {
             "title": "アーカイブを展開",
-            "description": "データセット内のアーカイブファイルを展開するか",
+            "description": "ソースデータセットが .zip・.7z・.7zip アーカイブの場合に展開し、展開されたファイル1件につき1地物を出力する。無効の場合はアーカイブ自体を1つのパスとして出力する",
+            "default": false,
             "type": "boolean"
           },
           "destPrefix": {
             "title": "出力先プレフィックス",
-            "description": "抽出したファイルパスに追加するプレフィックス（任意）",
+            "description": "展開したファイルを格納するために一時展開ディレクトリ内に作成するサブディレクトリ。アーカイブを展開する場合にのみ適用される",
             "type": [
               "string",
               "null"
@@ -3523,15 +3930,14 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "unfiltered"
+        "features"
       ],
       "categories": [
         "Feature"
       ],
       "tags": [
         "file",
-        "path"
+        "compression"
       ]
     },
     {
@@ -3647,6 +4053,12 @@
                 "type": "string"
               }
             }
+          },
+          "writeCrs": {
+            "title": "Write CRS",
+            "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4248,18 +4660,19 @@
     {
       "name": "Feature Transformer",
       "type": "processor",
-      "description": "式を用いて地物を変換する",
+      "description": "1つ以上の式が返すマップで各地物の属性を置き換える。式は順番に適用され、ジオメトリはそのまま引き継がれる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTransformer パラメータ",
-        "description": "フィーチャーに変換式を適用する設定",
+        "title": "Feature Transformer パラメータ",
+        "description": "各地物の新しい属性を組み立てる式を設定する",
         "type": "object",
         "required": [
           "transformers"
         ],
         "properties": {
           "transformers": {
-            "description": "各フィーチャーに適用する変換式のリスト",
+            "title": "変換式",
+            "description": "順番に適用される式。各式は直前の式が生成した属性を読み取る",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Transform"
@@ -4274,7 +4687,8 @@
             ],
             "properties": {
               "expr": {
-                "description": "フィーチャーを変更する式（属性、ジオメトリなどにアクセス・変更可能）",
+                "title": "式",
+                "description": "attributes と variables を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -4307,7 +4721,10 @@
       "categories": [
         "Transform"
       ],
-      "tags": []
+      "tags": [
+        "scripting",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Type Filter",
@@ -4574,7 +4991,7 @@
     {
       "name": "File Path Extractor",
       "type": "source",
-      "description": "ディレクトリまたはアーカイブからファイルを抽出する",
+      "description": "ディレクトリまたはアーカイブからファイルパスを抽出し、見つかった各ファイルに対して地物を作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FilePathExtractor パラメータ",
@@ -4609,7 +5026,7 @@
           },
           "extractArchive": {
             "title": "アーカイブを展開",
-            "description": "アーカイブ（ZIP ファイルなど）からファイルを展開するか、一覧表示のみするか",
+            "description": "有効にすると、アーカイブファイル（.zip、.7z）を展開し、含まれる各ファイルごとに地物を出力する。無効にすると、アーカイブを展開せず単一のファイルパスとして出力する。",
             "type": "boolean"
           }
         }
@@ -4623,24 +5040,25 @@
         "Input"
       ],
       "tags": [
-        "file-system"
+        "file"
       ]
     },
     {
       "name": "File Property Extractor",
       "type": "processor",
-      "description": "ファイルからプロパティを抽出する",
+      "description": "地物の属性が保持するパスのファイルまたはディレクトリを調べ、種別・サイズ・アクセス日時・更新日時・作成日時を属性として追加する。ディレクトリのサイズは含まれるファイルの合計サイズを再帰的に集計した値になる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FilePropertyExtractor パラメータ",
-        "description": "ファイルからファイルシステムプロパティを抽出する設定",
+        "title": "File Property Extractor パラメータ",
+        "description": "調べるパスを保持する属性を設定する",
         "type": "object",
         "required": [
           "filePathAttribute"
         ],
         "properties": {
           "filePathAttribute": {
-            "description": "プロパティ解析対象のファイルパスを含む属性名",
+            "title": "ファイルパス属性",
+            "description": "調べるファイルまたはディレクトリのパスを保持する属性名。存在しないパスとシンボリックリンクは調べられない",
             "type": "string"
           }
         }
@@ -4657,14 +5075,145 @@
         "File"
       ],
       "tags": [
-        "file-system"
+        "file",
+        "attribute"
       ]
     },
     {
       "name": "Footprint Replacer",
       "type": "processor",
-      "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）",
-      "parameter": null,
+      "description": "地物のジオメトリをフットプリント（面を水平面または任意の平面に投影して融合したもの）に置き換える",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Footprint Replacer パラメータ",
+        "description": "ジオメトリを投影する平面を設定する。ジオメトリはユークリッド座標系または長さ単位の座標参照系でなければならない。投影後の面積が 1e-6 平方単位未満の面は除外される。",
+        "type": "object",
+        "properties": {
+          "projectionPlane": {
+            "title": "投影平面",
+            "description": "ジオメトリを投影する平面。省略時は水平面。",
+            "default": {
+              "type": "horizontal"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/ProjectionPlane"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "ProjectionPlane": {
+            "description": "The plane the footprint is projected onto.",
+            "oneOf": [
+              {
+                "title": "Horizontal",
+                "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "horizontal"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Custom Plane",
+                "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+                "type": "object",
+                "required": [
+                  "normal",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "custom"
+                    ]
+                  },
+                  "normal": {
+                    "title": "Normal",
+                    "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "origin": {
+                    "title": "Origin",
+                    "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "xAxis": {
+                    "title": "X Axis",
+                    "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
@@ -4684,7 +5233,7 @@
     {
       "name": "GeoJSON Reader",
       "type": "source",
-      "description": "GeoJSONファイルから地物を読み取る",
+      "description": "GeoJSON の FeatureCollection ファイルから地理地物を読み取る。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonReader パラメータ",
@@ -4693,7 +5242,7 @@
         "properties": {
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.geojson\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -4752,24 +5301,26 @@
         "Input"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
       "name": "GeoJSON Writer",
       "type": "sink",
-      "description": "地物をGeoJSONファイルに書き出す",
+      "description": "地物をGeoJSONファイルに書き出し、任意でグループごとに別ファイルに分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonWriter パラメータ",
-        "description": "フィーチャーを GeoJSON ファイルに書き出す設定",
+        "description": "地物をGeoJSONファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する GeoJSON ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するGeoJSONファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -4790,7 +5341,8 @@
             }
           },
           "groupBy": {
-            "description": "フィーチャーをグループ化してグループごとに別ファイルを作成する属性（任意）",
+            "title": "グループ化属性",
+            "description": "地物をグループ化し、グループごとに別ファイルを作成する属性",
             "type": [
               "array",
               "null"
@@ -4798,6 +5350,12 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
+          },
+          "writeCrs": {
+            "title": "Write CRS",
+            "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+            "default": false,
+            "type": "boolean"
           }
         },
         "definitions": {
@@ -4815,19 +5373,23 @@
         "Output"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
       "name": "GeoPackage Reader",
       "type": "source",
-      "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る",
+      "description": "GeoPackage（.gpkg）ファイルからベクター地物、またはファイルの空間参照系と拡張機能のメタデータを読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeoPackageReader パラメータ",
+        "title": "GeoPackage Reader パラメータ",
+        "description": "GeoPackage ファイルから読み取る内容と、ジオメトリの生成方法を設定する",
         "type": "object",
         "properties": {
           "readMode": {
+            "title": "読み取りモード",
+            "description": "GeoPackage ファイルから読み取る内容。デフォルトはベクター地物の読み取り",
             "default": "features",
             "allOf": [
               {
@@ -4836,53 +5398,22 @@
             ]
           },
           "layerName": {
+            "title": "レイヤー名",
+            "description": "読み取るレイヤーの名前。省略時はファイル内のすべての地物レイヤーを読み取る",
             "type": [
               "string",
               "null"
             ]
-          },
-          "includeMetadata": {
-            "default": false,
-            "type": "boolean"
-          },
-          "tileFormat": {
-            "default": "png",
-            "allOf": [
-              {
-                "$ref": "#/definitions/TileFormat"
-              }
-            ]
-          },
-          "attributeFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "batchSize": {
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
           },
           "force2D": {
+            "title": "2D に強制",
+            "description": "すべてのジオメトリから Z 値を除去し、2D として出力する",
             "default": false,
             "type": "boolean"
-          },
-          "spatialFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.gpkg\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -4933,20 +5464,23 @@
         },
         "definitions": {
           "GeoPackageReadMode": {
-            "type": "string",
-            "enum": [
-              "features",
-              "tiles",
-              "all",
-              "metadataOnly"
-            ]
-          },
-          "TileFormat": {
-            "type": "string",
-            "enum": [
-              "png",
-              "jpeg",
-              "webp"
+            "oneOf": [
+              {
+                "title": "地物",
+                "description": "ジオメトリと属性を持つベクター地物を読み取る",
+                "type": "string",
+                "enum": [
+                  "features"
+                ]
+              },
+              {
+                "title": "メタデータのみ",
+                "description": "地物の代わりに、ファイルの空間参照系と登録済み拡張機能を読み取る。メタデータレコードごとに1つの地物を出力する",
+                "type": "string",
+                "enum": [
+                  "metadataOnly"
+                ]
+              }
             ]
           }
         }
@@ -4960,24 +5494,26 @@
         "Input"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
       "name": "GeoPackage Writer",
       "type": "sink",
-      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成",
+      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackageWriter パラメータ",
-        "description": "フィーチャーを GeoPackage ファイルに書き出す設定",
+        "description": "地物をGeoPackageファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する GeoPackage ファイルの出力パス",
+            "title": "出力ファイル",
+            "description": "作成するGeoPackageファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -4998,35 +5534,109 @@
             }
           },
           "tableName": {
-            "description": "作成するテーブル名（デフォルト: \"features\"）",
+            "title": "テーブル名",
+            "description": "作成する地物テーブルの名前。GISクライアントではレイヤー名として表示される（デフォルト: \"features\"）",
             "default": "features",
             "type": "string"
           },
-          "geometryColumn": {
-            "description": "ジオメトリ列名（デフォルト: \"geom\"）",
-            "default": "geom",
-            "type": "string"
-          },
           "srsId": {
-            "description": "空間参照系 ID（デフォルト: WGS84 の 4326）",
+            "title": "SRS ID",
+            "description": "ジオメトリに記録する空間参照系ID（EPSGコード）。再投影は行わずこのコードを付与するだけのため、入力データの座標系と一致させる必要がある（デフォルト: 4326、WGS 84）",
             "default": 4326,
             "type": "integer",
             "format": "int32"
           },
           "geometryType": {
-            "description": "テーブルのジオメトリタイプ（Point、LineString、Polygon、MultiPoint、MultiLineString、MultiPolygon、または混在の場合は GEOMETRY）",
-            "default": "GEOMETRY",
+            "title": "ジオメトリタイプ",
+            "description": "テーブルに宣言するジオメトリタイプ: Point、LineString、Polygon、MultiPoint、MultiLineString、MultiPolygon、または混在の場合はGEOMETRY（デフォルト: GEOMETRY）",
+            "default": "geometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryType"
+              }
+            ]
+          },
+          "overwrite": {
+            "title": "既存ファイルを上書き",
+            "description": "出力ファイルが既に存在する場合に上書きするか（デフォルト: false）",
+            "default": false,
+            "type": "boolean"
+          },
+          "geometryColumn": {
+            "title": "ジオメトリ列",
+            "description": "ジオメトリを格納する列の名前（デフォルト: \"geom\"）",
+            "default": "geom",
             "type": "string"
           },
           "createSpatialIndex": {
-            "description": "RTree 空間インデックスを作成する（デフォルト: true）",
+            "title": "空間インデックスを作成",
+            "description": "クエリを高速化するためジオメトリ列にR-tree空間インデックスを作成するか（デフォルト: true）",
             "default": true,
             "type": "boolean"
-          },
-          "overwrite": {
-            "description": "既存ファイルを上書きする（デフォルト: false）",
-            "default": false,
-            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "GeometryType": {
+            "title": "Geometry Type",
+            "description": "Geometry type declared for a GeoPackage feature table.",
+            "oneOf": [
+              {
+                "title": "Point",
+                "description": "A single point per feature.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              },
+              {
+                "title": "Line String",
+                "description": "A single connected sequence of points per feature.",
+                "type": "string",
+                "enum": [
+                  "lineString"
+                ]
+              },
+              {
+                "title": "Polygon",
+                "description": "A single polygon, with optional holes, per feature.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Multi Point",
+                "description": "A collection of points per feature.",
+                "type": "string",
+                "enum": [
+                  "multiPoint"
+                ]
+              },
+              {
+                "title": "Multi Line String",
+                "description": "A collection of line strings per feature.",
+                "type": "string",
+                "enum": [
+                  "multiLineString"
+                ]
+              },
+              {
+                "title": "Multi Polygon",
+                "description": "A collection of polygons per feature.",
+                "type": "string",
+                "enum": [
+                  "multiPolygon"
+                ]
+              },
+              {
+                "title": "Geometry (Mixed)",
+                "description": "Any geometry type; use when the table holds mixed or unknown geometry types.",
+                "type": "string",
+                "enum": [
+                  "geometry"
+                ]
+              }
+            ]
           }
         }
       },
@@ -5039,7 +5649,8 @@
         "Output"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -5056,21 +5667,42 @@
         ],
         "properties": {
           "targetType": {
-            "description": "フィーチャーを強制変換するターゲットジオメトリタイプ（例: LineString）",
+            "title": "ターゲットタイプ",
+            "description": "各地物を再表現するジオメトリタイプ。ターゲットが適用できない地物はそのまま通過する",
             "allOf": [
               {
-                "$ref": "#/definitions/CoerceTarget"
+                "$ref": "#/definitions/CoercionTarget"
               }
             ]
           }
         },
         "definitions": {
-          "CoerceTarget": {
-            "type": "string",
-            "enum": [
-              "lineString",
-              "polygon",
-              "triangularMesh"
+          "CoercionTarget": {
+            "oneOf": [
+              {
+                "title": "ラインストリング",
+                "description": "各面を、その境界リング（ホールを含む）のポリラインに置き換える",
+                "type": "string",
+                "enum": [
+                  "lineString"
+                ]
+              },
+              {
+                "title": "ポリゴン",
+                "description": "面を組み立て直す。閉じたラインストリングはそれが囲む面になり、サーフェスやソリッドは構成する個々の面になる",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "三角形メッシュ",
+                "description": "面やサーフェスを三角形に分割する。ソリッドはソリッドのまま、境界だけが三角形化される",
+                "type": "string",
+                "enum": [
+                  "triangularMesh"
+                ]
+              }
             ]
           }
         }
@@ -5085,16 +5717,18 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d"
+      ]
     },
     {
       "name": "Geometry Extractor",
       "type": "processor",
-      "description": "地物からジオメトリを抽出し、属性として追加する",
+      "description": "地物のジオメトリを圧縮した表現にシリアライズし、属性として格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryExtractor パラメータ",
-        "description": "抽出したジオメトリデータを圧縮属性として格納する場所を設定する",
+        "title": "Geometry Extractor パラメータ",
+        "description": "シリアライズしたジオメトリの格納先を設定する",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -5102,7 +5736,7 @@
         "properties": {
           "outputAttribute": {
             "title": "出力属性",
-            "description": "抽出したジオメトリデータを圧縮 JSON として格納する属性名",
+            "description": "圧縮したジオメトリを格納する属性。Geometry Replacer が同じ表現を読み戻す",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -5138,6 +5772,8 @@
         "description": "ジオメトリタイプに基づいてフィーチャーをフィルタリングする方法を設定する",
         "oneOf": [
           {
+            "title": "No Geometry",
+            "description": "Separates the features that carry no geometry at all from the ones that do.",
             "type": "object",
             "required": [
               "filterType"
@@ -5152,20 +5788,8 @@
             }
           },
           {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "multiple"
-                ]
-              }
-            }
-          },
-          {
+            "title": "Geometry Type",
+            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
             "type": "object",
             "required": [
               "filterType"
@@ -5175,6 +5799,22 @@
                 "type": "string",
                 "enum": [
                   "geometryType"
+                ]
+              }
+            }
+          },
+          {
+            "title": "Detailed Geometry Type",
+            "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "detailedGeometryType"
                 ]
               }
             }
@@ -5188,17 +5828,24 @@
       "outputPorts": [
         "unfiltered",
         "none",
-        "contains",
-        "solid",
-        "multiSurface",
-        "compositeSurface",
+        "point",
+        "curve",
         "surface",
         "triangle",
-        "multiCurve",
-        "curve",
-        "multiPoint",
-        "point",
-        "tin"
+        "solid",
+        "multi-point",
+        "point-cloud",
+        "line-string",
+        "multi-curve",
+        "polygon",
+        "multi-area",
+        "face",
+        "polygon-mesh",
+        "triangular-mesh",
+        "multi-surface",
+        "csg",
+        "multi-solid",
+        "aggregate"
       ],
       "categories": [
         "Geometry"
@@ -5208,16 +5855,16 @@
     {
       "name": "Geometry Part Extractor",
       "type": "processor",
-      "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する",
+      "description": "ジオメトリの各サーフェスを抽出し、個別の地物として出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryPartExtractor パラメータ",
-        "description": "3D ジオメトリから抽出するジオメトリパーツを設定する",
+        "title": "Geometry Part Extractor パラメータ",
+        "description": "ジオメトリから抽出するパーツの種類を設定する",
         "type": "object",
         "properties": {
           "geometryPartType": {
             "title": "パーツタイプ",
-            "description": "抽出するジオメトリパーツのタイプ",
+            "description": "ジオメトリから抽出するパーツの種類",
             "default": "surface",
             "allOf": [
               {
@@ -5230,7 +5877,8 @@
           "GeometryPartType": {
             "oneOf": [
               {
-                "description": "サーフェスを個別のフィーチャーとして抽出する",
+                "title": "サーフェス",
+                "description": "ジオメトリの各サーフェスを個別の地物として出力する",
                 "type": "string",
                 "enum": [
                   "surface"
@@ -5253,14 +5901,13 @@
         "Geometry"
       ],
       "tags": [
-        "geometry",
-        "decompose"
+        "3d"
       ]
     },
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "地物からジオメトリを削除する",
+      "description": "地物のジオメトリを削除し、属性はそのまま残す",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -5277,11 +5924,11 @@
     {
       "name": "Geometry Replacer",
       "type": "processor",
-      "description": "地物のジオメトリを新しいジオメトリで置き換える",
+      "description": "属性に格納された圧縮ジオメトリで地物のジオメトリを置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryReplacer パラメータ",
-        "description": "フィーチャーの現在のジオメトリを置き換えるジオメトリデータを含む属性を設定する",
+        "title": "Geometry Replacer パラメータ",
+        "description": "地物の現在のジオメトリを置き換えるジオメトリを保持する属性を設定する",
         "type": "object",
         "required": [
           "sourceAttribute"
@@ -5289,7 +5936,7 @@
         "properties": {
           "sourceAttribute": {
             "title": "ソース属性",
-            "description": "新しいジオメトリとして使用する圧縮ジオメトリデータを含む属性名",
+            "description": "Geometry Extractor が書き込んだ、適用する圧縮ジオメトリを保持する属性。ジオメトリの適用後にこの属性は削除され、属性を持たない地物はそのまま通過する。保持されたジオメトリをデコードできない地物は rejected ポートに送られる",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -5308,51 +5955,33 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "attribute"
+      ]
     },
     {
       "name": "Geometry Splitter",
       "type": "processor",
-      "description": "ジオメトリをタイプ別に分割する",
+      "description": "マルチパートジオメトリを単一ジオメトリの地物に分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometrySplitter パラメータ",
-        "description": "GeometrySplitter のパラメータ",
+        "title": "Geometry Splitter パラメータ",
+        "description": "マルチパートジオメトリを個々の地物に分割する方法を設定する",
         "type": "object",
         "properties": {
-          "splitLevel": {
-            "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割",
-            "default": "element",
-            "allOf": [
-              {
-                "$ref": "#/definitions/SplitLevel"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "SplitLevel": {
-            "description": "Split level for CityGML geometry",
-            "oneOf": [
-              {
-                "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する",
-                "type": "string",
-                "enum": [
-                  "element"
-                ]
-              },
-              {
-                "description": "各要素内の個々のポリゴンまで分割する",
-                "type": "string",
-                "enum": [
-                  "polygon"
-                ]
-              }
+          "groupBy": {
+            "title": "グループ化キー",
+            "description": "分割対象のメンバーをグループ化する属性キー。この属性の値が同じメンバーは分割せずに1つの出力フィーチャにまとめられる。この属性を持たないメンバーは個別に出力される。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -5367,49 +5996,115 @@
       "categories": [
         "Geometry"
       ],
-      "tags": [
-        "split",
-        "geometry"
-      ]
+      "tags": []
     },
     {
       "name": "Geometry Validator",
       "type": "processor",
-      "description": "地物のジオメトリを検証する",
+      "description": "重複点、破損ジオメトリ、自己交差などの問題について地物のジオメトリを検証する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryValidator パラメータ",
-        "description": "フィーチャージオメトリに対して実行する検証チェックを設定する",
+        "title": "Geometry Validator パラメータ",
+        "description": "地物のジオメトリに対して実行する検証チェックを設定する",
         "type": "object",
-        "required": [
-          "validationTypes"
-        ],
         "properties": {
-          "validationTypes": {
-            "title": "検証タイプ",
-            "description": "ジオメトリに対して実行する検証チェックのリスト（重複点、破損ジオメトリ、自己交差）",
+          "disabledOptionalChecks": {
+            "title": "無効化する任意チェック",
+            "description": "無効化する補助チェック。無効化されたチェックは実行されず、合格として扱われる。コアの妥当性チェックは常に実行される。デフォルトは空で、すべての任意チェックが実行される",
+            "default": [],
             "type": "array",
             "items": {
-              "$ref": "#/definitions/ValidationType"
+              "$ref": "#/definitions/OptionalCheck"
             }
+          },
+          "planarityThreshold": {
+            "title": "平面性しきい値",
+            "description": "平面性チェックが面の平面外のずれをどう制限するかの上書き。スケール不変の ratio（デフォルト）、または座標系の線形単位による絶対値 maxHeight（線形単位の座標系のみ）",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/PlanarityThreshold"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duplicateTolerance": {
+            "title": "重複点の許容誤差",
+            "description": "重複点チェックで2つの座標を重複とみなす距離。省略した場合（デフォルト）は完全一致で判定する",
+            "default": null,
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "degenerateThresholds": {
+            "title": "縮退しきい値",
+            "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する",
+            "default": {
+              "minLength": 0.0,
+              "minArea": 0.0,
+              "minVolume": 0.0
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DegenerateThresholds"
+              }
+            ]
           }
         },
         "definitions": {
-          "ValidationType": {
+          "OptionalCheck": {
+            "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
             "oneOf": [
               {
+                "title": "重複点",
+                "description": "ジオメトリ内で繰り返される座標の検出",
                 "type": "string",
                 "enum": [
                   "duplicatePoints"
                 ]
               },
               {
+                "title": "配向可能性",
+                "description": "面に一貫した向きを与えられないサーフェスの検出",
+                "type": "string",
+                "enum": [
+                  "orientable"
+                ]
+              },
+              {
+                "title": "リングの向き",
+                "description": "誤った方向に巻かれたリングの検出",
+                "type": "string",
+                "enum": [
+                  "orientation"
+                ]
+              },
+              {
+                "title": "シェルの向き",
+                "description": "面が誤った方向を向くソリッドシェルの検出",
+                "type": "string",
+                "enum": [
+                  "shellOrientation"
+                ]
+              }
+            ]
+          },
+          "PlanarityThreshold": {
+            "description": "How the planarity check bounds a face's out-of-plane deviation.",
+            "oneOf": [
+              {
+                "title": "Ratio",
+                "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant.",
                 "type": "object",
                 "required": [
-                  "duplicateConsecutivePoints"
+                  "ratio"
                 ],
                 "properties": {
-                  "duplicateConsecutivePoints": {
+                  "ratio": {
                     "type": "number",
                     "format": "double"
                   }
@@ -5417,40 +6112,48 @@
                 "additionalProperties": false
               },
               {
-                "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
+                "title": "Max Height",
+                "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
                 "type": "object",
                 "required": [
-                  "corruptGeometry"
+                  "maxHeight"
                 ],
                 "properties": {
-                  "corruptGeometry": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "format": "double"
-                  }
-                },
-                "additionalProperties": false
-              },
-              {
-                "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
-                "type": "object",
-                "required": [
-                  "selfIntersection"
-                ],
-                "properties": {
-                  "selfIntersection": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
+                  "maxHeight": {
+                    "type": "number",
                     "format": "double"
                   }
                 },
                 "additionalProperties": false
               }
             ]
+          },
+          "DegenerateThresholds": {
+            "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults to zero, flagging only an exactly-zero measure.",
+            "type": "object",
+            "properties": {
+              "minLength": {
+                "title": "最小長さ",
+                "description": "1D ジオメトリ（線またはリングの辺）が検出されない最小の長さ",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minArea": {
+                "title": "最小面積",
+                "description": "2D ジオメトリ（面またはリング）が検出されない最小の面積",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minVolume": {
+                "title": "最小体積",
+                "description": "3D ジオメトリ（ソリッド）が検出されない最小の体積",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              }
+            }
           }
         }
       },
@@ -5467,7 +6170,7 @@
         "Geometry"
       ],
       "tags": [
-        "validate"
+        "validation"
       ]
     },
     {
@@ -5493,24 +6196,25 @@
     {
       "name": "Grid Divider",
       "type": "processor",
-      "description": "ポリゴンを規則的なグリッドセルに分割する",
+      "description": "ポリゴンジオメトリを等サイズのセルからなる規則的なグリッドに分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GridDivider パラメータ",
+        "title": "Grid Divider パラメータ",
+        "description": "グリッドセルのサイズと、地物を共通のグリッドにグループ化する方法を設定する",
         "type": "object",
         "required": [
-          "unitSquareSize"
+          "cellSize"
         ],
         "properties": {
-          "unitSquareSize": {
-            "title": "グリッドセルサイズ",
-            "description": "各グリッドセルの辺の長さ（ジオメトリ座標と同じ単位）",
+          "cellSize": {
+            "title": "セルサイズ",
+            "description": "各グリッドセルの辺の長さ。ジオメトリ座標と同じ単位で指定する。ゼロより大きい値が必要",
             "type": "number",
             "format": "double"
           },
-          "keepSquareOnly": {
-            "title": "完全なグリッドのみ保持",
-            "description": "true の場合、完全なグリッドセルのみ出力する（端のピースを破棄）。デフォルト: false",
+          "completeCellsOnly": {
+            "title": "完全なセルのみ",
+            "description": "グリッドがジオメトリの端に達したときに生じる不完全なセルを破棄し、完全なセルのみを出力するかどうか。デフォルトは false",
             "type": [
               "boolean",
               "null"
@@ -5518,7 +6222,7 @@
           },
           "groupBy": {
             "title": "グループ化属性",
-            "description": "フィーチャーをグループ化する属性。各グループは独自のグリッド原点を持つ。",
+            "description": "値が一致する地物をグループ化する属性。各グループは、そのグループ全体の範囲から求めたグリッド原点で分割される",
             "type": [
               "array",
               "null"
@@ -5546,7 +6250,7 @@
         "Geometry"
       ],
       "tags": [
-        "2d"
+        "spatial"
       ]
     },
     {
@@ -6961,24 +7665,20 @@
     {
       "name": "Horizontal Reprojector",
       "type": "processor",
-      "description": "地物のジオメトリを指定された座標系に水平再投影する",
+      "description": "EPSG コードを用いて地物のジオメトリを別の水平座標系に再投影する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "HorizontalReprojector パラメータ",
+        "title": "Horizontal Reprojector パラメータ",
         "description": "ジオメトリ再投影の入力・出力座標系を設定する",
         "type": "object",
         "required": [
           "targetEpsgCode"
         ],
         "properties": {
-          "sourceEpsgCode": {
-            "title": "入力 EPSG コード",
-            "description": "入力座標系の EPSG コード式。指定しない場合はジオメトリの EPSG コードを使用する。後方互換性のため任意だが、明示的に指定することを推奨。定数値（例: \"4326\"）またはフィーチャー属性を参照する式で指定可能。",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
+          "targetEpsgCode": {
+            "title": "出力 EPSG コード",
+            "description": "再投影先の EPSG コード。\"4326\" のような定数、または地物の属性を参照する式で指定する",
+            "type": "object",
             "format": "code",
             "required": [
               "type",
@@ -6996,10 +7696,14 @@
               }
             }
           },
-          "targetEpsgCode": {
-            "title": "出力 EPSG コード",
-            "description": "再投影先の座標系 EPSG コード式。定数値（例: WGS84 は \"4326\"、NZTM2000 は \"2193\"、Web Mercator は \"3857\"）またはフィーチャー属性を参照する式で指定可能。",
-            "type": "object",
+          "sourceEpsgCode": {
+            "title": "入力 EPSG コード",
+            "description": "再投影元の EPSG コード。定数または式で指定する。デフォルトはジオメトリが保持する EPSG コードのため、ジオメトリに EPSG コードがない場合や誤っている場合にのみ指定すればよい",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",
@@ -7030,22 +7734,22 @@
         "Geometry"
       ],
       "tags": [
-        "projection",
-        "2d"
+        "coordinate-system"
       ]
     },
     {
       "name": "Image Rasterizer",
       "type": "processor",
-      "description": "ベクターデータをラスター画像形式に変換する",
+      "description": "重複の解決方法を指定して、ベクタージオメトリをラスター画像に変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ImageRasterizer パラメータ",
-        "description": "ベクタージオメトリをラスター画像に変換する方法を設定する",
+        "title": "Image Rasterizer パラメータ",
+        "description": "出力画像のサイズ、保存先、重なり合うジオメトリの解決方法を設定する",
         "type": "object",
         "properties": {
           "imageWidth": {
-            "description": "画像の幅",
+            "title": "画像の幅",
+            "description": "出力画像の幅（ピクセル）。高さは入力ジオメトリの範囲から縦横比を保って決まる",
             "default": 1000,
             "type": "integer",
             "format": "uint32",
@@ -7053,7 +7757,7 @@
           },
           "saveTo": {
             "title": "保存先",
-            "description": "生成した画像を保存するパス式（任意）。指定しない場合はデフォルトのキャッシュディレクトリを使用。",
+            "description": "生成した画像を書き出すパス。省略した場合はキャッシュディレクトリに書き出す",
             "default": null,
             "type": [
               "object",
@@ -7079,7 +7783,7 @@
           },
           "onOverlap": {
             "title": "重複時の処理",
-            "description": "複数のポリゴンが同じピクセルを覆う場合のピクセル重複解決戦略",
+            "description": "複数のジオメトリが重なるピクセルの色を決める方法。省略した場合は到着順に描画する",
             "default": null,
             "anyOf": [
               {
@@ -7096,13 +7800,24 @@
             "description": "Overlap resolution strategy for rasterized pixels",
             "oneOf": [
               {
+                "title": "最後を採用",
+                "description": "そのピクセルに最後に描画されたジオメトリの色を採用する",
                 "type": "string",
                 "enum": [
-                  "takeLast",
+                  "takeLast"
+                ]
+              },
+              {
+                "title": "最初を採用",
+                "description": "そのピクセルに最初に描画されたジオメトリの色を採用する",
+                "type": "string",
+                "enum": [
                   "takeFirst"
                 ]
               },
               {
+                "title": "Maximum",
+                "description": "Keeps the colour of the overlapping polygon whose expression evaluates highest.",
                 "type": "object",
                 "required": [
                   "max"
@@ -7131,6 +7846,8 @@
                 "additionalProperties": false
               },
               {
+                "title": "Minimum",
+                "description": "Keeps the colour of the overlapping polygon whose expression evaluates lowest.",
                 "type": "object",
                 "required": [
                   "min"
@@ -7159,7 +7876,8 @@
                 "additionalProperties": false
               },
               {
-                "description": "重複するすべてのポリゴンの RGB チャンネルを飽和加算する。",
+                "title": "合計",
+                "description": "重なり合うすべてのジオメトリの RGB チャンネルを加算し、最大値で飽和させる",
                 "type": "string",
                 "enum": [
                   "sum"
@@ -7172,20 +7890,19 @@
       "builtin": true,
       "inputPorts": [
         "features",
-        "textureCoordinates"
+        "texture-coordinates"
       ],
       "outputPorts": [
         "features",
         "textured",
-        "textureBounds"
+        "texture-bounds",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
       "tags": [
-        "raster",
-        "image",
-        "texture"
+        "raster"
       ]
     },
     {
@@ -7396,7 +8113,7 @@
         "properties": {
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.json\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -7465,14 +8182,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonWriter パラメータ",
-        "description": "フィーチャーを JSON ファイルに書き出す設定",
+        "description": "地物をJSONファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する JSON ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するJSONファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -7493,7 +8211,8 @@
             }
           },
           "converter": {
-            "description": "書き出し前にフィーチャーを変換するコンバーター式（任意）",
+            "title": "コンバーター式",
+            "description": "書き出すJSON値に地物を変換する式。省略した場合、地物は属性の配列として書き出される",
             "type": [
               "object",
               "null"
@@ -7532,7 +8251,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる",
+      "description": "交差する位置でラインを分割し、各交点を、そこで交わるラインの属性を結合して持つ点地物に変換する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer パラメータ",
@@ -7649,18 +8368,19 @@
     {
       "name": "List Exploder",
       "type": "processor",
-      "description": "リスト属性を複数の要素に分解する",
+      "description": "リスト属性の要素1件につき1地物を作成し、要素のキーと値を地物の属性に統合してソース属性を削除する。属性が存在しない、空、またはキーと値のリストでない地物は何も生成せず、rejected として扱われる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ListExploder パラメータ",
-        "description": "配列属性を個別のフィーチャーに分解する設定",
+        "title": "List Exploder パラメータ",
+        "description": "個別の地物に展開するリスト属性を設定する",
         "type": "object",
         "required": [
           "sourceAttribute"
         ],
         "properties": {
           "sourceAttribute": {
-            "description": "分解する配列を含む属性（各要素が個別のフィーチャーになる）",
+            "title": "ソース属性",
+            "description": "作成する地物1件につき1エントリとなる、キーと値のリストを保持する属性",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -7679,7 +8399,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Transform"
@@ -7754,11 +8475,11 @@
     {
       "name": "MVT Writer",
       "type": "sink",
-      "description": "地物をファイルに書き出す",
+      "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MVTWriter パラメータ",
-        "description": "フィーチャーを Mapbox Vector Tiles（MVT）形式に書き出す設定。/{z}/{x}/{y}.mvt および tilejson.json を生成する。親ディレクトリが HTTP ルートとして扱われる（tileJSON は絶対 URL が必要）。",
+        "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す設定",
         "type": "object",
         "required": [
           "layerName",
@@ -7768,8 +8489,8 @@
         ],
         "properties": {
           "output": {
-            "title": "出力先",
-            "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
+            "title": "出力ディレクトリ",
+            "description": "生成したMVTタイルを書き出す出力ディレクトリパスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -7791,7 +8512,7 @@
           },
           "layerName": {
             "title": "レイヤー名",
-            "description": "MVT タイル内のレイヤー名",
+            "description": "生成するタイル内のレイヤー名または式",
             "type": "object",
             "format": "code",
             "required": [
@@ -7826,8 +8547,8 @@
             "minimum": 0.0
           },
           "compressOutput": {
-            "title": "出力を圧縮",
-            "description": "出力タイルを圧縮するかを決定する式（任意）",
+            "title": "圧縮出力パス",
+            "description": "タイルの圧縮アーカイブを書き出すパス（任意）",
             "type": [
               "object",
               "null"
@@ -7850,9 +8571,17 @@
               }
             }
           },
+          "schemaKey": {
+            "title": "スキーマキー",
+            "description": "属性のフィルタリングとキャストのためにデータとスキーマの地物を照合する属性キー。この属性は出力から除外される",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "skipUnexposedAttributes": {
             "title": "非公開属性をスキップ",
-            "description": "ダブルアンダースコアで始まる属性をスキップする",
+            "description": "ダブルアンダースコアで始まる属性をスキップするか",
             "type": [
               "boolean",
               "null"
@@ -7860,29 +8589,21 @@
           },
           "colonToUnderscore": {
             "title": "コロンをアンダースコアに変換",
-            "description": "属性キーのコロン（XML 名前空間など）をアンダースコアに置換する",
+            "description": "属性キーのコロン（XML名前空間など）をアンダースコアに置換するか",
             "type": [
               "boolean",
               "null"
             ]
           },
           "extent": {
-            "title": "エクステント",
-            "description": "MVT タイルの解像度。デフォルトは 4096。",
+            "title": "タイルエクステント",
+            "description": "各タイル内の座標グリッド解像度。値を大きくすると高精細データの位置精度が保たれるが、タイルサイズは大きくなる（デフォルト: 4096、MVT標準）",
             "type": [
               "integer",
               "null"
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "schemaKey": {
-            "title": "スキーマキー",
-            "description": "属性フィルタリングとキャストのためにデータとスキーマのフィーチャーを照合する属性キー。この属性は出力から除外される。",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },
@@ -7896,7 +8617,8 @@
         "Output"
       ],
       "tags": [
-        "mvt"
+        "vector",
+        "tiling"
       ]
     },
     {
@@ -8082,15 +8804,26 @@
     {
       "name": "Null Attribute Mapper",
       "type": "processor",
-      "description": "null値の属性を設定されたデフォルト値に置き換える",
+      "description": "null に相当する属性値を設定した置換値に置き換え、必要に応じて対象の地物を削除または振り分ける",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "NullAttributeMapper パラメータ",
-        "description": "NullAttributeMapper のパラメータ",
+        "title": "Null Attribute Mapper パラメータ",
+        "description": "null に相当する属性値を検出し、属性ごとのルールに従って置換・削除、または対象地物の振り分けを行う",
         "type": "object",
         "properties": {
+          "scope": {
+            "title": "範囲",
+            "description": "検査する属性。マッピングで指定した属性のみか、地物のすべての属性か",
+            "default": "listed",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Scope"
+              }
+            ]
+          },
           "mappings": {
-            "description": "属性ごとの置換ルール",
+            "title": "属性マッピング",
+            "description": "null に相当する各属性をどのように置換・削除・作成するかを定める属性ごとのルール",
             "default": [],
             "type": "array",
             "items": {
@@ -8098,11 +8831,13 @@
             }
           },
           "defaultReplacement": {
-            "description": "マッピングにない属性のフォールバック置換値（scope = \"all\" の場合）",
+            "title": "デフォルト置換値",
+            "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される",
             "default": null
           },
           "nullDefinition": {
-            "description": "「null」とみなす状態",
+            "title": "null の定義",
+            "description": "null に相当するとみなす状態。明示的な null 値、欠落した属性、空文字列のいずれか。既定では null 値と欠落した属性",
             "default": [
               "null",
               "missing"
@@ -8113,21 +8848,35 @@
             }
           },
           "routeNullFeatures": {
-            "description": "null を持つ元のフィーチャーを hasNull ポートに出力する",
+            "title": "null 地物の振り分け",
+            "description": "有効にすると、null 相当の値を 1 つ以上持つ地物の複製を、確認用に別の出力へそのまま出力する",
             "default": false,
             "type": "boolean"
-          },
-          "scope": {
-            "description": "検査する属性",
-            "default": "listed",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Scope"
-              }
-            ]
           }
         },
         "definitions": {
+          "Scope": {
+            "title": "Scope",
+            "description": "Which attributes the action inspects.",
+            "oneOf": [
+              {
+                "title": "指定した属性",
+                "description": "マッピングリストで指定した属性のみを検査する",
+                "type": "string",
+                "enum": [
+                  "listed"
+                ]
+              },
+              {
+                "title": "すべての属性",
+                "description": "地物のすべての属性を検査する",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            ]
+          },
           "AttributeMapping": {
             "description": "Per-attribute replacement mapping",
             "type": "object",
@@ -8136,14 +8885,17 @@
             ],
             "properties": {
               "attribute": {
-                "description": "検査する属性名",
+                "title": "属性",
+                "description": "検査する属性の名前",
                 "type": "string"
               },
               "replacement": {
-                "description": "属性が null 的な場合に書き込む値。null は属性を削除することを意味する。"
+                "title": "置換値",
+                "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
               },
               "onMissing": {
-                "description": "属性が欠落しているが nullDefinition にない場合の処理",
+                "title": "欠落時の動作",
+                "description": "属性が存在せず、null の定義でも null 相当とみなされない場合の動作",
                 "default": "skip",
                 "allOf": [
                   {
@@ -8154,17 +8906,20 @@
             }
           },
           "OnMissing": {
-            "description": "What to do when attribute is missing but not in nullDefinition",
+            "title": "On Missing",
+            "description": "Behavior when an inspected attribute is absent from the feature.",
             "oneOf": [
               {
-                "description": "変更しない",
+                "title": "スキップ",
+                "description": "地物を変更しない",
                 "type": "string",
                 "enum": [
                   "skip"
                 ]
               },
               {
-                "description": "属性を作成し、置換値を書き込む",
+                "title": "作成",
+                "description": "マッピングの置換値を使用して属性を追加する",
                 "type": "string",
                 "enum": [
                   "create"
@@ -8173,46 +8928,31 @@
             ]
           },
           "NullKind": {
-            "description": "Defines what states count as \"null\"",
+            "title": "Null Definition",
+            "description": "States that are treated as null-like.",
             "oneOf": [
               {
-                "description": "null 値（AttributeValue::Null）",
+                "title": "null 値",
+                "description": "地物に存在するが明示的な null 値を保持する属性",
                 "type": "string",
                 "enum": [
                   "null"
                 ]
               },
               {
-                "description": "フィーチャーに属性キーが存在しない",
+                "title": "欠落した属性",
+                "description": "地物に存在しない属性",
                 "type": "string",
                 "enum": [
                   "missing"
                 ]
               },
               {
-                "description": "空文字列（AttributeValue::String(\"\")）",
+                "title": "空文字列",
+                "description": "文字を含まないテキスト値を保持する属性",
                 "type": "string",
                 "enum": [
                   "emptyString"
-                ]
-              }
-            ]
-          },
-          "Scope": {
-            "description": "Scope of attributes to inspect",
-            "oneOf": [
-              {
-                "description": "マッピングに指定された属性のみを検査する",
-                "type": "string",
-                "enum": [
-                  "listed"
-                ]
-              },
-              {
-                "description": "フィーチャーのすべての属性を検査する",
-                "type": "string",
-                "enum": [
-                  "all"
                 ]
               }
             ]
@@ -8225,7 +8965,7 @@
       ],
       "outputPorts": [
         "features",
-        "hasNull",
+        "has-null",
         "rejected"
       ],
       "categories": [
@@ -8247,13 +8987,13 @@
         "properties": {
           "parseMaterials": {
             "title": "マテリアルを解析",
-            "description": "OBJ ファイルで参照されている MTL ファイルからマテリアル定義の解析を有効にする",
+            "description": "OBJ ファイルで参照されている MTL ファイルからマテリアル定義を解析する",
             "default": true,
             "type": "boolean"
           },
           "materialFile": {
             "title": "マテリアルファイル",
-            "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする。",
+            "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする",
             "default": null,
             "type": [
               "object",
@@ -8285,14 +9025,8 @@
           },
           "mergeGroups": {
             "title": "グループをマージ",
-            "description": "グループ/オブジェクトごとに個別フィーチャーを作成する代わりに、すべてのグループとオブジェクトを単一フィーチャーにマージする",
+            "description": "グループやオブジェクトごとに個別の地物を作成する代わりに、すべてのグループとオブジェクトを単一の地物にマージする",
             "default": false,
-            "type": "boolean"
-          },
-          "includeNormals": {
-            "title": "法線を含める",
-            "description": "出力ジオメトリに頂点法線データを含める",
-            "default": true,
             "type": "boolean"
           },
           "includeTexcoords": {
@@ -8303,7 +9037,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"model.obj\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -8359,10 +9093,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "obj",
+        "3d"
+      ]
     },
     {
       "name": "OBJ Writer",
@@ -8442,16 +9178,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "地物の座標にオフセットを加える",
+      "description": "ジオメトリのすべての座標を各軸ごとに一定量だけ移動する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter パラメータ",
-        "description": "すべてのジオメトリ座標に適用する X・Y・Z 座標オフセットを設定する",
+        "description": "すべてのジオメトリ座標に各軸ごとに加える量を、ジオメトリの座標フレームの座標単位で設定する",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X オフセット",
-            "description": "すべての X 座標（経度）に加えるオフセット",
+            "description": "すべての X 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系では度）。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8460,7 +9196,7 @@
           },
           "offsetY": {
             "title": "Y オフセット",
-            "description": "すべての Y 座標（緯度）に加えるオフセット",
+            "description": "すべての Y 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系では度）。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8469,7 +9205,7 @@
           },
           "offsetZ": {
             "title": "Z オフセット",
-            "description": "すべての Z 座標（標高）に加えるオフセット",
+            "description": "すべての Z 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系ではメートル）。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8488,7 +9224,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
     },
     {
       "name": "Orientation Extractor",
@@ -10674,20 +11413,20 @@
     {
       "name": "Polygon Normal Extractor",
       "type": "processor",
-      "description": "ポリゴン地物の法線ベクトルおよびその他のプロパティを抽出する",
+      "description": "ポリゴン地物から法線ベクトル、符号付き2D面積、傾斜、方位角を抽出し、属性として格納する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
       "tags": [
-        "normal",
         "3d"
       ]
     },
@@ -10789,16 +11528,16 @@
       "description": "レイとジオメトリの交差点を計算する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "RayIntersector パラメータ",
-        "description": "レイとジオメトリの交差計算を設定する",
+        "title": "Ray Intersector パラメータ",
+        "description": "レイとジオメトリを対応付ける方法と、交差結果の出力方法を設定する",
         "type": "object",
         "required": [
-          "pairId",
           "ray"
         ],
         "properties": {
           "ray": {
-            "description": "フィーチャー属性からレイデータを抽出する方法を定義する",
+            "title": "レイ",
+            "description": "レイの原点と方向を保持する、レイ地物側の属性",
             "allOf": [
               {
                 "$ref": "#/definitions/RayDefinition"
@@ -10806,8 +11545,13 @@
             ]
           },
           "pairId": {
-            "description": "レイとジオメトリをグループ化するためのペア ID（int または string）に評価される式。一致する pairId を持つレイとジオメトリのみが互いにテストされる。",
-            "type": "object",
+            "title": "ペア ID",
+            "description": "レイとジオメトリを対応付けるキーを生成する式。キーが一致するレイとジオメトリのみが互いに判定される。省略した場合、すべてのレイがすべてのジオメトリと判定される",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",
@@ -10826,7 +11570,30 @@
             }
           },
           "closestIntersectionOnly": {
-            "description": "true（デフォルト）の場合、レイ-ジオメトリペアごとに最も近い交差点のみを返す。false の場合、すべての交差点を返す。",
+            "title": "最近傍の交差のみ",
+            "description": "レイ上のすべての交差ではなく、最も近い交差のみを残すかどうか。デフォルトは true",
+            "default": true,
+            "type": "boolean"
+          },
+          "includeRayOrigin": {
+            "title": "レイ原点を含める",
+            "description": "レイの原点上の交差を有効な交差とみなすかどうか。false の場合、許容誤差より近い交差は破棄される。デフォルトは true",
+            "default": true,
+            "type": "boolean"
+          },
+          "outputGeometryType": {
+            "title": "出力ジオメトリタイプ",
+            "description": "各交差に対して出力するジオメトリ",
+            "default": "pointOfIntersection",
+            "allOf": [
+              {
+                "$ref": "#/definitions/OutputGeometryType"
+              }
+            ]
+          },
+          "geomId": {
+            "title": "ジオメトリ ID",
+            "description": "各ジオメトリ地物にラベルを付けるために評価される式。設定すると、各交差にヒットしたジオメトリを示す geom_id 属性が付与される",
             "default": null,
             "type": [
               "object",
@@ -10850,90 +11617,17 @@
             }
           },
           "tolerance": {
-            "description": "交差計算の許容誤差（f64 に評価される）。指定しない場合はデフォルトの許容誤差が使用される。",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "includeRayOrigin": {
-            "description": "true（デフォルト）の場合、レイの原点での交差を含める。false の場合、t < 許容誤差の交差を除外する。",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "outputGeometryType": {
-            "description": "交差結果として出力するジオメトリのタイプ。- \"pointOfIntersection\"（デフォルト）: 交差位置に点を出力 - \"lineSegmentToIntersection\": レイの原点から交差点までの線分を出力",
-            "default": "pointOfIntersection",
-            "allOf": [
-              {
-                "$ref": "#/definitions/OutputGeometryType"
-              }
-            ]
-          },
-          "geomId": {
-            "description": "ジオメトリフィーチャーに評価されて ID 文字列を抽出する式。設定すると、交差フィーチャーにヒットしたジオメトリを識別する `geom_id` 属性が含まれる。",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "title": "許容誤差",
+            "description": "交差がレイの原点と一致しているとみなす距離。デフォルトは 1e-10",
+            "default": 1e-10,
+            "type": "number",
+            "format": "double"
           }
         },
         "definitions": {
           "RayDefinition": {
-            "description": "Defines how ray data is extracted from feature attributes.",
+            "title": "Ray Definition",
+            "description": "Attributes that hold a ray's origin and direction.",
             "type": "object",
             "required": [
               "dirX",
@@ -10945,7 +11639,8 @@
             ],
             "properties": {
               "posX": {
-                "description": "レイの原点 X 座標を含む属性",
+                "title": "原点 X 属性",
+                "description": "レイの原点の X 座標を保持する属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -10953,7 +11648,8 @@
                 ]
               },
               "posY": {
-                "description": "レイの原点 Y 座標を含む属性",
+                "title": "原点 Y 属性",
+                "description": "レイの原点の Y 座標を保持する属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -10961,7 +11657,8 @@
                 ]
               },
               "posZ": {
-                "description": "レイの原点 Z 座標を含む属性",
+                "title": "原点 Z 属性",
+                "description": "レイの原点の Z 座標を保持する属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -10969,7 +11666,8 @@
                 ]
               },
               "dirX": {
-                "description": "レイの方向 X 成分を含む属性",
+                "title": "方向 X 属性",
+                "description": "レイの方向の X 成分を保持する属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -10977,7 +11675,8 @@
                 ]
               },
               "dirY": {
-                "description": "レイの方向 Y 成分を含む属性",
+                "title": "方向 Y 属性",
+                "description": "レイの方向の Y 成分を保持する属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -10985,7 +11684,8 @@
                 ]
               },
               "dirZ": {
-                "description": "レイの方向 Z 成分を含む属性",
+                "title": "方向 Z 属性",
+                "description": "レイの方向の Z 成分を保持する属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -11001,14 +11701,16 @@
             "description": "Output geometry type for ray intersection results",
             "oneOf": [
               {
-                "description": "交差位置に点を出力する（デフォルト動作）",
+                "title": "交差点",
+                "description": "レイがジオメトリと交わる位置に点を出力する",
                 "type": "string",
                 "enum": [
                   "pointOfIntersection"
                 ]
               },
               {
-                "description": "レイの原点から交差点までの線分を出力する",
+                "title": "交差点までの線分",
+                "description": "レイの原点から交差点まで伸びる線を出力する",
                 "type": "string",
                 "enum": [
                   "lineSegmentToIntersection"
@@ -11025,30 +11727,28 @@
       ],
       "outputPorts": [
         "intersection",
-        "no_intersection",
+        "no-intersection",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
       "tags": [
-        "ray",
-        "intersection",
-        "3d"
+        "3d",
+        "spatial"
       ]
     },
     {
       "name": "Refiner",
       "type": "processor",
-      "description": "ジオメトリを精緻化する",
+      "description": "複雑なジオメトリタイプをより単純なプリミティブに分解する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features",
-        "remain"
+        "features"
       ],
       "categories": [
         "Geometry"
@@ -11344,7 +12044,7 @@
     {
       "name": "SQL Reader",
       "type": "source",
-      "description": "SQLデータベースから地物を読み取る",
+      "description": "SQL データベースから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SQL Reader パラメータ",
@@ -11416,7 +12116,7 @@
     {
       "name": "Shapefile Reader",
       "type": "source",
-      "description": "Shapefileアーカイブ（.shp、.dbf、.shxを含む.zip）から地理的地物を読み込む",
+      "description": "Shapefile アーカイブ（.shp、.dbf、.shx を含む .zip）から地理地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileReader パラメータ",
@@ -11425,13 +12125,13 @@
         "properties": {
           "encoding": {
             "title": "文字エンコーディング",
-            "description": "DBF ファイルの属性データの文字エンコーディング。指定しない場合は .cpg ファイル（存在する場合）から判定し、なければ UTF-8 をデフォルトとする。\n\n対応するエンコーディング: - **UTF-8** - Unicode UTF-8（デフォルト、新しい Shapefile に推奨） - **Windows コードページ** - Windows-1250〜1258、Windows-874 - **ISO-8859 ファミリ** - ISO-8859-1（Latin-1）〜ISO-8859-16 - **アジア系** - Shift-JIS、EUC-JP、EUC-KR、Big5、GBK、GB18030 - **その他レガシー** - KOI8-R、KOI8-U、IBM866、Macintosh\n\nエンコーディングラベルは大文字小文字を区別せず、一般的な表記のバリエーションに対応（例: \"UTF-8\"、\"UTF8\"、\"utf8\" すべて有効）。\n\nUTF-16 はバイトレベルの処理要件により非対応。UTF-16 の Shapefile を読み込むとエラーと変換手順が返される。\n\n優先順位: encoding パラメータ > .cpg ファイル > UTF-8 デフォルト",
+            "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ .dbf ヘッダーが宣言するコードページ、それもなければ UTF-8（UTF-16 は非対応）",
             "type": [
               "string",
               "null"
             ]
           },
-          "force2d": {
+          "force2D": {
             "title": "2D に強制",
             "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）",
             "default": false,
@@ -11439,13 +12139,13 @@
           },
           "allowEmptyPath": {
             "title": "null パスを許可",
-            "description": "true の場合、null に評価されるデータセット式はエラーの代わりにフィーチャーを 0 件生成する。パスが設定されない可能性がある省略可能な Shapefile 入力に便利。",
+            "description": "true の場合、null のデータセットパスはエラーの代わりに地物を 0 件生成し、省略可能な Shapefile 入力を許可する",
             "default": false,
             "type": "boolean"
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -11504,24 +12204,26 @@
         "Input"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
       "name": "Shapefile Writer",
       "type": "sink",
-      "description": "シェープファイルに地物を書き込む",
+      "description": "地物をESRI Shapefile形式に書き出し、任意でグループごとに別ファイルに分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileWriter パラメータ",
-        "description": "フィーチャーを ESRI Shapefile 形式に書き出す設定。",
+        "description": "地物をESRI Shapefile形式に書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する Shapefile の出力パスまたは式",
+            "title": "出力ディレクトリ",
+            "description": "生成されたShapefileファイルを書き出す出力ディレクトリのパスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -11541,8 +12243,34 @@
               }
             }
           },
+          "compressOutput": {
+            "title": "圧縮出力ディレクトリ",
+            "description": "各ShapefileをZIPアーカイブとして書き出すディレクトリ（任意）。アーカイブには対象Shapefileの.shp、.shx、.dbf、.cpg、.prjが含まれます。未設定の場合は非圧縮のファイル群として書き出します",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
           "groupBy": {
-            "description": "フィーチャーをグループ化する属性（任意）。グループごとに別ファイルを作成する",
+            "title": "グループ化属性",
+            "description": "地物をグループ化し、グループごとに別ファイルを作成する属性",
             "type": [
               "array",
               "null"
@@ -11567,7 +12295,8 @@
         "Output"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -11768,31 +12497,27 @@
     {
       "name": "Statistics Calculator",
       "type": "processor",
-      "description": "地物の統計情報を計算する",
+      "description": "1 つ以上の属性で地物をグループ化し、各グループについて統計量（件数・合計・最小値・最大値・平均値）を計算して、グループごとに 1 つの地物を出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "StatisticsCalculator パラメータ",
-        "description": "フィーチャー属性の統計集計を計算する設定。",
+        "title": "Statistics Calculator パラメータ",
+        "description": "グループ化する属性と、各グループについて計算する統計量を定義する",
         "type": "object",
         "required": [
           "calculations"
         ],
         "properties": {
-          "groupId": {
-            "title": "グループ ID",
-            "description": "グループ識別子を格納する属性（任意）。ID は group_by 属性の値を「|」で連結して形成される。",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "calculations": {
+            "title": "計算項目",
+            "description": "各グループについて計算する統計量。各項目で出力属性名、集計方法、および（件数を除き）集計対象の値を求める式を指定する",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Calculation"
+            }
           },
           "groupBy": {
             "title": "グループ化属性",
-            "description": "集計のためにフィーチャーをグループ化する属性。指定しない場合はすべての入力がグループ化される。",
+            "description": "集計前に地物をグループ化する属性。省略した場合、すべての入力地物が 1 つのグループになる",
             "type": [
               "array",
               "null"
@@ -11801,37 +12526,52 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "calculations": {
-            "title": "計算項目",
-            "description": "グループ化されたフィーチャーに対して実行する統計計算のリスト",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Calculation"
-            }
+          "groupId": {
+            "title": "グループ ID",
+            "description": "グループ識別子を格納する属性（任意）。グループ化属性の値を「|」で連結して生成される",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
           "Calculation": {
             "type": "object",
             "required": [
-              "expr",
               "newAttribute"
             ],
             "properties": {
               "newAttribute": {
                 "title": "新しい属性名",
+                "description": "計算した統計量を格納する出力属性の名前",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
                   }
                 ]
               },
+              "aggregation": {
+                "title": "集計方法",
+                "description": "各グループについて計算する統計量。既定は合計",
+                "default": "sum",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/AggregationMethod"
+                  }
+                ]
+              },
               "expr": {
-                "title": "実行する計算",
-                "type": "object",
+                "title": "値の式",
+                "description": "各地物について集計対象の値を求める式。件数を除くすべての方法で必須",
+                "type": [
+                  "object",
+                  "null"
+                ],
                 "format": "code",
                 "required": [
                   "type",
@@ -11850,6 +12590,53 @@
                 }
               }
             }
+          },
+          "Attribute": {
+            "type": "string"
+          },
+          "AggregationMethod": {
+            "oneOf": [
+              {
+                "title": "件数",
+                "description": "各グループの地物の数を数える。値の式は不要で、指定しても無視される",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              },
+              {
+                "title": "合計",
+                "description": "各グループのすべての地物で値の式を合計する",
+                "type": "string",
+                "enum": [
+                  "sum"
+                ]
+              },
+              {
+                "title": "最小値",
+                "description": "各グループで式の最小値を保持する",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "最大値",
+                "description": "各グループで式の最大値を保持する",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "平均値",
+                "description": "各グループのすべての地物で式の値を平均する",
+                "type": "string",
+                "enum": [
+                  "mean"
+                ]
+              }
+            ]
           }
         }
       },
@@ -11865,8 +12652,8 @@
         "Attribute"
       ],
       "tags": [
-        "statistics",
-        "aggregate"
+        "aggregation",
+        "statistics"
       ]
     },
     {
@@ -11963,16 +12750,16 @@
     {
       "name": "Three Dimension Forcer",
       "type": "processor",
-      "description": "Z座標（高度）を追加して2Dジオメトリを3Dに変換する",
+      "description": "2D ジオメトリに Z 座標を追加して 3D 出力を生成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimensionForcer パラメータ",
-        "description": "Z 座標を追加して 2D ジオメトリを 3D に変換する方法を設定する",
+        "title": "Three Dimension Forcer パラメータ",
+        "description": "2D ジオメトリに適用する標高と、既存の Z 値の扱いを設定する",
         "type": "object",
         "properties": {
           "elevation": {
             "title": "標高",
-            "description": "すべての点に追加する Z 座標（標高）値。定数値または式で指定可能。指定しない場合のデフォルトは 0.0。",
+            "description": "すべての点に適用する Z 座標。定数または式で指定する。デフォルトは 0.0",
             "type": [
               "object",
               "null"
@@ -11996,8 +12783,8 @@
           },
           "preserveExistingZ": {
             "title": "既存の Z 値を保持",
-            "description": "true の場合、すでに 3D のジオメトリはそのまま通過する。false の場合、既存の Z 値は指定された標高で置き換えられる。デフォルトは false。",
-            "default": false,
+            "description": "すでに 3D のジオメトリをそのまま通過させるかどうか。デフォルトは true で、既存の Z 値は保持される。false にすると、すべての Z 値が標高で上書きされる",
+            "default": true,
             "type": "boolean"
           }
         }
@@ -12217,21 +13004,20 @@
     {
       "name": "Two Dimension Forcer",
       "type": "processor",
-      "description": "ジオメトリを2次元に強制する",
+      "description": "3D ジオメトリから Z 座標を削除して 2D 出力を生成する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": [
-        "2d"
-      ]
+      "tags": []
     },
     {
       "name": "Vertex Counter",
@@ -12295,11 +13081,11 @@
     {
       "name": "Vertical Reprojector",
       "type": "processor",
-      "description": "地物のジオメトリを指定された座標系に垂直再投影する",
+      "description": "地物のジオメトリの垂直座標を垂直データム間で再投影する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "VerticalReprojector パラメータ",
-        "description": "適用する垂直データム変換のタイプを設定する",
+        "title": "Vertical Reprojector パラメータ",
+        "description": "適用する垂直データム変換を設定する",
         "type": "object",
         "required": [
           "reprojectorType"
@@ -12307,7 +13093,7 @@
         "properties": {
           "reprojectorType": {
             "title": "再投影タイプ",
-            "description": "適用する垂直座標変換のタイプ",
+            "description": "各ジオメトリの Z 座標に適用する垂直データム変換",
             "allOf": [
               {
                 "$ref": "#/definitions/VerticalReprojectorType"
@@ -12317,9 +13103,15 @@
         },
         "definitions": {
           "VerticalReprojectorType": {
-            "type": "string",
-            "enum": [
-              "jgd2011ToWgs84"
+            "oneOf": [
+              {
+                "title": "JGD2011 から WGS 84",
+                "description": "日本のジオイドモデルを用いて JGD2011 の標高を WGS 84 の楕円体高に変換する",
+                "type": "string",
+                "enum": [
+                  "jgd2011ToWgs84"
+                ]
+              }
             ]
           }
         }
@@ -12335,21 +13127,22 @@
         "Geometry"
       ],
       "tags": [
-        "projection",
+        "coordinate-system",
         "3d"
       ]
     },
     {
       "name": "XML Fragmenter",
       "type": "processor",
-      "description": "XMLを分割する",
+      "description": "要素名の一致で XML ドキュメントを地物に分割し、一致した要素1件につき1地物を出力する。各地物には要素の XML テキスト・タグ名・要素とその親の識別子が属性として付与される",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "XMLFragmenter パラメータ",
-        "description": "XML ドキュメントを小さな断片に分割する設定。",
+        "title": "XML Fragmenter パラメータ",
+        "description": "XML ドキュメントの取得元と、どの要素を地物にするかを設定する",
         "oneOf": [
           {
-            "description": "URL-based source configuration for XML fragmenting",
+            "title": "XML File",
+            "description": "Reads the XML document from the file path or URL held in the attribute.",
             "type": "object",
             "required": [
               "attribute",
@@ -12361,10 +13154,12 @@
               "source": {
                 "type": "string",
                 "enum": [
-                  "url"
+                  "file"
                 ]
               },
               "elementsToMatch": {
+                "title": "Elements to Match",
+                "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -12384,6 +13179,8 @@
                 }
               },
               "elementsToExclude": {
+                "title": "Elements to Exclude",
+                "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -12403,7 +13200,83 @@
                 }
               },
               "attribute": {
-                "$ref": "#/definitions/Attribute"
+                "title": "XML Attribute",
+                "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "title": "XML Text",
+            "description": "Uses the attribute value itself as the XML document.",
+            "type": "object",
+            "required": [
+              "attribute",
+              "elementsToExclude",
+              "elementsToMatch",
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              "elementsToMatch": {
+                "title": "Elements to Match",
+                "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "elementsToExclude": {
+                "title": "Elements to Exclude",
+                "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "attribute": {
+                "title": "XML Attribute",
+                "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
               }
             }
           }
@@ -12431,10 +13304,11 @@
     {
       "name": "XML Validator",
       "type": "processor",
-      "description": "XMLコンテンツを検証する",
+      "description": "XML ドキュメントが整形式であるか、名前空間宣言が正しいか、参照する XSD スキーマに適合するかを検証する。検出したエラーの詳細は xmlError 属性に追加される",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "XmlValidator パラメータ",
+        "title": "XML Validator パラメータ",
+        "description": "どの XML ドキュメントをどこまで検証するかを設定する",
         "type": "object",
         "required": [
           "attribute",
@@ -12443,13 +13317,31 @@
         ],
         "properties": {
           "attribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "XML 属性",
+            "description": "XML ドキュメントを保持する属性。入力タイプに応じて、読み込むファイルパスまたは URL か、XML テキストそのものを指定する",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "inputType": {
-            "$ref": "#/definitions/XmlInputType"
+            "title": "入力タイプ",
+            "description": "属性がドキュメントの場所を保持するか、ドキュメント自体を保持するか",
+            "allOf": [
+              {
+                "$ref": "#/definitions/XmlInputType"
+              }
+            ]
           },
           "validationType": {
-            "$ref": "#/definitions/ValidationType"
+            "title": "検証タイプ",
+            "description": "ドキュメントに対して実行する検査",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ValidationType"
+              }
+            ]
           }
         },
         "definitions": {
@@ -12457,18 +13349,51 @@
             "type": "string"
           },
           "XmlInputType": {
-            "type": "string",
-            "enum": [
-              "file",
-              "text"
+            "oneOf": [
+              {
+                "title": "XML ファイル",
+                "description": "属性が保持するファイルパスまたは URL からドキュメントを読み込む",
+                "type": "string",
+                "enum": [
+                  "file"
+                ]
+              },
+              {
+                "title": "XML テキスト",
+                "description": "属性値そのものをドキュメントとして使う",
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              }
             ]
           },
           "ValidationType": {
-            "type": "string",
-            "enum": [
-              "syntax",
-              "syntaxAndNamespace",
-              "syntaxAndSchema"
+            "oneOf": [
+              {
+                "title": "構文",
+                "description": "XML として整形式であるかを検査する",
+                "type": "string",
+                "enum": [
+                  "syntax"
+                ]
+              },
+              {
+                "title": "構文と名前空間",
+                "description": "要素が使用する名前空間プレフィックスがその要素または祖先で宣言されているか、プレフィックスのない要素にデフォルト名前空間があるかも検査する",
+                "type": "string",
+                "enum": [
+                  "syntaxAndNamespace"
+                ]
+              },
+              {
+                "title": "構文とスキーマ",
+                "description": "xsi:schemaLocation が示す XSD スキーマに対しても検証する。到達できないリモートスキーマは、XML Schema 仕様上その場所がヒントであるためスキップされる",
+                "type": "string",
+                "enum": [
+                  "syntaxAndSchema"
+                ]
+              }
             ]
           }
         }
@@ -12486,7 +13411,7 @@
       ],
       "tags": [
         "xml",
-        "validate"
+        "validation"
       ]
     },
     {
@@ -12496,14 +13421,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlWriter パラメータ",
-        "description": "フィーチャーを XML ファイルに書き出す設定。",
+        "description": "地物をXMLファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する XML ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するXMLファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -12540,18 +13466,19 @@
     {
       "name": "Zip File Writer",
       "type": "sink",
-      "description": "zipファイルに地物を書き込む",
+      "description": "入力地物が参照するファイルを1つのZIPアーカイブに圧縮する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ZipFileWriter パラメータ",
-        "description": "フィーチャーから ZIP アーカイブファイルを作成する設定。",
+        "description": "地物からZIPアーカイブを作成する設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "出力パス",
+            "title": "出力ファイル",
+            "description": "作成するZIPアーカイブの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -12582,7 +13509,7 @@
         "Output"
       ],
       "tags": [
-        "file-system",
+        "file",
         "compression"
       ]
     },
@@ -12595,27 +13522,40 @@
         "title": "glTF Reader パラメータ",
         "type": "object",
         "properties": {
-          "triangulate": {
-            "title": "三角形分割",
-            "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）",
-            "default": true,
-            "type": "boolean"
-          },
           "mergeMeshes": {
             "title": "メッシュをマージ",
-            "description": "true の場合、glTF ファイルのすべてのメッシュを単一の出力フィーチャーに結合する",
+            "description": "glTF ファイルのすべてのメッシュを単一の出力地物に結合する",
             "default": false,
             "type": "boolean"
           },
           "includeNodes": {
             "title": "ノードを含める",
-            "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める",
+            "description": "glTF シーングラフのノード階層情報を地物属性に含める",
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "地物クラス属性",
+            "description": "分割した各地物について、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "地物の粒度",
+            "description": "1つの出力地物が何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つの地物を出力する。`featureId` は各メッシュを EXT_mesh_features の地物IDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つの地物を出力する",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -12663,6 +13603,28 @@
               }
             }
           }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "glTF メッシュ(またはノードインスタンス)ごとに1つのフィーチャー。構造メタデータのプロパティはオブジェクト単位でありメッシュ単位ではないため、表示されない。",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "`EXT_mesh_features` のフィーチャーIDごとに1つのフィーチャーを出力し、それぞれにそのオブジェクトの `EXT_structural_metadata` プロパティを付与する。`EXT_mesh_features` を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
+          }
         }
       },
       "builtin": true,
@@ -12671,10 +13633,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "gltf",
+        "3d"
+      ]
     },
     {
       "name": "glTF Writer",

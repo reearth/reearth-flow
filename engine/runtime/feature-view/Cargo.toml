@@ -1,0 +1,36 @@
+[package]
+description = "Re:Earth Flow feature view builder"
+name = "reearth-flow-feature-view"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-geometry/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
+
+[dependencies]
+reearth-flow-action-sink.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-expr.workspace = true
+reearth-flow-geometry.workspace = true
+reearth-flow-storage.workspace = true
+reearth-flow-types.workspace = true
+
+bytes.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zstd.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

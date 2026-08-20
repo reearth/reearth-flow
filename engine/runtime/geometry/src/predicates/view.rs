@@ -338,6 +338,17 @@ impl<'a> AreaView<'a> {
     pub fn edges(&self) -> impl Iterator<Item = ([f64; 2], [f64; 2])> + '_ {
         self.faces().flat_map(FaceView::edges)
     }
+
+    /// The unsigned planar area the view covers: the shoelace sum over every
+    /// boundary edge, so wound-CW holes subtract themselves and a mesh's
+    /// non-overlapping faces add up. Elevation does not contribute.
+    pub fn area(&self) -> f64 {
+        let doubled: f64 = self
+            .edges()
+            .map(|(a, b)| a[0] * b[1] - b[0] * a[1])
+            .sum::<f64>();
+        (doubled / 2.0).abs()
+    }
 }
 
 // --- flattened leaf normal form ----------------------------------------------
@@ -373,6 +384,11 @@ impl<'a> Leaf2D<'a> {
             Leaf2D::PolygonMesh(m) => Some(AreaView::from_polygon_mesh(m)),
             Leaf2D::TriangularMesh(m) => Some(AreaView::from_triangular_mesh(m)),
         }
+    }
+
+    /// The unsigned planar area the leaf covers; zero for a point or a line.
+    pub fn area(&self) -> f64 {
+        self.area_view().map_or(0.0, |area| area.area())
     }
 
     /// The leaf's bounding box, `None` for an empty leaf.

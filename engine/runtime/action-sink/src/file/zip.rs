@@ -25,7 +25,7 @@ impl SinkFactory for ZipFileWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a zip file"
+        "Compresses files referenced by incoming features into a single ZIP archive."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -37,7 +37,7 @@ impl SinkFactory for ZipFileWriterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system", "compression"]
+        &["file", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -78,7 +78,7 @@ impl SinkFactory for ZipFileWriterFactory {
             .map_err(|e| {
                 SinkError::ZipFileWriterFactory(format!("Failed to compile `output`: {e:?}"))
             })?
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
                 SinkError::ZipFileWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
             })?;
@@ -102,7 +102,8 @@ struct ZipFileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {
-    /// Output path
+    /// # Output File
+    /// Output path or expression for the ZIP archive to create.
     output: Code,
 }
 
