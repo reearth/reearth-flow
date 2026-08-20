@@ -18,6 +18,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Deployment struct {
@@ -360,6 +362,15 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 }
 
 func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam) (_ *job.Job, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.Deployment.Execute")
+	span.SetAttributes(attribute.String("deployment.id", p.DeploymentID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	dep, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
 	if err != nil {
 		return nil, err
