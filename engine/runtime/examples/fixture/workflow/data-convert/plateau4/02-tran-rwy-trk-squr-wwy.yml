@@ -518,7 +518,7 @@ graphs:
       - gml_id
       - __package
       - __lod
-      attributeAccumulationMode: useOne
+      attributeAccumulation: useOneFeature
   - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     name: FeatureSorterPreMVT
     type: action

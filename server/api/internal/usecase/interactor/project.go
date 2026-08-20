@@ -17,6 +17,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Project struct {
@@ -202,6 +204,15 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.Project.Run")
+	span.SetAttributes(attribute.String("project.id", p.ProjectID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	proj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
 	if err != nil {
 		return nil, err
@@ -322,7 +333,16 @@ const previewSampleSizeCap = 1000
 // dedicated code path: it never calls Run, tags the job Mode=preview-schema, does
 // NOT upload metadata (the probe does not consume it), and dispatches through the
 // worker's dedicated probe-schema route.
-func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (*job.Job, error) {
+func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (_ *job.Job, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.Project.PreviewSchema")
+	span.SetAttributes(attribute.String("project.id", p.ProjectID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return nil, err
 	}
