@@ -11,6 +11,10 @@
 //! internal edges exactly (before `i_overlay`'s snap to its integer grid) and
 //! preserves the interior-left direction of every surviving ring.
 
+use i_overlay::core::fill_rule::FillRule;
+use i_overlay::core::overlay_rule::OverlayRule;
+use i_overlay::float::single::SingleFloatOverlay;
+
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
 use crate::polygon::Polygon2D;
@@ -76,16 +80,30 @@ pub(super) fn line_paths(leaves: &[Leaf2D<'_>]) -> Result<Vec<Path>, &'static st
     Ok(paths)
 }
 
+/// The union of `shapes` under the non-zero rule.
+pub(super) fn dissolve(shapes: Vec<Shape>) -> Vec<Shape> {
+    let empty: Vec<Shape> = Vec::new();
+    shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero)
+}
+
 /// Convert `i_overlay` result shapes back into polygons in `frame`, closing
-/// each ring. The backend emits the outer contour first (CCW) and holes after
-/// (CW), Flow's winding convention, so rings pass through verbatim.
-pub(super) fn shapes_to_polygons(shapes: Vec<Shape>, frame: &CoordinateFrame) -> Vec<Polygon2D> {
+/// each ring and placing them at `elevation` when one is given. The backend
+/// emits the outer contour first (CCW) and holes after (CW), Flow's winding
+/// convention, so rings pass through verbatim.
+pub(super) fn shapes_to_polygons(
+    shapes: Vec<Shape>,
+    frame: &CoordinateFrame,
+    elevation: Option<f64>,
+) -> Vec<Polygon2D> {
     shapes
         .into_iter()
         .filter_map(|shape| {
             let mut rings = shape.into_iter().map(close_path);
             let exterior = rings.next()?;
-            Some(Polygon2D::from_rings(frame.clone(), exterior, rings))
+            Some(match elevation {
+                Some(z) => Polygon2D::from_rings_at_elevation(frame.clone(), exterior, rings, z),
+                None => Polygon2D::from_rings(frame.clone(), exterior, rings),
+            })
         })
         .collect()
 }

@@ -54,8 +54,8 @@
 //!   touch, containment, equality) bypasses the backend instead of trusting
 //!   its snapped output near zero-area configurations.
 //! - Output is 2D: the boolean operations ignore and drop any elevation on
-//!   the inputs, while `buffer::buffer` keeps an elevation shared by all
-//!   inputs. Appearance does not propagate.
+//!   the inputs, while `buffer::buffer` keeps an elevation shared by the
+//!   inputs it buffers. Appearance does not propagate.
 
 #[cfg(feature = "new-geometry")]
 pub mod buffer;
@@ -215,11 +215,7 @@ pub(crate) fn dissolve_shapes(
     shapes: Vec<shapes::Shape>,
     frame: &CoordinateFrame,
 ) -> Vec<Polygon2D> {
-    let empty: Vec<shapes::Shape> = Vec::new();
-    shapes::shapes_to_polygons(
-        shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero),
-        frame,
-    )
+    shapes::shapes_to_polygons(shapes::dissolve(shapes), frame, None)
 }
 
 // --- leaf-level implementations ------------------------------------------------
@@ -243,7 +239,7 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
         }
         Plan::Run(op) => {
             let result = subject.overlay(&clip, op.into(), FillRule::NonZero);
-            Ok(shapes::shapes_to_polygons(result, frame))
+            Ok(shapes::shapes_to_polygons(result, frame, None))
         }
     }
 }

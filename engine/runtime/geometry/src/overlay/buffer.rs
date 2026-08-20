@@ -7,32 +7,35 @@
 //! only a planar `Polygon` is accepted, buffered in its own plane.
 //! Any other 3D leaf is [`Unsupported`].
 //!
-//! Output rings follow the frame's orientation convention when it can be
-//! resolved, else the stored winding of the areal input. Coordinates are
-//! snapped to `i_overlay`'s adaptive grid, arcs are polygonal approximations
-//! stepped by [`BufferStyle::arc_step`], and appearance does not propagate.
+//! An areal input whose hole winds the same way as its exterior is
+//! [`InvalidHoleWinding`]. Output rings follow the frame's orientation
+//! convention when it can be resolved, else the stored winding of the areal
+//! input. Coordinates are snapped to `i_overlay`'s adaptive grid, arcs are
+//! polygonal approximations stepped by [`BufferStyle::arc_step`], and
+//! appearance does not propagate.
 //!
 //! [`MixedFrames`]: PredicateError::MixedFrames
 //! [`Unsupported`]: PredicateError::Unsupported
+//! [`InvalidHoleWinding`]: PredicateError::InvalidHoleWinding
 
 use core::f64::consts::PI;
 
-use i_overlay::core::fill_rule::FillRule;
-use i_overlay::core::overlay_rule::OverlayRule;
-use i_overlay::float::single::SingleFloatOverlay;
 use i_overlay::mesh::outline::offset::OutlineOffset;
 use i_overlay::mesh::stroke::offset::StrokeOffset;
 use i_overlay::mesh::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
 
-use super::shapes::{self, close_path, Path, Shape};
+use super::shapes::{self, close_path, dissolve, Path, Shape};
+use super::{common_frame, is_areal, is_line};
 use crate::collection::{Collection2D, Collection3D};
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{BaseFrame, CoordinateFrame, TangentPlane};
 use crate::ops::triangulation::normal;
 use crate::polygon::{Polygon2D, Polygon3D};
-use crate::predicates::view::{flatten_2d, polygon3d_rings, Leaf2D};
+use crate::predicates::view::{flatten_2d, polygon3d_rings, require_common_frame_leaves, Leaf2D};
 use crate::predicates::{PredicateError, Result};
-use crate::validation_next::measure::check_planarity_3d;
-use crate::validation_next::{open_ring, signed_area_2d, PlanarityThreshold, ValidationReport};
+use crate::validation_next::{
+    check_face_orientation_3d, check_planarity_3d, open_ring, signed_area_2d, PlanarityThreshold,
+    ValidationReport,
+};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
 /// The smallest angular step an arc may be approximated with, in radians.
@@ -113,8 +116,12 @@ pub fn buffer_2d(geometry: &Euclidean2DGeometry, style: &BufferStyle) -> Result<
 }
 
 /// The buffer of a planar 3D polygon in its own plane, as polygons in its
-/// frame. Errs with [`PredicateError::NotPlanar`] when the face is not planar
-/// within `style.planarity` or has no fitted plane.
+/// frame. The face must be planar within `style.planarity` ([`NotPlanar`]
+/// otherwise) and its holes must wind opposite the exterior
+/// ([`InvalidHoleWinding`] otherwise).
+///
+/// [`NotPlanar`]: PredicateError::NotPlanar
+/// [`InvalidHoleWinding`]: PredicateError::InvalidHoleWinding
 pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec<Polygon3D>> {
     if !style.distance.is_finite() {
         return Ok(Vec::new());
@@ -134,16 +141,15 @@ pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec
     if report.problem_recorded() {
         return Err(PredicateError::NotPlanar);
     }
-    let Some(rotation) = PlaneRotation::fit(exterior) else {
-        return Err(PredicateError::NotPlanar);
-    };
+    let report = ValidationReport::ran(|report| {
+        check_face_orientation_3d(frame, exterior, interiors.iter().copied(), report)
+    });
+    if report.problem_recorded() {
+        return Err(PredicateError::InvalidHoleWinding);
+    }
+    let plane = fit_plane(exterior).ok_or(PredicateError::NotPlanar)?;
     let shape: Shape = polygon3d_rings(polygon)
-        .map(|ring| {
-            open_ring(ring)
-                .iter()
-                .map(|&p| rotation.flatten(p))
-                .collect()
-        })
+        .map(|ring| open_ring(ring).iter().map(|&p| plane.project(p)).collect())
         .filter(|path: &Path| !path.is_empty())
         .collect();
     let result = offset_shapes(vec![shape], style);
@@ -153,13 +159,22 @@ pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec
             let mut rings = shape.into_iter().map(|path| {
                 close_path(path)
                     .into_iter()
-                    .map(|p| rotation.lift(p))
+                    .map(|p| plane.lift(p))
                     .collect::<Vec<_>>()
             });
             let exterior = rings.next()?;
             Some(Polygon3D::from_rings(frame.clone(), exterior, rings))
         })
         .collect())
+}
+
+/// The tangent plane of a planar ring, oriented so the ring projects
+/// counter-clockwise; `None` when the ring has no normal.
+fn fit_plane(exterior: &[[f64; 3]]) -> Option<TangentPlane> {
+    let ring = open_ring(exterior);
+    let n = normal(ring)?;
+    let origin = *ring.first()?;
+    TangentPlane::from_normal(BaseFrame::Euclidean, origin, n, None).ok()
 }
 
 fn assemble_2d(mut polygons: Vec<Polygon2D>) -> Geometry {
@@ -266,7 +281,8 @@ fn collect_members<'c>(
 }
 
 fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polygon2D>> {
-    let Some(frame) = common_frame(leaves)? else {
+    require_common_frame_leaves(leaves, &[])?;
+    let Some(frame) = common_frame(leaves, &[]) else {
         return Ok(Vec::new());
     };
     if !style.distance.is_finite() {
@@ -276,6 +292,7 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
     let (lines, points): (Vec<_>, Vec<_>) = others.into_iter().partition(is_line);
 
     let areal_shapes = shapes::areal_shapes(&areal).expect("areal leaves only");
+    require_opposing_holes(&areal_shapes)?;
     let stored_sign = frame_sign(frame).unwrap_or_else(|| shapes_sign(&areal_shapes));
     let areal_shapes: Vec<Shape> = areal_shapes.into_iter().map(normalize_shape).collect();
 
@@ -311,18 +328,29 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
     } else {
         result
     };
-    let elevation = common_elevation(leaves);
-    Ok(result
-        .into_iter()
-        .filter_map(|shape| {
-            let mut rings = shape.into_iter().map(close_path);
-            let exterior = rings.next()?;
-            Some(match elevation {
-                Some(z) => Polygon2D::from_rings_at_elevation(frame.clone(), exterior, rings, z),
-                None => Polygon2D::from_rings(frame.clone(), exterior, rings),
-            })
-        })
-        .collect())
+    // Lines and points contribute nothing at a non-positive distance, so
+    // they do not vote on the elevation there.
+    let elevation = if style.distance > 0.0 {
+        common_elevation(leaves)
+    } else {
+        common_elevation(&areal)
+    };
+    Ok(shapes::shapes_to_polygons(result, frame, elevation))
+}
+
+/// Err with [`PredicateError::InvalidHoleWinding`] when a hole of any shape
+/// winds the same way as its exterior; a zero-area ring is skipped.
+fn require_opposing_holes(shapes: &[Shape]) -> Result<()> {
+    for shape in shapes {
+        let mut areas = shape.iter().map(|ring| signed_area_2d(ring));
+        let Some(exterior) = areas.next() else {
+            continue;
+        };
+        if areas.any(|hole| hole * exterior > 0.0) {
+            return Err(PredicateError::InvalidHoleWinding);
+        }
+    }
+    Ok(())
 }
 
 /// Offset areal shapes (counter-clockwise exteriors, clockwise holes),
@@ -356,12 +384,6 @@ fn disc(center: [f64; 2], style: &BufferStyle) -> Path {
             [center[0] + r * a.cos(), center[1] + r * a.sin()]
         })
         .collect()
-}
-
-/// The union of `shapes` under the non-zero rule.
-fn dissolve(shapes: Vec<Shape>) -> Vec<Shape> {
-    let empty: Vec<Shape> = Vec::new();
-    shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero)
 }
 
 /// Rewind a shape so its total signed area is non-negative.
@@ -401,18 +423,6 @@ fn reverse_shape(shape: Shape) -> Shape {
         .collect()
 }
 
-/// The leaves' shared frame; `None` when there are no leaves.
-fn common_frame<'l>(leaves: &[Leaf2D<'l>]) -> Result<Option<&'l CoordinateFrame>> {
-    let mut frames = leaves.iter().map(Leaf2D::frame);
-    let Some(first) = frames.next() else {
-        return Ok(None);
-    };
-    for frame in frames {
-        crate::predicates::require_same_frame(first, frame)?;
-    }
-    Ok(Some(first))
-}
-
 /// The elevation shared by every leaf, if any.
 fn common_elevation(leaves: &[Leaf2D<'_>]) -> Option<f64> {
     let mut elevations = leaves.iter().map(|leaf| match leaf {
@@ -424,71 +434,6 @@ fn common_elevation(leaves: &[Leaf2D<'_>]) -> Option<f64> {
     });
     let first = elevations.next()??;
     elevations.all(|z| z == Some(first)).then_some(first)
-}
-
-fn is_areal(leaf: &Leaf2D<'_>) -> bool {
-    matches!(
-        leaf,
-        Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_)
-    )
-}
-
-fn is_line(leaf: &Leaf2D<'_>) -> bool {
-    matches!(leaf, Leaf2D::Line(_))
-}
-
-/// The rigid motion taking a planar face to the plane `z = 0` and back.
-struct PlaneRotation {
-    origin: [f64; 3],
-    m: [[f64; 3]; 3],
-}
-
-impl PlaneRotation {
-    /// `None` when the ring has no normal.
-    fn fit(exterior: &[[f64; 3]]) -> Option<Self> {
-        let ring = open_ring(exterior);
-        let [nx, ny, nz] = normal(ring)?;
-        let origin = *ring.first()?;
-        let horizontal = (nx * nx + ny * ny).sqrt();
-        let m = if horizontal < 1e-12 {
-            if nz > 0.0 {
-                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
-            } else {
-                [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]
-            }
-        } else {
-            // Rodrigues rotation about n x ez.
-            let (ax, ay) = (ny / horizontal, -nx / horizontal);
-            let cos = nz;
-            let sin = horizontal;
-            let k = 1.0 - cos;
-            [
-                [cos + ax * ax * k, ax * ay * k, ay * sin],
-                [ax * ay * k, cos + ay * ay * k, -ax * sin],
-                [-ay * sin, ax * sin, cos],
-            ]
-        };
-        Some(Self { origin, m })
-    }
-
-    fn flatten(&self, p: [f64; 3]) -> [f64; 2] {
-        let d = [
-            p[0] - self.origin[0],
-            p[1] - self.origin[1],
-            p[2] - self.origin[2],
-        ];
-        let row = |r: [f64; 3]| r[0] * d[0] + r[1] * d[1] + r[2] * d[2];
-        [row(self.m[0]), row(self.m[1])]
-    }
-
-    fn lift(&self, [x, y]: [f64; 2]) -> [f64; 3] {
-        let m = &self.m;
-        [
-            m[0][0] * x + m[1][0] * y + self.origin[0],
-            m[0][1] * x + m[1][1] * y + self.origin[1],
-            m[0][2] * x + m[1][2] * y + self.origin[2],
-        ]
-    }
 }
 
 #[cfg(test)]

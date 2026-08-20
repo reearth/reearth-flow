@@ -270,6 +270,47 @@ fn polygon_3d_keeps_a_downward_normal_and_its_hole() {
 }
 
 #[test]
+fn a_hole_winding_like_its_exterior_is_rejected() {
+    let bad = polygon(&rect(0.0, 0.0, 10.0, 10.0), &[rect(4.0, 4.0, 6.0, 6.0)]);
+    assert_eq!(
+        buffer_2d(&bad, &style(0.5)),
+        Err(PredicateError::InvalidHoleWinding)
+    );
+
+    let bad_face = polygon_3d(
+        &tilted_square(),
+        &[vec![
+            [0.25, 0.25, 0.25],
+            [0.75, 0.25, 0.75],
+            [0.75, 0.75, 0.75],
+            [0.25, 0.75, 0.25],
+            [0.25, 0.25, 0.25],
+        ]],
+    );
+    assert_eq!(
+        buffer_polygon_3d(&bad_face, &style(0.1)),
+        Err(PredicateError::InvalidHoleWinding)
+    );
+}
+
+#[test]
+fn contraction_keeps_the_areal_elevation() {
+    let square = Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings_at_elevation(
+        e(),
+        rect(0.0, 0.0, 10.0, 10.0),
+        Vec::<Vec<[f64; 2]>>::new(),
+        5.0,
+    )));
+    let mixed = Euclidean2DGeometry::Collection(Collection2D::new([
+        square,
+        line(&[[20.0, 0.0], [30.0, 0.0]]),
+    ]));
+    let result = buffer_2d(&mixed, &style(-1.0)).unwrap();
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].elevation(), Some(5.0));
+}
+
+#[test]
 fn non_finite_distance_buffers_to_nothing() {
     let square = polygon(&rect(0.0, 0.0, 1.0, 1.0), &[]);
     let face = polygon_3d(&tilted_square(), &[]);
