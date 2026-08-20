@@ -341,6 +341,15 @@ mod tests {
         assert_eq!(p.surface_area().unwrap(), 0.0);
     }
 
+    /// The `no_area!` macro's 2D stamp, previously proved only for `Point3D`.
+    #[test]
+    fn a_2d_point_measures_zero_rather_than_refusing() {
+        use crate::point::Point2D;
+        let p = Point2D::new(CoordinateFrame::Euclidean, [1.0, 2.0]);
+        assert_eq!(p.projected_area().unwrap(), 0.0);
+        assert_eq!(p.surface_area().unwrap(), 0.0);
+    }
+
     /// A ring stored open is measured with its closing edge restored, matching
     /// how `Polygon2D::area` treats one.
     #[test]
@@ -381,6 +390,34 @@ mod tests {
         let c = Collection3D::new(Vec::<Euclidean3DGeometry>::new());
         assert_eq!(c.projected_area().unwrap(), 0.0);
         assert_eq!(c.surface_area().unwrap(), 0.0);
+    }
+
+    /// `Collection2D::projected_area`/`surface_area` were previously untested
+    /// (only `Collection3D` was covered). A 2D member has no elevation to
+    /// slope, so both measures must agree, and the total is deliberately not
+    /// `1.0` so a wiring mistake (e.g. always returning the first member's
+    /// area) would not hide behind a coincidentally-correct value.
+    #[test]
+    fn a_2d_collection_sums_its_members() {
+        use crate::collection::Collection2D;
+        use crate::polygon::Polygon2D;
+
+        let square = |x0: f64| {
+            Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                vec![
+                    [x0, 0.0],
+                    [x0 + 2.0, 0.0],
+                    [x0 + 2.0, 3.0],
+                    [x0, 3.0],
+                    [x0, 0.0],
+                ],
+                Vec::<Vec<[f64; 2]>>::new(),
+            )))
+        };
+        let c = Collection2D::new(vec![square(0.0), square(10.0)]);
+        assert_eq!(c.projected_area().unwrap(), 12.0);
+        assert_eq!(c.surface_area().unwrap(), 12.0);
     }
 
     /// The only unmeasurable geometry in the model: an unevaluated boolean tree
@@ -446,7 +483,7 @@ mod tests {
         );
     }
 
-    use crate::polygon_mesh::PolygonMesh3D;
+    use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
     use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 
     /// Two unit right triangles sharing an edge: together, one unit square.
@@ -490,6 +527,23 @@ mod tests {
         .unwrap();
         assert_eq!(m.projected_area().unwrap(), 6.0);
         assert_eq!(m.surface_area().unwrap(), 6.0);
+    }
+
+    /// `PolygonMesh2D::projected_area`/`surface_area` were previously
+    /// untested (only `PolygonMesh3D` was covered). A 2D face has no
+    /// elevation to slope, so both measures must agree; the two triangles
+    /// form a 3x2 rectangle rather than a unit shape, so a wiring mistake
+    /// could not hide behind a value of `1.0`.
+    #[test]
+    fn a_2d_polygon_mesh_sums_its_faces_and_answers_both_questions_identically() {
+        let mesh = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
+            vec![vec![0u32, 1, 2], vec![0, 2, 3]],
+        )
+        .unwrap();
+        assert_eq!(mesh.projected_area().unwrap(), 6.0);
+        assert_eq!(mesh.surface_area().unwrap(), 6.0);
     }
 
     /// A face's holes still subtract once the face is one of a mesh's, and two
@@ -774,6 +828,61 @@ mod tests {
             area_report(&g),
             AreaReport {
                 frame: AreaFrame::Nothing,
+                skipped: 0,
+            }
+        );
+    }
+
+    /// `walk_2d` was previously exercised by no test at all — every
+    /// `area_report` test in this module built a 3D geometry. A 2D polygon in
+    /// a geographic CRS is the likeliest real angular case in production (a
+    /// GeoJSON reader's ordinary output), so this pins that `walk_2d` reaches
+    /// its `Polygon` arm and reports the frame, exactly like `walk_3d` does.
+    #[test]
+    fn area_report_walks_a_2d_geometry_and_reports_its_frame() {
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::from(4326)),
+                vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )));
+        assert_eq!(
+            area_report(&g).frame,
+            AreaFrame::One(CoordinateFrame::Crs(EpsgCode::from(4326)))
+        );
+    }
+
+    /// `walk_2d`'s other four arms: a point and a line-string carry no area
+    /// and must not colour the frame, a mesh carries area like the polygon
+    /// case above, and `Collection` must recurse rather than stopping at the
+    /// outermost geometry.
+    #[test]
+    fn area_report_walks_a_2d_collection_through_area_and_arealess_members() {
+        use crate::collection::Collection2D;
+        use crate::line_string::LineString2D;
+        use crate::point::Point2D;
+
+        let point =
+            Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [0.0, 0.0]));
+        let line = Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [1.0, 0.0]],
+        ));
+        let mesh = Euclidean2DGeometry::PolygonMesh(Box::new(
+            PolygonMesh2D::from_parts(
+                CoordinateFrame::Crs(EpsgCode::from(4326)),
+                vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+                vec![vec![0u32, 1, 2]],
+            )
+            .unwrap(),
+        ));
+        let inner = Euclidean2DGeometry::Collection(Collection2D::new(vec![point, line, mesh]));
+        let g = Geometry::Euclidean2D(inner);
+        assert_eq!(
+            area_report(&g),
+            AreaReport {
+                frame: AreaFrame::One(CoordinateFrame::Crs(EpsgCode::from(4326))),
                 skipped: 0,
             }
         );
