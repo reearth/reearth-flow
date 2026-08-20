@@ -269,7 +269,7 @@ impl Footprint for LineString3D {
 }
 
 use crate::collection::{Collection2D, Collection3D};
-use crate::ops::boundary::{endpoints, ExtractBoundary};
+use crate::ops::boundary::{endpoints, Boundary, ExtractBoundary};
 use crate::point::{Point2D, Point3D};
 
 // A chain is bounded by its two ends. One that closes on itself has no ends, so
@@ -278,31 +278,31 @@ use crate::point::{Point2D, Point3D};
 // The ends come back as bare points, which carry no elevation of their own, so a
 // 2.5D chain's elevation is not preserved onto them.
 impl ExtractBoundary for LineString2D {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         let Some((first, last)) = endpoints(self.coords()) else {
-            return Ok(Geometry::None);
+            return Ok(Boundary::EMPTY);
         };
         let frame = self.frame();
-        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
-            Collection2D::new([
+        Ok(Boundary::Bounded(Geometry::Euclidean2D(
+            Euclidean2DGeometry::Collection(Collection2D::new([
                 Euclidean2DGeometry::Point(Point2D::new(frame.clone(), first)),
                 Euclidean2DGeometry::Point(Point2D::new(frame.clone(), last)),
-            ]),
+            ])),
         )))
     }
 }
 
 impl ExtractBoundary for LineString3D {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         let Some((first, last)) = endpoints(self.coords()) else {
-            return Ok(Geometry::None);
+            return Ok(Boundary::EMPTY);
         };
         let frame = self.frame();
-        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
-            Collection3D::new([
+        Ok(Boundary::Bounded(Geometry::Euclidean3D(
+            Euclidean3DGeometry::Collection(Collection3D::new([
                 Euclidean3DGeometry::Point(Point3D::new(frame.clone(), first)),
                 Euclidean3DGeometry::Point(Point3D::new(frame.clone(), last)),
-            ]),
+            ])),
         )))
     }
 }

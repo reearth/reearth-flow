@@ -703,7 +703,7 @@ impl PolygonMesh3DData {
     }
 }
 
-use crate::ops::boundary::ExtractBoundary;
+use crate::ops::boundary::{Boundary, ExtractBoundary};
 use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
 
 fn csr_boundary_edges(
@@ -721,25 +721,27 @@ fn csr_boundary_edges(
 // A hole ring no neighbouring face fills is walked once, like any outer edge, so
 // it bounds the surface too.
 impl ExtractBoundary for PolygonMesh2D {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         Ok(surface_boundary_2d(
             self.frame(),
             self.vertices(),
             self.elevation(),
             csr_boundary_edges(face_indices, face_offsets, interior_offsets),
-        ))
+        )
+        .into())
     }
 }
 
 impl ExtractBoundary for PolygonMesh3D {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         let (face_indices, face_offsets, interior_offsets) = self.data().csr_buffers();
         Ok(surface_boundary_3d(
             self.frame(),
             self.vertices(),
             csr_boundary_edges(face_indices, face_offsets, interior_offsets),
-        ))
+        )
+        .into())
     }
 }
 

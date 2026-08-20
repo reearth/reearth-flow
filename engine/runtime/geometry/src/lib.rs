@@ -59,7 +59,7 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractBoundary,
+    Aabb, Boundary, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractBoundary,
     ExtractHoles, ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
     Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
@@ -549,7 +549,7 @@ impl ExtractHoles for GeometryCollection {
 }
 
 impl ExtractBoundary for Geometry {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         match self {
             // An absent geometry has no extent, so there is nothing to bound —
             // which is not the same as being bounded by nothing.
@@ -565,36 +565,17 @@ impl ExtractBoundary for Geometry {
 }
 
 impl ExtractBoundary for GeometryCollection {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
-        let mut members = Vec::new();
-        let mut attrs = Vec::new();
-        let mut any = false;
-        for (i, member) in self.members.iter().enumerate() {
-            let Ok(boundary) = member.extract_boundary() else {
-                continue;
-            };
-            any = true;
-            if matches!(boundary, Geometry::None) {
-                continue;
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        ops::container_boundary(&self.members, &self.attrs, Some, |members, mut attrs| {
+            if members.is_empty() {
+                return Geometry::None;
             }
-            members.push(boundary);
-            if let Some(a) = self.attrs.get(i) {
-                attrs.push(a.clone());
+            if attrs.len() != members.len() {
+                attrs.clear();
             }
-        }
-        if !any && !self.members.is_empty() {
-            return Err(ops::boundary::unsupported::<Self>());
-        }
-        if members.is_empty() {
-            return Ok(Geometry::None);
-        }
-        if attrs.len() != members.len() {
-            attrs.clear();
-        }
-        Ok(Geometry::GeometryCollection(GeometryCollection {
-            members,
-            attrs,
-        }))
+            Geometry::GeometryCollection(GeometryCollection { members, attrs })
+        })
+        .ok_or_else(ops::boundary::unsupported::<Self>)
     }
 }
 

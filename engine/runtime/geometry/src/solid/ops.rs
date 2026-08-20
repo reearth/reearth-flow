@@ -269,7 +269,7 @@ impl Footprint for Solid {
     }
 }
 
-use crate::ops::boundary::ExtractBoundary;
+use crate::ops::boundary::{Boundary, ExtractBoundary};
 use crate::polygon_mesh::PolygonMesh3D;
 use crate::triangular_mesh::TriangularMesh3D;
 
@@ -279,7 +279,7 @@ use crate::triangular_mesh::TriangularMesh3D;
 // Whether the shells close is not asserted here: taking the boundary of the
 // result answers that, and is empty exactly when they do.
 impl ExtractBoundary for Solid {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         let frame = self.frame();
         let shells = std::iter::once(&self.exterior)
             .chain(self.interiors.iter())
@@ -292,7 +292,7 @@ impl ExtractBoundary for Solid {
                 )),
             })
             .collect();
-        Ok(wrap_3d(shells).unwrap_or(Geometry::None))
+        Ok(wrap_3d(shells).unwrap_or(Geometry::None).into())
     }
 }
 

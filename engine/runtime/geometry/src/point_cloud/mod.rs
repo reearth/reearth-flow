@@ -191,7 +191,7 @@ crate::unsupported!(
 
 // Positions have no extent, so nothing bounds them.
 impl crate::ops::ExtractBoundary for PointCloud {
-    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
-        Ok(crate::Geometry::None)
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        Ok(crate::ops::Boundary::EMPTY)
     }
 }

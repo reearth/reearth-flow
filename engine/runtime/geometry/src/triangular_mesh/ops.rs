@@ -468,7 +468,7 @@ impl TriangularMesh3DData {
     }
 }
 
-use crate::ops::boundary::ExtractBoundary;
+use crate::ops::boundary::{Boundary, ExtractBoundary};
 use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
 
 fn triangle_boundary_edges(triangles: impl Iterator<Item = [u32; 3]>) -> BoundaryEdges {
@@ -480,23 +480,25 @@ fn triangle_boundary_edges(triangles: impl Iterator<Item = [u32; 3]>) -> Boundar
 }
 
 impl ExtractBoundary for TriangularMesh2D {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         Ok(surface_boundary_2d(
             self.frame(),
             self.vertices(),
             self.elevation(),
             triangle_boundary_edges(self.triangles()),
-        ))
+        )
+        .into())
     }
 }
 
 impl ExtractBoundary for TriangularMesh3D {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         Ok(surface_boundary_3d(
             self.frame(),
             self.vertices(),
             triangle_boundary_edges(self.triangles()),
-        ))
+        )
+        .into())
     }
 }
 

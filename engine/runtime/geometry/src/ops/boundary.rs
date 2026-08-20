@@ -3,17 +3,43 @@
 
 use std::collections::HashMap;
 
+use reearth_flow_common::attribute::Attributes;
+
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
 use crate::ops::coerce::{wrap_2d, wrap_3d};
 use crate::ops::UnsupportedOperation;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
+/// What bounding a geometry produced.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Boundary {
+    /// The boundary.
+    Bounded(Geometry),
+    /// Bounded by nothing. `evaluated` is the source narrowed to the parts that
+    /// were bounded at all, `None` when that is the whole source.
+    Empty { evaluated: Option<Geometry> },
+}
+
+impl Boundary {
+    /// Bounded by nothing, with nothing left unbounded.
+    pub const EMPTY: Self = Boundary::Empty { evaluated: None };
+}
+
+impl From<Geometry> for Boundary {
+    fn from(geometry: Geometry) -> Self {
+        match geometry {
+            Geometry::None => Boundary::EMPTY,
+            geometry => Boundary::Bounded(geometry),
+        }
+    }
+}
+
 /// The boundary of a geometry: the shells bounding a volume, the rings bounding
 /// a surface, the endpoints bounding a curve.
 ///
-/// * `Ok(geometry)`: the boundary.
-/// * `Ok(`[`Geometry::None`]`)`: the boundary is empty.
+/// * `Ok(`[`Boundary::Bounded`]`)`: the boundary.
+/// * `Ok(`[`Boundary::Empty`]`)`: the boundary is empty.
 /// * `Err(`[`UnsupportedOperation`]`)`: the geometry has no boundary to report
 ///   at all.
 ///
@@ -22,14 +48,16 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 /// 2.5D chain's endpoints lose its elevation, having no slot for one.
 ///
 /// A container bounds each member into a container of the same kind, keeping the
-/// attributes of the members that contributed, and reports `Err` only when every
-/// member did. Endpoints shared by two members are not cancelled against each
-/// other: cancellation happens only at shared vertex indices within one surface,
-/// never by matching coordinates, which float noise makes unreliable.
+/// attributes of the members that contributed, and reports `Err` only when no
+/// member had a boundary to give. A member that had none drops out of both the
+/// container and the [`Boundary::Empty`] source. Endpoints
+/// shared by two members are not cancelled against each other: cancellation
+/// happens only at shared vertex indices within one surface, never by matching
+/// coordinates, which float noise makes unreliable.
 #[enum_dispatch::enum_dispatch]
 pub trait ExtractBoundary {
     /// This geometry's boundary.
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         Err(unsupported::<Self>())
     }
 }
@@ -37,9 +65,82 @@ pub trait ExtractBoundary {
 // The boxed enum variants (`Box<Polygon3D>`, `Box<Solid>`, …) need the trait on
 // the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
 impl<T: ExtractBoundary + ?Sized> ExtractBoundary for Box<T> {
-    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
         (**self).extract_boundary()
     }
+}
+
+/// What one member of a container did with its boundary.
+enum Fate<M> {
+    Bounded(M),
+    /// Bounded by nothing; the source member stands as it is.
+    Empty,
+    /// Bounded by nothing; the source member narrows to this.
+    Narrowed(M),
+    /// No boundary to give; the source member drops out.
+    Unbounded,
+}
+
+/// Bound every member of a container into a container of the same kind, with
+/// `member_of` reading a boundary back as a member and `wrap` collecting them.
+/// `None` when no member had a boundary to give, which is the caller's `Err`.
+pub(crate) fn container_boundary<M: ExtractBoundary + Clone>(
+    members: &[M],
+    attrs: &[Attributes],
+    member_of: impl Fn(Geometry) -> Option<M>,
+    wrap: impl Fn(Vec<M>, Vec<Attributes>) -> Geometry,
+) -> Option<Boundary> {
+    // A boundary in another dimension, which no leaf hands back today, could not
+    // join a same-dimension container, so it leaves like an unbounded member.
+    let as_member = |geometry| member_of(geometry).map_or(Fate::Unbounded, Fate::Bounded);
+    let fates: Vec<Fate<M>> = members
+        .iter()
+        .map(|member| match member.extract_boundary() {
+            Err(_) => Fate::Unbounded,
+            Ok(Boundary::Bounded(geometry)) => as_member(geometry),
+            Ok(Boundary::Empty { evaluated: None }) => Fate::Empty,
+            Ok(Boundary::Empty {
+                evaluated: Some(geometry),
+            }) => match member_of(geometry) {
+                Some(member) => Fate::Narrowed(member),
+                None => Fate::Unbounded,
+            },
+        })
+        .collect();
+
+    if !members.is_empty() && fates.iter().all(|f| matches!(f, Fate::Unbounded)) {
+        return None;
+    }
+    // Nothing left unbounded, so the source stands as it is.
+    if fates.iter().all(|f| matches!(f, Fate::Empty)) {
+        return Some(Boundary::EMPTY);
+    }
+
+    // The container holds the boundary if there is one, and otherwise the source
+    // narrowed to the members that were bounded at all.
+    let any_bounded = fates.iter().any(|f| matches!(f, Fate::Bounded(_)));
+    let mut kept = Vec::new();
+    let mut kept_attrs = Vec::new();
+    for (i, fate) in fates.into_iter().enumerate() {
+        let member = match (any_bounded, fate) {
+            (true, Fate::Bounded(member)) => member,
+            (false, Fate::Narrowed(member)) => member,
+            (false, Fate::Empty) => members[i].clone(),
+            _ => continue,
+        };
+        kept.push(member);
+        if let Some(a) = attrs.get(i) {
+            kept_attrs.push(a.clone());
+        }
+    }
+    let geometry = wrap(kept, kept_attrs);
+    Some(if any_bounded {
+        Boundary::Bounded(geometry)
+    } else {
+        Boundary::Empty {
+            evaluated: Some(geometry),
+        }
+    })
 }
 
 pub(crate) fn unsupported<T: ?Sized>() -> UnsupportedOperation {
@@ -256,8 +357,16 @@ mod tests {
         )
     }
 
-    fn boundary(geometry: &impl ExtractBoundary) -> Geometry {
+    fn boundary(geometry: &impl ExtractBoundary) -> Boundary {
         geometry.extract_boundary().expect("bounded")
+    }
+
+    /// The boundary of a geometry a test expects to have one.
+    fn bounded(geometry: &impl ExtractBoundary) -> Geometry {
+        match boundary(geometry) {
+            Boundary::Bounded(geometry) => geometry,
+            empty => panic!("expected a boundary, got {empty:?}"),
+        }
     }
 
     /// The chain of every polyline a boundary is made of, in emission order.
@@ -314,7 +423,7 @@ mod tests {
             [0u32, 1, 2, 0, 2, 3],
         )
         .unwrap();
-        assert_eq!(ring_lengths(&boundary(&pair)), [5]);
+        assert_eq!(ring_lengths(&bounded(&pair)), [5]);
 
         // A closed tetrahedron: every edge is walked twice, so nothing is left.
         let closed = TriangularMesh3D::from_parts(
@@ -328,12 +437,12 @@ mod tests {
             [0u32, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3],
         )
         .unwrap();
-        assert_eq!(boundary(&closed), Geometry::None);
+        assert_eq!(boundary(&closed), Boundary::EMPTY);
 
         // A hole no neighbouring face fills is walked once, like any outer edge,
         // so it bounds the surface too.
         let holed = PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&face(1)]).unwrap();
-        assert_eq!(ring_lengths(&boundary(&holed)), [5, 5]);
+        assert_eq!(ring_lengths(&bounded(&holed)), [5, 5]);
     }
 
     // Chaining follows the edges, not the direction they were walked in, so faces
@@ -353,7 +462,7 @@ mod tests {
             [0u32, 1, 2, 0, 3, 2],
         )
         .unwrap();
-        assert_eq!(ring_lengths(&boundary(&mesh)), [5]);
+        assert_eq!(ring_lengths(&bounded(&mesh)), [5]);
     }
 
     // Three faces on one edge: that edge is walked three times, so it is no more
@@ -375,7 +484,7 @@ mod tests {
             vec![vec![4u32, 5, 0], vec![4, 5, 1], vec![4, 5, 2]],
         )
         .unwrap();
-        let chains = chains(&boundary(&mesh));
+        let chains = chains(&bounded(&mesh));
         assert_eq!(edges_of(&chains).len(), 6);
         assert!(chains.iter().all(|c| c.len() > 2));
     }
@@ -396,10 +505,10 @@ mod tests {
             [&face(1), &offset(10.0), &offset(20.0)],
         )
         .unwrap();
-        let first = boundary(&mesh);
+        let first = bounded(&mesh);
         assert_eq!(chains(&first).len(), 4);
         for _ in 0..8 {
-            assert_eq!(boundary(&mesh), first);
+            assert_eq!(bounded(&mesh), first);
         }
     }
 
@@ -424,7 +533,7 @@ mod tests {
         let g = Geometry::GeometryCollection(
             GeometryCollection::with_attributes(members, vec![attrs(1), attrs(2)]).unwrap(),
         );
-        let Geometry::GeometryCollection(out) = boundary(&g) else {
+        let Geometry::GeometryCollection(out) = bounded(&g) else {
             panic!("expected a geometry collection");
         };
         assert_eq!(out.members().len(), 1);

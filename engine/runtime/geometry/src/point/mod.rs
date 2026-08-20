@@ -87,13 +87,13 @@ crate::unsupported!(Point3D: Coerce);
 // A position has no extent, so it reports the empty boundary rather than
 // refusing the operation.
 impl crate::ops::ExtractBoundary for Point2D {
-    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
-        Ok(crate::Geometry::None)
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        Ok(crate::ops::Boundary::EMPTY)
     }
 }
 
 impl crate::ops::ExtractBoundary for Point3D {
-    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
-        Ok(crate::Geometry::None)
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        Ok(crate::ops::Boundary::EMPTY)
     }
 }

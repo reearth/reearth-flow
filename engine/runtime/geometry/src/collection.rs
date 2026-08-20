@@ -508,58 +508,38 @@ impl Coerce for Collection3D {
 }
 
 impl crate::ops::ExtractBoundary for Collection2D {
-    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
-        let mut members = Vec::new();
-        let mut attrs = Vec::new();
-        let mut any = false;
-        for (i, member) in self.members().iter().enumerate() {
-            let Ok(boundary) = member.extract_boundary() else {
-                continue;
-            };
-            any = true;
-            // A 2D member is bounded by 2D geometry; `Geometry::None` is the
-            // empty boundary and drops out here.
-            if let crate::Geometry::Euclidean2D(g) = boundary {
-                members.push(g);
-                if let Some(a) = self.member_attributes().get(i) {
-                    attrs.push(a.clone());
-                }
-            }
-        }
-        if !any && !self.members().is_empty() {
-            return Err(crate::ops::boundary::unsupported::<Self>());
-        }
-        Ok(wrap_members_2d(members, attrs))
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean2D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_2d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
     }
 }
 
 impl crate::ops::ExtractBoundary for Collection3D {
-    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
-        let mut members = Vec::new();
-        let mut attrs = Vec::new();
-        let mut any = false;
-        for (i, member) in self.members().iter().enumerate() {
-            let Ok(boundary) = member.extract_boundary() else {
-                continue;
-            };
-            any = true;
-            if let crate::Geometry::Euclidean3D(g) = boundary {
-                members.push(g);
-                if let Some(a) = self.member_attributes().get(i) {
-                    attrs.push(a.clone());
-                }
-            }
-        }
-        if !any && !self.members().is_empty() {
-            return Err(crate::ops::boundary::unsupported::<Self>());
-        }
-        Ok(wrap_members_3d(members, attrs))
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean3D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_3d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
     }
 }
 
-/// Gather boundary members into a collection, keeping their attributes when the
-/// source carried any. A collection's boundary stays a collection even when one
-/// member gave it, so the shape does not turn on how many members contributed.
+/// Gather members into a collection, keeping their attributes when the source
+/// carried any. A collection's boundary stays a collection even when one member
+/// gave it, so the shape does not turn on how many members contributed.
 fn wrap_members_2d(members: Vec<Euclidean2DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
     if members.is_empty() {
         return crate::Geometry::None;

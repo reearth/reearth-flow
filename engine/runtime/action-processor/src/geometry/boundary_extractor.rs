@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::ExtractBoundary;
+use reearth_flow_geometry::ops::{Boundary, ExtractBoundary};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
 #[cfg(not(feature = "new-geometry"))]
@@ -15,8 +15,6 @@ use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::types::multi_line_string::{MultiLineString2D, MultiLineString3D};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::triangular_mesh::TriangularMesh;
-#[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::Geometry as NextGeometry;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -37,7 +35,8 @@ use super::errors::GeometryProcessorError;
 /// The boundary itself.
 pub static BOUNDARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("boundary"));
 /// Geometry that closes on itself, or carries no extent to bound, leaves here
-/// with the geometry it arrived with.
+/// with the geometry it arrived with, minus any part that had no boundary to
+/// give.
 #[cfg(feature = "new-geometry")]
 pub static NO_BOUNDARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("no-boundary"));
 
@@ -174,6 +173,10 @@ impl Processor for BoundaryExtractor {
     /// arrived with, so a workflow can tell "closed" from "not a surface". A
     /// feature with no geometry, or one whose type has no boundary to give,
     /// leaves via `rejected`.
+    ///
+    /// A container is bounded member by member, and a member with no boundary to
+    /// give drops out of it, from the boundary and from the geometry `no-boundary`
+    /// carries alike: an empty boundary is a claim about parts that were bounded.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -181,17 +184,19 @@ impl Processor for BoundaryExtractor {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         match ctx.feature.geometry.extract_boundary() {
-            // An answer, not a failure, so the feature goes on with the geometry
-            // it came in with.
-            Ok(NextGeometry::None) => {
-                fw.send(
-                    ctx.new_with_feature_and_port(ctx.feature.clone(), NO_BOUNDARY_PORT.clone()),
-                );
-            }
-            Ok(boundary) => {
+            Ok(Boundary::Bounded(boundary)) => {
                 let mut feature = ctx.feature.clone();
                 feature.set_geometry(boundary);
                 fw.send(ctx.new_with_feature_and_port(feature, BOUNDARY_PORT.clone()));
+            }
+            // An answer, not a failure, so the feature goes on with the geometry
+            // it came in with, narrowed only where a part of it was not bounded.
+            Ok(Boundary::Empty { evaluated }) => {
+                let mut feature = ctx.feature.clone();
+                if let Some(evaluated) = evaluated {
+                    feature.set_geometry(evaluated);
+                }
+                fw.send(ctx.new_with_feature_and_port(feature, NO_BOUNDARY_PORT.clone()));
             }
             Err(e) => {
                 // This port's normal business, so not worth a warning per feature.
@@ -709,6 +714,7 @@ mod tests {
     use reearth_flow_geometry::solid::Solid;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
     use reearth_flow_geometry::Euclidean3DGeometry;
+    use reearth_flow_geometry::Geometry as NextGeometry;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{Attribute, AttributeValue, Feature};
 

@@ -17,8 +17,10 @@ pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
-pub use boundary::ExtractBoundary;
-pub(crate) use boundary::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+pub(crate) use boundary::{
+    container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
+};
+pub use boundary::{Boundary, ExtractBoundary};
 pub use coerce::{Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
