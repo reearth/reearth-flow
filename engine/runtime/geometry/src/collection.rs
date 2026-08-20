@@ -339,6 +339,50 @@ impl crate::ops::CountHoles for Collection3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection2D {
+    /// The measurable members' areas, summed. An unmeasurable member is skipped
+    /// rather than failing its siblings; [`area_report`](crate::ops::area::area_report)
+    /// counts the skips so a caller can say how many there were. An empty
+    /// collection measures zero.
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.projected_area().ok())
+            .sum())
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection3D {
+    /// See [`Collection2D`]'s impl: measurable members summed, unmeasurable
+    /// ones skipped, empty is zero.
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.projected_area().ok())
+            .sum())
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
 // Deaggregate: a member that is not area geometry is handed back as `Rejected`
 // rather than failing the whole collection, so one curve among the surfaces does
 // not discard the surfaces.
@@ -450,12 +494,6 @@ impl Validate for Collection2D {}
 
 #[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
-
-// TODO(Task 2): recurse over members.
-#[cfg(feature = "new-geometry")]
-crate::unsupported!(Collection2D: Area);
-#[cfg(feature = "new-geometry")]
-crate::unsupported!(Collection3D: Area);
 
 impl Coerce for Collection2D {
     fn coerce(

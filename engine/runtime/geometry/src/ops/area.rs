@@ -254,4 +254,92 @@ mod tests {
         );
         assert_eq!(open.surface_area().unwrap(), 1.0);
     }
+
+    use crate::collection::Collection3D;
+    use crate::csg::Csg;
+    use crate::{Euclidean3DGeometry, Geometry, GeometryCollection};
+
+    fn polygon_member(square: Polygon3D) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Polygon(Box::new(square))
+    }
+
+    #[test]
+    fn a_collection_sums_its_members() {
+        let c = Collection3D::new(vec![
+            polygon_member(unit_square_3d()),
+            polygon_member(unit_square_3d()),
+        ]);
+        assert_eq!(c.projected_area().unwrap(), 2.0);
+        assert_eq!(c.surface_area().unwrap(), 2.0);
+    }
+
+    #[test]
+    fn an_empty_collection_measures_zero() {
+        let c = Collection3D::new(Vec::<Euclidean3DGeometry>::new());
+        assert_eq!(c.projected_area().unwrap(), 0.0);
+        assert_eq!(c.surface_area().unwrap(), 0.0);
+    }
+
+    /// The only unmeasurable geometry in the model: an unevaluated boolean tree
+    /// over two trivial solids. `ThreeDimensional` has `From<Solid>`, so the
+    /// operands convert with `.into()`.
+    fn csg() -> Csg {
+        let solid = || {
+            crate::solid::Solid::from_exterior(
+                CoordinateFrame::Euclidean,
+                crate::triangular_mesh::TriangularMesh3DData::from_parts(
+                    vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                    [0u32, 1, 2],
+                )
+                .unwrap(),
+            )
+        };
+        Csg::Union(Box::new(solid().into()), Box::new(solid().into()))
+    }
+
+    /// An unmeasurable member is skipped rather than failing its siblings, the
+    /// same way the CSV writer's geometry export omits one part of a feature
+    /// without refusing the rest.
+    #[test]
+    fn a_collection_skips_an_unmeasurable_member() {
+        let c = Collection3D::new(vec![
+            polygon_member(unit_square_3d()),
+            Euclidean3DGeometry::Csg(csg()),
+        ]);
+        assert_eq!(c.projected_area().unwrap(), 1.0);
+        assert_eq!(c.surface_area().unwrap(), 1.0);
+    }
+
+    /// The refusal itself, so the skip above is provably skipping something.
+    #[test]
+    fn a_csg_refuses_rather_than_measuring_zero() {
+        assert!(csg().projected_area().is_err());
+        assert!(csg().surface_area().is_err());
+    }
+
+    /// An absent geometry measures zero rather than refusing, so the action
+    /// always has a number to write.
+    #[test]
+    fn an_absent_geometry_measures_zero() {
+        assert_eq!(Geometry::None.projected_area().unwrap(), 0.0);
+        assert_eq!(Geometry::None.surface_area().unwrap(), 0.0);
+    }
+
+    #[test]
+    fn a_geometry_collection_sums_across_dimensions() {
+        let flat = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0], [2.0, 0.0], [2.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )));
+        let tilted = Geometry::Euclidean3D(polygon_member(tilted_square_3d()));
+        let c = Geometry::GeometryCollection(GeometryCollection::new(vec![flat, tilted]));
+
+        assert!((c.surface_area().unwrap() - 3.0).abs() < 1e-12);
+        assert!(
+            (c.projected_area().unwrap() - (2.0 + std::f64::consts::FRAC_1_SQRT_2)).abs() < 1e-12
+        );
+    }
 }
