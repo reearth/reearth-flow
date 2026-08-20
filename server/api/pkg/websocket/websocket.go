@@ -27,12 +27,8 @@ type SnapshotMetadata struct {
 	Size      int64
 }
 
-// SnapshotState is one snapshot's stored document state.
-//
-// Addressed by SnapshotID, the per-room snapshot counter, NOT the update-log
-// version that Document and History carry. The two are unrelated backend-assigned
-// id spaces; passing one where the other is expected reads or prunes an unrelated
-// point in history.
+// SnapshotState is one snapshot's document state, keyed by the per-room
+// SnapshotID, not the update-log version that Document and History carry.
 type SnapshotState struct {
 	Updates    []int
 	SnapshotID int64

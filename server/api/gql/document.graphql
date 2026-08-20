@@ -36,11 +36,7 @@ type NamedSnapshot {
   size: FileSize!
 }
 
-# One snapshot's stored state, addressed by snapshotNumber.
-#
-# Deliberately separate from ProjectSnapshot: that type is keyed on the raw
-# update-log clock, which previewSnapshot and rollbackProject consume. The two
-# numbering spaces are unrelated, so they must not share a type.
+# One snapshot's stored state, keyed by snapshotNumber (not the update-log clock).
 type NamedSnapshotState {
   snapshotNumber: Int!
   updates: [Int!]!
@@ -64,8 +60,5 @@ extend type Query {
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
   projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
-  # Read-only, and the basis for both snapshot preview and restore. Restore is
-  # applied client-side as an inverse update, so it needs no destructive
-  # counterpart to rollbackProject.
   projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
 }

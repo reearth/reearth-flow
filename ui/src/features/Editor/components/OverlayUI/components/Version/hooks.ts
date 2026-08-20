@@ -8,18 +8,8 @@ import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import { docFromUpdate, makeGetMetadata, revertUpdate } from "./yjsRevert";
 
-// Normal browsing lists user-meaningful named versions, and both preview and
-// restore are addressed by snapshotNumber via projectNamedSnapshot.
-//
-// What must never happen here is passing a snapshotNumber to previewSnapshot or
-// rollbackProject. Those consume the raw update-log clock, an unrelated
-// backend-assigned numbering space, and rollbackProject reaches PruneAfter,
-// which deletes every update above the number it is given. An earlier revision
-// of this panel wired exactly that and it was caught in review.
-//
-// Restore therefore never calls rollbackProject at all. It reads the snapshot
-// state and applies an inverse update to the live document, so history is
-// preserved and peers converge over the normal websocket path. See ./yjsRevert.ts.
+// Preview and restore are keyed by snapshotNumber via projectNamedSnapshot; restore
+// applies an inverse update rather than calling rollbackProject, which would prune.
 export default ({
   projectId,
   yDoc,

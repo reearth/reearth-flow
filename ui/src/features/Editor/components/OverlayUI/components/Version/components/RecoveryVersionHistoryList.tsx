@@ -3,14 +3,7 @@ import { useT } from "@flow/lib/i18n";
 import type { ProjectDocument, ProjectSnapshotMeta } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
-// Recovery-mode list: used only from the project-corruption error boundary
-// (see ../RecoveryDialog.tsx) to let a user roll back to a working update-
-// log version when the project will not open at all. This is the pre-
-// snapshot-history behaviour, restored unchanged: `history` entries carry
-// the raw CRDT update-log `version`, which is exactly what
-// previewSnapshot/rollbackProject expect, so preview-on-click and Revert
-// are safe here. Do not point this at NamedSnapshot data — see
-// ../hooks.ts and ../recoveryHooks.ts for why that ID space is different.
+// Recovery-mode list, keyed on the raw update-log version (see ../RecoveryDialog.tsx).
 type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
   history?: ProjectSnapshotMeta[];

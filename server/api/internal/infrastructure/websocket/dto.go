@@ -49,9 +49,7 @@ type saveSnapshotRequest struct {
 	Label string `json:"label"`
 }
 
-// snapshotStateResponse mirrors websocket-go's SnapshotStateResponse. Updates
-// arrives as a JSON int array (the server's UpdateBytes marshaller); encoding/json
-// decodes that into []byte as readily as it does base64.
+// snapshotStateResponse mirrors websocket-go's SnapshotStateResponse.
 type snapshotStateResponse struct {
 	ID         string `json:"id"`
 	Updates    []byte `json:"updates"`

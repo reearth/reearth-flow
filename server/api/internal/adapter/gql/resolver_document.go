@@ -51,9 +51,7 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 	return nodes, nil
 }
 
-// ProjectNamedSnapshot reads one snapshot's state by its per-room snapshot
-// number. Never pass a snapshotNumber to previewSnapshot or rollbackProject:
-// those consume the update-log clock, a different numbering space.
+// ProjectNamedSnapshot reads one snapshot's state by its per-room snapshot number.
 func (r *queryResolver) ProjectNamedSnapshot(ctx context.Context, projectId gqlmodel.ID, snapshotNumber int) (*gqlmodel.NamedSnapshotState, error) {
 	state, err := usecases(ctx).Websocket.GetSnapshotState(ctx, string(projectId), snapshotNumber)
 	if err != nil {

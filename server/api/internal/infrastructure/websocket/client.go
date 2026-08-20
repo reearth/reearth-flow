@@ -612,13 +612,7 @@ func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) 
 	return nil
 }
 
-// GetSnapshotState fetches one snapshot's stored state, addressed by the per-room
-// snapshot number rather than the update-log clock.
-//
-// Read-only by construction. This is what makes snapshot preview and restore safe:
-// unlike Rollback, which reaches PruneAfter and deletes every update above a
-// clock, this only reads. Restore is then applied client-side as an ordinary
-// inverse update, so no history is destroyed and peers converge normally.
+// GetSnapshotState reads one snapshot's stored state by its per-room snapshot number.
 func (c *Client) GetSnapshotState(ctx context.Context, docID string, snapshotNumber int) (*websocket.SnapshotState, error) {
 	url := fmt.Sprintf("%s/api/document/%s/snapshots/%d", c.config.ServerURL, docID, snapshotNumber)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -638,8 +632,7 @@ func (c *Client) GetSnapshotState(ctx context.Context, docID string, snapshotNum
 		}
 	}(resp.Body)
 
-	// 404 is a retention eviction, not a fault: surface it as its own error so the
-	// UI can distinguish "that version is gone" from "the server broke".
+	// 404 means retention evicted it, which is not a server fault.
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, interfaces.ErrSnapshotNotFound
 	}

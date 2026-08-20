@@ -20,9 +20,6 @@ const VersionHistoryList: React.FC<Props> = ({
   onSnapshotSelect,
 }) => {
   const t = useT();
-  // Sort by snapshotNumber, not timestamp: it is a monotonic per-room counter, so
-  // it is the authoritative creation order and is unaffected by the zero
-  // timestamp the server returns when one cannot be parsed.
   const sortedSnapshots = snapshots
     ? [...snapshots].sort((a, b) => b.snapshotNumber - a.snapshotNumber)
     : snapshots;
@@ -81,9 +78,6 @@ const VersionHistoryList: React.FC<Props> = ({
                     </p>
                   </div>
                   <div className="flex justify-end">
-                    {/* The snapshot's own number, not the update-log version in
-                    the header above: the two are unrelated id spaces, so they
-                    are worded differently to keep them distinguishable. */}
                     <p className="h-fit rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
                       <span className="font-light">
                         {t("Snapshot ")}
