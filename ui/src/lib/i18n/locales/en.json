@@ -32,6 +32,7 @@
   "literal": "",
   "No value set": "",
   "Reset": "",
+  "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "",
   "Select All": "",
   "Deselect All": "",
   "Default Value": "",
