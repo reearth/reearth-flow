@@ -34,6 +34,8 @@ runtime/action-sink/src/file/citygml.rs:6
 runtime/action-sink/src/file/csv.rs:2
 runtime/action-sink/src/file/geojson.rs:3
 runtime/action-sink/src/file/gltf.rs:1
+runtime/action-sink/src/file/mvt/next/extract.rs:6
+runtime/action-sink/src/file/mvt/next/slice.rs:2
 runtime/action-sink/src/file/mvt/pipeline.rs:4
 runtime/action-sink/src/file/mvt/sink.rs:10
 runtime/action-sink/src/file/shapefile/pipeline.rs:2
