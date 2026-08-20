@@ -3571,9 +3571,12 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML 3 Reader",
@@ -5377,7 +5380,7 @@
     {
       "name": "GeoPackage Reader",
       "type": "source",
-      "description": "Lit les entités géographiques à partir de fichiers GeoPackage (.gpkg) avec prise en charge des entités vectorielles, des tuiles et des métadonnées",
+      "description": "Lit les entités vectorielles depuis des fichiers GeoPackage (.gpkg), ou les systèmes de référence spatiale et les métadonnées d'extensions du fichier.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackage Reader Parameters",
@@ -5396,54 +5399,17 @@
           },
           "layerName": {
             "title": "Layer Name",
-            "description": "Name of the layer to read. When omitted, the first available layer is used.",
+            "description": "Name of the layer to read. When omitted, every feature layer in the file is read.",
             "type": [
               "string",
               "null"
             ]
-          },
-          "includeMetadata": {
-            "default": false,
-            "type": "boolean"
-          },
-          "tileFormat": {
-            "title": "Tile Format",
-            "description": "Image format to decode when reading raster tiles. Defaults to PNG.",
-            "default": "png",
-            "allOf": [
-              {
-                "$ref": "#/definitions/TileFormat"
-              }
-            ]
-          },
-          "attributeFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "batchSize": {
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
           },
           "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+            "description": "Drops the Z value from every geometry, producing 2D output.",
             "default": false,
             "type": "boolean"
-          },
-          "spatialFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "dataset": {
             "title": "File Path",
@@ -5501,62 +5467,18 @@
             "oneOf": [
               {
                 "title": "Features",
-                "description": "Reads vector features (geometry and attributes).",
+                "description": "Reads vector features, each carrying its geometry and attributes.",
                 "type": "string",
                 "enum": [
                   "features"
                 ]
               },
               {
-                "title": "Tiles",
-                "description": "Reads raster tiles.",
-                "type": "string",
-                "enum": [
-                  "tiles"
-                ]
-              },
-              {
-                "title": "All",
-                "description": "Reads both vector features and raster tiles.",
-                "type": "string",
-                "enum": [
-                  "all"
-                ]
-              },
-              {
                 "title": "Metadata Only",
-                "description": "Reads only the file's metadata, without features or tiles.",
+                "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record.",
                 "type": "string",
                 "enum": [
                   "metadataOnly"
-                ]
-              }
-            ]
-          },
-          "TileFormat": {
-            "oneOf": [
-              {
-                "title": "PNG",
-                "description": "Decodes tiles as PNG images.",
-                "type": "string",
-                "enum": [
-                  "png"
-                ]
-              },
-              {
-                "title": "JPEG",
-                "description": "Decodes tiles as JPEG images.",
-                "type": "string",
-                "enum": [
-                  "jpeg"
-                ]
-              },
-              {
-                "title": "WebP",
-                "description": "Decodes tiles as WebP images.",
-                "type": "string",
-                "enum": [
-                  "webp"
                 ]
               }
             ]
@@ -8682,6 +8604,14 @@
             ],
             "format": "uint32",
             "minimum": 0.0
+          },
+          "maxTileBytes": {
+            "title": "Maximum Tile Size",
+            "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+            "default": 500000,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
           }
         }
       },
@@ -9065,7 +8995,7 @@
         "properties": {
           "parseMaterials": {
             "title": "Parse Materials",
-            "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
+            "description": "Parses material definitions from MTL files referenced in the OBJ file.",
             "default": true,
             "type": "boolean"
           },
@@ -9097,25 +9027,19 @@
           },
           "triangulate": {
             "title": "Triangulate",
-            "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
+            "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation.",
             "default": false,
             "type": "boolean"
           },
           "mergeGroups": {
             "title": "Merge Groups",
-            "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
+            "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object.",
             "default": false,
-            "type": "boolean"
-          },
-          "includeNormals": {
-            "title": "Include Normals",
-            "description": "Include vertex normal data in the output geometry",
-            "default": true,
             "type": "boolean"
           },
           "includeTexcoords": {
             "title": "Include Texture Coordinates",
-            "description": "Include texture coordinate (UV) data in the output geometry",
+            "description": "Includes texture coordinate (UV) data in the output geometry.",
             "default": true,
             "type": "boolean"
           },
@@ -9177,10 +9101,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "obj",
+        "3d"
+      ]
     },
     {
       "name": "OBJ Writer",
@@ -13601,24 +13527,18 @@
       "description": "Lit des modèles 3D depuis des fichiers glTF 2.0, prenant en charge les maillages, nœuds, scènes et primitives de géométrie",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "glTF ReaderParam",
+        "title": "glTF Reader Parameters",
         "type": "object",
         "properties": {
-          "triangulate": {
-            "title": "Triangulate",
-            "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
-            "default": true,
-            "type": "boolean"
-          },
           "mergeMeshes": {
             "title": "Merge Meshes",
-            "description": "If true, combines all meshes from the glTF file into a single output feature",
+            "description": "Combines all meshes from the glTF file into a single output feature.",
             "default": false,
             "type": "boolean"
           },
           "includeNodes": {
             "title": "Include Nodes",
-            "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+            "description": "Includes node hierarchy information from the glTF scene graph in feature attributes.",
             "default": true,
             "type": "boolean"
           },
@@ -13721,10 +13641,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "gltf",
+        "3d"
+      ]
     },
     {
       "name": "glTF Writer",

@@ -11,8 +11,8 @@ require (
 	cloud.google.com/go/scheduler v1.11.8
 	cloud.google.com/go/storage v1.57.2
 	github.com/99designs/gqlgen v0.17.84
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/avast/retry-go/v4 v4.7.0
+	github.com/exaring/otelpgx v0.7.0
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -26,7 +26,8 @@ require (
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/ravilushqa/otelgqlgen v0.19.0
-	github.com/redis/go-redis/v9 v9.14.0
+	github.com/redis/go-redis/extra/redisotel/v9 v9.14.1
+	github.com/redis/go-redis/v9 v9.14.1
 	github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841
 	github.com/reearth/reearth-flow/db v0.0.0-00010101000000-000000000000
 	github.com/reearth/reearth-proto v1.1.0
@@ -37,15 +38,16 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.6
-	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/vektah/dataloaden v0.3.0
 	github.com/vektah/gqlparser/v2 v2.5.31
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.mongodb.org/mongo-driver v1.17.6
+	go.opentelemetry.io/contrib/detectors/gcp v1.38.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.63.0
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.63.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0
 	go.opentelemetry.io/otel v1.39.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.38.0
 	go.opentelemetry.io/otel/sdk v1.38.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
@@ -62,8 +64,10 @@ require (
 	cloud.google.com/go/monitoring v1.24.3 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.2 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20251110193048-8bfbf64dc13e // indirect
 	github.com/coder/websocket v1.8.14 // indirect
@@ -88,6 +92,7 @@ require (
 	github.com/go-playground/validator/v10 v10.28.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
 	github.com/hasura/go-graphql-client v0.15.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -95,14 +100,17 @@ require (
 	github.com/labstack/echo/v5 v5.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20250313105119-ba97887b0a25 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.14.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/swaggo/files/v2 v2.0.2 // indirect
+	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
+	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/urfave/cli/v3 v3.6.1 // indirect
 	github.com/zitadel/oidc v1.13.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/detectors/gcp v1.38.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.7.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -113,7 +121,7 @@ require (
 	cloud.google.com/go/auth v0.17.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/batch v1.13.0
-	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	cloud.google.com/go/compute/metadata v0.9.0
 	cloud.google.com/go/iam v1.5.3 // indirect
 	cloud.google.com/go/longrunning v0.7.0 // indirect
 	cloud.google.com/go/trace v1.11.7 // indirect
@@ -193,9 +201,9 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/zitadel/logging v0.6.2 // indirect
 	go.opentelemetry.io/contrib v1.38.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
-	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.opentelemetry.io/otel/trace v1.39.0
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect

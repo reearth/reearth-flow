@@ -13,6 +13,7 @@ version.workspace = true
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
+reearth-flow-diagnostics.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
@@ -37,3 +38,5 @@ uuid.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+slog.workspace = true
+tempfile.workspace = true

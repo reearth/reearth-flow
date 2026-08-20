@@ -1,6 +1,7 @@
 pub mod builder_dag;
 pub mod cache;
 pub mod dag_schemas;
+pub mod diagnostics;
 pub mod epoch;
 pub mod errors;
 pub mod event;
