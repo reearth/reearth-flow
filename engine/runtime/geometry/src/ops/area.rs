@@ -18,9 +18,11 @@
 //! migration. Footprint semantics would need a 2D union and would silently
 //! change every existing workflow's numbers.
 
+use crate::coordinate::CoordinateFrame;
 use crate::ops::UnsupportedOperation;
 use crate::polygon::Polygon3D;
 use crate::validation_next::measure::newell_vector_3d;
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
 /// The area of a geometry, measured two ways.
 ///
@@ -122,6 +124,126 @@ pub(crate) fn triangle_area_sum_3d(
             measure(&ring)
         })
         .sum()
+}
+
+/// What the coordinate frames of a geometry's area-carrying parts say about a
+/// measured area.
+#[derive(Clone, Debug, PartialEq)]
+pub enum AreaFrame {
+    /// Every part that carries area sits in this one frame, so the result is in
+    /// that frame's unit squared.
+    One(CoordinateFrame),
+    /// Parts sit in more than one frame, so the sum may add square metres to
+    /// square degrees.
+    Mixed,
+    /// Nothing carrying area, so no frame to report.
+    Nothing,
+}
+
+/// What [`Area`] measured, beyond the number itself.
+///
+/// A second, cheap traversal rather than a wider trait signature: the geometry
+/// crate carries no logger, so a caller that has one — an action — needs these
+/// facts as data in order to warn about them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AreaReport {
+    /// The frame the measurement is expressed in.
+    pub frame: AreaFrame,
+    /// How many parts [`Area`] could not measure and skipped. Only an
+    /// unevaluated [`Csg`](crate::csg::Csg) is unmeasurable, so this is
+    /// normally zero.
+    pub skipped: usize,
+}
+
+impl AreaReport {
+    /// Fold in one area-carrying part's frame: the first sets the frame, a
+    /// second, different one makes the whole report `Mixed`, and `Mixed` is
+    /// absorbing.
+    fn note(&mut self, frame: &CoordinateFrame) {
+        self.frame = match std::mem::replace(&mut self.frame, AreaFrame::Nothing) {
+            AreaFrame::Nothing => AreaFrame::One(frame.clone()),
+            AreaFrame::One(seen) if &seen == frame => AreaFrame::One(seen),
+            AreaFrame::One(_) | AreaFrame::Mixed => AreaFrame::Mixed,
+        };
+    }
+}
+
+/// Walk `geometry` and report which frames its area-carrying parts sit in and
+/// how many parts could not be measured.
+///
+/// Only parts that can carry area contribute a frame — polygons, the meshes and
+/// solids. A point, a curve or a point cloud measures exactly zero, so its
+/// frame does not colour the result and including it would warn about the units
+/// of a number that is zero either way.
+pub fn area_report(geometry: &Geometry) -> AreaReport {
+    let mut report = AreaReport {
+        frame: AreaFrame::Nothing,
+        skipped: 0,
+    };
+    walk(geometry, &mut report);
+    report
+}
+
+fn walk(geometry: &Geometry, report: &mut AreaReport) {
+    match geometry {
+        Geometry::None => {}
+        Geometry::Euclidean2D(g) => walk_2d(g, report),
+        Geometry::Euclidean3D(g) => walk_3d(g, report),
+        Geometry::GeometryCollection(c) => walk_collection(c, report),
+    }
+}
+
+fn walk_collection(collection: &GeometryCollection, report: &mut AreaReport) {
+    for member in collection.members() {
+        walk(member, report);
+    }
+}
+
+fn walk_2d(geometry: &Euclidean2DGeometry, report: &mut AreaReport) {
+    match geometry {
+        // Carries no area, so contributes no unit.
+        Euclidean2DGeometry::Point(_) | Euclidean2DGeometry::LineString(_) => {}
+        Euclidean2DGeometry::Polygon(g) => report.note(g.frame()),
+        Euclidean2DGeometry::PolygonMesh(g) => report.note(g.frame()),
+        Euclidean2DGeometry::TriangularMesh(g) => report.note(g.frame()),
+        Euclidean2DGeometry::Collection(c) => {
+            for member in c.members() {
+                walk_2d(member, report);
+            }
+        }
+    }
+}
+
+fn walk_3d(geometry: &Euclidean3DGeometry, report: &mut AreaReport) {
+    match geometry {
+        Euclidean3DGeometry::Point(_)
+        | Euclidean3DGeometry::LineString(_)
+        | Euclidean3DGeometry::PointCloud(_) => {}
+        Euclidean3DGeometry::Polygon(g) => report.note(g.frame()),
+        Euclidean3DGeometry::PolygonMesh(g) => report.note(g.frame()),
+        Euclidean3DGeometry::TriangularMesh(g) => report.note(g.frame()),
+        Euclidean3DGeometry::Solid(g) => report.note(g.frame()),
+        // The one unmeasurable geometry: an unevaluated boolean tree.
+        Euclidean3DGeometry::Csg(_) => report.skipped += 1,
+        Euclidean3DGeometry::Collection(c) => {
+            for member in c.members() {
+                walk_3d(member, report);
+            }
+        }
+    }
+}
+
+/// Whether an area measured in `frame` is in a linear unit squared — square
+/// metres, square feet — rather than square degrees, which means nothing.
+///
+/// `Err` when the CRS cannot be resolved at all: the caller should say it could
+/// not establish the unit rather than treat the area as meaningless.
+pub fn frame_area_is_linear(frame: &CoordinateFrame) -> crate::error::Result<bool> {
+    match frame {
+        // Bare Euclidean space and a tangent plane are both plain lengths.
+        CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => Ok(true),
+        CoordinateFrame::Crs(epsg) => crate::ops::crs_is_linear(*epsg),
+    }
 }
 
 #[cfg(test)]
@@ -495,5 +617,103 @@ mod tests {
         // Plus the void's own 6 unit faces = 30.
         assert!((hollow.surface_area().unwrap() - 30.0).abs() < 1e-12);
         assert!(hollow.surface_area().unwrap() > solid.surface_area().unwrap());
+    }
+
+    use crate::coordinate::EpsgCode;
+
+    #[test]
+    fn a_single_frame_is_reported_as_one() {
+        let g = Geometry::Euclidean3D(polygon_member(unit_square_3d()));
+        assert_eq!(
+            area_report(&g),
+            AreaReport {
+                frame: AreaFrame::One(CoordinateFrame::Euclidean),
+                skipped: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn an_absent_geometry_reports_nothing() {
+        assert_eq!(
+            area_report(&Geometry::None),
+            AreaReport {
+                frame: AreaFrame::Nothing,
+                skipped: 0,
+            }
+        );
+    }
+
+    /// A point carries no area, so its frame does not colour the result: a sum
+    /// of one polygon and one point is in the polygon's frame alone.
+    #[test]
+    fn a_geometry_that_carries_no_area_contributes_no_frame() {
+        let point = Euclidean3DGeometry::Point(crate::point::Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::from(4326)),
+            [0.0, 0.0, 0.0],
+        ));
+        let c = Collection3D::new(vec![polygon_member(unit_square_3d()), point]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c));
+        assert_eq!(
+            area_report(&g).frame,
+            AreaFrame::One(CoordinateFrame::Euclidean)
+        );
+    }
+
+    /// Two area-carrying members in different frames: the sum adds square
+    /// metres to square degrees, and the caller has to be told.
+    #[test]
+    fn members_in_different_frames_report_mixed() {
+        let projected = Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::from(6677)),
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let c = Collection3D::new(vec![
+            polygon_member(unit_square_3d()),
+            polygon_member(projected),
+        ]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c));
+        assert_eq!(area_report(&g).frame, AreaFrame::Mixed);
+    }
+
+    /// The count behind the skip: `Area` returns the polygon's area silently,
+    /// and this is how a caller learns something was left out of it.
+    #[test]
+    fn an_unmeasurable_member_is_counted_as_skipped() {
+        let c = Collection3D::new(vec![
+            polygon_member(unit_square_3d()),
+            Euclidean3DGeometry::Csg(csg()),
+        ]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c));
+        assert_eq!(
+            area_report(&g),
+            AreaReport {
+                frame: AreaFrame::One(CoordinateFrame::Euclidean),
+                skipped: 1,
+            }
+        );
+    }
+
+    /// Euclidean and tangent-plane coordinates are plain lengths, so an area in
+    /// them is always in a linear unit squared.
+    #[test]
+    fn euclidean_coordinates_are_linear() {
+        assert!(frame_area_is_linear(&CoordinateFrame::Euclidean).unwrap());
+    }
+
+    /// A projected CRS measures in metres; a geographic one measures in
+    /// degrees, and an area in square degrees means nothing.
+    #[test]
+    fn a_projected_crs_is_linear_and_a_geographic_one_is_not() {
+        // JGD2011 / Japan Plane Rectangular CS IX: metres.
+        assert!(frame_area_is_linear(&CoordinateFrame::Crs(EpsgCode::from(6677))).unwrap());
+        // WGS 84: degrees.
+        assert!(!frame_area_is_linear(&CoordinateFrame::Crs(EpsgCode::from(4326))).unwrap());
     }
 }
