@@ -130,7 +130,7 @@ func TestRedisStorage_SaveLogToRedis(t *testing.T) {
 	expectedKey := "log:wf-123:job-123:2025-01-11T09:12:54.487779Z"
 	expectedVal := `{"workflowId":"wf-123","jobId":"job-123","timestamp":"2025-01-11T09:12:54.487779Z","logLevel":"INFO","message":"Hello from test"}`
 	expectedStreamKey := "log:job-123"
-	expectedMinID := time.Now().Add(-logStreamRetention).UnixMilli()
+	expectedMinID := time.Now().Add(-streamRetention).UnixMilli()
 
 	mClient.
 		On("Set", mock.Anything, expectedKey, expectedVal, 12*time.Hour).

@@ -12,9 +12,10 @@ import (
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
-// logStreamRetention matches the legacy per-line key TTL so the stream keeps
-// exactly the same window, trimmed by MINID rather than an invented count.
-const logStreamRetention = 12 * time.Hour
+// streamRetention is the window the legacy per-line keys already keep. The
+// streams are trimmed by MINID against the same window so both paths expire
+// together during the dual-write period.
+const streamRetention = 12 * time.Hour
 
 func (r *RedisStorage) SaveLogToRedis(ctx context.Context, event *domainLog.LogEvent) error {
 	const layoutWithMillis = "2006-01-02T15:04:05.000000Z"
@@ -25,7 +26,7 @@ func (r *RedisStorage) SaveLogToRedis(ctx context.Context, event *domainLog.LogE
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 	serialized := string(serializedBytes)
-	if err := r.tracedSet(ctx, key, serialized, logStreamRetention); err != nil {
+	if err := r.tracedSet(ctx, key, serialized, streamRetention); err != nil {
 		return err
 	}
 
@@ -38,7 +39,7 @@ func (r *RedisStorage) SaveLogToRedis(ctx context.Context, event *domainLog.LogE
 
 func (r *RedisStorage) saveLogToStream(ctx context.Context, jobID string, ts time.Time, serialized string) error {
 	streamKey := fmt.Sprintf("log:%s", jobID)
-	minID := fmt.Sprintf("%d", time.Now().Add(-logStreamRetention).UnixMilli())
+	minID := fmt.Sprintf("%d", time.Now().Add(-streamRetention).UnixMilli())
 
 	if err := r.tracedXAdd(ctx, &redis.XAddArgs{
 		Stream: streamKey,
@@ -54,7 +55,7 @@ func (r *RedisStorage) saveLogToStream(ctx context.Context, jobID string, ts tim
 
 	// MINID already trims stale entries; a missed TTL on an idle stream key is
 	// cheap, so don't fail the whole write (and trigger redelivery) over it.
-	if err := r.tracedExpire(ctx, streamKey, logStreamRetention); err != nil {
+	if err := r.tracedExpire(ctx, streamKey, streamRetention); err != nil {
 		log.Printf("WARN: failed to set expiration on redis stream %s: %v", streamKey, err)
 	}
 
