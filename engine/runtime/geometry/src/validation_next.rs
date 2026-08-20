@@ -1,7 +1,7 @@
 //! Validations/predicates on geometry types.
 
 mod containment;
-pub(crate) mod measure;
+mod measure;
 mod simplicity;
 
 pub(crate) use containment::{check_holes_in_exterior_2d, check_holes_in_exterior_3d};

@@ -94,8 +94,9 @@ impl ProcessorFactory for BuffererFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum BufferType {
     /// # 2D Area Buffer
-    /// Creates a flat polygon buffer around the input geometry, discarding any
-    /// elevation it carried.
+    /// Creates an areal buffer around the input geometry: a 2D geometry is
+    /// buffered in its coordinate plane, a planar 3D polygon within its own
+    /// plane. An elevation shared by the buffered geometry is kept.
     #[serde(rename = "area2d")]
     Area2D,
 }
@@ -115,7 +116,8 @@ struct Bufferer {
     /// # Interpolation Angle
     /// Angular step in degrees used to approximate the rounded caps, joins,
     /// and discs of the buffer outline. A smaller angle produces a smoother
-    /// outline.
+    /// outline. Values outside the range of 1.8 to 45 degrees are clamped to
+    /// it.
     interpolation_angle: f64,
 }
 
