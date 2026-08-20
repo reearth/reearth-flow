@@ -1,9 +1,21 @@
 use std::collections::HashMap;
+#[cfg(feature = "new-geometry")]
+use std::collections::HashSet;
+#[cfg(feature = "new-geometry")]
+use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(feature = "new-geometry")]
+use std::sync::Mutex;
 
+#[cfg(feature = "new-geometry")]
+use once_cell::sync::Lazy;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{area2d::Area2D, area3d::Area3D};
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::Area;
+use reearth_flow_geometry::coordinate::CoordinateFrame;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::{area_report, frame_area_is_linear, Area, AreaFrame};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -19,6 +31,29 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+
+/// EPSG codes already warned about, so a million-feature run emits one line per
+/// distinct code rather than one per feature.
+#[cfg(feature = "new-geometry")]
+static WARNED_CODES: Lazy<Mutex<HashSet<u16>>> = Lazy::new(|| Mutex::new(HashSet::new()));
+
+/// The mixed-frame warning has no single code to key on, so it is emitted once.
+#[cfg(feature = "new-geometry")]
+static WARNED_MIXED: AtomicBool = AtomicBool::new(false);
+
+/// Likewise for skipped parts: one line, not one per feature.
+#[cfg(feature = "new-geometry")]
+static WARNED_SKIPPED: AtomicBool = AtomicBool::new(false);
+
+/// Whether this is the first time `epsg` has come up, so its warning is worth
+/// emitting.
+#[cfg(feature = "new-geometry")]
+fn first_time_for(epsg: u16) -> bool {
+    WARNED_CODES
+        .lock()
+        .map(|mut seen| seen.insert(epsg))
+        .unwrap_or(false)
+}
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AreaCalculatorFactory;
@@ -133,6 +168,78 @@ fn default_multiplier() -> f64 {
     1.0
 }
 
+#[cfg(feature = "new-geometry")]
+impl AreaCalculator {
+    /// Say what the measurement is worth, once per distinct cause.
+    ///
+    /// None of this changes the number: an area in square degrees is still
+    /// written, because refusing would need either a hard failure or a new
+    /// rejected port, and a port change is a schema change affecting both
+    /// worlds and the UI. The old model said nothing at all here; we have the
+    /// information, so we say it.
+    fn warn_about_frames(&self, ctx: &ExecutorContext, geometry: &Geometry) {
+        let report = area_report(geometry);
+
+        if report.skipped > 0 && !WARNED_SKIPPED.swap(true, Ordering::Relaxed) {
+            ctx.event_hub.warn_log(
+                Some(ctx.error_span()),
+                format!(
+                    "skipped {} geometry part(s) that cannot be measured; \
+                     their area is not in the total",
+                    report.skipped
+                ),
+            );
+        }
+
+        match &report.frame {
+            AreaFrame::Nothing => {}
+            AreaFrame::Mixed => {
+                if !WARNED_MIXED.swap(true, Ordering::Relaxed) {
+                    ctx.event_hub.warn_log(
+                        Some(ctx.error_span()),
+                        "geometry parts sit in different coordinate frames, so the \
+                         areas summed here are not all in the same unit",
+                    );
+                }
+            }
+            AreaFrame::One(frame) => {
+                let epsg = match frame {
+                    CoordinateFrame::Crs(epsg) => u16::from(*epsg),
+                    // Euclidean and tangent-plane coordinates are plain
+                    // lengths; there is nothing to warn about.
+                    _ => return,
+                };
+                match frame_area_is_linear(frame) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        if first_time_for(epsg) {
+                            ctx.event_hub.warn_log(
+                                Some(ctx.error_span()),
+                                format!(
+                                    "EPSG:{epsg} measures in degrees, so this area is in \
+                                     square degrees and is not a real-world area; \
+                                     reproject to a projected CRS first"
+                                ),
+                            );
+                        }
+                    }
+                    Err(why) => {
+                        if first_time_for(epsg) {
+                            ctx.event_hub.warn_log(
+                                Some(ctx.error_span()),
+                                format!(
+                                    "cannot establish the unit of EPSG:{epsg}, so this \
+                                     area's unit is unknown: {why}"
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl Processor for AreaCalculator {
     #[cfg(feature = "new-geometry")]
     fn process(
@@ -148,7 +255,13 @@ impl Processor for AreaCalculator {
         // The attribute is always written, so an unmeasurable geometry records
         // zero — but says so, rather than passing silently.
         let area = match measured {
-            Ok(area) => area * self.multiplier,
+            Ok(area) => {
+                // Only worth saying what the unit is once there is a number to
+                // qualify. On the `Err` path the warning below has already said
+                // the whole story.
+                self.warn_about_frames(&ctx, geometry);
+                area * self.multiplier
+            }
             Err(why) => {
                 ctx.event_hub.warn_log(
                     Some(ctx.error_span()),
@@ -420,5 +533,152 @@ mod tests {
                 .get(&Attribute::new("buildingId".to_string())),
             Some(&AttributeValue::Number(7.into()))
         );
+    }
+
+    use std::sync::Arc;
+
+    use reearth_flow_common::uri::Uri;
+    use reearth_flow_geometry::coordinate::EpsgCode;
+    use reearth_flow_runtime::event::Event;
+    use reearth_flow_runtime::kvs;
+    use reearth_flow_storage::resolve::StorageResolver;
+    use tracing::Level;
+
+    /// A unit square in `frame`.
+    fn square_in(frame: CoordinateFrame) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                frame,
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [1.0, 1.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )))
+    }
+
+    /// Run every `geometry` through one processor and return the WARN messages
+    /// emitted along the way.
+    ///
+    /// `create_default_execute_context` builds its own event hub, so this builds
+    /// the contexts by hand in order to hold on to a receiver. A broadcast
+    /// receiver only sees what is sent after it subscribes, hence the
+    /// `resubscribe` before the first `process`.
+    fn warnings_for(with: Option<Value>, geometries: Vec<Geometry>) -> Vec<String> {
+        let hub = EventHub::new(64);
+        let mut rx = hub.receiver.resubscribe();
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = build(with);
+
+        for geometry in geometries {
+            let ctx = ExecutorContext::new(
+                Feature::from(geometry),
+                FEATURES_PORT.clone(),
+                Arc::new(serde_json::Map::new()),
+                Arc::new(StorageResolver::new()),
+                Arc::new(kvs::create_kv_store()),
+                hub.clone(),
+                Uri::for_test("file:///"),
+            );
+            processor.process(ctx, &fw).unwrap();
+        }
+
+        let mut warnings = Vec::new();
+        while let Ok(event) = rx.try_recv() {
+            if let Event::Log { level, message, .. } = event {
+                if level == Level::WARN {
+                    warnings.push(message);
+                }
+            }
+        }
+        warnings
+    }
+
+    /// An area on geographic coordinates is in square degrees and is not a
+    /// real-world area. Say so — once per CRS, not once per feature, so a
+    /// million-feature run does not emit a million lines.
+    ///
+    /// Uses EPSG:4269 (NAD83, degrees), which no other test in this module
+    /// touches: the dedup state is process-wide.
+    #[test]
+    fn an_angular_crs_is_warned_about_once_however_many_features() {
+        let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+        let warnings = warnings_for(
+            None,
+            vec![
+                square_in(angular.clone()),
+                square_in(angular.clone()),
+                square_in(angular),
+            ],
+        );
+        let about_units: Vec<_> = warnings.iter().filter(|w| w.contains("4269")).collect();
+        assert_eq!(
+            about_units.len(),
+            1,
+            "three features, one warning; got {warnings:?}"
+        );
+        assert!(about_units[0].contains("square degrees"), "{about_units:?}");
+    }
+
+    /// Warning is not refusing: the number is still measured and written.
+    ///
+    /// Uses EPSG:4326 (WGS 84, degrees), its own code for the reason above.
+    #[test]
+    fn an_angular_crs_still_produces_a_number() {
+        let g = square_in(CoordinateFrame::Crs(EpsgCode::from(4326)));
+        let out = run(&mut *build(None), &Feature::from(g));
+        assert_eq!(area_of(&out, "area"), 1.0);
+    }
+
+    /// A projected CRS is measuring in metres, so there is nothing to say.
+    ///
+    /// Uses EPSG:6677 (JGD2011 / Japan Plane Rectangular CS IX, metres).
+    #[test]
+    fn a_projected_crs_is_not_warned_about() {
+        let warnings = warnings_for(
+            None,
+            vec![square_in(CoordinateFrame::Crs(EpsgCode::from(6677)))],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+    }
+
+    /// Euclidean coordinates are plain lengths, so there is nothing to say
+    /// about them either — and this is the common case, so it must stay quiet.
+    #[test]
+    fn euclidean_coordinates_are_not_warned_about() {
+        let warnings = warnings_for(None, vec![square_in(CoordinateFrame::Euclidean)]);
+        assert!(warnings.is_empty(), "{warnings:?}");
+    }
+
+    /// A sum across frames adds square metres to square degrees. The area is
+    /// still returned — refusing would need a new rejected port — but the user
+    /// is told once.
+    ///
+    /// The only test that may assert on the mixed-frame warning: it is keyed by
+    /// a single process-wide flag, so a second such test would race with this
+    /// one. It uses EPSG:3857, again its own code.
+    #[test]
+    fn mixed_frames_are_warned_about_once() {
+        let member = |frame| match square_in(frame) {
+            Geometry::Euclidean3D(g) => g,
+            _ => unreachable!("square_in builds a 3D polygon"),
+        };
+        let mixed = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            reearth_flow_geometry::collection::Collection3D::new(vec![
+                member(CoordinateFrame::Euclidean),
+                member(CoordinateFrame::Crs(EpsgCode::from(3857))),
+            ]),
+        ));
+
+        let warnings = warnings_for(None, vec![mixed]);
+        let about_mixing: Vec<_> = warnings
+            .iter()
+            .filter(|w| w.contains("different coordinate frames"))
+            .collect();
+        assert_eq!(about_mixing.len(), 1, "{warnings:?}");
     }
 }
