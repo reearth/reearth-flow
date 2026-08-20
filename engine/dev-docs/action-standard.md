@@ -6,7 +6,11 @@ Reference for authoring and reviewing Re:Earth Flow actions. Covers naming, desc
 
 ## How to use this standard
 
-This standard applies to both **authoring new actions** and **reviewing existing ones**. Use §7 as a self-check before submitting a new action, and as a review checklist during audits.
+This standard applies to both **authoring new actions** and **reviewing existing ones**. Use §8 as a self-check before submitting a new action, and as a review checklist during audits.
+
+**Who the design is judged for.** Judge every action as a general-purpose geospatial tool, for a user who has never seen the project that motivated it. An action built for one dataset or one pipeline is still held to that bar. Low or zero usage in existing workflows is a reason to look *harder* — it often means the action is hard to understand or does not do the general thing its name promises — never a reason to skip the review.
+
+**Prior art.** For anything with an established equivalent — a geometry operation, a file format's options, a well-known transformation — read how comparable tooling exposes it before designing names, parameters, or ports. That includes open specifications and implementations (OGC Simple Features, PostGIS, JTS, GDAL/OGR) and the commercial GIS tools users arrive from. The point is not to copy: it is that a user who already knows the operation should recognise ours, and that a difference should be a deliberate improvement rather than an accident. See §2 for how to cite prior art in text that ships.
 
 **The schema is generated — never edit it directly.** All action properties (name, description, parameters, ports, categories, tags) are defined in the Rust implementation. After any change, regenerate the schema:
 
@@ -17,7 +21,7 @@ cargo make schema-translated  # regenerates per-language JSON files
 
 **Verify against the implementation before writing — do this first, every time.** A title or description must describe what the code actually does, not what the parameter name suggests or what a prior description claimed. Polishing text for clarity without reading the code produces confident, wrong documentation. Before adding or editing any title or description, read the factory's `build`, the parameter struct, and the action's execution path (`process`/`start`/`run`), and confirm each of the following:
 
-- **Every parameter is actually read and applied.** A parameter accepted but never used (e.g. stored into a field with a `_` prefix and never referenced) is a bug, not something to document — flag it for removal rather than writing a description for behavior that does not exist.
+- **Every parameter is actually read and applied.** A parameter accepted but never used (e.g. stored into a field with a `_` prefix and never referenced) is a bug, not something to document — flag it for removal rather than writing a description for behavior that does not exist. Check for *forwarding*: a parameter copied into another struct in `build` and never read from there is still unused. And check **which build it is unused in** — a `cfg`-gated action can read a parameter in one geometry world and ignore it in the other, so establish whether it is dead everywhere, dead only in the shipped build (a migration artifact — leave it, it belongs to the migration's own cleanup), or dead only in the legacy build (live, keep it). `schema/actions.json` is generated from the default build, so anything appearing there is what users see today.
 - **Enum variants behave as their names and descriptions claim** — trace each variant to its branch in the code.
 - **Defaults, fallbacks, and "when omitted" behavior match the text** — confirm the actual default value and the code path taken when the parameter is absent.
 - **The description reflects real behavior** — what the action consumes, what it emits, and any side effects — including where inputs come from (e.g. a path read from the incoming feature vs. a fixed parameter).
@@ -64,6 +68,8 @@ Verb-first, present tense, third-person singular — start directly with the ver
 - End every sentence with a period — required for consistent rendering across all supported languages
 - Describes what the action does to data, not how it is implemented
 - Does not mention port names or internal implementation details
+
+**Naming other software.** Doc comments on factories, parameters and enum variants are compiled into `actions.json` and shipped to users in the UI and the generated docs — they are product copy, not code comments. Where naming prior art genuinely helps a reader, cite an open specification or implementation (OGC Simple Features, PostGIS, JTS, GDAL/OGR). Do not name a commercial product: describing our behaviour as matching, differing from, or replacing a named vendor's tool reads as a comparative claim we do not want to make or maintain, and it dates badly. Research those tools freely (§"Prior art") — just do not put their names in text that ships. This applies to `///` comments in particular, since it is easy to forget they are user-facing.
 
 | ✗ | ✓ |
 |---|---|
@@ -128,6 +134,8 @@ enum AreaType {
 
 A plain `enum` with no doc comments produces no per-variant descriptions and should be converted to this pattern. A comprehensive property `description` that names and explains all variants is acceptable only when the enum has two or three self-describing values and the description remains one sentence.
 
+**Keep mode enums inside a property — never make the parameter block itself a `oneOf`.** A Rust enum used *as the whole parameter type* (`#[serde(tag = "...")] enum FooParam`) generates a schema whose root is a `oneOf` rather than an object with `properties`. Translation cannot reach it: `apply_parameter_i18n` patches root `properties`, `definitions[*].properties`, and `definitions[*].oneOf` variants only, so an action shaped this way ships **untranslatable** titles and descriptions in every language, permanently. Give the action a normal parameter object with the enum as one property instead. When a mode needs its own sub-parameters, use a `#[serde(tag = "type")]` enum *as a property value* — the variants carry their own fields, the user only sees the fields belonging to the mode they chose, and the whole thing still translates.
+
 **Single-variant enums** are a design smell — they present the user with a parameter that has no real choice. If only one variant exists and no others are planned, remove the parameter and hard-code the behavior. If additional variants are planned but not yet implemented, keep the `oneOf` and note the intent in a code comment (`// TODO: add X, Y variants`).
 
 ### 3.5 Parameter usability
@@ -175,9 +183,23 @@ Use these names when the semantics match. Only use custom names when the action 
 
 Every feature received must be accounted for — either emitted to a named output port, or intentionally consumed to produce an output (as in merge and join operations). No feature may be silently discarded. Actions with no output ports (sinks/writers) are exempt; consuming a feature is their purpose.
 
-- If an action can fail to process a feature (parse error, missing attribute, invalid geometry) it must have a `rejected` output port for those features
 - Validators and conditional routers must route every feature to a named port
 - Actions with multiple semantically distinct outputs should use descriptive names rather than `features`
+
+**Failure versus no-op — get this right before adding a `rejected` port.**
+
+Ask: did the action *attempt* the transformation and fail, or was there simply *nothing to do*? Only the first is `rejected`.
+
+| Situation | Port |
+|---|---|
+| Input was malformed — unparseable geometry, undecodable payload, a value of the wrong type | `rejected` |
+| The action had nothing to act on — no geometry where geometry is optional, an absent attribute, a type the action legitimately leaves alone | pass through on `features` |
+
+A missing attribute is **usually a no-op, not a failure.** Treating it as a failure is the most common way this rule gets broken, because "the attribute wasn't there" sounds like an error when it is normally just an absence.
+
+**Check the paired producer.** Extractor/Replacer, Splitter/Merger and similar pairs only work if both halves agree. If the producer conditionally skips writing its attribute, the consumer *must* tolerate its absence — a `rejected` port on the consumer silently deletes the features the producer deliberately left alone.
+
+**Adding a port is a data-loss change.** A new port is unwired in every existing workflow, so features newly routed to it are dropped on the floor rather than reaching the destination they used to. Before adding one: grep the fixtures for the action name to size the blast radius, and run `cargo make test-qc` afterwards. Silent loss shows up as a downstream count that quietly drops, not as a test error at the changed node.
 
 ---
 
@@ -215,20 +237,77 @@ New tags can be proposed when an established term does not adequately describe a
 
 ---
 
-## 7. Review Checklist
+## 7. Functionality and exposure
+
+Every other section in this standard asks whether an action is *described* correctly. This one asks whether it *works*, and whether it should be offered at all. An action can satisfy every rule above — clean name, accurate parameters, complete ports — and still be broken or inappropriate to ship, so these are checked separately.
+
+### 7.1 Does it run?
+
+Confirm the action executes in the build that ships. Two ways it can fail to:
+
+- **Trait defaults.** `Processor::process` and `Source::start` have defaults that return ``Err("`{name}` is not yet ported to new geometry")``. An action whose only implementation is under `#[cfg(not(feature = "new-geometry"))]` therefore fails on **every feature** in the shipped build, while looking complete in the source.
+- **Deliberate stubs.** A `process` that returns `Err` unconditionally — typically an action superseded by another — is a removal that has not happened yet, not a working action.
+
+Check by confirming an implementation exists for the default feature set, not merely that one exists.
+
+### 7.2 Should it be exposed?
+
+`server/api/internal/app/base_actions.go` gates which actions appear in the palette. It is a separate file in a separate language from the action itself, so the two drift silently. An action must not be listed there unless it runs per §7.1.
+
+This cuts both ways, and both have happened:
+
+- Promoting an action without an engine-side review ships whatever state its metadata was in.
+- Leaving a listed action to rot means the palette advertises something that always fails.
+
+When an action cannot run, removing it from `base_actions.go` is the immediate mitigation — cheap, reversible, and independent of whatever fix is pending.
+
+### 7.3 Disabled behaviour must not stay documented
+
+If behaviour is turned off — a code path commented out, a branch rerouted, functions kept only under `#[allow(dead_code)]` — then the parameters, enum variants, and description advertising it are now false and must go with it. "Temporarily disabled" is not a state the user-facing surface can represent: from the outside there is no difference between a feature that is off and one that never worked.
+
+Silencing a warning is not a substitute for either finishing or removing the work. `#[allow(dead_code)]` on an action code path is a review flag: it means something is unreachable, and unreachable code with live documentation is exactly how the surface starts lying.
+
+---
+
+## 8. Review Checklist
 
 For each action, flag anything that violates the rules above. Only log issues — skip clean items.
 
 **First, verify against the implementation** (see "How to use this standard"): read the factory and execution path and confirm every parameter is actually used, enum variants and defaults behave as documented, and each title/description matches real behavior. Accuracy is checked before style — a well-worded but incorrect description is a defect, and a parameter that is accepted but never applied is flagged for removal, not documented.
 
+**Check that it runs before reviewing how it reads** (§7.1). Polishing the description of an action that cannot execute is wasted work, and it makes a broken action look reviewed.
+
 ```
 ActionName
+  runs:    [only if it does NOT run in the shipped build, or is listed in
+              base_actions.go while broken (§7)]
   name:    [proposed space-case name if different]
   desc:    [issue if any]
   params:  [list issues by param name; flag if count exceeds 8 without justification (§3.5)]
-  ports:   [list issues by port name]
+  ports:   [failure-vs-no-op errors (§4.3); missing or unemitted ports]
   cat:     [issue if wrong category]
   tags:    [missing tags | irrelevant tags]
 ```
 
 If an action is clean on all dimensions, write: `ActionName — OK`
+
+**Deferred findings need a stated trigger.** When an item is parked because something else blocks it, record what would unblock it, in the finding itself — "revisit when X is ungated", not "deferred for now". A deferral whose precondition silently expires is indistinguishable from a finding nobody wrote down. This has already cost us: the reprojector removal was correctly deferred while its replacement was gated out of the shipped build, the gate later lifted, and nothing reopened the item.
+
+---
+
+## Changelog
+
+Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-20
+
+- **§4.3 corrected — this reverses previous guidance.** The old wording listed "missing attribute" as a `rejected` case. That is wrong: a missing attribute is normally a no-op that must pass through, and the failure-versus-no-op distinction now has its own subsection. Actions reviewed before this date may carry a `rejected` port added on the old advice; those are worth re-checking, particularly either half of a producer/consumer pair.
+- **§7 added** (Functionality and exposure), covering whether an action runs in the shipped build, whether `base_actions.go` should list it, and the rule that disabled behaviour cannot stay documented. No earlier review checked these, so every action reviewed before this date is unverified on them. The review checklist gains a `runs:` line.
+- **§3.4** — added the prohibition on making a parameter block a root-level `oneOf`, which permanently blocks translation. Existing actions shaped this way need restructuring, not just re-wording.
+- **§"How to use"** — the unused-parameter rule now requires establishing *which* geometry world a parameter is dead in, and catching forwarding-then-dropped parameters.
+- **§"How to use"** — added the audience statement and the prior-art requirement.
+- **§2** — added the rule against naming commercial products in text that ships.
+
+### 2026-07-23
+
+- Added the ACCURACY-BEFORE-STYLE clause in §"How to use" (PR #2280). Introduced mid-audit: the Debug, Merge, Filter and Output batches were reviewed before it existed and were never re-checked against it.
