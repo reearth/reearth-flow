@@ -6,9 +6,30 @@ type NodeExecution implements Node {
   createdAt: DateTime
   startedAt: DateTime
   completedAt: DateTime
+  diagnostics: [Diagnostic!]
+  """
+  Successfully processed feature count. Populated for processor nodes on
+  terminal status; sink/source nodes and non-terminal executions report
+  null, not 0 — don't infer node kind from nullness alone.
+  """
+  featuresProcessed: Int
+  """
+  Successfully written feature count. Populated for sink nodes on terminal
+  status; processor/source nodes and non-terminal executions report null.
+  """
+  featuresWritten: Int
+  """
+  Feature count emitted during finish() — meaningful for accumulating
+  processor actions that flush at finish rather than per-feature. Populated
+  for processor nodes on terminal status; otherwise null.
+  """
+  finishFeatureCount: Int
 }
 
 enum NodeStatus {
+  """
+  Never emitted by the runtime; retained for API compatibility.
+  """
   PENDING
   STARTING
   PROCESSING
@@ -22,4 +43,5 @@ extend type Subscription {
 
 extend type Query {
   nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
+  nodeExecutions(jobId: ID!): [NodeExecution!]
 }
