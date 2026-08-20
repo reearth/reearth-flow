@@ -148,7 +148,7 @@ export const useQueries = () => {
       projectId,
       snapshotNumber,
     });
-    const updates = data?.projectNamedSnapshot?.updates;
+    const updates = data?.projectSnapshot?.updates;
     if (!updates?.length) return undefined;
     return new Uint8Array(updates);
   };

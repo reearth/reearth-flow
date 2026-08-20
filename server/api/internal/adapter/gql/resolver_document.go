@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"errors"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -21,12 +22,32 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 	}, nil
 }
 
-func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error) {
-	history, err := usecases(ctx).Websocket.GetHistoryByVersion(ctx, string(projectId), version)
+func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version *int, snapshotNumber *int) (*gqlmodel.ProjectSnapshot, error) {
+	if (version == nil) == (snapshotNumber == nil) {
+		return nil, errors.New("pass exactly one of version or snapshotNumber")
+	}
+
+	if snapshotNumber != nil {
+		state, err := usecases(ctx).Websocket.GetSnapshotState(ctx, string(projectId), *snapshotNumber)
+		if err != nil {
+			return nil, err
+		}
+		if state == nil {
+			return nil, interfaces.ErrSnapshotNotFound
+		}
+		// Version stays unset: a snapshot carries no update-log clock, and a
+		// fabricated one passed to rollbackProject would prune real history.
+		num := int(state.SnapshotID)
+		return &gqlmodel.ProjectSnapshot{
+			SnapshotNumber: &num,
+			Updates:        state.Updates,
+		}, nil
+	}
+
+	history, err := usecases(ctx).Websocket.GetHistoryByVersion(ctx, string(projectId), *version)
 	if err != nil {
 		return nil, err
 	}
-
 	return &gqlmodel.ProjectSnapshot{
 		Updates:   history.Updates,
 		Version:   &history.Version,
@@ -49,25 +70,6 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 	}
 
 	return nodes, nil
-}
-
-// ProjectNamedSnapshot reads one snapshot's state by its per-room snapshot number.
-func (r *queryResolver) ProjectNamedSnapshot(ctx context.Context, projectId gqlmodel.ID, snapshotNumber int) (*gqlmodel.ProjectSnapshot, error) {
-	state, err := usecases(ctx).Websocket.GetSnapshotState(ctx, string(projectId), snapshotNumber)
-	if err != nil {
-		return nil, err
-	}
-	if state == nil {
-		return nil, interfaces.ErrSnapshotNotFound
-	}
-
-	// Version deliberately unset: a snapshot carries no update-log clock, and a
-	// fabricated one passed to rollbackProject would prune real history.
-	num := int(state.SnapshotID)
-	return &gqlmodel.ProjectSnapshot{
-		SnapshotNumber: &num,
-		Updates:        state.Updates,
-	}, nil
 }
 
 func (r *queryResolver) ProjectNamedSnapshots(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error) {

@@ -512,7 +512,7 @@ export type GetProjectNamedSnapshotQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectNamedSnapshotQuery = { projectNamedSnapshot: { snapshotNumber: number | null, updates: Array<number> } };
+export type GetProjectNamedSnapshotQuery = { projectSnapshot: { snapshotNumber: number | null, updates: Array<number> } };
 
 export type SaveNamedSnapshotMutationVariables = Exact<{
   projectId: string;
@@ -1373,7 +1373,7 @@ export const GetProjectNamedSnapshotsDocument = gql`
     `;
 export const GetProjectNamedSnapshotDocument = gql`
     query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
-  projectNamedSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
+  projectSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
     snapshotNumber
     updates
   }

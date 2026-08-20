@@ -16,7 +16,6 @@ type ProjectDocument implements Node {
 }
 
 # Project Snapshot history vector
-# Set either version (clock-addressed) or snapshotNumber (snapshot-addressed).
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
@@ -54,7 +53,11 @@ extend type Mutation {
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
-  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  # Pass exactly one of version or snapshotNumber.
+  projectSnapshot(
+    projectId: ID!
+    version: Int
+    snapshotNumber: Int
+  ): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
-  projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): ProjectSnapshot!
 }

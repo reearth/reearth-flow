@@ -32,7 +32,7 @@ query GetProjectNamedSnapshots($projectId: ID!) {
 }
 
 query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
-  projectNamedSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
+  projectSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
     snapshotNumber
     updates
   }
