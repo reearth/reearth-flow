@@ -1,3 +1,9 @@
+# The five `geometry.area_*` codes below are raised only through `ctx.warn()`
+# (`runtime/action-processor/src/geometry/area_calculator.rs`), which ignores
+# `default_disposition` entirely — only `report()` branches on it, and this
+# action never calls `report()`. `warn_drop` is simply the least-severe value
+# the enum offers, not a request to drop the feature; it is inert here, the
+# same as it is for `raster.toml`/`gltf.toml`.
 [[codes]]
 code = "geometry.area_not_measurable"
 category = "geometry"
@@ -10,14 +16,14 @@ code = "geometry.area_angular_crs"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "area is in square degrees, not a real-world area"
-help = "The coordinate system is angular (degrees); reproject to a projected CRS before measuring area."
+help = "Check your input geometry's coordinate system and reproject it to a projected CRS; a geographic CRS measures area in degrees, not a real-world unit."
 
 [[codes]]
 code = "geometry.area_unknown_unit"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "cannot establish the coordinate system's unit, so the area's unit is unknown"
-help = "Check the geometry's CRS definition; Area Calculator could not determine whether it measures in degrees or a linear unit."
+help = "Check your input geometry's coordinate system; Area Calculator could not determine whether it measures in a linear or an angular unit."
 
 [[codes]]
 code = "geometry.area_mixed_frames"

@@ -67,7 +67,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "area is in square degrees, not a real-world area",
-    "help": "The coordinate system is angular (degrees); reproject to a projected CRS before measuring area."
+    "help": "Check your input geometry's coordinate system and reproject it to a projected CRS; a geographic CRS measures area in degrees, not a real-world unit."
   },
   {
     "code": "geometry.area_mixed_frames",
@@ -95,7 +95,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "cannot establish the coordinate system's unit, so the area's unit is unknown",
-    "help": "Check the geometry's CRS definition; Area Calculator could not determine whether it measures in degrees or a linear unit."
+    "help": "Check your input geometry's coordinate system; Area Calculator could not determine whether it measures in a linear or an angular unit."
   },
   {
     "code": "gltf.zero_face_solid",
