@@ -46,6 +46,20 @@ func histogramSum(rm metricdata.ResourceMetrics, name string) (int64, bool) {
 	return 0, false
 }
 
+func float64HistogramSum(rm metricdata.ResourceMetrics, name string) (float64, bool) {
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != name {
+				continue
+			}
+			if data, ok := m.Data.(metricdata.Histogram[float64]); ok && len(data.DataPoints) > 0 {
+				return data.DataPoints[0].Sum, true
+			}
+		}
+	}
+	return 0, false
+}
+
 func TestNewInstrumentsGaugesReflectCallbacks(t *testing.T) {
 	reader := sdkmetric.NewManualReader()
 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
@@ -152,21 +166,30 @@ func TestRecordRequestZeroCallsAreRecordedNotSkipped(t *testing.T) {
 	require.True(t, ok, "%s data point missing for zero-call request", InstrumentRedisCommands)
 	assert.Equal(t, int64(0), sum)
 
-	durationSum, ok := func() (float64, bool) {
-		for _, sm := range rm.ScopeMetrics {
-			for _, m := range sm.Metrics {
-				if m.Name != InstrumentRequestDuration {
-					continue
-				}
-				if data, ok := m.Data.(metricdata.Histogram[float64]); ok && len(data.DataPoints) > 0 {
-					return data.DataPoints[0].Sum, true
-				}
-			}
-		}
-		return 0, false
-	}()
+	durationSum, ok := float64HistogramSum(rm, InstrumentRequestDuration)
 	require.True(t, ok)
 	assert.InDelta(t, 12, durationSum, 0.001)
+}
+
+// Sub-millisecond durations must not be floored to zero; the histogram
+// exists to judge hot paths that run in the low microseconds.
+func TestRecordRequestSubMillisecondDurationIsNotFlooredToZero(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	defer func() { assert.NoError(t, mp.Shutdown(context.Background())) }()
+
+	in, err := NewInstruments(mp, GaugeCallbacks{})
+	require.NoError(t, err)
+
+	ctx := WithRequestCounters(context.Background())
+	in.RecordRequest(ctx, "GetProject", 750*time.Nanosecond)
+
+	rm := collect(t, reader)
+
+	durationSum, ok := float64HistogramSum(rm, InstrumentRequestDuration)
+	require.True(t, ok)
+	assert.NotZero(t, durationSum)
+	assert.InDelta(t, 0.00075, durationSum, 0.0000001)
 }
 
 func TestRecordRequestCountsCallsMade(t *testing.T) {

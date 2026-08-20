@@ -37,6 +37,13 @@ const (
 	AttrOperation = "graphql.operation"
 )
 
+// requestDurationBoundaries (ms) start below 1us so the hot paths this
+// histogram exists to judge (sub-ms) land in non-zero buckets, not just the
+// default SDK boundaries meant for whole-millisecond web request latency.
+var requestDurationBoundaries = []float64{
+	0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000,
+}
+
 // Instruments holds the deliberately small set of instruments the API
 // server records. Operation name is the only per-request label used, to
 // keep cardinality bounded.
@@ -61,6 +68,7 @@ func NewInstruments(mp MeterProvider, gauges GaugeCallbacks) (*Instruments, erro
 		InstrumentRequestDuration,
 		metric.WithUnit("ms"),
 		metric.WithDescription("GraphQL request latency by operation name"),
+		metric.WithExplicitBucketBoundaries(requestDurationBoundaries...),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("otel: failed to create %s: %w", InstrumentRequestDuration, err)
@@ -195,7 +203,7 @@ func (in *Instruments) RecordRequest(ctx context.Context, operation string, dura
 		return
 	}
 	attrs := metric.WithAttributes(attribute.String(AttrOperation, operation))
-	in.RequestDuration.Record(ctx, float64(duration.Milliseconds()), attrs)
+	in.RequestDuration.Record(ctx, float64(duration)/float64(time.Millisecond), attrs)
 
 	accountsCalls, redisCommands := requestCountersFrom(ctx)
 	in.AccountsCalls.Record(ctx, accountsCalls, attrs)

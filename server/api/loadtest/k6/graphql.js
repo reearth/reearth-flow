@@ -43,7 +43,7 @@ const headers = {
   ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
 };
 
-const PAGINATION = { first: 20 };
+const PAGINATION = { page: 1, pageSize: 20 };
 
 const QUERIES = {
   ListProjects: `
