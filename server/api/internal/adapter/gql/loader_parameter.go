@@ -37,6 +37,30 @@ func (c *ParameterLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlm
 	return parameters, nil
 }
 
+// FindByProject fetches parameters for a single project, preserving the
+// not-found/denied error contract. Used by the root Query.parameters field,
+// which unlike the Project.parameters field resolver has no already-authorized
+// parent to fall back on.
+func (c *ParameterLoader) FindByProject(ctx context.Context, pID gqlmodel.ID) ([]*gqlmodel.Parameter, error) {
+	tid, err := gqlmodel.ToID[id.Project](pID)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.usecase.FetchByProject(ctx, tid)
+	if err != nil {
+		return nil, err
+	}
+
+	var params []*gqlmodel.Parameter = nil
+	if res != nil {
+		params = make([]*gqlmodel.Parameter, 0, len(*res))
+		for _, param := range *res {
+			params = append(params, gqlmodel.ToParameter(param))
+		}
+	}
+	return params, nil
+}
+
 // FetchByProjects is the batch fetch function for ParametersByProjectLoader.
 // It preserves alignment with keys: every key gets an entry (empty slice if not
 // found or not visible to the caller), so dataloaden's position-based matching stays correct.
