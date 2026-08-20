@@ -47,8 +47,8 @@ pub struct BufferStyle {
     /// The signed offset distance in frame units; positive expands, negative
     /// contracts. A non-finite distance buffers to nothing.
     pub distance: f64,
-    /// The angular step, in radians, of round caps, joins, and discs. Clamped
-    /// to `[MIN_ARC_STEP, MAX_ARC_STEP]`.
+    /// The angular step, in radians, of round caps, joins, and discs. Values
+    /// outside `[MIN_ARC_STEP, MAX_ARC_STEP]` are clamped when used.
     pub arc_step: f64,
     /// The planarity tolerance a 3D face must satisfy. Unused in 2D.
     pub planarity: PlanarityThreshold,
@@ -117,6 +117,9 @@ pub fn buffer_2d(geometry: &Euclidean2DGeometry, style: &BufferStyle) -> Result<
 /// frame. Errs with [`PredicateError::NotPlanar`] when the face is not planar
 /// within `style.planarity` or has no fitted plane.
 pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec<Polygon3D>> {
+    if !style.distance.is_finite() {
+        return Ok(Vec::new());
+    }
     let frame = polygon.frame();
     let exterior = polygon.exterior();
     let interiors: Vec<&[[f64; 3]]> = polygon.interiors().collect();
