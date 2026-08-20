@@ -6,9 +6,10 @@ use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
 use reearth_flow_worker::pubsub::Publisher;
+use reearth_flow_worker::types::diagnostic_event::{DiagnosticEvent, ENABLE_DIAGNOSTICS};
 use reearth_flow_worker::types::log_stream_event::LogStreamEvent;
 use reearth_flow_worker::types::node_status_event::{
-    NodeStatus as PublishNodeStatus, NodeStatusEvent,
+    NodeMetrics as PublishNodeMetrics, NodeStatus as PublishNodeStatus, NodeStatusEvent,
 };
 
 #[derive(Debug)]
@@ -71,6 +72,21 @@ impl<P: Publisher> EventHandler<P> {
             publisher,
         }
     }
+
+    /// Takes the gate as an explicit `bool` rather than reading process-global `ENABLE_DIAGNOSTICS` directly, so tests can exercise both branches without racing each other.
+    async fn handle_diagnostic(
+        &self,
+        enabled: bool,
+        diagnostic: &reearth_flow_diagnostics::Diagnostic,
+    ) {
+        if !enabled {
+            return;
+        }
+        let diagnostic_event = DiagnosticEvent::new(self.workflow_id, self.job_id, diagnostic);
+        if let Err(e) = self.publisher.publish(diagnostic_event).await {
+            tracing::error!("Failed to publish diagnostic event: {}", e);
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -99,6 +115,7 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 node_handle,
                 status,
                 feature_id,
+                metrics,
             } => {
                 tracing::info!(
                     "SENDING NODE STATUS EVENT: node_id={}, status={:?}, feature_id={:?}",
@@ -120,12 +137,19 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     }
                 };
 
+                let publish_metrics = metrics.map(|m| PublishNodeMetrics {
+                    features_processed: m.features_processed,
+                    features_written: m.features_written,
+                    finish_feature_count: m.finish_feature_count,
+                });
+
                 let node_status_event = NodeStatusEvent::new(
                     self.workflow_id,
                     self.job_id,
                     node_handle.id.to_string(),
                     publish_status,
                     *feature_id,
+                    publish_metrics,
                 );
 
                 match self.publisher.publish(node_status_event).await {
@@ -146,6 +170,10 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     }
                 }
             }
+            reearth_flow_runtime::event::Event::Diagnostic(diagnostic) => {
+                self.handle_diagnostic(*ENABLE_DIAGNOSTICS, diagnostic)
+                    .await;
+            }
             _ => {}
         }
     }
@@ -154,5 +182,96 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
         tracing::info!("EventHandler shutting down. Closing publisher...");
         self.publisher.shutdown().await;
         tracing::info!("Publisher shutdown complete");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+    use reearth_flow_runtime::event::EventHandler as RuntimeEventHandler;
+    use reearth_flow_worker::pubsub::EncodableMessage;
+
+    use super::*;
+
+    #[derive(Debug, Default, Clone)]
+    struct CountingPublisher {
+        count: Arc<AtomicUsize>,
+    }
+
+    impl CountingPublisher {
+        fn count(&self) -> usize {
+            self.count.load(Ordering::SeqCst)
+        }
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("counting publisher error")]
+    struct CountingPublisherError;
+
+    #[async_trait::async_trait]
+    impl Publisher for CountingPublisher {
+        type Error = CountingPublisherError;
+
+        async fn publish<M: EncodableMessage>(&self, _message: M) -> Result<(), Self::Error> {
+            self.count.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+
+        async fn shutdown(&self) {}
+    }
+
+    fn sample_diagnostic() -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry),
+            Some("node-1".to_string()),
+            Some("Cesium 3D Tiles Writer".to_string()),
+            None,
+        )
+    }
+
+    #[tokio::test]
+    async fn handle_diagnostic_publishes_nothing_when_disabled() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+
+        handler.handle_diagnostic(false, &sample_diagnostic()).await;
+
+        assert_eq!(publisher.count(), 0);
+    }
+
+    #[tokio::test]
+    async fn handle_diagnostic_publishes_once_when_enabled() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+
+        handler.handle_diagnostic(true, &sample_diagnostic()).await;
+
+        assert_eq!(publisher.count(), 1);
+    }
+
+    /// `FLOW_WORKER_ENABLE_DIAGNOSTICS` is unset in this process, so `ENABLE_DIAGNOSTICS` reads `false`.
+    #[tokio::test]
+    async fn on_event_diagnostic_publishes_nothing_with_flag_unset_by_default() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+        let event = reearth_flow_runtime::event::Event::Diagnostic(Arc::new(sample_diagnostic()));
+
+        handler.on_event(&event).await;
+
+        assert_eq!(publisher.count(), 0);
+        assert!(!*ENABLE_DIAGNOSTICS, "flag must default to false");
+    }
+
+    #[tokio::test]
+    async fn on_event_non_diagnostic_events_are_unaffected_by_the_new_arm() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+        let event = reearth_flow_runtime::event::Event::SourceFlushed;
+
+        handler.on_event(&event).await;
+
+        assert_eq!(publisher.count(), 0);
     }
 }
