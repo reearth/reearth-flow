@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -283,6 +284,66 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 			t.Fatal("Log monitoring loop did not stop when job was completed")
 		}
 	})
+}
+
+// TestLogInteractor_SecondSubscriberDoesNotStartSecondPoller pins the fix: with
+// a container built once at boot, the same LogInteractor (and its watchers map)
+// is shared by every request. Two subscribers on the same job must collapse
+// onto one background poller, not each start their own.
+func TestLogInteractor_SecondSubscriberDoesNotStartSecondPoller(t *testing.T) {
+	runningJob, err := job.New().
+		NewID().
+		Deployment(id.NewDeploymentID().Ref()).
+		Workspace(accountsid.NewWorkspaceID()).
+		Status(job.StatusRunning).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jobID := runningJob.ID()
+	redisMock := &mockLogGateway{}
+	jobRepoMock := &mockJobRepo{job: runningJob}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+		return true, nil
+	})
+
+	liInterface := NewLogInteractor(redisMock, jobRepoMock, mockPermissionCheckerTrue)
+	li, ok := liInterface.(*LogInteractor)
+	if !ok {
+		t.Fatal("expected *LogInteractor")
+	}
+
+	mockAuthInfo := &appx.AuthInfo{Token: "token"}
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
+	// Two "requests" subscribing to the same running job concurrently, as
+	// happens once every request shares the same interactor instance.
+	var wg sync.WaitGroup
+	chans := make([]chan *log.Log, 2)
+	for i := range chans {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			ch, err := liInterface.Subscribe(ctx, jobID)
+			assert.NoError(t, err)
+			chans[i] = ch
+		}(i)
+	}
+	wg.Wait()
+
+	li.mu.Lock()
+	watcherCount := len(li.watchers)
+	li.mu.Unlock()
+	assert.Equal(t, 1, watcherCount, "expected exactly one poller for the job, got %d", watcherCount)
+
+	li.Unsubscribe(jobID, chans[0])
+	li.Unsubscribe(jobID, chans[1])
+	li.stopWatchingLogs(jobID.String())
 }
 
 func TestLogInteractor_FlushFinalLogs(t *testing.T) {
