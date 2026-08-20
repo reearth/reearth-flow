@@ -52,6 +52,7 @@ graphs:
             type: flowExpr
             value: attributes["path"]
           extractTags:
+            - tran:Road
             - tran:TrafficArea
             - tran:AuxiliaryTrafficArea
 
@@ -90,6 +91,7 @@ graphs:
           layerName:
             type: flowExpr
             value: attributes["__citygml_feature_type"].split(":")[1]
+          skipUnexposedAttributes: true
           minZoom: 8
           maxZoom: 16
           extent: 65536
