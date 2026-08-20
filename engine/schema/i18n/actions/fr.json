@@ -403,19 +403,7 @@
     },
     {
       "name": "Boundary Extractor",
-      "description": "Extrait la limite des géométries. Pour les solides/maillages, retourne les surfaces limites ; pour les surfaces, retourne les arêtes limites ; pour les surfaces fermées, retourne une géométrie vide",
-      "parameterI18n": {
-        "": {
-          "title": "Boundary Extractor Parameters",
-          "description": "Configuration for extracting boundaries from geometries."
-        },
-        "exteriorOnly": {
-          "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)"
-        },
-        "keepEmptyBoundaries": {
-          "description": "Whether to keep features with empty boundaries (default: false)"
-        }
-      }
+      "description": "Remplace une géométrie par sa frontière : les extrémités d'une courbe, les anneaux de bord d'une surface, les coques englobantes d'un volume."
     },
     {
       "name": "Bounds Extractor",
