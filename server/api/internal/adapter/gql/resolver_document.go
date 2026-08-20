@@ -23,8 +23,11 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 }
 
 func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version *int, snapshotNumber *int) (*gqlmodel.ProjectSnapshot, error) {
-	if (version == nil) == (snapshotNumber == nil) {
-		return nil, errors.New("pass exactly one of version or snapshotNumber")
+	if version != nil && snapshotNumber != nil {
+		return nil, errors.New("pass only one of version or snapshotNumber, not both")
+	}
+	if version == nil && snapshotNumber == nil {
+		return nil, errors.New("pass either version or snapshotNumber")
 	}
 
 	if snapshotNumber != nil {
