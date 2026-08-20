@@ -681,4 +681,53 @@ mod tests {
             .collect();
         assert_eq!(about_mixing.len(), 1, "{warnings:?}");
     }
+
+    /// A container that skips an unmeasurable member is warned about once,
+    /// the same dedup shape as the EPSG and mixed-frame warnings — which is
+    /// why this is the only test allowed to assert on `WARNED_SKIPPED`.
+    ///
+    /// Both members sit in `CoordinateFrame::Euclidean`, not a CRS: that keeps
+    /// the geometry's frame at `One(Euclidean)`, which is silent on its own,
+    /// so the skip warning is the only one this assertion has to contend
+    /// with, and it does not consume an EPSG code another test depends on
+    /// owning. The measurement itself succeeds — `Collection3D`'s `Area` impl
+    /// sums measurable members via `filter_map(.ok())` — so this reaches the
+    /// `Ok` path where `warn_about_frames` runs, unlike a bare `Csg`, which
+    /// takes the `Err` path instead (see
+    /// `an_unmeasurable_geometry_still_gets_the_attribute`).
+    #[test]
+    fn a_skipped_member_is_warned_about_once() {
+        let solid = || {
+            Solid::from_exterior(
+                CoordinateFrame::Euclidean,
+                TriangularMesh3DData::from_parts(
+                    vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                    [0u32, 1, 2],
+                )
+                .unwrap(),
+            )
+        };
+        let csg = Csg::Union(Box::new(solid().into()), Box::new(solid().into()));
+        let member = |frame| match square_in(frame) {
+            Geometry::Euclidean3D(g) => g,
+            _ => unreachable!("square_in builds a 3D polygon"),
+        };
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            reearth_flow_geometry::collection::Collection3D::new(vec![
+                member(CoordinateFrame::Euclidean),
+                Euclidean3DGeometry::Csg(csg),
+            ]),
+        ));
+
+        let warnings = warnings_for(None, vec![g]);
+        let about_skip: Vec<_> = warnings
+            .iter()
+            .filter(|w| w.contains("cannot be measured"))
+            .collect();
+        assert_eq!(about_skip.len(), 1, "{warnings:?}");
+        assert!(
+            about_skip[0].contains("skipped 1 geometry part(s) that cannot be measured"),
+            "{about_skip:?}"
+        );
+    }
 }
