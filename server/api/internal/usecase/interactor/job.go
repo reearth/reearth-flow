@@ -69,6 +69,21 @@ func NewJob(
 	}
 }
 
+// ActivePollerCount returns the number of job-status polling loops
+// currently running. Safe to call from a metrics gauge callback: it only
+// reads current process state, never blocks on request-scoped data.
+func (i *Job) ActivePollerCount() int {
+	i.watchersMu.Lock()
+	defer i.watchersMu.Unlock()
+	return len(i.activeWatchers)
+}
+
+// MonitoredJobCount returns the number of jobs currently registered for
+// monitoring.
+func (i *Job) MonitoredJobCount() int {
+	return i.monitor.Count()
+}
+
 func (i *Job) getJobLock(jobID string) *sync.Mutex {
 	i.jobLocksMu.RLock()
 	if lock, exists := i.jobLocks[jobID]; exists {

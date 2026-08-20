@@ -30,14 +30,18 @@ import (
 type ExporterType string
 
 const (
-	ExporterTypeJaeger ExporterType = "jaeger"
-	ExporterTypeGCP    ExporterType = "gcp"
-	ExporterTypeOTLP   ExporterType = "otlp"
+	ExporterTypeJaeger     ExporterType = "jaeger"
+	ExporterTypeGCP        ExporterType = "gcp"
+	ExporterTypeOTLP       ExporterType = "otlp"
+	ExporterTypePrometheus ExporterType = "prometheus"
 )
 
 const (
-	gcpProjectIDAttribute = "gcp.project_id"
-	gcpCloudTraceEndpoint = "telemetry.googleapis.com:443"
+	gcpProjectIDAttribute     = "gcp.project_id"
+	gcpCloudTraceEndpoint     = "telemetry.googleapis.com:443"
+	gcpCloudMonitoringScope   = "https://www.googleapis.com/auth/monitoring.write"
+	defaultPrometheusAddr     = ":9464"
+	defaultMetricsExportEvery = 15 * time.Second
 
 	defaultServiceName = "reearth-flow-api"
 )
@@ -58,6 +62,21 @@ type Config struct {
 	SamplingRatio      float64
 
 	Enabled bool
+
+	// Metrics mirrors the tracing knobs above but drives the meter provider
+	// independently, so e.g. traces can go to gcp while metrics go to a local
+	// Prometheus scrape endpoint in dev/CI.
+	MetricsEnabled      bool
+	MetricsExporterType ExporterType
+	MetricsEndpoint     string
+
+	// PrometheusAddr is the listen address for the /metrics scrape endpoint,
+	// used only when MetricsExporterType is prometheus.
+	PrometheusAddr string
+
+	// MetricsExportInterval is the periodic reader export interval for push
+	// exporters (gcp, otlp). Ignored for prometheus, which is pull-based.
+	MetricsExportInterval time.Duration
 }
 
 func (c *Config) serviceName() string {
@@ -108,7 +127,7 @@ func InitTracer(ctx context.Context, cfg *Config) (TracerProvider, error) {
 		return nil, fmt.Errorf("otel: failed to create trace exporter: %w", err)
 	}
 
-	res, err := createResource(ctx, cfg)
+	res, err := createResource(ctx, cfg.serviceName(), cfg.GCPProjectID, cfg.ExporterType == ExporterTypeGCP)
 	if err != nil {
 		return nil, fmt.Errorf("otel: failed to create resource: %w", err)
 	}
@@ -141,18 +160,18 @@ func InitTracer(ctx context.Context, cfg *Config) (TracerProvider, error) {
 	return tp, nil
 }
 
-func createResource(ctx context.Context, cfg *Config) (*resource.Resource, error) {
+func createResource(ctx context.Context, serviceName, gcpProjectID string, isGCP bool) (*resource.Resource, error) {
 	opts := []resource.Option{
 		resource.WithTelemetrySDK(),
-		resource.WithAttributes(semconv.ServiceName(cfg.serviceName())),
+		resource.WithAttributes(semconv.ServiceName(serviceName)),
 	}
 
-	if cfg.ExporterType == ExporterTypeGCP {
+	if isGCP {
 		if gcpDetector := gcp.NewDetector(); gcpDetector != nil {
 			opts = append(opts, resource.WithDetectors(gcpDetector))
 		}
 
-		projectID := cfg.GCPProjectID
+		projectID := gcpProjectID
 		if projectID == "" && metadata.OnGCE() {
 			if id, err := metadata.ProjectIDWithContext(ctx); err == nil {
 				projectID = id
