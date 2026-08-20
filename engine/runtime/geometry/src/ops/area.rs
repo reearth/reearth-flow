@@ -101,18 +101,12 @@ pub(crate) fn polygon_3d_surface_area(p: &Polygon3D) -> f64 {
 }
 
 /// The area of one 2D triangle: half the magnitude of its edge cross product.
-// TODO(Task 3): consumed once `TriangularMesh2D`/`PolygonMesh2D` gain real
-// `Area` impls; unused until then.
-#[allow(dead_code)]
 pub(crate) fn triangle_area_2d(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> f64 {
     ((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])).abs() / 2.0
 }
 
 /// Sum `measure` over every triangle of an indexed 3D mesh, each rebuilt as its
 /// own three-vertex ring.
-// TODO(Task 3): consumed once `TriangularMesh3D`/`PolygonMesh3D` gain real
-// `Area` impls; unused until then.
-#[allow(dead_code)]
 pub(crate) fn triangle_area_sum_3d(
     vertices: &[[f64; 3]],
     triangles: impl Iterator<Item = [u32; 3]>,
@@ -341,5 +335,94 @@ mod tests {
         assert!(
             (c.projected_area().unwrap() - (2.0 + std::f64::consts::FRAC_1_SQRT_2)).abs() < 1e-12
         );
+    }
+
+    use crate::polygon_mesh::PolygonMesh3D;
+    use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
+
+    /// Two unit right triangles sharing an edge: together, one unit square.
+    #[test]
+    fn a_two_triangle_3d_mesh_sums_its_faces() {
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap();
+        assert_eq!(m.projected_area().unwrap(), 1.0);
+        assert_eq!(m.surface_area().unwrap(), 1.0);
+    }
+
+    /// A vertical triangle covers no ground but still has surface.
+    #[test]
+    fn a_vertical_triangle_projects_to_nothing() {
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 2.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        assert_eq!(m.projected_area().unwrap(), 0.0);
+        assert_eq!(m.surface_area().unwrap(), 2.0);
+    }
+
+    #[test]
+    fn a_2d_triangle_mesh_answers_both_questions_identically() {
+        let m = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [4.0, 0.0], [0.0, 3.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        assert_eq!(m.projected_area().unwrap(), 6.0);
+        assert_eq!(m.surface_area().unwrap(), 6.0);
+    }
+
+    /// A face's holes still subtract once the face is one of a mesh's, and two
+    /// faces sum. `PolygonMesh3D::from_polygons` is the constructor that
+    /// preserves interior rings; `from_parts` takes exterior index lists only.
+    #[test]
+    fn a_polygon_mesh_sums_its_faces_and_subtracts_their_holes() {
+        // A 4x4 face carrying a 2x2 hole: 12.
+        let holed = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [4.0, 4.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            vec![vec![
+                [1.0, 1.0, 0.0],
+                [3.0, 1.0, 0.0],
+                [3.0, 3.0, 0.0],
+                [1.0, 3.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ]],
+        );
+        let mesh =
+            PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, &[holed, unit_square_3d()])
+                .unwrap();
+        // 12 from the holed face, 1 from the unit square.
+        assert_eq!(mesh.projected_area().unwrap(), 13.0);
+        assert_eq!(mesh.surface_area().unwrap(), 13.0);
+    }
+
+    #[test]
+    fn an_empty_mesh_measures_zero() {
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            Vec::<[f64; 3]>::new(),
+            Vec::<u32>::new(),
+        )
+        .unwrap();
+        assert_eq!(m.projected_area().unwrap(), 0.0);
+        assert_eq!(m.surface_area().unwrap(), 0.0);
     }
 }

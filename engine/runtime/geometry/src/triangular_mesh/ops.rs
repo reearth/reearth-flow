@@ -468,11 +468,54 @@ impl TriangularMesh3DData {
     }
 }
 
-// TODO(Task 3): sum the triangles.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(TriangularMesh2D: Area);
+use crate::ops::area::{
+    ring_projected_area, ring_surface_area, triangle_area_2d, triangle_area_sum_3d,
+};
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(TriangularMesh3D: Area);
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for TriangularMesh2D {
+    /// Each triangle's area, summed. A 2D mesh has no elevation to slope, so
+    /// both measures agree.
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        let vertices = self.vertices();
+        Ok(self
+            .triangles()
+            .map(|t| {
+                triangle_area_2d(
+                    vertices[t[0] as usize],
+                    vertices[t[1] as usize],
+                    vertices[t[2] as usize],
+                )
+            })
+            .sum())
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        self.projected_area()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for TriangularMesh3D {
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(triangle_area_sum_3d(
+            self.vertices(),
+            self.triangles(),
+            ring_projected_area,
+        ))
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(triangle_area_sum_3d(
+            self.vertices(),
+            self.triangles(),
+            ring_surface_area,
+        ))
+    }
+}
 
 #[cfg(test)]
 mod tests {

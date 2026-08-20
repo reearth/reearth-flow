@@ -703,11 +703,42 @@ impl PolygonMesh3DData {
     }
 }
 
-// TODO(Task 3): sum the faces.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(PolygonMesh2D: Area);
+use crate::ops::area::{polygon_3d_projected_area, polygon_3d_surface_area};
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(PolygonMesh3D: Area);
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for PolygonMesh2D {
+    /// Each face's planar area, summed. A 2D mesh has no elevation to slope, so
+    /// both measures agree.
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_face_polygon(|face| total += face.area());
+        Ok(total)
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        self.projected_area()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for PolygonMesh3D {
+    /// Each face projected onto the XY plane and the projections summed, never
+    /// unioned — so two faces stacked one above the other count twice.
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_face_polygon(|face| total += polygon_3d_projected_area(&face));
+        Ok(total)
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_face_polygon(|face| total += polygon_3d_surface_area(&face));
+        Ok(total)
+    }
+}
 
 #[cfg(test)]
 mod tests {
