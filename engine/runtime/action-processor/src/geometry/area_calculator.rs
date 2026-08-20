@@ -5,9 +5,9 @@ use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{area2d::Area2D, area3d::Area3D};
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::coordinate::CoordinateFrame;
+use reearth_flow_geometry::coordinate::UnitKind;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::{area_report, frame_area_is_linear, Area, AreaFrame};
+use reearth_flow_geometry::ops::{area_report, Area, AreaFrame};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::{
@@ -175,23 +175,19 @@ impl AreaCalculator {
             AreaFrame::Mixed => {
                 ctx.warn(DiagnosticDraft::new(ErrorCode::GeometryAreaMixedFrames));
             }
-            AreaFrame::One(frame) => {
-                match frame {
-                    CoordinateFrame::Crs(_) => {}
-                    // Euclidean and tangent-plane coordinates are plain
-                    // lengths; there is nothing to warn about.
-                    _ => return,
-                };
-                match frame_area_is_linear(frame) {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        ctx.warn(DiagnosticDraft::new(ErrorCode::GeometryAreaAngularCrs));
-                    }
-                    Err(_) => {
-                        ctx.warn(DiagnosticDraft::new(ErrorCode::GeometryAreaUnknownUnit));
-                    }
+            // Matched exhaustively via `unit_kind()` rather than picking the
+            // EPSG code back out of `frame` with a wildcard fallback: a future
+            // `CoordinateFrame` variant is classified automatically instead of
+            // silently taking an early return and never being warned about.
+            AreaFrame::One(frame) => match frame.unit_kind() {
+                UnitKind::Linear => {}
+                UnitKind::Angular => {
+                    ctx.warn(DiagnosticDraft::new(ErrorCode::GeometryAreaAngularCrs));
                 }
-            }
+                UnitKind::Undeterminable(_) => {
+                    ctx.warn(DiagnosticDraft::new(ErrorCode::GeometryAreaUnknownUnit));
+                }
+            },
         }
     }
 }

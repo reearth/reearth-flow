@@ -233,19 +233,6 @@ fn walk_3d(geometry: &Euclidean3DGeometry, report: &mut AreaReport) {
     }
 }
 
-/// Whether an area measured in `frame` is in a linear unit squared — square
-/// metres, square feet — rather than square degrees, which means nothing.
-///
-/// `Err` when the CRS cannot be resolved at all: the caller should say it could
-/// not establish the unit rather than treat the area as meaningless.
-pub fn frame_area_is_linear(frame: &CoordinateFrame) -> crate::error::Result<bool> {
-    match frame {
-        // Bare Euclidean space and a tangent plane are both plain lengths.
-        CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => Ok(true),
-        CoordinateFrame::Crs(epsg) => crate::ops::crs_is_linear(*epsg),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -700,22 +687,12 @@ mod tests {
         );
     }
 
-    /// Euclidean and tangent-plane coordinates are plain lengths, so an area in
-    /// them is always in a linear unit squared.
-    #[test]
-    fn euclidean_coordinates_are_linear() {
-        assert!(frame_area_is_linear(&CoordinateFrame::Euclidean).unwrap());
-    }
-
-    /// A projected CRS measures in metres; a geographic one measures in
-    /// degrees, and an area in square degrees means nothing.
-    #[test]
-    fn a_projected_crs_is_linear_and_a_geographic_one_is_not() {
-        // JGD2011 / Japan Plane Rectangular CS IX: metres.
-        assert!(frame_area_is_linear(&CoordinateFrame::Crs(EpsgCode::from(6677))).unwrap());
-        // WGS 84: degrees.
-        assert!(!frame_area_is_linear(&CoordinateFrame::Crs(EpsgCode::from(4326))).unwrap());
-    }
+    // Frame unit classification (linear vs. angular vs. undeterminable) is
+    // exercised by `CoordinateFrame::unit_kind`'s own test,
+    // `unit_kind_classifies_frames` in `coordinate.rs` — it covers the same
+    // Euclidean/projected/geographic ground as this module used to via the
+    // now-removed `frame_area_is_linear`, plus the tangent-plane and
+    // undeterminable-CRS cases that were never tested here.
 
     /// `walk` must recurse through all three container kinds — a
     /// `GeometryCollection` holding a `Geometry::Euclidean3D(Collection3D)`

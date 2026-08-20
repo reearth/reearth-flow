@@ -20,7 +20,7 @@ pub mod split;
 pub mod triangulation;
 
 #[cfg(feature = "new-geometry")]
-pub use area::{area_report, frame_area_is_linear, Area, AreaFrame, AreaReport};
+pub use area::{area_report, Area, AreaFrame, AreaReport};
 pub use coerce::{Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
