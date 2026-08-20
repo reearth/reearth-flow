@@ -51,11 +51,35 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
+          extractTags:
+            - tran:TrafficArea
+            - tran:AuxiliaryTrafficArea
 
       - id: aef63371-49d5-484b-bdca-0e4f00520526
         name: TwoDimensionForcer
         type: action
         action: Two Dimension Forcer
+
+      - id: b410723e-979a-4eb1-9dde-4316ce3ee9d9
+        name: GeometryFilter
+        type: action
+        action: Geometry Filter
+        with:
+          filterType: geometryType
+
+      - id: 615752ac-2d0f-46c3-b3d3-e62400234b85
+        name: GeometrySplitter
+        type: action
+        action: Geometry Splitter
+
+      - id: eb7833a5-a11d-4481-9e80-8d4d64d0b7c8
+        name: Dissolver
+        type: action
+        action: Dissolver
+        with:
+          groupBy:
+            - __citygml_gml_id
+          attributeAccumulation: useOneFeature
 
       - id: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
         name: MVTWriter
@@ -94,8 +118,28 @@ graphs:
         to: aef63371-49d5-484b-bdca-0e4f00520526
         fromPort: features
         toPort: features
-      - id: 79682e87-8ded-46ab-9f3f-2e389150786b
+      - id: 83e293f8-a23d-4e5d-87b7-ea83924c7907
         from: aef63371-49d5-484b-bdca-0e4f00520526
-        to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
+        to: b410723e-979a-4eb1-9dde-4316ce3ee9d9
         fromPort: features
+        toPort: features
+      - id: b415d4fc-a62b-44c6-9d81-00d5710c21e6
+        from: b410723e-979a-4eb1-9dde-4316ce3ee9d9
+        to: 615752ac-2d0f-46c3-b3d3-e62400234b85
+        fromPort: surface
+        toPort: features
+      - id: f39ed34e-befe-4028-a4a3-0bf6d02af0f5
+        from: 615752ac-2d0f-46c3-b3d3-e62400234b85
+        to: eb7833a5-a11d-4481-9e80-8d4d64d0b7c8
+        fromPort: features
+        toPort: features
+      - id: 8ca81130-5a89-4f91-9dc4-e09c3fb6b5d1
+        from: b410723e-979a-4eb1-9dde-4316ce3ee9d9
+        to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
+        fromPort: curve
+        toPort: features
+      - id: 79682e87-8ded-46ab-9f3f-2e389150786b
+        from: eb7833a5-a11d-4481-9e80-8d4d64d0b7c8
+        to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
+        fromPort: area
         toPort: features
