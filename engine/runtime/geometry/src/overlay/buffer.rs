@@ -3,10 +3,9 @@
 //! In 2D the operand is treated like an overlay operand: leaves in one
 //! coordinate frame ([`MixedFrames`] otherwise), buffered as the point-set
 //! union of the leaves. A point buffers to a disc, a polyline to a stroke with
-//! round caps and joins, an areal leaf to its offset with round joins; a
-//! negative distance contracts areal leaves and yields nothing for points and
-//! polylines. In 3D only a planar `Polygon` is accepted, buffered in its own
-//! plane; any other 3D leaf is [`Unsupported`].
+//! round caps and joins, an areal leaf to its offset with round joins. In 3D
+//! only a planar `Polygon` is accepted, buffered in its own plane.
+//! Any other 3D leaf is [`Unsupported`].
 //!
 //! Output rings follow the frame's orientation convention when it can be
 //! resolved, else the stored winding of the areal input. Coordinates are
@@ -94,7 +93,7 @@ impl Default for BufferStyle {
     }
 }
 
-/// The buffer of `geometry`: a polygon, or a collection of polygons when the
+/// The buffer of `geometry`. A polygon, or a collection of polygons when the
 /// result has several parts. A 3D collection is buffered member by member. An
 /// empty result is [`Geometry::None`].
 pub fn buffer(geometry: &Geometry, style: &BufferStyle) -> Result<Geometry> {
