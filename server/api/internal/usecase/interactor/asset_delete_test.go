@@ -23,8 +23,8 @@ import (
 type snapshotAssetRepo struct {
 	repo.Asset
 	a           *asset.Asset
-	deleteCalls int
 	deleteErr   error
+	deleteCalls int
 }
 
 func (r *snapshotAssetRepo) FindByID(context.Context, id.AssetID) (*asset.Asset, error) {
@@ -43,10 +43,10 @@ func (r *snapshotAssetRepo) Delete(context.Context, id.AssetID) error {
 // call, the number of Deletes the asset repo has already committed.
 type recordingFileGateway struct {
 	gateway.File
-	deleteCalls        int
 	deleteErr          error
-	deleteSeenAtCommit int
 	assetRepo          *snapshotAssetRepo
+	deleteCalls        int
+	deleteSeenAtCommit int
 }
 
 func (f *recordingFileGateway) DeleteAsset(context.Context, *url.URL) error {
