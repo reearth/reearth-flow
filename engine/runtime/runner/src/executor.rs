@@ -1,6 +1,7 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_common::future::SharedFuture;
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runtime::{
     event::EventHandler,
     executor::dag_executor::DagExecutor,
@@ -59,7 +60,7 @@ pub fn run_dag_executor(
     incremental_run_config: Option<IncrementalRunConfig>,
     event_handlers: Vec<Arc<dyn EventHandler>>,
     executor_id: uuid::Uuid,
-) -> Result<(), Error> {
+) -> Result<RunSummary, Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 
     let mut join_handle = runtime.block_on(dag_executor.start(
@@ -74,15 +75,15 @@ pub fn run_dag_executor(
         event_handlers,
         executor_id,
     ))?;
-    let result = join_handle.join().map_err(Error::ExecutionError);
-    // Settle delay between join completion and notify. The historical 1000ms
-    // was a defensive value (likely waiting for in-flight async tasks / output
-    // flushes to drain). 100ms is enough headroom in practice and turns the
-    // 1s × N-tests overhead into a much smaller cost. A proper fix would
-    // replace this with explicit async-drain logic before notify, but that's
-    // a bigger refactor; this is the minimal change that recovers most of the
-    // wall-clock cost without exposing the underlying race.
-    std::thread::sleep(Duration::from_millis(100));
+    // `Terminate` still returns `Err` (golden logs byte-identical); `Continue` folds every outcome into `Ok(summary)`.
+    let mut join_result = join_handle.join().map_err(Error::ExecutionError);
     join_handle.notify();
-    result
+    // Awaits the subscriber directly instead of a fixed-sleep hack.
+    if let Some(subscriber) = join_handle.take_subscriber() {
+        let _ = runtime.block_on(subscriber);
+    }
+    if let Ok(summary) = join_result.as_mut() {
+        summary.dropped_event_count = join_handle.dropped_events();
+    }
+    join_result
 }

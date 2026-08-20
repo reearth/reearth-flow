@@ -1,3 +1,4 @@
+pub mod diagnostic_event;
 pub mod job_complete_event;
 pub mod log_stream_event;
 pub mod metadata;

@@ -6,6 +6,7 @@ use reearth_flow_common::{
     dir::setup_job_directory,
     uri::{Protocol, Uri},
 };
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -42,8 +43,9 @@ pub fn build_worker_command() -> Command {
     // The default (subcommand-less) invocation runs a workflow and preserves the
     // exact flags Batch and the `/run` path depend on (`--workflow`,
     // `--metadata-path`, `--var`, `--previous-job-id`, `--start-node-id`).
-    // `probe-schema` is registered as an optional subcommand; when present it
-    // takes over, otherwise we fall through to the run behavior.
+    // `probe-schema` and `schema-events` are registered as optional
+    // subcommands; when present one takes over, otherwise we fall through to
+    // the run behavior.
     Command::new("Re:Earth Flow Worker")
         .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
@@ -56,9 +58,11 @@ pub fn build_worker_command() -> Command {
         .arg(previous_job_id_arg())
         .arg(start_node_id_arg())
         .subcommand(crate::probe_schema::build_probe_schema_command())
-        // When `probe-schema` is used, the top-level required run args
-        // (`--workflow`, `--metadata-path`) are not required. The default
-        // (subcommand-less) run invocation keeps requiring them exactly as before.
+        .subcommand(crate::schema_events::build_schema_events_command())
+        // When `probe-schema` or `schema-events` is used, the top-level
+        // required run args (`--workflow`, `--metadata-path`) are not
+        // required. The default (subcommand-less) run invocation keeps
+        // requiring them exactly as before.
         .subcommand_negates_reqs(true)
 }
 
@@ -240,6 +244,7 @@ impl RunWorkerCommand {
         };
 
         let workflow_id = workflow.id;
+        // Cross-check against RunSummary.failed_nodes, not the sole success signal — remove once the two are proven to agree.
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
@@ -254,33 +259,45 @@ impl RunWorkerCommand {
             artifact_uri,
         )
         .await;
-        let job_result = match result {
-            Ok(_) => {
-                if node_failure_handler.all_success() {
-                    JobResult::Success
-                } else {
-                    tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
-                    JobResult::Failed
+        let run_summary: Option<RunSummary> = result.as_ref().ok().cloned();
+        let job_result = match &result {
+            Ok(summary) => {
+                let handler_success = node_failure_handler.all_success();
+                let summary_success = summary.failed_nodes.is_empty();
+                if handler_success != summary_success {
+                    // Divergence means one signal is missing/duplicating a failure.
+                    tracing::warn!(
+                        "NodeFailureHandler/RunSummary disagree on run success: handler_success={}, summary_success={}, handler_failed_nodes={:?}, summary_failed_nodes={:?}",
+                        handler_success,
+                        summary_success,
+                        node_failure_handler.failed_nodes(),
+                        summary.failed_nodes,
+                    );
                 }
+                let job_result = derive_job_result(Some(summary_success), handler_success);
+                if matches!(job_result, JobResult::Failed) {
+                    tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
+                }
+                job_result
             }
-            Err(_) => JobResult::Failed,
+            Err(_) => derive_job_result(None, false),
         };
         self.cleanup(&meta, &storage_resolver).await?;
+        let complete_event = match &run_summary {
+            // Pass the uncapped summary — with_summary caps internally; capping twice would double-cap the overflow marker.
+            Some(summary) => JobCompleteEvent::with_summary(
+                workflow_id,
+                meta.job_id,
+                job_result.clone(),
+                summary,
+            ),
+            // Known gap: Err path (incl. onFatal:Terminate per-feature errors) omits aggregatedDiagnostics/droppedEventCount even though the run produced them.
+            None => JobCompleteEvent::new(workflow_id, meta.job_id, job_result.clone()),
+        };
         match &pubsub {
-            PubSubBackend::Google(p) => p
-                .publish(JobCompleteEvent::new(
-                    workflow_id,
-                    meta.job_id,
-                    job_result.clone(),
-                ))
-                .await
-                .map_err(Error::run),
+            PubSubBackend::Google(p) => p.publish(complete_event).await.map_err(Error::run),
             PubSubBackend::Noop(p) => p
-                .publish(JobCompleteEvent::new(
-                    workflow_id,
-                    meta.job_id,
-                    job_result.clone(),
-                ))
+                .publish(complete_event)
                 .await
                 .map_err(|e| Error::run(format!("{e:?}"))),
         }?;
@@ -540,5 +557,57 @@ impl RunWorkerCommand {
     ) -> errors::Result<()> {
         upload_artifact(storage_resolver, meta).await?;
         Ok(())
+    }
+}
+
+/// Success only when both NodeFailureHandler and RunSummary agree.
+fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -> JobResult {
+    match summary_success {
+        None => JobResult::Failed,
+        Some(summary_success) => {
+            if handler_all_success && summary_success {
+                JobResult::Success
+            } else {
+                JobResult::Failed
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_job_result_success_when_both_signals_agree_on_success() {
+        let result = derive_job_result(Some(true), true);
+        assert!(matches!(result, JobResult::Success));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_handler_catches_what_summary_missed() {
+        let result = derive_job_result(Some(true), false);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_summary_catches_what_handler_missed() {
+        let result = derive_job_result(Some(false), true);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_both_signals_agree_on_failure() {
+        let result = derive_job_result(Some(false), false);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_run_itself_errored() {
+        let result = derive_job_result(None, true);
+        assert!(matches!(result, JobResult::Failed));
+
+        let result = derive_job_result(None, false);
+        assert!(matches!(result, JobResult::Failed));
     }
 }
