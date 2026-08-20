@@ -443,3 +443,91 @@ Stated-default mismatches to adjudicate (3, all likely wording rather than defec
 Plus: the one remaining `#[allow(dead_code)]` site, and the §4.3 inverse (features consumed
 and silently discarded with no port) which has no syntactic signature and needs reading the
 accumulate/emit path of the ~20 actions declaring a non-`features` port.
+
+---
+
+## Newly exposed actions — audit queue (23 actions, not yet reviewed)
+
+23 previously hidden actions were added to `base_actions.go`, taking the palette from
+82 to 105. Each was gated against §7.1 first — all have a `process`/`start` reachable in
+the shipped build, so none repeats the reprojector situation. **None has had an engine-side
+standard pass**, so their metadata is in whatever state it was authored in. This is the same
+promote-then-audit sequence as #2356, done deliberately this time and with the debt written
+down rather than discovered later.
+
+`Attribute Bulk Array Joiner` · `Attribute File Path Info Extractor` ·
+`Attribute Range Mapper` · `Attribute Table Extractor` · `CSG Builder` · `CSG Evaluator` ·
+`Coordinate Frame Reprojector` · `Date Time Converter` · `Excel Writer` ·
+`Feature CityGML 3 Reader` · `Feature Duplicate Filter` · `Feature GeoJSON Writer` ·
+`Feature Reader` · `Feature Writer` · `Geometry Coercer` · `HTTP Caller` · `Hole Counter` ·
+`Hole Extractor` · `JSON Fragmenter` · `Line On Line Overlayer` · `List Concatenator` ·
+`List Indexer` · `Offsetter`
+
+### Known before the batch starts
+
+```
+Line On Line Overlayer                                  <-- worst of the set
+  params:  `groupBy` and `tolerance` have NO description at all, so they render in the
+             UI as bare camelCase keys with no label. The only non-PLATEAU action in the
+             whole schema in this state. Note the sibling `Area On Area Overlayer` has
+             the same two parameters fully described — copy from there after confirming
+             the semantics match.
+
+15 of 23 actions
+  desc:    Descriptions violate §2. Two distinct kinds, worth separating when fixing:
+             (a) Title Case imperative, needing a rewrite — Hole Counter ("Count Polygon
+                 Holes to Attribute"), Hole Extractor, Feature Duplicate Filter,
+                 Attribute Bulk Array Joiner, Attribute File Path Info Extractor.
+             (b) Otherwise fine, missing only the terminating period — Attribute Range
+                 Mapper, Date Time Converter, HTTP Caller, Geometry Coercer, and others.
+             Fix (b) mechanically; (a) needs the code read first per §"How to use".
+
+Excel Writer
+  cat:     `File`, but it is a genuine sink (`type: sink`, no output ports), so §5 wants
+             `Output`. `File` is for decompression and path utilities. Left as-is
+             pending the batch since it is filterable either way.
+
+Hole Counter
+  note:    Carries a doc comment naming a commercial product, but on a TEST function
+             inside `mod tests` (`hole_counter.rs:268`), so it does NOT reach
+             actions.json — verified. Not a §2 violation; still worth rewording.
+```
+
+### Resolved while gating
+
+- `HTTP Caller` was categorised `Web`, which is not in the §5 taxonomy and not in the UI's
+  hardcoded category filter, so it would have landed in a phantom palette group — the same
+  defect fixed for glTF/OBJ Reader in #2365. Recategorised to `Feature`: it is a processor
+  taking features in and out, enriching them with response data. §5 advises against adding
+  a category for a single action, which `Web` would have been.
+
+### Open question: the `Feature` versus `Input` split for mid-flow readers
+
+Not resolved, and it implicates a change already merged.
+
+`Feature CityGML Reader`, `Feature CityGML 2 Reader`, `Feature CityGML 3 Reader` and
+`Feature Reader` are all **processors** (`features` in, `features` out) that read a path
+taken from the incoming feature. They are not graph sources. §5 assigns "CityGML reading"
+to the `Feature` category, yet the first two are categorised `Input`:
+
+| Action | Category today | Set by |
+|---|---|---|
+| Feature CityGML Reader | `Input` | #2114, which predates the standard |
+| Feature CityGML 2 Reader | `Input` | **#2365 — I moved it `Feature`→`Input`** |
+| Feature CityGML 3 Reader | `Feature` | original |
+| Feature Reader | `Feature` | original |
+
+**The #2365 change was made for the wrong reason** — matching the sibling rather than
+checking §5, which points the other way. That is the failure mode §3.1 warns about: a
+change can satisfy consistency and still be wrong.
+
+Both directions are defensible and it needs a decision, not a unilateral fix:
+
+- **`Feature`** follows §5 as written and reflects what these actions are — mid-flow
+  processors, not sources. Requires moving two actions and reverting part of #2365.
+- **`Input`** follows where a user looks for "the thing that reads CityGML", and would
+  mean §5's `Feature` row is stale and should drop "and CityGML reading". Requires moving
+  two actions the other way.
+
+Also unresolved and in the same class: `Feature Writer` / `Feature GeoJSON Writer` are
+processors categorised `Feature` while every true sink uses `Output`.
