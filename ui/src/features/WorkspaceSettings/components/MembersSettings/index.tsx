@@ -12,7 +12,7 @@ import {
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentWorkspace } from "@flow/stores";
+import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
 import { Role, UserMember } from "@flow/types";
 
 import { MemberAddDialog } from "./components";
@@ -22,6 +22,8 @@ const roles: Role[] = Object.values(Role);
 const MembersSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
+  const [currentUserRole] = useCurrentUserRole();
+
   const {
     addMemberToWorkspace,
     removeMemberFromWorkspace,
@@ -119,6 +121,8 @@ const MembersSettings: React.FC = () => {
     }
   };
 
+  console.log("CURRENT USERROLE", currentUserRole);
+
   const columns: ColumnDef<UserMember>[] = [
     {
       accessorKey: "user.name",
@@ -154,11 +158,16 @@ const MembersSettings: React.FC = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
           <Button
             className="h-[25px]"
             size="sm"
             variant="outline"
-            disabled={row.row.original.userId === me?.id}
+            disabled={
+              (currentUserRole !== Role.Owner &&
+                currentUserRole !== Role.Maintainer) ||
+              row.row.original.userId === me?.id
+            }
             onClick={() => handleRemoveMembers(row.row.original.userId)}>
             {t("Remove")}
           </Button>
