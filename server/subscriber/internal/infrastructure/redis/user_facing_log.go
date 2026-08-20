@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,8 +12,9 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/pkg/userfacinglog"
 )
 
-// userFacingLogStreamMaxLen bounds each job's stream independently of the 12h TTL below.
-const userFacingLogStreamMaxLen = 10000
+// userFacingLogStreamRetention matches the legacy per-line key TTL so the stream
+// keeps exactly the same window, trimmed by MINID rather than an invented count.
+const userFacingLogStreamRetention = 12 * time.Hour
 
 func (r *RedisStorage) SaveUserFacingLogToRedis(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error {
 	const layoutWithMillis = "2006-01-02T15:04:05.000000Z"
@@ -27,7 +29,7 @@ func (r *RedisStorage) SaveUserFacingLogToRedis(ctx context.Context, event *user
 	}
 
 	serialized := string(serializedBytes)
-	if err := r.tracedSet(ctx, key, serialized, 12*time.Hour); err != nil {
+	if err := r.tracedSet(ctx, key, serialized, userFacingLogStreamRetention); err != nil {
 		return fmt.Errorf("failed to save user facing log to redis: %w", err)
 	}
 
@@ -40,20 +42,24 @@ func (r *RedisStorage) SaveUserFacingLogToRedis(ctx context.Context, event *user
 
 func (r *RedisStorage) saveUserFacingLogToStream(ctx context.Context, jobID string, ts time.Time, serialized string) error {
 	streamKey := fmt.Sprintf("userfacinglog:%s", jobID)
-	id := fmt.Sprintf("%d-*", ts.UnixMilli())
+	minID := fmt.Sprintf("%d", time.Now().Add(-userFacingLogStreamRetention).UnixMilli())
 
 	if err := r.tracedXAdd(ctx, &redis.XAddArgs{
 		Stream: streamKey,
-		ID:     id,
-		MaxLen: userFacingLogStreamMaxLen,
+		MinID:  minID,
 		Approx: true,
-		Values: map[string]interface{}{"data": serialized},
+		Values: map[string]interface{}{
+			"data":        serialized,
+			"timestampMs": ts.UnixMilli(),
+		},
 	}); err != nil {
 		return fmt.Errorf("failed to add user facing log to redis stream: %w", err)
 	}
 
-	if err := r.tracedExpire(ctx, streamKey, 12*time.Hour); err != nil {
-		return fmt.Errorf("failed to set expiration on redis stream: %w", err)
+	// MINID already trims stale entries; a missed TTL on an idle stream key is
+	// cheap, so don't fail the whole write (and trigger redelivery) over it.
+	if err := r.tracedExpire(ctx, streamKey, userFacingLogStreamRetention); err != nil {
+		log.Printf("WARN: failed to set expiration on redis stream %s: %v", streamKey, err)
 	}
 
 	return nil
