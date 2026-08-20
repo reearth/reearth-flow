@@ -403,6 +403,31 @@ reprojectors were correctly identified during Geometry B and correctly deferred,
 gate lifted, nothing re-opened the item. Fixing individual descriptions does not address
 this; the deferred-items sections in this file need an owner and a re-check trigger.
 
+### Outside the 72: vendor-name leaks in two Batch C actions
+
+Found while checking the §2 rule against the code. Both actions are currently non-functional
+in the shipped build, so nothing is reaching users today — but these must be fixed before
+either is repaired or promoted.
+
+```
+Neighbor Finder
+  desc:    `mergeStrategy`'s `repeatBase` variant has a `///` doc comment naming the
+             commercial product the action was ported from (`neighbor_finder.rs:143`).
+             Doc comments compile into the schema, so the name is present in
+             `actions.json` today — this is the only action in the whole schema that
+             leaks it. Rewrite to describe the behaviour directly (§2).
+
+Center Point Replacer
+  params:  Writes an output attribute literally named `fme_rejection_code` onto every
+             rejected feature (`center_point_replacer.rs:152`, asserted in tests at
+             :785, :823, :842), plus a `//` comment at :339. This is worse than a
+             documentation leak: the vendor name ends up in the user's *data*, where it
+             becomes a compatibility surface someone may write a downstream filter
+             against. Rename to something ours — e.g. `rejectionCode`, matching the
+             camelCase convention the codebase uses for written attributes
+             (cf. `geomId`, `distanceToIntersection`) — and update the three tests.
+```
+
 ### Still to verify
 
 Behavioural claims not yet traced to a code path (7): `Attribute Aggregator.calculationValue`
