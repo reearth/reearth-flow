@@ -1631,72 +1631,42 @@
     },
     {
       "name": "GeoPackage Reader",
-      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据",
+      "description": "从GeoPackage（.gpkg）文件读取矢量要素，或该文件的空间参考系与扩展元数据。",
       "parameterI18n": {
         "": {
           "title": "GeoPackage Reader Parameters",
           "description": "Configures which content to read from the GeoPackage file and how geometries are produced."
         },
-        "attributeFilter": {},
-        "batchSize": {},
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "force2D": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)."
+          "description": "Drops the Z value from every geometry, producing 2D output."
         },
-        "includeMetadata": {},
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "layerName": {
           "title": "Layer Name",
-          "description": "Name of the layer to read. When omitted, the first available layer is used."
+          "description": "Name of the layer to read. When omitted, every feature layer in the file is read."
         },
         "readMode": {
           "title": "Read Mode",
           "description": "Which content to read from the GeoPackage file. Defaults to reading vector features."
-        },
-        "spatialFilter": {},
-        "tileFormat": {
-          "title": "Tile Format",
-          "description": "Image format to decode when reading raster tiles. Defaults to PNG."
         }
       },
       "enumI18n": {
         "GeoPackageReadMode": {
-          "all": {
-            "title": "All",
-            "description": "Reads both vector features and raster tiles."
-          },
           "features": {
             "title": "Features",
-            "description": "Reads vector features (geometry and attributes)."
+            "description": "Reads vector features, each carrying its geometry and attributes."
           },
           "metadataOnly": {
             "title": "Metadata Only",
-            "description": "Reads only the file's metadata, without features or tiles."
-          },
-          "tiles": {
-            "title": "Tiles",
-            "description": "Reads raster tiles."
-          }
-        },
-        "TileFormat": {
-          "jpeg": {
-            "title": "JPEG",
-            "description": "Decodes tiles as JPEG images."
-          },
-          "png": {
-            "title": "PNG",
-            "description": "Decodes tiles as PNG images."
-          },
-          "webp": {
-            "title": "WebP",
-            "description": "Decodes tiles as WebP images."
+            "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record."
           }
         }
       }
@@ -2526,6 +2496,10 @@
           "title": "Layer Name",
           "description": "Name of the layer within the MVT tiles"
         },
+        "maxTileBytes": {
+          "title": "Maximum Tile Size",
+          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+        },
         "maxZoom": {
           "title": "Maximum Zoom",
           "description": "Maximum zoom level to generate tiles for"
@@ -2708,13 +2682,9 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "includeNormals": {
-          "title": "Include Normals",
-          "description": "Include vertex normal data in the output geometry"
-        },
         "includeTexcoords": {
           "title": "Include Texture Coordinates",
-          "description": "Include texture coordinate (UV) data in the output geometry"
+          "description": "Includes texture coordinate (UV) data in the output geometry."
         },
         "inline": {
           "title": "Inline Content",
@@ -2726,15 +2696,15 @@
         },
         "mergeGroups": {
           "title": "Merge Groups",
-          "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object"
+          "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object."
         },
         "parseMaterials": {
           "title": "Parse Materials",
-          "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file"
+          "description": "Parses material definitions from MTL files referenced in the OBJ file."
         },
         "triangulate": {
           "title": "Triangulate",
-          "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
+          "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation."
         }
       }
     },
@@ -3913,7 +3883,7 @@
       "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元",
       "parameterI18n": {
         "": {
-          "title": "glTF ReaderParam"
+          "title": "glTF Reader Parameters"
         },
         "dataset": {
           "title": "File Path",
@@ -3929,7 +3899,7 @@
         },
         "includeNodes": {
           "title": "Include Nodes",
-          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+          "description": "Includes node hierarchy information from the glTF scene graph in feature attributes."
         },
         "inline": {
           "title": "Inline Content",
@@ -3937,11 +3907,7 @@
         },
         "mergeMeshes": {
           "title": "Merge Meshes",
-          "description": "If true, combines all meshes from the glTF file into a single output feature"
-        },
-        "triangulate": {
-          "title": "Triangulate",
-          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+          "description": "Combines all meshes from the glTF file into a single output feature."
         }
       },
       "enumI18n": {
