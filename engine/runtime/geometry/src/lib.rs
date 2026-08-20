@@ -68,7 +68,7 @@ use ops::{
 // be in scope here.
 use ops::Split;
 #[cfg(feature = "new-geometry")]
-use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+use ops::{Area, Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -208,7 +208,8 @@ impl GeometryCollection {
         RemoveAppearance,
         CountHoles,
         ExtractHoles,
-        Footprint
+        Footprint,
+        Area
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -265,7 +266,8 @@ pub enum Euclidean2DGeometry {
         RemoveAppearance,
         CountHoles,
         ExtractHoles,
-        Footprint
+        Footprint,
+        Area
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]

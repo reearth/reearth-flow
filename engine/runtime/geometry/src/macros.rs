@@ -13,6 +13,25 @@ macro_rules! unsupported {
     };
 }
 
+/// Stamps [`Area`](crate::ops::Area) on a type that encloses no area — a point,
+/// a curve, a point cloud — measuring `0.0` rather than refusing. Unlike
+/// [`unsupported!`](crate::unsupported), which leaves the refusing default in
+/// place, this records a real answer.
+#[macro_export]
+macro_rules! no_area {
+    ($($ty:ty),+ $(,)?) => { $(
+        impl $crate::ops::Area for $ty {
+            fn projected_area(&self) -> Result<f64, $crate::ops::UnsupportedOperation> {
+                Ok(0.0)
+            }
+
+            fn surface_area(&self) -> Result<f64, $crate::ops::UnsupportedOperation> {
+                Ok(0.0)
+            }
+        }
+    )+ };
+}
+
 #[macro_export]
 macro_rules! point {
     ( $($tag:tt : $val:expr),* $(,)? ) => {

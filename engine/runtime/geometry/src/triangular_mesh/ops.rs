@@ -468,6 +468,12 @@ impl TriangularMesh3DData {
     }
 }
 
+// TODO(Task 3): sum the triangles.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(TriangularMesh2D: Area);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(TriangularMesh3D: Area);
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -269,6 +269,10 @@ impl Footprint for Solid {
     }
 }
 
+// TODO(Task 4): sum every shell's boundary faces.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: Area);
+
 #[cfg(test)]
 mod tests {
     use super::*;

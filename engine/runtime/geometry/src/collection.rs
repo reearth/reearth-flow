@@ -451,6 +451,12 @@ impl Validate for Collection2D {}
 #[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
 
+// TODO(Task 2): recurse over members.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection2D: Area);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection3D: Area);
+
 impl Coerce for Collection2D {
     fn coerce(
         &mut self,

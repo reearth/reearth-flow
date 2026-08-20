@@ -83,3 +83,7 @@ crate::unsupported!(Point3D: ExtractHoles);
 // re-arrange into one.
 crate::unsupported!(Point2D: Coerce);
 crate::unsupported!(Point3D: Coerce);
+
+// A point is a location, not an extent.
+#[cfg(feature = "new-geometry")]
+crate::no_area!(Point2D, Point3D);

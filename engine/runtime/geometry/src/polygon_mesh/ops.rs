@@ -703,6 +703,12 @@ impl PolygonMesh3DData {
     }
 }
 
+// TODO(Task 3): sum the faces.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh2D: Area);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh3D: Area);
+
 #[cfg(test)]
 mod tests {
     use super::*;
