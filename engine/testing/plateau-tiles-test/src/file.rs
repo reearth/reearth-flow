@@ -5,6 +5,36 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
+pub fn decompress_glbs(dir: &Path) {
+    let glb_files: Vec<_> = WalkDir::new(dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
+                Some(path.to_path_buf())
+            } else {
+                None
+            }
+        })
+        .collect();
+    if glb_files.is_empty() {
+        return;
+    }
+
+    let mut cmd = std::process::Command::new("glb-decompress");
+    for glb_file in &glb_files {
+        cmd.arg(glb_file.as_os_str());
+    }
+
+    let status = cmd
+        .status()
+        .expect("Failed to execute glb-decompress command");
+    if !status.success() {
+        panic!("glb-decompress failed");
+    }
+}
+
 fn perr(p: &Path, err: impl std::fmt::Display) -> String {
     format!("{:?}: {}", p, err)
 }
