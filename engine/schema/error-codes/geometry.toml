@@ -1,0 +1,34 @@
+[[codes]]
+code = "geometry.area_not_measurable"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "area not measurable, wrote 0"
+help = "Area Calculator could not measure this geometry; check that it is a supported, non-degenerate type."
+
+[[codes]]
+code = "geometry.area_angular_crs"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "area is in square degrees, not a real-world area"
+help = "The coordinate system is angular (degrees); reproject to a projected CRS before measuring area."
+
+[[codes]]
+code = "geometry.area_unknown_unit"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "cannot establish the coordinate system's unit, so the area's unit is unknown"
+help = "Check the geometry's CRS definition; Area Calculator could not determine whether it measures in degrees or a linear unit."
+
+[[codes]]
+code = "geometry.area_mixed_frames"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "geometry parts sit in different coordinate frames, so the summed area mixes units"
+help = "Reproject all parts of the geometry to a single coordinate system before measuring area."
+
+[[codes]]
+code = "geometry.area_skipped_parts"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped geometry part(s) that cannot be measured; their area is not in the total"
+help = "One or more members of this geometry could not be measured and were excluded from the total; check them individually."

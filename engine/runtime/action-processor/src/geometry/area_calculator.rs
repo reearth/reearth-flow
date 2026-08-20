@@ -1,13 +1,7 @@
 use std::collections::HashMap;
-#[cfg(feature = "new-geometry")]
-use std::collections::HashSet;
-#[cfg(feature = "new-geometry")]
-use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(feature = "new-geometry")]
-use std::sync::Mutex;
 
 #[cfg(feature = "new-geometry")]
-use once_cell::sync::Lazy;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{area2d::Area2D, area3d::Area3D};
 #[cfg(feature = "new-geometry")]
@@ -31,29 +25,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
-
-/// EPSG codes already warned about, so a million-feature run emits one line per
-/// distinct code rather than one per feature.
-#[cfg(feature = "new-geometry")]
-static WARNED_CODES: Lazy<Mutex<HashSet<u16>>> = Lazy::new(|| Mutex::new(HashSet::new()));
-
-/// The mixed-frame warning has no single code to key on, so it is emitted once.
-#[cfg(feature = "new-geometry")]
-static WARNED_MIXED: AtomicBool = AtomicBool::new(false);
-
-/// Likewise for skipped parts: one line, not one per feature.
-#[cfg(feature = "new-geometry")]
-static WARNED_SKIPPED: AtomicBool = AtomicBool::new(false);
-
-/// Whether this is the first time `epsg` has come up, so its warning is worth
-/// emitting.
-#[cfg(feature = "new-geometry")]
-fn first_time_for(epsg: u16) -> bool {
-    WARNED_CODES
-        .lock()
-        .map(|mut seen| seen.insert(epsg))
-        .unwrap_or(false)
-}
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AreaCalculatorFactory;
@@ -170,37 +141,41 @@ fn default_multiplier() -> f64 {
 
 #[cfg(feature = "new-geometry")]
 impl AreaCalculator {
-    /// Say what the measurement is worth, once per distinct cause.
+    /// Say what the measurement is worth.
     ///
     /// None of this changes the number: an area in square degrees is still
     /// written, because refusing would need either a hard failure or a new
     /// rejected port, and a port change is a schema change affecting both
     /// worlds and the UI. The old model said nothing at all here; we have the
     /// information, so we say it.
+    ///
+    /// Each cause is reported per feature via `ctx.warn`, not deduplicated
+    /// here: the runtime aggregates by error code, so a million-feature run
+    /// still surfaces one entry per cause with a structural count, rather
+    /// than one process-wide line that survives only as long as the worker
+    /// does.
     fn warn_about_frames(&self, ctx: &ExecutorContext, geometry: &Geometry) {
         let report = area_report(geometry);
 
-        if report.skipped > 0 && !WARNED_SKIPPED.swap(true, Ordering::Relaxed) {
-            ctx.event_hub.warn_log(
-                Some(ctx.error_span()),
-                format!(
+        if report.skipped > 0 {
+            ctx.warn(
+                DiagnosticDraft::new(ErrorCode::GeometryAreaSkippedParts).with_message(format!(
                     "skipped {} geometry part(s) that cannot be measured; \
                      their area is not in the total",
                     report.skipped
-                ),
+                )),
             );
         }
 
         match &report.frame {
             AreaFrame::Nothing => {}
             AreaFrame::Mixed => {
-                if !WARNED_MIXED.swap(true, Ordering::Relaxed) {
-                    ctx.event_hub.warn_log(
-                        Some(ctx.error_span()),
+                ctx.warn(
+                    DiagnosticDraft::new(ErrorCode::GeometryAreaMixedFrames).with_message(
                         "geometry parts sit in different coordinate frames, so the \
-                         areas summed here are not all in the same unit",
-                    );
-                }
+                     areas summed here are not all in the same unit",
+                    ),
+                );
             }
             AreaFrame::One(frame) => {
                 let epsg = match frame {
@@ -212,27 +187,25 @@ impl AreaCalculator {
                 match frame_area_is_linear(frame) {
                     Ok(true) => {}
                     Ok(false) => {
-                        if first_time_for(epsg) {
-                            ctx.event_hub.warn_log(
-                                Some(ctx.error_span()),
+                        ctx.warn(
+                            DiagnosticDraft::new(ErrorCode::GeometryAreaAngularCrs).with_message(
                                 format!(
                                     "EPSG:{epsg} measures in degrees, so this area is in \
-                                     square degrees and is not a real-world area; \
-                                     reproject to a projected CRS first"
+                                 square degrees and is not a real-world area; \
+                                 reproject to a projected CRS first"
                                 ),
-                            );
-                        }
+                            ),
+                        );
                     }
                     Err(why) => {
-                        if first_time_for(epsg) {
-                            ctx.event_hub.warn_log(
-                                Some(ctx.error_span()),
+                        ctx.warn(
+                            DiagnosticDraft::new(ErrorCode::GeometryAreaUnknownUnit).with_message(
                                 format!(
                                     "cannot establish the unit of EPSG:{epsg}, so this \
-                                     area's unit is unknown: {why}"
+                                 area's unit is unknown: {why}"
                                 ),
-                            );
-                        }
+                            ),
+                        );
                     }
                 }
             }
@@ -263,9 +236,9 @@ impl Processor for AreaCalculator {
                 area * self.multiplier
             }
             Err(why) => {
-                ctx.event_hub.warn_log(
-                    Some(ctx.error_span()),
-                    format!("area not measurable, writing 0: {why}"),
+                ctx.warn(
+                    DiagnosticDraft::new(ErrorCode::GeometryAreaNotMeasurable)
+                        .with_message(format!("area not measurable, writing 0: {why}")),
                 );
                 0.0
             }
@@ -542,7 +515,6 @@ mod tests {
     use reearth_flow_runtime::event::Event;
     use reearth_flow_runtime::kvs;
     use reearth_flow_storage::resolve::StorageResolver;
-    use tracing::Level;
 
     /// A unit square in `frame`.
     fn square_in(frame: CoordinateFrame) -> Geometry {
@@ -561,13 +533,18 @@ mod tests {
         )))
     }
 
-    /// Run every `geometry` through one processor and return the WARN messages
-    /// emitted along the way.
+    /// Run every `geometry` through one processor and return the message of
+    /// every diagnostic emitted along the way.
     ///
-    /// `create_default_execute_context` builds its own event hub, so this builds
-    /// the contexts by hand in order to hold on to a receiver. A broadcast
-    /// receiver only sees what is sent after it subscribes, hence the
-    /// `resubscribe` before the first `process`.
+    /// Diagnostics travel through `event_hub.diagnostic(..)`
+    /// (`Event::Diagnostic`), not the log lane — `ctx.warn`/`ctx.warn_once`
+    /// never call `warn_log`, so a `Level::WARN` filter over `Event::Log`
+    /// would see nothing.
+    ///
+    /// `create_default_execute_context` builds its own event hub, so this
+    /// builds the contexts by hand in order to hold on to a receiver. A
+    /// broadcast receiver only sees what is sent after it subscribes, hence
+    /// the `resubscribe` before the first `process`.
     fn warnings_for(with: Option<Value>, geometries: Vec<Geometry>) -> Vec<String> {
         let hub = EventHub::new(64);
         let mut rx = hub.receiver.resubscribe();
@@ -589,23 +566,26 @@ mod tests {
 
         let mut warnings = Vec::new();
         while let Ok(event) = rx.try_recv() {
-            if let Event::Log { level, message, .. } = event {
-                if level == Level::WARN {
-                    warnings.push(message);
-                }
+            if let Event::Diagnostic(diagnostic) = event {
+                warnings.push(diagnostic.message.clone());
             }
         }
         warnings
     }
 
     /// An area on geographic coordinates is in square degrees and is not a
-    /// real-world area. Say so — once per CRS, not once per feature, so a
-    /// million-feature run does not emit a million lines.
+    /// real-world area. Say so, once per feature: `ctx.warn` records one
+    /// diagnostic per call, and it is the runtime's per-run diagnostics
+    /// aggregator (keyed by `ErrorCode`, not exercised by this
+    /// `diagnostics: None` test harness) that collapses repeats of the same
+    /// cause into a single structural count for a real, long-running worker.
     ///
-    /// Uses EPSG:4269 (NAD83, degrees), which no other test in this module
-    /// touches: the dedup state is process-wide.
+    /// Uses EPSG:4269 (NAD83, degrees). Nothing here requires this test to
+    /// own the code exclusively anymore — the old per-process dedup statics
+    /// are gone — but distinct real-world CRSes keep each test's intent
+    /// self-evident.
     #[test]
-    fn an_angular_crs_is_warned_about_once_however_many_features() {
+    fn an_angular_crs_is_warned_about_once_per_feature() {
         let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
         let warnings = warnings_for(
             None,
@@ -618,10 +598,13 @@ mod tests {
         let about_units: Vec<_> = warnings.iter().filter(|w| w.contains("4269")).collect();
         assert_eq!(
             about_units.len(),
-            1,
-            "three features, one warning; got {warnings:?}"
+            3,
+            "three features, one warning each; got {warnings:?}"
         );
-        assert!(about_units[0].contains("square degrees"), "{about_units:?}");
+        assert!(
+            about_units.iter().all(|w| w.contains("square degrees")),
+            "{about_units:?}"
+        );
     }
 
     /// Warning is not refusing: the number is still measured and written.
@@ -656,13 +639,13 @@ mod tests {
 
     /// A sum across frames adds square metres to square degrees. The area is
     /// still returned — refusing would need a new rejected port — but the user
-    /// is told once.
+    /// is told.
     ///
-    /// The only test that may assert on the mixed-frame warning: it is keyed by
-    /// a single process-wide flag, so a second such test would race with this
-    /// one. It uses EPSG:3857, again its own code.
+    /// This test sends a single feature, so one `ctx.warn` call is the whole
+    /// story regardless of aggregation; it uses EPSG:3857 for a distinct,
+    /// self-evident CRS, not because of any leftover exclusivity requirement.
     #[test]
-    fn mixed_frames_are_warned_about_once() {
+    fn mixed_frames_are_warned_about() {
         let member = |frame| match square_in(frame) {
             Geometry::Euclidean3D(g) => g,
             _ => unreachable!("square_in builds a 3D polygon"),
@@ -682,21 +665,19 @@ mod tests {
         assert_eq!(about_mixing.len(), 1, "{warnings:?}");
     }
 
-    /// A container that skips an unmeasurable member is warned about once,
-    /// the same dedup shape as the EPSG and mixed-frame warnings — which is
-    /// why this is the only test allowed to assert on `WARNED_SKIPPED`.
+    /// A container that skips an unmeasurable member is warned about.
     ///
     /// Both members sit in `CoordinateFrame::Euclidean`, not a CRS: that keeps
     /// the geometry's frame at `One(Euclidean)`, which is silent on its own,
     /// so the skip warning is the only one this assertion has to contend
-    /// with, and it does not consume an EPSG code another test depends on
-    /// owning. The measurement itself succeeds — `Collection3D`'s `Area` impl
+    /// with. The measurement itself succeeds — `Collection3D`'s `Area` impl
     /// sums measurable members via `filter_map(.ok())` — so this reaches the
     /// `Ok` path where `warn_about_frames` runs, unlike a bare `Csg`, which
     /// takes the `Err` path instead (see
-    /// `an_unmeasurable_geometry_still_gets_the_attribute`).
+    /// `an_unmeasurable_geometry_still_gets_the_attribute`). One feature in,
+    /// one `ctx.warn` call, one diagnostic out.
     #[test]
-    fn a_skipped_member_is_warned_about_once() {
+    fn a_skipped_member_is_warned_about() {
         let solid = || {
             Solid::from_exterior(
                 CoordinateFrame::Euclidean,
