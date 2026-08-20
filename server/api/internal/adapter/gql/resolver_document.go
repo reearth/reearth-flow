@@ -29,7 +29,7 @@ func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.
 
 	return &gqlmodel.ProjectSnapshot{
 		Updates:   history.Updates,
-		Version:   history.Version,
+		Version:   &history.Version,
 		Timestamp: history.Timestamp,
 	}, nil
 }
@@ -52,7 +52,7 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 }
 
 // ProjectNamedSnapshot reads one snapshot's state by its per-room snapshot number.
-func (r *queryResolver) ProjectNamedSnapshot(ctx context.Context, projectId gqlmodel.ID, snapshotNumber int) (*gqlmodel.NamedSnapshotState, error) {
+func (r *queryResolver) ProjectNamedSnapshot(ctx context.Context, projectId gqlmodel.ID, snapshotNumber int) (*gqlmodel.ProjectSnapshot, error) {
 	state, err := usecases(ctx).Websocket.GetSnapshotState(ctx, string(projectId), snapshotNumber)
 	if err != nil {
 		return nil, err
@@ -61,8 +61,11 @@ func (r *queryResolver) ProjectNamedSnapshot(ctx context.Context, projectId gqlm
 		return nil, interfaces.ErrSnapshotNotFound
 	}
 
-	return &gqlmodel.NamedSnapshotState{
-		SnapshotNumber: int(state.SnapshotID),
+	// Version deliberately unset: a snapshot carries no update-log clock, and a
+	// fabricated one passed to rollbackProject would prune real history.
+	num := int(state.SnapshotID)
+	return &gqlmodel.ProjectSnapshot{
+		SnapshotNumber: &num,
 		Updates:        state.Updates,
 	}, nil
 }

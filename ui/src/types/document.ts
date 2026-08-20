@@ -19,7 +19,8 @@ export type NamedSnapshot = {
 };
 export type ProjectSnapshot = {
   timestamp: string;
-  version: number;
+  // Absent on a snapshot-addressed read, which has no update-log clock.
+  version?: number;
   updates: number[];
 };
 

@@ -365,11 +365,6 @@ type NamedSnapshot struct {
 	Size           int64     `json:"size"`
 }
 
-type NamedSnapshotState struct {
-	SnapshotNumber int   `json:"snapshotNumber"`
-	Updates        []int `json:"updates"`
-}
-
 type NodeExecution struct {
 	ID          ID         `json:"id"`
 	JobID       ID         `json:"jobId"`
@@ -503,9 +498,10 @@ type ProjectSharingInfoPayload struct {
 }
 
 type ProjectSnapshot struct {
-	Timestamp time.Time `json:"timestamp"`
-	Updates   []int     `json:"updates"`
-	Version   int       `json:"version"`
+	Timestamp      time.Time `json:"timestamp"`
+	Updates        []int     `json:"updates"`
+	Version        *int      `json:"version,omitempty"`
+	SnapshotNumber *int      `json:"snapshotNumber,omitempty"`
 }
 
 type ProjectSnapshotMetadata struct {

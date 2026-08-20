@@ -16,10 +16,12 @@ type ProjectDocument implements Node {
 }
 
 # Project Snapshot history vector
+# Set either version (clock-addressed) or snapshotNumber (snapshot-addressed).
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
-  version: Int!
+  version: Int
+  snapshotNumber: Int
 }
 
 # Project Snapshot Metadata (without updates data)
@@ -34,12 +36,6 @@ type NamedSnapshot {
   label: String!
   timestamp: DateTime!
   size: FileSize!
-}
-
-# One snapshot's stored state, keyed by snapshotNumber (not the update-log clock).
-type NamedSnapshotState {
-  snapshotNumber: Int!
-  updates: [Int!]!
 }
 
 # Mutation
@@ -60,5 +56,5 @@ extend type Query {
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
   projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
-  projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
+  projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): ProjectSnapshot!
 }

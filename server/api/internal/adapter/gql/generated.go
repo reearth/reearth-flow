@@ -336,11 +336,6 @@ type ComplexityRoot struct {
 		Timestamp      func(childComplexity int) int
 	}
 
-	NamedSnapshotState struct {
-		SnapshotNumber func(childComplexity int) int
-		Updates        func(childComplexity int) int
-	}
-
 	NodeExecution struct {
 		CompletedAt func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
@@ -425,9 +420,10 @@ type ComplexityRoot struct {
 	}
 
 	ProjectSnapshot struct {
-		Timestamp func(childComplexity int) int
-		Updates   func(childComplexity int) int
-		Version   func(childComplexity int) int
+		SnapshotNumber func(childComplexity int) int
+		Timestamp      func(childComplexity int) int
+		Updates        func(childComplexity int) int
+		Version        func(childComplexity int) int
 	}
 
 	ProjectSnapshotMetadata struct {
@@ -700,7 +696,7 @@ type QueryResolver interface {
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
 	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error)
 	ProjectNamedSnapshots(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error)
-	ProjectNamedSnapshot(ctx context.Context, projectID gqlmodel.ID, snapshotNumber int) (*gqlmodel.NamedSnapshotState, error)
+	ProjectNamedSnapshot(ctx context.Context, projectID gqlmodel.ID, snapshotNumber int) (*gqlmodel.ProjectSnapshot, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
@@ -2079,19 +2075,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.NamedSnapshot.Timestamp(childComplexity), true
 
-	case "NamedSnapshotState.snapshotNumber":
-		if e.complexity.NamedSnapshotState.SnapshotNumber == nil {
-			break
-		}
-
-		return e.complexity.NamedSnapshotState.SnapshotNumber(childComplexity), true
-	case "NamedSnapshotState.updates":
-		if e.complexity.NamedSnapshotState.Updates == nil {
-			break
-		}
-
-		return e.complexity.NamedSnapshotState.Updates(childComplexity), true
-
 	case "NodeExecution.completedAt":
 		if e.complexity.NodeExecution.CompletedAt == nil {
 			break
@@ -2420,6 +2403,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ProjectSharingInfoPayload.SharingToken(childComplexity), true
 
+	case "ProjectSnapshot.snapshotNumber":
+		if e.complexity.ProjectSnapshot.SnapshotNumber == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshot.SnapshotNumber(childComplexity), true
 	case "ProjectSnapshot.timestamp":
 		if e.complexity.ProjectSnapshot.Timestamp == nil {
 			break
@@ -3882,10 +3871,12 @@ type ProjectDocument implements Node {
 }
 
 # Project Snapshot history vector
+# Set either version (clock-addressed) or snapshotNumber (snapshot-addressed).
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
-  version: Int!
+  version: Int
+  snapshotNumber: Int
 }
 
 # Project Snapshot Metadata (without updates data)
@@ -3900,12 +3891,6 @@ type NamedSnapshot {
   label: String!
   timestamp: DateTime!
   size: FileSize!
-}
-
-# One snapshot's stored state, keyed by snapshotNumber (not the update-log clock).
-type NamedSnapshotState {
-  snapshotNumber: Int!
-  updates: [Int!]!
 }
 
 # Mutation
@@ -3926,7 +3911,7 @@ extend type Query {
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
   projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
-  projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
+  projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): ProjectSnapshot!
 }`, BuiltIn: false},
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
   completedAt: DateTime
@@ -12364,64 +12349,6 @@ func (ec *executionContext) fieldContext_NamedSnapshot_size(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _NamedSnapshotState_snapshotNumber(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshotState) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NamedSnapshotState_snapshotNumber,
-		func(ctx context.Context) (any, error) {
-			return obj.SnapshotNumber, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NamedSnapshotState_snapshotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NamedSnapshotState",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NamedSnapshotState_updates(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshotState) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NamedSnapshotState_updates,
-		func(ctx context.Context) (any, error) {
-			return obj.Updates, nil
-		},
-		nil,
-		ec.marshalNInt2ᚕintᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NamedSnapshotState_updates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NamedSnapshotState",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _NodeExecution_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14199,13 +14126,42 @@ func (ec *executionContext) _ProjectSnapshot_version(ctx context.Context, field 
 			return obj.Version, nil
 		},
 		nil,
-		ec.marshalNInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
-		true,
+		false,
 	)
 }
 
 func (ec *executionContext) fieldContext_ProjectSnapshot_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshot_snapshotNumber(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectSnapshot_snapshotNumber,
+		func(ctx context.Context) (any, error) {
+			return obj.SnapshotNumber, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshot_snapshotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectSnapshot",
 		Field:      field,
@@ -15232,6 +15188,8 @@ func (ec *executionContext) fieldContext_Query_projectSnapshot(ctx context.Conte
 				return ec.fieldContext_ProjectSnapshot_updates(ctx, field)
 			case "version":
 				return ec.fieldContext_ProjectSnapshot_version(ctx, field)
+			case "snapshotNumber":
+				return ec.fieldContext_ProjectSnapshot_snapshotNumber(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectSnapshot", field.Name)
 		},
@@ -15312,7 +15270,7 @@ func (ec *executionContext) _Query_projectNamedSnapshot(ctx context.Context, fie
 			return ec.resolvers.Query().ProjectNamedSnapshot(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["snapshotNumber"].(int))
 		},
 		nil,
-		ec.marshalNNamedSnapshotState2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNamedSnapshotState,
+		ec.marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot,
 		true,
 		true,
 	)
@@ -15326,12 +15284,16 @@ func (ec *executionContext) fieldContext_Query_projectNamedSnapshot(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "snapshotNumber":
-				return ec.fieldContext_NamedSnapshotState_snapshotNumber(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_ProjectSnapshot_timestamp(ctx, field)
 			case "updates":
-				return ec.fieldContext_NamedSnapshotState_updates(ctx, field)
+				return ec.fieldContext_ProjectSnapshot_updates(ctx, field)
+			case "version":
+				return ec.fieldContext_ProjectSnapshot_version(ctx, field)
+			case "snapshotNumber":
+				return ec.fieldContext_ProjectSnapshot_snapshotNumber(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type NamedSnapshotState", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ProjectSnapshot", field.Name)
 		},
 	}
 	defer func() {
@@ -24271,50 +24233,6 @@ func (ec *executionContext) _NamedSnapshot(ctx context.Context, sel ast.Selectio
 	return out
 }
 
-var namedSnapshotStateImplementors = []string{"NamedSnapshotState"}
-
-func (ec *executionContext) _NamedSnapshotState(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.NamedSnapshotState) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, namedSnapshotStateImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("NamedSnapshotState")
-		case "snapshotNumber":
-			out.Values[i] = ec._NamedSnapshotState_snapshotNumber(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updates":
-			out.Values[i] = ec._NamedSnapshotState_updates(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var nodeExecutionImplementors = []string{"NodeExecution", "Node"}
 
 func (ec *executionContext) _NodeExecution(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.NodeExecution) graphql.Marshaler {
@@ -25034,9 +24952,8 @@ func (ec *executionContext) _ProjectSnapshot(ctx context.Context, sel ast.Select
 			}
 		case "version":
 			out.Values[i] = ec._ProjectSnapshot_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+		case "snapshotNumber":
+			out.Values[i] = ec._ProjectSnapshot_snapshotNumber(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -28294,20 +28211,6 @@ func (ec *executionContext) marshalNNamedSnapshot2ᚖgithubᚗcomᚋreearthᚋre
 		return graphql.Null
 	}
 	return ec._NamedSnapshot(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNNamedSnapshotState2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNamedSnapshotState(ctx context.Context, sel ast.SelectionSet, v gqlmodel.NamedSnapshotState) graphql.Marshaler {
-	return ec._NamedSnapshotState(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNNamedSnapshotState2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNamedSnapshotState(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.NamedSnapshotState) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._NamedSnapshotState(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNode2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNode(ctx context.Context, sel ast.SelectionSet, v []gqlmodel.Node) graphql.Marshaler {

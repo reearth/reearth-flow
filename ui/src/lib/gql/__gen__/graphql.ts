@@ -489,7 +489,7 @@ export type GetProjectSnapshotQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectSnapshotQuery = { projectSnapshot: { timestamp: any, updates: Array<number>, version: number } };
+export type GetProjectSnapshotQuery = { projectSnapshot: { timestamp: any, updates: Array<number>, version: number | null } };
 
 export type GetProjectHistoryQueryVariables = Exact<{
   projectId: string;
@@ -511,7 +511,7 @@ export type GetProjectNamedSnapshotQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectNamedSnapshotQuery = { projectNamedSnapshot: { snapshotNumber: number, updates: Array<number> } };
+export type GetProjectNamedSnapshotQuery = { projectNamedSnapshot: { snapshotNumber: number | null, updates: Array<number> } };
 
 export type SaveNamedSnapshotMutationVariables = Exact<{
   projectId: string;
@@ -566,7 +566,7 @@ export type ProjectDocumentFragment = { id: string, timestamp: any, updates: Arr
 
 export type ProjectSnapshotMetadataFragment = { timestamp: any, version: number } & { ' $fragmentName'?: 'ProjectSnapshotMetadataFragment' };
 
-export type ProjectSnapshotFragment = { timestamp: any, updates: Array<number>, version: number } & { ' $fragmentName'?: 'ProjectSnapshotFragment' };
+export type ProjectSnapshotFragment = { timestamp: any, updates: Array<number>, version: number | null } & { ' $fragmentName'?: 'ProjectSnapshotFragment' };
 
 export type UserFacingLogFragment = { jobId: string, timestamp: any, nodeId: string | null, nodeName: string | null, level: UserFacingLogLevel, message: string } & { ' $fragmentName'?: 'UserFacingLogFragment' };
 
