@@ -235,15 +235,6 @@ impl Processor for AreaCalculator {
         Ok(())
     }
 
-    #[cfg(feature = "new-geometry")]
-    fn finish(
-        &mut self,
-        _ctx: NodeContext,
-        _fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        Ok(())
-    }
-
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -311,7 +302,10 @@ impl Processor for AreaCalculator {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    // One body covers both worlds: the trait signature
+    // (`runtime/runtime/src/node.rs`'s `Processor::finish`) is not itself
+    // `#[cfg]`-gated, only its default implementation's error message differs
+    // per world, so there is nothing here for a `#[cfg]` pair to gate.
     fn finish(
         &mut self,
         _ctx: NodeContext,

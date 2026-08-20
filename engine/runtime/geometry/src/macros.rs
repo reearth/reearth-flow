@@ -17,6 +17,12 @@ macro_rules! unsupported {
 /// a curve, a point cloud — measuring `0.0` rather than refusing. Unlike
 /// [`unsupported!`](crate::unsupported), which leaves the refusing default in
 /// place, this records a real answer.
+///
+/// Unlike `unsupported!`, which takes the trait to stamp as a parameter, this
+/// macro's body names `$crate::ops::Area` directly, and that trait exists only
+/// under `new-geometry`. So the macro itself is gated to match, rather than
+/// relying on every call site to gate around it.
+#[cfg(feature = "new-geometry")]
 #[macro_export]
 macro_rules! no_area {
     ($($ty:ty),+ $(,)?) => { $(
