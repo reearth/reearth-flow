@@ -15,6 +15,7 @@ import { applySchemaDefaults } from "@flow/components/SchemaForm/patchSchemaType
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, Node } from "@flow/types";
+import { normalizeParams } from "@flow/utils";
 
 import {
   ParamEditor,
@@ -166,9 +167,12 @@ const ParamsDialog: React.FC<Props> = ({
         "paramsPatch",
       );
 
-      const updatedParams = paramsSchema
-        ? applySchemaDefaults(paramsSchema, mergedParams)
-        : mergedParams;
+      // Normalize after defaults are applied to prevent issues with whitespace-only values in flowExpr fields, which are considered empty.
+      const updatedParams = normalizeParams(
+        paramsSchema
+          ? applySchemaDefaults(paramsSchema, mergedParams)
+          : mergedParams,
+      );
 
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
@@ -221,7 +225,7 @@ const ParamsDialog: React.FC<Props> = ({
         onDataSubmit?.([
           {
             nodeId: id,
-            updatedParams: newParams,
+            updatedParams: normalizeParams(newParams),
             updatedCustomizations,
             paramsSchema,
           },
