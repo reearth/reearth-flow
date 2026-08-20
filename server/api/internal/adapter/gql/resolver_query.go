@@ -140,7 +140,7 @@ func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, k
 }
 
 func (r *queryResolver) Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error) {
-	return loaders(ctx).Parameter.FindByProject(ctx, projectID)
+	return dataloaders(ctx).ParametersByProject.Load(projectID)
 }
 
 func (r *queryResolver) WorkerConfig(ctx context.Context) (*gqlmodel.WorkerConfig, error) {
