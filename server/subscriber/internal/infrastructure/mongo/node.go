@@ -59,7 +59,7 @@ func (m *MongoStorage) FindByID(ctx context.Context, id string) (*node.NodeExecu
 	return c.Result[0], nil
 }
 
-func (m *MongoStorage) SaveNodeExecutionToMongo(ctx context.Context, jobID string, nodeExec *node.NodeExecution) error {
+func (m *MongoStorage) SaveNodeExecution(ctx context.Context, jobID string, nodeExec *node.NodeExecution) error {
 	if nodeExec == nil {
 		log.Printf("ERROR: Attempted to save nil node execution for jobID=%s", jobID)
 		return fmt.Errorf("node execution is nil")

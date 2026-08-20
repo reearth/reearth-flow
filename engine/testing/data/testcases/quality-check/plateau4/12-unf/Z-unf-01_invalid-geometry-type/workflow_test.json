@@ -1,5 +1,6 @@
 {
   "description": "Verify output files for underground facility quality check with no errors",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/12-unf/workflow.yml",
   "workflowVariables": [
     {

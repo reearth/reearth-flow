@@ -41,6 +41,7 @@ jobs:
         with:
           files: |
             server/api/**
+            server/db/**
             engine/schema/**
             .github/workflows/ci.yml
             .github/workflows/ci_api.yml
@@ -69,6 +70,7 @@ jobs:
         with:
           files: |
             server/subscriber/**
+            server/db/**
             .github/workflows/ci.yml
             .github/workflows/ci_subscriber.yml
             .github/workflows/build_deploy_subscriber.yml
@@ -78,6 +80,7 @@ jobs:
         with:
           files: |
             ui/**
+            engine/schema/feature-intermediate.schema.json
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
             .github/workflows/build_deploy_ui.yml

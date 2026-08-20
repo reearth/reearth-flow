@@ -50,7 +50,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env.get("exceptSplit", false)
+          value: variables.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -2003,7 +2003,7 @@ graphs:
     type: action
     action: XML Fragmenter
     with:
-      source: url
+      source: file
       elementsToMatch:
         type: flowExpr
         value: attributes["featureTypes"][attributes["package"]]
@@ -2398,12 +2398,12 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env["cityGmlPath"],
-              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
+              "cityGmlPath": variables["cityGmlPath"],
+              "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "baseCityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "objectListsPath": variables.get("objectListsPath") or variables.get("objectLists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
             },
           ]
   - id: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
@@ -2467,7 +2467,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+          value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
   - id: 242e339a-c7df-4be4-82f7-3223a6ed2145
     name: FeatureCityGmlReader
@@ -2488,7 +2488,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
     name: TransportationXlinkDetector
     type: action
@@ -3052,7 +3052,7 @@ graphs:
         value: '[]'
       output:
         type: flowExpr
-        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
+        value: variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"
   - id: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992
     name: ZipFileWriter
     type: action
@@ -3060,7 +3060,7 @@ graphs:
     with:
       output:
         type: flowExpr
-        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
+        value: variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"
   edges:
   - id: 7613b326-d3d7-4fdc-b7e1-9821e120ac49
     from: f9248705-3024-40b0-b729-66507ca6640d

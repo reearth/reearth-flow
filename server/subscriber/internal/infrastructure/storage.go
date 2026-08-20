@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
@@ -25,20 +24,25 @@ func (s *logStorageImpl) SaveToRedis(ctx context.Context, event *domainLog.LogEv
 	return s.redis.SaveLogToRedis(ctx, event)
 }
 
-type nodeStorageImpl struct {
-	redis *redis.RedisStorage
-	mongo *mongo.MongoStorage
+// nodeExecutionStorage is satisfied by both the mongo and postgres adapters.
+type nodeExecutionStorage interface {
+	SaveNodeExecution(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error
 }
 
-func NewNodeStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.NodeStorage {
+type nodeStorageImpl struct {
+	redis *redis.RedisStorage
+	db    nodeExecutionStorage
+}
+
+func NewNodeStorageImpl(r *redis.RedisStorage, db nodeExecutionStorage) gateway.NodeStorage {
 	return &nodeStorageImpl{
 		redis: r,
-		mongo: m,
+		db:    db,
 	}
 }
 
-func (s *nodeStorageImpl) SaveToMongo(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error {
-	return s.mongo.SaveNodeExecutionToMongo(ctx, jobID, nodeExecution)
+func (s *nodeStorageImpl) SaveNodeExecution(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error {
+	return s.db.SaveNodeExecution(ctx, jobID, nodeExecution)
 }
 
 func (s *nodeStorageImpl) SaveToRedis(ctx context.Context, event *node.NodeStatusEvent) error {

@@ -1,5 +1,6 @@
 {
   "description": "Test L07 (base) for LOD0 on plateau6. A LOD0 ring with near-duplicate consecutive points, reported as DuplicateConsecutivePoints under 'LOD0 面のエラー'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

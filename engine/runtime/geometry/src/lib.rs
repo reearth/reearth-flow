@@ -1,6 +1,12 @@
 #![recursion_limit = "2048"]
 extern crate alloc;
 
+#[cfg(all(feature = "schema", feature = "debug-geom-feature-write"))]
+compile_error!(
+    "the `schema` feature describes the production intermediate-data form; \
+     disable `debug-geom-feature-write` to generate it"
+);
+
 pub mod algorithm;
 pub mod error;
 pub mod types;
@@ -53,13 +59,16 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, Reproject,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractHoles,
+    ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance, Reproject,
     ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
 use ops::Split;
+#[cfg(feature = "new-geometry")]
+use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -77,7 +86,9 @@ use triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 
 /// The top-level geometry type: an absent `None`, a geometry in one of the two
 /// embedding dimensions, or a heterogeneous, cross-dimensional collection.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Geometry"))]
 pub enum Geometry {
     /// No geometry: a feature carrying attributes but no spatial payload. This
     /// is the default — an absent geometry, distinct from an empty collection.
@@ -90,11 +101,20 @@ pub enum Geometry {
 }
 
 /// Ordered members, each optionally carrying its own attributes.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "schema", schemars(title = "Geometry collection"))]
 pub struct GeometryCollection {
+    #[cfg_attr(feature = "schema", schemars(title = "Members"))]
     members: Vec<Geometry>,
     /// Per-member attributes parallel to `members`; empty = no member carries
     /// any. Child-scoped: not exposed as the feature's own attributes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
+    #[cfg_attr(feature = "schema", schemars(title = "Per-member attributes"))]
     attrs: Vec<Attributes>,
 }
 
@@ -163,10 +183,14 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[cfg_attr(
@@ -175,14 +199,21 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles,
+        Footprint
     )
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "2D geometry"))]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
     LineString(LineString2D),
@@ -209,10 +240,14 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[cfg_attr(
@@ -221,14 +256,21 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles,
+        Footprint
     )
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "3D geometry"))]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
     PointCloud(Box<PointCloud>),
@@ -430,6 +472,78 @@ impl Translate for GeometryCollection {
     }
 }
 
+impl RemoveAppearance for Geometry {
+    fn remove_appearance(&mut self) {
+        match self {
+            Geometry::None => {}
+            Geometry::Euclidean2D(g) => g.remove_appearance(),
+            Geometry::Euclidean3D(g) => g.remove_appearance(),
+            Geometry::GeometryCollection(c) => c.remove_appearance(),
+        }
+    }
+}
+
+impl RemoveAppearance for GeometryCollection {
+    fn remove_appearance(&mut self) {
+        for member in self.members_mut() {
+            member.remove_appearance();
+        }
+    }
+}
+
+impl CountHoles for Geometry {
+    fn count_holes(&self) -> usize {
+        match self {
+            // An absent geometry has no faces, so no holes.
+            Geometry::None => 0,
+            Geometry::Euclidean2D(g) => g.count_holes(),
+            Geometry::Euclidean3D(g) => g.count_holes(),
+            Geometry::GeometryCollection(c) => c.count_holes(),
+        }
+    }
+}
+
+impl CountHoles for GeometryCollection {
+    fn count_holes(&self) -> usize {
+        self.members.iter().map(Geometry::count_holes).sum()
+    }
+}
+
+impl ExtractHoles for Geometry {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        match self {
+            // An absent geometry has no faces to take apart.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "extract_holes",
+            }),
+            Geometry::Euclidean2D(g) => g.extract_holes(emit),
+            Geometry::Euclidean3D(g) => g.extract_holes(emit),
+            Geometry::GeometryCollection(c) => c.extract_holes(emit),
+        }
+    }
+}
+
+impl ExtractHoles for GeometryCollection {
+    /// Deaggregate: each member is taken apart on its own, and one that is not
+    /// area geometry is emitted as [`ExtractedPart::Rejected`] rather than failing
+    /// the whole collection.
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        for member in &self.members {
+            if member.extract_holes(emit).is_err() {
+                emit(member.clone(), ExtractedPart::Rejected);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Split for Geometry {
     fn split(
         &mut self,
@@ -458,6 +572,39 @@ impl Split for GeometryCollection {
             emit,
         );
         Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Geometry {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.footprint(sink),
+            Geometry::Euclidean3D(g) => g.footprint(sink),
+            Geometry::GeometryCollection(c) => c.footprint(sink),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for GeometryCollection {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Geometry {
+    /// The footprint of this geometry on `plane`: every face projected and
+    /// dissolved into its union, curves and points projected as they are, as 2D
+    /// geometry in the plane's frame. See [`Footprint`] and
+    /// [`FootprintSink::finish`] for the contract, and [`FootprintPlane`] for
+    /// the frame each plane needs.
+    pub fn footprint_on(&self, plane: &FootprintPlane) -> Result<Geometry, FootprintError> {
+        let mut sink = FootprintSink::new(plane);
+        self.footprint(&mut sink)?;
+        sink.finish()
     }
 }
 
@@ -491,6 +638,48 @@ impl GeometryCollection {
             members,
             attrs: std::mem::take(&mut self.attrs),
         })
+    }
+}
+
+impl Coerce for Geometry {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no vertices to re-represent.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "coerce",
+            }),
+            Geometry::Euclidean2D(g) => g.coerce(target, cache),
+            Geometry::Euclidean3D(g) => g.coerce(target, cache),
+            Geometry::GeometryCollection(c) => c.coerce(target, cache),
+        }
+    }
+}
+
+impl Coerce for GeometryCollection {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        for member in self.members_mut() {
+            if let Ok(coerced) = member.coerce(target, cache) {
+                *member = coerced;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Err(UnsupportedOperation {
+                geometry: "GeometryCollection",
+                operation: "coerce",
+            });
+        }
+        Ok(Geometry::GeometryCollection(std::mem::take(self)))
     }
 }
 
@@ -1015,5 +1204,173 @@ mod force_2d_tests {
         ];
         let mut g = Geometry::GeometryCollection(GeometryCollection::new(members));
         assert!(g.force_2d().is_err());
+    }
+}
+
+#[cfg(test)]
+mod remove_appearance_tests {
+    use super::*;
+    use coordinate::CoordinateFrame;
+    use point::Point3D;
+    use polygon_mesh::PolygonMesh3DData;
+    use solid::{Shell, Solid};
+    use test_support::{textured, theme, uv};
+    use triangular_mesh::TriangularMesh3D;
+
+    /// A one-triangle mesh carrying a textured appearance.
+    fn textured_mesh() -> TriangularMesh3D {
+        let mut mesh = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        mesh.set_appearance(theme("rgb"), textured(), Some(uv(3)))
+            .unwrap();
+        mesh
+    }
+
+    /// A one-quad polygon-mesh shell carrying a textured appearance.
+    fn textured_shell() -> PolygonMesh3DData {
+        let mut face = polygon::Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        face.set_appearance(theme("rgb"), textured(), Some(uv(4)))
+            .unwrap();
+        PolygonMesh3DData::from_polygons([&face])
+    }
+
+    /// Whether the shell's mesh carries an appearance.
+    fn shell_appearance(shell: &Shell) -> bool {
+        match shell {
+            Shell::PolygonMesh(data) => {
+                polygon_mesh::PolygonMesh3D::new(CoordinateFrame::Euclidean, data.clone())
+                    .appearance()
+                    .is_some()
+            }
+            Shell::TriangularMesh(data) => {
+                TriangularMesh3D::new(CoordinateFrame::Euclidean, data.clone())
+                    .appearance()
+                    .is_some()
+            }
+        }
+    }
+
+    #[test]
+    fn a_surface_leaf_loses_its_appearance() {
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+            textured_mesh(),
+        )));
+        g.remove_appearance();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) = g else {
+            panic!("expected a 3D triangular mesh");
+        };
+        assert!(mesh.appearance().is_none());
+        assert_eq!(mesh.num_triangles(), 1);
+        assert_eq!(mesh.vertices().len(), 3);
+    }
+
+    #[test]
+    fn every_shell_of_a_solid_loses_its_appearance() {
+        let solid = Solid::new(
+            CoordinateFrame::Euclidean,
+            textured_shell(),
+            vec![Shell::from(textured_shell())],
+        );
+        assert!(shell_appearance(solid.exterior()));
+        assert!(shell_appearance(&solid.interiors()[0]));
+
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
+        g.remove_appearance();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(solid)) = g else {
+            panic!("expected a solid");
+        };
+        assert!(!shell_appearance(solid.exterior()));
+        assert!(!shell_appearance(&solid.interiors()[0]));
+    }
+
+    #[test]
+    fn a_nested_csg_tree_loses_the_appearance_of_every_operand() {
+        let solid = || Solid::from_exterior(CoordinateFrame::Euclidean, textured_shell());
+        let inner = csg::Csg::union(solid(), solid());
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg::Csg::difference(
+            inner,
+            solid(),
+        )));
+        g.remove_appearance();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg)) = g else {
+            panic!("expected a CSG tree");
+        };
+        let mut shells = Vec::new();
+        collect_shells(&csg, &mut shells);
+        assert_eq!(shells.len(), 3);
+        assert!(shells.iter().all(|has_appearance| !has_appearance));
+    }
+
+    /// Collect, for every solid reachable from `csg`, whether it carries appearance.
+    fn collect_shells(csg: &csg::Csg, out: &mut Vec<bool>) {
+        let (left, right) = match csg {
+            csg::Csg::Union(a, b) | csg::Csg::Intersection(a, b) | csg::Csg::Difference(a, b) => {
+                (a, b)
+            }
+        };
+        for operand in [left, right] {
+            match &**operand {
+                csg::ThreeDimensional::Solid(s) => out.push(shell_appearance(s.exterior())),
+                csg::ThreeDimensional::Csg(c) => collect_shells(c, out),
+            }
+        }
+    }
+
+    #[test]
+    fn removal_reaches_through_nested_collections() {
+        let member = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+            textured_mesh(),
+        )));
+        let inner = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            collection::Collection3D::new([Euclidean3DGeometry::TriangularMesh(Box::new(
+                textured_mesh(),
+            ))]),
+        ));
+        let mut g = Geometry::GeometryCollection(GeometryCollection::new([member, inner]));
+        g.remove_appearance();
+
+        let Geometry::GeometryCollection(outer) = g else {
+            panic!("expected a geometry collection");
+        };
+        let meshes = outer.members().iter().flat_map(|m| match m {
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) => {
+                vec![mesh.appearance().is_some()]
+            }
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => c
+                .members()
+                .iter()
+                .map(|m| match m {
+                    Euclidean3DGeometry::TriangularMesh(mesh) => mesh.appearance().is_some(),
+                    other => panic!("unexpected member {other:?}"),
+                })
+                .collect(),
+            other => panic!("unexpected member {other:?}"),
+        });
+        assert_eq!(meshes.collect::<Vec<_>>(), vec![false, false]);
+    }
+
+    #[test]
+    fn a_geometry_that_carries_no_appearance_is_left_alone() {
+        let point = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(point.clone()));
+        g.remove_appearance();
+        assert_eq!(g, Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)));
+
+        let mut none = Geometry::None;
+        none.remove_appearance();
+        assert_eq!(none, Geometry::None);
     }
 }

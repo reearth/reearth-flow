@@ -15,6 +15,7 @@ import {
 } from "react";
 
 import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/utils/cesiumFunctions";
+import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
@@ -140,13 +141,12 @@ export default () => {
     (selectedFeature: any) => {
       if (!selectedFeature) return;
 
-      // Get the current geometry type
-      const currentDetectedGeometryType = streamingQuery.detectedGeometryType;
-
-      // Determine which viewer to use based on detected geometry type
+      // Which viewer is on screen, rather than which geometry type produced
+      // it: the type is a display label that differs between the legacy and
+      // new formats, while the viewer choice already encodes the dimension.
       const is3D =
-        currentDetectedGeometryType === "CityGmlGeometry" ||
-        currentDetectedGeometryType === "FlowGeometry3D";
+        streamingQuery.visualizerType === "3d-map" ||
+        streamingQuery.visualizerType === "3d-model";
 
       if (cesiumViewerRef.current) {
         const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
@@ -158,7 +158,11 @@ export default () => {
 
             const geometry = selectedFeature.geometry;
 
-            if (geometry?.type === "CityGmlGeometry") {
+            // CityGML in either format is drawn as batched primitives, so
+            // there is no entity for the entity search below to find; it has
+            // to go through the bounding sphere. The check used to be on the
+            // legacy type name, which a new-format feature does not carry.
+            if (isCityGmlGeometry(geometry)) {
               zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
             } else {
               // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
@@ -220,7 +224,7 @@ export default () => {
         }
       }
     },
-    [streamingQuery.detectedGeometryType, cesiumViewerRef],
+    [streamingQuery.visualizerType, cesiumViewerRef],
   );
 
   const formattedData = useDataColumnizer({

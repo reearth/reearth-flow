@@ -16,6 +16,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	reearth_log "github.com/reearth/reearthx/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type LogInteractor struct {
@@ -41,7 +43,16 @@ func (li *LogInteractor) checkPermission(ctx context.Context, action string, wor
 	return checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action, workspaceID...)
 }
 
-func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) ([]*log.Log, error) {
+func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) (_ []*log.Log, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.LogInteractor.GetLogs")
+	span.SetAttributes(attribute.String("job.id", jobID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	j, err := li.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
 		return nil, err

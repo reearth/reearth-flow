@@ -10,22 +10,23 @@ const (
 )
 
 const (
-	ResourceAsset         = "asset"
-	ResourceCMSAsset      = "cms_asset"
-	ResourceCMSItem       = "cms_item"
-	ResourceCMSModel      = "cms_model"
-	ResourceCMSProject    = "cms_project"
-	ResourceDeployment    = "deployment"
-	ResourceEdge          = "edge"
-	ResourceJob           = "job"
-	ResourceLog           = "log"
-	ResourceNode          = "Node"
-	ResourceParameter     = "parameter"
-	ResourceProject       = "project"
-	ResourceProjectAccess = "projectAccess"
-	ResourceTrigger       = "trigger"
-	ResourceUser          = "user"
-	ResourceWorkspace     = "workspace"
+	ResourceAsset           = "asset"
+	ResourceCMSAsset        = "cms_asset"
+	ResourceCMSItem         = "cms_item"
+	ResourceCMSModel        = "cms_model"
+	ResourceCMSProject      = "cms_project"
+	ResourceDeployment      = "deployment"
+	ResourceEdge            = "edge"
+	ResourceJob             = "job"
+	ResourceLog             = "log"
+	ResourceNode            = "Node"
+	ResourceParameter       = "parameter"
+	ResourceProject         = "project"
+	ResourceProjectAccess   = "projectAccess"
+	ResourceProjectDocument = "projectDocument"
+	ResourceTrigger         = "trigger"
+	ResourceUser            = "user"
+	ResourceWorkspace       = "workspace"
 )
 
 const (
@@ -88,6 +89,11 @@ func DefineResources() []generator.ResourceRule {
 			ActionAny:    {Roles: []string{roleReader, roleWriter, roleOwner, roleMaintainer}},
 		}},
 		{Resource: ResourceProjectAccess, Actions: maintainerOwner},
+		{Resource: ResourceProjectDocument, Actions: map[string]generator.ActionRule{
+			ActionRead:   {Roles: []string{roleReader, roleWriter, roleMaintainer, roleOwner}},
+			ActionEdit:   {Roles: []string{roleWriter, roleMaintainer, roleOwner}},
+			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
+		}},
 		{Resource: ResourceTrigger, Actions: map[string]generator.ActionRule{
 			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
 			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},

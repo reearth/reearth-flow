@@ -55,6 +55,7 @@ type (
 		SharedPath      string `default:"shared"`
 		SignupSecret    string `pp:",omitempty"`
 		Tracer          string `pp:",omitempty"`
+		Tracer_Endpoint string `default:"localhost:4317" pp:",omitempty"`
 		Web_FaviconURL  string `pp:",omitempty"`
 		Web_Title       string `pp:",omitempty"`
 		WorkflowBaseURL string `default:"http://localhost:8080/workflows"`
@@ -181,7 +182,7 @@ func (c *Config) Print() string {
 }
 
 func (c *Config) secrets() []string {
-	s := []string{c.DB, c.Auth0.ClientSecret, c.HealthCheck.Password}
+	s := []string{c.DB, c.DB_PG, c.Redis_URL, c.Auth0.ClientSecret, c.HealthCheck.Password, c.SignupSecret, c.WebsocketAPISecret, c.CMS_Token}
 	for _, ac := range c.DB_Users {
 		s = append(s, ac.URI)
 	}

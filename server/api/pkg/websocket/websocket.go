@@ -19,3 +19,10 @@ type HistoryMetadata struct {
 	Timestamp time.Time
 	Version   int
 }
+
+type SnapshotMetadata struct {
+	Timestamp time.Time
+	Label     string
+	ID        int64
+	Size      int64
+}

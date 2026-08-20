@@ -106,7 +106,7 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::citygml_parser::parser::{Parser, RawNode, RawRegistry};
+    use crate::citygml_parser::parser::{CityGmlVersion, Parser, RawNode, RawRegistry};
     use crate::citygml_parser::utils::{local_name, XmlChild};
 
     fn dummy_url() -> Url {
@@ -114,7 +114,7 @@ mod tests {
     }
 
     fn parse_test(xml: &[u8], url: &Url) -> (Vec<Arc<RawNode>>, RawRegistry) {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, url).unwrap();
         let (pending, raw_reg, _) = parser.finish();
         (pending, raw_reg)

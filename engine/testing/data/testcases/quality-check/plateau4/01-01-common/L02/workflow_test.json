@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for L02",
+  "skipNewGeometry": true,
   "skip": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [

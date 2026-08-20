@@ -8,13 +8,23 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+pub mod coerce;
+#[cfg(feature = "new-geometry")]
+pub mod footprint;
+pub mod hole;
 pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
+pub use coerce::{Coerce, CoercionTarget};
+#[cfg(feature = "new-geometry")]
+pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
+pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use reproject::{
     axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
 };
+pub use reproject::{esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 
@@ -251,6 +261,20 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
         cache: &mut crate::ops::triangulation::Cache,
     ) -> Result<crate::Geometry, UnsupportedOperation> {
         (**self).triangulate(cache)
+    }
+}
+
+/// Drop every material, binding and UV set a geometry carries, for every theme,
+/// leaving its coordinates and topology untouched. Total over the hierarchy: a
+/// type that carries no appearance inherits the no-op default.
+#[enum_dispatch::enum_dispatch]
+pub trait RemoveAppearance {
+    fn remove_appearance(&mut self) {}
+}
+
+impl<T: RemoveAppearance + ?Sized> RemoveAppearance for Box<T> {
+    fn remove_appearance(&mut self) {
+        (**self).remove_appearance()
     }
 }
 

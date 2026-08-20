@@ -23,6 +23,7 @@ import { initializeSentinel } from "@flow/services/sentinel";
 
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
+import { isCityGmlGeometry } from "./utils/cityGmlGeometryToPrimitives";
 import { hasUnsupportedCrs } from "./utils/wgs84";
 
 // const REEARTH_TERRAIN_URL =
@@ -227,7 +228,12 @@ const CesiumViewer: React.FC<Props> = ({
         unsupported++;
         continue;
       }
-      if (feature?.geometry?.type === "CityGmlGeometry") {
+
+      // CityGML in either format belongs on the batched primitive renderer
+      // rather than the GeoJSON one: Cesium builds one Entity per polygon of a
+      // MultiPolygon, and a CityGML building is one polygon per surface, so the
+      // entity path turns a city block into hundreds of thousands of entities.
+      if (isCityGmlGeometry(feature?.geometry)) {
         cityGmlFeatures.push(feature);
       } else {
         geoJsonFeatures.push(feature);

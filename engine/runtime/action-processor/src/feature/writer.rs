@@ -1,5 +1,6 @@
 mod citygml;
 mod csv;
+pub(super) mod geojson;
 mod json;
 
 use std::collections::HashMap;
@@ -13,7 +14,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{lod::LodMask, Attribute, AttributeValue, Code, CompiledCode, Feature};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::lod::LodMask;
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -121,6 +124,14 @@ impl ProcessorFactory for FeatureWriterFactory {
                 };
                 Ok(Box::new(process))
             }
+            // TODO(new-geometry): the CityGML arm shares `write_citygml_to_storage`
+            // with the `CityGML Writer` sink; ungate it when that sink is ported.
+            #[cfg(feature = "new-geometry")]
+            FeatureWriterParam::CityGml { .. } => Err(FeatureProcessorError::FeatureWriterFactory(
+                "CityGML output is not yet supported in the new geometry world".to_string(),
+            )
+            .into()),
+            #[cfg(not(feature = "new-geometry"))]
             FeatureWriterParam::CityGml {
                 common_param,
                 param,
@@ -203,6 +214,7 @@ enum CompiledFeatureWriterParam {
         common_param: CommonWriterCompiledParam,
         param: json::CompiledJsonWriterParam,
     },
+    #[cfg(not(feature = "new-geometry"))]
     CityGml {
         common_param: CommonWriterCompiledParam,
         lod_mask: LodMask,
@@ -222,6 +234,7 @@ impl CompiledFeatureWriterParam {
             CompiledFeatureWriterParam::Csv { common_param } => &common_param.output,
             CompiledFeatureWriterParam::Tsv { common_param } => &common_param.output,
             CompiledFeatureWriterParam::Json { common_param, .. } => &common_param.output,
+            #[cfg(not(feature = "new-geometry"))]
             CompiledFeatureWriterParam::CityGml { common_param, .. } => &common_param.output,
         }
     }
@@ -237,7 +250,7 @@ impl Processor for FeatureWriter {
         let path = self
             .params
             .output()
-            .eval_string(feature, ctx.env_vars.clone())
+            .eval_string(feature, ctx.variables.clone())
             .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
         // Validation happens at flush time via SinkOutput::new; nothing to
         // pre-check here. The buffer is keyed by the raw relative-path string.
@@ -246,7 +259,6 @@ impl Processor for FeatureWriter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -292,10 +304,11 @@ impl Processor for FeatureWriter {
                         output,
                         &param.converter,
                         &ctx.storage_resolver,
-                        ctx.env_vars.clone(),
+                        ctx.variables.clone(),
                         features,
                     )?;
                 }
+                #[cfg(not(feature = "new-geometry"))]
                 CompiledFeatureWriterParam::CityGml {
                     lod_mask,
                     epsg_code,
