@@ -923,6 +923,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Range Mapper Parameters",
+        "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -993,7 +994,9 @@
       "categories": [
         "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "mapping"
+      ]
     },
     {
       "name": "Attribute Table Extractor",
@@ -1032,7 +1035,17 @@
           },
           "inline": {
             "title": "Tabla en Línea",
-            "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos"
+            "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos",
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ExtractRule"
+              }
+            }
           },
           "typeAttribute": {
             "title": "Atributo de Tipo de Entidad",
@@ -1040,6 +1053,62 @@
             "type": [
               "string",
               "null"
+            ]
+          }
+        },
+        "definitions": {
+          "ExtractRule": {
+            "title": "Extraction Rule",
+            "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",
+            "type": "object",
+            "required": [
+              "destinationPath",
+              "sourcePath"
+            ],
+            "properties": {
+              "destinationPath": {
+                "title": "Destination Path",
+                "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed.",
+                "type": "string"
+              },
+              "sourcePath": {
+                "title": "Source Path",
+                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "type": "string"
+              },
+              "dataType": {
+                "title": "Value Type",
+                "description": "Converts the extracted value before writing it. Leave unset to write it unchanged.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ExtractDataType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "ExtractDataType": {
+            "oneOf": [
+              {
+                "title": "Integer",
+                "description": "Parses a string value as an integer.",
+                "type": "string",
+                "enum": [
+                  "int"
+                ]
+              },
+              {
+                "title": "Float",
+                "description": "Parses a string value as a floating point number.",
+                "type": "string",
+                "enum": [
+                  "float"
+                ]
+              }
             ]
           }
         }
@@ -1061,36 +1130,24 @@
     {
       "name": "Boundary Extractor",
       "type": "processor",
-      "description": "Extrae el límite de geometrías. Para sólidos/mallas devuelve superficies delimitadoras, para superficies devuelve aristas de límite, para superficies cerradas devuelve geometría vacía",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Boundary Extractor Parameters",
-        "description": "Configuration for extracting boundaries from geometries.",
-        "type": "object",
-        "properties": {
-          "keepEmptyBoundaries": {
-            "description": "Whether to keep features with empty boundaries (default: false)",
-            "default": false,
-            "type": "boolean"
-          },
-          "exteriorOnly": {
-            "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
+      "description": "Reemplaza una geometría por su frontera: los extremos de una curva, los anillos de borde de una superficie y los cascarones que delimitan un volumen.",
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "boundary",
+        "no-boundary",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d",
+        "spatial"
+      ]
     },
     {
       "name": "Bounds Extractor",
@@ -2818,17 +2875,6 @@
               }
             ]
           },
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint16",
-            "minimum": 0.0
-          },
           "basePointSource": {
             "title": "Base Point",
             "description": "How coordinates bridge the Euclidean/CRS boundary.",
@@ -2844,23 +2890,47 @@
         },
         "definitions": {
           "DestinationFrame": {
-            "description": "The destination coordinate frame kind.",
+            "description": "The destination coordinate frame, carrying the input each kind needs.",
             "oneOf": [
               {
                 "title": "CRS",
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
-                "type": "string",
-                "enum": [
-                  "crs"
-                ]
+                "type": "object",
+                "required": [
+                  "epsgCode",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "crs"
+                    ]
+                  },
+                  "epsgCode": {
+                    "title": "EPSG Code",
+                    "description": "EPSG code of the destination coordinate reference system.",
+                    "type": "integer",
+                    "format": "uint16",
+                    "minimum": 0.0
+                  }
+                }
               },
               {
                 "title": "Euclidean",
-                "description": "Convert to a non-georeferenced Euclidean frame.",
-                "type": "string",
-                "enum": [
-                  "euclidean"
-                ]
+                "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "euclidean"
+                    ]
+                  }
+                }
               }
             ]
           },
@@ -2987,16 +3057,19 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Date Time Converter Parameters",
+        "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back.",
         "type": "object",
         "required": [
           "attribute"
         ],
         "properties": {
           "attribute": {
+            "title": "Source Attribute",
             "description": "Attribute containing the datetime value to convert",
             "type": "string"
           },
           "inputFormat": {
+            "title": "Input Format",
             "description": "Format of the input value (default: auto)",
             "default": "auto",
             "allOf": [
@@ -3006,6 +3079,7 @@
             ]
           },
           "outputFormat": {
+            "title": "Output Format",
             "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
             "default": "auto",
             "allOf": [
@@ -3015,6 +3089,7 @@
             ]
           },
           "outputAttribute": {
+            "title": "Output Attribute",
             "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
             "default": null,
             "type": [
@@ -3028,13 +3103,15 @@
             "description": "Input format options for Date Time Converter",
             "oneOf": [
               {
-                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+                "title": "Detect Automatically",
+                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format.",
                 "type": "string",
                 "enum": [
                   "auto"
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 format",
                 "type": "string",
                 "enum": [
@@ -3042,20 +3119,23 @@
                 ]
               },
               {
-                "description": "Unix timestamp in seconds",
+                "title": "Unix Seconds",
+                "description": "Seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unix timestamp in milliseconds",
+                "title": "Unix Milliseconds",
+                "description": "Milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "Date only format (YYYY-MM-DD)",
                 "type": "string",
                 "enum": [
@@ -3063,7 +3143,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Field-by-field pattern, for values none of the fixed formats match.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3081,6 +3162,7 @@
             "description": "Output format options for Date Time Converter",
             "oneOf": [
               {
+                "title": "Typed Datetime",
                 "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
                 "type": "string",
                 "enum": [
@@ -3088,6 +3170,7 @@
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 format",
                 "type": "string",
                 "enum": [
@@ -3095,20 +3178,23 @@
                 ]
               },
               {
-                "description": "Unix timestamp in seconds",
+                "title": "Unix Seconds",
+                "description": "Writes a number: seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unix timestamp in milliseconds",
+                "title": "Unix Milliseconds",
+                "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "Date only format (YYYY-MM-DD)",
                 "type": "string",
                 "enum": [
@@ -3116,7 +3202,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Writes a string built from a field-by-field pattern.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3265,7 +3352,7 @@
           },
           "AttributeAccumulationStrategy": {
             "title": "Attribute Accumulation Strategy",
-            "description": "Defines how attributes should be handled when dissolving multiple features into one",
+            "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
                 "title": "Drop Incoming Attributes",
@@ -3300,13 +3387,16 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "features",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Echo Processor",
@@ -3571,9 +3661,12 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML 3 Reader",
@@ -5377,7 +5470,7 @@
     {
       "name": "GeoPackage Reader",
       "type": "source",
-      "description": "Lee características geográficas de archivos GeoPackage (.gpkg) con soporte para características vectoriales, mosaicos y metadatos",
+      "description": "Lee entidades vectoriales de archivos GeoPackage (.gpkg), o los sistemas de referencia espacial y los metadatos de extensiones del archivo.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackage Reader Parameters",
@@ -5396,54 +5489,17 @@
           },
           "layerName": {
             "title": "Layer Name",
-            "description": "Name of the layer to read. When omitted, the first available layer is used.",
+            "description": "Name of the layer to read. When omitted, every feature layer in the file is read.",
             "type": [
               "string",
               "null"
             ]
-          },
-          "includeMetadata": {
-            "default": false,
-            "type": "boolean"
-          },
-          "tileFormat": {
-            "title": "Tile Format",
-            "description": "Image format to decode when reading raster tiles. Defaults to PNG.",
-            "default": "png",
-            "allOf": [
-              {
-                "$ref": "#/definitions/TileFormat"
-              }
-            ]
-          },
-          "attributeFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "batchSize": {
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
           },
           "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+            "description": "Drops the Z value from every geometry, producing 2D output.",
             "default": false,
             "type": "boolean"
-          },
-          "spatialFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "dataset": {
             "title": "File Path",
@@ -5501,62 +5557,18 @@
             "oneOf": [
               {
                 "title": "Features",
-                "description": "Reads vector features (geometry and attributes).",
+                "description": "Reads vector features, each carrying its geometry and attributes.",
                 "type": "string",
                 "enum": [
                   "features"
                 ]
               },
               {
-                "title": "Tiles",
-                "description": "Reads raster tiles.",
-                "type": "string",
-                "enum": [
-                  "tiles"
-                ]
-              },
-              {
-                "title": "All",
-                "description": "Reads both vector features and raster tiles.",
-                "type": "string",
-                "enum": [
-                  "all"
-                ]
-              },
-              {
                 "title": "Metadata Only",
-                "description": "Reads only the file's metadata, without features or tiles.",
+                "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record.",
                 "type": "string",
                 "enum": [
                   "metadataOnly"
-                ]
-              }
-            ]
-          },
-          "TileFormat": {
-            "oneOf": [
-              {
-                "title": "PNG",
-                "description": "Decodes tiles as PNG images.",
-                "type": "string",
-                "enum": [
-                  "png"
-                ]
-              },
-              {
-                "title": "JPEG",
-                "description": "Decodes tiles as JPEG images.",
-                "type": "string",
-                "enum": [
-                  "jpeg"
-                ]
-              },
-              {
-                "title": "WebP",
-                "description": "Decodes tiles as WebP images.",
-                "type": "string",
-                "enum": [
-                  "webp"
                 ]
               }
             ]
@@ -7676,7 +7688,7 @@
         "rejected"
       ],
       "categories": [
-        "Web"
+        "Feature"
       ],
       "tags": []
     },
@@ -8682,6 +8694,14 @@
             ],
             "format": "uint32",
             "minimum": 0.0
+          },
+          "maxTileBytes": {
+            "title": "Maximum Tile Size",
+            "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+            "default": 500000,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
           }
         }
       },
@@ -9065,7 +9085,7 @@
         "properties": {
           "parseMaterials": {
             "title": "Parse Materials",
-            "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
+            "description": "Parses material definitions from MTL files referenced in the OBJ file.",
             "default": true,
             "type": "boolean"
           },
@@ -9097,25 +9117,19 @@
           },
           "triangulate": {
             "title": "Triangulate",
-            "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
+            "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation.",
             "default": false,
             "type": "boolean"
           },
           "mergeGroups": {
             "title": "Merge Groups",
-            "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
+            "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object.",
             "default": false,
-            "type": "boolean"
-          },
-          "includeNormals": {
-            "title": "Include Normals",
-            "description": "Include vertex normal data in the output geometry",
-            "default": true,
             "type": "boolean"
           },
           "includeTexcoords": {
             "title": "Include Texture Coordinates",
-            "description": "Include texture coordinate (UV) data in the output geometry",
+            "description": "Includes texture coordinate (UV) data in the output geometry.",
             "default": true,
             "type": "boolean"
           },
@@ -9177,10 +9191,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "obj",
+        "3d"
+      ]
     },
     {
       "name": "OBJ Writer",
@@ -13601,24 +13617,18 @@
       "description": "Lee modelos 3D desde archivos glTF 2.0, compatible con mallas, nodos, escenas y primitivas de geometría",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "glTF ReaderParam",
+        "title": "glTF Reader Parameters",
         "type": "object",
         "properties": {
-          "triangulate": {
-            "title": "Triangulate",
-            "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
-            "default": true,
-            "type": "boolean"
-          },
           "mergeMeshes": {
             "title": "Merge Meshes",
-            "description": "If true, combines all meshes from the glTF file into a single output feature",
+            "description": "Combines all meshes from the glTF file into a single output feature.",
             "default": false,
             "type": "boolean"
           },
           "includeNodes": {
             "title": "Include Nodes",
-            "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+            "description": "Includes node hierarchy information from the glTF scene graph in feature attributes.",
             "default": true,
             "type": "boolean"
           },
@@ -13721,10 +13731,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "gltf",
+        "3d"
+      ]
     },
     {
       "name": "glTF Writer",

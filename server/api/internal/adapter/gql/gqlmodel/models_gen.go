@@ -498,9 +498,10 @@ type ProjectSharingInfoPayload struct {
 }
 
 type ProjectSnapshot struct {
-	Timestamp time.Time `json:"timestamp"`
-	Updates   []int     `json:"updates"`
-	Version   int       `json:"version"`
+	Timestamp      time.Time `json:"timestamp"`
+	Updates        []int     `json:"updates"`
+	Version        *int      `json:"version,omitempty"`
+	SnapshotNumber *int      `json:"snapshotNumber,omitempty"`
 }
 
 type ProjectSnapshotMetadata struct {

@@ -21,6 +21,32 @@ query GetProjectHistory($projectId: ID!) {
     version
   }
 }
+
+query GetProjectNamedSnapshots($projectId: ID!) {
+  projectNamedSnapshots(projectId: $projectId) {
+    snapshotNumber
+    label
+    timestamp
+    size
+  }
+}
+
+query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
+  projectSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
+    snapshotNumber
+    updates
+  }
+}
+
+mutation SaveNamedSnapshot($projectId: ID!, $label: String!) {
+  saveNamedSnapshot(projectId: $projectId, label: $label) {
+    snapshotNumber
+    label
+    timestamp
+    size
+  }
+}
+
 mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
   previewSnapshot(projectId: $projectId, version: $version) {
     id
