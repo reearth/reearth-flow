@@ -55,6 +55,7 @@ type (
 		SharedPath      string `default:"shared"`
 		SignupSecret    string `pp:",omitempty"`
 		Tracer          string `pp:",omitempty"`
+		Tracer_Endpoint string `default:"localhost:4317" pp:",omitempty"`
 		Web_FaviconURL  string `pp:",omitempty"`
 		Web_Title       string `pp:",omitempty"`
 		WorkflowBaseURL string `default:"http://localhost:8080/workflows"`

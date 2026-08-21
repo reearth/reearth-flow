@@ -2,7 +2,13 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "NodeStatusEvent",
   "type": "object",
-  "required": ["workflowId", "jobId", "nodeId", "status", "timestamp"],
+  "required": [
+    "jobId",
+    "nodeId",
+    "status",
+    "timestamp",
+    "workflowId"
+  ],
   "properties": {
     "workflowId": {
       "type": "string",
@@ -19,18 +25,65 @@
       "$ref": "#/definitions/NodeStatus"
     },
     "featureId": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uuid"
     },
     "timestamp": {
       "type": "string",
       "format": "date-time"
+    },
+    "metrics": {
+      "description": "`None` for non-terminal statuses and for runs predating this field; populated only alongside Completed/Failed.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NodeMetrics"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
     "NodeStatus": {
       "type": "string",
-      "enum": ["starting", "processing", "completed", "failed"]
+      "enum": [
+        "pending",
+        "starting",
+        "processing",
+        "idle",
+        "completed",
+        "failed"
+      ]
+    },
+    "NodeMetrics": {
+      "description": "Only present on the terminal `NodeStatusEvent` of a node's lifecycle (Completed/Failed).",
+      "type": "object",
+      "required": [
+        "featuresProcessed",
+        "featuresWritten",
+        "finishFeatureCount"
+      ],
+      "properties": {
+        "featuresProcessed": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "featuresWritten": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "finishFeatureCount": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
     }
   }
 }

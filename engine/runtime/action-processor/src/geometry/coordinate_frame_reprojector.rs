@@ -32,15 +32,24 @@ thread_local! {
     static REPROJECTION_CACHE: RefCell<ReprojectionCache> = RefCell::new(ReprojectionCache::new());
 }
 
-/// The destination coordinate frame kind.
+/// The destination coordinate frame, carrying the input each kind needs.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase")]
 enum DestinationFrame {
     /// # CRS
     /// Reproject to a coordinate reference system identified by an EPSG code.
-    Crs,
+    #[serde(rename_all = "camelCase")]
+    Crs {
+        /// # EPSG Code
+        /// EPSG code of the destination coordinate reference system.
+        // u16 is the width `EpsgCode` itself holds, so the generated schema states the real
+        // bound rather than a looser one that `build` would then have to re-check.
+        epsg_code: u16,
+    },
     /// # Euclidean
-    /// Convert to a non-georeferenced Euclidean frame.
+    /// Convert to a non-georeferenced Euclidean frame. This is the frame the
+    /// planar geometry operations work in, so it is the on-ramp for actions that
+    /// require flat 2D input.
     Euclidean,
 }
 
@@ -86,13 +95,9 @@ enum BasePoint {
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateFrameReprojectorParam {
     /// # Destination Frame
-    /// Coordinate frame to convert geometry into.
+    /// Coordinate frame to convert geometry into. Choosing a CRS also requires
+    /// its EPSG code.
     destination_frame: DestinationFrame,
-    /// # EPSG Code
-    /// EPSG code of the destination CRS. Required when the destination frame is
-    /// a CRS.
-    #[serde(default)]
-    epsg_code: Option<u16>,
     /// # Base Point
     /// How coordinates bridge the Euclidean/CRS boundary.
     #[serde(default)]
@@ -156,15 +161,10 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
             })?
         };
 
+        // `epsgCode` rides inside the `crs` variant, so the schema cannot express a
+        // CRS destination without one — no runtime check needed (§3.2).
         let target = match params.destination_frame {
-            DestinationFrame::Crs => {
-                let epsg = params.epsg_code.ok_or_else(|| {
-                    GeometryProcessorError::CoordinateFrameReprojectorFactory(
-                        "`epsgCode` is required when the destination frame is a CRS".to_string(),
-                    )
-                })?;
-                CoordinateFrame::Crs(EpsgCode::new(epsg))
-            }
+            DestinationFrame::Crs { epsg_code } => CoordinateFrame::Crs(EpsgCode::new(epsg_code)),
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
         };
 
@@ -307,7 +307,7 @@ impl Processor for CoordinateFrameReprojector {
                 let feature = ctx.feature.clone();
                 if ctx.port != *BASE_POINT_PORT {
                     let base_point = code
-                        .eval(&ctx.feature, ctx.env_vars.clone())
+                        .eval(&ctx.feature, ctx.variables.clone())
                         .ok()
                         .as_ref()
                         .and_then(attribute_value_to_xyz);
@@ -328,7 +328,7 @@ impl Processor for CoordinateFrameReprojector {
             BasePointSource::FromPort { key } => {
                 let feature = &ctx.feature;
                 let matched_key = key
-                    .eval(feature, ctx.env_vars.clone())
+                    .eval(feature, ctx.variables.clone())
                     .ok()
                     .map(|v| v.to_string());
                 if ctx.port == *BASE_POINT_PORT {
@@ -405,7 +405,7 @@ fn representative_point(geometry: &Geometry) -> Option<[f64; 3]> {
 
 /// Parse an attribute value into an `[x, y, z]` triple. Accepts a two- or
 /// three-element numeric array; a two-element array is placed at `z = 0`.
-fn attribute_value_to_xyz(
+pub(crate) fn attribute_value_to_xyz(
     value: &reearth_flow_common::attribute::AttributeValue,
 ) -> Option<[f64; 3]> {
     use reearth_flow_common::attribute::AttributeValue;
@@ -437,8 +437,7 @@ mod tests {
     #[test]
     fn value_mode_carries_its_base_point() {
         let params = parse(json!({
-            "destinationFrame": "crs",
-            "epsgCode": 6677,
+            "destinationFrame": { "type": "crs", "epsgCode": 6677 },
             "basePointSource": {
                 "type": "value",
                 "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
@@ -450,7 +449,7 @@ mod tests {
     #[test]
     fn from_port_mode_carries_its_match_key() {
         let params = parse(json!({
-            "destinationFrame": "euclidean",
+            "destinationFrame": { "type": "euclidean" },
             "basePointSource": {
                 "type": "fromPort",
                 "matchKey": { "type": "flowExpr", "value": "id" },
@@ -465,7 +464,7 @@ mod tests {
     #[test]
     fn explicit_as_is_mode() {
         let params = parse(json!({
-            "destinationFrame": "euclidean",
+            "destinationFrame": { "type": "euclidean" },
             "basePointSource": { "type": "asIs" },
         }));
         assert!(matches!(params.base_point_source, BasePoint::AsIs));
@@ -473,15 +472,43 @@ mod tests {
 
     #[test]
     fn absent_base_point_source_defaults_to_as_is() {
-        let params = parse(json!({ "destinationFrame": "euclidean" }));
+        let params = parse(json!({ "destinationFrame": { "type": "euclidean" } }));
         assert!(matches!(params.base_point_source, BasePoint::AsIs));
+    }
+
+    /// `epsgCode` rides inside the `crs` variant, so a CRS destination cannot be
+    /// expressed without one. This is what makes the runtime check unnecessary (§3.2).
+    #[test]
+    fn crs_destination_carries_its_epsg_code() {
+        let params = parse(json!({
+            "destinationFrame": { "type": "crs", "epsgCode": 6677 },
+        }));
+        assert!(matches!(
+            params.destination_frame,
+            DestinationFrame::Crs { epsg_code: 6677 }
+        ));
+    }
+
+    #[test]
+    fn crs_destination_without_an_epsg_code_is_rejected() {
+        let result: Result<CoordinateFrameReprojectorParam, _> =
+            serde_json::from_value(json!({ "destinationFrame": { "type": "crs" } }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn euclidean_destination_needs_no_epsg_code() {
+        let params = parse(json!({ "destinationFrame": { "type": "euclidean" } }));
+        assert!(matches!(
+            params.destination_frame,
+            DestinationFrame::Euclidean
+        ));
     }
 
     #[test]
     fn value_mode_without_its_base_point_is_rejected() {
         let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
-            "destinationFrame": "crs",
-            "epsgCode": 6677,
+            "destinationFrame": { "type": "crs", "epsgCode": 6677 },
             "basePointSource": { "type": "value" },
         }));
         assert!(result.is_err());

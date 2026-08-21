@@ -1,6 +1,5 @@
 {
   "description": "Test feature writing through subgraph with FeatureFilter dynamic ports, OutputRouter, and CsvWriter",
-  "skipNewGeometry": true,
   "workflowPath": "executor-testing/feature-write/subgraph.yml",
   "expectedOutput": {
     "expectedFile": "output.csv"

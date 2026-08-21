@@ -74,3 +74,12 @@ func (nopStore) Import(ctx context.Context, room string, data []byte) (uint64, e
 func (nopStore) Compact(ctx context.Context, room string, keep int) (int, error)      { return 0, nil }
 func (nopStore) Delete(ctx context.Context, room string) error                        { return nil }
 func (nopStore) CleanupAll(ctx context.Context, keep int) (int, error)                { return 0, nil }
+func (nopStore) ListSnapshots(ctx context.Context, room string) ([]flowhttp.SnapshotItem, error) {
+	return nil, nil
+}
+func (nopStore) GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error) {
+	return nil, nil
+}
+func (nopStore) SaveSnapshot(ctx context.Context, room, label string) (int64, error) {
+	return 0, nil
+}

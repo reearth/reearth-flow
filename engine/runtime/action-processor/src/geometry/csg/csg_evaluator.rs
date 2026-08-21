@@ -1,7 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -9,7 +12,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Code, CodeType, CompiledCode, Feature};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -113,7 +118,7 @@ impl CSGEvaluator {
         ctx: &ExecutorContext,
     ) -> Result<f64, BoxedError> {
         self.tolerance_ast
-            .eval_float(feature, Arc::clone(&ctx.env_vars))
+            .eval_float(feature, Arc::clone(&ctx.variables))
             .map_err(|e| {
                 GeometryProcessorError::CSGEvaluatorFactory(format!(
                     "Failed to evaluate tolerance expression: {e:?}"
@@ -175,7 +180,41 @@ impl Processor for CSGEvaluator {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    /// Evaluate the feature's boolean tree into a solid: the result goes to
+    /// the features port, an empty result to the null port, and a feature
+    /// without a boolean tree, or one whose evaluation fails, to rejected.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let mut feature = ctx.feature.clone();
+
+        let tolerance = self.evaluate_tolerance(&feature, &ctx)?;
+
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg)) = feature.geometry.as_ref() else {
+            fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+            return Ok(());
+        };
+
+        match csg.evaluate(tolerance) {
+            Ok(Some(solid)) => {
+                *feature.geometry_mut() =
+                    Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+            }
+            Ok(None) => {
+                fw.send(ctx.new_with_feature_and_port(feature, NULL_PORT.clone()));
+            }
+            Err(_) => {
+                fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+            }
+        }
+
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,

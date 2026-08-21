@@ -19,13 +19,22 @@ type ProjectDocument implements Node {
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
-  version: Int!
+  version: Int
+  snapshotNumber: Int
 }
 
 # Project Snapshot Metadata (without updates data)
 type ProjectSnapshotMetadata {
   timestamp: DateTime!
   version: Int!
+}
+
+# A labelled snapshot in a project's version history.
+type NamedSnapshot {
+  snapshotNumber: Int!
+  label: String!
+  timestamp: DateTime!
+  size: FileSize!
 }
 
 # Mutation
@@ -36,6 +45,7 @@ extend type Mutation {
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
   copyProject(projectId: ID!, source: ID!): Boolean!
   importProject(projectId: ID!, data: Bytes!): Boolean!
+  saveNamedSnapshot(projectId: ID!, label: String!): NamedSnapshot!
 }
 
 # Query
@@ -43,5 +53,11 @@ extend type Mutation {
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
-  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  # Pass exactly one of version or snapshotNumber.
+  projectSnapshot(
+    projectId: ID!
+    version: Int
+    snapshotNumber: Int
+  ): ProjectSnapshot!
+  projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }

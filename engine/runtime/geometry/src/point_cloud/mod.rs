@@ -175,6 +175,9 @@ impl fmt::Debug for PointCloud {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: Footprint);
+
 crate::unsupported!(
     PointCloud: Triangulate,
     Reproject,
@@ -182,5 +185,13 @@ crate::unsupported!(
     ForceTwoDimension,
     RemoveAppearance,
     CountHoles,
-    ExtractHoles
+    ExtractHoles,
+    Coerce
 );
+
+// Positions have no extent, so nothing bounds them.
+impl crate::ops::ExtractBoundary for PointCloud {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        Ok(crate::ops::Boundary::EMPTY)
+    }
+}

@@ -419,6 +419,94 @@ impl RemoveAppearance for Polygon3D {
     }
 }
 
+use crate::ops::coerce::{push_face_lines_2d, push_face_lines_3d, unchanged, wrap_2d, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for Polygon2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::Polygon => Err(unchanged::<Self>()),
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                push_face_lines_2d(self, &mut lines);
+                wrap_2d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for Polygon3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::Polygon => Err(unchanged::<Self>()),
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                push_face_lines_3d(self, &mut lines);
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Polygon2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_face_2d(
+            std::iter::once(self.exterior()).chain(self.interiors()),
+            self.elevation(),
+        );
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Polygon3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_face_3d(std::iter::once(self.exterior()).chain(self.interiors()));
+        Ok(())
+    }
+}
+
+use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
+
+// A face is bounded by its own rings, exterior first, each kept verbatim. A face
+// with no exterior ring encloses nothing, so there is nothing to bound. That is
+// the one case where a face itself has no boundary to give.
+impl ExtractBoundary for Polygon2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let mut lines = Vec::new();
+        push_face_lines_2d(self, &mut lines);
+        wrap_2d(lines)
+            .map(Boundary::Bounded)
+            .ok_or_else(unbounded::<Self>)
+    }
+}
+
+impl ExtractBoundary for Polygon3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let mut lines = Vec::new();
+        push_face_lines_3d(self, &mut lines);
+        wrap_3d(lines)
+            .map(Boundary::Bounded)
+            .ok_or_else(unbounded::<Self>)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

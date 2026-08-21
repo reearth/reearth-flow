@@ -15,13 +15,12 @@ name = "reearth-flow"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["new-geometry"]
 memory-stats = [
   "reearth-flow-action-plateau-processor/memory-stats",
   "reearth-flow-action-processor/memory-stats",
 ]
-# Temporary migration flag for the new-geometry migration.
-# TODO: Remove after migration.
+# Temporary migration flag, on by default. TODO: Remove after migration.
 new-geometry = [
   "reearth-flow-action-plateau-processor/new-geometry",
   "reearth-flow-action-processor/new-geometry",
@@ -46,6 +45,7 @@ reearth-flow-action-python-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true
 reearth-flow-common.workspace = true
+reearth-flow-diagnostics.workspace = true
 reearth-flow-feature-view.workspace = true
 reearth-flow-geometry.workspace = true
 reearth-flow-runner.workspace = true
@@ -64,7 +64,6 @@ indoc.workspace = true
 json-subscriber.workspace = true
 num_cpus.workspace = true
 once_cell.workspace = true
-opentelemetry.workspace = true
 opentelemetry_sdk.workspace = true
 schemars.workspace = true
 serde.workspace = true

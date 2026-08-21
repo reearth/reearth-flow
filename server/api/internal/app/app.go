@@ -10,12 +10,12 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	apiotel "github.com/reearth/reearth-flow/api/internal/app/otel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	echoSwagger "github.com/swaggo/echo-swagger"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
 	_ "github.com/reearth/reearth-flow/api/internal/app/docs" // swagger docs
 )
@@ -36,7 +36,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.Logger = logger
 	e.Use(
 		middleware.Recover(),
-		otelecho.Middleware("reearth-flow"),
+		apiotel.Middleware(tracerServiceName),
 		echo.WrapMiddleware(appx.RequestIDMiddleware()),
 		logger.AccessLogger(),
 		middleware.Gzip(),

@@ -22,7 +22,7 @@ graphs:
         with:
           inline:
             type: flowExpr
-            value: env.get("parks")
+            value: variables.get("parks")
 
       - id: 854740f8-8159-480c-80c1-b0b7596a03f2
         name: Calculate Area

@@ -153,7 +153,7 @@ pub enum Selection<'a> {
     /// The features a Flow expression evaluates true for.
     Filter {
         expr: &'a str,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     },
 }
 
@@ -174,7 +174,7 @@ enum Scan<'a> {
     Filter {
         expr: &'a str,
         code: CompiledCode,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     },
 }
 
@@ -183,7 +183,7 @@ impl<'a> Scan<'a> {
         Ok(match selection {
             Selection::All => Scan::All,
             Selection::Row(row) => Scan::Row(row),
-            Selection::Filter { expr, env_vars } => {
+            Selection::Filter { expr, variables } => {
                 let code = Code::<{ CodeType::FlowExpr as u32 }> {
                     ty: CodeType::FlowExpr,
                     value: expr.to_string(),
@@ -194,7 +194,7 @@ impl<'a> Scan<'a> {
                         source,
                     })?,
                     expr,
-                    env_vars,
+                    variables,
                 }
             }
         })
@@ -252,16 +252,16 @@ pub fn load_selected(
             Scan::Filter {
                 expr,
                 code,
-                env_vars,
+                variables,
             } => {
                 let feature = parse(line, row)?;
-                let matched = code
-                    .eval_bool(&feature, Arc::clone(env_vars))
-                    .map_err(|source| Error::FilterEval {
-                        expr: expr.to_string(),
-                        feature_id: feature.id.to_string(),
-                        source,
-                    })?;
+                let matched =
+                    code.eval_bool(&feature, Arc::clone(variables))
+                        .map_err(|source| Error::FilterEval {
+                            expr: expr.to_string(),
+                            feature_id: feature.id.to_string(),
+                            source,
+                        })?;
                 matched.then_some(feature)
             }
         };
@@ -424,7 +424,7 @@ pub fn render_feature(
 /// entire edge.
 pub fn render_tileset(
     selection: &[Selected],
-    max_depth: u32,
+    target_tile_size: u64,
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
@@ -440,7 +440,7 @@ pub fn render_tileset(
     let built = build(
         &features,
         options.metadata_options(),
-        max_depth,
+        target_tile_size,
         options.render_options(),
         |relative_path, bytes| {
             let uri = destination
@@ -559,7 +559,13 @@ mod tests {
     fn tileset_to(dir: &Path, selection: &[Selected], options: &ViewOptions) -> RenderedView {
         let root = Uri::for_test(&format!("file://{}", dir.display()));
         let resolver = StorageResolver::new();
-        render_tileset(selection, 18, options, &destination(&root, &resolver)).expect("render")
+        render_tileset(
+            selection,
+            1_048_576,
+            options,
+            &destination(&root, &resolver),
+        )
+        .expect("render")
     }
 
     fn destination<'a>(root: &'a Uri, resolver: &'a StorageResolver) -> Destination<'a> {
@@ -690,7 +696,7 @@ mod tests {
             &input,
             Selection::Filter {
                 expr: r#"attributes["kind"] == "keep""#,
-                env_vars: Arc::new(serde_json::Map::new()),
+                variables: Arc::new(serde_json::Map::new()),
             },
             &resolver,
         )

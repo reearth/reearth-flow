@@ -139,7 +139,7 @@ impl ProbeSchemaCliCommand {
         }
 
         // Global `with:` vars (already merged with `--var` above). These seed the
-        // sampling engine so source `dataset` expressions like `env.get("path")`
+        // sampling engine so source `dataset` expressions like `variables.get("path")`
         // resolve to the same value they would under `run`. Captured before
         // `workflow.graphs` is moved into `from_graphs`.
         let vars = workflow.with.clone().unwrap_or_default();
@@ -347,7 +347,7 @@ graphs:
 
     #[test]
     fn schema_command_resolves_dataset_from_var() {
-        // GeoJsonReader whose `dataset` is `env.get("datasetPath")`, with the
+        // GeoJsonReader whose `dataset` is `variables.get("datasetPath")`, with the
         // value supplied via `--var datasetPath=<uri>` — exactly how `run`
         // resolves datasets. The sampling engine must be seeded from
         // `workflow.with` (after merging `--var`) for the reader to read the file.
@@ -382,7 +382,7 @@ graphs:
         with:
           dataset:
             type: flowExpr
-            value: env.get("datasetPath")
+            value: variables.get("datasetPath")
     edges: []
 "#
         );
@@ -410,7 +410,7 @@ graphs:
         };
         let report = cmd.build_report().expect("build_report succeeds");
 
-        // The reader resolved `env.get("datasetPath")` from the merged var and
+        // The reader resolved `variables.get("datasetPath")` from the merged var and
         // sampled the real file: closed schema carrying `id`.
         let reader_node = report
             .nodes

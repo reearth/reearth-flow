@@ -153,7 +153,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env.get("exceptSplit", false)
+          value: variables.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -295,10 +295,10 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env["cityGmlPath"],
-              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables["cityGmlPath"],
+              "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -325,7 +325,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+          value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
   - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
     name: AttributeManagerPreFlattener
@@ -462,7 +462,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
           city_gml + "_" + attributes["__package"] + "_3dtiles_lod3.zip"
   - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
     name: AttributeManagerByLod0-2
@@ -518,7 +518,7 @@ graphs:
       - gml_id
       - __package
       - __lod
-      attributeAccumulationMode: useOne
+      attributeAccumulation: useOneFeature
   - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
     name: FeatureSorterPreMVT
     type: action
@@ -547,7 +547,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
           city_gml + "_" + attributes["__package"] + "_mvt_lod" + attributes["__lod"] + ".zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
@@ -658,7 +658,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
           city_gml + "_" + attributes["__package"] + "_dm_geometric_attributes.zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
@@ -756,7 +756,7 @@ graphs:
   - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
     to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
-    fromPort: area
+    fromPort: features
     toPort: features
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c

@@ -21,7 +21,6 @@ pub static ROUTING_PARAM_KEY: &str = "routingPort";
 pub static INPUT_ROUTING_ACTION: &str = "Input Router";
 pub static OUTPUT_ROUTING_ACTION: &str = "Output Router";
 pub static FEATURE_FILTER_ACTION: &str = "Feature Filter";
-pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
 
 pub static SYSTEM_ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
@@ -143,6 +142,16 @@ pub struct NodeHandle {
 impl NodeHandle {
     pub fn new(id: NodeId) -> Self {
         Self { id }
+    }
+
+    /// `NodeId` is `pub(super)` here (crate-private), so an external crate cannot name it
+    /// directly. Its `Deserialize` impl is still public, so this builds one via inference
+    /// through that instead of naming the type. Primarily useful for downstream-crate tests that
+    /// need a `NodeHandle` without a real workflow graph.
+    pub fn for_test(id: &str) -> Self {
+        Self {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
     }
 }
 
@@ -535,7 +544,7 @@ impl Processor for InputRouter {
         fw.send(ExecutorContext::new(
             feature,
             FEATURES_PORT.clone(),
-            Arc::clone(&ctx.env_vars),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
@@ -627,7 +636,7 @@ impl Processor for OutputRouter {
         fw.send(ExecutorContext::new(
             feature,
             Port::new(&self.routing_port),
-            Arc::clone(&ctx.env_vars),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,

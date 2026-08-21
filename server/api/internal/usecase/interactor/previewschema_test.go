@@ -52,6 +52,12 @@ func (w *fakeWebsocket) GetHistoryByVersion(context.Context, string, int) (*webs
 func (w *fakeWebsocket) GetHistoryMetadata(context.Context, string) ([]*websocket.HistoryMetadata, error) {
 	return nil, nil
 }
+func (w *fakeWebsocket) GetNamedSnapshots(context.Context, string) ([]*websocket.SnapshotMetadata, error) {
+	return nil, nil
+}
+func (w *fakeWebsocket) SaveNamedSnapshot(context.Context, string, string) (*websocket.SnapshotMetadata, error) {
+	return nil, nil
+}
 func (w *fakeWebsocket) Rollback(context.Context, string, int) (*websocket.Document, error) {
 	return nil, nil
 }
@@ -60,8 +66,11 @@ func (w *fakeWebsocket) CreateSnapshot(context.Context, string, int, string) (*w
 }
 func (w *fakeWebsocket) CopyDocument(context.Context, string, string) error   { return nil }
 func (w *fakeWebsocket) ImportDocument(context.Context, string, []byte) error { return nil }
-func (w *fakeWebsocket) DeleteDocument(context.Context, string) error         { return nil }
-func (w *fakeWebsocket) Close() error                                         { return nil }
+func (w *fakeWebsocket) GetSnapshotState(context.Context, string, int) (*websocket.SnapshotState, error) {
+	return nil, nil
+}
+func (w *fakeWebsocket) DeleteDocument(context.Context, string) error { return nil }
+func (w *fakeWebsocket) Close() error                                 { return nil }
 
 // previewFakeFile records calls so the test can assert metadata is NOT uploaded.
 type previewFakeFile struct {

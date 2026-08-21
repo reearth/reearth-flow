@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across files"
+        "Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,7 +36,11 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -179,7 +183,7 @@ impl Processor for FeatureCityGml2Reader {
     ) -> Result<(), BoxedError> {
         let path = self
             .dataset
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| {
                 FeatureProcessorError::FileCityGml2Reader(format!("Failed to eval dataset: {e:?}"))
             })?;
@@ -211,6 +215,14 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // This reader's own param stays a simple bool; the shared pipeline
+        // function takes a caller-declared attribute-name list, so translate
+        // at the boundary rather than changing this reader's exposed shape.
+        let flatten_leaf_attributes: Vec<String> = if self.flatten_measure_types {
+            vec!["uom".to_string()]
+        } else {
+            Vec::new()
+        };
         for feature in build_features(
             std::mem::replace(&mut self.parser, Parser::new(CityGmlVersion::V2)),
             &self.extract_tags,
@@ -218,7 +230,7 @@ impl Processor for FeatureCityGml2Reader {
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
             self.flatten_single_child_objects,
-            self.flatten_measure_types,
+            &flatten_leaf_attributes,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

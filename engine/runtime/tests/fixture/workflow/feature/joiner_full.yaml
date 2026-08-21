@@ -80,7 +80,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["joinedOutputPath"]'
+            value: 'variables["joinedOutputPath"]'
 
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: JsonWriterUnjoinedRequestor
@@ -89,7 +89,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["unjoinedRequestorOutputPath"]'
+            value: 'variables["unjoinedRequestorOutputPath"]'
 
       - id: b2c3d4e5-f6a7-8901-bcde-f23456789012
         name: JsonWriterUnjoinedSupplier
@@ -98,7 +98,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["unjoinedSupplierOutputPath"]'
+            value: 'variables["unjoinedSupplierOutputPath"]'
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

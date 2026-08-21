@@ -86,11 +86,11 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env.get("bldgCityGmlPath"),
-                  "cityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
-                  "baseCityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables.get("bldgCityGmlPath"),
+                  "cityCode": variables.get("cityCode") or variables.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "baseCityCode": variables.get("cityCode") or variables.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 
@@ -113,11 +113,11 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env.get("demCityGmlPath"),
-                  "cityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
-                  "baseCityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables.get("demCityGmlPath"),
+                  "cityCode": variables.get("cityCode") or variables.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "baseCityCode": variables.get("cityCode") or variables.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 
@@ -171,7 +171,7 @@ graphs:
           errorAttribute: _validation_error
           epsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       - id: 00000001-0000-0000-0000-000000000002
         name: CityGmlReader
@@ -241,7 +241,7 @@ graphs:
         with:
           targetEpsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       # ========================================
       # Optional Roof Restriction Polygon
@@ -254,7 +254,7 @@ graphs:
         with:
           dataset:
             type: flowExpr
-            value: env.get("roofFilterShapefilePath")
+            value: variables.get("roofFilterShapefilePath")
           force2D: true
           allowEmptyPath: true
 
@@ -265,10 +265,10 @@ graphs:
         with:
           sourceEpsgCode:
             type: flowExpr
-            value: env["roofFilterEpsgCode"]
+            value: variables["roofFilterEpsgCode"]
           targetEpsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       - id: 00000004-0000-0000-0000-000000000003
         name: AreaSpatialFilter
@@ -311,8 +311,8 @@ graphs:
         type: action
         action: Grid Divider
         with:
-          unitSquareSize: 1.0
-          keepSquareOnly: true
+          cellSize: 1.0
+          completeCellsOnly: true
 
       - id: 00000001-0000-0000-0000-00000000000a
         name: FilterRoofSurfaces
@@ -346,17 +346,17 @@ graphs:
           type: duration
           start:
             type: flowExpr
-            value: env["startTime"]
+            value: variables["startTime"]
           end:
             type: flowExpr
-            value: env["endTime"]
+            value: variables["endTime"]
           step:
             type: flowExpr
             value: 1
           stepUnit: hour
           sourceEpsg:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
           outputType: both
 
       # Convert year, month, date, hour to integers from solarTime (RFC 3339)
@@ -475,19 +475,9 @@ graphs:
         type: action
         action: Ray Intersector
         with:
-          # All rays are checked with all geometries
-          pairId:
-            type: flowExpr
-            value: '"all"'
-          closestIntersectionOnly:
-            type: flowExpr
-            value: "true"
-          includeRayOrigin:
-            type: flowExpr
-            value: "false"
-          tolerance:
-            type: flowExpr
-            value: "0.01"
+          closestIntersectionOnly: true
+          includeRayOrigin: false
+          tolerance: 0.01
           outputGeometryType: lineSegmentToIntersection
           ray:
             posX: rayOriginX
@@ -510,7 +500,7 @@ graphs:
           format: csv
           dataset:
             type: flowExpr
-            value: env["snowDepthDataPath"]
+            value: variables["snowDepthDataPath"]
           offset: 1
           headerRows: 0
 
@@ -596,19 +586,19 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  p = env["monthlyTransmissivity"][attributes["month"] - 1];
+                  p = variables["monthlyTransmissivity"][attributes["month"] - 1];
                   h_rad = attributes["solarAltitude"] * math.pi / 180.0;
                   m = 1.0 / math.sin(h_rad);
                   beta_m = p ** m;
-                  DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+                  DT = variables["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
                   dN = 1 - beta_m;
                   dD = 1 - 1.4 * math.log(p);
-                  SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+                  SH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
                   tilt_rad = attributes["slope"] * math.pi / 180.0;
                   ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-                  TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+                  TH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
                   RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
                   DT + ST + RT
@@ -618,19 +608,19 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  p = 1.0 - env["monthlyTransmissivity"][attributes["month"] - 1];
+                  p = 1.0 - variables["monthlyTransmissivity"][attributes["month"] - 1];
                   h_rad = attributes["solarAltitude"] * math.pi / 180.0;
                   m = 1.0 / math.sin(h_rad);
                   beta_m = p ** m;
-                  DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+                  DT = variables["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
                   dN = 1 - beta_m;
                   dD = 1 - 1.4 * math.log(p);
-                  SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+                  SH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
                   tilt_rad = attributes["slope"] * math.pi / 180.0;
                   ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-                  TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+                  TH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
                   RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
                   DT + ST + RT
@@ -725,7 +715,7 @@ graphs:
             - newAttribute: totalSolarPower
               expr:
                 type: flowExpr
-                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+                value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
 
       # Aggregate total radiation per surface (sum across all cells of a roof surface)
       - id: 00000001-0000-0000-0000-000000000074
@@ -744,7 +734,7 @@ graphs:
             - newAttribute: totalSolarPower
               expr:
                 type: flowExpr
-                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+                value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
             - newAttribute: dirMatchSum1
               expr:
                 type: flowExpr
@@ -790,12 +780,12 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'env["startTime"]'
+                value: 'variables["startTime"]'
             - attribute: シミュレーション終了日時
               method: create
               value:
                 type: flowExpr
-                value: 'env["endTime"]'
+                value: 'variables["endTime"]'
 
       # ========================================
       # Section 6d: Textured 3D Tiles Output
@@ -813,7 +803,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  start_str = env["startTime"];
+                  start_str = variables["startTime"];
                   s_date_parts = start_str.split("-");
                   s_year = float(s_date_parts[0]);
                   s_month = float(s_date_parts[1]);
@@ -822,7 +812,7 @@ graphs:
                   s_y = s_year + 4800.0 - s_a;
                   s_m = s_month + 12.0 * s_a - 3.0;
                   s_jdn = s_day_val + math.floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math.floor(s_y / 4.0) - math.floor(s_y / 100.0) + math.floor(s_y / 400.0) - 32045.0;
-                  end_str = env["endTime"];
+                  end_str = variables["endTime"];
                   e_date_parts = end_str.split("-");
                   e_year = float(e_date_parts[0]);
                   e_month = float(e_date_parts[1]);
@@ -834,7 +824,7 @@ graphs:
                   num_days_raw = e_jdn - s_jdn;
                   if num_days_raw <= 0.0 { num_days = 1.0 } else { num_days = num_days_raw };
                   dt = attributes.get("totalSolarRadiation", 0.0);
-                  max_rad = env.get("maxRadiationPerDay", 7.5);
+                  max_rad = variables.get("maxRadiationPerDay", 7.5);
                   t_raw = dt / num_days / max_rad;
                   if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
 
@@ -949,7 +939,7 @@ graphs:
         with:
           sourceEpsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
           targetEpsgCode:
             type: flowExpr
             value: 6697
@@ -1023,7 +1013,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: env["outputReflection"] == true or env["outputReflection"] == "true"
+                value: variables["outputReflection"] == true or variables["outputReflection"] == "true"
               outputPort: features
 
       - id: 00000001-0000-0000-0000-000000000013
@@ -1055,19 +1045,9 @@ graphs:
         type: action
         action: Ray Intersector
         with:
-          # All rays are checked with all geometries
-          pairId:
-            type: flowExpr
-            value: '"all"'
-          closestIntersectionOnly:
-            type: flowExpr
-            value: "true"
-          includeRayOrigin:
-            type: flowExpr
-            value: "false"
-          tolerance:
-            type: flowExpr
-            value: "0.01"
+          closestIntersectionOnly: true
+          includeRayOrigin: false
+          tolerance: 0.01
           geomId:
             type: flowExpr
             value: 'attributes.get("gmlId", "")'
@@ -1187,7 +1167,7 @@ graphs:
             - newAttribute: totalSolarPower
               expr:
                 type: flowExpr
-                value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+                value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
             - newAttribute: dirMatchSum1
               expr:
                 type: flowExpr
@@ -1562,7 +1542,7 @@ graphs:
             value: roof_radiation_texture.png
           sourceEpsg:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       - id: 00000001-0000-0000-0000-0000000000e1
         name: CityGmlZipFileWriter
@@ -1660,7 +1640,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: env["considerDEM"] == true
+                value: variables["considerDEM"] == true
               outputPort: features
 
       # Decompose DEM TriangularMesh → individual Polygon3D triangles
@@ -1684,7 +1664,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: '"land_" + str(attributes.get("_relief_index", attributes.get("_split_index", 0)))'
+                value: '"land_" + str(attributes.get("_relief_index", attributes.get("__split_idx", 0)))'
 
       # Reproject DEM triangles to projected CRS
       - id: 00000002-0000-0000-0000-000000000009
@@ -1694,7 +1674,7 @@ graphs:
         with:
           targetEpsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       # ========================================
       # Section 2d: Azimuth Direction Flags
@@ -1714,7 +1694,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  dir = env.get("restrictDirection1", -1.0);
+                  dir = variables.get("restrictDirection1", -1.0);
                   if dir < 0.0 { 0 } else {
                     pne = attributes.get("azimuth", 0.0);
                     geo = (180.0 - pne + 360.0) % 360.0;
@@ -1727,7 +1707,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  dir = env.get("restrictDirection2", -1.0);
+                  dir = variables.get("restrictDirection2", -1.0);
                   if dir < 0.0 { 0 } else {
                     pne = attributes.get("azimuth", 0.0);
                     geo = (180.0 - pne + 360.0) % 360.0;
@@ -1740,7 +1720,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  dir = env.get("restrictDirection3", -1.0);
+                  dir = variables.get("restrictDirection3", -1.0);
                   if dir < 0.0 { 0 } else {
                     pne = attributes.get("azimuth", 0.0);
                     geo = (180.0 - pne + 360.0) % 360.0;
@@ -1771,8 +1751,8 @@ graphs:
         type: action
         action: Grid Divider
         with:
-          unitSquareSize: 5.0
-          keepSquareOnly: false
+          cellSize: 5.0
+          completeCellsOnly: false
 
       # After TotalRadiationAggregator: route bldg → NormalizeRadiation, dem → DEM merge pipeline
       - id: 00000002-0000-0000-0000-00000000000c
@@ -2102,11 +2082,11 @@ graphs:
 
 
 
-      # RayIntersector no_intersection → ComputeRadiation
+      # RayIntersector no-intersection → ComputeRadiation
       - id: e0000001-0000-0000-0000-000000000035
         from: 00000001-0000-0000-0000-000000000010
         to: 00000001-0000-0000-0000-00000000001d
-        fromPort: no_intersection
+        fromPort: no-intersection
         toPort: features
 
       # ComputeCosTheta → SnowFactorMerger (requestor)
@@ -2175,11 +2155,11 @@ graphs:
         toPort: supplier
 
       # Section 7: Reflection Computation (conditional on outputReflection)
-      # RayIntersector no_intersection → ReflectionOutputFilter
+      # RayIntersector no-intersection → ReflectionOutputFilter
       - id: e0000001-0000-0000-0000-000000000013
         from: 00000001-0000-0000-0000-000000000010
         to: 00000004-0000-0000-0000-000000000010
-        fromPort: no_intersection
+        fromPort: no-intersection
         toPort: features
 
       # ReflectionOutputFilter → ComputeReflection (only when outputReflection=true)

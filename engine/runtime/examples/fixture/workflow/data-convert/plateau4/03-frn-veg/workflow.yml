@@ -29,10 +29,10 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 
@@ -61,7 +61,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+                value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
               outputPort: features
 
       # Dictionary writer branch for veg
@@ -278,7 +278,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
               lod = attributes["lod"];
               stem + "_frn_3dtiles_lod" + lod + ".zip"
 
@@ -412,7 +412,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
               stem + "_frn_dm_geometric_attributes.zip"
           colonToUnderscore: true
 
@@ -535,7 +535,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               lod = attributes["lod"];
               stem + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip"
 
@@ -687,7 +687,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               stem + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip"
           colonToUnderscore: true
 
@@ -780,7 +780,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               lod = attributes["lod"];
               stem + "_veg_PlantCover_3dtiles_lod" + lod + ".zip"
 
@@ -924,7 +924,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
               stem + "_veg_PlantCover_dm_geometric_attributes.zip"
           colonToUnderscore: true
 

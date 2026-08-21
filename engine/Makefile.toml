@@ -11,24 +11,16 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
-# NOTE: the `new-geometry` migration flag switches `Feature.geometry` to the new type
-# and is mutually exclusive with the default geometry world, so no single feature set
-# covers both. Each world therefore gets its own full `--workspace --all-targets`
-# invocation, and CI runs both.
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets
-cargo check --workspace --all-targets --features new-geometry \
-  --exclude reearth-flow-tests
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets -- -D warnings
-cargo clippy --workspace --all-targets --features new-geometry \
-  --exclude reearth-flow-tests -- -D warnings
 ''']
 
 [tasks.clippy-fix]
@@ -50,9 +42,19 @@ cargo make test-conv-new-geometry ${@:-}
 script = ['''
 #!/usr/bin/env bash -eux
 # Both geometry worlds.
-cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
-cargo test --workspace --all-targets --features new-geometry,schema \
+cargo test --workspace --all-targets --features schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
+cargo test --workspace --all-targets --no-default-features \
+  --exclude workflow-tests ${@:-}
+# `reearth-flow-tests` is excluded from the first run and has its
+# `new-geometry` feature off in the second, so its new-geometry cases are
+# reached by neither. Run them here.
+#
+# Filtered rather than run whole: the rest of the suite covers actions that are
+# not ported yet, which fail outright with the feature on. Add each case here as
+# its action is migrated, and drop the filter once none are left.
+cargo test -p reearth-flow-tests --all-targets --features new-geometry \
+  file::reader::shapefile ${@:-}
 ''']
 
 # Runs in the new-geometry world. Every test case whose `workflow_test.json`
@@ -96,8 +98,7 @@ export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # d
 cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 
-# Separate task since it builds a distinct binary (new-geometry feature); folds
-# into test-conv once new-geometry becomes the default and this one is removed.
+# Separate task since it builds a distinct binary (new-geometry feature).
 [tasks.test-conv-new-geometry]
 script = ['''
 #!/usr/bin/env bash -eux
@@ -116,7 +117,7 @@ cargo run -p plateau-tiles-test --bin plateau-tiles-test --features new-geometry
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clean --doc
-cargo doc --no-deps --features new-geometry,schema
+cargo doc --no-deps --features schema
 ''']
 
 [tasks.coverage]
@@ -143,6 +144,44 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'unimplemented!')
 git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 ''']
 
+[tasks.check-action-tracing]
+script = ['''
+#!/usr/bin/env bash -eu
+# Actions must report via ctx.report()/ctx.warn(), not raw tracing macros or the
+# legacy EventHub warn_log/error_log lanes (spec: logs-error G3/G4).
+# The allowlist pins per-file counts of legacy call sites and must shrink to empty:
+# converting a site requires updating tools/action-tracing-allowlist.txt in the same commit.
+# Pattern covers three raw-warn/error shapes (info_log/*_info stays allowed — only
+# warn/error lanes count):
+#   - qualified `tracing::warn!`/`tracing::error!` macro calls
+#   - `.warn_log(`/`.error_log(` (and the *_with_node_handle/*_with_node_info
+#     EventHub variants) method calls
+#   - bare `warn!(`/`error!(` macro calls via an imported `use tracing::{warn,error};`
+#     (the `(^|[^:])` guard excludes the qualified `tracing::warn!(` form so it
+#     isn't double-counted, and the `\b` guard excludes false positives like a
+#     hypothetical `log::warn!` or an identifier merely ending in "warn"/"error",
+#     e.g. `tracing_warn!(`/`prewarn!(`)
+actual=$(mktemp)
+git ls-files 'runtime/action-*' | grep -E '\.rs$' \
+  | xargs grep -c -E 'tracing::(warn|error)!|\.(warn_log|error_log|warn_log_with_node_handle|error_log_with_node_handle|error_log_with_node_info)\(|(^|[^:])\b(warn|error)!\(' 2>/dev/null \
+  | grep -v ':0$' | LC_ALL=C sort > "$actual" || true
+if ! diff -u tools/action-tracing-allowlist.txt "$actual"; then
+  echo "raw-warn/error call sites (tracing macros or EventHub warn_log/error_log) in action crates changed."
+  echo "New sites are forbidden — use ctx.report()/ctx.warn()."
+  echo "If you converted sites, regenerate the allowlist: cargo make update-action-tracing-allowlist"
+  exit 1
+fi
+''']
+
+[tasks.update-action-tracing-allowlist]
+script = ['''
+#!/usr/bin/env bash -eu
+git ls-files 'runtime/action-*' | grep -E '\.rs$' \
+  | xargs grep -c -E 'tracing::(warn|error)!|\.(warn_log|error_log|warn_log_with_node_handle|error_log_with_node_handle|error_log_with_node_info)\(|(^|[^:])\b(warn|error)!\(' 2>/dev/null \
+  | grep -v ':0$' | LC_ALL=C sort > tools/action-tracing-allowlist.txt
+echo "wrote tools/action-tracing-allowlist.txt"
+''']
+
 # Generates actions.json (base English schema) and syncs i18n skeleton files.
 # Run this after adding or modifying any action. Then fill in translations and run schema-translated.
 [tasks.schema-base]
@@ -152,6 +191,8 @@ script = [
 rm -rf "./schema/actions.json"
 cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
 cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/actions"
+cargo run --package reearth-flow-cli -- schema-error-codes > ./schema/error-codes.json
+cargo run --package reearth-flow-worker --bin reearth-flow-worker -- schema-events --dir ./schema
 ''',
 ]
 
@@ -215,6 +256,18 @@ if [ "$line" -gt 0 ]; then
   git --no-pager diff
   exit 1
 fi
+''',
+]
+
+# The attribution notice for the embedded grids is a rendering of their
+# manifest. Pass `-- --check` to verify the committed file instead of rewriting
+# it. The manifest is checked against the grid files themselves by the geometry
+# crate's build script.
+[tasks.proj-grids-notice]
+script = [
+  '''
+#!/usr/bin/env bash -eu
+python3 runtime/geometry/grids/render_notice.py ${@:-}
 ''',
 ]
 
