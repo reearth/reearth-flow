@@ -110,6 +110,8 @@ impl SinkFactory for MVTSinkFactory {
                 schema_key: params.schema_key,
                 #[cfg(feature = "new-geometry")]
                 max_tile_bytes: params.max_tile_bytes,
+                #[cfg(feature = "new-geometry")]
+                array_map_separator: params.array_map_separator,
             },
             join_handles: Vec::new(),
         };
@@ -171,6 +173,12 @@ pub struct MVTWriterParam {
     #[cfg(feature = "new-geometry")]
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,
+    /// # Array/Map Separator
+    /// Separator joining a nested array or map attribute to its child key or
+    /// index when flattening it into tags. Leave unset to drop array and map
+    /// attributes from the output entirely.
+    #[cfg(feature = "new-geometry")]
+    pub(super) array_map_separator: Option<String>,
 }
 
 #[cfg(feature = "new-geometry")]
@@ -191,6 +199,8 @@ pub struct MVTWriterCompiledParam {
     pub(super) schema_key: Option<String>,
     #[cfg(feature = "new-geometry")]
     pub(super) max_tile_bytes: u64,
+    #[cfg(feature = "new-geometry")]
+    pub(super) array_map_separator: Option<String>,
 }
 
 impl Sink for MVTWriter {
