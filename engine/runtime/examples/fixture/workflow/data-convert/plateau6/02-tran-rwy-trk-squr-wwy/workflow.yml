@@ -52,9 +52,97 @@ graphs:
             type: flowExpr
             value: attributes["path"]
           extractTags:
-            - tran:Road
-            - tran:TrafficArea
             - tran:AuxiliaryTrafficArea
+            - tran:AuxiliaryTrafficSpace
+            - tran:ClearanceSpace
+            - tran:Hole
+            - tran:HoleSurface
+            - tran:Intersection
+            - tran:Marking
+            - tran:Railway
+            - tran:Road
+            - tran:Section
+            - tran:Square
+            - tran:Track
+            - tran:TrafficArea
+            - tran:TrafficSpace
+            - tran:Waterway
+            - urc:DmGeometricAttribute
+
+      - id: 36c60099-916a-47ce-9e50-cd33ee300cd7
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __citygml_feature_type
+              method: rename
+              value:
+                type: string
+                value: feature_type
+            - attribute: city_code
+              method: create
+              value:
+                type: flowExpr
+                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: __base_city_code
+              method: create
+              value:
+                type: flowExpr
+                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+
+      - id: 83aea69a-6df3-4dbd-9ef8-58461978155c
+        name: AttributeConversionTableForWardName
+        type: action
+        action: Attribute Conversion Table
+        with:
+          format: csv
+          inline: !include ../../../../config/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["city_code"]
+              featureTo: "__city_name_en"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_en"
+            - featureFroms: ["city_code"]
+              featureTo: "__ward_parent_code"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
+
+      - id: 6a6c572f-2f37-4db4-8546-2f50f52af432
+        name: CityCodeBoundaryFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["city_code"] == attributes["__base_city_code"] or attributes["__ward_parent_code"] == attributes["__base_city_code"]
+              outputPort: features
+
+      - id: 048967ac-f0ac-4bfb-90b5-c5a80d0acede
+        name: AttributeManagerForOutputBase
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __output_base
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
+                  suffix = "";
+                  if attributes["city_code"] != attributes["__base_city_code"] {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
+                  }
+                  city_gml + suffix
+
+      - id: d46e567a-831f-476a-bbb2-ce130a2db7a0
+        name: GeometrySplitterByLod
+        type: action
+        action: Geometry Splitter
+        with:
+          groupBy: "lod"
 
       - id: aef63371-49d5-484b-bdca-0e4f00520526
         name: TwoDimensionForcer
@@ -87,17 +175,19 @@ graphs:
         type: action
         action: MVT Writer
         with:
-          schemaKey: __citygml_feature_type
           layerName:
             type: flowExpr
-            value: attributes["__citygml_feature_type"].split(":")[1]
+            value: attributes["feature_type"].split(":")[1]
           skipUnexposedAttributes: true
           minZoom: 8
           maxZoom: 16
           extent: 65536
           output:
-            type: string
-            value: tran
+            type: flowExpr
+            value: attributes["__output_base"] + "_lod" + str(attributes["lod"])
+          compressOutput:
+            type: flowExpr
+            value: attributes["__output_base"] + "_mvt_lod" + str(attributes["lod"]) + ".zip"
 
     edges:
       - id: 70e3d5c3-bb1e-4528-ac75-778a502fbf83
@@ -117,6 +207,31 @@ graphs:
         toPort: features
       - id: fd361741-bc46-4ec2-bad9-63e451cbdc8c
         from: aef40c4c-350e-4fe4-af37-ffe33b885f56
+        to: 36c60099-916a-47ce-9e50-cd33ee300cd7
+        fromPort: features
+        toPort: features
+      - id: cdf4e492-6fa2-4d3b-b314-735e895d1bd0
+        from: 36c60099-916a-47ce-9e50-cd33ee300cd7
+        to: 83aea69a-6df3-4dbd-9ef8-58461978155c
+        fromPort: features
+        toPort: features
+      - id: 374439a7-89e0-4455-9c5c-116be41544f6
+        from: 83aea69a-6df3-4dbd-9ef8-58461978155c
+        to: 6a6c572f-2f37-4db4-8546-2f50f52af432
+        fromPort: features
+        toPort: features
+      - id: 3aec8dc3-63a5-4e2d-bfcd-3a958f8b2a85
+        from: 6a6c572f-2f37-4db4-8546-2f50f52af432
+        to: 048967ac-f0ac-4bfb-90b5-c5a80d0acede
+        fromPort: features
+        toPort: features
+      - id: 58af97c5-7c9d-418f-b02b-0385a7ff7df8
+        from: 048967ac-f0ac-4bfb-90b5-c5a80d0acede
+        to: d46e567a-831f-476a-bbb2-ce130a2db7a0
+        fromPort: features
+        toPort: features
+      - id: 58c321ad-e100-4696-9b6b-e9a4566709f9
+        from: d46e567a-831f-476a-bbb2-ce130a2db7a0
         to: aef63371-49d5-484b-bdca-0e4f00520526
         fromPort: features
         toPort: features
