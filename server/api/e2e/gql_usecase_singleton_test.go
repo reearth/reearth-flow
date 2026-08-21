@@ -125,13 +125,28 @@ func TestUsecaseContainer_SharedAcrossRequests_LogPollerIsNotDuplicated(t *testi
 	time.Sleep(500 * time.Millisecond)
 	afterSubscribe := redisGateway.getLogsCalls.Load()
 
-	// Wait past one 15s monitoring tick (internal/usecase/interactor/log.go).
-	// A single shared poller issues exactly one more GetLogs call in that
-	// window; two independent pollers -- the bug -- issue two.
-	time.Sleep(16 * time.Second)
-	afterOneTick := redisGateway.getLogsCalls.Load()
+	// Wait for the first monitoring tick (internal/usecase/interactor/log.go,
+	// 15s ticker) rather than sleeping a fixed window: this is both faster in
+	// the common case and avoids CI scheduling jitter around tick alignment.
+	var afterFirstTick int64
+	require.Eventually(t, func() bool {
+		afterFirstTick = redisGateway.getLogsCalls.Load()
+		return afterFirstTick-afterSubscribe >= 1
+	}, 20*time.Second, 100*time.Millisecond, "expected at least one GetLogs call from the poller")
 
-	require.Equal(t, int64(1), afterOneTick-afterSubscribe,
-		"expected exactly one poller ticking for the shared job, observed %d GetLogs call(s)",
-		afterOneTick-afterSubscribe)
+	// A single shared poller issues exactly one GetLogs call for the first
+	// tick; two independent pollers -- the bug -- issue two.
+	require.Equal(t, int64(1), afterFirstTick-afterSubscribe,
+		"expected exactly one poller ticking for the shared job, observed %d GetLogs call(s) by the first tick",
+		afterFirstTick-afterSubscribe)
+
+	// Give a duplicated poller with a slightly offset ticker a chance to fire
+	// its own first tick too; a genuine second poller starts within
+	// milliseconds of the first, so this window need not be long.
+	time.Sleep(1 * time.Second)
+	afterGrace := redisGateway.getLogsCalls.Load()
+
+	require.Equal(t, afterFirstTick, afterGrace,
+		"expected no additional GetLogs call within the grace period, observed %d additional call(s)",
+		afterGrace-afterFirstTick)
 }

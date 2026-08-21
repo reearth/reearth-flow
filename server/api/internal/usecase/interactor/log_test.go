@@ -325,16 +325,23 @@ func TestLogInteractor_SecondSubscriberDoesNotStartSecondPoller(t *testing.T) {
 	// happens once every request shares the same interactor instance.
 	var wg sync.WaitGroup
 	chans := make([]chan *log.Log, 2)
+	errs := make([]error, 2)
 	for i := range chans {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 			ch, err := liInterface.Subscribe(ctx, jobID)
-			assert.NoError(t, err)
 			chans[i] = ch
+			errs[i] = err
 		}(i)
 	}
 	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("Subscribe(%d) returned error: %v", i, err)
+		}
+	}
 
 	li.mu.Lock()
 	watcherCount := len(li.watchers)
