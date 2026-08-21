@@ -2808,9 +2808,9 @@ graphs:
     action: List Concatenator
     with:
       list: areaOverlapList
-      attribute: gmlId
-      separateCharacter: ','
-      outputAttributeName: concatenatedGmlIds
+      elementAttribute: gmlId
+      separator: ','
+      outputAttribute: concatenatedGmlIds
   - id: 518572d2-8561-4b60-ab28-fcd66d90afa2
     name: DuplicateFilter
     type: action
