@@ -29,26 +29,27 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 	}
 
 	c := &repo.Container{
-		Asset:         NewAsset(client),
-		AssetUpload:   NewAssetUpload(client),
-		AuthRequest:   authserver.NewMongo(client.WithCollection("authRequest")),
-		Config:        NewConfig(db.Collection("config"), lock),
-		WorkerConfig:  NewWorkerConfig(client),
-		Deployment:    NewDeployment(client),
-		EdgeExecution: NewEdgeExecution(client),
-		Job:           NewJob(client),
-		NodeExecution: NewNodeExecution(client),
-		Parameter:     NewParameter(client),
-		Permittable:   accountmongo.NewPermittable(client), // TODO: Delete this once the permission check migration is complete.
-		Project:       NewProject(client),
-		ProjectAccess: NewProjectAccess(client),
-		Role:          accountmongo.NewRole(client), // TODO: Delete this once the permission check migration is complete.
-		Lock:          lock,
-		Transaction:   usecasex.NewTransactor(client.Transaction(), 2),
-		Trigger:       NewTrigger(client),
-		Workflow:      NewWorkflow(client),
-		Workspace:     account.Workspace,
-		User:          account.User,
+		Asset:           NewAsset(client),
+		AssetUpload:     NewAssetUpload(client),
+		AuthRequest:     authserver.NewMongo(client.WithCollection("authRequest")),
+		Config:          NewConfig(db.Collection("config"), lock),
+		WorkerConfig:    NewWorkerConfig(client),
+		Deployment:      NewDeployment(client),
+		EdgeExecution:   NewEdgeExecution(client),
+		Job:             NewJob(client),
+		NodeDiagnostics: NewNodeDiagnostics(client),
+		NodeExecution:   NewNodeExecution(client),
+		Parameter:       NewParameter(client),
+		Permittable:     accountmongo.NewPermittable(client), // TODO: Delete this once the permission check migration is complete.
+		Project:         NewProject(client),
+		ProjectAccess:   NewProjectAccess(client),
+		Role:            accountmongo.NewRole(client), // TODO: Delete this once the permission check migration is complete.
+		Lock:            lock,
+		Transaction:     usecasex.NewTransactor(client.Transaction(), 2),
+		Trigger:         NewTrigger(client),
+		Workflow:        NewWorkflow(client),
+		Workspace:       account.Workspace,
+		User:            account.User,
 	}
 
 	if err := Init(c); err != nil {
@@ -74,6 +75,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
 		func() error { return r.EdgeExecution.(*EdgeExecution).Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
+		func() error { return r.NodeDiagnostics.(*NodeDiagnostics).Init(ctx) },
 		func() error { return r.NodeExecution.(*NodeExecution).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Permittable.(*accountmongo.Permittable).Init() }, // TODO: Delete this once the permission check migration is complete.

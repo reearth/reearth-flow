@@ -290,6 +290,27 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+// A single structured diagnostic emitted by the engine: a per-feature error or
+// warning, a finish()-time aggregated summary, or a terminal per-node failure.
+// category/severity/effectiveDisposition are plain strings, not GraphQL enums,
+// so newer engine-emitted values survive a round trip without breaking older
+// API clients.
+type Diagnostic struct {
+	Code     string `json:"code"`
+	Category string `json:"category"`
+	Severity string `json:"severity"`
+	// The authoritative fatality signal for this diagnostic. `severity` is
+	// display-only and must never be used to infer whether the run failed.
+	EffectiveDisposition *string `json:"effectiveDisposition,omitempty"`
+	NodeID               *string `json:"nodeId,omitempty"`
+	ActionType           *string `json:"actionType,omitempty"`
+	FeatureID            *ID     `json:"featureId,omitempty"`
+	Message              string  `json:"message"`
+	Help                 *string `json:"help,omitempty"`
+	AggregatedCount      *int    `json:"aggregatedCount,omitempty"`
+	SampleFeatureIds     []ID    `json:"sampleFeatureIds,omitempty"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -306,21 +327,23 @@ type GetHeadInput struct {
 }
 
 type Job struct {
-	CompletedAt       *time.Time  `json:"completedAt,omitempty"`
-	Deployment        *Deployment `json:"deployment,omitempty"`
-	DeploymentID      *ID         `json:"deploymentId,omitempty"`
-	Debug             *bool       `json:"debug,omitempty"`
-	ID                ID          `json:"id"`
-	LogsURL           *string     `json:"logsURL,omitempty"`
-	WorkerLogsURL     *string     `json:"workerLogsURL,omitempty"`
-	UserFacingLogsURL *string     `json:"userFacingLogsURL,omitempty"`
-	OutputURLs        []string    `json:"outputURLs,omitempty"`
-	StartedAt         time.Time   `json:"startedAt"`
-	Status            JobStatus   `json:"status"`
-	Workspace         *Workspace  `json:"workspace,omitempty"`
-	WorkspaceID       ID          `json:"workspaceId"`
-	Logs              []*Log      `json:"logs,omitempty"`
-	Variables         []*Variable `json:"variables"`
+	CompletedAt       *time.Time    `json:"completedAt,omitempty"`
+	Deployment        *Deployment   `json:"deployment,omitempty"`
+	DeploymentID      *ID           `json:"deploymentId,omitempty"`
+	Debug             *bool         `json:"debug,omitempty"`
+	ID                ID            `json:"id"`
+	LogsURL           *string       `json:"logsURL,omitempty"`
+	WorkerLogsURL     *string       `json:"workerLogsURL,omitempty"`
+	UserFacingLogsURL *string       `json:"userFacingLogsURL,omitempty"`
+	OutputURLs        []string      `json:"outputURLs,omitempty"`
+	StartedAt         time.Time     `json:"startedAt"`
+	Status            JobStatus     `json:"status"`
+	Workspace         *Workspace    `json:"workspace,omitempty"`
+	WorkspaceID       ID            `json:"workspaceId"`
+	Logs              []*Log        `json:"logs,omitempty"`
+	Variables         []*Variable   `json:"variables"`
+	FailedNodes       []*Diagnostic `json:"failedNodes,omitempty"`
+	DroppedEventCount *int          `json:"droppedEventCount,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -366,13 +389,25 @@ type NamedSnapshot struct {
 }
 
 type NodeExecution struct {
-	ID          ID         `json:"id"`
-	JobID       ID         `json:"jobId"`
-	NodeID      ID         `json:"nodeId"`
-	Status      NodeStatus `json:"status"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	StartedAt   *time.Time `json:"startedAt,omitempty"`
-	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	ID          ID            `json:"id"`
+	JobID       ID            `json:"jobId"`
+	NodeID      ID            `json:"nodeId"`
+	Status      NodeStatus    `json:"status"`
+	CreatedAt   *time.Time    `json:"createdAt,omitempty"`
+	StartedAt   *time.Time    `json:"startedAt,omitempty"`
+	CompletedAt *time.Time    `json:"completedAt,omitempty"`
+	Diagnostics []*Diagnostic `json:"diagnostics,omitempty"`
+	// Successfully processed feature count. Populated for processor nodes on
+	// terminal status; sink/source nodes and non-terminal executions report
+	// null, not 0 — don't infer node kind from nullness alone.
+	FeaturesProcessed *int `json:"featuresProcessed,omitempty"`
+	// Successfully written feature count. Populated for sink nodes on terminal
+	// status; processor/source nodes and non-terminal executions report null.
+	FeaturesWritten *int `json:"featuresWritten,omitempty"`
+	// Feature count emitted during finish() — meaningful for accumulating
+	// processor actions that flush at finish rather than per-feature. Populated
+	// for processor nodes on terminal status; otherwise null.
+	FinishFeatureCount *int `json:"finishFeatureCount,omitempty"`
 }
 
 func (NodeExecution) IsNode()        {}
@@ -1283,8 +1318,9 @@ const (
 	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	// Never emitted by the runtime; retained for API compatibility.
+	JobStatusPending JobStatus = "PENDING"
+	JobStatusRunning JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{
@@ -1402,6 +1438,7 @@ func (e LogLevel) MarshalJSON() ([]byte, error) {
 type NodeStatus string
 
 const (
+	// Never emitted by the runtime; retained for API compatibility.
 	NodeStatusPending    NodeStatus = "PENDING"
 	NodeStatusStarting   NodeStatus = "STARTING"
 	NodeStatusProcessing NodeStatus = "PROCESSING"

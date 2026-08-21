@@ -139,24 +139,53 @@ func main() {
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
 	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(redisStorage)
 
-	// Initialize MongoDB client and node storage if needed
+	// Initialize MongoDB client and node/diagnostic storage if needed
 	var mongoClient *mongo.Client
 	var nodeStorage gateway.NodeStorage
+	var diagnosticStorage gateway.DiagnosticStorage
 
-	if conf.NodeSubscriptionID != "" {
+	if conf.NodeSubscriptionID != "" || conf.DiagnosticSubscriptionID != "" {
 		switch conf.DBDriver {
 		case "postgres":
-			pool, perr := pgxpool.New(ctx, conf.DBPG)
-			if perr != nil {
-				log.Fatalf("Failed to connect to Postgres: %v", perr)
-			}
-			if perr := pool.Ping(ctx); perr != nil {
-				log.Fatalf("Failed to ping Postgres: %v", perr)
-			}
+			if conf.NodeSubscriptionID != "" {
+				pool, perr := pgxpool.New(ctx, conf.DBPG)
+				if perr != nil {
+					log.Fatalf("Failed to connect to Postgres: %v", perr)
+				}
+				if perr := pool.Ping(ctx); perr != nil {
+					log.Fatalf("Failed to ping Postgres: %v", perr)
+				}
 
-			defer pool.Close()
+				defer pool.Close()
 
-			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, flow_postgres.NewPostgresStorage(pgxx.NewClient(pool)))
+				nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, flow_postgres.NewPostgresStorage(pgxx.NewClient(pool)))
+			}
+			// DiagnosticStorage has no Postgres implementation yet, so it always needs Mongo, even under the Postgres node-storage driver.
+			if conf.DiagnosticSubscriptionID != "" {
+				mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
+				if err != nil {
+					log.Fatalf("Failed to connect to MongoDB: %v", err)
+				}
+				if err := mongoClient.Ping(ctx, nil); err != nil {
+					log.Fatalf("Failed to ping MongoDB: %v", err)
+				}
+
+				defer func() {
+					if merr := mongoClient.Disconnect(context.Background()); merr != nil {
+						log.Printf("failed to disconnet mongo client: %v", merr)
+					}
+				}()
+
+				mongoStorage := flow_mongo.NewMongoStorage(
+					mongox.NewClient(databaseName, mongoClient),
+					conf.GCSBucket,
+					conf.AssetBaseURL,
+				)
+				if err := mongoStorage.Init(ctx); err != nil {
+					log.Printf("[subscriber] failed to ensure nodeDiagnostics indexes: %v", err)
+				}
+				diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(redisStorage, mongoStorage)
+			}
 		default:
 			mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
 			if err != nil {
@@ -177,7 +206,15 @@ func main() {
 				conf.GCSBucket,
 				conf.AssetBaseURL,
 			)
-			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
+			if conf.NodeSubscriptionID != "" {
+				nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
+			}
+			if conf.DiagnosticSubscriptionID != "" {
+				if err := mongoStorage.Init(ctx); err != nil {
+					log.Printf("[subscriber] failed to ensure nodeDiagnostics indexes: %v", err)
+				}
+				diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(redisStorage, mongoStorage)
+			}
 		}
 	}
 
@@ -226,6 +263,28 @@ func main() {
 		log.Println("Node storage not properly initialized, node subscriber will not be started")
 	} else {
 		log.Println("Node subscription ID not provided, node subscriber will not be started")
+	}
+
+	if conf.DiagnosticSubscriptionID != "" && diagnosticStorage != nil {
+		diagnosticSub := pubsubClient.Subscriber(conf.DiagnosticSubscriptionID)
+		diagnosticSubAdapter := flow_pubsub.NewRealSubscription(diagnosticSub)
+		diagnosticSubscriberUC := interactor.NewDiagnosticSubscriberUseCase(diagnosticStorage)
+		diagnosticSubscriber := flow_pubsub.NewDiagnosticSubscriber(diagnosticSubAdapter, diagnosticSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting diagnostic subscriber...")
+			if err := diagnosticSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Diagnostic subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Diagnostic subscriber stopped")
+		}()
+	} else if conf.DiagnosticSubscriptionID != "" {
+		log.Println("Diagnostic storage not properly initialized, diagnostic subscriber will not be started")
+	} else {
+		log.Println("Diagnostic subscription ID not provided, diagnostic subscriber will not be started")
 	}
 
 	// Set up user-facing log subscriber if configured

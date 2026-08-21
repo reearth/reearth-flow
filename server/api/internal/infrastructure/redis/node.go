@@ -13,15 +13,18 @@ import (
 )
 
 type NodeEntry struct {
-	ID          string     `json:"id"`
-	JobID       string     `json:"jobId"`
-	NodeID      string     `json:"nodeId"`
-	Status      string     `json:"status"`
-	StartedAt   *time.Time `json:"startedAt,omitempty"`
-	CompletedAt *time.Time `json:"completedAt,omitempty"`
-	FeatureID   *string    `json:"featureId,omitempty"`
-	Timestamp   time.Time  `json:"timestamp"`
-	WorkflowID  string     `json:"workflowId"`
+	Timestamp          time.Time  `json:"timestamp"`
+	StartedAt          *time.Time `json:"startedAt,omitempty"`
+	CompletedAt        *time.Time `json:"completedAt,omitempty"`
+	FeatureID          *string    `json:"featureId,omitempty"`
+	FeaturesProcessed  *int       `json:"featuresProcessed,omitempty"`
+	FeaturesWritten    *int       `json:"featuresWritten,omitempty"`
+	FinishFeatureCount *int       `json:"finishFeatureCount,omitempty"`
+	ID                 string     `json:"id"`
+	JobID              string     `json:"jobId"`
+	NodeID             string     `json:"nodeId"`
+	Status             string     `json:"status"`
+	WorkflowID         string     `json:"workflowId"`
 }
 
 func (e *NodeEntry) ToDomain() (*graph.NodeExecution, error) {
@@ -35,12 +38,17 @@ func (e *NodeEntry) ToDomain() (*graph.NodeExecution, error) {
 		return nil, err
 	}
 
-	return graph.NewNodeExecution(
-		e.ID,
-		jId,
-		nId,
-		graph.Status(e.Status),
-	), nil
+	return graph.NewNodeExecutionBuilder().
+		ID(e.ID).
+		JobID(jId).
+		NodeID(nId).
+		Status(graph.Status(e.Status)).
+		StartedAt(e.StartedAt).
+		CompletedAt(e.CompletedAt).
+		FeaturesProcessed(e.FeaturesProcessed).
+		FeaturesWritten(e.FeaturesWritten).
+		FinishFeatureCount(e.FinishFeatureCount).
+		Build()
 }
 
 func (r *redisLog) GetNodeExecutions(
