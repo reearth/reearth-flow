@@ -466,8 +466,8 @@ workflow that names it, so no existing workflow broke.
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
 | Exposed and audited | 69 | — |
-| Does not run in the shipped build | 22 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **11** | An engine-side §8 pass — the list below |
+| Does not run in the shipped build | 21 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **12** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -491,11 +491,23 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 11 actions, with preliminary findings
+### Pending audit — 12 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
+
+#### Newly eligible — its port landed (1)
+
+```
+Elevation Extractor
+  runs:    Ported in #2384 (2026-08-21), so it now has a `#[cfg(feature = "new-geometry")]`
+             process and runs in the shipped build. That was its trigger for leaving the
+             does-not-run bucket, so it is recorded here rather than left to expire silently.
+  scan:    NOT scanned. Everything else in this list carries preliminary findings from an
+             earlier schema pass; this one was in the unported bucket then, so it has had no
+             review of any kind. Budget a full §8 pass, not a re-check.
+```
 
 #### Group C — CSG pair and Excel Writer (3)
 
