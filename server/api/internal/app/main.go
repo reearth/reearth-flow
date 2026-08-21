@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	apiotel "github.com/reearth/reearth-flow/api/internal/app/otel"
 	authserver "github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/permission"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -49,6 +50,15 @@ func Start(debug bool, version string) {
 		}
 	}()
 
+	meterProvider := initMeter(ctx, conf)
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := meterProvider.Shutdown(shutdownCtx); err != nil {
+			log.Errorf("Failed to shut down meter: %s\n", err.Error())
+		}
+	}()
+
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
 	// Health checker
@@ -65,7 +75,8 @@ func Start(debug bool, version string) {
 
 	// AccountGQLClient
 	const accountsTimeoutSec = 30
-	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, otelhttp.NewTransport(authserver.NewDynamicAuthTransport()))
+	accountsTransport := apiotel.CountingTransport(otelhttp.NewTransport(authserver.NewDynamicAuthTransport()))
+	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, accountsTransport)
 
 	// PermissionChecker
 	permissionChecker := permission.NewChecker(accountGQLClient.CerbosRepo, accountGQLClient.WorkspaceRepo, rbac.ServiceName)
@@ -80,6 +91,7 @@ func Start(debug bool, version string) {
 		PermissionChecker: permissionChecker,
 		AccountGQLClient:  accountGQLClient,
 		HealthChecker:     healthChecker,
+		MeterProvider:     meterProvider,
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
@@ -133,6 +145,7 @@ type ServerConfig struct {
 	AccountGateways   *accountgateway.Container // TODO: Remove this field once the migration is complete.
 	AccountGQLClient  *gqlclient.Client
 	HealthChecker     *HealthChecker
+	MeterProvider     apiotel.MeterProvider
 	Debug             bool
 }
 

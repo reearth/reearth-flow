@@ -39,26 +39,29 @@ type (
 		GCS GCSConfig `pp:",omitempty"`
 		S3  S3Config  `pp:",omitempty"`
 
-		AccountsApiHost string `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
-		AssetBaseURL    string `default:"http://localhost:8080/assets"`
-		DB              string `default:"mongodb://localhost"`
-		DB_Account      string `pp:",omitempty"`
-		DB_Driver       string `default:"mongo" pp:",omitempty"`
-		DB_PG           string `pp:",omitempty"`
-		GCPProject      string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-		GCPRegion       string `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
-		Host            string `default:"http://localhost:8080"`
-		Host_Web        string `pp:",omitempty"`
-		Port            string `default:"8080"`
-		Profiler        string `pp:",omitempty"`
-		ServerHost      string `pp:",omitempty"`
-		SharedPath      string `default:"shared"`
-		SignupSecret    string `pp:",omitempty"`
-		Tracer          string `pp:",omitempty"`
-		Tracer_Endpoint string `default:"localhost:4317" pp:",omitempty"`
-		Web_FaviconURL  string `pp:",omitempty"`
-		Web_Title       string `pp:",omitempty"`
-		WorkflowBaseURL string `default:"http://localhost:8080/workflows"`
+		AccountsApiHost        string `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
+		AssetBaseURL           string `default:"http://localhost:8080/assets"`
+		DB                     string `default:"mongodb://localhost"`
+		DB_Account             string `pp:",omitempty"`
+		DB_Driver              string `default:"mongo" pp:",omitempty"`
+		DB_PG                  string `pp:",omitempty"`
+		GCPProject             string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+		GCPRegion              string `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
+		Host                   string `default:"http://localhost:8080"`
+		Host_Web               string `pp:",omitempty"`
+		Port                   string `default:"8080"`
+		Profiler               string `pp:",omitempty"`
+		ServerHost             string `pp:",omitempty"`
+		SharedPath             string `default:"shared"`
+		SignupSecret           string `pp:",omitempty"`
+		Tracer                 string `pp:",omitempty"`
+		Tracer_Endpoint        string `default:"localhost:4317" pp:",omitempty"`
+		Metrics                string `pp:",omitempty"`
+		Metrics_Endpoint       string `default:"localhost:4317" pp:",omitempty"`
+		Metrics_PrometheusAddr string `default:":9464" pp:",omitempty"`
+		Web_FaviconURL         string `pp:",omitempty"`
+		Web_Title              string `pp:",omitempty"`
+		WorkflowBaseURL        string `default:"http://localhost:8080/workflows"`
 
 		// log
 		Redis_URL string `pp:",omitempty"`
