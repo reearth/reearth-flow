@@ -3,7 +3,7 @@
 Quality review of the base actions against [action-standard.md](action-standard.md).
 
 > **Resuming this work? Start at [HANDOVER](#handover--state-of-the-audit-as-of-2026-08-21) at
-> the bottom of this file.** It carries the current palette state, the 22 actions still awaiting
+> the bottom of this file.** It carries the current palette state, the 20 actions still awaiting
 > an audit with preliminary findings for each, and the cross-cutting issues that should shape
 > whatever order they are tackled in. The sections above it are older per-batch residue.
 
@@ -458,23 +458,24 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **57** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **59** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 57 | — |
+| Exposed and audited | 59 | — |
 | Does not run in the shipped build | 22 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **22** | An engine-side §8 pass — the list below |
+| **Pending audit** | **20** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
-**The most important consequence:** `Coordinate Frame Reprojector` is in the pending-audit
-bucket, and the two legacy reprojectors are gone, so **the palette currently offers no
-coordinate reprojection at all.** That makes it the strongest candidate to audit first,
-regardless of category order.
+`Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
+written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
+new-geometry support and were assumed to be near-compliant. That held for the reprojector, which
+postdates the standard, and did not for Dissolver, whose action long predates it — only its
+geometry port is recent. Worth remembering when guessing which of the remaining 20 are cheap.
 
 ### What "audited" now means — read §"How to use" and §8 first
 
@@ -490,20 +491,15 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 22 actions, with preliminary findings
+### Pending audit — 20 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Group A — Geometry metadata (5)
+#### Group A — Geometry metadata (4)
 
 ```
-Coordinate Frame Reprojector          <-- AUDIT FIRST (see above)
-  scan:    Clean on every mechanical check. Replaces Horizontal + Vertical Reprojector.
-  unread:  destinationFrame / epsgCode / basePointSource never traced; `base-point`
-             second input port never verified as emitted-from/consumed.
-
 Hole Counter
   desc:    "Count Polygon Holes to Attribute" — Title Case imperative, no period (§2).
   note:    Carries a doc comment naming a commercial product, but on a TEST function inside
@@ -572,7 +568,7 @@ Excel Writer
   params:  `output` and `sheetName` both lack a `title`.
 ```
 
-#### Group D — Overlay family (3)
+#### Group D — Overlay family (2, plus Dissolver now done)
 
 ```
 Line On Line Overlayer                                  <-- worst metadata in the palette
@@ -584,13 +580,17 @@ Line On Line Overlayer                                  <-- worst metadata in th
 Area On Area Overlayer
   ports:   `area` was agreed to become `overlaps` (breaking).
 
-Dissolver
-  desc:    "Dissolve Features by Grouping Attributes" — Title Case imperative, no period.
-  ports:   `area` was agreed to become `features` (breaking).
 ```
 
-Review these three together — they share `groupBy` / `tolerance` / accumulation semantics, and
-the two port renames were already agreed in principle but never sized against fixtures.
+`Dissolver` was in this group and is now audited and exposed — see below. Review the remaining
+two together; they share `groupBy` / `tolerance` / accumulation semantics with it and with each
+other, so its wording is the reference to copy.
+
+**The port renames were agreed in principle and are more expensive than assumed.** Sizing them
+for the first time: `Dissolver` alone appears in 10 workflow files, **6 of them committed
+result/truth fixtures** under `engine/testing/data/results/`, with 27 `fromPort: area` edges
+across the tree. Renaming `area` is not a metadata change — it rewrites golden data, and wants
+its own PR with the fixtures regenerated deliberately.
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
 
@@ -754,3 +754,56 @@ Audited and **kept exposed**:
   variant it still uses suggests it was built as an `Attribute Flattener` sibling for collapsing
   CityGML multi-valued attributes before writing to a flat format. If that is the intent, it
   should say so and probably be named for it. Zero usage anywhere.
+
+---
+
+### Addendum — Coordinate Frame Reprojector and Dissolver, audited and exposed
+
+Both were picked on the hypothesis that new-geometry support implied recent authorship and
+therefore near-compliance. Half right: `Coordinate Frame Reprojector` was born 2026-07-23, three
+weeks after the standard, and is compliant. `Dissolver` predates the standard by months — only
+its geometry port is recent (#2368) — and its metadata was pre-#2240 style.
+
+```
+Coordinate Frame Reprojector — kept, one structural fix
+  impl:    All three parameters read and applied; no dead surface. Both input ports and both
+             output ports emitted. Base-point features are consumed rather than forwarded,
+             which is the §4.3 merge/join exemption and is consistent for both the valid and
+             invalid cases. Genuinely well-built: PROJ transform cached per worker thread,
+             num_threads pinned to 1 only in the mode that correlates two streams.
+  params:  §3.2/§3.4 — `epsgCode` was a top-level Option validated at build time, so the
+             schema advertised a CRS destination with no code and failed at runtime. Now rides
+             inside the `crs` variant of a #[serde(tag = "type")] enum, which is the idiom the
+             same file already uses for `basePoint`, so the invalid combination cannot be
+             expressed and the runtime check is gone.
+  note:    Internally the EPSG code narrows to u16 (the bound reearth-flow-geometry uses)
+             while Feature Writer and the CityGML writers use u32. Out-of-range codes now get
+             an explicit error rather than a deserialization failure. Worth unifying one day.
+
+Dissolver — kept, documentation was materially wrong
+  impl:    All three parameters read and applied; `tolerance` reaches both geometry worlds
+             (glue_vertices_closer_than / dissolve_leaves). Ports complete.
+  desc:    Was "Dissolve Features by Grouping Attributes" — Title Case imperative, no period,
+             and it never said what dissolving does to the geometry. Rewritten.
+  desc:    **The 2D-only constraint was entirely undocumented.** `accepts()` requires
+             Geometry::Euclidean2D, so any 3D or geographic-CRS geometry is silently routed to
+             `rejected`. The sibling overlayers already carry the guidance sentence for this;
+             it is now copied here. This was the substantive finding — a user could wire this
+             up correctly and lose every feature with no indication why.
+  params:  `tolerance`'s default was unstated; it is 0.0, set by an `unwrap_or` carrying a TODO
+             that calls it a compatibility choice. Now documented, including that zero can
+             leave slivers between edges that nearly meet.
+  params:  Variant description leaked the internal `group_by` spelling into user-facing text.
+  tags:    Was empty. Now `spatial` (matching Bufferer, Clipper, Grid Divider) and `aggregation`
+             (matching the other accumulating processors).
+  ports:   `area` → `features` NOT done. See the Group D note: 10 workflow files, 6 of them
+             committed truth fixtures, 27 edges. Its own PR.
+```
+
+**One methodological trap worth recording.** `cargo check -p reearth-flow-action-processor` and
+`cargo test -p reearth-flow-action-processor` do **not** compile new-geometry code. That crate's
+own `default = []`, and `coordinate_frame_reprojector` is a `#[cfg(feature = "new-geometry")]`
+module, so per-crate commands silently skip it — a per-crate check passed while four of its tests
+were broken by the parameter restructure. `cargo make test-rs` catches it because `--workspace`
+lets cli/worker (both `default = ["new-geometry"]`) unify the feature on. **Verify new-geometry
+actions with the workspace command, never with `-p`.**

@@ -15,13 +15,12 @@ package app
 //
 //  2. Pending audit. Runs, but has never had an engine-side pass against the action standard,
 //     so its metadata is in whatever state it was authored in. Re-add per action as it is
-//     audited. Note this includes Coordinate Frame Reprojector, so the palette currently
-//     offers no reprojection at all — it is the strongest candidate to audit first.
+//     audited.
 //
 //  3. Flagged for removal. Horizontal Reprojector and Vertical Reprojector are absent
 //     permanently: the tracker marks both "To Be Removed", and their new-geometry impls are
-//     stubs that error with a pointer to Coordinate Frame Reprojector. They owe an engine-side
-//     deletion, not a re-exposure.
+//     stubs that error with a pointer to Coordinate Frame Reprojector, which is exposed below
+//     and supersedes both. They owe an engine-side deletion, not a re-exposure.
 //
 //  4. Retired on design grounds, both unused in any workflow:
 //     Attribute File Path Info Extractor duplicates File Property Extractor exactly (same five
@@ -52,15 +51,17 @@ var baseActions = map[string]bool{
 	"XML Writer":             true,
 	"Zip File Writer":        true,
 	// Geometry
-	"Appearance Remover":   true,
-	"Bounds Extractor":     true,
-	"Footprint Replacer":   true,
-	"Geometry Extractor":   true,
-	"Geometry Remover":     true,
-	"Geometry Replacer":    true,
-	"Geometry Splitter":    true,
-	"Geometry Validator":   true,
-	"Two Dimension Forcer": true,
+	"Appearance Remover":           true,
+	"Bounds Extractor":             true,
+	"Coordinate Frame Reprojector": true,
+	"Dissolver":                    true,
+	"Footprint Replacer":           true,
+	"Geometry Extractor":           true,
+	"Geometry Remover":             true,
+	"Geometry Replacer":            true,
+	"Geometry Splitter":            true,
+	"Geometry Validator":           true,
+	"Two Dimension Forcer":         true,
 	// Attribute
 	"Attribute Aggregator":       true,
 	"Attribute Conversion Table": true,
