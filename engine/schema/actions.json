@@ -2868,23 +2868,12 @@
         "properties": {
           "destinationFrame": {
             "title": "Destination Frame",
-            "description": "Coordinate frame to convert geometry into.",
+            "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code.",
             "allOf": [
               {
                 "$ref": "#/definitions/DestinationFrame"
               }
             ]
-          },
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint16",
-            "minimum": 0.0
           },
           "basePointSource": {
             "title": "Base Point",
@@ -2901,23 +2890,47 @@
         },
         "definitions": {
           "DestinationFrame": {
-            "description": "The destination coordinate frame kind.",
+            "description": "The destination coordinate frame, carrying the input each kind needs.",
             "oneOf": [
               {
                 "title": "CRS",
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
-                "type": "string",
-                "enum": [
-                  "crs"
-                ]
+                "type": "object",
+                "required": [
+                  "epsgCode",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "crs"
+                    ]
+                  },
+                  "epsgCode": {
+                    "title": "EPSG Code",
+                    "description": "EPSG code of the destination coordinate reference system.",
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  }
+                }
               },
               {
                 "title": "Euclidean",
-                "description": "Convert to a non-georeferenced Euclidean frame.",
-                "type": "string",
-                "enum": [
-                  "euclidean"
-                ]
+                "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "euclidean"
+                    ]
+                  }
+                }
               }
             ]
           },
@@ -3295,16 +3308,16 @@
     {
       "name": "Dissolver",
       "type": "processor",
-      "description": "Dissolve Features by Grouping Attributes",
+      "description": "Merges features that share the same grouping attribute values into one feature per group, combining their geometries and dropping the boundaries between them. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Dissolver Parameters",
-        "description": "Configure how to dissolve features by grouping them based on shared attributes",
+        "description": "Sets which features are dissolved together, how closely their vertices must line up, and which of their attributes the merged feature keeps.",
         "type": "object",
         "properties": {
           "groupBy": {
             "title": "Group By Attributes",
-            "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together",
+            "description": "Attributes whose values decide which features dissolve together — features matching on all of them are merged into one. When omitted, every feature forms a single group.",
             "type": [
               "array",
               "null"
@@ -3315,7 +3328,7 @@
           },
           "tolerance": {
             "title": "Tolerance",
-            "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation.",
+            "description": "Distance below which two vertices are treated as the same point when merging geometries, in the unit of the input's coordinate frame. Defaults to zero, which merges only exactly coincident vertices and can leave slivers between edges that nearly meet.",
             "type": [
               "number",
               "null"
@@ -3324,7 +3337,7 @@
           },
           "attributeAccumulation": {
             "title": "Attribute Accumulation",
-            "description": "Strategy for handling attributes when dissolving features",
+            "description": "Which attributes the merged feature keeps.",
             "default": "useOneFeature",
             "allOf": [
               {
@@ -3339,11 +3352,11 @@
           },
           "AttributeAccumulationStrategy": {
             "title": "Attribute Accumulation Strategy",
-            "description": "Defines how attributes should be handled when dissolving multiple features into one",
+            "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
                 "title": "Drop Incoming Attributes",
-                "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)",
+                "description": "Keeps only the grouping attributes, discarding everything else.",
                 "type": "string",
                 "enum": [
                   "dropAttributes"
@@ -3351,7 +3364,7 @@
               },
               {
                 "title": "Merge Incoming Attributes",
-                "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array",
+                "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
                 "type": "string",
                 "enum": [
                   "mergeAttributes"
@@ -3359,7 +3372,7 @@
               },
               {
                 "title": "Use Attributes From One Feature",
-                "description": "The output inherits the attributes of one representative feature of the group",
+                "description": "Keeps the attributes of a single feature from the group and discards the rest.",
                 "type": "string",
                 "enum": [
                   "useOneFeature"
@@ -3380,7 +3393,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Echo Processor",

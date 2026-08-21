@@ -2875,17 +2875,6 @@
               }
             ]
           },
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint16",
-            "minimum": 0.0
-          },
           "basePointSource": {
             "title": "Base Point",
             "description": "How coordinates bridge the Euclidean/CRS boundary.",
@@ -2901,23 +2890,47 @@
         },
         "definitions": {
           "DestinationFrame": {
-            "description": "The destination coordinate frame kind.",
+            "description": "The destination coordinate frame, carrying the input each kind needs.",
             "oneOf": [
               {
                 "title": "CRS",
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
-                "type": "string",
-                "enum": [
-                  "crs"
-                ]
+                "type": "object",
+                "required": [
+                  "epsgCode",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "crs"
+                    ]
+                  },
+                  "epsgCode": {
+                    "title": "EPSG Code",
+                    "description": "EPSG code of the destination coordinate reference system.",
+                    "type": "integer",
+                    "format": "uint32",
+                    "minimum": 0.0
+                  }
+                }
               },
               {
                 "title": "Euclidean",
-                "description": "Convert to a non-georeferenced Euclidean frame.",
-                "type": "string",
-                "enum": [
-                  "euclidean"
-                ]
+                "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "euclidean"
+                    ]
+                  }
+                }
               }
             ]
           },
@@ -3339,7 +3352,7 @@
           },
           "AttributeAccumulationStrategy": {
             "title": "Attribute Accumulation Strategy",
-            "description": "Defines how attributes should be handled when dissolving multiple features into one",
+            "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
                 "title": "Drop Incoming Attributes",
@@ -3380,7 +3393,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Echo Processor",
