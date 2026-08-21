@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"go.opentelemetry.io/otel"
@@ -184,23 +185,34 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 		return err
 	}
 
-	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		prj, err := i.projectRepo.FindByID(ctx, projectID)
 		if err != nil {
 			return err
 		}
 
 		deleter := ProjectDeleter{
-			File:      i.file,
-			Project:   i.projectRepo,
-			Websocket: i.websocket,
+			File:    i.file,
+			Project: i.projectRepo,
 		}
 		if err := deleter.Delete(ctx, prj, true); err != nil {
 			return err
 		}
 
 		return i.jobRepo.RemoveByProject(ctx, projectID)
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Only now is the project row durably gone: deleting the document earlier
+	// would destroy it even if the transaction failed or was retried.
+	if i.websocket != nil {
+		if err := i.websocket.DeleteDocument(ctx, projectID.String()); err != nil {
+			log.Errorfc(ctx, "project: could not delete websocket document for %s: %v", projectID, err)
+		}
+	}
+
+	return nil
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
@@ -343,7 +355,14 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 		span.End()
 	}()
 
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if prj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, prj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -358,14 +377,6 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	variables := parametersToVariables(p.Parameters)
 	sampleSize := capSampleSize(p.SampleSize)
 	useCloudRun := i.cloudRunWorker != nil
-
-	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if prj == nil {
-		return nil, rerror.ErrNotFound
-	}
 
 	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
 	if err != nil {
