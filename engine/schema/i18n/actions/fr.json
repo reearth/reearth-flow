@@ -1759,11 +1759,11 @@
     },
     {
       "name": "Geometry Coercer",
-      "description": "Coerces and converts feature geometries to specified target geometry types",
+      "description": "Coerces a feature's geometry into a different geometry type, rebuilding it as polylines, faces, or triangles.",
       "parameterI18n": {
         "": {
           "title": "Geometry Coercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
+          "description": "Which geometry type each feature is coerced into."
         },
         "targetType": {
           "title": "Target Type",
@@ -2279,21 +2279,21 @@
     },
     {
       "name": "Hole Counter",
-      "description": "Count Polygon Holes to Attribute",
+      "description": "Counts the holes in every face of a feature's geometry and stores the total in an attribute. A geometry that cannot carry a hole, and a feature with no geometry, both count as zero.",
       "parameterI18n": {
         "": {
           "title": "Hole Counter Parameters",
-          "description": "Configure where to store the count of holes found in polygon geometries"
+          "description": "Where the total number of holes is stored on each feature."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the hole count will be stored as a number"
+          "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero."
         }
       }
     },
     {
       "name": "Hole Extractor",
-      "description": "Extract Polygon Holes as Separate Features"
+      "description": "Divise chaque face d'une géométrie en ses anneaux, en émettant l'anneau extérieur et chaque anneau intérieur (trou) comme une entité distincte."
     },
     {
       "name": "Horizontal Reprojector",
