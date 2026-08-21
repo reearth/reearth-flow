@@ -10,8 +10,8 @@ export type ApiDriverInput = {
 
 export type AddMemberToWorkspaceInput = {
   role: Role;
-  userId: string | number;
-  workspaceId: string | number;
+  userId: string;
+  workspaceId: string;
 };
 
 export type ArchiveExtractionStatus =
@@ -49,14 +49,14 @@ export type CmsVisibility =
   | 'PUBLIC';
 
 export type CancelJobInput = {
-  jobId: string | number;
+  jobId: string;
 };
 
 export type CreateAssetInput = {
   file?: any;
   name?: string | null | undefined;
   token?: string | null | undefined;
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type CreateAssetUploadInput = {
@@ -64,31 +64,31 @@ export type CreateAssetUploadInput = {
   contentLength?: number | null | undefined;
   cursor?: string | null | undefined;
   filename?: string | null | undefined;
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type CreateDeploymentInput = {
   description: string;
   file: any;
-  projectId?: string | number | null | undefined;
-  workspaceId: string | number;
+  projectId?: string | null | undefined;
+  workspaceId: string;
 };
 
 export type CreateProjectInput = {
   archived?: boolean | null | undefined;
   description?: string | null | undefined;
   name?: string | null | undefined;
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type CreateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId: string | number;
+  deploymentId: string;
   description: string;
   enabled: boolean;
   timeDriverInput?: TimeDriverInput | null | undefined;
   variables?: Array<VariableInput> | null | undefined;
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type CreateWorkspaceInput = {
@@ -106,19 +106,19 @@ export type DeclareParameterInput = {
 };
 
 export type DeleteAssetInput = {
-  assetId: string | number;
+  assetId: string;
 };
 
 export type DeleteDeploymentInput = {
-  deploymentId: string | number;
+  deploymentId: string;
 };
 
 export type DeleteProjectInput = {
-  projectId: string | number;
+  projectId: string;
 };
 
 export type DeleteWorkspaceInput = {
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type EventSourceType =
@@ -126,12 +126,12 @@ export type EventSourceType =
   | 'TIME_DRIVEN';
 
 export type ExecuteDeploymentInput = {
-  deploymentId: string | number;
+  deploymentId: string;
 };
 
 export type GetHeadInput = {
-  projectId?: string | number | null | undefined;
-  workspaceId: string | number;
+  projectId?: string | null | undefined;
+  workspaceId: string;
 };
 
 export type JobStatus =
@@ -161,8 +161,8 @@ export type PageBasedPagination = {
 
 export type ParameterBatchInput = {
   creates?: Array<DeclareParameterInput> | null | undefined;
-  deletes?: Array<string | number> | null | undefined;
-  projectId: string | number;
+  deletes?: Array<string> | null | undefined;
+  projectId: string;
   reorders?: Array<UpdateParameterOrderInput> | null | undefined;
   updates?: Array<ParameterUpdateItem> | null | undefined;
 };
@@ -181,7 +181,7 @@ export type ParameterUpdateItem = {
   config?: any;
   defaultValue?: any;
   name: string;
-  paramId: string | number;
+  paramId: string;
   public: boolean;
   required: boolean;
   type: ParameterType;
@@ -190,22 +190,22 @@ export type ParameterUpdateItem = {
 export type PreviewSchemaInput = {
   file: any;
   parameters?: Array<RunParameterInput> | null | undefined;
-  projectId: string | number;
+  projectId: string;
   sampleSize?: number | null | undefined;
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type RemoveMemberFromWorkspaceInput = {
-  userId: string | number;
-  workspaceId: string | number;
+  userId: string;
+  workspaceId: string;
 };
 
 export type RemoveParameterInput = {
-  paramId: string | number;
+  paramId: string;
 };
 
 export type RemoveParametersInput = {
-  paramIds: Array<string | number>;
+  paramIds: Array<string>;
 };
 
 export type Role =
@@ -216,7 +216,7 @@ export type Role =
 
 export type RunParameterInput = {
   config?: any;
-  id: string | number;
+  id: string;
   index: number;
   name: string;
   public: boolean;
@@ -228,14 +228,14 @@ export type RunParameterInput = {
 export type RunProjectInput = {
   file: any;
   parameters?: Array<RunParameterInput> | null | undefined;
-  previousJobId?: string | number | null | undefined;
-  projectId: string | number;
-  startNodeId?: string | number | null | undefined;
-  workspaceId: string | number;
+  previousJobId?: string | null | undefined;
+  projectId: string;
+  startNodeId?: string | null | undefined;
+  workspaceId: string;
 };
 
 export type ShareProjectInput = {
-  projectId: string | number;
+  projectId: string;
 };
 
 export type TimeDriverInput = {
@@ -249,16 +249,16 @@ export type TimeInterval =
   | 'EVERY_WEEK';
 
 export type UnshareProjectInput = {
-  projectId: string | number;
+  projectId: string;
 };
 
 export type UpdateAssetInput = {
-  assetId: string | number;
+  assetId: string;
   name?: string | null | undefined;
 };
 
 export type UpdateDeploymentInput = {
-  deploymentId: string | number;
+  deploymentId: string;
   description?: string | null | undefined;
   file?: any;
 };
@@ -273,8 +273,8 @@ export type UpdateMeInput = {
 
 export type UpdateMemberOfWorkspaceInput = {
   role: Role;
-  userId: string | number;
-  workspaceId: string | number;
+  userId: string;
+  workspaceId: string;
 };
 
 export type UpdateParameterInput = {
@@ -288,7 +288,7 @@ export type UpdateParameterInput = {
 
 export type UpdateParameterOrderInput = {
   newIndex: number;
-  paramId: string | number;
+  paramId: string;
 };
 
 export type UpdateProjectInput = {
@@ -299,16 +299,16 @@ export type UpdateProjectInput = {
   isBasicAuthActive?: boolean | null | undefined;
   isLocked?: boolean | null | undefined;
   name?: string | null | undefined;
-  projectId: string | number;
+  projectId: string;
 };
 
 export type UpdateTriggerInput = {
   apiDriverInput?: ApiDriverInput | null | undefined;
-  deploymentId?: string | number | null | undefined;
+  deploymentId?: string | null | undefined;
   description?: string | null | undefined;
   enabled?: boolean | null | undefined;
   timeDriverInput?: TimeDriverInput | null | undefined;
-  triggerId: string | number;
+  triggerId: string;
   variables?: Array<VariableInput> | null | undefined;
 };
 
@@ -327,7 +327,7 @@ export type UpdateWorkerConfigInput = {
 
 export type UpdateWorkspaceInput = {
   name: string;
-  workspaceId: string | number;
+  workspaceId: string;
 };
 
 export type UserFacingLogLevel =
@@ -489,7 +489,7 @@ export type GetProjectSnapshotQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectSnapshotQuery = { projectSnapshot: { timestamp: any, updates: Array<number>, version: number } };
+export type GetProjectSnapshotQuery = { projectSnapshot: { timestamp: any, updates: Array<number>, version: number | null } };
 
 export type GetProjectHistoryQueryVariables = Exact<{
   projectId: string;
@@ -497,6 +497,29 @@ export type GetProjectHistoryQueryVariables = Exact<{
 
 
 export type GetProjectHistoryQuery = { projectHistory: Array<{ timestamp: any, version: number }> };
+
+export type GetProjectNamedSnapshotsQueryVariables = Exact<{
+  projectId: string;
+}>;
+
+
+export type GetProjectNamedSnapshotsQuery = { projectNamedSnapshots: Array<{ snapshotNumber: number, label: string, timestamp: any, size: any }> };
+
+export type GetProjectNamedSnapshotQueryVariables = Exact<{
+  projectId: string;
+  snapshotNumber: number;
+}>;
+
+
+export type GetProjectNamedSnapshotQuery = { projectSnapshot: { snapshotNumber: number | null, updates: Array<number> } };
+
+export type SaveNamedSnapshotMutationVariables = Exact<{
+  projectId: string;
+  label: string;
+}>;
+
+
+export type SaveNamedSnapshotMutation = { saveNamedSnapshot: { snapshotNumber: number, label: string, timestamp: any, size: any } };
 
 export type PreviewSnapshotMutationVariables = Exact<{
   projectId: string;
@@ -543,7 +566,7 @@ export type ProjectDocumentFragment = { id: string, timestamp: any, updates: Arr
 
 export type ProjectSnapshotMetadataFragment = { timestamp: any, version: number } & { ' $fragmentName'?: 'ProjectSnapshotMetadataFragment' };
 
-export type ProjectSnapshotFragment = { timestamp: any, updates: Array<number>, version: number } & { ' $fragmentName'?: 'ProjectSnapshotFragment' };
+export type ProjectSnapshotFragment = { timestamp: any, updates: Array<number>, version: number | null } & { ' $fragmentName'?: 'ProjectSnapshotFragment' };
 
 export type UserFacingLogFragment = { jobId: string, timestamp: any, nodeId: string | null, nodeName: string | null, level: UserFacingLogLevel, message: string } & { ' $fragmentName'?: 'UserFacingLogFragment' };
 
@@ -938,6 +961,9 @@ export const GetDeploymentHeadDocument = {"kind":"Document","definitions":[{"kin
 export const GetLatestProjectSnapshotDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetLatestProjectSnapshot"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestProjectSnapshot"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]}}]} as unknown as DocumentNode<GetLatestProjectSnapshotQuery, GetLatestProjectSnapshotQueryVariables>;
 export const GetProjectSnapshotDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProjectSnapshot"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projectSnapshot"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]}}]} as unknown as DocumentNode<GetProjectSnapshotQuery, GetProjectSnapshotQueryVariables>;
 export const GetProjectHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProjectHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projectHistory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]}}]} as unknown as DocumentNode<GetProjectHistoryQuery, GetProjectHistoryQueryVariables>;
+export const GetProjectNamedSnapshotsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProjectNamedSnapshots"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projectNamedSnapshots"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"snapshotNumber"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"size"}}]}}]}}]} as unknown as DocumentNode<GetProjectNamedSnapshotsQuery, GetProjectNamedSnapshotsQueryVariables>;
+export const GetProjectNamedSnapshotDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProjectNamedSnapshot"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"snapshotNumber"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projectSnapshot"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"snapshotNumber"},"value":{"kind":"Variable","name":{"kind":"Name","value":"snapshotNumber"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"snapshotNumber"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}}]}}]}}]} as unknown as DocumentNode<GetProjectNamedSnapshotQuery, GetProjectNamedSnapshotQueryVariables>;
+export const SaveNamedSnapshotDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SaveNamedSnapshot"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"label"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"saveNamedSnapshot"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"label"},"value":{"kind":"Variable","name":{"kind":"Name","value":"label"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"snapshotNumber"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"size"}}]}}]}}]} as unknown as DocumentNode<SaveNamedSnapshotMutation, SaveNamedSnapshotMutationVariables>;
 export const PreviewSnapshotDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"PreviewSnapshot"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"previewSnapshot"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]}}]} as unknown as DocumentNode<PreviewSnapshotMutation, PreviewSnapshotMutationVariables>;
 export const RollbackProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RollbackProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"rollbackProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]}}]} as unknown as DocumentNode<RollbackProjectMutation, RollbackProjectMutationVariables>;
 export const SaveSnapshotDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SaveSnapshot"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"saveSnapshot"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}}]}]}}]} as unknown as DocumentNode<SaveSnapshotMutation, SaveSnapshotMutationVariables>;

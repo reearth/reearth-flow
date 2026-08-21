@@ -62,6 +62,10 @@ func (c *countingWSClient) SaveNamedSnapshot(context.Context, string, string) (*
 	c.calls++
 	return nil, nil
 }
+func (c *countingWSClient) GetSnapshotState(context.Context, string, int) (*ws.SnapshotState, error) {
+	c.calls++
+	return nil, nil
+}
 func (c *countingWSClient) DeleteDocument(context.Context, string) error { c.calls++; return nil }
 func (c *countingWSClient) Close() error                                 { c.calls++; return nil }
 
@@ -145,6 +149,10 @@ func saveNamedSnapshot(ctx context.Context, i *Websocket, d string) error {
 	_, err := i.SaveNamedSnapshot(ctx, d, "label")
 	return err
 }
+func getSnapshotState(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.GetSnapshotState(ctx, d, 1)
+	return err
+}
 func deleteDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.DeleteDocument(ctx, d)
 }
@@ -162,6 +170,7 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "GetHistoryMetadata", getHistoryMetadata)
 	assertDenied(t, "CreateSnapshot", createSnapshot)
 	assertDenied(t, "GetNamedSnapshots", getNamedSnapshots)
+	assertDenied(t, "GetSnapshotState", getSnapshotState)
 	assertDenied(t, "SaveNamedSnapshot", saveNamedSnapshot)
 	assertDenied(t, "Rollback", rollback)
 	assertDenied(t, "FlushToGCS", flushToGCS)
@@ -178,6 +187,7 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "GetHistoryMetadata", rbac.ActionAny, getHistoryMetadata)
 	assertChecks(t, "CreateSnapshot", rbac.ActionAny, createSnapshot)
 	assertChecks(t, "GetNamedSnapshots", rbac.ActionAny, getNamedSnapshots)
+	assertChecks(t, "GetSnapshotState", rbac.ActionAny, getSnapshotState)
 	assertChecks(t, "SaveNamedSnapshot", rbac.ActionEdit, saveNamedSnapshot)
 	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
 	assertChecks(t, "FlushToGCS", rbac.ActionAny, flushToGCS)

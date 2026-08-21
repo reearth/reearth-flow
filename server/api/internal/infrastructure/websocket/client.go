@@ -611,3 +611,48 @@ func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) 
 
 	return nil
 }
+
+// GetSnapshotState reads one snapshot's stored state by its per-room snapshot number.
+func (c *Client) GetSnapshotState(ctx context.Context, docID string, snapshotNumber int) (*websocket.SnapshotState, error) {
+	url := fmt.Sprintf("%s/api/document/%s/snapshots/%d", c.config.ServerURL, docID, snapshotNumber)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	c.setCommonHeaders(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get snapshot %d state: %w", snapshotNumber, err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	// 404 means retention evicted it, which is not a server fault.
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, interfaces.ErrSnapshotNotFound
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var stateResp snapshotStateResponse
+	if err := json.NewDecoder(resp.Body).Decode(&stateResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	updates := make([]int, len(stateResp.Updates))
+	for i, update := range stateResp.Updates {
+		updates[i] = int(update)
+	}
+
+	return &websocket.SnapshotState{
+		SnapshotID: stateResp.SnapshotID,
+		Updates:    updates,
+	}, nil
+}
