@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use indexmap::IndexMap;
 use rust_xlsxwriter::{Formula, Url, Workbook, Worksheet};
 
@@ -22,9 +24,9 @@ pub(super) fn write_excel(
         .map_err(crate::errors::SinkError::excel_writer)?;
 
     let columns = columns_of(features);
-    for (col_num, key) in columns.keys().enumerate() {
+    for (key, &col) in &columns {
         worksheet
-            .write_string(0, col_num as u16, key)
+            .write_string(0, col as u16, key)
             .map_err(crate::errors::SinkError::excel_writer)?;
     }
 
@@ -59,26 +61,34 @@ pub(super) fn write_excel(
 /// later ones would silently lose data. Companion attributes are excluded —
 /// they configure another column's cell and are not data themselves.
 fn columns_of(features: &[Feature]) -> IndexMap<String, usize> {
+    let keys: Vec<String> = features
+        .iter()
+        .flat_map(|feature| feature.iter().map(|(key, _)| key.clone().into_inner()))
+        .collect();
+    let all: HashSet<&str> = keys.iter().map(String::as_str).collect();
+
     let mut columns = IndexMap::new();
-    for feature in features {
-        for (key, _) in feature.iter() {
-            let key = key.clone().into_inner();
-            if is_companion(&key) {
-                continue;
-            }
-            let next = columns.len();
-            columns.entry(key).or_insert(next);
+    for key in &keys {
+        if is_companion(key, &all) {
+            continue;
         }
+        let next = columns.len();
+        columns.entry(key.clone()).or_insert(next);
     }
     columns
 }
 
-/// Whether the attribute configures another column's cell rather than holding
-/// a value of its own.
-fn is_companion(key: &str) -> bool {
+/// Whether the attribute configures another column's cell rather than holding a
+/// value of its own.
+///
+/// The column it configures has to exist: an attribute that merely happens to
+/// end in `.formula` with nothing named after it is ordinary data, and giving it
+/// no column would drop it silently.
+fn is_companion(key: &str, all_keys: &HashSet<&str>) -> bool {
     [FORMULA_SUFFIX, HYPERLINK_SUFFIX]
         .iter()
-        .any(|suffix| key.ends_with(suffix))
+        .filter_map(|suffix| key.strip_suffix(suffix))
+        .any(|base| all_keys.contains(base))
 }
 
 /// Write one cell: a formula or a hyperlink when the column's companion
@@ -158,6 +168,19 @@ mod tests {
         let columns = columns_of(&features);
         assert_eq!(columns.get("a"), Some(&0));
         assert_eq!(columns.get("b"), Some(&1));
+    }
+
+    #[test]
+    fn a_companion_naming_no_existing_column_is_ordinary_data() {
+        // Nothing is called `b`, so `b.formula` configures nothing and must keep
+        // a column of its own rather than vanishing.
+        let features = vec![feature(&[
+            ("a", AttributeValue::String("1".into())),
+            ("b.formula", AttributeValue::String("=1+1".into())),
+        ])];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 2);
+        assert_eq!(columns.get("b.formula"), Some(&1));
     }
 
     #[test]
