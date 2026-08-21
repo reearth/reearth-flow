@@ -923,6 +923,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Range Mapper Parameters",
+        "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -993,7 +994,9 @@
       "categories": [
         "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "mapping"
+      ]
     },
     {
       "name": "Attribute Table Extractor",
@@ -1032,7 +1035,17 @@
           },
           "inline": {
             "title": "Tabla en Línea",
-            "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos"
+            "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos",
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ExtractRule"
+              }
+            }
           },
           "typeAttribute": {
             "title": "Atributo de Tipo de Entidad",
@@ -1040,6 +1053,62 @@
             "type": [
               "string",
               "null"
+            ]
+          }
+        },
+        "definitions": {
+          "ExtractRule": {
+            "title": "Extraction Rule",
+            "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",
+            "type": "object",
+            "required": [
+              "destinationPath",
+              "sourcePath"
+            ],
+            "properties": {
+              "destinationPath": {
+                "title": "Destination Path",
+                "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed.",
+                "type": "string"
+              },
+              "sourcePath": {
+                "title": "Source Path",
+                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "type": "string"
+              },
+              "dataType": {
+                "title": "Value Type",
+                "description": "Converts the extracted value before writing it. Leave unset to write it unchanged.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ExtractDataType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "ExtractDataType": {
+            "oneOf": [
+              {
+                "title": "Integer",
+                "description": "Parses a string value as an integer.",
+                "type": "string",
+                "enum": [
+                  "int"
+                ]
+              },
+              {
+                "title": "Float",
+                "description": "Parses a string value as a floating point number.",
+                "type": "string",
+                "enum": [
+                  "float"
+                ]
+              }
             ]
           }
         }
@@ -2975,16 +3044,19 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Date Time Converter Parameters",
+        "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back.",
         "type": "object",
         "required": [
           "attribute"
         ],
         "properties": {
           "attribute": {
+            "title": "Source Attribute",
             "description": "Attribute containing the datetime value to convert",
             "type": "string"
           },
           "inputFormat": {
+            "title": "Input Format",
             "description": "Format of the input value (default: auto)",
             "default": "auto",
             "allOf": [
@@ -2994,6 +3066,7 @@
             ]
           },
           "outputFormat": {
+            "title": "Output Format",
             "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
             "default": "auto",
             "allOf": [
@@ -3003,6 +3076,7 @@
             ]
           },
           "outputAttribute": {
+            "title": "Output Attribute",
             "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
             "default": null,
             "type": [
@@ -3016,6 +3090,7 @@
             "description": "Input format options for Date Time Converter",
             "oneOf": [
               {
+                "title": "Detect Automatically",
                 "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
                 "type": "string",
                 "enum": [
@@ -3023,6 +3098,7 @@
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 format",
                 "type": "string",
                 "enum": [
@@ -3030,20 +3106,23 @@
                 ]
               },
               {
-                "description": "Unix timestamp in seconds",
+                "title": "Unix Seconds",
+                "description": "Seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unix timestamp in milliseconds",
+                "title": "Unix Milliseconds",
+                "description": "Milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "Date only format (YYYY-MM-DD)",
                 "type": "string",
                 "enum": [
@@ -3051,7 +3130,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Field-by-field pattern, for values none of the fixed formats match.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3069,6 +3149,7 @@
             "description": "Output format options for Date Time Converter",
             "oneOf": [
               {
+                "title": "Typed Datetime",
                 "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
                 "type": "string",
                 "enum": [
@@ -3076,6 +3157,7 @@
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 format",
                 "type": "string",
                 "enum": [
@@ -3083,20 +3165,23 @@
                 ]
               },
               {
-                "description": "Unix timestamp in seconds",
+                "title": "Unix Seconds",
+                "description": "Writes a number: seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unix timestamp in milliseconds",
+                "title": "Unix Milliseconds",
+                "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "Date only format (YYYY-MM-DD)",
                 "type": "string",
                 "enum": [
@@ -3104,7 +3189,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Writes a string built from a field-by-field pattern.",
                 "type": "object",
                 "required": [
                   "custom"

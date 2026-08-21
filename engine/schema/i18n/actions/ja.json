@@ -343,7 +343,8 @@
       "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper パラメータ"
+          "title": "Attribute Range Mapper パラメータ",
+          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -398,6 +399,34 @@
         "typeAttribute": {
           "title": "地物タイプ属性",
           "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`"
+        }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
         }
       }
     },
@@ -997,54 +1026,69 @@
       "description": "日時値を異なるフォーマット間で変換する",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter パラメータ"
+          "title": "Date Time Converter パラメータ",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "変換する日時値を含む属性"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "入力値の形式（デフォルト: auto）"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "結果を別の属性に書き込む（入力をそのまま保持）。デフォルトは `attribute` と同じ。"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "希望する出力形式（デフォルト: auto）。`auto` は型付き DateTime 値として格納（パーサーモード）。その他の形式は文字列/数値として出力（フォーマッターモード）。"
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
+            "title": "Detect Automatically",
             "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unix_ms` 入力形式を明示的に指定する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "自動: 型付き DateTime 値として格納する（ネイティブのバリアントを保持）。日時を文字列ではなく適切な DateTime 型として扱いたい場合に使用する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }

@@ -898,12 +898,13 @@ Replaces a feature's attributes with a new set built from mapping rules, each de
 ### Type
 * processor
 ### Description
-Map attribute values to ranges and assign corresponding output values
+Classifies a numeric attribute by looking its value up in a table of ranges and writing the matched range's output value to another attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Attribute Range Mapper Parameters",
+  "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
   "type": "object",
   "required": [
     "inputAttribute",
@@ -913,17 +914,17 @@ Map attribute values to ranges and assign corresponding output values
   "properties": {
     "inputAttribute": {
       "title": "Input Attribute",
-      "description": "The attribute to evaluate for range mapping",
+      "description": "Attribute holding the value to classify. Numbers are used directly, numeric strings are parsed, and booleans count as 1 and 0. Any other type is treated as unclassifiable and takes the default value.",
       "type": "string"
     },
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "The attribute to store the mapped value",
+      "description": "Attribute the matched value is written to. An existing value is overwritten.",
       "type": "string"
     },
     "rangeTable": {
       "title": "Range Lookup Table",
-      "description": "List of ranges and their corresponding output values",
+      "description": "Ranges to test the input against, in order. The first match wins, so overlapping ranges resolve to whichever is listed first.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/RangeEntry"
@@ -931,7 +932,7 @@ Map attribute values to ranges and assign corresponding output values
     },
     "defaultValue": {
       "title": "Default Value",
-      "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected."
     }
   },
   "definitions": {
@@ -946,19 +947,19 @@ Map attribute values to ranges and assign corresponding output values
       "properties": {
         "from": {
           "title": "From (Minimum)",
-          "description": "The minimum value of the range (inclusive)",
+          "description": "Lower bound of the range, inclusive.",
           "type": "number",
           "format": "double"
         },
         "to": {
           "title": "To (Maximum)",
-          "description": "The maximum value of the range (exclusive)",
+          "description": "Upper bound of the range, exclusive — a value equal to it falls into the next range. Setting it equal to the lower bound makes the entry match that one exact value instead.",
           "type": "number",
           "format": "double"
         },
         "outputValue": {
           "title": "Output Value",
-          "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+          "description": "Value written to the output attribute when the input falls in this range. Any JSON type is accepted."
         }
       }
     }
@@ -982,12 +983,12 @@ Moves values between nested map/list attribute paths, following a table of sourc
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Attribute Table Extractor Parameters",
-  "description": "Configures the table of source/destination path pairs used to move nested attribute values.",
+  "description": "Configures the table of source/destination path pairs used to move nested attribute values. Supply the table either as a file, via Dataset URI, or directly, via Inline Table — one of the two is required.",
   "type": "object",
   "properties": {
     "dataset": {
       "title": "Dataset URI",
-      "description": "Path or URI of the extraction table file. Provide either this or inline data.",
+      "description": "Path or URI of a JSON file holding the extraction table. Provide either this or Inline Table.",
       "type": [
         "object",
         "null"
@@ -1012,7 +1013,17 @@ Moves values between nested map/list attribute paths, following a table of sourc
     },
     "inline": {
       "title": "Inline Table",
-      "description": "Extraction table content provided directly as JSON. Used when no dataset URI is given."
+      "description": "Extraction table given directly, keyed by feature type. Each key is a feature type name as it appears in the type attribute, and its value is the list of rules applied to features of that type. Provide either this or Dataset URI.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/ExtractRule"
+        }
+      }
     },
     "typeAttribute": {
       "title": "Feature Type Attribute",
@@ -1020,6 +1031,62 @@ Moves values between nested map/list attribute paths, following a table of sourc
       "type": [
         "string",
         "null"
+      ]
+    }
+  },
+  "definitions": {
+    "ExtractRule": {
+      "title": "Extraction Rule",
+      "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",
+      "type": "object",
+      "required": [
+        "destinationPath",
+        "sourcePath"
+      ],
+      "properties": {
+        "destinationPath": {
+          "title": "Destination Path",
+          "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed.",
+          "type": "string"
+        },
+        "sourcePath": {
+          "title": "Source Path",
+          "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+          "type": "string"
+        },
+        "dataType": {
+          "title": "Value Type",
+          "description": "Converts the extracted value before writing it. Leave unset to write it unchanged.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ExtractDataType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ExtractDataType": {
+      "oneOf": [
+        {
+          "title": "Integer",
+          "description": "Parses a string value as an integer.",
+          "type": "string",
+          "enum": [
+            "int"
+          ]
+        },
+        {
+          "title": "Float",
+          "description": "Parses a string value as a floating point number.",
+          "type": "string",
+          "enum": [
+            "float"
+          ]
+        }
       ]
     }
   }
@@ -2905,23 +2972,26 @@ Reprojects geometry between coordinate reference systems and converts between a 
 ### Type
 * processor
 ### Description
-Convert datetime values between different formats
+Reads a datetime from an attribute and rewrites it in another format, either as a typed datetime value or as a formatted string or Unix timestamp.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Date Time Converter Parameters",
+  "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back.",
   "type": "object",
   "required": [
     "attribute"
   ],
   "properties": {
     "attribute": {
-      "description": "Attribute containing the datetime value to convert",
+      "title": "Source Attribute",
+      "description": "Attribute holding the datetime to convert. Features that do not carry it pass through unchanged.",
       "type": "string"
     },
     "inputFormat": {
-      "description": "Format of the input value (default: auto)",
+      "title": "Input Format",
+      "description": "How to interpret the existing value. Leave unset to detect it from the value itself.",
       "default": "auto",
       "allOf": [
         {
@@ -2930,7 +3000,8 @@ Convert datetime values between different formats
       ]
     },
     "outputFormat": {
-      "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
+      "title": "Output Format",
+      "description": "Format to write back. Leave unset to store a typed datetime value; choose any other format to write a string or a number instead.",
       "default": "auto",
       "allOf": [
         {
@@ -2939,7 +3010,8 @@ Convert datetime values between different formats
       ]
     },
     "outputAttribute": {
-      "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
+      "title": "Output Attribute",
+      "description": "Attribute to write the result to, leaving the source untouched. Defaults to overwriting the source attribute.",
       "default": null,
       "type": [
         "string",
@@ -2952,42 +3024,48 @@ Convert datetime values between different formats
       "description": "Input format options for Date Time Converter",
       "oneOf": [
         {
-          "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+          "title": "Detect Automatically",
+          "description": "Recognises the value from its own shape. A bare number is always read as Unix seconds — choose Unix Milliseconds explicitly for millisecond timestamps.",
           "type": "string",
           "enum": [
             "auto"
           ]
         },
         {
-          "description": "RFC3339 / ISO 8601 format",
+          "title": "RFC 3339",
+          "description": "Internet date and time format, the profile of ISO 8601 used by most APIs.",
           "type": "string",
           "enum": [
             "rfc3339"
           ]
         },
         {
-          "description": "Unix timestamp in seconds",
+          "title": "Unix Seconds",
+          "description": "Seconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_s"
+            "unixS"
           ]
         },
         {
-          "description": "Unix timestamp in milliseconds",
+          "title": "Unix Milliseconds",
+          "description": "Milliseconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_ms"
+            "unixMs"
           ]
         },
         {
-          "description": "Date only format (YYYY-MM-DD)",
+          "title": "Date Only",
+          "description": "Calendar date with no time part, as YYYY-MM-DD.",
           "type": "string",
           "enum": [
             "date"
           ]
         },
         {
-          "description": "Custom format using chrono format specifiers",
+          "title": "Custom Pattern",
+          "description": "Field-by-field pattern, for values none of the fixed formats match.",
           "type": "object",
           "required": [
             "custom"
@@ -3005,42 +3083,48 @@ Convert datetime values between different formats
       "description": "Output format options for Date Time Converter",
       "oneOf": [
         {
-          "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
+          "title": "Typed Datetime",
+          "description": "Stores a datetime value rather than text, keeping it comparable and sortable downstream.",
           "type": "string",
           "enum": [
             "auto"
           ]
         },
         {
-          "description": "RFC3339 / ISO 8601 format",
+          "title": "RFC 3339",
+          "description": "Writes a string in the internet date and time format, the profile of ISO 8601 used by most APIs.",
           "type": "string",
           "enum": [
             "rfc3339"
           ]
         },
         {
-          "description": "Unix timestamp in seconds",
+          "title": "Unix Seconds",
+          "description": "Writes a number: seconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_s"
+            "unixS"
           ]
         },
         {
-          "description": "Unix timestamp in milliseconds",
+          "title": "Unix Milliseconds",
+          "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_ms"
+            "unixMs"
           ]
         },
         {
-          "description": "Date only format (YYYY-MM-DD)",
+          "title": "Date Only",
+          "description": "Writes a string holding just the calendar date, as YYYY-MM-DD.",
           "type": "string",
           "enum": [
             "date"
           ]
         },
         {
-          "description": "Custom format using chrono format specifiers",
+          "title": "Custom Pattern",
+          "description": "Writes a string built from a field-by-field pattern.",
           "type": "object",
           "required": [
             "custom"
