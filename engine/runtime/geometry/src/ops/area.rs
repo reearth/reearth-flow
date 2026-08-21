@@ -4,7 +4,7 @@
 //! Both measures come from one piece of ring math. A planar ring's Newell
 //! vector has magnitude twice the ring's true area, and its z component is
 //! twice the ring's signed XY-projected area — so
-//! [`newell_vector_3d`](crate::validation_next::measure::newell_vector_3d)
+//! [`newell_vector_3d`](crate::validation_next::newell_vector_3d)
 //! answers both questions and the two can never drift apart. A face standing
 //! vertical projects to a line, and its zero falls out of the z component
 //! rather than needing a special case.
@@ -21,7 +21,7 @@
 use crate::coordinate::CoordinateFrame;
 use crate::ops::UnsupportedOperation;
 use crate::polygon::Polygon3D;
-use crate::validation_next::measure::newell_vector_3d;
+use crate::validation_next::newell_vector_3d;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
 /// The area of a geometry, measured two ways.

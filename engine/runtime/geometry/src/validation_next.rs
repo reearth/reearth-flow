@@ -1,13 +1,13 @@
 //! Validations/predicates on geometry types.
 
 mod containment;
-pub(crate) mod measure;
+mod measure;
 mod simplicity;
 
 pub(crate) use containment::{check_holes_in_exterior_2d, check_holes_in_exterior_3d};
 pub(crate) use measure::{
     check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
-    check_degenerate_ring_3d, check_planarity_3d,
+    check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
 pub(crate) use simplicity::{
     check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
