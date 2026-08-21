@@ -343,7 +343,8 @@
       "description": "Mapper les valeurs d'attributs aux plages et attribuer les valeurs de sortie correspondantes",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper Parameters"
+          "title": "Attribute Range Mapper Parameters",
+          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
         },
         "defaultValue": {
           "title": "Default Value",
@@ -398,6 +399,34 @@
         "typeAttribute": {
           "title": "Attribut de Type d'Entité",
           "description": "Attribut dont la valeur sélectionne quel ensemble de règles de la table s'applique à l'entité. Par défaut `__citygml_feature_type`"
+        }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
         }
       }
     },
@@ -973,22 +1002,6 @@
         "destinationFrame": {
           "title": "Destination Frame",
           "description": "Coordinate frame to convert geometry into."
-        },
-        "epsgCode": {
-          "title": "EPSG Code",
-          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
-        }
-      },
-      "enumI18n": {
-        "DestinationFrame": {
-          "crs": {
-            "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
-          },
-          "euclidean": {
-            "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame."
-          }
         }
       }
     },
@@ -997,54 +1010,69 @@
       "description": "Convertit les valeurs de date et heure entre différents formats",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter Parameters"
+          "title": "Date Time Converter Parameters",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "Attribute containing the datetime value to convert"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "Format of the input value (default: auto)"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode)."
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format."
+            "title": "Detect Automatically",
+            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format."
           },
           "date": {
+            "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 format"
           },
-          "unix_ms": {
-            "description": "Unix timestamp in milliseconds"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unix timestamp in seconds"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string."
           },
           "date": {
+            "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 format"
           },
-          "unix_ms": {
-            "description": "Unix timestamp in milliseconds"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unix timestamp in seconds"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }
