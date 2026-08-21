@@ -126,7 +126,10 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 type BufferKey = (String, Option<String>, Option<String>); // (output_rel_path, filename, compress_output_rel_path)
+#[cfg(feature = "new-geometry")]
+type BufferKey = String; // output_rel_path
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {

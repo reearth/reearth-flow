@@ -286,9 +286,10 @@ pub(super) struct PendingFeature {
 pub fn to_feature(
     node: &XmlNode,
     citygml_attribute_key: Option<&str>,
+    keep_attributes: bool,
     flatten_leaf_attributes: &[String],
 ) -> Feature {
-    let content = node_to_attribute_value(node, flatten_leaf_attributes);
+    let content = node_to_attribute_value(node, keep_attributes, flatten_leaf_attributes);
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
@@ -336,6 +337,7 @@ fn flatten_leaf_node(
 
 pub fn node_to_attribute_value(
     node: &XmlNode,
+    keep_attributes: bool,
     flatten_leaf_attributes: &[String],
 ) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
@@ -360,21 +362,28 @@ pub fn node_to_attribute_value(
                 elem_groups
                     .entry(e.name.0.clone())
                     .or_default()
-                    .push(node_to_attribute_value(e, flatten_leaf_attributes));
+                    .push(node_to_attribute_value(
+                        e,
+                        keep_attributes,
+                        flatten_leaf_attributes,
+                    ));
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
         }
     }
 
-    if node.attrs.is_empty() && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
+    let has_attrs = keep_attributes && !node.attrs.is_empty();
+    if !has_attrs && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
     // currently unordered because AttributeValue::Map is unordered
     let mut map: HashMap<String, AttributeValue> = HashMap::new();
 
-    for ((qname, _), v) in &node.attrs {
-        map.insert(format!("@{qname}"), AttributeValue::String(v.clone()));
+    if keep_attributes {
+        for ((qname, _), v) in &node.attrs {
+            map.insert(format!("@{qname}"), AttributeValue::String(v.clone()));
+        }
     }
     if !text_parts.is_empty() {
         map.insert("$".into(), AttributeValue::String(text_parts.join("")));
@@ -923,7 +932,7 @@ mod tests {
     #[test]
     fn node_to_attribute_value_pure_text() {
         let node = make_node("gml:name", GML_NS_ID, vec![], vec![text("Building A")]);
-        let av = node_to_attribute_value(&node, &[]);
+        let av = node_to_attribute_value(&node, true, &[]);
         assert_eq!(av, AttributeValue::String("Building A".to_string()));
     }
 
@@ -935,7 +944,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "n1")],
             vec![text("foo")],
         );
-        let av = node_to_attribute_value(&node, &[]);
+        let av = node_to_attribute_value(&node, true, &[]);
         let AttributeValue::Map(map) = av else {
             panic!("expected Map");
         };
@@ -957,7 +966,7 @@ mod tests {
             vec![("g:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node, &[]) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, &[]) else {
             panic!("expected Map");
         };
         assert_eq!(
@@ -1004,7 +1013,7 @@ mod tests {
                 elem(make_node("item", EMPTY_NS_ID, vec![], vec![text("b")])),
             ],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node, &[]) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, &[]) else {
             panic!("expected Map");
         };
         let AttributeValue::Array(arr) = map.get("item").unwrap() else {
@@ -1026,7 +1035,7 @@ mod tests {
                 vec![text("only")],
             ))],
         );
-        let AttributeValue::Map(map) = node_to_attribute_value(&node, &[]) else {
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, &[]) else {
             panic!("expected Map");
         };
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
@@ -1040,7 +1049,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, &[]);
+        let feature = to_feature(&node, None, true, &[]);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }
