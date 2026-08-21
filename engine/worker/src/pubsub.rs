@@ -5,4 +5,5 @@ pub(crate) mod topic;
 
 pub use backend::noop::NoopPubSub;
 pub use backend::PubSubBackend;
+pub use message::EncodableMessage;
 pub use publisher::Publisher;

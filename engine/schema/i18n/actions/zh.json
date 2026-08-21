@@ -343,7 +343,8 @@
       "description": "将属性值映射到范围并分配相应的输出值",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper Parameters"
+          "title": "Attribute Range Mapper Parameters",
+          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
         },
         "defaultValue": {
           "title": "Default Value",
@@ -399,23 +400,39 @@
           "title": "要素类型属性",
           "description": "其值用于选择表中应用于该要素的规则集的属性。默认为`__citygml_feature_type`"
         }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
+        }
       }
     },
     {
       "name": "Boundary Extractor",
-      "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
-      "parameterI18n": {
-        "": {
-          "title": "Boundary Extractor Parameters",
-          "description": "Configuration for extracting boundaries from geometries."
-        },
-        "exteriorOnly": {
-          "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)"
-        },
-        "keepEmptyBoundaries": {
-          "description": "Whether to keep features with empty boundaries (default: false)"
-        }
-      }
+      "description": "将几何替换为其边界：曲线为其两个端点，曲面为其边界环，实体为其边界壳。"
     },
     {
       "name": "Bounds Extractor",
@@ -985,22 +1002,6 @@
         "destinationFrame": {
           "title": "Destination Frame",
           "description": "Coordinate frame to convert geometry into."
-        },
-        "epsgCode": {
-          "title": "EPSG Code",
-          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
-        }
-      },
-      "enumI18n": {
-        "DestinationFrame": {
-          "crs": {
-            "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
-          },
-          "euclidean": {
-            "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame."
-          }
         }
       }
     },
@@ -1009,54 +1010,69 @@
       "description": "在不同格式之间转换日期时间值",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter Parameters"
+          "title": "Date Time Converter Parameters",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "Attribute containing the datetime value to convert"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "Format of the input value (default: auto)"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode)."
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format."
+            "title": "Detect Automatically",
+            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format."
           },
           "date": {
+            "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 format"
           },
-          "unix_ms": {
-            "description": "Unix timestamp in milliseconds"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unix timestamp in seconds"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string."
           },
           "date": {
+            "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 format"
           },
-          "unix_ms": {
-            "description": "Unix timestamp in milliseconds"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unix timestamp in seconds"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }
@@ -1631,72 +1647,42 @@
     },
     {
       "name": "GeoPackage Reader",
-      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据",
+      "description": "从GeoPackage（.gpkg）文件读取矢量要素，或该文件的空间参考系与扩展元数据。",
       "parameterI18n": {
         "": {
           "title": "GeoPackage Reader Parameters",
           "description": "Configures which content to read from the GeoPackage file and how geometries are produced."
         },
-        "attributeFilter": {},
-        "batchSize": {},
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "force2D": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)."
+          "description": "Drops the Z value from every geometry, producing 2D output."
         },
-        "includeMetadata": {},
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "layerName": {
           "title": "Layer Name",
-          "description": "Name of the layer to read. When omitted, the first available layer is used."
+          "description": "Name of the layer to read. When omitted, every feature layer in the file is read."
         },
         "readMode": {
           "title": "Read Mode",
           "description": "Which content to read from the GeoPackage file. Defaults to reading vector features."
-        },
-        "spatialFilter": {},
-        "tileFormat": {
-          "title": "Tile Format",
-          "description": "Image format to decode when reading raster tiles. Defaults to PNG."
         }
       },
       "enumI18n": {
         "GeoPackageReadMode": {
-          "all": {
-            "title": "All",
-            "description": "Reads both vector features and raster tiles."
-          },
           "features": {
             "title": "Features",
-            "description": "Reads vector features (geometry and attributes)."
+            "description": "Reads vector features, each carrying its geometry and attributes."
           },
           "metadataOnly": {
             "title": "Metadata Only",
-            "description": "Reads only the file's metadata, without features or tiles."
-          },
-          "tiles": {
-            "title": "Tiles",
-            "description": "Reads raster tiles."
-          }
-        },
-        "TileFormat": {
-          "jpeg": {
-            "title": "JPEG",
-            "description": "Decodes tiles as JPEG images."
-          },
-          "png": {
-            "title": "PNG",
-            "description": "Decodes tiles as PNG images."
-          },
-          "webp": {
-            "title": "WebP",
-            "description": "Decodes tiles as WebP images."
+            "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record."
           }
         }
       }
@@ -2526,6 +2512,10 @@
           "title": "Layer Name",
           "description": "Name of the layer within the MVT tiles"
         },
+        "maxTileBytes": {
+          "title": "Maximum Tile Size",
+          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+        },
         "maxZoom": {
           "title": "Maximum Zoom",
           "description": "Maximum zoom level to generate tiles for"
@@ -2708,13 +2698,9 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "includeNormals": {
-          "title": "Include Normals",
-          "description": "Include vertex normal data in the output geometry"
-        },
         "includeTexcoords": {
           "title": "Include Texture Coordinates",
-          "description": "Include texture coordinate (UV) data in the output geometry"
+          "description": "Includes texture coordinate (UV) data in the output geometry."
         },
         "inline": {
           "title": "Inline Content",
@@ -2726,15 +2712,15 @@
         },
         "mergeGroups": {
           "title": "Merge Groups",
-          "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object"
+          "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object."
         },
         "parseMaterials": {
           "title": "Parse Materials",
-          "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file"
+          "description": "Parses material definitions from MTL files referenced in the OBJ file."
         },
         "triangulate": {
           "title": "Triangulate",
-          "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
+          "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation."
         }
       }
     },
@@ -3913,7 +3899,7 @@
       "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元",
       "parameterI18n": {
         "": {
-          "title": "glTF ReaderParam"
+          "title": "glTF Reader Parameters"
         },
         "dataset": {
           "title": "File Path",
@@ -3929,7 +3915,7 @@
         },
         "includeNodes": {
           "title": "Include Nodes",
-          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+          "description": "Includes node hierarchy information from the glTF scene graph in feature attributes."
         },
         "inline": {
           "title": "Inline Content",
@@ -3937,11 +3923,7 @@
         },
         "mergeMeshes": {
           "title": "Merge Meshes",
-          "description": "If true, combines all meshes from the glTF file into a single output feature"
-        },
-        "triangulate": {
-          "title": "Triangulate",
-          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+          "description": "Combines all meshes from the glTF file into a single output feature."
         }
       },
       "enumI18n": {

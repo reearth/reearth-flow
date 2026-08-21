@@ -343,7 +343,8 @@
       "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper パラメータ"
+          "title": "Attribute Range Mapper パラメータ",
+          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -399,23 +400,39 @@
           "title": "地物タイプ属性",
           "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`"
         }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
+        }
       }
     },
     {
       "name": "Boundary Extractor",
-      "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
-      "parameterI18n": {
-        "": {
-          "title": "Boundary Extractor パラメータ",
-          "description": "ジオメトリから境界を抽出する設定"
-        },
-        "exteriorOnly": {
-          "description": "ポリゴンの外周境界のみ抽出するか（穴を無視）（デフォルト: false）"
-        },
-        "keepEmptyBoundaries": {
-          "description": "境界が空のフィーチャーを保持するか（デフォルト: false）"
-        }
-      }
+      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる。"
     },
     {
       "name": "Bounds Extractor",
@@ -985,22 +1002,6 @@
         "destinationFrame": {
           "title": "Destination Frame",
           "description": "Coordinate frame to convert geometry into."
-        },
-        "epsgCode": {
-          "title": "EPSG Code",
-          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
-        }
-      },
-      "enumI18n": {
-        "DestinationFrame": {
-          "crs": {
-            "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
-          },
-          "euclidean": {
-            "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame."
-          }
         }
       }
     },
@@ -1009,54 +1010,69 @@
       "description": "日時値を異なるフォーマット間で変換する",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter パラメータ"
+          "title": "Date Time Converter パラメータ",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "変換する日時値を含む属性"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "入力値の形式（デフォルト: auto）"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "結果を別の属性に書き込む（入力をそのまま保持）。デフォルトは `attribute` と同じ。"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "希望する出力形式（デフォルト: auto）。`auto` は型付き DateTime 値として格納（パーサーモード）。その他の形式は文字列/数値として出力（フォーマッターモード）。"
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unix_ms` 入力形式を明示的に指定する。"
+            "title": "Detect Automatically",
+            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unixMs` 入力形式を明示的に指定する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "自動: 型付き DateTime 値として格納する（ネイティブのバリアントを保持）。日時を文字列ではなく適切な DateTime 型として扱いたい場合に使用する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }
@@ -1182,7 +1198,7 @@
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
-          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
+          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull"
         },
         "dataset": {
           "title": "データセット",
@@ -1190,19 +1206,19 @@
         },
         "extractTags": {
           "title": "タグの抽出",
-          "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+          "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する"
         },
         "flattenMeasureTypes": {
           "title": "計測タイプのフラット化",
-          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse"
         },
         "flattenSingleChildObjects": {
           "title": "単一子オブジェクトノードのフラット化",
-          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse"
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         }
       }
     },
@@ -1631,72 +1647,42 @@
     },
     {
       "name": "GeoPackage Reader",
-      "description": "GeoPackage（.gpkg）ファイルから地理地物を読み取る。ベクター地物、タイル、メタデータに対応",
+      "description": "GeoPackage（.gpkg）ファイルからベクター地物、またはファイルの空間参照系と拡張機能のメタデータを読み取る",
       "parameterI18n": {
         "": {
           "title": "GeoPackage Reader パラメータ",
           "description": "GeoPackage ファイルから読み取る内容と、ジオメトリの生成方法を設定する"
         },
-        "attributeFilter": {},
-        "batchSize": {},
         "dataset": {
           "title": "ファイルパス",
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "force2D": {
           "title": "2D に強制",
-          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+          "description": "すべてのジオメトリから Z 値を除去し、2D として出力する"
         },
-        "includeMetadata": {},
         "inline": {
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         },
         "layerName": {
           "title": "レイヤー名",
-          "description": "読み取るレイヤーの名前。省略時は最初に利用可能なレイヤーを使用する"
+          "description": "読み取るレイヤーの名前。省略時はファイル内のすべての地物レイヤーを読み取る"
         },
         "readMode": {
           "title": "読み取りモード",
           "description": "GeoPackage ファイルから読み取る内容。デフォルトはベクター地物の読み取り"
-        },
-        "spatialFilter": {},
-        "tileFormat": {
-          "title": "タイル形式",
-          "description": "ラスタータイルを読み取る際にデコードする画像形式。デフォルトは PNG"
         }
       },
       "enumI18n": {
         "GeoPackageReadMode": {
-          "all": {
-            "title": "すべて",
-            "description": "ベクター地物とラスタータイルの両方を読み取る"
-          },
           "features": {
             "title": "地物",
-            "description": "ベクター地物（ジオメトリと属性）を読み取る"
+            "description": "ジオメトリと属性を持つベクター地物を読み取る"
           },
           "metadataOnly": {
             "title": "メタデータのみ",
-            "description": "地物やタイルを読み取らず、ファイルのメタデータのみを読み取る"
-          },
-          "tiles": {
-            "title": "タイル",
-            "description": "ラスタータイルを読み取る"
-          }
-        },
-        "TileFormat": {
-          "jpeg": {
-            "title": "JPEG",
-            "description": "タイルを JPEG 画像としてデコードする"
-          },
-          "png": {
-            "title": "PNG",
-            "description": "タイルを PNG 画像としてデコードする"
-          },
-          "webp": {
-            "title": "WebP",
-            "description": "タイルを WebP 画像としてデコードする"
+            "description": "地物の代わりに、ファイルの空間参照系と登録済み拡張機能を読み取る。メタデータレコードごとに1つの地物を出力する"
           }
         }
       }
@@ -2526,6 +2512,10 @@
           "title": "レイヤー名",
           "description": "生成するタイル内のレイヤー名または式"
         },
+        "maxTileBytes": {
+          "title": "最大タイルサイズ",
+          "description": "タイル1つあたりのエンコード後の目標最大サイズ（バイト単位）。これを超える場合、視覚的重要度が低い地物を削除し、タイルサイズに収める（デフォルト: 500,000）"
+        },
         "maxZoom": {
           "title": "最大ズームレベル",
           "description": "タイルを生成する最大ズームレベル"
@@ -2708,10 +2698,6 @@
           "title": "ファイルパス",
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
-        "includeNormals": {
-          "title": "法線を含める",
-          "description": "出力ジオメトリに頂点法線データを含める"
-        },
         "includeTexcoords": {
           "title": "テクスチャ座標を含める",
           "description": "出力ジオメトリにテクスチャ座標（UV）データを含める"
@@ -2722,15 +2708,15 @@
         },
         "materialFile": {
           "title": "マテリアルファイル",
-          "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする。"
+          "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする"
         },
         "mergeGroups": {
           "title": "グループをマージ",
-          "description": "グループ/オブジェクトごとに個別フィーチャーを作成する代わりに、すべてのグループとオブジェクトを単一フィーチャーにマージする"
+          "description": "グループやオブジェクトごとに個別の地物を作成する代わりに、すべてのグループとオブジェクトを単一の地物にマージする"
         },
         "parseMaterials": {
           "title": "マテリアルを解析",
-          "description": "OBJ ファイルで参照されている MTL ファイルからマテリアル定義の解析を有効にする"
+          "description": "OBJ ファイルで参照されている MTL ファイルからマテリアル定義を解析する"
         },
         "triangulate": {
           "title": "三角形分割",
@@ -3925,16 +3911,16 @@
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "featureClassAttribute": {
-          "title": "フィーチャークラス属性",
-          "description": "分割した各フィーチャーについて、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない"
+          "title": "地物クラス属性",
+          "description": "分割した各地物について、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない"
         },
         "featureGranularity": {
-          "title": "フィーチャーの粒度",
-          "description": "1つの出力フィーチャーが何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つのフィーチャーを出力する。`featureId` は各メッシュを EXT_mesh_features のフィーチャーIDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。"
+          "title": "地物の粒度",
+          "description": "1つの出力地物が何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つの地物を出力する。`featureId` は各メッシュを EXT_mesh_features の地物IDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つの地物を出力する"
         },
         "includeNodes": {
           "title": "ノードを含める",
-          "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める"
+          "description": "glTF シーングラフのノード階層情報を地物属性に含める"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -3942,11 +3928,7 @@
         },
         "mergeMeshes": {
           "title": "メッシュをマージ",
-          "description": "true の場合、glTF ファイルのすべてのメッシュを単一の出力フィーチャーに結合する"
-        },
-        "triangulate": {
-          "title": "三角形分割",
-          "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）"
+          "description": "glTF ファイルのすべてのメッシュを単一の出力地物に結合する"
         }
       },
       "enumI18n": {
