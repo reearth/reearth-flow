@@ -444,7 +444,7 @@
     },
     {
       "name": "Boundary Extractor",
-      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる。"
+      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる"
     },
     {
       "name": "Bounds Extractor",
@@ -1769,11 +1769,11 @@
     },
     {
       "name": "Geometry Coercer",
-      "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
+      "description": "地物のジオメトリを別のジオメトリタイプに強制変換し、ポリライン・面・三角形として組み立て直す",
       "parameterI18n": {
         "": {
           "title": "Geometry Coercer パラメータ",
-          "description": "ジオメトリを特定のターゲットタイプに強制変換する設定"
+          "description": "各地物を強制変換するジオメトリタイプ"
         },
         "targetType": {
           "title": "ターゲットタイプ",
@@ -2289,21 +2289,21 @@
     },
     {
       "name": "Hole Counter",
-      "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
+      "description": "地物のジオメトリの各面にある穴の数を数え、合計を属性に格納する。穴を持ちえないジオメトリ、およびジオメトリを持たない地物は、いずれも 0 として数える",
       "parameterI18n": {
         "": {
           "title": "Hole Counter パラメータ",
-          "description": "ポリゴンジオメトリで検出した穴の数の格納先を設定する"
+          "description": "各地物における穴の合計数の格納先を指定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "穴の数を数値として格納する属性名"
+          "description": "穴の数を数値として格納する属性名。すべての地物に設定されるため、穴のないジオメトリは 0 が記録される"
         }
       }
     },
     {
       "name": "Hole Extractor",
-      "description": "ジオメトリ内の穴を抽出し、属性として追加する"
+      "description": "ジオメトリの各面をリングに分割し、外周リングと各内周リング（穴）をそれぞれ個別の地物として出力する"
     },
     {
       "name": "Horizontal Reprojector",

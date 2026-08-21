@@ -42,6 +42,11 @@ crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, ForceTwoDimension
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: Footprint);
 
+// An unevaluated boolean tree has no boundary of its own, so it has no first
+// vertex; its operands' vertices are not the tree's.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: Elevation);
+
 // An unevaluated boolean tree has no faces of its own; counting the rings of its
 // operands would describe a surface the tree does not yet have.
 crate::unsupported!(Csg: CountHoles);

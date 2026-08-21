@@ -458,16 +458,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **64** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **69** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 64 | — |
-| Does not run in the shipped build | 22 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **15** | An engine-side §8 pass — the list below |
+| Exposed and audited | 69 | — |
+| Does not run in the shipped build | 21 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **12** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -475,7 +475,7 @@ workflow that names it, so no existing workflow broke.
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
 new-geometry support and were assumed to be near-compliant. That held for the reprojector, which
 postdates the standard, and did not for Dissolver, whose action long predates it — only its
-geometry port is recent. Worth remembering when guessing which of the remaining 15 are cheap.
+geometry port is recent. Worth remembering when guessing which of the remaining 12 are cheap.
 
 ### What "audited" now means — read §"How to use" and §8 first
 
@@ -491,33 +491,21 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 15 actions, with preliminary findings
+### Pending audit — 12 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Group A — Geometry metadata (4)
+#### Newly running, never listed (1)
 
 ```
-Hole Counter
-  desc:    "Count Polygon Holes to Attribute" — Title Case imperative, no period (§2).
-  note:    Carries a doc comment naming a commercial product, but on a TEST function inside
-             `mod tests`, so it does NOT reach actions.json — verified. Not a §2 violation.
-
-Hole Extractor
-  desc:    "Extract Polygon Holes as Separate Features" — Title Case imperative, no period.
-  ports:   `outershell` should be `outer-shell` (§4.1 kebab-case for multi-word). Renaming a
-             port is a data-loss change (§4.3) — size the blast radius first.
-  params:  Zero parameters. Confirm that is genuine minimalism, not a missing control.
-
-Geometry Coercer
-  desc:    No terminating period (§2).
-  unread:  `targetType` enum variants never traced to their branches.
-
-Offsetter
-  scan:    Clean on every mechanical check — titles, descriptions, defaults, tags all present.
-             Best-documented of the group going in. Code never read.
+Elevation Extractor
+  runs:    Its new-geometry port landed in #2384, so it now runs in the shipped build — but that
+             PR touched neither `base_actions.go` nor this file, so the action is running,
+             unexposed and absent from every list here. This is exactly the §7.2 drift the
+             standard warns about, caught while merging. It owes an engine-side §8 pass like the
+             rest of this section; nothing else blocks it.
 ```
 
 #### Group B — List and feature utilities (5)
@@ -776,6 +764,77 @@ Dissolver — kept, documentation was materially wrong
              over: 6 edges, not 27 (that count included Area On Area Overlayer's own `area`
              port), and the files under `engine/testing/data/results` that it called committed
              truth fixtures are `.gitignore`d.
+```
+
+### Addendum — Batch 5, audited and exposed
+
+Group A plus `Boundary Extractor`, which had never appeared in any audit batch. The headline: three
+of the five already carried standard-compliant metadata, because their new-geometry ports were done
+to the standard. The defects left were in what the good prose did not say, and in the translations.
+
+```
+Offsetter — kept, OK
+  impl:    All three offsets read and applied via `delta()`; the documented default of zero
+             matches `unwrap_or(0.0)`; the per-axis units are right. No changes. The one
+             judgement call was `coordinate-system`, which sits with the reprojector family
+             though Offsetter does not change the CRS — kept, because shifting coordinates is
+             what a user would look for under that tag from outside `Geometry`.
+
+Boundary Extractor — kept, note deleted
+  impl:    Clean. The 27-line AUDIT NOTE left by Geometry A is gone: `no-boundary` + `rejected`
+             fixed the silent data loss it suspected, `keepEmptyBoundaries` and `exteriorOnly`
+             are out of the shipped schema, and the description was rewritten — all four of its
+             leads resolved by the port (#2369). Its closing paragraph also asserted that ports
+             "cannot vary by parameter", which was disproved on 2026-08-20 (`builder_dag.rs`
+             derives ports from `with` at runtime), so the note was propagating a false
+             constraint as well as a stale one.
+  params:  The legacy params survive but `parameter_schema` is `None` under new-geometry, so
+             the shipped schema is honest. A migration artifact; left per §"How to use".
+  desc:    ja carried a trailing 。 the other four omit.
+
+Geometry Coercer — kept, text only
+  impl:    `targetType` required and applied, all three variants traced, §4.3 correct — a
+             geometry the target does not apply to passes through on `features`.
+  desc:    No terminating period, and "Coerces AND CONVERTS ... to specified target geometry
+             types" was a redundant doublet that restated the parameter.
+  params:  The block description restated the action name (§3.3).
+
+Hole Counter — kept, undocumented behaviour change
+  impl:    Clean. No `infer_output_schema`, so no repeat of the Batch 1 contradiction.
+  desc:    Beyond the §2 style hit, it was wrong twice: the action is not limited to polygons,
+             and in the shipped build it now ALWAYS writes the attribute — a point, or a
+             feature with no geometry, records 0 where the legacy build passed it through
+             untouched. Nothing documented that. Kept as correct (0 is a real answer for a
+             counter, and it makes the output attribute unconditional) and now stated.
+  tags:    Zero, and correct: Vertex Counter, Area Calculator, Bounds Extractor and Coordinate
+             Extractor are all untagged siblings doing the same kind of work.
+  note:    The commercial-product name in the test doc comment was reworded. It did not reach
+             actions.json, but the repo is public and the rule covers comments.
+
+Hole Extractor — kept, name confirmed, port renamed
+  desc:    Understated the action: the exterior ring ALWAYS leaves too, so this is a ring
+             split, not a hole extraction. A face with no holes still emits its exterior.
+  desc:    **es, ja and zh all claimed it adds holes AS ATTRIBUTES.** It emits them as
+             features on ports and never wrote an attribute. The English was merely vague, so
+             this was introduced in translation — most likely by copying Hole Counter's
+             phrasing. Corrected in all four languages.
+  ports:   `outershell` → `exterior`, NOT the `outer-shell` this file previously proposed.
+             OGC SFA reserves "shell" for solids, and the suite already uses it that way in
+             Boundary Extractor ("the bounding shells of a volume") and Geometry Validator
+             (`shellOrientation`). `outershell` was the only use of the word for a polygon
+             ring. `exterior` is the spec term and pairs with `hole`. Blast radius was 11
+             `fromPort:` edges in workflow YAML and zero truth fixtures.
+  name:     A rename to `Ring Extractor` was proposed and REJECTED on prior art. "Ring
+             extractor" is not an established term in PostGIS, GDAL/OGR, GEOS, JTS, shapely or
+             QGIS; "hole" is the established user-facing term while "interior ring" is the API
+             term, and PostGIS deliberately glosses both ("the Nth interior ring (hole)").
+             The description now uses that gloss. Do not reopen.
+  params:  Zero parameters, confirmed as genuine minimalism — which parts you want is answered
+             by which of `exterior` / `hole` you wire.
+  impl:    §4.3 correct, and better than the prior art: a multi-part geometry rejects only the
+             members that bound no area rather than discarding the areas beside them.
+             ST_DumpRings hard-errors on any non-polygon input, and no library recurses into
+             multi-part geometry this way.
 ```
 
 **One methodological trap worth recording.** `cargo check -p reearth-flow-action-processor` and

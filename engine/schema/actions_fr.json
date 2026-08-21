@@ -5751,11 +5751,11 @@
     {
       "name": "Geometry Coercer",
       "type": "processor",
-      "description": "Coerces and converts feature geometries to specified target geometry types",
+      "description": "Coerces a feature's geometry into a different geometry type, rebuilding it as polylines, faces, or triangles.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Coercer Parameters",
-        "description": "Configuration for coercing geometries to specific target types.",
+        "description": "Which geometry type each feature is coerced into.",
         "type": "object",
         "required": [
           "targetType"
@@ -7700,11 +7700,11 @@
     {
       "name": "Hole Counter",
       "type": "processor",
-      "description": "Count Polygon Holes to Attribute",
+      "description": "Counts the holes in every face of a feature's geometry and stores the total in an attribute. A geometry that cannot carry a hole, and a feature with no geometry, both count as zero.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Hole Counter Parameters",
-        "description": "Configure where to store the count of holes found in polygon geometries",
+        "description": "Where the total number of holes is stored on each feature.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -7712,7 +7712,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Name of the attribute where the hole count will be stored as a number",
+            "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -7741,14 +7741,14 @@
     {
       "name": "Hole Extractor",
       "type": "processor",
-      "description": "Extract Polygon Holes as Separate Features",
+      "description": "Divise chaque face d'une géométrie en ses anneaux, en émettant l'anneau extérieur et chaque anneau intérieur (trou) comme une entité distincte.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "outershell",
+        "exterior",
         "hole",
         "rejected"
       ],
