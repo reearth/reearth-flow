@@ -92,7 +92,7 @@ graphs:
                 type: flowExpr
                 value: |
                   attributes.get("uro:BuildingIDAttribute_uro:city_code") or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
-            - attribute: __baseCityCode
+            - attribute: __base_city_code
               method: create
               value:
                 type: flowExpr
@@ -117,11 +117,11 @@ graphs:
           inline: !include ../../../../config/admin_ward_list.csv.txt
           rules:
             - featureFroms: ["city_code"]
-              featureTo: "cityNameEn"
+              featureTo: "__city_name_en"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "ward_name_en"
             - featureFroms: ["city_code"]
-              featureTo: "__wardParentCode"
+              featureTo: "__ward_parent_code"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "city_code"
 
@@ -133,7 +133,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["city_code"] == attributes["__baseCityCode"] or attributes["__wardParentCode"] == attributes["__baseCityCode"]
+                value: attributes["city_code"] == attributes["__base_city_code"] or attributes["__ward_parent_code"] == attributes["__base_city_code"]
               outputPort: features
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
@@ -144,7 +144,7 @@ graphs:
           groupBy: "lod"
 
       # Collapse to one row per (gmlId, lod) pair first: a building can have
-      # multiple geometry members at the same LOD, and the lodMask sum below
+      # multiple geometry members at the same LOD, and the lod_mask sum below
       # is only valid (sum of distinct powers of two == OR) if each distinct
       # lod contributes exactly once.
       - id: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
@@ -158,7 +158,7 @@ graphs:
               attribute: __citygml_gml_id
             - newAttribute: lod
               attribute: lod
-          calculationAttribute: _dupCount
+          calculationAttribute: _dup_count
           calculationValue: 1
 
       - id: d12d66b8-834d-4d8b-95cd-b978069add10
@@ -170,7 +170,7 @@ graphs:
           aggregateAttributes:
             - newAttribute: __citygml_gml_id
               attribute: __citygml_gml_id
-          calculationAttribute: lodMask
+          calculationAttribute: lod_mask
           calculation:
             type: flowExpr
             value: 1 << attributes["lod"]
@@ -237,8 +237,8 @@ graphs:
                 value: |
                   city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
                   suffix = "";
-                  if attributes["city_code"] != attributes["__baseCityCode"] {
-                    suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];
+                  if attributes["city_code"] != attributes["__base_city_code"] {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
                   }
                   city_gml + suffix
             - attribute: _lod
@@ -310,7 +310,7 @@ graphs:
             - expr:
                 type: flowExpr
                 value: |
-                  mask = attributes["lodMask"];
+                  mask = attributes["lod_mask"];
                   best = 0;
                   i = 1;
                   while i <= 2 {
@@ -383,7 +383,7 @@ graphs:
             - expr:
                 type: flowExpr
                 value: |
-                  mask = attributes["lodMask"];
+                  mask = attributes["lod_mask"];
                   best = 0;
                   i = 1;
                   while i <= 3 {
@@ -539,7 +539,7 @@ graphs:
         to: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         fromPort: features
         toPort: supplier
-      # joined (lod + lodMask + cityMaxLod) -> per-lod filters
+      # joined (lod + lod_mask + city_max_lod) -> per-lod filters
       - id: 049298e4-f321-4db6-a266-6b8977eb4009
         from: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         to: 96cc26d1-57f8-49fa-aa47-f8d92ec78189
