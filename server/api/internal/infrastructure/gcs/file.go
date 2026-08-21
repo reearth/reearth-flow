@@ -83,8 +83,9 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 // probeSignedURL issues a throwaway signed URL at startup to catch signing
 // misconfiguration (e.g. missing iam.serviceAccounts.signBlob on the runtime
 // service account) at deploy time rather than on a user's first upload. It
-// never creates an object and must not fail boot. Bounded by ctx so a hung
-// signing RPC doesn't hold the probe goroutine open indefinitely.
+// never creates an object and must not fail boot. ctx only bounds how long we
+// wait: the signing RPC runs in its own goroutine and cloud.google.com/go/storage
+// hardcodes its own context for the ADC signing path, so it is not itself bounded.
 func (f *fileRepo) probeSignedURL(ctx context.Context) {
 	done := make(chan error, 1)
 	go func() { done <- f.signProbeURL() }()
@@ -578,8 +579,11 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	}
 	uploadURL, err := bucket.SignedURL(p, opt)
 	if err != nil {
+		// The underlying cause (e.g. IAM signBlob denial) can embed the
+		// runtime service account email and project ID, so it's logged
+		// here rather than returned to the caller.
 		log.Errorfc(ctx, "gcs: SignedURL failed (path=%s, bucket=%s): %v", p, f.bucketName, err)
-		return nil, fmt.Errorf("%w: %w", gateway.ErrSignedURLFailed, err)
+		return nil, gateway.ErrSignedURLFailed
 	}
 
 	return &gateway.UploadAssetLink{

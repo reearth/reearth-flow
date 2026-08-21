@@ -28,7 +28,7 @@ var (
 	ErrAssetUploadNotConfigured error = errors.New("asset upload is not configured for this deployment")
 	// ErrSignedURLFailed is returned when signing an asset upload URL fails.
 	// Wrap the underlying cause with %w so it can still be inspected/logged.
-	ErrSignedURLFailed error = errors.New("failed to sign asset upload url")
+	ErrSignedURLFailed error = errors.New("failed to sign asset upload URL")
 )
 
 type IssueUploadAssetParam struct {

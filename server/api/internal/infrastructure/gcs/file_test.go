@@ -116,7 +116,7 @@ func TestGetGCSObjectURL_WithUnderscores(t *testing.T) {
 	}
 }
 
-func TestIssueUploadAssetLink_SignedURLFailureWrapsCause(t *testing.T) {
+func TestIssueUploadAssetLink_SignedURLFailureHidesCauseFromClient(t *testing.T) {
 	client, err := storage.NewClient(context.Background(), option.WithoutAuthentication())
 	assert.NoError(t, err)
 
@@ -127,6 +127,10 @@ func TestIssueUploadAssetLink_SignedURLFailureWrapsCause(t *testing.T) {
 		client:     client,
 	}
 
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
 	link, err := repo.IssueUploadAssetLink(context.Background(), gateway.IssueUploadAssetParam{
 		UUID:      "test-uuid",
 		Filename:  "test.txt",
@@ -136,7 +140,8 @@ func TestIssueUploadAssetLink_SignedURLFailureWrapsCause(t *testing.T) {
 
 	assert.Nil(t, link)
 	assert.ErrorIs(t, err, gateway.ErrSignedURLFailed)
-	assert.NotEqual(t, gateway.ErrSignedURLFailed.Error(), err.Error(), "error must retain the underlying cause, not just the sentinel message")
+	assert.Equal(t, gateway.ErrSignedURLFailed.Error(), err.Error(), "client-visible error must not carry the upstream provider detail")
+	assert.Contains(t, buf.String(), "SignedURL failed", "underlying cause must still be logged server-side")
 }
 
 func TestProbeSignedURL_LogsOnFailure(t *testing.T) {
