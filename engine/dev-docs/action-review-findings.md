@@ -1,11 +1,16 @@
 # Action Review Findings
 
-Phase 3 quality review of the 73 base actions against [action-standard.md](action-standard.md).
+Quality review of the base actions against [action-standard.md](action-standard.md).
+
+> **Resuming this work? Start at [HANDOVER](#handover--state-of-the-audit-as-of-2026-08-21) at
+> the bottom of this file.** It carries the current palette state, the 22 actions still awaiting
+> an audit with preliminary findings for each, and the cross-cutting issues that should shape
+> whatever order they are tackled in. The sections above it are older per-batch residue.
 
 **How to use:**
 
 - Fill each action with either `ActionName — OK` or the checklist format from §8 of the standard
-- Phase 4 improvement PRs should reference this file and delete completed sections as fixes land
+- Improvement PRs should reference this file and delete completed sections as fixes land
 - File is deleted when all sections are cleared
 
 **Global fix (applies to all base actions):**
@@ -446,88 +451,306 @@ accumulate/emit path of the ~20 actions declaring a non-`features` port.
 
 ---
 
-## Newly exposed actions — audit queue (23 actions, not yet reviewed)
+## HANDOVER — state of the audit as of 2026-08-21
 
-23 previously hidden actions were added to `base_actions.go`, taking the palette from
-82 to 105. Each was gated against §7.1 first — all have a `process`/`start` reachable in
-the shipped build, so none repeats the reprojector situation. **None has had an engine-side
-standard pass**, so their metadata is in whatever state it was authored in. This is the same
-promote-then-audit sequence as #2356, done deliberately this time and with the debt written
-down rather than discovered later.
+Work paused here ahead of FOSS4G. This section is the resumption point: what is done, what is
+not, and every preliminary finding gathered but not acted on. Read this before restarting.
 
-`Attribute Bulk Array Joiner` · `Attribute File Path Info Extractor` ·
-`Attribute Range Mapper` · `Attribute Table Extractor` · `CSG Builder` · `CSG Evaluator` ·
-`Coordinate Frame Reprojector` · `Date Time Converter` · `Excel Writer` ·
-`Feature CityGML 3 Reader` · `Feature Duplicate Filter` · `Feature GeoJSON Writer` ·
-`Feature Reader` · `Feature Writer` · `Geometry Coercer` · `HTTP Caller` · `Hole Counter` ·
-`Hole Extractor` · `JSON Fragmenter` · `Line On Line Overlayer` · `List Concatenator` ·
-`List Indexer` · `Offsetter`
+### Where the palette stands
 
-### Known before the batch starts
+`server/api/internal/app/base_actions.go` exposes **57** actions, down from 105. The gate is now
+strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
+engine-side review. Nothing below is a deletion — every hidden action still executes in a
+workflow that names it, so no existing workflow broke.
+
+| Bucket | Count | Trigger to re-expose |
+|---|---|---|
+| Exposed and audited | 57 | — |
+| Does not run in the shipped build | 22 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **22** | An engine-side §8 pass — the list below |
+| Flagged for removal | 2 | None; they owe an engine-side deletion |
+| Retired on design grounds | 2 | A scope decision, see below |
+
+**The most important consequence:** `Coordinate Frame Reprojector` is in the pending-audit
+bucket, and the two legacy reprojectors are gone, so **the palette currently offers no
+coordinate reprojection at all.** That makes it the strongest candidate to audit first,
+regardless of category order.
+
+### What "audited" now means — read §"How to use" and §8 first
+
+The standard was materially rescoped on 2026-08-21 (see its Changelog). The verify-against-
+implementation duty used to be worded as a precondition for *editing* a title or description,
+which exempted anything that already read well. It now attaches to the action itself, and §8
+gained an `impl:` line — the one checklist line that cannot be answered from `actions.json`.
+
+This matters for planning: **a schema-level scan cannot triage this work.** In Batch 1 the one
+action a mechanical scan marked `OK` (`Attribute Table Extractor`) turned out to have an
+entirely undocumented configuration surface and a parameter name that actively misled. Any
+estimate of "these just need superficial fixes" is unearned until the code is read.
+
+---
+
+### Pending audit — 22 actions, with preliminary findings
+
+Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
+none has had the full `impl:` trace except where stated. Grouped as they were batched; the
+grouping is a suggestion, not a constraint.
+
+#### Group A — Geometry metadata (5)
 
 ```
-Line On Line Overlayer                                  <-- worst of the set
-  params:  `groupBy` and `tolerance` have NO description at all, so they render in the
-             UI as bare camelCase keys with no label. The only non-PLATEAU action in the
-             whole schema in this state. Note the sibling `Area On Area Overlayer` has
-             the same two parameters fully described — copy from there after confirming
-             the semantics match.
-
-15 of 23 actions
-  desc:    Descriptions violate §2. Two distinct kinds, worth separating when fixing:
-             (a) Title Case imperative, needing a rewrite — Hole Counter ("Count Polygon
-                 Holes to Attribute"), Hole Extractor, Feature Duplicate Filter,
-                 Attribute Bulk Array Joiner, Attribute File Path Info Extractor.
-             (b) Otherwise fine, missing only the terminating period — Attribute Range
-                 Mapper, Date Time Converter, HTTP Caller, Geometry Coercer, and others.
-             Fix (b) mechanically; (a) needs the code read first per §"How to use".
-
-Excel Writer
-  cat:     `File`, but it is a genuine sink (`type: sink`, no output ports), so §5 wants
-             `Output`. `File` is for decompression and path utilities. Left as-is
-             pending the batch since it is filterable either way.
+Coordinate Frame Reprojector          <-- AUDIT FIRST (see above)
+  scan:    Clean on every mechanical check. Replaces Horizontal + Vertical Reprojector.
+  unread:  destinationFrame / epsgCode / basePointSource never traced; `base-point`
+             second input port never verified as emitted-from/consumed.
 
 Hole Counter
-  note:    Carries a doc comment naming a commercial product, but on a TEST function
-             inside `mod tests` (`hole_counter.rs:268`), so it does NOT reach
-             actions.json — verified. Not a §2 violation; still worth rewording.
+  desc:    "Count Polygon Holes to Attribute" — Title Case imperative, no period (§2).
+  note:    Carries a doc comment naming a commercial product, but on a TEST function inside
+             `mod tests`, so it does NOT reach actions.json — verified. Not a §2 violation.
+
+Hole Extractor
+  desc:    "Extract Polygon Holes as Separate Features" — Title Case imperative, no period.
+  ports:   `outershell` should be `outer-shell` (§4.1 kebab-case for multi-word). Renaming a
+             port is a data-loss change (§4.3) — size the blast radius first.
+  params:  Zero parameters. Confirm that is genuine minimalism, not a missing control.
+
+Geometry Coercer
+  desc:    No terminating period (§2).
+  unread:  `targetType` enum variants never traced to their branches.
+
+Offsetter
+  scan:    Clean on every mechanical check — titles, descriptions, defaults, tags all present.
+             Best-documented of the group going in. Code never read.
 ```
 
-### Resolved while gating
+#### Group B — List and feature utilities (5)
 
-- `HTTP Caller` was categorised `Web`, which is not in the §5 taxonomy and not in the UI's
-  hardcoded category filter, so it would have landed in a phantom palette group — the same
-  defect fixed for glTF/OBJ Reader in #2365. Recategorised to `Feature`: it is a processor
-  taking features in and out, enriching them with response data. §5 advises against adding
-  a category for a single action, which `Web` would have been.
+```
+Feature Duplicate Filter
+  desc:    "Filter Out Duplicate Features" — Title Case imperative, no period.
+  params:  ZERO parameters, while its sibling Attribute Duplicate Filter takes `filterBy`.
+             What is the dedup key? If it is whole-feature equality that must be documented;
+             if it is implicit, it likely needs a parameter. UNRESOLVED — this is the open
+             design question of the group.
 
-### Open question: the `Feature` versus `Input` split for mid-flow readers
+List Concatenator
+  desc:    No terminating period.
+  params:  all 4 of list/attribute/separateCharacter/outputAttributeName lack a `title`, so
+             they render as bare camelCase labels.
+  note:    Relevant to the retired Attribute Bulk Array Joiner — this is the targeted,
+             separator-aware version of a similar operation. Decide them together.
 
-Not resolved, and it implicates a change already merged.
+List Indexer
+  desc:    No terminating period.
+  params:  all 4 lack a `title`.
 
-`Feature CityGML Reader`, `Feature CityGML 2 Reader`, `Feature CityGML 3 Reader` and
-`Feature Reader` are all **processors** (`features` in, `features` out) that read a path
-taken from the incoming feature. They are not graph sources. §5 assigns "CityGML reading"
-to the `Feature` category, yet the first two are categorised `Input`:
+Feature CityGML 3 Reader
+  desc:    No terminating period; param block has no root description (§3.3).
+  cat:     `Feature`. See the open Feature-vs-Input question below.
+
+Feature GeoJSON Writer
+  scan:    Clean on every mechanical check. Code never read.
+  cat:     `Feature` while every true sink uses `Output` — but it is a processor, not a sink.
+             Same open question as Feature Writer.
+```
+
+#### Group C — CSG pair and Excel Writer (3)
+
+```
+CSG Builder
+  desc:    4 sentences; §2 allows 1–2.
+  ports:   `left` + `right` inputs are properly semantic (§4.2) — good.
+
+CSG Evaluator
+  ports:   **`nullport`** is not in the §4.2 vocabulary, is not a word, and is a label users
+             see on the node. Needs a real name. Defined at csg_evaluator.rs:24.
+
+Excel Writer
+  cat:     `File`, but it is a genuine sink (type: sink, no output ports), so §5 wants
+             `Output`. `File` is for decompression and path utilities.
+  params:  `output` and `sheetName` both lack a `title`.
+```
+
+#### Group D — Overlay family (3)
+
+```
+Line On Line Overlayer                                  <-- worst metadata in the palette
+  params:  `groupBy` and `tolerance` have NO description at all — the only non-PLATEAU action
+             in the schema in that state. They render as bare camelCase keys with no label.
+             `overlaidListsAttrName` lacks a title. Sibling Area On Area Overlayer has both
+             parameters fully described; confirm the semantics match, then copy.
+
+Area On Area Overlayer
+  ports:   `area` was agreed to become `overlaps` (breaking).
+
+Dissolver
+  desc:    "Dissolve Features by Grouping Attributes" — Title Case imperative, no period.
+  ports:   `area` was agreed to become `features` (breaking).
+```
+
+Review these three together — they share `groupBy` / `tolerance` / accumulation semantics, and
+the two port renames were already agreed in principle but never sized against fixtures.
+
+#### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
+
+```
+Feature Reader · Feature Writer · JSON Fragmenter · Geometry Filter
+  params:  The whole parameter block is a root-level `oneOf`, which §3.4 prohibits because
+             apply_parameter_i18n cannot reach the variants — its definitions traversal is
+             scoped inside `definitions`, so a root `oneOf` is never visited. The block's own
+             title/description DO translate via the "" key, so the action looks localised
+             while the mode labels the user picks between stay English permanently.
+             Geometry Filter's Japanese entry is in exactly this state today.
+  fix:     Restructuring, not re-wording (§3.4 names the idiom: a #[serde(tag = "type")] enum
+             as a property VALUE, not as the whole block).
+
+Geometry Filter
+  ports:   20 output ports. Wants per-variant port declaration, which would also retire the
+             action-name-keyed special cases in builder_dag.rs:258-300 and
+             schema_infer.rs::effective_output_ports that the engine authors themselves
+             flagged as needing "an architectural revision of port handling".
+  desc:    "Filter Features by Geometry Type" — Title Case imperative, no period.
+
+XML Fragmenter  — ALREADY AUDITED, still non-compliant
+  params:  Same root-level `oneOf`. It was audited and its oneOf was deliberately extended
+             before §3.4 existed. Owed a re-check per the Changelog rule, not a new finding.
+```
+
+This group is schema-breaking by nature and wants its own PR.
+
+#### Group F — Known-heavy (2)
+
+```
+HTTP Caller
+  params:  13 parameters including `timeouts`, `retry`, `rateLimit`, `httpOptions` and
+             `observability`. §3.5 "No implementation leakage" names `timeout` and
+             `retryCount` as its canonical examples of what must NOT be exposed, and §3.5's
+             volume guideline is 8. Applying the rule as written would delete roughly half
+             this action's surface — that is a product decision, not an audit call.
+  cat:     Was `Web` (off-taxonomy, would have landed in a phantom palette group);
+             recategorised to `Feature` in #2373. Done.
+
+Attribute Duplicate Filter
+  desc:    "Remove Duplicate Features Based on Attribute Values" — Title Case, no period.
+             Param block has no root description.
+  bug:     Known key-collision defect, plus keep-first semantics to settle and a `duplicate`
+             port to consider. Adding that port is a data-loss change (§4.3).
+```
+
+---
+
+### Cross-cutting findings — read these before planning any batch
+
+**1. The §4.3 missing-attribute defect is systemic, not isolated.** The standard's §4.3 was
+corrected on 2026-08-20: a missing attribute is normally a no-op that must pass through, not a
+failure. Confirmed instances so far:
+
+- `Date Time Converter` — **fixed** in this PR.
+- `Attribute File Path Info Extractor` — moot, retired.
+- `JSON Fragmenter` — **not fixed.** Routes a missing attribute to `rejected`, and this is
+  asserted as intended in a test named `test_missing_attribute_rejected`. It sits in Group E.
+
+Three instances across three different batches means the remaining 22 should be assumed to
+contain more. The reliable tell is a `rejected`/`failed` branch guarded by an attribute lookup
+returning `None`. Note that fixing it is a routing change: those ports are unwired in most
+workflows, so features currently vanishing there will start flowing onward.
+
+**2. §6 tag debt in the already-audited set.** §6 was rewritten on 2026-08-21 (tags cut *across*
+categories; zero tags is now explicitly valid). Consequences not yet applied:
+
+- Genuine omissions, proven by a tagged sibling doing the same work: `Two Dimension Forcer`
+  has no tags while `Three Dimension Forcer` has `3d`; `Feature Filter` has none while every
+  other `Filter` action is tagged and `Input Router`/`Output Router` both carry `routing`.
+- Category-restating tags, now findings under the new wording: `Directory Decompressor` and
+  `File Property Extractor` both carry `file` while sitting in category `File`.
+- Correctly zero, needing no change: `Noop Processor`, `Noop Sink`.
+- Undecided, and deliberately not guessed: `Attribute Manager`, `Attribute Flattener`,
+  `Bulk Attribute Renamer`, `Feature Joiner`, `Feature Merger`, `Feature Sorter`,
+  `Geometry Extractor`, `Geometry Remover`, `Geometry Splitter`, `Bounds Extractor`. Each needs
+  the code read to judge whether an orthogonal axis exists.
+
+**3. Open question — `Feature` versus `Input` for mid-flow readers.** Unresolved, and it
+implicates a merged change. `Feature CityGML Reader`, `Feature CityGML 2 Reader`,
+`Feature CityGML 3 Reader` and `Feature Reader` are all **processors** (features in, features
+out) that read a path taken from the incoming feature. They are not graph sources. §5 assigns
+"CityGML reading" to `Feature`, yet the first two are categorised `Input`:
 
 | Action | Category today | Set by |
 |---|---|---|
 | Feature CityGML Reader | `Input` | #2114, which predates the standard |
-| Feature CityGML 2 Reader | `Input` | **#2365 — I moved it `Feature`→`Input`** |
+| Feature CityGML 2 Reader | `Input` | #2365 — changed to match the sibling, not to match §5 |
 | Feature CityGML 3 Reader | `Feature` | original |
 | Feature Reader | `Feature` | original |
 
-**The #2365 change was made for the wrong reason** — matching the sibling rather than
-checking §5, which points the other way. That is the failure mode §3.1 warns about: a
-change can satisfy consistency and still be wrong.
+The #2365 change was made for the wrong reason: matching a sibling rather than checking §5,
+which points the other way. Both directions are defensible — `Feature` follows §5 as written and
+reflects what these actions are; `Input` follows where a user looks for "the thing that reads
+CityGML" and would mean §5's `Feature` row should drop "and CityGML reading". Needs a decision,
+not a unilateral fix. Same class: `Feature Writer` / `Feature GeoJSON Writer` are processors
+categorised `Feature` while every true sink uses `Output`.
 
-Both directions are defensible and it needs a decision, not a unilateral fix:
+**4. Off-taxonomy categories on hidden actions.** `OBJ Writer` has `['File','3D']` and
+`Python Script Processor` has `['Script','Python']`. Neither is in the §5 taxonomy nor the UI's
+category filter, so both would land in a phantom palette group if exposed. Fix before exposing,
+not after.
 
-- **`Feature`** follows §5 as written and reflects what these actions are — mid-flow
-  processors, not sources. Requires moving two actions and reverting part of #2365.
-- **`Input`** follows where a user looks for "the thing that reads CityGML", and would
-  mean §5's `Feature` row is stale and should drop "and CityGML reading". Requires moving
-  two actions the other way.
+**5. Vendor-name leak still shipping.** `neighbor_finder.rs:143` names a commercial product in a
+`///` doc comment, which compiles into `actions.json` (§2). `center_point_replacer.rs:152`
+emits an output attribute named `fme_rejection_code`, referenced by 3 tests — that one is a
+schema-visible rename. Both actions are currently hidden (neither runs), so this is not live
+user-facing text today, but it must be fixed before either is re-exposed.
 
-Also unresolved and in the same class: `Feature Writer` / `Feature GeoJSON Writer` are
-processors categorised `Feature` while every true sink uses `Output`.
+**6. Proposed CI ratchets, neither implemented.** Both are cheap and deterministic:
+- Fail when a `baseActions` key does not exist in `actions.json`, or names a `builtin: false`
+  action. Nothing guards this today; the 105 names were verified by hand.
+- Fail when a parameter in `actions.json` lacks a `description`. Would have caught all four
+  dead GeoPackage Reader parameters in 2025. Start description-only — a `title` rule needs the
+  Group B/C/D cleanup above to land first.
+
+---
+
+### Batch 1 outcome — the only batch completed under the revised standard
+
+Audited and **kept exposed**:
+
+- `Attribute Range Mapper` — well designed; changes were documentation only. Now documents the
+  `to == from` exact-match branch, the string/bool coercion, and that `defaultValue` also
+  applies when the attribute is absent or non-numeric. Gained the `mapping` tag its three
+  siblings carry.
+- `Date Time Converter` — well designed. Gained 4 parameter titles, 12 enum variant titles and a
+  root description; enum values corrected from `unix_s`/`unix_ms` to `unixS`/`unixMs` (§3.4);
+  §4.3 fixed so a feature lacking the attribute passes through on `features`. That fix also
+  required correcting `infer_output_schema`, which promised the output attribute was `always`
+  present on `features` — now `maybe`. Regression test
+  `missing_attribute_passes_through_on_features` added; this behaviour had no coverage.
+- `Attribute Table Extractor` — sound concept, and the only one of the five with real production
+  use (PLATEAU6 01-bldg). `inline` is now typed, so `ExtractRule` finally generates into the
+  schema with titles and `required`. `jsonPath`/`attribute` renamed to
+  `sourcePath`/`destinationPath`: the old name promised JSONPath but the implementation is a
+  space-separated key chain, so `$.a.b` failed silently. Renaming rather than implementing
+  JSONPath was deliberate — the destination path needs *write* semantics, which JSONPath has
+  none of; `$` appears as a literal key in real CityGML tables; multi-match semantics would
+  have to be invented; and feature attributes are an `IndexMap`, so JSONPath would mean
+  serialising every feature per rule. Space separation is correct here because the keys are XML
+  QNames, which cannot contain whitespace but do contain colons. All 106 rules in the PLATEAU6
+  config migrated.
+
+**Retired, not audited:**
+
+- `Attribute File Path Info Extractor` — an exact duplicate of `File Property Extractor`: same
+  five output attributes (`fileType`, `fileSize`, `fileAtime`, `fileMtime`, `fileCtime`), same
+  `"File"`/`"Directory"` values, same single path-attribute parameter. `File Property Extractor`
+  is the better one — documented description covering all five outputs and the recursive
+  directory-size behaviour, plus tags. Zero usage anywhere made retiring free. It also had
+  inverted §4.3 ports (absent attribute → `rejected`; nonexistent path → silent pass-through)
+  and five entirely undocumented output attributes, none of which now need fixing.
+- `Attribute Bulk Array Joiner` — needs a scope decision before it is worth documenting. Joins
+  every array attribute with a hard-coded `,` (no separator parameter, while `List Concatenator`
+  has one); `ignoreAttributes` is opt-out only, so joining one attribute means enumerating every
+  other array attribute on the feature; `_ => {}` silently drops non-scalar elements, so an
+  array of two maps becomes `""`; and a single-element array containing a map is *unwrapped*
+  rather than joined, making it two operations under one name. The `FlattenerFactory` error
+  variant it still uses suggests it was built as an `Attribute Flattener` sibling for collapsing
+  CityGML multi-valued attributes before writing to a flat format. If that is the intent, it
+  should say so and probably be named for it. Zero usage anywhere.
