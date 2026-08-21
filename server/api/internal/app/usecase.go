@@ -18,6 +18,11 @@ func UsecaseMiddleware(r *repo.Container, g *gateway.Container, permissionChecke
 
 		uc := interactor.NewContainer(repos, g, permissionChecker, GQLClient, sharedJob, config)
 		ctx = adapter.AttachUsecases(ctx, &uc)
+		// Request-scoped memo for non-GraphQL routes (e.g. job cancel, which
+		// checks permission twice for the same workspace). GraphqlAPI attaches
+		// its own memo per operation in AroundOperations, which shadows this
+		// one and is what actually scopes GraphQL/websocket verdicts correctly.
+		ctx = adapter.AttachPermissionVerdictMemo(ctx)
 		return ctx
 	})
 }
