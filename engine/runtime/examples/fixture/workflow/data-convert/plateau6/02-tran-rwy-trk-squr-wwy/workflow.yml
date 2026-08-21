@@ -51,6 +51,7 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
+          keepAttributes: false
           extractTags:
             - tran:AuxiliaryTrafficArea
             - tran:AuxiliaryTrafficSpace

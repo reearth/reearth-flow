@@ -465,7 +465,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     }
 }
 
-
 fn main() {
     init_logging();
 
