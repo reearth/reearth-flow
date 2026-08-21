@@ -343,7 +343,14 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 		span.End()
 	}()
 
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if prj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, prj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -358,14 +365,6 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	variables := parametersToVariables(p.Parameters)
 	sampleSize := capSampleSize(p.SampleSize)
 	useCloudRun := i.cloudRunWorker != nil
-
-	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if prj == nil {
-		return nil, rerror.ErrNotFound
-	}
 
 	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
 	if err != nil {
