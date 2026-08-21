@@ -2,8 +2,10 @@ package gql
 
 import (
 	"context"
+	"errors"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 )
 
 func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
@@ -20,15 +22,38 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 	}, nil
 }
 
-func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error) {
-	history, err := usecases(ctx).Websocket.GetHistoryByVersion(ctx, string(projectId), version)
+func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version *int, snapshotNumber *int) (*gqlmodel.ProjectSnapshot, error) {
+	if version != nil && snapshotNumber != nil {
+		return nil, errors.New("pass only one of version or snapshotNumber, not both")
+	}
+	if version == nil && snapshotNumber == nil {
+		return nil, errors.New("pass either version or snapshotNumber")
+	}
+
+	if snapshotNumber != nil {
+		state, err := usecases(ctx).Websocket.GetSnapshotState(ctx, string(projectId), *snapshotNumber)
+		if err != nil {
+			return nil, err
+		}
+		if state == nil {
+			return nil, interfaces.ErrSnapshotNotFound
+		}
+		// Version stays unset: a snapshot carries no update-log clock, and a
+		// fabricated one passed to rollbackProject would prune real history.
+		num := int(state.SnapshotID)
+		return &gqlmodel.ProjectSnapshot{
+			SnapshotNumber: &num,
+			Updates:        state.Updates,
+		}, nil
+	}
+
+	history, err := usecases(ctx).Websocket.GetHistoryByVersion(ctx, string(projectId), *version)
 	if err != nil {
 		return nil, err
 	}
-
 	return &gqlmodel.ProjectSnapshot{
 		Updates:   history.Updates,
-		Version:   history.Version,
+		Version:   &history.Version,
 		Timestamp: history.Timestamp,
 	}, nil
 }

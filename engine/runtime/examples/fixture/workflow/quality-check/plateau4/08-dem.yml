@@ -2251,7 +2251,7 @@ graphs:
   - id: 0457d126-6700-481c-8847-707fb2d9c739
     from: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
     to: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e
-    fromPort: features
+    fromPort: boundary
     toPort: features
   - id: 268b55bf-aa4e-48b5-8a9f-338ae6194165
     from: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e

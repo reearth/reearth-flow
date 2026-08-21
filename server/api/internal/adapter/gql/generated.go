@@ -420,9 +420,10 @@ type ComplexityRoot struct {
 	}
 
 	ProjectSnapshot struct {
-		Timestamp func(childComplexity int) int
-		Updates   func(childComplexity int) int
-		Version   func(childComplexity int) int
+		SnapshotNumber func(childComplexity int) int
+		Timestamp      func(childComplexity int) int
+		Updates        func(childComplexity int) int
+		Version        func(childComplexity int) int
 	}
 
 	ProjectSnapshotMetadata struct {
@@ -455,7 +456,7 @@ type ComplexityRoot struct {
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectNamedSnapshots func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
-		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
+		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version *int, snapshotNumber *int) int
 		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
@@ -692,7 +693,7 @@ type QueryResolver interface {
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
-	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error)
+	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version *int, snapshotNumber *int) (*gqlmodel.ProjectSnapshot, error)
 	ProjectNamedSnapshots(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
@@ -2400,6 +2401,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ProjectSharingInfoPayload.SharingToken(childComplexity), true
 
+	case "ProjectSnapshot.snapshotNumber":
+		if e.complexity.ProjectSnapshot.SnapshotNumber == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshot.SnapshotNumber(childComplexity), true
 	case "ProjectSnapshot.timestamp":
 		if e.complexity.ProjectSnapshot.Timestamp == nil {
 			break
@@ -2701,7 +2708,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectSnapshot(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(int)), true
+		return e.complexity.Query.ProjectSnapshot(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(*int), args["snapshotNumber"].(*int)), true
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
 			break
@@ -3854,7 +3861,8 @@ type ProjectDocument implements Node {
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
-  version: Int!
+  version: Int
+  snapshotNumber: Int
 }
 
 # Project Snapshot Metadata (without updates data)
@@ -3887,7 +3895,12 @@ extend type Mutation {
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
-  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  # Pass exactly one of version or snapshotNumber.
+  projectSnapshot(
+    projectId: ID!
+    version: Int
+    snapshotNumber: Int
+  ): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }`, BuiltIn: false},
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
@@ -5567,11 +5580,16 @@ func (ec *executionContext) field_Query_projectSnapshot_args(ctx context.Context
 		return nil, err
 	}
 	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "version", ec.unmarshalNInt2int)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "version", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
 	args["version"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "snapshotNumber", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["snapshotNumber"] = arg2
 	return args, nil
 }
 
@@ -14087,13 +14105,42 @@ func (ec *executionContext) _ProjectSnapshot_version(ctx context.Context, field 
 			return obj.Version, nil
 		},
 		nil,
-		ec.marshalNInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
-		true,
+		false,
 	)
 }
 
 func (ec *executionContext) fieldContext_ProjectSnapshot_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshot_snapshotNumber(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectSnapshot_snapshotNumber,
+		func(ctx context.Context) (any, error) {
+			return obj.SnapshotNumber, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshot_snapshotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectSnapshot",
 		Field:      field,
@@ -15097,7 +15144,7 @@ func (ec *executionContext) _Query_projectSnapshot(ctx context.Context, field gr
 		ec.fieldContext_Query_projectSnapshot,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().ProjectSnapshot(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["version"].(int))
+			return ec.resolvers.Query().ProjectSnapshot(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["version"].(*int), fc.Args["snapshotNumber"].(*int))
 		},
 		nil,
 		ec.marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot,
@@ -15120,6 +15167,8 @@ func (ec *executionContext) fieldContext_Query_projectSnapshot(ctx context.Conte
 				return ec.fieldContext_ProjectSnapshot_updates(ctx, field)
 			case "version":
 				return ec.fieldContext_ProjectSnapshot_version(ctx, field)
+			case "snapshotNumber":
+				return ec.fieldContext_ProjectSnapshot_snapshotNumber(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectSnapshot", field.Name)
 		},
@@ -24831,9 +24880,8 @@ func (ec *executionContext) _ProjectSnapshot(ctx context.Context, sel ast.Select
 			}
 		case "version":
 			out.Values[i] = ec._ProjectSnapshot_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+		case "snapshotNumber":
+			out.Values[i] = ec._ProjectSnapshot_snapshotNumber(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
