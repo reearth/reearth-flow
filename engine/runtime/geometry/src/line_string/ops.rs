@@ -307,6 +307,23 @@ impl ExtractBoundary for LineString3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for LineString2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for LineString3D {
+    fn elevation(&self) -> Option<f64> {
+        self.coords.first().map(|c| c[2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
