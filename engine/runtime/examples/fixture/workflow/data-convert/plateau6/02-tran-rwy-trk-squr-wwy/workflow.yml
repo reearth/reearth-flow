@@ -268,5 +268,5 @@ graphs:
       - id: 79682e87-8ded-46ab-9f3f-2e389150786b
         from: eb7833a5-a11d-4481-9e80-8d4d64d0b7c8
         to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
-        fromPort: area
+        fromPort: features
         toPort: features
