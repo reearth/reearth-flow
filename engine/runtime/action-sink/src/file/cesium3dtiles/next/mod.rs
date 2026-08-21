@@ -60,7 +60,10 @@ impl Cesium3DTilesWriter {
             .eval_string(&ctx.feature, Arc::clone(&ctx.variables))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
 
-        self.buffer.entry(output).or_default().push(ctx.feature.clone());
+        self.buffer
+            .entry(output)
+            .or_default()
+            .push(ctx.feature.clone());
         Ok(())
     }
 
