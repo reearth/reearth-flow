@@ -1,4 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
+use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 #[cfg(not(feature = "new-geometry"))]
@@ -12,7 +14,6 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Code, CodeType, CompiledCode, Feature};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -21,7 +22,7 @@ use serde_json::Value;
 
 use crate::geometry::errors::GeometryProcessorError;
 
-static NULL_PORT: Lazy<Port> = Lazy::new(|| Port::new("nullport"));
+static EMPTY_PORT: Lazy<Port> = Lazy::new(|| Port::new("empty"));
 
 #[derive(Debug, Clone, Default)]
 pub struct CSGEvaluatorFactory;
@@ -32,8 +33,10 @@ impl ProcessorFactory for CSGEvaluatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. \
-        Takes a CSG representation and computes the resulting mesh from the boolean operations."
+        "Computes the solid a Constructive Solid Geometry tree describes, replacing the tree \
+         with the result. Operands must be closed, outward-wound solids in a projected \
+         coordinate reference, since the vertex tolerance is a distance; a tree whose result \
+         encloses no volume leaves on the empty port."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -44,6 +47,10 @@ impl ProcessorFactory for CSGEvaluatorFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "3d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
@@ -51,7 +58,7 @@ impl ProcessorFactory for CSGEvaluatorFactory {
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
             FEATURES_PORT.clone(),
-            NULL_PORT.clone(),
+            EMPTY_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
     }
@@ -63,69 +70,47 @@ impl ProcessorFactory for CSGEvaluatorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: CSGEvaluatorParam = if let Some(with_val) = with {
-            let value: Value = serde_json::to_value(with_val).map_err(|e| {
-                GeometryProcessorError::CSGEvaluatorFactory(format!(
-                    "Failed to serialize `with` parameter: {e}"
-                ))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::CSGEvaluatorFactory(format!(
-                    "Failed to deserialize `with` parameter: {e}"
-                ))
-            })?
-        } else {
-            return Err(GeometryProcessorError::CSGEvaluatorFactory(
-                "Missing required parameter `with` containing `tolerance`".to_string(),
-            )
-            .into());
+        let params: CSGEvaluatorParam = match with {
+            Some(with) => {
+                let value: Value = serde_json::to_value(with).map_err(|e| {
+                    GeometryProcessorError::CSGEvaluatorFactory(format!(
+                        "Failed to serialize `with` parameter: {e}"
+                    ))
+                })?;
+                serde_json::from_value(value).map_err(|e| {
+                    GeometryProcessorError::CSGEvaluatorFactory(format!(
+                        "Failed to deserialize `with` parameter: {e}"
+                    ))
+                })?
+            }
+            None => CSGEvaluatorParam::default(),
         };
 
-        let tolerance_ast = params.tolerance.compile().map_err(|e| {
-            GeometryProcessorError::CSGEvaluatorFactory(format!(
-                "Failed to compile tolerance expression: {e:?}"
-            ))
-        })?;
-
-        let processor = CSGEvaluator { tolerance_ast };
-        Ok(Box::new(processor))
+        Ok(Box::new(CSGEvaluator {
+            tolerance: params.tolerance,
+        }))
     }
 }
 
 /// # CSG Evaluator Parameters
-/// Configure evaluation parameters for CSG operations
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+/// Sets how closely the operands' vertices must line up for the boolean to
+/// treat them as one point.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CSGEvaluatorParam {
     /// # Tolerance
-    /// Tolerance value for geometry operations (as an expression evaluating to f64).
-    /// Used for vertex merging and mesh operations.
-    pub tolerance: Code<{ CodeType::FlowExpr as u32 }>,
+    /// Distance below which a vertex counts as lying on a cutting plane and two
+    /// vertices count as one, in the unit of the operands' coordinate
+    /// reference. When omitted, a distance small enough to merge only
+    /// near-identical vertices is used.
+    pub tolerance: Option<f64>,
 }
 
 /// # CSG Evaluator
-/// Evaluates a CSG tree to produce a solid geometry mesh
+/// Evaluates a boolean tree into the solid it denotes.
 #[derive(Debug, Clone)]
 pub struct CSGEvaluator {
-    tolerance_ast: CompiledCode,
-}
-
-impl CSGEvaluator {
-    /// Evaluate the tolerance expression at runtime with feature context
-    fn evaluate_tolerance(
-        &self,
-        feature: &Feature,
-        ctx: &ExecutorContext,
-    ) -> Result<f64, BoxedError> {
-        self.tolerance_ast
-            .eval_float(feature, Arc::clone(&ctx.variables))
-            .map_err(|e| {
-                GeometryProcessorError::CSGEvaluatorFactory(format!(
-                    "Failed to evaluate tolerance expression: {e:?}"
-                ))
-                .into()
-            })
-    }
+    tolerance: Option<f64>,
 }
 
 impl Processor for CSGEvaluator {
@@ -136,9 +121,9 @@ impl Processor for CSGEvaluator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-
-        // Evaluate tolerance expression at runtime with feature context
-        let tolerance = self.evaluate_tolerance(&feature, &ctx)?;
+        // A non-positive tolerance makes the kernel fall back to its own small
+        // default, which is exactly the "when omitted" behaviour.
+        let tolerance = self.tolerance.unwrap_or(0.0);
 
         // Extract CSG from the geometry
         let csg = match &feature.geometry.value {
@@ -161,7 +146,7 @@ impl Processor for CSGEvaluator {
         match csg.evaluate(tolerance) {
             Ok(solid) => {
                 if solid.is_void() {
-                    fw.send(ctx.new_with_feature_and_port(feature, NULL_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, EMPTY_PORT.clone()));
                 } else {
                     // Update the feature with the evaluated solid geometry
                     feature.geometry = Arc::new(Geometry {
@@ -181,8 +166,9 @@ impl Processor for CSGEvaluator {
     }
 
     /// Evaluate the feature's boolean tree into a solid: the result goes to
-    /// the features port, an empty result to the null port, and a feature
-    /// without a boolean tree, or one whose evaluation fails, to rejected.
+    /// the features port, a result enclosing no volume to the empty port, and a
+    /// feature without a boolean tree, or one whose evaluation fails, to
+    /// rejected.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -190,8 +176,9 @@ impl Processor for CSGEvaluator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-
-        let tolerance = self.evaluate_tolerance(&feature, &ctx)?;
+        // A non-positive tolerance makes the kernel fall back to its own small
+        // default, which is exactly the "when omitted" behaviour.
+        let tolerance = self.tolerance.unwrap_or(0.0);
 
         let Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg)) = feature.geometry.as_ref() else {
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
@@ -205,7 +192,7 @@ impl Processor for CSGEvaluator {
                 fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Ok(None) => {
-                fw.send(ctx.new_with_feature_and_port(feature, NULL_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, EMPTY_PORT.clone()));
             }
             Err(_) => {
                 fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));

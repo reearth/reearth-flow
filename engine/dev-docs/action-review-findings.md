@@ -458,16 +458,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **64** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **69** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 64 | — |
-| Does not run in the shipped build | 22 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **16** | An engine-side §8 pass — the list below |
+| Exposed and audited | 69 | — |
+| Does not run in the shipped build | 21 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **12** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -475,7 +475,7 @@ workflow that names it, so no existing workflow broke.
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
 new-geometry support and were assumed to be near-compliant. That held for the reprojector, which
 postdates the standard, and did not for Dissolver, whose action long predates it — only its
-geometry port is recent. Worth remembering when guessing which of the remaining 20 are cheap.
+geometry port is recent. Worth remembering when guessing which of the remaining 12 are cheap.
 
 ### What "audited" now means — read §"How to use" and §8 first
 
@@ -491,11 +491,22 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 16 actions, with preliminary findings
+### Pending audit — 12 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
+
+#### Newly running, never listed (1)
+
+```
+Elevation Extractor
+  runs:    Its new-geometry port landed in #2384, so it now runs in the shipped build — but that
+             PR touched neither `base_actions.go` nor this file, so the action is running,
+             unexposed and absent from every list here. This is exactly the §7.2 drift the
+             standard warns about, caught while merging. It owes an engine-side §8 pass like the
+             rest of this section; nothing else blocks it.
+```
 
 #### Group B — List and feature utilities (5)
 
@@ -527,47 +538,6 @@ Feature GeoJSON Writer
   cat:     `Feature` while every true sink uses `Output` — but it is a processor, not a sink.
              Same open question as Feature Writer.
 ```
-
-#### Group C — CSG pair and Excel Writer (3)
-
-```
-CSG Builder
-  desc:    4 sentences; §2 allows 1–2.
-  ports:   `left` + `right` inputs are properly semantic (§4.2) — good.
-
-CSG Evaluator
-  ports:   **`nullport`** is not in the §4.2 vocabulary, is not a word, and is a label users
-             see on the node. Needs a real name. Defined at csg_evaluator.rs:24.
-
-Excel Writer
-  cat:     `File`, but it is a genuine sink (type: sink, no output ports), so §5 wants
-             `Output`. `File` is for decompression and path utilities.
-  params:  `output` and `sheetName` both lack a `title`.
-```
-
-#### Group D — Overlay family (2, plus Dissolver now done)
-
-```
-Line On Line Overlayer                                  <-- worst metadata in the palette
-  params:  `groupBy` and `tolerance` have NO description at all — the only non-PLATEAU action
-             in the schema in that state. They render as bare camelCase keys with no label.
-             `overlaidListsAttrName` lacks a title. Sibling Area On Area Overlayer has both
-             parameters fully described; confirm the semantics match, then copy.
-
-Area On Area Overlayer
-  ports:   `area` was agreed to become `overlaps` (breaking).
-
-```
-
-`Dissolver` was in this group and is now audited and exposed — see below. Review the remaining
-two together; they share `groupBy` / `tolerance` / accumulation semantics with it and with each
-other, so its wording is the reference to copy.
-
-**The port renames were agreed in principle and are more expensive than assumed.** Sizing them
-for the first time: `Dissolver` alone appears in 10 workflow files, **6 of them committed
-result/truth fixtures** under `engine/testing/data/results/`, with 27 `fromPort: area` edges
-across the tree. Renaming `area` is not a metadata change — it rewrites golden data, and wants
-its own PR with the fixtures regenerated deliberately.
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
 
@@ -627,6 +597,10 @@ failure. Confirmed instances so far:
 - `Attribute File Path Info Extractor` — moot, retired.
 - `JSON Fragmenter` — **not fixed.** Routes a missing attribute to `rejected`, and this is
   asserted as intended in a test named `test_missing_attribute_rejected`. It sits in Group E.
+- `Line On Line Overlayer` — **fixed** in the overlay batch, and it was the worst form of the
+  defect: a grouping attribute absent from a source line did not route the feature anywhere, it
+  returned `Err` from `finish` and **failed the whole run**. `process` had already grouped that
+  same feature without the attribute, so the two halves disagreed.
 
 Three instances across three different batches means the remaining 22 should be assumed to
 contain more. The reliable tell is a `rejected`/`failed` branch guarded by an attribute lookup
@@ -786,8 +760,10 @@ Dissolver — kept, documentation was materially wrong
   params:  Variant description leaked the internal `group_by` spelling into user-facing text.
   tags:    Was empty. Now `spatial` (matching Bufferer, Clipper, Grid Divider) and `aggregation`
              (matching the other accumulating processors).
-  ports:   `area` → `features` NOT done. See the Group D note: 10 workflow files, 6 of them
-             committed truth fixtures, 27 edges. Its own PR.
+  ports:   `area` → `features` done in a follow-up commit. The cost estimate was wrong twice
+             over: 6 edges, not 27 (that count included Area On Area Overlayer's own `area`
+             port), and the files under `engine/testing/data/results` that it called committed
+             truth fixtures are `.gitignore`d.
 ```
 
 ### Addendum — Batch 5, audited and exposed
@@ -868,3 +844,172 @@ module, so per-crate commands silently skip it — a per-crate check passed whil
 were broken by the parameter restructure. `cargo make test-rs` catches it because `--workspace`
 lets cli/worker (both `default = ["new-geometry"]`) unify the feature on. **Verify new-geometry
 actions with the workspace command, never with `-p`.**
+
+---
+
+### Addendum — Batch 6, the overlay/CSG/Excel batch, audited and exposed
+
+All five kept and exposed. The batch's lesson is the inverse of Batch 5's: these five predate the
+standard by a wide margin, and every one of them had a user-facing property the code contradicted.
+Four of the five defects below are invisible to a schema scan, and two were only findable by
+reading what a *fixture* asked for and comparing it against the parameter struct.
+
+```
+Area On Area Overlayer — kept, `tolerance` did not do what it said
+  impl:    All five parameters read and applied. Both data ports emitted, and `rejected` covers
+             every intake refusal. `tolerance`, however, was **never a snapping distance**: the
+             only thing the code did with it was `min_area = tolerance * tolerance`, a threshold
+             below which an intersection piece was discarded. The description promised vertex
+             equality and delivered sliver filtering.
+  prior art: Unanimous, and against us. The reference product's own transformer defines Tolerance
+             as "the minimum distance between geometries in 2D before they are considered equal";
+             JTS/GEOS OverlayNG makes it a snapping distance (SnappingNoder, snap-rounding) and
+             documents sliver removal as a *consequence* of snapping; and the desktop GIS suite
+             users arrive from defines its cluster tolerance the same way, as the minimum distance
+             between coordinates before they count as equal, with its clustering pass performing
+             the sliver removal. None of the three exposes an area threshold inside the overlay;
+             area-based sliver removal lives in separate cleanup tools. So the fix was to
+             implement the documented behaviour, not to redescribe the code.
+  impl:    `tolerance` now snaps. `overlay::snap_areal_operands_2d` is new: it snaps every operand
+             of a group in ONE pass and hands each back dissolved. That is the whole point of the
+             signature — `snap_shapes` picks its anchors per call, so snapping pairwise as each
+             pair is compared would put the boundary three neighbours share in three places and
+             the pieces cut from either side would stop meeting. The sub-tolerance area filter is
+             kept as a secondary guard, and because the legacy world's overlay has no snapping
+             to drive, `snap_group` is a no-op there. That scopes the SNAPPING to new geometry
+             only; the port rename, the parameter spellings and the overlap-count default below
+             change both worlds.
+  ports:   `area` → `overlaps`. 23 edges across 15 files, every one verified to originate from an
+             Area On Area Overlayer node before rewriting. `remnants` already named its
+             counterpart honestly; `area` named a geometry type rather than a role.
+  params:  `accumulationMode` → `attributeAccumulation` with `useOneFeature`/`dropAttributes`,
+             matching Dissolver's audited spelling. Note the semantics genuinely differ from
+             Dissolver's: `dropAttributes` here drops the grouping attributes too, so the
+             variant description had to say something different rather than be copied.
+  params:  `generateList` → `listAttribute`. The name read as a boolean and the value was a name.
+  params:  `outputAttribute` retitled "Overlap Count Attribute" and given the default
+             `overlayCount` it shares with its sibling. Previously omitting it wrote no count.
+  tags:    Was empty. Now `spatial` + `aggregation`, matching Dissolver.
+
+Line On Line Overlayer — kept, three separate properties were false or missing
+  desc:    Claimed each intersection point carries "the merged attributes of the lines that meet
+             there". It does not: a point feature carries only the grouping attributes, copied
+             from an arbitrary member of the group (the last one received). It is the *line*
+             output that carries the merged attributes. Rewritten to describe both outputs.
+  impl:    The overlap count was written to a **hard-coded `overlayCount`**, undocumented, with
+             no parameter to change it — while 11 of the 15 fixture nodes pass an
+             `outputAttribute` that the parameter struct does not declare and serde silently
+             discards. Someone expected the sibling's parameter and got no error. Now declared,
+             defaulting to `overlayCount` so the four workflows that read it still work.
+  ports:   §4.3, and the worst instance found so far: a grouping attribute missing from a source
+             line returned `Err` from `finish` and failed the entire run. `process` had already
+             admitted that same feature to a group without the attribute, so the two halves of
+             the action disagreed about whether the absence was survivable. Now carried forward
+             as absent.
+  params:  `groupBy` and `tolerance` had no title and no description at all. `tolerance` is the
+             load-bearing parameter — it decides which crossings split a line, which crossings
+             are one crossing, and which segments coincide, and at zero the action splits
+             nothing — and it shipped as a bare camelCase key.
+  params:  `overlaidListsAttrName` → `listAttribute` (§3.1 bans `attr`), and the list is now
+             opt-in rather than always written under a default name. The two workflows that read
+             `overlaidLists` name it explicitly.
+  ports:   `point` / `line` KEPT. They look off-vocabulary but they match the prior art exactly,
+             and the action genuinely has two semantically distinct outputs (§4.3).
+  tags:    Was empty. Now `spatial` + `aggregation`.
+
+CSG Builder — kept, the description misnamed the thing it builds
+  desc:    Said "**Consecutive** Solid Geometry" — it is Constructive, which its own sibling
+             spells correctly. Also four sentences (§2 allows two), and "it detects union,
+             intersection, difference" describes a choice the action does not make: it emits all
+             three, unconditionally, on three ports.
+  params:  `pairIdAttribute` was schema-optional and the action **rejected every feature without
+             it** — a node dropped into a workflow unconfigured sent all its input to `rejected`
+             and reported nothing. Now required. Renamed `pairId`: it is an expression, not the
+             name of an attribute, and the old name said otherwise.
+  params:  `createList` + `listAttributeName` folded into one optional `listAttribute`. The pair
+             could express a state that did nothing (`createList: true` with no name silently
+             wrote no list), and the description of the second was backwards — "the attribute to
+             create the list *from*", when it names the attribute the list is written *to*.
+  impl:    Output features carry no attribute from either source unless the list is requested.
+             True before and after; it is now in the parameter's description.
+  ports:   `left` + `right` inputs and the three operation outputs are all correct and emitted.
+  tags:    Was empty. Now `spatial` + `3d`.
+
+CSG Evaluator — kept, one port name and one parameter type
+  ports:   `nullport` → `empty`. Unwired everywhere, so the rename cost nothing.
+  params:  `tolerance` was a required `Code<FlowExpr>` whose one caller passed the constant
+             "0.01", and `build` failed outright when `with` was absent. It is now an optional
+             plain number: the kernel already falls back to a small distance at or below zero,
+             so "when omitted" had a real answer that the schema was hiding behind a required
+             expression.
+  impl:    `operation: intersection` appears on all 5 fixture nodes and has never been a
+             parameter of this action — serde discarded it silently. Removed from the fixtures.
+             It is redundant now that CSG Builder emits one port per operation.
+  desc:    Said it "computes the resulting mesh"; it produces a Solid. The input constraints were
+             undocumented and they are strict — `evaluate` refuses geographic coordinates
+             outright, because it merges vertices within a distance and a degree is not a
+             distance, and an open or mis-wound boundary yields an arbitrary volume rather than
+             an error. Documented, following the pattern Dissolver established.
+  tags:    Was empty. Now `spatial` + `3d`.
+
+Excel Writer — kept, and it had an undocumented feature that did not work
+  cat:     `File` → `Output`. It is a genuine sink with no output ports.
+  impl:    The real finding: an entire configuration surface driven by companion attributes.
+             `<key>.formatting`, `<key>.formula` and `<key>.hyperlink` changed how that column's
+             cell was written, and none of it was documented anywhere — not the convention, not
+             the semicolon-separated `key,value` formatting grammar, not its PascalCase
+             alignment and underline values.
+  impl:    Four defects, all in code no test covered:
+             1. Applying `.formatting` wrote an empty string with the format into the cell that
+                had just been given its value, so **formatting a cell erased its contents**.
+             2. Companion attributes were themselves keys of the feature, so they each got their
+                own visible column holding the raw directive string.
+             3. Numbers were stringified and written as text, so a numeric column arrived in
+                Excel as text and could not be summed or sorted. Booleans and composites became
+                empty strings.
+             4. The header row came from the FIRST feature alone, and any later feature carrying
+                a key it lacked returned `Err` and **failed the run**. Optional attributes are
+                ordinary, so this was easy to hit.
+  scope:   `.formatting` removed rather than fixed (user decision, 2026-08-21). Its grammar has
+             nowhere legal to be documented — it is not a parameter, so it gets no title or
+             description, and §2 caps the description at two sentences — so fixing it would have
+             shipped a feature users cannot learn to use. `.formula` and `.hyperlink` are
+             self-describing enough to name in the description, and they stay. Zero usage
+             anywhere made the removal free. The other three defects are fixed: header from the
+             union of all features, companion keys excluded from the columns, one write per cell,
+             and numbers and booleans written in their own type.
+  impl:    §7.3 — a 60-line `#[allow(dead_code)] write_map_entry` and a commented-out
+             `parse_row_formatting` block both removed, along with the duplicate `ExcelWriterParam`
+             that existed only to pass one field between the two files.
+  params:  `output` and `sheetName` gained titles; `output`'s per-feature expression evaluation
+             (one workbook per distinct path) was undocumented.
+  tags:    Was empty. Now `excel`, matching every other audited writer, which all carry their
+             format. `excel` is new §6 vocabulary.
+```
+
+**Deferred, with triggers.**
+
+- **Line On Line Overlayer's intersection points carry only grouping attributes**, from an
+  arbitrary member of the group, where the prior art gives them the attributes of the lines that
+  cross there. Doing it properly means tracking, per candidate crossing, which other feature
+  produced it, through `polyline_intersections` and `split_polyline` and the point dedup — and
+  the legacy world reaches its split through a geometry-crate call that returns no provenance at
+  all. Revisit when the legacy overlay path is removed, so it only has to be built once.
+- **CSG Builder's `rejected` port mixes two populations**: a feature whose geometry is not a
+  solid, and a feature whose partner never arrived. Feature Joiner separates these
+  (`unjoined-requestor` / `unjoined-supplier`). Adding an `unpaired` port is a data-loss change
+  (§4.3) and wants the same treatment as the Attribute Duplicate Filter `duplicate` port.
+  Revisit when that one is decided, so the pair is settled together.
+- **The group-key `filter_map` is a family-wide pattern, not a defect of one action.** Both
+  overlayers and `Dissolver` build their group key with
+  `group_by.iter().filter_map(|a| attributes.get(a))`, so a feature missing one grouping
+  attribute produces a *shorter* key and can collide with a feature missing a different one.
+  Changing it changes grouping behaviour for all three. Revisit when `Attribute Duplicate
+  Filter`'s known key-collision defect is fixed, and fix them with one shared rule.
+
+**Verification note.** `test-qc` ignores every plateau4 quality-check case
+(`skipNewGeometry`), so it does not execute any workflow this batch touched. The suite that does
+is `cargo test -p workflow-tests -- --test-threads=4`, the legacy world, 185 cases — run before
+and after. Leaving `snap_group` a no-op in the legacy build is what makes that run useful: the
+snapping is the one change those cases cannot see, so they stay a real regression check on the
+rewiring and the parameter renames, which they DO see, rather than a wall of expected diffs.
