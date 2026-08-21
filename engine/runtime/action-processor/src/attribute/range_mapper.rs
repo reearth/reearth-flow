@@ -25,7 +25,7 @@ impl ProcessorFactory for AttributeRangeMapperFactory {
     }
 
     fn description(&self) -> &str {
-        "Map attribute values to ranges and assign corresponding output values"
+        "Classifies a numeric attribute by looking its value up in a table of ranges and writing the matched range's output value to another attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -34,6 +34,10 @@ impl ProcessorFactory for AttributeRangeMapperFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Attribute"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["mapping"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -80,23 +84,30 @@ struct AttributeRangeMapper {
 }
 
 /// # Attribute Range Mapper Parameters
+/// Defines the attribute to classify, the table of ranges to match it against, and where the
+/// matched value is written.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeRangeMapperParam {
     /// # Input Attribute
-    /// The attribute to evaluate for range mapping
+    /// Attribute holding the value to classify. Numbers are used directly, numeric strings are
+    /// parsed, and booleans count as 1 and 0. Any other type is treated as unclassifiable and
+    /// takes the default value.
     pub input_attribute: String,
 
     /// # Output Attribute
-    /// The attribute to store the mapped value
+    /// Attribute the matched value is written to. An existing value is overwritten.
     pub output_attribute: String,
 
     /// # Range Lookup Table
-    /// List of ranges and their corresponding output values
+    /// Ranges to test the input against, in order. The first match wins, so overlapping ranges
+    /// resolve to whichever is listed first.
     pub range_table: Vec<RangeEntry>,
 
     /// # Default Value
-    /// Value to use when input doesn't match any range (can be string, number, boolean, etc.)
+    /// Value written when no range matches, and also when the input attribute is absent or is
+    /// not a number, numeric string, or boolean. When omitted, those features pass through with
+    /// the output attribute left unset rather than being rejected.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_value: Option<Value>,
 }
@@ -106,15 +117,17 @@ pub struct AttributeRangeMapperParam {
 #[serde(rename_all = "camelCase")]
 pub struct RangeEntry {
     /// # From (Minimum)
-    /// The minimum value of the range (inclusive)
+    /// Lower bound of the range, inclusive.
     pub from: f64,
 
     /// # To (Maximum)
-    /// The maximum value of the range (exclusive)
+    /// Upper bound of the range, exclusive — a value equal to it falls into the next range.
+    /// Setting it equal to the lower bound makes the entry match that one exact value instead.
     pub to: f64,
 
     /// # Output Value
-    /// The value to assign when input falls within this range (can be string, number, boolean, etc.)
+    /// Value written to the output attribute when the input falls in this range. Any JSON type
+    /// is accepted.
     pub output_value: Value,
 }
 
