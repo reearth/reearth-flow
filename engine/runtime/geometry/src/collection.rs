@@ -20,7 +20,7 @@ use crate::ops::{
     Reproject, ReprojectionCache, UnsupportedOperation,
 };
 #[cfg(feature = "new-geometry")]
-use crate::ops::{Footprint, FootprintError, FootprintSink};
+use crate::ops::{Elevation, Footprint, FootprintError, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -439,6 +439,23 @@ impl Footprint for Collection2D {
 impl Footprint for Collection3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+// A collection reports the first member that has an elevation, rather than only
+// its head: a member with none (an absent geometry, a 2D point, an empty leaf) is
+// ordinary and must not hide the ones behind it.
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection2D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection3D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
     }
 }
 

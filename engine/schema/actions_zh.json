@@ -5750,7 +5750,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Coercer Parameters",
-        "description": "Configuration for coercing geometries to specific target types.",
+        "description": "Which geometry type each feature is coerced into.",
         "type": "object",
         "required": [
           "targetType"
@@ -7699,7 +7699,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Hole Counter Parameters",
-        "description": "Configure where to store the count of holes found in polygon geometries",
+        "description": "Where the total number of holes is stored on each feature.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -7707,7 +7707,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Name of the attribute where the hole count will be stored as a number",
+            "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -7736,14 +7736,14 @@
     {
       "name": "Hole Extractor",
       "type": "processor",
-      "description": "提取几何中的孔并作为属性添加",
+      "description": "将几何的每个面拆分为环，并将外环和每个内环（孔）各自作为独立地物输出。",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "outershell",
+        "exterior",
         "hole",
         "rejected"
       ],
