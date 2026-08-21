@@ -75,7 +75,7 @@ impl ProcessorFactory for DissolverFactory {
     }
 
     fn description(&self) -> &str {
-        "Merges features that share the same grouping attribute values into one feature per group, combining their geometries and dropping the boundaries between them. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them."
+        "Merges area features that share the same grouping attribute values into one feature per group, combining their geometries and dropping the boundaries between them. Inputs must be flat 2D areas sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

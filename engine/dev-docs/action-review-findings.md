@@ -785,11 +785,24 @@ Dissolver — kept, documentation was materially wrong
              (glue_vertices_closer_than / dissolve_leaves). Ports complete.
   desc:    Was "Dissolve Features by Grouping Attributes" — Title Case imperative, no period,
              and it never said what dissolving does to the geometry. Rewritten.
-  desc:    **The 2D-only constraint was entirely undocumented.** `accepts()` requires
-             Geometry::Euclidean2D, so any 3D or geographic-CRS geometry is silently routed to
-             `rejected`. The sibling overlayers already carry the guidance sentence for this;
-             it is now copied here. This was the substantive finding — a user could wire this
-             up correctly and lose every feature with no indication why.
+  desc:    **The input constraints were entirely undocumented.** `accepts()` requires the
+             Euclidean2D variant, all leaves sharing one coordinate frame, no leaf carrying an
+             elevation, and areal leaves only (Polygon / PolygonMesh / TriangularMesh) — so 3D
+             geometry, mixed frames, elevated 2D and line strings are all silently routed to
+             `rejected`. Note the frame is per-LEAF, so a CRS-framed 2D geometry is fine; it is
+             a MIXTURE of frames that is refused. The substantive finding of the batch: a user
+             could wire this up correctly and lose every feature with no indication why. The
+             sibling overlayers already carry the guidance sentence; it is now here too.
+  prior art: The planar computation is universal — FME's equivalent, and GEOS/JTS via PostGIS
+             ST_Union ("the result is computed using XY only"), all overlay in XY. Refusing 3D
+             input is NOT typical: both accept it and resolve Z by a stated policy (FME exposes
+             a five-option Connect Z Mode; PostGIS copies, averages or interpolates). Rejecting
+             areal-only input matches FME exactly. The mixed-frame check is stricter than either
+             and is the one place we are better — both will silently run planar math across
+             mismatched coordinate systems. A Z-policy parameter is the natural enhancement here,
+             not a defect to fix. The only production user (PLATEAU4 tran) already chains
+             Two Dimension Forcer -> Geometry Filter -> Dissolver, so the constraint is
+             load-bearing and the added guidance matches what that workflow already does.
   params:  `tolerance`'s default was unstated; it is 0.0, set by an `unwrap_or` carrying a TODO
              that calls it a compatibility choice. Now documented, including that zero can
              leave slivers between edges that nearly meet.
