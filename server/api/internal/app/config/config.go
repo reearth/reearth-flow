@@ -98,6 +98,9 @@ type (
 		DB_Users     []appx.NamedURI `pp:",omitempty"`
 		Origins      []string        `pp:",omitempty"`
 
+		// trigger
+		Trigger_CORSAllowedOrigins []string `envconfig:"REEARTH_FLOW_TRIGGER_CORS_ALLOWED_ORIGINS" default:"*" pp:",omitempty"`
+
 		// auth
 		Auth AuthConfigs `pp:",omitempty"`
 

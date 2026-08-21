@@ -126,7 +126,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 	SetupActionRoutes(e)
 
-	SetupTriggerRoutes(e)
+	SetupTriggerRoutes(e, cfg.Config.Trigger_CORSAllowedOrigins)
 	SetupJobRoutes(e)
 
 	serveFiles(e, cfg.Gateways.File)
