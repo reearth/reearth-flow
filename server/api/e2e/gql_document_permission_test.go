@@ -103,6 +103,9 @@ func TestDocumentOperations_DeniedWithoutPermission(t *testing.T) {
 	assertDenied(t, e, "projectSnapshot",
 		`query($projectId: ID!, $version: Int!) { projectSnapshot(projectId: $projectId, version: $version) { version } }`,
 		map[string]any{"projectId": p, "version": 1})
+	assertDenied(t, e, "projectSnapshot(snapshotNumber:)",
+		`query($projectId: ID!, $snapshotNumber: Int!) { projectSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) { snapshotNumber updates } }`,
+		map[string]any{"projectId": p, "snapshotNumber": 1})
 	assertDenied(t, e, "rollbackProject",
 		`mutation($projectId: ID!, $version: Int!) { rollbackProject(projectId: $projectId, version: $version) { version } }`,
 		map[string]any{"projectId": p, "version": 1})

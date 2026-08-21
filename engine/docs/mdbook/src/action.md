@@ -7406,7 +7406,7 @@ Make HTTP/HTTPS requests and enrich features with response data
 * features
 * rejected
 ### Category
-* Web
+* Feature
 
 ## Hole Counter
 ### Type

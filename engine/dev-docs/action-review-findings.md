@@ -4,7 +4,7 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 
 **How to use:**
 
-- Fill each action with either `ActionName — OK` or the checklist format from §7 of the standard
+- Fill each action with either `ActionName — OK` or the checklist format from §8 of the standard
 - Phase 4 improvement PRs should reference this file and delete completed sections as fixes land
 - File is deleted when all sections are cleared
 
@@ -277,3 +277,257 @@ Geometry Validator
              all "option 1/2/…" despite every variant now carrying a `/// # Title`. One
              UI-side fix covers both actions.
 ```
+
+---
+
+## Re-verification of already-audited base actions (in progress)
+
+Prompted by PR #2365: `GeoPackage Reader` had been audited in #2280 (Input batch), yet
+shipped a documented tile-reading feature that had been disabled since #1460 ten months
+earlier, plus four parameters that were never read. #2280 is also the PR that added the
+ACCURACY-BEFORE-STYLE clause to the standard — the rule was written in the commit that
+failed to apply it.
+
+This section records a systematic re-check of the **72** base actions audited by prior
+batches (82 in `base_actions.go`, minus the 4 verified in #2365 and the 6 promoted by
+#2356 that still await a first pass).
+
+**Method.** Detectors were derived from the specific defects #2280 missed, and calibrated
+against the pre-#2365 `geopackage.rs` — all 9 calibration checks reproduce the known
+defects. Detector output is a set of *leads*; every entry below was confirmed by reading
+the code path.
+
+### Clean classes (no findings across the 72)
+
+- **Dead parameters** — zero. Every schema parameter resolves to a Rust field that is read
+  and applied. This is the class that produced GeoPackage's four; #2365 removed the last
+  instances (`glTF.triangulate`, `OBJ.includeNormals`). Verified with `#[serde(rename)]`
+  and `#[serde(flatten)]` resolution, so `geometryPartType`→`part_type`,
+  `force2D`→`force_2d` and CSV Reader's flattened `offset`/`headerRows`/`geometry` were all
+  checked rather than skipped.
+- **Enum variants with identical match-arm bodies** — zero. This is the exact shape of the
+  `Tiles`/`All` bug (separate arms, duplicated bodies, both calling `read_features`).
+  GeoPackage was the only instance.
+- **Unreachable code behind `#[allow(dead_code)]`** — one site remains
+  (`attribute/null_attribute_mapper.rs:202`); not yet assessed.
+
+### Confirmed findings
+
+```
+Horizontal Reprojector / Vertical Reprojector          <-- most severe
+  desc:    Both actions cannot run in the shipped build. Their
+             `#[cfg(feature = "new-geometry")] process` returns Err unconditionally
+             ("use Coordinate Frame Reprojector instead" —
+             `horizontal_reprojector.rs:419-430`, `vertical_reprojector.rs:116-127`),
+             and new-geometry is the DEFAULT feature of the cli and worker since #2343.
+             Both are still `true` in `base_actions.go:52,61`, so two user-visible base
+             actions fail on every feature — while carrying fully-audited, polished
+             parameter descriptions for behaviour that never executes. This is the
+             GeoPackage pattern at maximum severity.
+  scope:   This was known and deliberately deferred during Geometry B, on the grounds
+             that the replacement was gated out of the shipped build and so could not be
+             named in `base_actions.go`. **That precondition has expired** — `Coordinate
+             Frame Reprojector` is now present in `actions.json` (verified). Nothing
+             re-triggered the deferred work when the blocker cleared, which is the
+             process failure worth fixing as much as the code.
+  fix:     Delete both actions, swap `Coordinate Frame Reprojector` into
+             `base_actions.go`, migrate fixtures. Interim mitigation if the deletion is
+             not immediate: remove both from `base_actions.go` so the palette stops
+             offering actions that always fail.
+
+Image Rasterizer
+  params:  `saveTo` — description says "When omitted, the image is written to the cache
+             directory". It is written to `$HOME/.cache/reearth-flow-generated-images`
+             via a raw `std::env::var("HOME")` with a `"."` fallback
+             (`geometry/image_rasterizer.rs:250-255`), bypassing `executor_cache_subdir`
+             which every other accumulating action uses (cf. `dissolver.rs`,
+             `area_on_area_overlayer.rs`). In a worker container with no `HOME` the image
+             lands in the process's current working directory. The description makes an
+             arbitrary location sound managed. Fix the code, not the text — this is the
+             long-deferred `save_image_with_path_option` item, now user-visible.
+
+Ray Intersector
+  params:  `geomId` — description promises "every intersection carries a `geom_id`
+             attribute naming the geometry it hit". The attribute written is `geomId`
+             (`geometry/ray_intersector.rs:504`), camelCase, consistent with its sibling
+             `distanceToIntersection` at :496. The code is right and the description names
+             an attribute that does not exist; anyone reading `geom_id` downstream gets
+             nothing. Fix the description.
+```
+
+### Verified accurate (spot-checked, no action needed)
+
+- `Area Calculator.areaType` — "Has no effect on a geometry with no elevation" is true;
+  the parameter is only consulted inside the 3D branch (`area_calculator.rs:148-161`).
+- `Feature Counter.countStart` — "Value assigned to the first feature" is true;
+  `fetch_add` returns the pre-increment value seeded from `start`.
+- `XML Validator.{attribute,inputType,validationType}` — all three applied
+  (`xml/validator.rs:280,405,409`).
+- `CityGML Reader.flatten` — applied at `file/reader/citygml.rs:58`.
+- `CSV Reader.{offset,headerRows,geometry}` — applied via the flattened
+  `csv::CsvReaderParam` passed whole to the shared reader (`file/csv.rs:157`).
+- `Attribute Manager` / `Feature Joiner` shared match arms — `Method::Create | Method::Convert`
+  shares only the schema-inference arm (`attribute/manager.rs:105`) and diverges at
+  `:320`/`:324`; a detector false positive, not a defect.
+
+### Control sample — 10 actions no detector flagged, read by hand
+
+`Feature Merger` · `Feature Sorter` · `Bulk Attribute Renamer` · `Attribute Mapper` ·
+`Feature Type Filter` · `List Exploder` · `File Property Extractor` · `Bounds Extractor` ·
+`Two Dimension Forcer` · `GeoJSON Writer`
+
+**Zero findings.** Every declared port is emitted on a real path, and every parameter is
+applied. Two cases that looked like the GeoPackage forwarding signature resolved clean:
+`Bulk Attribute Renamer.textToFind` has a single read but is compiled into the `regex`
+field the processor uses (`bulk_renamer.rs:68-84`), and `selectedAttributes` is read in the
+rename path at `:186`.
+
+This corroborates the detectors' clean classes: the structural defects really are absent
+from the audited set, rather than merely invisible to grep.
+
+### Verdict
+
+**Prior batches do not need wholesale redoing.** The structural failure modes that produced
+GeoPackage's four dead parameters and its unreachable tile chain are absent across all 72
+audited actions, and a hand-read control sample agrees.
+
+**But the accuracy class is not clean:** 4 of the 72 carry documentation that misstates
+behaviour, and one case is severe enough to be a release blocker (both reprojectors always
+fail). The pattern is not sloppiness spread evenly — it is concentrated in actions whose
+behaviour changed *after* they were audited.
+
+That points at the real systemic gap, which is a process one rather than a review-quality
+one: **a deferred finding whose precondition later expires has nothing watching it.** The
+reprojectors were correctly identified during Geometry B and correctly deferred, because
+`Coordinate Frame Reprojector` was gated out of the shipped build at the time. When that
+gate lifted, nothing re-opened the item. Fixing individual descriptions does not address
+this; the deferred-items sections in this file need an owner and a re-check trigger.
+
+### Outside the 72: vendor-name leaks in two Batch C actions
+
+Found while checking the §2 rule against the code. Both actions are currently non-functional
+in the shipped build, so nothing is reaching users today — but these must be fixed before
+either is repaired or promoted.
+
+```
+Neighbor Finder
+  desc:    `mergeStrategy`'s `repeatBase` variant has a `///` doc comment naming the
+             commercial product the action was ported from (`neighbor_finder.rs:143`).
+             Doc comments compile into the schema, so the name is present in
+             `actions.json` today — this is the only action in the whole schema that
+             leaks it. Rewrite to describe the behaviour directly (§2).
+
+Center Point Replacer
+  params:  Writes an output attribute literally named `fme_rejection_code` onto every
+             rejected feature (`center_point_replacer.rs:152`, asserted in tests at
+             :785, :823, :842), plus a `//` comment at :339. This is worse than a
+             documentation leak: the vendor name ends up in the user's *data*, where it
+             becomes a compatibility surface someone may write a downstream filter
+             against. Rename to something ours — e.g. `rejectionCode`, matching the
+             camelCase convention the codebase uses for written attributes
+             (cf. `geomId`, `distanceToIntersection`) — and update the three tests.
+```
+
+### Still to verify
+
+Behavioural claims not yet traced to a code path (7): `Attribute Aggregator.calculationValue`
+precedence · `Statistics Calculator.groupBy` single-group · `Image Rasterizer.onOverlap`
+arrival-order default · `JSON Writer.converter` omitted-case · `Shapefile Reader.encoding`
+case-insensitivity · `Directory Decompressor.findDeepestSingleFolder` · `Cesium 3D Tiles
+Writer.targetTileSize` merge behaviour.
+
+Stated-default mismatches to adjudicate (3, all likely wording rather than defect):
+`Footprint Replacer.projectionPlane` · `Geometry Validator.degenerateThresholds` ·
+`Horizontal Reprojector.sourceEpsgCode`.
+
+Plus: the one remaining `#[allow(dead_code)]` site, and the §4.3 inverse (features consumed
+and silently discarded with no port) which has no syntactic signature and needs reading the
+accumulate/emit path of the ~20 actions declaring a non-`features` port.
+
+---
+
+## Newly exposed actions — audit queue (23 actions, not yet reviewed)
+
+23 previously hidden actions were added to `base_actions.go`, taking the palette from
+82 to 105. Each was gated against §7.1 first — all have a `process`/`start` reachable in
+the shipped build, so none repeats the reprojector situation. **None has had an engine-side
+standard pass**, so their metadata is in whatever state it was authored in. This is the same
+promote-then-audit sequence as #2356, done deliberately this time and with the debt written
+down rather than discovered later.
+
+`Attribute Bulk Array Joiner` · `Attribute File Path Info Extractor` ·
+`Attribute Range Mapper` · `Attribute Table Extractor` · `CSG Builder` · `CSG Evaluator` ·
+`Coordinate Frame Reprojector` · `Date Time Converter` · `Excel Writer` ·
+`Feature CityGML 3 Reader` · `Feature Duplicate Filter` · `Feature GeoJSON Writer` ·
+`Feature Reader` · `Feature Writer` · `Geometry Coercer` · `HTTP Caller` · `Hole Counter` ·
+`Hole Extractor` · `JSON Fragmenter` · `Line On Line Overlayer` · `List Concatenator` ·
+`List Indexer` · `Offsetter`
+
+### Known before the batch starts
+
+```
+Line On Line Overlayer                                  <-- worst of the set
+  params:  `groupBy` and `tolerance` have NO description at all, so they render in the
+             UI as bare camelCase keys with no label. The only non-PLATEAU action in the
+             whole schema in this state. Note the sibling `Area On Area Overlayer` has
+             the same two parameters fully described — copy from there after confirming
+             the semantics match.
+
+15 of 23 actions
+  desc:    Descriptions violate §2. Two distinct kinds, worth separating when fixing:
+             (a) Title Case imperative, needing a rewrite — Hole Counter ("Count Polygon
+                 Holes to Attribute"), Hole Extractor, Feature Duplicate Filter,
+                 Attribute Bulk Array Joiner, Attribute File Path Info Extractor.
+             (b) Otherwise fine, missing only the terminating period — Attribute Range
+                 Mapper, Date Time Converter, HTTP Caller, Geometry Coercer, and others.
+             Fix (b) mechanically; (a) needs the code read first per §"How to use".
+
+Excel Writer
+  cat:     `File`, but it is a genuine sink (`type: sink`, no output ports), so §5 wants
+             `Output`. `File` is for decompression and path utilities. Left as-is
+             pending the batch since it is filterable either way.
+
+Hole Counter
+  note:    Carries a doc comment naming a commercial product, but on a TEST function
+             inside `mod tests` (`hole_counter.rs:268`), so it does NOT reach
+             actions.json — verified. Not a §2 violation; still worth rewording.
+```
+
+### Resolved while gating
+
+- `HTTP Caller` was categorised `Web`, which is not in the §5 taxonomy and not in the UI's
+  hardcoded category filter, so it would have landed in a phantom palette group — the same
+  defect fixed for glTF/OBJ Reader in #2365. Recategorised to `Feature`: it is a processor
+  taking features in and out, enriching them with response data. §5 advises against adding
+  a category for a single action, which `Web` would have been.
+
+### Open question: the `Feature` versus `Input` split for mid-flow readers
+
+Not resolved, and it implicates a change already merged.
+
+`Feature CityGML Reader`, `Feature CityGML 2 Reader`, `Feature CityGML 3 Reader` and
+`Feature Reader` are all **processors** (`features` in, `features` out) that read a path
+taken from the incoming feature. They are not graph sources. §5 assigns "CityGML reading"
+to the `Feature` category, yet the first two are categorised `Input`:
+
+| Action | Category today | Set by |
+|---|---|---|
+| Feature CityGML Reader | `Input` | #2114, which predates the standard |
+| Feature CityGML 2 Reader | `Input` | **#2365 — I moved it `Feature`→`Input`** |
+| Feature CityGML 3 Reader | `Feature` | original |
+| Feature Reader | `Feature` | original |
+
+**The #2365 change was made for the wrong reason** — matching the sibling rather than
+checking §5, which points the other way. That is the failure mode §3.1 warns about: a
+change can satisfy consistency and still be wrong.
+
+Both directions are defensible and it needs a decision, not a unilateral fix:
+
+- **`Feature`** follows §5 as written and reflects what these actions are — mid-flow
+  processors, not sources. Requires moving two actions and reverting part of #2365.
+- **`Input`** follows where a user looks for "the thing that reads CityGML", and would
+  mean §5's `Feature` row is stale and should drop "and CityGML reading". Requires moving
+  two actions the other way.
+
+Also unresolved and in the same class: `Feature Writer` / `Feature GeoJSON Writer` are
+processors categorised `Feature` while every true sink uses `Output`.
