@@ -3309,7 +3309,7 @@ Merges area features that share the same grouping attribute values into one feat
 ### Input Ports
 * features
 ### Output Ports
-* area
+* features
 * rejected
 ### Category
 * Geometry

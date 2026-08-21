@@ -46,8 +46,6 @@ fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
 }
 
-pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
-
 /// # Attribute Accumulation Strategy
 /// Which attributes a merged feature keeps.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Default)]
@@ -95,7 +93,7 @@ impl ProcessorFactory for DissolverFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![AREA_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -491,7 +489,7 @@ impl Processor for Dissolver {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 dissolved,
-                AREA_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
         Ok(())
@@ -752,7 +750,7 @@ mod tests {
         let mut area = Vec::new();
         let mut rejected = Vec::new();
         for (port, feature) in ports.iter().zip(sent) {
-            if *port == *AREA_PORT {
+            if *port == *FEATURES_PORT {
                 area.push(feature);
             } else if *port == *REJECTED_PORT {
                 rejected.push(feature);

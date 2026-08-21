@@ -3387,7 +3387,7 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "features",
         "rejected"
       ],
       "categories": [
