@@ -141,6 +141,19 @@ func TestCMS_GetCMSProject_DeniedReturnsNotFound(t *testing.T) {
 	assert.Equal(t, wsA, rc.gotWorkspace[0])
 }
 
+func TestCMS_GetCMSProject_NonexistentProjectReturnsNotFoundWithoutAuthCheck(t *testing.T) {
+	gw := &fakeCMSGateway{}
+	rc := &recordingChecker{allow: false}
+	i := newCMSFixture(gw, rc)
+
+	proj, err := i.GetCMSProject(context.Background(), "missing")
+
+	assert.Nil(t, proj)
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	assert.Nil(t, rc.gotWorkspace, "a nonexistent project must fail out before any permission check")
+	assert.Equal(t, 1, gw.getProjectCalls, "only the entity lookup itself, no extra workspace resolution")
+}
+
 func TestCMS_ListCMSProjects_ChecksEachRequestedWorkspace(t *testing.T) {
 	wsA := accountsid.NewWorkspaceID()
 	wsB := accountsid.NewWorkspaceID()
@@ -220,6 +233,19 @@ func TestCMS_GetCMSAsset_DeniedReturnsNotFound(t *testing.T) {
 	assert.ErrorIs(t, err, rerror.ErrNotFound)
 	require.Len(t, rc.gotWorkspace, 1)
 	assert.Equal(t, wsA, rc.gotWorkspace[0])
+}
+
+func TestCMS_GetCMSAsset_NonexistentAssetReturnsNotFoundWithoutAuthCheck(t *testing.T) {
+	gw := &fakeCMSGateway{}
+	rc := &recordingChecker{allow: false}
+	i := newCMSFixture(gw, rc)
+
+	asset, err := i.GetCMSAsset(context.Background(), "missing")
+
+	assert.Nil(t, asset)
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	assert.Nil(t, rc.gotWorkspace, "a nonexistent asset must fail out before any permission check")
+	assert.Zero(t, gw.getProjectCalls, "a nonexistent asset must fail out before workspace resolution")
 }
 
 func TestCMS_ListCMSAssets_ChecksOwningWorkspaceAndDeniesFailClosed(t *testing.T) {
