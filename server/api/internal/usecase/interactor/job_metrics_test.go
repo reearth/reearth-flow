@@ -32,3 +32,8 @@ func TestJob_ActivePollerCountNilMap(t *testing.T) {
 	j := &Job{}
 	assert.Equal(t, 0, j.ActivePollerCount())
 }
+
+func TestJob_MonitoredJobCountNilMonitor(t *testing.T) {
+	j := &Job{}
+	assert.Equal(t, 0, j.MonitoredJobCount())
+}

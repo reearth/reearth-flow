@@ -79,8 +79,11 @@ func (i *Job) ActivePollerCount() int {
 }
 
 // MonitoredJobCount returns the number of jobs currently registered for
-// monitoring.
+// monitoring. Returns 0 if monitor is unset rather than panicking.
 func (i *Job) MonitoredJobCount() int {
+	if i.monitor == nil {
+		return 0
+	}
 	return i.monitor.Count()
 }
 
