@@ -507,6 +507,25 @@ impl ExtractBoundary for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Polygon2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Polygon3D {
+    /// The exterior ring's first vertex; the holes lie inside it and are not
+    /// reached.
+    fn elevation(&self) -> Option<f64> {
+        self.exterior().first().map(|c| c[2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
