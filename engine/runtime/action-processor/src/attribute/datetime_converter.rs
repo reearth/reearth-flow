@@ -26,7 +26,7 @@ impl ProcessorFactory for DateTimeConverterFactory {
     }
 
     fn description(&self) -> &str {
-        "Convert datetime values between different formats"
+        "Reads a datetime from an attribute and rewrites it in another format, either as a typed datetime value or as a formatted string or Unix timestamp."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -98,16 +98,18 @@ impl ProcessorFactory for DateTimeConverterFactory {
             DateTimeOutputFormat::UnixS | DateTimeOutputFormat::UnixMs => AttrType::Number,
         };
 
-        // `default` (success) port: the conversion succeeded, so the output
-        // attribute is Always present with the produced type.
+        // `features` port carries two kinds of feature: ones whose value converted, and ones
+        // that never had the source attribute and passed straight through (§4.3). The output
+        // attribute is therefore only *possibly* present, not guaranteed.
         let out_name = params
             .output_attribute
             .clone()
             .unwrap_or_else(|| params.attribute.clone());
         let mut default_schema = input.clone();
-        default_schema.insert(Attribute::new(out_name), AttrField::always(produced_type));
+        default_schema.insert(Attribute::new(out_name), AttrField::maybe(produced_type));
 
-        // `failed` port: the feature passes through untouched.
+        // `failed` port: the value was present but could not be parsed, so the feature is
+        // forwarded untouched.
         Some(HashMap::from([
             (FEATURES_PORT.clone(), default_schema),
             (Port::new(FAILED_PORT), input),
@@ -130,63 +132,80 @@ struct DateTimeConverter {
 }
 
 /// # Date Time Converter Parameters
+/// Selects the attribute to convert, how to interpret its current value, and the format to
+/// write back.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DateTimeConverterParam {
-    /// Attribute containing the datetime value to convert
+    /// # Source Attribute
+    /// Attribute holding the datetime to convert. Features that do not carry it pass through
+    /// unchanged.
     pub attribute: String,
-    /// Format of the input value (default: auto)
+    /// # Input Format
+    /// How to interpret the existing value. Leave unset to detect it from the value itself.
     #[serde(default)]
     pub input_format: DateTimeInputFormat,
-    /// Desired output format (default: auto).
-    /// Use `auto` to store as typed DateTime value (parser mode).
-    /// Use other formats to output as string/number (formatter mode).
+    /// # Output Format
+    /// Format to write back. Leave unset to store a typed datetime value; choose any other
+    /// format to write a string or a number instead.
     #[serde(default)]
     pub output_format: DateTimeOutputFormat,
-    /// Write result to a different attribute (leave input untouched)
-    /// Defaults to the same as `attribute`
+    /// # Output Attribute
+    /// Attribute to write the result to, leaving the source untouched. Defaults to overwriting
+    /// the source attribute.
     #[serde(default)]
     pub output_attribute: Option<String>,
 }
 
 /// Input format options for Date Time Converter
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub enum DateTimeInputFormat {
-    /// Auto-detect from known formats.
-    /// Note: Numeric values are always interpreted as Unix seconds.
-    /// For milliseconds, use the explicit `unix_ms` input format.
+    /// # Detect Automatically
+    /// Recognises the value from its own shape. A bare number is always read as Unix seconds —
+    /// choose Unix Milliseconds explicitly for millisecond timestamps.
     #[default]
     Auto,
-    /// RFC3339 / ISO 8601 format
+    /// # RFC 3339
+    /// Internet date and time format, the profile of ISO 8601 used by most APIs.
     Rfc3339,
-    /// Unix timestamp in seconds
+    /// # Unix Seconds
+    /// Seconds elapsed since 1970-01-01 UTC.
     UnixS,
-    /// Unix timestamp in milliseconds
+    /// # Unix Milliseconds
+    /// Milliseconds elapsed since 1970-01-01 UTC.
     UnixMs,
-    /// Date only format (YYYY-MM-DD)
+    /// # Date Only
+    /// Calendar date with no time part, as YYYY-MM-DD.
     Date,
-    /// Custom format using chrono format specifiers
+    /// # Custom Pattern
+    /// Field-by-field pattern, for values none of the fixed formats match.
     Custom(String),
 }
 
 /// Output format options for Date Time Converter
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub enum DateTimeOutputFormat {
-    /// Auto: Store as typed DateTime value (preserves the native variant).
-    /// Use this when you want the datetime as a proper DateTime type rather than a string.
+    /// # Typed Datetime
+    /// Stores a datetime value rather than text, keeping it comparable and sortable downstream.
     #[default]
     Auto,
-    /// RFC3339 / ISO 8601 format
+    /// # RFC 3339
+    /// Writes a string in the internet date and time format, the profile of ISO 8601 used by
+    /// most APIs.
     Rfc3339,
-    /// Unix timestamp in seconds
+    /// # Unix Seconds
+    /// Writes a number: seconds elapsed since 1970-01-01 UTC.
     UnixS,
-    /// Unix timestamp in milliseconds
+    /// # Unix Milliseconds
+    /// Writes a number: milliseconds elapsed since 1970-01-01 UTC.
     UnixMs,
-    /// Date only format (YYYY-MM-DD)
+    /// # Date Only
+    /// Writes a string holding just the calendar date, as YYYY-MM-DD.
     Date,
-    /// Custom format using chrono format specifiers
+    /// # Custom Pattern
+    /// Writes a string built from a field-by-field pattern.
     Custom(String),
 }
 
@@ -204,12 +223,13 @@ impl Processor for DateTimeConverter {
             .unwrap_or(&self.params.attribute)
             .clone();
 
-        // Get the input value
+        // A feature that simply does not carry the attribute had nothing to convert. That is a
+        // no-op, not a conversion failure, so it passes through on `features` — `failed` is for
+        // values that were present and could not be parsed. See action-standard.md §4.3.
         let input_value = match feature.get(&self.params.attribute) {
             Some(v) => v,
             None => {
-                // Attribute not found, send to failed port
-                fw.send(ctx.new_with_feature_and_port(feature, Port::new(FAILED_PORT)));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 return Ok(());
             }
         };
@@ -418,9 +438,10 @@ mod tests {
         let default = out
             .get(&FEATURES_PORT.clone())
             .expect("default port present");
+        // Maybe, not Always: features lacking `ts` now pass through here untouched (§4.3).
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
-            Some(&AttrField::always(AttrType::DateTime))
+            Some(&AttrField::maybe(AttrType::DateTime))
         );
 
         let failed = out.get(&Port::new("failed")).expect("failed port present");
@@ -434,7 +455,7 @@ mod tests {
     fn infer_unix_format_adds_number_to_output_attribute() {
         let with = with_from(json!({
             "attribute": "ts",
-            "outputFormat": "unix_s",
+            "outputFormat": "unixS",
             "outputAttribute": "epoch"
         }));
 
@@ -457,7 +478,7 @@ mod tests {
         );
         assert_eq!(
             default.fields.get(&Attribute::new("epoch".to_string())),
-            Some(&AttrField::always(AttrType::Number))
+            Some(&AttrField::maybe(AttrType::Number))
         );
 
         let failed = out.get(&Port::new("failed")).expect("failed port present");
@@ -485,7 +506,7 @@ mod tests {
             .expect("default port present");
         assert_eq!(
             default.fields.get(&Attribute::new("ts".to_string())),
-            Some(&AttrField::always(AttrType::String))
+            Some(&AttrField::maybe(AttrType::String))
         );
     }
 
@@ -840,6 +861,51 @@ mod tests {
             output_feature.get("createdAtTimestamp"),
             Some(&AttributeValue::Number(1609459200i64.into()))
         );
+    }
+
+    /// A feature that does not carry the source attribute had nothing to convert, which is a
+    /// no-op rather than a conversion failure. It must leave on `features` untouched, not on
+    /// `failed` — see action-standard.md §4.3. `failed` stays reserved for values that were
+    /// present and could not be parsed, covered by `test_invalid_datetime_goes_to_failed_port`.
+    #[test]
+    fn missing_attribute_passes_through_on_features() {
+        use crate::tests::utils::create_default_execute_context;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert(
+            "unrelated".to_string(),
+            AttributeValue::String("keep me".to_string()),
+        );
+
+        let mut processor = DateTimeConverter {
+            params: DateTimeConverterParam {
+                attribute: "createdAt".to_string(),
+                input_format: DateTimeInputFormat::Auto,
+                output_format: DateTimeOutputFormat::UnixS,
+                output_attribute: None,
+            },
+        };
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+        processor
+            .process(create_default_execute_context(&feature), &fw)
+            .unwrap();
+
+        assert_eq!(
+            noop.send_ports.lock().unwrap().as_slice(),
+            std::slice::from_ref(&*FEATURES_PORT),
+            "a feature with nothing to convert must not be routed to `failed`"
+        );
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        assert_eq!(
+            features[0].get("unrelated"),
+            Some(&AttributeValue::String("keep me".to_string())),
+            "the feature must pass through unmodified"
+        );
+        assert_eq!(features[0].get("createdAt"), None);
     }
 
     #[test]
