@@ -458,16 +458,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **64** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **69** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 64 | — |
-| Does not run in the shipped build | 22 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **16** | An engine-side §8 pass — the list below |
+| Exposed and audited | 69 | — |
+| Does not run in the shipped build | 21 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **12** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -491,41 +491,22 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 16 actions, with preliminary findings
+### Pending audit — 12 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Group B — List and feature utilities (5)
+#### Newly eligible — its port landed (1)
 
 ```
-Feature Duplicate Filter
-  desc:    "Filter Out Duplicate Features" — Title Case imperative, no period.
-  params:  ZERO parameters, while its sibling Attribute Duplicate Filter takes `filterBy`.
-             What is the dedup key? If it is whole-feature equality that must be documented;
-             if it is implicit, it likely needs a parameter. UNRESOLVED — this is the open
-             design question of the group.
-
-List Concatenator
-  desc:    No terminating period.
-  params:  all 4 of list/attribute/separateCharacter/outputAttributeName lack a `title`, so
-             they render as bare camelCase labels.
-  note:    Relevant to the retired Attribute Bulk Array Joiner — this is the targeted,
-             separator-aware version of a similar operation. Decide them together.
-
-List Indexer
-  desc:    No terminating period.
-  params:  all 4 lack a `title`.
-
-Feature CityGML 3 Reader
-  desc:    No terminating period; param block has no root description (§3.3).
-  cat:     `Feature`. See the open Feature-vs-Input question below.
-
-Feature GeoJSON Writer
-  scan:    Clean on every mechanical check. Code never read.
-  cat:     `Feature` while every true sink uses `Output` — but it is a processor, not a sink.
-             Same open question as Feature Writer.
+Elevation Extractor
+  runs:    Ported in #2384 (2026-08-21), so it now has a `#[cfg(feature = "new-geometry")]`
+             process and runs in the shipped build. That was its trigger for leaving the
+             does-not-run bucket, so it is recorded here rather than left to expire silently.
+  scan:    NOT scanned. Everything else in this list carries preliminary findings from an
+             earlier schema pass; this one was in the unported bucket then, so it has had no
+             review of any kind. Budget a full §8 pass, not a re-check.
 ```
 
 #### Group C — CSG pair and Excel Writer (3)
@@ -647,7 +628,13 @@ categories; zero tags is now explicitly valid). Consequences not yet applied:
   `Geometry Extractor`, `Geometry Remover`, `Geometry Splitter`, `Bounds Extractor`. Each needs
   the code read to judge whether an orthogonal axis exists.
 
-**3. Open question — `Feature` versus `Input` for mid-flow readers.** Unresolved, and it
+**3. Open question — `Feature` versus `Input` for mid-flow readers.** DEFERRED, deliberately
+(2026-08-21, Batch 7). Trigger to reopen: a decision on whether §5's `Feature` row keeps "and
+CityGML reading". Until then new actions of this shape stay `Feature`, which is what §5 says
+today — `Feature CityGML 3 Reader` and `Feature GeoJSON Writer` were both audited under that
+reading and left as `Feature`. Deciding it inside a batch would half-apply it, because it also
+covers `Feature CityGML Reader`, `Feature CityGML 2 Reader`, `Feature Reader` and
+`Feature Writer`, which no single batch owns. Unresolved, and it
 implicates a merged change. `Feature CityGML Reader`, `Feature CityGML 2 Reader`,
 `Feature CityGML 3 Reader` and `Feature Reader` are all **processors** (features in, features
 out) that read a path taken from the incoming feature. They are not graph sources. §5 assigns
@@ -789,6 +776,84 @@ Dissolver — kept, documentation was materially wrong
   ports:   `area` → `features` NOT done. See the Group D note: 10 workflow files, 6 of them
              committed truth fixtures, 27 edges. Its own PR.
 ```
+
+### Addendum — Batch 7, audited and exposed
+
+Group B. One action turned out to be broken rather than merely undocumented, which is the first
+time the audit has found that.
+
+```
+Feature Duplicate Filter — REWRITTEN, it could not do what its name promised
+  impl:    The dedup key was `HashSet<Feature>`, and `Feature`'s `PartialEq`/`Hash` are its
+             `id` alone (feature.rs:69-75, :91-95). Since every feature gets a fresh UUID, it
+             could only ever collapse the same feature INSTANCE arriving twice, never a content
+             duplicate. Its own test asserted this: two features with identical empty attributes
+             and different ids both survived.
+  impl:    **It was a no-op in production.** Traced the PLATEAU4 02-bldg graph: the node is
+             named `DeduplicateBuildingIds`, has a single input edge from a `Feature Filter`
+             that emits each match once, and a single output. No duplicate instance can reach
+             it. Its only observable effect was buffering every feature and re-emitting them in
+             nondeterministic `HashSet` order. Three workflows use it, all named for
+             deduplicating building ids.
+  fix:     Compares content, with an optional `filterBy` naming the attributes to compare —
+             the same parameter the sibling Attribute Duplicate Filter takes, so the pair now
+             agrees. Absent `filterBy` compares every attribute and the geometry.
+  fix:     Streams instead of accumulating: a feature leaves as it arrives, so input order is
+             preserved, only the comparison keys are held, and the missing `is_accumulating`
+             declaration (which the sibling has and this did not) stops mattering.
+  ports:   Gained `duplicate`. Safe to add here rather than a data-loss change: before the fix
+             nothing was ever discarded, and after it the discarded features would have been
+             dropped anyway, so an unwired port preserves the outcome either way.
+  note:    The key is a serialization of the values, not a join. The sibling joins on "," and
+             so lets `{a: "1", b: "2"}` collide with `{a: "1,2"}`, and drops absent attributes
+             via `flat_map`; both are covered by regression tests here. **The sibling still has
+             both defects — it is in Group F.**
+
+List Concatenator · List Indexer — kept, metadata plus two accuracy fixes
+  impl:    Both clean, and both handle §4.3 correctly already: a missing attribute, a
+             non-array, and an out-of-range index all pass through unchanged.
+  desc:    List Indexer claimed the copied attributes "become the main attributes of a
+             feature". They are merged in — existing attributes survive and only same-named
+             ones are overwritten. List Concatenator never mentioned that elements which are
+             not key-value pairs, or which lack the attribute, are silently skipped, so a
+             five-element list can yield three joined values with no indication.
+  params:   All eight parameters lacked a `title` (§3.3). Renamed for §3.1 and to make the two
+             siblings agree: `listAttribute`→`list`, `listIndexToCopy`→`index`,
+             `separateCharacter`→`separator` (now optional, defaulting to ","),
+             `outputAttributeName`→`outputAttribute`, `attribute`→`elementAttribute`.
+             ⚠️ `listAttribute` is ALSO a parameter of PLATEAU4/6.SolidIntersectionTestPairCreator
+             and `listAttributeName` belongs to CSG Builder, so the fixture sweep had to be
+             scoped to each action's own `with:` block. A blanket replace corrupts three other
+             actions.
+  cat:     `Feature` → `Attribute`. Both read an attribute and write attributes, which is what
+             §5 assigns to `Attribute`; List Indexer is Attribute Flattener's operation
+             restricted to one index. The `list` tag now joins them to List Exploder, which is
+             `Transform` — exactly the cross-category linking §6 exists for.
+
+Feature CityGML 3 Reader — kept, tags and text
+  impl:    All six parameters traced through to `build_features`. Clean.
+  desc:    No terminating period, and it never said that the attributes of the feature naming a
+             file are carried onto the features parsed from it — that was a code comment only.
+  tags:    Had NONE, while both sibling readers carry `citygml` and `3d`. Now matches them.
+  params:  Block had no root description (§3.3).
+
+Feature GeoJSON Writer — kept, one substantive documentation fix
+  impl:    Well built; the sandbox gate is applied at flush time.
+  desc:    It emits ONE FEATURE PER FILE WRITTEN, carrying that file's path — not the features
+             it received. Nothing said so, so anyone wiring `features` onward got something
+             other than what they sent. Same class as Dissolver's undocumented constraints.
+  params:  Block title was "FeatureGeoJsonWriter Parameters" — the struct name, leaked.
+  i18n:    It had NO translated description in any of the four languages; the key was absent
+             rather than stale. Added.
+```
+
+**i18n note carried forward.** The es/ja/zh descriptions of `Feature Duplicate Filter`,
+`List Indexer` and `List Concatenator` all described behaviour that was wrong or is now wrong
+("removes duplicate features", "become the main attributes"). That is the second batch running
+in which the translated text was less accurate than the English. Also found while here, and NOT
+fixed because it is out of scope: `Coordinate Frame Reprojector` — audited and exposed in
+#2394 — has no `description` key in any i18n file, so it ships untranslated in all four
+languages. Same for `PLATEAU6.MissingAttributeDetector` and `PLATEAU6.ObjectListExtractor`.
 
 ### Addendum — Batch 5, audited and exposed
 

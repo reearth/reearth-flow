@@ -1224,10 +1224,11 @@
     },
     {
       "name": "Feature CityGML 3 Reader",
-      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取每个输入地物所指向的 CityGML 3.0 文件，并解析所有已读取文件之间的 gml:id 引用和 xlink:href 链接。指定文件的地物的属性会被带到由该文件生成的地物上。",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 3 Reader Parameters"
+          "title": "Feature CityGML 3 Reader Parameters",
+          "description": "要读取的文件，以及其元素如何转换为地物属性。"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性键",
@@ -1315,7 +1316,17 @@
     },
     {
       "name": "Feature Duplicate Filter",
-      "description": "移除重复要素"
+      "description": "转发每个不同值的第一个地物，并将重复该值的地物分离出来。除非指定要比较的属性，否则按地物的全部内容进行比较。",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Duplicate Filter Parameters",
+          "description": "Which features count as repeats of one another."
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry."
+        }
+      }
     },
     {
       "name": "Feature File Path Extractor",
@@ -1367,10 +1378,11 @@
     },
     {
       "name": "Feature GeoJSON Writer",
+      "description": "将接收到的地物按解析出的每个输出路径写入 GeoJSON 文件，然后为每个已写入的文件输出一个携带该文件路径的地物。",
       "parameterI18n": {
         "": {
           "title": "FeatureGeoJsonWriter Parameters",
-          "description": "Configuration for writing features to GeoJSON files."
+          "description": "Where the GeoJSON is written, and what is declared about its coordinates."
         },
         "output": {
           "title": "Output",
@@ -2432,23 +2444,27 @@
     },
     {
       "name": "List Concatenator",
-      "description": "从列表的每个元素中提取特定属性，并将其连接成单个字符串",
+      "description": "将列表属性中每个元素的某一个属性值连接成单个字符串。非键值对的元素，以及缺少该属性的元素将被跳过。",
       "parameterI18n": {
         "": {
           "title": "List Concatenator Parameters",
-          "description": "Configuration for concatenating a specific attribute from list elements."
+          "description": "Which list to read, which attribute to take from its elements, and where the result goes."
         },
-        "attribute": {
-          "description": "Attribute name to extract from each list element"
+        "elementAttribute": {
+          "title": "Element Attribute",
+          "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing."
         },
         "list": {
-          "description": "List attribute to read from"
+          "title": "List",
+          "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged."
         },
-        "outputAttributeName": {
-          "description": "Name of the attribute to store the concatenated result"
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Attribute the joined string is written to."
         },
-        "separateCharacter": {
-          "description": "Character(s) to use as separator between concatenated values"
+        "separator": {
+          "title": "Separator",
+          "description": "Text placed between consecutive values. Defaults to a comma."
         }
       }
     },
@@ -2468,23 +2484,27 @@
     },
     {
       "name": "List Indexer",
-      "description": "将特定列表元素的属性复制为要素的主要属性",
+      "description": "将列表属性中某一个元素的键值对复制到地物本身，同名属性将被覆盖，其余属性保持不变。",
       "parameterI18n": {
         "": {
           "title": "List Indexer Parameters",
-          "description": "Configuration for copying attributes from a specific list element to main feature attributes."
+          "description": "Which list to read, which of its elements to copy, and how to name what is copied."
         },
         "copiedAttributePrefix": {
-          "description": "Optional prefix to add to copied attribute names"
+          "title": "Copied Attribute Prefix",
+          "description": "Text placed before each copied attribute name. Omitted by default."
         },
         "copiedAttributeSuffix": {
-          "description": "Optional suffix to add to copied attribute names"
+          "title": "Copied Attribute Suffix",
+          "description": "Text placed after each copied attribute name. Omitted by default."
         },
-        "listAttribute": {
-          "description": "List attribute to read from"
+        "index": {
+          "title": "Index",
+          "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged."
         },
-        "listIndexToCopy": {
-          "description": "Index of the list element to copy (0-based)"
+        "list": {
+          "title": "List",
+          "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged."
         }
       }
     },
