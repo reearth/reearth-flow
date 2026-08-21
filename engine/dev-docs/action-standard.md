@@ -244,7 +244,7 @@ Tags exist to cut **across** categories. The category is where a user browses; a
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `excel`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
 Some vocabulary entries share a name with a category (`geometry`, `filter`, `file`, `debug`, `attribute`). Those are valid only *outside* the matching category, where they still cut across — `geometry` on `Dimension Filter` and `file` on `Zip File Writer` both earn their place; `file` on a `File` action does not.
 
@@ -318,6 +318,10 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-21 (later)
+
+- **§6** — added `excel` to the established tag vocabulary. Every audited reader and writer carries its format as a tag (`csv`, `json`, `geojson`, `shapefile`, `geopackage`), and `Excel Writer` had no term to draw on. No past verdict changes.
 
 ### 2026-08-21
 

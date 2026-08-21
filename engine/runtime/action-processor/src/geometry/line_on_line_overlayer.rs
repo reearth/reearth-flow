@@ -52,6 +52,9 @@ use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
 
+/// The attribute the overlap count lands in when the parameter is omitted.
+const DEFAULT_OVERLAP_COUNT_ATTRIBUTE: &str = "overlayCount";
+
 #[derive(Debug, Clone, Default)]
 pub struct LineOnLineOverlayerFactory;
 
@@ -61,10 +64,10 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
     }
 
     fn description(&self) -> &str {
-        "Splits lines where they cross and turns each intersection into a point feature carrying \
-         the merged attributes of the lines that meet there. Inputs must be flat 2D geometries \
-         sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame \
-         Reprojector upstream to flatten or unify them."
+        "Splits lines where they cross, recording on each resulting segment how many input \
+         lines run along it, and emits every crossing as a point feature. Inputs must be flat 2D \
+         geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate \
+         Frame Reprojector upstream to flatten or unify them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -73,6 +76,10 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Geometry"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "aggregation"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -110,9 +117,10 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         Ok(Box::new(LineOnLineOverlayer {
             group_by: params.group_by,
             tolerance: params.tolerance,
-            overlaid_lists_attr_name: params
-                .overlaid_lists_attr_name
-                .unwrap_or_else(|| "overlaidLists".to_string()),
+            output_attribute: params
+                .output_attribute
+                .unwrap_or_else(|| DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()),
+            list_attribute: params.list_attribute,
             group_map: HashMap::new(),
             #[cfg(feature = "new-geometry")]
             group_frame: HashMap::new(),
@@ -126,21 +134,43 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 }
 
 /// # Line On Line Overlayer Parameters
-///
-/// Configuration for finding intersection points between line features.
+/// Sets which lines are crossed against each other, how far apart two vertices
+/// may be and still count as one, and what the resulting segments record about
+/// the lines they came from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
-    group_by: Option<Vec<Attribute>>,
+    /// # Tolerance
+    /// Distance below which two vertices are treated as the same point, in the
+    /// unit of the input's coordinate frame. It decides which crossings split a
+    /// line, which crossings are the same crossing, and which segments coincide;
+    /// segments shorter than it are dropped. Must be greater than zero, or no
+    /// line is ever split.
     tolerance: f64,
-    /// Name of the attribute to store the overlaid lists. Defaults to "overlaidLists".
-    overlaid_lists_attr_name: Option<String>,
+
+    /// # Group By Attributes
+    /// Attributes whose values decide which lines are crossed against each
+    /// other — only lines matching on all of them are compared. When omitted,
+    /// every line is crossed against every other.
+    group_by: Option<Vec<Attribute>>,
+
+    /// # Overlap Count Attribute
+    /// Attribute that receives the number of input lines running along the
+    /// resulting segment. Defaults to `overlayCount`.
+    output_attribute: Option<String>,
+
+    /// # List Attribute
+    /// Attribute that receives one entry per line running along the resulting
+    /// segment, each holding that line's own attributes. When omitted, no list
+    /// is written.
+    list_attribute: Option<String>,
 }
 
 pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
-    overlaid_lists_attr_name: String,
+    output_attribute: String,
+    list_attribute: Option<String>,
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
     /// The coordinate frame every member of a group must share, fixed by the
@@ -171,7 +201,8 @@ impl Clone for LineOnLineOverlayer {
         Self {
             group_by: self.group_by.clone(),
             tolerance: self.tolerance,
-            overlaid_lists_attr_name: self.overlaid_lists_attr_name.clone(),
+            output_attribute: self.output_attribute.clone(),
+            list_attribute: self.list_attribute.clone(),
             group_map: HashMap::new(),
             #[cfg(feature = "new-geometry")]
             group_frame: HashMap::new(),
@@ -361,7 +392,8 @@ impl Processor for LineOnLineOverlayer {
                 &group_dir,
                 self.tolerance,
                 self.group_by.as_deref(),
-                &self.overlaid_lists_attr_name,
+                &self.output_attribute,
+                self.list_attribute.as_deref(),
                 &mut line_writer,
                 &mut point_writer,
             )?;
@@ -679,7 +711,8 @@ fn process_group<W: Write>(
     group_dir: &Path,
     tolerance: f64,
     group_by: Option<&[Attribute]>,
-    overlaid_lists_attr_name: &str,
+    output_attribute: &str,
+    list_attribute: Option<&str>,
     line_writer: &mut W,
     point_writer: &mut W,
 ) -> Result<(usize, usize), BoxedError> {
@@ -747,37 +780,37 @@ fn process_group<W: Write>(
 
         let mut attributes = Attributes::new();
         attributes.insert(
-            Attribute::new("overlayCount"),
+            Attribute::new(output_attribute),
             AttributeValue::Number(Number::from(source_feature_idxs.len())),
         );
 
-        let mut overlaid_list: Vec<AttributeValue> = Vec::with_capacity(source_feature_idxs.len());
-        for &fi in source_feature_idxs {
-            let attrs = &attributes_by_feature[fi];
-            let attrs_map: HashMap<String, AttributeValue> = attrs
-                .as_ref()
-                .iter()
-                .map(|(k, v)| (k.clone().inner(), v.clone()))
-                .collect();
-            overlaid_list.push(AttributeValue::Map(attrs_map));
+        if let Some(list_attribute) = list_attribute {
+            let mut overlaid_list: Vec<AttributeValue> =
+                Vec::with_capacity(source_feature_idxs.len());
+            for &fi in source_feature_idxs {
+                let attrs = &attributes_by_feature[fi];
+                let attrs_map: HashMap<String, AttributeValue> = attrs
+                    .as_ref()
+                    .iter()
+                    .map(|(k, v)| (k.clone().inner(), v.clone()))
+                    .collect();
+                overlaid_list.push(AttributeValue::Map(attrs_map));
+            }
+            attributes.insert(
+                Attribute::new(list_attribute),
+                AttributeValue::Array(overlaid_list),
+            );
         }
-        attributes.insert(
-            Attribute::new(overlaid_lists_attr_name),
-            AttributeValue::Array(overlaid_list),
-        );
 
+        // A grouping attribute the source line never carried is an absence, not
+        // a failure: it is carried forward as absent rather than failing the
+        // run, which is what `process` already assumed when it grouped the
+        // feature without it.
         if let Some(group_by) = group_by {
-            let first_fi = source_feature_idxs[0];
-            let first_attrs = &attributes_by_feature[first_fi];
+            let first_attrs = &attributes_by_feature[source_feature_idxs[0]];
             for gb in group_by {
                 if let Some(value) = first_attrs.get(gb) {
                     attributes.insert(gb.clone(), value.clone());
-                } else {
-                    return Err(Box::new(
-                        GeometryProcessorError::LineOnLineOverlayerFactory(
-                            "Group by attribute not found in feature".to_string(),
-                        ),
-                    ));
                 }
             }
         }
@@ -1710,7 +1743,8 @@ mod tests {
             &group_dir,
             0.01,
             None,
-            "overlaidLists",
+            DEFAULT_OVERLAP_COUNT_ATTRIBUTE,
+            Some("overlaidLists"),
             &mut line_buf,
             &mut point_buf,
         )
@@ -1741,7 +1775,8 @@ mod tests {
         let mut overlayer = LineOnLineOverlayer {
             group_by: None,
             tolerance: 0.0,
-            overlaid_lists_attr_name: "overlaidLists".to_string(),
+            output_attribute: DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string(),
+            list_attribute: None,
             group_map: HashMap::new(),
             group_frame: HashMap::new(),
             group_count: 0,
@@ -1920,13 +1955,94 @@ mod tests {
             &group_dir,
             0.01,
             None,
-            "overlaidLists",
+            DEFAULT_OVERLAP_COUNT_ATTRIBUTE,
+            Some("overlaidLists"),
             &mut line_buf,
             &mut point_buf,
         )
         .unwrap();
         assert_eq!(lc, 4);
         assert_eq!(pc, 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Writes one group to disk and overlays it, returning the group directory
+    /// alongside the result of the overlay.
+    fn run_group(
+        features: &[Feature],
+        group_by: Option<&[Attribute]>,
+    ) -> (PathBuf, Result<(usize, usize), BoxedError>) {
+        let dir =
+            engine_cache_dir(uuid::Uuid::nil()).join(format!("test-lol-{}", uuid::Uuid::new_v4()));
+        let group_dir = dir.join("group_000000");
+        std::fs::create_dir_all(&group_dir).unwrap();
+        {
+            let mut w = BufWriter::new(File::create(group_dir.join("aabbs.jsonl")).unwrap());
+            for f in features {
+                let (aabbs, _) = intake(f.geometry.as_ref()).unwrap();
+                writeln!(w, "{}", serde_json::to_string(&aabbs).unwrap()).unwrap();
+            }
+            w.flush().unwrap();
+        }
+        {
+            let mut w = BufWriter::new(File::create(group_dir.join("features.jsonl")).unwrap());
+            for f in features {
+                writeln!(w, "{}", serde_json::to_string(f).unwrap()).unwrap();
+            }
+            w.flush().unwrap();
+        }
+        let mut line_buf: Vec<u8> = Vec::new();
+        let mut point_buf: Vec<u8> = Vec::new();
+        let result = process_group(
+            &group_dir,
+            0.01,
+            group_by,
+            DEFAULT_OVERLAP_COUNT_ATTRIBUTE,
+            None,
+            &mut line_buf,
+            &mut point_buf,
+        );
+        (dir, result)
+    }
+
+    fn crossing_pair() -> [Feature; 2] {
+        [
+            Feature::from(line(vec![[0.0, 0.0], [5.0, 5.0]])),
+            Feature::from(line(vec![[0.0, 5.0], [5.0, 0.0]])),
+        ]
+    }
+
+    #[test]
+    fn a_line_missing_a_grouping_attribute_does_not_fail_the_run() {
+        // Neither line carries `surfaceId`. `process` admits such a feature to a
+        // group without it, so `finish` must carry the absence forward rather
+        // than failing: the two halves used to disagree and this returned Err,
+        // taking the whole run down with it.
+        let group_by = [Attribute::new("surfaceId")];
+        let (dir, result) = run_group(&crossing_pair(), Some(&group_by));
+        let (lc, pc) = result.expect("an absent grouping attribute is not a failure");
+        assert_eq!((lc, pc), (4, 1));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_grouping_attribute_the_line_carries_is_copied_onto_its_segments() {
+        let group_by = [Attribute::new("surfaceId")];
+        let features: Vec<Feature> = crossing_pair()
+            .into_iter()
+            .map(|mut f| {
+                f.attributes_mut().insert(
+                    Attribute::new("surfaceId"),
+                    AttributeValue::String("s1".to_string()),
+                );
+                f
+            })
+            .collect();
+        let (dir, result) = run_group(&features, Some(&group_by));
+        let (lc, _) = result.unwrap();
+        assert_eq!(lc, 4);
 
         let _ = std::fs::remove_dir_all(&dir);
     }
