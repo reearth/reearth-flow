@@ -2,7 +2,7 @@ package postgres_test
 
 import (
 	"context"
-	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -47,6 +47,27 @@ func explainPlan(t *testing.T, ctx context.Context, query func(ctx context.Conte
 	plan, err := query(ctx, explain)
 	require.NoError(t, err)
 	return plan
+}
+
+// indexScanRegexp matches any scan-node variant (forward, backward,
+// index-only, or bitmap) that names the given index, since the planner may
+// pick any of them over a plain "Index Scan" while still using the index.
+func indexScanRegexp(indexName string) *regexp.Regexp {
+	name := regexp.QuoteMeta(indexName)
+	return regexp.MustCompile(`(?:Index(?: Only)? Scan(?: Backward)? using|Bitmap Index Scan on) ` + name + `\b`)
+}
+
+// fullSortRegexp matches a plain "Sort" plan node but not "Incremental
+// Sort", which still relies on the index for a presorted prefix.
+var fullSortRegexp = regexp.MustCompile(`(?m)^\s*(?:->\s*)?(Incremental )?Sort\s+\(cost=`)
+
+func hasFullSort(plan string) bool {
+	for _, m := range fullSortRegexp.FindAllStringSubmatch(plan, -1) {
+		if m[1] == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func TestListQueries_UseCompositeIndexes(t *testing.T) {
@@ -112,9 +133,9 @@ func TestListQueries_UseCompositeIndexes(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			plan := explainPlan(t, ctx, query, tc.sql)
-			assert.Contains(t, plan, fmt.Sprintf("Index Scan using %s", tc.indexName), "plan should use %s:\n%s", tc.indexName, plan)
+			assert.Regexp(t, indexScanRegexp(tc.indexName), plan, "plan should use %s:\n%s", tc.indexName, plan)
 			assert.NotContains(t, plan, "Seq Scan", "plan should not fall back to a sequential scan:\n%s", plan)
-			assert.NotContains(t, plan, "Sort ", "index should satisfy ORDER BY without a separate sort step:\n%s", plan)
+			assert.False(t, hasFullSort(plan), "index should satisfy ORDER BY without a full sort step:\n%s", plan)
 		})
 	}
 }
