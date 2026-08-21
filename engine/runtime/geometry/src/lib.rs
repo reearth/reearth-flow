@@ -68,7 +68,7 @@ use ops::{
 // be in scope here.
 use ops::Split;
 #[cfg(feature = "new-geometry")]
-use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+use ops::{Area, Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -210,7 +210,8 @@ impl GeometryCollection {
         CountHoles,
         ExtractHoles,
         ExtractBoundary,
-        Footprint
+        Footprint,
+        Area
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -269,7 +270,8 @@ pub enum Euclidean2DGeometry {
         CountHoles,
         ExtractHoles,
         ExtractBoundary,
-        Footprint
+        Footprint,
+        Area
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -316,6 +318,54 @@ impl BoundingBox for GeometryCollection {
                 operation: "bounding_box",
             },
         )
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for Geometry {
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        match self {
+            // An absent geometry encloses nothing. Unlike `bounding_box`, which
+            // refuses because there is no box to give, there is a correct number
+            // here — and the action's promise is that the attribute is always
+            // written.
+            Geometry::None => Ok(0.0),
+            Geometry::Euclidean2D(g) => g.projected_area(),
+            Geometry::Euclidean3D(g) => g.projected_area(),
+            Geometry::GeometryCollection(c) => c.projected_area(),
+        }
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        match self {
+            Geometry::None => Ok(0.0),
+            Geometry::Euclidean2D(g) => g.surface_area(),
+            Geometry::Euclidean3D(g) => g.surface_area(),
+            Geometry::GeometryCollection(c) => c.surface_area(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for GeometryCollection {
+    /// The measurable members' areas, summed across dimensions and frames.
+    /// Members sitting in different frames are summed anyway; the caller is
+    /// told through [`area_report`](ops::area::area_report) that the sum mixes
+    /// units.
+    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.projected_area().ok())
+            .sum())
+    }
+
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
     }
 }
 

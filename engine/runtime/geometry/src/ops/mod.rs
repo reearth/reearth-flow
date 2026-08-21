@@ -6,7 +6,11 @@
 //! [`unsupported!`](crate::unsupported) macro. The traits are
 //! `#[enum_dispatch]`, so a call on `Geometry` / `Euclidean{2,3}DGeometry`
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
-//! `Collection`s recurse by hand over their children.
+//! `Collection`s recurse by hand over their children. Some traits transform a
+//! geometry; others, like [`Area`](area::Area), only measure it.
+
+#[cfg(feature = "new-geometry")]
+pub mod area;
 
 pub mod boundary;
 pub mod coerce;
@@ -16,6 +20,9 @@ pub mod hole;
 pub mod reproject;
 pub mod split;
 pub mod triangulation;
+
+#[cfg(feature = "new-geometry")]
+pub use area::{area_report, Area, AreaFrame, AreaReport};
 
 pub(crate) use boundary::{
     container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
