@@ -370,7 +370,7 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(context.WithoutCancel(ctx), j.ID())
+			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 			if err != nil {
 				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
 				continue
