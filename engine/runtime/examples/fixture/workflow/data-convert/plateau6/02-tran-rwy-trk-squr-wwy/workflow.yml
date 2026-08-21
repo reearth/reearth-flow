@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 653e2dba-2113-4351-b50c-861a2c26eea0
+name: "PLATEAU6-DataConvert-02-tran-workflow"
+entryGraphId: 6058bda7-db22-4c23-8c40-f8fcb91e6d22
+with:
+  cityGmlPath:
+graphs:
+  - id: 6058bda7-db22-4c23-8c40-f8fcb91e6d22
+    name: entry_point
+    nodes:
+      - id: 290a0b62-5165-4981-9463-ab67b51b4ffa
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city_gml_path": variables["cityGmlPath"],
+                },
+              ]
+
+      - id: 348477a8-6253-42b2-8cc1-308e3592015a
+        name: FilePathExtractor
+        type: action
+        action: Feature File Path Extractor
+        with:
+          sourceDataset:
+            type: flowExpr
+            value: attributes["city_gml_path"]
+          extractArchive: true
+
+      - id: a7668d0d-2f24-4a89-ae69-49258fd9fdc7
+        name: GmlFileFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
+              outputPort: features
+
+      - id: aef40c4c-350e-4fe4-af37-ffe33b885f56
+        name: FeatureReaderByCityGml
+        type: action
+        action: Feature CityGML 3 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
+
+      - id: aef63371-49d5-484b-bdca-0e4f00520526
+        name: TwoDimensionForcer
+        type: action
+        action: Two Dimension Forcer
+
+      - id: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
+        name: MVTWriter
+        type: action
+        action: MVT Writer
+        with:
+          schemaKey: __citygml_feature_type
+          layerName:
+            type: flowExpr
+            value: attributes["__citygml_feature_type"].split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output:
+            type: string
+            value: tran
+
+    edges:
+      - id: 70e3d5c3-bb1e-4528-ac75-778a502fbf83
+        from: 290a0b62-5165-4981-9463-ab67b51b4ffa
+        to: 348477a8-6253-42b2-8cc1-308e3592015a
+        fromPort: features
+        toPort: features
+      - id: 25ff64b5-9ba3-439c-9a06-9bfafa535385
+        from: 348477a8-6253-42b2-8cc1-308e3592015a
+        to: a7668d0d-2f24-4a89-ae69-49258fd9fdc7
+        fromPort: features
+        toPort: features
+      - id: 157cd4ca-0327-48f1-9814-d537cabf3bbb
+        from: a7668d0d-2f24-4a89-ae69-49258fd9fdc7
+        to: aef40c4c-350e-4fe4-af37-ffe33b885f56
+        fromPort: features
+        toPort: features
+      - id: fd361741-bc46-4ec2-bad9-63e451cbdc8c
+        from: aef40c4c-350e-4fe4-af37-ffe33b885f56
+        to: aef63371-49d5-484b-bdca-0e4f00520526
+        fromPort: features
+        toPort: features
+      - id: 79682e87-8ded-46ab-9f3f-2e389150786b
+        from: aef63371-49d5-484b-bdca-0e4f00520526
+        to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
+        fromPort: features
+        toPort: features

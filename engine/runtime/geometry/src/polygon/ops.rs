@@ -482,6 +482,31 @@ impl Footprint for Polygon3D {
     }
 }
 
+use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
+
+// A face is bounded by its own rings, exterior first, each kept verbatim. A face
+// with no exterior ring encloses nothing, so there is nothing to bound. That is
+// the one case where a face itself has no boundary to give.
+impl ExtractBoundary for Polygon2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let mut lines = Vec::new();
+        push_face_lines_2d(self, &mut lines);
+        wrap_2d(lines)
+            .map(Boundary::Bounded)
+            .ok_or_else(unbounded::<Self>)
+    }
+}
+
+impl ExtractBoundary for Polygon3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let mut lines = Vec::new();
+        push_face_lines_3d(self, &mut lines);
+        wrap_3d(lines)
+            .map(Boundary::Bounded)
+            .ok_or_else(unbounded::<Self>)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

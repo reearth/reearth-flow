@@ -756,7 +756,7 @@ graphs:
   - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
     to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
-    fromPort: area
+    fromPort: features
     toPort: features
   - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
     from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c

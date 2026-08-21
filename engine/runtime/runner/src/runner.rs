@@ -3,6 +3,7 @@ use std::{collections::HashMap, env, str::FromStr, sync::Arc, time::Instant};
 use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runtime::{
     event::EventHandler, incremental::IncrementalRunConfig, node::NodeKind, shutdown,
 };
@@ -38,6 +39,18 @@ fn reject_unsandboxed_sentinel(sandbox_root: &Uri) -> Result<(), crate::errors::
     Ok(())
 }
 
+/// Legacy-compat: converts a non-empty `failed_nodes` in `Ok` back into `Err`.
+pub(crate) fn summary_into_unit_result(summary: RunSummary) -> Result<(), crate::errors::Error> {
+    match summary.failed_nodes.first() {
+        None => Ok(()),
+        Some(first) => Err(crate::errors::Error::FailedNodes(format!(
+            "{} node(s) failed; first: {}",
+            summary.failed_nodes.len(),
+            first.message
+        ))),
+    }
+}
+
 pub struct Runner;
 
 #[allow(clippy::too_many_arguments)]
@@ -62,6 +75,7 @@ impl Runner {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         // Bypass `run_with_sandbox_root`'s sentinel guard — this entrypoint
         // intentionally requests the unsandboxed mode.
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -74,6 +88,7 @@ impl Runner {
             vec![],
             sandbox_root,
         )
+        .and_then(summary_into_unit_result)
     }
 
     /// Run a workflow with a sandboxed output path.
@@ -94,6 +109,35 @@ impl Runner {
         incremental_run_config: Option<IncrementalRunConfig>,
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
+        reject_unsandboxed_sentinel(&sandbox_root)?;
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
+        Self::run_with_event_handler(
+            job_id,
+            workflow,
+            factories,
+            logger_factory,
+            storage_resolver,
+            ingress_state,
+            feature_state,
+            incremental_run_config,
+            vec![],
+            sandbox_root,
+        )
+        .and_then(summary_into_unit_result)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_with_sandbox_root_returning_summary(
+        job_id: uuid::Uuid,
+        workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
+        logger_factory: Arc<LoggerFactory>,
+        storage_resolver: Arc<StorageResolver>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
+        sandbox_root: Uri,
+    ) -> Result<RunSummary, crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
         Self::run_with_event_handler(
             job_id,
@@ -121,7 +165,7 @@ impl Runner {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), crate::errors::Error> {
+    ) -> Result<RunSummary, crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(*ASYNC_WORKER_NUM)
             .enable_all()
@@ -170,11 +214,17 @@ impl Runner {
                 .await
         });
 
-        if let Err(e) = &result {
-            error!(parent: &span, "Failed to workflow: {:?}", e);
-            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
-        } else {
-            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+        match &result {
+            Err(e) => {
+                error!(parent: &span, "Failed to workflow: {:?}", e);
+                info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
+            Ok(summary) if !summary.failed_nodes.is_empty() => {
+                info!(parent: &span, "Finish workflow = {:?} (completed with {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
+            }
+            Ok(_) => {
+                info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
         }
         result
     }
@@ -202,6 +252,7 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -215,6 +266,7 @@ impl AsyncRunner {
             sandbox_root,
         )
         .await
+        .and_then(summary_into_unit_result)
     }
 
     /// Run a workflow with a sandboxed output path.
@@ -236,6 +288,7 @@ impl AsyncRunner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -249,6 +302,7 @@ impl AsyncRunner {
             sandbox_root,
         )
         .await
+        .and_then(summary_into_unit_result)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -263,7 +317,7 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), crate::errors::Error> {
+    ) -> Result<RunSummary, crate::errors::Error> {
         let start = Instant::now();
         let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
@@ -299,11 +353,17 @@ impl AsyncRunner {
                 sandbox_root,
             )
             .await;
-        if let Err(e) = &result {
-            error!("Failed to workflow: {:?}", e);
-            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
-        } else {
-            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+        match &result {
+            Err(e) => {
+                error!("Failed to workflow: {:?}", e);
+                info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
+            Ok(summary) if !summary.failed_nodes.is_empty() => {
+                info!(parent: &span, "Finish workflow = {:?} (completed with {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
+            }
+            Ok(_) => {
+                info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
         }
         result
     }
@@ -328,5 +388,42 @@ mod tests {
         assert!(reject_unsandboxed_sentinel(&uri).is_ok());
         let uri = Uri::from_str("gs://bucket/job").unwrap();
         assert!(reject_unsandboxed_sentinel(&uri).is_ok());
+    }
+
+    #[test]
+    fn summary_into_unit_result_ok_on_empty_failed_nodes() {
+        let summary = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        assert!(summary_into_unit_result(summary).is_ok());
+    }
+
+    #[test]
+    fn summary_into_unit_result_err_on_one_failed_node() {
+        use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+        let failed = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message("boom"),
+            Some("node-1".to_string()),
+            Some("Some Action".to_string()),
+            None,
+        );
+        let summary = RunSummary {
+            failed_nodes: vec![failed],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        let err = summary_into_unit_result(summary).unwrap_err();
+        let display = err.to_string();
+        assert!(
+            display.contains("boom"),
+            "expected error to contain the diagnostic message, got: {display}"
+        );
+        assert!(
+            display.contains('1'),
+            "expected error to contain the failed-node count, got: {display}"
+        );
     }
 }

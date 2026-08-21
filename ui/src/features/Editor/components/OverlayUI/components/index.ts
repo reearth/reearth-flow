@@ -9,5 +9,6 @@ export { default as Homebar } from "./Homebar";
 export { default as ActionBar } from "./ActionBar";
 export { default as DebugActionBar } from "./DebugActionBar";
 export { default as VersionDialog } from "./Version";
+export { default as ProjectRecoveryDialog } from "./Version/RecoveryDialog";
 export { default as SearchActionBar } from "./SearchActionBar";
 export { default as LockedBadge } from "./LockedBadge";

@@ -2,8 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "JobCompleteEvent",
   "type": "object",
-  "required": ["jobId", "result", "timestamp", "workflowId"],
+  "required": [
+    "jobId",
+    "result",
+    "timestamp",
+    "workflowId"
+  ],
   "properties": {
+    "workflowId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "jobId": {
       "type": "string",
       "format": "uuid"
@@ -15,15 +24,159 @@
       "type": "string",
       "format": "date-time"
     },
-    "workflowId": {
-      "type": "string",
-      "format": "uuid"
+    "failedNodes": {
+      "description": "Absent = no RunSummary was produced; empty = one was, with none recorded — never infer job failure from either. Fatality reads from `effectiveDisposition`, not `severity`.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/WireDiagnostic"
+      }
+    },
+    "aggregatedDiagnostics": {
+      "description": "Never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract as `failedNodes`.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/WireDiagnostic"
+      }
+    },
+    "droppedEventCount": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
     }
   },
   "definitions": {
     "JobResult": {
       "type": "string",
-      "enum": ["success", "failed"]
+      "enum": [
+        "success",
+        "failed"
+      ]
+    },
+    "WireDiagnostic": {
+      "description": "Enums are carried as `snake_case` strings rather than tagged JSON, so unknown/newer values survive a Go round-trip instead of failing to deserialize.",
+      "type": "object",
+      "required": [
+        "category",
+        "code",
+        "message",
+        "severity"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "effectiveDisposition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nodeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actionType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "featureId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "message": {
+          "type": "string"
+        },
+        "help": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceSpan": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WireSourceSpan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "aggregated": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WireAggregateInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "WireSourceSpan": {
+      "type": "object",
+      "required": [
+        "offset"
+      ],
+      "properties": {
+        "offset": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0.0
+        },
+        "length": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
+        }
+      }
+    },
+    "WireAggregateInfo": {
+      "type": "object",
+      "required": [
+        "count",
+        "sampleFeatureIds"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "sampleFeatureIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
     }
   }
 }

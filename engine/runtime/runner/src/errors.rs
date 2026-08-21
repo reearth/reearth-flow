@@ -41,4 +41,12 @@ pub enum Error {
         "sandbox_root `file:///` is reserved as the `Runner::run` (unsandboxed) sentinel and must not be used with `run_with_sandbox_root`"
     )]
     UnsandboxedSentinelRejected,
+    /// Legacy-compat: "the run completed but one or more nodes failed" (not
+    /// `ExecutionError::{Source,Processor,Sink}` since the failed node's kind is arbitrary).
+    #[error("{0}")]
+    FailedNodes(String),
+    /// The workflow's `errorPolicy` failed validation, compilation, or
+    /// node-selector matching; messages collected one per line.
+    #[error("workflow errorPolicy is invalid:\n{0}")]
+    PolicyValidationError(String),
 }

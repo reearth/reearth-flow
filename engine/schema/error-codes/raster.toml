@@ -1,0 +1,13 @@
+[[codes]]
+code = "raster.texture_assignment_failed"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped assigning texture coordinates to a feature"
+help = "Image Rasterizer only assigns texture coordinates to CityGML geometry with a non-degenerate boundary."
+
+[[codes]]
+code = "raster.image_save_failed"
+category = "io"
+default_disposition = "warn_drop"
+message = "failed to save the rasterized image"
+help = "Check that the configured save path is writable."
