@@ -20,8 +20,10 @@ import (
 	_ "github.com/reearth/reearth-flow/api/internal/app/docs" // swagger docs
 )
 
-// nonGraphQLBodyLimit bounds request bodies on every route except GraphQL,
-// whose routes only accept small JSON/form payloads.
+// nonGraphQLBodyLimit bounds request bodies on every route except GraphQL.
+// GraphQL is excluded not because its bodies are small (multipart uploads
+// can be large) but because it's bounded separately via http.MaxBytesReader
+// (see auth_middleware.go).
 const nonGraphQLBodyLimit = "32M"
 
 func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {

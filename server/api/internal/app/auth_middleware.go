@@ -61,8 +61,9 @@ func gqlOpNameMiddleware() echo.MiddlewareFunc {
 						log.Warnfc(c.Request().Context(), "gqlOpNameMiddleware: request body too large: %v", err)
 						return echo.ErrStatusRequestEntityTooLarge
 					}
+					return err
 				}
-				if err == nil && len(data) > 0 {
+				if len(data) > 0 {
 					_ = c.Request().Body.Close()
 					c.Request().Body = io.NopCloser(bytes.NewBuffer(data))
 

@@ -18,6 +18,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// fillReader streams n bytes of filler data without materialising the whole
+// body in memory, so large-body tests don't each hold ~32MiB at once.
+type fillReader struct {
+	n int64
+}
+
+func (r *fillReader) Read(p []byte) (int, error) {
+	if r.n <= 0 {
+		return 0, io.EOF
+	}
+	if int64(len(p)) > r.n {
+		p = p[:r.n]
+	}
+	for i := range p {
+		p[i] = 'a'
+	}
+	r.n -= int64(len(p))
+	return len(p), nil
+}
+
 func newBodyLimitTestEcho() *echo.Echo {
 	e := echo.New()
 	e.Use(middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{
@@ -41,8 +61,7 @@ func TestBodyLimitMiddleware_RejectsOversizedNonGraphQLBody(t *testing.T) {
 	t.Parallel()
 	e := newBodyLimitTestEcho()
 
-	body := bytes.Repeat([]byte("a"), 32*1024*1024+1)
-	req := httptest.NewRequest(http.MethodPost, "/api/signup", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/signup", &fillReader{n: 32*1024*1024 + 1})
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -67,8 +86,7 @@ func TestBodyLimitMiddleware_SkipsGraphQLRoute(t *testing.T) {
 
 	// Larger than the 32M non-GraphQL cap, but the GraphQL route must not be
 	// bounded by this middleware (it enforces maxUploadSize separately).
-	body := bytes.Repeat([]byte("a"), 33*1024*1024)
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: 33 * 1024 * 1024})
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -115,8 +133,7 @@ func TestGraphqlBodyLimitMiddleware_UsesConfiguredMaxUploadSize(t *testing.T) {
 	}, graphqlBodyLimitMiddleware(maxUploadSize))
 
 	// Bigger than the 32M non-GraphQL cap, well within maxUploadSize (10G).
-	body := bytes.Repeat([]byte("a"), 33*1024*1024)
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: 33 * 1024 * 1024})
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -139,8 +156,10 @@ func TestInitEcho_EnforcesNonGraphQLBodyLimit(t *testing.T) {
 	}
 	e := initEcho(context.Background(), cfg)
 
-	body := bytes.Repeat([]byte("a"), 32*1024*1024+1)
-	req := httptest.NewRequest(http.MethodPost, "/api/signup", bytes.NewReader(body))
+	// BodyLimit rejects based on Content-Length before reading the body, so
+	// there's no need for an actual oversized payload here.
+	req := httptest.NewRequest(http.MethodPost, "/api/signup", http.NoBody)
+	req.ContentLength = 32*1024*1024 + 1
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -176,5 +195,9 @@ func TestNewAuthMiddlewares_WrapsGraphQLBodyWithMaxBytesReader(t *testing.T) {
 
 	err := mws[0](probe)(c)
 	assert.NoError(t, err)
-	assert.Equal(t, "*http.maxBytesReader", gotBodyType)
+
+	// Derive the expected type from the stdlib itself, since the concrete
+	// type http.MaxBytesReader returns is unexported and could change.
+	wantBodyType := fmt.Sprintf("%T", http.MaxBytesReader(httptest.NewRecorder(), http.NoBody, 1))
+	assert.Equal(t, wantBodyType, gotBodyType)
 }
