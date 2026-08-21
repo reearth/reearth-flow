@@ -2911,7 +2911,7 @@
                     "title": "EPSG Code",
                     "description": "EPSG code of the destination coordinate reference system.",
                     "type": "integer",
-                    "format": "uint32",
+                    "format": "uint16",
                     "minimum": 0.0
                   }
                 }
@@ -3104,7 +3104,7 @@
             "oneOf": [
               {
                 "title": "Detect Automatically",
-                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format.",
                 "type": "string",
                 "enum": [
                   "auto"

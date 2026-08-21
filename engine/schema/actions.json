@@ -2911,7 +2911,7 @@
                     "title": "EPSG Code",
                     "description": "EPSG code of the destination coordinate reference system.",
                     "type": "integer",
-                    "format": "uint32",
+                    "format": "uint16",
                     "minimum": 0.0
                   }
                 }

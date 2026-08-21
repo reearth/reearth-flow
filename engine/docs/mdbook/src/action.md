@@ -2849,7 +2849,7 @@ Reprojects geometry between coordinate reference systems and converts between a 
               "title": "EPSG Code",
               "description": "EPSG code of the destination coordinate reference system.",
               "type": "integer",
-              "format": "uint32",
+              "format": "uint16",
               "minimum": 0.0
             }
           }

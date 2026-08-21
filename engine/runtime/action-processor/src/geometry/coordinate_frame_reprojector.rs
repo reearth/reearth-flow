@@ -42,7 +42,9 @@ enum DestinationFrame {
     Crs {
         /// # EPSG Code
         /// EPSG code of the destination coordinate reference system.
-        epsg_code: u32,
+        // u16 is the width `EpsgCode` itself holds, so the generated schema states the real
+        // bound rather than a looser one that `build` would then have to re-check.
+        epsg_code: u16,
     },
     /// # Euclidean
     /// Convert to a non-georeferenced Euclidean frame. This is the frame the
@@ -162,14 +164,7 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
         // `epsgCode` rides inside the `crs` variant, so the schema cannot express a
         // CRS destination without one — no runtime check needed (§3.2).
         let target = match params.destination_frame {
-            DestinationFrame::Crs { epsg_code } => {
-                let epsg = u16::try_from(epsg_code).map_err(|_| {
-                    GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
-                        "`epsgCode` {epsg_code} is out of range"
-                    ))
-                })?;
-                CoordinateFrame::Crs(EpsgCode::new(epsg))
-            }
+            DestinationFrame::Crs { epsg_code } => CoordinateFrame::Crs(EpsgCode::new(epsg_code)),
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
         };
 

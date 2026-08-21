@@ -1034,7 +1034,7 @@
         "DateTimeInputFormat": {
           "auto": {
             "title": "Detect Automatically",
-            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format."
+            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format."
           },
           "date": {
             "title": "Date Only",

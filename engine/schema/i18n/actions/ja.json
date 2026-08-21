@@ -1034,7 +1034,7 @@
         "DateTimeInputFormat": {
           "auto": {
             "title": "Detect Automatically",
-            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unix_ms` 入力形式を明示的に指定する。"
+            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unixMs` 入力形式を明示的に指定する。"
           },
           "date": {
             "title": "Date Only",
