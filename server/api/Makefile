@@ -26,13 +26,7 @@ gen-policies:
 swagger:
 	swag init -g cmd/reearth-flow/main.go -o internal/app/docs --parseDependency --parseInternal
 
-.PHONY: lint test e2e build run-app run-db gql gen-policies swagger all gen-thrift proto run-db-pg sqlc atlas-diff atlas-validate run-jaeger down-jaeger
-
-all: gen-thrift
-
-gen-thrift:
-	@echo "Generating Thrift code..."
-	@thrift -r --gen go:package_prefix=github.com/reearth/reearth-flow/api/ -out . thrift/document.thrift
+.PHONY: lint test e2e build run-app run-db gql gen-policies swagger proto run-db-pg sqlc atlas-diff atlas-validate run-jaeger down-jaeger
 
 proto:
 	@echo "Generating gRPC code..."
