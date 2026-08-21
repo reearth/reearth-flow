@@ -5585,13 +5585,13 @@ Writes features to a GeoPackage (.gpkg) file.
 ### Type
 * processor
 ### Description
-Coerces and converts feature geometries to specified target geometry types
+Coerces a feature's geometry into a different geometry type, rebuilding it as polylines, faces, or triangles.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Coercer Parameters",
-  "description": "Configuration for coercing geometries to specific target types.",
+  "description": "Which geometry type each feature is coerced into.",
   "type": "object",
   "required": [
     "targetType"
@@ -7509,13 +7509,13 @@ Make HTTP/HTTPS requests and enrich features with response data
 ### Type
 * processor
 ### Description
-Count Polygon Holes to Attribute
+Counts the holes in every face of a feature's geometry and stores the total in an attribute. A geometry that cannot carry a hole, and a feature with no geometry, both count as zero.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Hole Counter Parameters",
-  "description": "Configure where to store the count of holes found in polygon geometries",
+  "description": "Where the total number of holes is stored on each feature.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -7523,7 +7523,7 @@ Count Polygon Holes to Attribute
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Name of the attribute where the hole count will be stored as a number",
+      "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -7549,13 +7549,13 @@ Count Polygon Holes to Attribute
 ### Type
 * processor
 ### Description
-Extract Polygon Holes as Separate Features
+Splits each face of a geometry into its rings, emitting the exterior ring and every interior ring (hole) as a feature of its own.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
-* outershell
+* exterior
 * hole
 * rejected
 ### Category

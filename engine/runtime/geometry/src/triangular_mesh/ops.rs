@@ -502,6 +502,33 @@ impl ExtractBoundary for TriangularMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for TriangularMesh2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for TriangularMesh3D {
+    fn elevation(&self) -> Option<f64> {
+        self.data.first_triangle_elevation()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl TriangularMesh3DData {
+    /// The z of the first triangle's first vertex, which is where the mesh's
+    /// traversal starts — the vertex pool's own order is unrelated.
+    pub(crate) fn first_triangle_elevation(&self) -> Option<f64> {
+        let [i, _, _] = self.triangles().next()?;
+        Some(self.vertices()[i as usize][2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

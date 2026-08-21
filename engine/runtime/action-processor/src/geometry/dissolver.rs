@@ -6,7 +6,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use indexmap::IndexMap;
-use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
     errors::BoxedError,
