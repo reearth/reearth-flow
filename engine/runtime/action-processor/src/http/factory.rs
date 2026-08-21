@@ -31,7 +31,7 @@ impl ProcessorFactory for HttpCallerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Web"]
+        &["Feature"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn test_factory_categories() {
         let factory = HttpCallerFactory;
-        assert_eq!(factory.categories(), &["Web"]);
+        assert_eq!(factory.categories(), &["Feature"]);
     }
 
     #[test]
