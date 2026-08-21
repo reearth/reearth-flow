@@ -864,19 +864,21 @@ Area On Area Overlayer — kept, `tolerance` did not do what it said
   prior art: Unanimous, and against us. The reference product's own transformer defines Tolerance
              as "the minimum distance between geometries in 2D before they are considered equal";
              JTS/GEOS OverlayNG makes it a snapping distance (SnappingNoder, snap-rounding) and
-             documents sliver removal as a *consequence* of snapping; ArcGIS's Cluster Tolerance
-             is XY Tolerance, "the minimum distance between coordinates before they are considered
-             equal", whose clustering pass performs "automatic sliver removal". None of the three
-             exposes an area threshold inside the overlay; area-based sliver removal lives in
-             separate cleanup tools. So the fix was to implement the documented behaviour, not to
-             redescribe the code.
+             documents sliver removal as a *consequence* of snapping; and the desktop GIS suite
+             users arrive from defines its cluster tolerance the same way, as the minimum distance
+             between coordinates before they count as equal, with its clustering pass performing
+             the sliver removal. None of the three exposes an area threshold inside the overlay;
+             area-based sliver removal lives in separate cleanup tools. So the fix was to
+             implement the documented behaviour, not to redescribe the code.
   impl:    `tolerance` now snaps. `overlay::snap_areal_operands_2d` is new: it snaps every operand
              of a group in ONE pass and hands each back dissolved. That is the whole point of the
              signature — `snap_shapes` picks its anchors per call, so snapping pairwise as each
              pair is compared would put the boundary three neighbours share in three places and
              the pieces cut from either side would stop meeting. The sub-tolerance area filter is
-             kept as a secondary guard, and because the legacy world's overlay has no snapping to
-             drive, `snap_group` is a no-op there — legacy behaviour is unchanged.
+             kept as a secondary guard, and because the legacy world's overlay has no snapping
+             to drive, `snap_group` is a no-op there. That scopes the SNAPPING to new geometry
+             only; the port rename, the parameter spellings and the overlap-count default below
+             change both worlds.
   ports:   `area` → `overlaps`. 23 edges across 15 files, every one verified to originate from an
              Area On Area Overlayer node before rewriting. `remnants` already named its
              counterpart honestly; `area` named a geometry type rather than a role.
@@ -1008,6 +1010,6 @@ Excel Writer — kept, and it had an undocumented feature that did not work
 **Verification note.** `test-qc` ignores every plateau4 quality-check case
 (`skipNewGeometry`), so it does not execute any workflow this batch touched. The suite that does
 is `cargo test -p workflow-tests -- --test-threads=4`, the legacy world, 185 cases — run before
-and after. That run is why `snap_group` is deliberately a no-op in the legacy build: the
-snapping is a new-geometry behaviour change, and keeping legacy identical is what makes those
-185 cases a real regression check on the renames rather than a wall of expected diffs.
+and after. Leaving `snap_group` a no-op in the legacy build is what makes that run useful: the
+snapping is the one change those cases cannot see, so they stay a real regression check on the
+rewiring and the parameter renames, which they DO see, rather than a wall of expected diffs.
