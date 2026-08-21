@@ -99,12 +99,12 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Area On Area Overlayer Parameters",
-  "description": "Configure how area overlay analysis is performed",
+  "description": "Sets which features are overlaid together, how closely their vertices must line up, and what the resulting pieces record about the features they came from.",
   "type": "object",
   "properties": {
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "Optional attributes to group features by during overlay analysis",
+      "description": "Attributes whose values decide which features are overlaid against each other — only features matching on all of them are compared. When omitted, every feature is overlaid against every other.",
       "type": [
         "array",
         "null"
@@ -113,51 +113,66 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
         "$ref": "#/definitions/Attribute"
       }
     },
-    "accumulationMode": {
-      "title": "Accumulation Mode",
-      "description": "Controls how attributes from input features are handled in output features",
-      "default": "useAttributesFromOneFeature",
-      "allOf": [
-        {
-          "$ref": "#/definitions/AccumulationMode"
-        }
-      ]
-    },
-    "generateList": {
-      "title": "Generate List",
-      "description": "Name of the list attribute to store source feature attributes",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "outputAttribute": {
-      "title": "Output Attribute",
-      "description": "Name of the attribute to store overlap count",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "tolerance": {
       "title": "Tolerance",
-      "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.",
+      "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. Boundaries that were meant to coincide but miss by less than this are pulled together before the overlay, and overlaps smaller than its square are discarded as slivers. Defaults to zero, which snaps nothing.",
       "type": [
         "number",
         "null"
       ],
       "format": "double"
+    },
+    "attributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Which attributes the resulting pieces keep.",
+      "default": "useOneFeature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AttributeAccumulation"
+        }
+      ]
+    },
+    "outputAttribute": {
+      "title": "Overlap Count Attribute",
+      "description": "Attribute that receives the number of input features covering the piece — two or more on `overlaps`, always one on `remnants`. Defaults to `overlayCount`.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "listAttribute": {
+      "title": "List Attribute",
+      "description": "Attribute that receives one entry per covering feature, each holding that feature's own attributes. When omitted, no list is written.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "definitions": {
     "Attribute": {
       "type": "string"
     },
-    "AccumulationMode": {
-      "type": "string",
-      "enum": [
-        "useAttributesFromOneFeature",
-        "dropIncomingAttributes"
+    "AttributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Which attributes a resulting piece keeps.",
+      "oneOf": [
+        {
+          "title": "Use Attributes From One Feature",
+          "description": "Keeps the attributes of a single covering feature and discards the rest.",
+          "type": "string",
+          "enum": [
+            "useOneFeature"
+          ]
+        },
+        {
+          "title": "Drop Incoming Attributes",
+          "description": "Keeps no incoming attribute, so a piece carries only its overlap count and list attribute. The grouping attributes are dropped too.",
+          "type": "string",
+          "enum": [
+            "dropAttributes"
+          ]
+        }
       ]
     }
   }
@@ -166,7 +181,7 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
 ### Input Ports
 * features
 ### Output Ports
-* area
+* overlaps
 * remnants
 * rejected
 ### Category
@@ -1420,22 +1435,22 @@ Renames feature attributes in bulk by adding or removing a prefix or suffix, or 
 ### Type
 * processor
 ### Description
-Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSG Evaluator.
+Pairs each left solid with the right solid that shares its pair value and emits the union, the intersection and the difference of the pair as unevaluated Constructive Solid Geometry trees. The trees describe the boolean without computing it, so a CSG Evaluator downstream turns the branch you keep into a solid.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CSG Builder Parameters",
-  "description": "Configure how the CSG builder pairs features from left and right ports",
+  "description": "Sets how the two input streams are paired up and what the resulting trees record about the solids they were built from.",
   "type": "object",
+  "required": [
+    "pairId"
+  ],
   "properties": {
-    "pairIdAttribute": {
-      "title": "Pair ID Attribute",
-      "description": "Expression to evaluate the pair ID used to match features from left and right ports",
-      "type": [
-        "object",
-        "null"
-      ],
+    "pairId": {
+      "title": "Pair ID",
+      "description": "Expression evaluated on every feature to produce the value that pairs it up: a left feature and a right feature that evaluate to the same value are combined. A feature whose partner never arrives is rejected.",
+      "type": "object",
       "format": "code",
       "required": [
         "type",
@@ -1453,17 +1468,9 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
         }
       }
     },
-    "createList": {
-      "title": "Create List",
-      "description": "When enabled, creates a list of attribute values from both children (left and right)",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "listAttributeName": {
-      "title": "List Attribute Name",
-      "description": "Name of the attribute to create the list from (required when create_list is true)",
+    "listAttribute": {
+      "title": "List Attribute",
+      "description": "Attribute that receives one entry for the left solid and one for the right, each holding that feature's own attributes. When omitted, no list is written and the resulting trees carry no attributes at all.",
       "type": [
         "string",
         "null"
@@ -1487,38 +1494,23 @@ Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, 
 ### Type
 * processor
 ### Description
-Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.
+Computes the solid a Constructive Solid Geometry tree describes, replacing the tree with the result. Operands must be closed, outward-wound solids in a projected coordinate reference, since the vertex tolerance is a distance; a tree whose result encloses no volume leaves on the empty port.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CSG Evaluator Parameters",
-  "description": "Configure evaluation parameters for CSG operations",
+  "description": "Sets how closely the operands' vertices must line up for the boolean to treat them as one point.",
   "type": "object",
-  "required": [
-    "tolerance"
-  ],
   "properties": {
     "tolerance": {
       "title": "Tolerance",
-      "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
-      "type": "object",
-      "format": "code",
-      "required": [
-        "type",
-        "value"
+      "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. When omitted, a distance small enough to merge only near-identical vertices is used.",
+      "type": [
+        "number",
+        "null"
       ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
+      "format": "double"
     }
   }
 }
@@ -1527,7 +1519,7 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 * features
 ### Output Ports
 * features
-* nullport
+* empty
 * rejected
 ### Category
 * Geometry
@@ -3385,20 +3377,21 @@ Extracts the elevation of a feature's geometry and stores it in an attribute.
 ### Type
 * sink
 ### Description
-Writes features to Microsoft Excel format (.xlsx files).
+Writes each feature as a row of an .xlsx worksheet, one column per attribute. An attribute named after another with a `.formula` or `.hyperlink` suffix fills that column's cell with a formula or a link instead of a value.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Excel Writer Parameters",
-  "description": "Configuration for writing features to Microsoft Excel format.",
+  "description": "Sets where the workbook is written and what its worksheet is called.",
   "type": "object",
   "required": [
     "output"
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the Excel file to create",
+      "title": "Output Path",
+      "description": "Path the .xlsx file is written to. An expression is evaluated per feature, so features that resolve to different paths are written to separate workbooks.",
       "type": "object",
       "format": "code",
       "required": [
@@ -3419,7 +3412,8 @@ Writes features to Microsoft Excel format (.xlsx files).
       }
     },
     "sheetName": {
-      "description": "Sheet name (defaults to \"Sheet1\")",
+      "title": "Sheet Name",
+      "description": "Name of the worksheet the rows are written to. Defaults to `Sheet1`.",
       "type": [
         "string",
         "null"
@@ -3432,7 +3426,7 @@ Writes features to Microsoft Excel format (.xlsx files).
 * features
 ### Output Ports
 ### Category
-* File
+* Output
 
 ## Extruder
 ### Type
@@ -8135,19 +8129,27 @@ Writes features to JSON files.
 ### Type
 * processor
 ### Description
-Splits lines where they cross and turns each intersection into a point feature carrying the merged attributes of the lines that meet there. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
+Splits lines where they cross, recording on each resulting segment how many input lines run along it, and emits every crossing as a point feature. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Line On Line Overlayer Parameters",
-  "description": "Configuration for finding intersection points between line features.",
+  "description": "Sets which lines are crossed against each other, how far apart two vertices may be and still count as one, and what the resulting segments record about the lines they came from.",
   "type": "object",
   "required": [
     "tolerance"
   ],
   "properties": {
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. It decides which crossings split a line, which crossings are the same crossing, and which segments coincide; segments shorter than it are dropped. Must be greater than zero, or no line is ever split.",
+      "type": "number",
+      "format": "double"
+    },
     "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes whose values decide which lines are crossed against each other — only lines matching on all of them are compared. When omitted, every line is crossed against every other.",
       "type": [
         "array",
         "null"
@@ -8156,12 +8158,17 @@ Splits lines where they cross and turns each intersection into a point feature c
         "$ref": "#/definitions/Attribute"
       }
     },
-    "tolerance": {
-      "type": "number",
-      "format": "double"
+    "outputAttribute": {
+      "title": "Overlap Count Attribute",
+      "description": "Attribute that receives the number of input lines running along the resulting segment. Defaults to `overlayCount`.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
-    "overlaidListsAttrName": {
-      "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\".",
+    "listAttribute": {
+      "title": "List Attribute",
+      "description": "Attribute that receives one entry per line running along the resulting segment, each holding that line's own attributes. When omitted, no list is written.",
       "type": [
         "string",
         "null"

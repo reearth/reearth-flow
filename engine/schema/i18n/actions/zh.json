@@ -44,27 +44,39 @@
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer Parameters",
-          "description": "Configure how area overlay analysis is performed"
+          "description": "Sets which features are overlaid together, how closely their vertices must line up, and what the resulting pieces record about the features they came from."
         },
-        "accumulationMode": {
-          "title": "Accumulation Mode",
-          "description": "Controls how attributes from input features are handled in output features"
-        },
-        "generateList": {
-          "title": "Generate List",
-          "description": "Name of the list attribute to store source feature attributes"
+        "attributeAccumulation": {
+          "title": "Attribute Accumulation",
+          "description": "Which attributes the resulting pieces keep."
         },
         "groupBy": {
           "title": "Group By Attributes",
-          "description": "Optional attributes to group features by during overlay analysis"
+          "description": "Attributes whose values decide which features are overlaid against each other — only features matching on all of them are compared. When omitted, every feature is overlaid against every other."
+        },
+        "listAttribute": {
+          "title": "List Attribute",
+          "description": "Attribute that receives one entry per covering feature, each holding that feature's own attributes. When omitted, no list is written."
         },
         "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Name of the attribute to store overlap count"
+          "title": "Overlap Count Attribute",
+          "description": "Attribute that receives the number of input features covering the piece — two or more on `overlaps`, always one on `remnants`. Defaults to `overlayCount`."
         },
         "tolerance": {
           "title": "Tolerance",
-          "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation."
+          "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. Boundaries that were meant to coincide but miss by less than this are pulled together before the overlay, and overlaps smaller than its square are discarded as slivers. Defaults to zero, which snaps nothing."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "Keeps no incoming attribute, so a piece carries only its overlap count and list attribute. The grouping attributes are dropped too."
+          },
+          "useOneFeature": {
+            "title": "Use Attributes From One Feature",
+            "description": "Keeps the attributes of a single covering feature and discards the rest."
+          }
         }
       }
     },
@@ -564,37 +576,33 @@
     },
     {
       "name": "CSG Builder",
-      "description": "从一对（左、右）实体几何体构建构造实体几何（CSG）表示。检测并集、交集和差集（左-右），但不计算结果几何体。使用CSGEvaluator来评估CSG树。",
+      "description": "将左侧实体与配对值相同的右侧实体组合，并将该对的并集、交集与差集输出为未求值的构造实体几何树。树只描述布尔运算而不计算结果，因此由下游的 CSG Evaluator 将保留的分支转换为实体。",
       "parameterI18n": {
         "": {
           "title": "CSG Builder Parameters",
-          "description": "Configure how the CSG builder pairs features from left and right ports"
+          "description": "Sets how the two input streams are paired up and what the resulting trees record about the solids they were built from."
         },
-        "createList": {
-          "title": "Create List",
-          "description": "When enabled, creates a list of attribute values from both children (left and right)"
+        "listAttribute": {
+          "title": "List Attribute",
+          "description": "Attribute that receives one entry for the left solid and one for the right, each holding that feature's own attributes. When omitted, no list is written and the resulting trees carry no attributes at all."
         },
-        "listAttributeName": {
-          "title": "List Attribute Name",
-          "description": "Name of the attribute to create the list from (required when create_list is true)"
-        },
-        "pairIdAttribute": {
-          "title": "Pair ID Attribute",
-          "description": "Expression to evaluate the pair ID used to match features from left and right ports"
+        "pairId": {
+          "title": "Pair ID",
+          "description": "Expression evaluated on every feature to produce the value that pairs it up: a left feature and a right feature that evaluate to the same value are combined. A feature whose partner never arrives is rejected."
         }
       }
     },
     {
       "name": "CSG Evaluator",
-      "description": "对构造实体几何（CSG）树进行求值以生成实体几何体。接受CSG表示，计算布尔运算产生的网格。",
+      "description": "计算构造实体几何树所描述的实体，并用结果替换该树。顶点容差是距离，因此操作数必须是位于投影坐标系中、闭合且朝外定向的实体；结果不包含体积的树将从 empty 端口输出。",
       "parameterI18n": {
         "": {
           "title": "CSG Evaluator Parameters",
-          "description": "Configure evaluation parameters for CSG operations"
+          "description": "Sets how closely the operands' vertices must line up for the boolean to treat them as one point."
         },
         "tolerance": {
           "title": "Tolerance",
-          "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations."
+          "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. When omitted, a distance small enough to merge only near-identical vertices is used."
         }
       }
     },
@@ -1161,17 +1169,19 @@
     },
     {
       "name": "Excel Writer",
-      "description": "将要素写入Microsoft Excel格式（.xlsx文件）",
+      "description": "将每个要素写为 .xlsx 工作表中的一行，每个属性占一列。以某属性名加 `.formula` 或 `.hyperlink` 后缀命名的属性，会用公式或链接填充该列的单元格，而不是写入值。",
       "parameterI18n": {
         "": {
           "title": "Excel Writer Parameters",
-          "description": "Configuration for writing features to Microsoft Excel format."
+          "description": "Sets where the workbook is written and what its worksheet is called."
         },
         "output": {
-          "description": "Output path or expression for the Excel file to create"
+          "title": "Output Path",
+          "description": "Path the .xlsx file is written to. An expression is evaluated per feature, so features that resolve to different paths are written to separate workbooks."
         },
         "sheetName": {
-          "description": "Sheet name (defaults to \"Sheet1\")"
+          "title": "Sheet Name",
+          "description": "Name of the worksheet the rows are written to. Defaults to `Sheet1`."
         }
       }
     },
@@ -2417,17 +2427,28 @@
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "在相交处分割线，并将每个交点转换为携带相交各线合并属性的点实体。输入必须是不带高程的平面2D几何且共享同一坐标框架，请在上游放置Two Dimension Forcer或Coordinate Frame Reprojector进行展平或统一",
+      "description": "在线要素相交处将其分割，在每段结果上记录有多少条输入线沿其延伸，并将每个交点输出为点要素。输入必须是不带高程的平面二维几何且共享同一坐标系，请在上游放置 Two Dimension Forcer 或 Coordinate Frame Reprojector 以展平或统一。",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer Parameters",
-          "description": "Configuration for finding intersection points between line features."
+          "description": "Sets which lines are crossed against each other, how far apart two vertices may be and still count as one, and what the resulting segments record about the lines they came from."
         },
-        "groupBy": {},
-        "overlaidListsAttrName": {
-          "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\"."
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes whose values decide which lines are crossed against each other — only lines matching on all of them are compared. When omitted, every line is crossed against every other."
         },
-        "tolerance": {}
+        "listAttribute": {
+          "title": "List Attribute",
+          "description": "Attribute that receives one entry per line running along the resulting segment, each holding that line's own attributes. When omitted, no list is written."
+        },
+        "outputAttribute": {
+          "title": "Overlap Count Attribute",
+          "description": "Attribute that receives the number of input lines running along the resulting segment. Defaults to `overlayCount`."
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. It decides which crossings split a line, which crossings are the same crossing, and which segments coincide; segments shorter than it are dropped. Must be greater than zero, or no line is ever split."
+        }
       }
     },
     {
