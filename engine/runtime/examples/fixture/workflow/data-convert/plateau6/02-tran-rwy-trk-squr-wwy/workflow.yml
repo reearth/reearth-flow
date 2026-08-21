@@ -80,6 +80,16 @@ graphs:
               value:
                 type: string
                 value: feature_type
+            - attribute: gml_id
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["__citygml_gml_id"]
+            - attribute: parent_gml_id
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_parent_gml_id")
             - attribute: city_code
               method: create
               value:
