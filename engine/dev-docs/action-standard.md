@@ -276,6 +276,10 @@ This cuts both ways, and both have happened:
 
 When an action cannot run, removing it from `base_actions.go` is the immediate mitigation — cheap, reversible, and independent of whatever fix is pending.
 
+**A geometry port changes an action's bucket, and the porting PR will not say so.** An action that could not run because its only implementation was under `#[cfg(not(feature = "new-geometry"))]` starts running the moment its port merges. It does not thereby become exposable — it now owes the engine-side review it never had. So a port PR silently moves its action out of "does not run" and into "pending audit", and porting PRs are written and reviewed as geometry work: they touch the action's `process`, not `base_actions.go` and not the audit's records.
+
+**So after any geometry-port PR merges, move the action into the pending-audit list.** Do not add it to `base_actions.go` at the same time — running is only half of §7.2, and promoting it there is what §7.2's first failure mode describes. This is not hypothetical: `Elevation Extractor`'s port merged in #2384 leaving the action running, unexposed, and absent from every list in `action-review-findings.md`, and it was found only because an unrelated branch merged `main` and re-counted the buckets. Nothing checks this, so it needs a person to do it.
+
 ### 7.3 Disabled behaviour must not stay documented
 
 If behaviour is turned off — a code path commented out, a branch rerouted, functions kept only under `#[allow(dead_code)]` — then the parameters, enum variants, and description advertising it are now false and must go with it. "Temporarily disabled" is not a state the user-facing surface can represent: from the outside there is no difference between a feature that is off and one that never worked.
@@ -318,6 +322,10 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-24
+
+- **§7.2** — added the rule that a merged geometry-port PR moves its action from "does not run" into *pending audit*, and that the porting PR will not do that bookkeeping itself. No past verdict changes; it names a step that was being missed rather than altering a judgement.
 
 ### 2026-08-21 (later)
 

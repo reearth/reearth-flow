@@ -658,6 +658,10 @@ user-facing text today, but it must be fixed before either is re-exposed.
 - Fail when a parameter in `actions.json` lacks a `description`. Would have caught all four
   dead GeoPackage Reader parameters in 2025. Start description-only — a `title` rule needs the
   Group B/C/D cleanup above to land first.
+- Fail when an action runs in the shipped build (§7.1) but appears in neither `baseActions` nor
+  this file's pending-audit list. That is the §7.2 bucket drift a merged geometry port creates,
+  and it is the one of the three that needs a machine-readable pending list before it can be
+  written — the list here is prose. Until then the rule is a human step, stated in §7.2.
 
 ---
 
