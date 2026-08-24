@@ -259,8 +259,9 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
                 output_direction: output_direction(frame),
                 ..Default::default()
             };
-            let result = FloatOverlay::with_subj_and_clip_custom(&subject, &clip, options, Solver::AUTO)
-                .overlay(op.into(), FillRule::NonZero);
+            let result =
+                FloatOverlay::with_subj_and_clip_custom(&subject, &clip, options, Solver::AUTO)
+                    .overlay(op.into(), FillRule::NonZero);
             Ok(shapes::shapes_to_polygons(result, frame, None))
         }
     }

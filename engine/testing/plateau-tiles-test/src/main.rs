@@ -151,6 +151,7 @@ const DEFAULT_TESTS: &[&str] = &[
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau6/01-bldg/ward",
     "data-convert/plateau6/01-bldg/osaka-ward",
+    "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/multipolygon",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
