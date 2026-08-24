@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 
+	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
+
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient/cerbos"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-accounts/server/pkg/role"
@@ -107,16 +109,68 @@ func TestChecker_DeniedByCerbosStaysDenied(t *testing.T) {
 // They are pinned so switching any of them to fail-closed is a conscious
 // change rather than an accident, since each one is a hole while it lasts.
 
-func TestChecker_WorkspaceLookupErrorKeepsCerbosVerdict(t *testing.T) {
-	_, ctx, _ := wsWithMember(t, role.RoleReader)
+// sequencedWorkspaceRepo returns a different result per FindByID call, so a
+// test can let the alias lookup succeed and fail the guard's membership
+// lookup that follows it.
+type sequencedWorkspaceRepo struct {
+	gqlworkspace.WorkspaceRepo
+	results []struct {
+		ws  *workspace.Workspace
+		err error
+	}
+	calls int
+}
+
+func (r *sequencedWorkspaceRepo) FindByID(_ context.Context, _ string) (*workspace.Workspace, error) {
+	i := r.calls
+	r.calls++
+	if i >= len(r.results) {
+		i = len(r.results) - 1
+	}
+	return r.results[i].ws, r.results[i].err
+}
+
+// TestChecker_MembershipLookupErrorKeepsCerbosVerdict pins the guard's
+// lookup-error fall-through. The alias lookup must succeed first, otherwise
+// resolveAlias fails closed and the guard is never reached.
+func TestChecker_MembershipLookupErrorKeepsCerbosVerdict(t *testing.T) {
+	ws, ctx, _ := wsWithMember(t, role.RoleReader)
+	repo := &sequencedWorkspaceRepo{results: []struct {
+		ws  *workspace.Workspace
+		err error
+	}{
+		{ws: ws}, // resolveAlias
+		{err: errors.New("accounts unavailable")}, // the guard's membership lookup
+	}}
 	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
-	c := NewChecker(cer, &fakeWorkspaceRepo{err: errors.New("accounts unavailable")}, "flow")
+	c := NewChecker(cer, repo, "flow")
 
-	allowed, err := c.CheckPermission(ctx, "deployment", "any", accountsid.NewWorkspaceID())
+	allowed, err := c.CheckPermission(ctx, "deployment", "any", ws.ID())
 
-	// resolveAlias surfaces the lookup failure first and fails closed.
-	assert.Error(t, err)
-	assert.False(t, allowed)
+	require.NoError(t, err)
+	assert.True(t, allowed, "an unavailable membership lookup must not deny a real user")
+	assert.Equal(t, 2, repo.calls, "the guard must make its own membership lookup after the alias resolves")
+}
+
+// TestChecker_NilWorkspaceKeepsCerbosVerdict: FindByID may return (nil, nil).
+// Reading Members() off that would panic.
+func TestChecker_NilWorkspaceKeepsCerbosVerdict(t *testing.T) {
+	ws, ctx, _ := wsWithMember(t, role.RoleReader)
+	repo := &sequencedWorkspaceRepo{results: []struct {
+		ws  *workspace.Workspace
+		err error
+	}{
+		{ws: ws},  // resolveAlias
+		{ws: nil}, // the guard's membership lookup finds nothing
+	}}
+	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
+	c := NewChecker(cer, repo, "flow")
+
+	require.NotPanics(t, func() {
+		allowed, err := c.CheckPermission(ctx, "deployment", "any", ws.ID())
+		require.NoError(t, err)
+		assert.True(t, allowed)
+	})
 }
 
 // An empty membership list means accounts returned no members at all, which

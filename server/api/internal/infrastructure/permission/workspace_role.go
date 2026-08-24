@@ -64,8 +64,12 @@ func (c *checker) workspaceRoleAllows(ctx context.Context, resource, action stri
 	// No membership at all is a data problem, not an answer: every caller would
 	// be denied. Distinguish it from a populated list the caller is absent
 	// from, which is a real non-member and a real deny.
+	if ws == nil {
+		log.Warnfc(ctx, "permission: workspace %s not found, skipping the workspace-role guard for %s/%s", wsID, resource, action)
+		return true
+	}
 	members := ws.Members()
-	if ws == nil || members == nil || members.Count() == 0 {
+	if members == nil || members.Count() == 0 {
 		log.Warnfc(ctx, "permission: workspace %s has no membership data, skipping the workspace-role guard for %s/%s", wsID, resource, action)
 		return true
 	}
