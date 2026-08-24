@@ -584,7 +584,7 @@ graphs:
   - id: 9c4a7f2e-8d1b-4c9a-f3e6-4a9c7f2e8d1b
     from: 2d8a5f3c-4b7e-4c1d-f9a6-8c2d5a8f3b6e
     to: 4a6c9f2d-7e3b-4d8a-c5f2-1a4c7e9f2d5b
-    fromPort: outershell
+    fromPort: exterior
     toPort: features
   - id: 2e7b4a1c-6f9d-4e2b-a8c5-7b2e4a1c6f9d
     from: 2d8a5f3c-4b7e-4c1d-f9a6-8c2d5a8f3b6e
@@ -1197,16 +1197,16 @@ graphs:
     type: action
     action: List Indexer
     with:
-      listAttribute: list
-      listIndexToCopy: 0
+      list: list
+      index: 0
       copiedAttributeSuffix: _1
   - id: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
     name: ListIndexer2
     type: action
     action: List Indexer
     with:
-      listAttribute: list
-      listIndexToCopy: 1
+      list: list
+      index: 1
       copiedAttributeSuffix: _2
   - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: Lod0SurfaceIntersectionCounter

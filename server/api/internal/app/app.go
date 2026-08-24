@@ -20,6 +20,12 @@ import (
 	_ "github.com/reearth/reearth-flow/api/internal/app/docs" // swagger docs
 )
 
+// nonGraphQLBodyLimit bounds request bodies on every route except GraphQL.
+// GraphQL is excluded not because its bodies are small (multipart uploads
+// can be large) but because it's bounded separately via http.MaxBytesReader
+// (see auth_middleware.go).
+const nonGraphQLBodyLimit = "32M"
+
 func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	if cfg.Config == nil {
 		log.Fatalf("ServerConfig.Config is nil")
@@ -36,6 +42,13 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.Logger = logger
 	e.Use(
 		middleware.Recover(),
+		// GraphQL enforces its own, much larger limit via http.MaxBytesReader (see auth_middleware.go).
+		middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{
+			Skipper: func(c echo.Context) bool {
+				return c.Path() == "/api/graphql"
+			},
+			Limit: nonGraphQLBodyLimit,
+		}),
 		apiotel.Middleware(tracerServiceName),
 		echo.WrapMiddleware(appx.RequestIDMiddleware()),
 		logger.AccessLogger(),
@@ -95,7 +108,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)
-	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
+	uc := interactor.NewContainer(cfg.Repos, cfg.Gateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
 		SignupSecret:             cfg.Config.SignupSecret,
 		AuthSrvUIDomain:          cfg.Config.Host_Web,
 		Host:                     cfg.Config.Host,
@@ -103,7 +116,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		WebsocketThriftServerURL: cfg.Config.WebsocketThriftServerURL,
 		WebsocketAPISecret:       cfg.Config.WebsocketAPISecret,
 		SkipPermissionCheck:      cfg.Config.SkipPermissionCheck,
-	}))
+	})
+	e.Use(UsecaseMiddleware(&uc))
 
 	// apis
 	api := e.Group("/api")

@@ -6,6 +6,8 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,4 +72,45 @@ func TestPreviewSchema_SerializationRetryDoesNotDoubleSubmit(t *testing.T) {
 
 	// And the workflow object was uploaded once, so the retry left no orphan.
 	assert.Equal(t, 1, ff.uploadWorkflowCalls)
+}
+
+// ctxRecordingJobRepo embeds a nil repo.Job so only Save needs implementing,
+// and records the ctx.Err() and a marker value it observed when Save was invoked.
+type ctxRecordingJobRepo struct {
+	repo.Job
+	saveCtxErr error
+	saved      *job.Job
+	saveCtxVal any
+	saveCalled bool
+}
+
+func (r *ctxRecordingJobRepo) Save(ctx context.Context, j *job.Job) error {
+	r.saveCalled = true
+	r.saveCtxErr = ctx.Err()
+	r.saveCtxVal = ctx.Value(failJobTestCtxKey{})
+	r.saved = j
+	return nil
+}
+
+type failJobTestCtxKey struct{}
+
+// failJob is the recovery path run right after the caller's ctx died (e.g. a
+// trigger's HTTP deadline), so it must not silently drop the write by reusing
+// that same, already-cancelled ctx. It must also still preserve values like
+// trace/request id, which is why it uses WithoutCancel rather than Background.
+func TestFailJob_DetachesFromCancelledContext(t *testing.T) {
+	parentCtx := context.WithValue(context.Background(), failJobTestCtxKey{}, "trace-id")
+	parentCtx, cancel := context.WithCancel(parentCtx)
+	cancel()
+	assert.Error(t, parentCtx.Err())
+
+	jobRepo := &ctxRecordingJobRepo{}
+	j := job.New().NewID().Status(job.StatusPending).MustBuild()
+
+	failJob(parentCtx, jobRepo, j)
+
+	assert.True(t, jobRepo.saveCalled)
+	assert.NoError(t, jobRepo.saveCtxErr)
+	assert.Equal(t, "trace-id", jobRepo.saveCtxVal)
+	assert.Equal(t, job.StatusFailed, jobRepo.saved.Status())
 }
