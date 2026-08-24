@@ -95,15 +95,17 @@ pub fn parse_geometry(
 /// The `wkt` crate requires an explicit dimension tag: `POINT Z(1 2 3)` parses
 /// and `POINT(1 2 3)` does not. Our own CSV Writer emits the bare form (a
 /// reviewed parity decision with the old writer), so reading our own output
-/// needs this. On failure we count the ordinates of the first coordinate group
-/// and retry once with a `Z` tag inserted.
+/// needs this. On failure, `bare_3d_retry` computes a tagged rewrite and we
+/// retry once against it; if that still fails, or the input never looked like
+/// bare 3D in the first place, the ORIGINAL parse error is reported, never
+/// the retry's own.
 ///
 /// Bare three-ordinate WKT is formally ambiguous between XYZ and XYM. We treat
 /// it as XYZ, matching both our writer and the older PostGIS convention.
 fn parse_wkt_tolerantly(text: &str) -> Result<wkt::Wkt<f64>, GeometryParsingError> {
     match wkt::Wkt::<f64>::from_str(text) {
         Ok(parsed) => Ok(parsed),
-        Err(original) => match with_z_tag(text) {
+        Err(original) => match bare_3d_retry(text) {
             Some(tagged) => wkt::Wkt::<f64>::from_str(&tagged)
                 // Report the ORIGINAL error, not the retry's: the retry is our
                 // invention, and its message would confuse a user whose input
@@ -114,9 +116,28 @@ fn parse_wkt_tolerantly(text: &str) -> Result<wkt::Wkt<f64>, GeometryParsingErro
     }
 }
 
+/// Computes a bare-3D-tolerant rewrite of `text`, dispatching on shape: a
+/// `GEOMETRYCOLLECTION` needs each member individually `Z`-tagged (see
+/// `with_z_tag_on_geometrycollection` for why), everything else uses the
+/// single outer-keyword tag from `with_z_tag`.
+fn bare_3d_retry(text: &str) -> Option<String> {
+    let open = text.find('(')?;
+    let keyword = text[..open].trim_end();
+    if keyword == "GEOMETRYCOLLECTION" {
+        with_z_tag_on_geometrycollection(text)
+    } else {
+        with_z_tag(text)
+    }
+}
+
 /// `text` with a ` Z` tag inserted after the type keyword, when its first
 /// coordinate group holds exactly three ordinates. `None` when the shape does
 /// not look like bare 3D, in which case there is nothing to retry.
+///
+/// Not meaningful for a `GEOMETRYCOLLECTION`: its "first coordinate group" is
+/// actually a nested member's type keyword plus parens, not a coordinate, so
+/// this must not be called on one directly (`bare_3d_retry` routes those to
+/// `with_z_tag_on_geometrycollection` instead).
 fn with_z_tag(text: &str) -> Option<String> {
     let open = text.find('(')?;
     let keyword = text[..open].trim_end();
@@ -132,6 +153,70 @@ fn with_z_tag(text: &str) -> Option<String> {
         return None;
     }
     Some(format!("{keyword} Z{}", &text[open..]))
+}
+
+/// `text` with each bare-3D member of a `GEOMETRYCOLLECTION` individually
+/// `Z`-tagged. Unlike `MULTI*`, a `GEOMETRYCOLLECTION`'s outer tag alone does
+/// not cover its members: verified directly against the `wkt` crate,
+/// `GEOMETRYCOLLECTION Z(POINT(0 0 0))` is rejected ("Missing closing
+/// parenthesis for type") while `GEOMETRYCOLLECTION(POINT Z(0 0 0))` parses.
+/// So this reuses `with_z_tag` (via `bare_3d_retry`, so a member that is
+/// itself a bare-3D `GEOMETRYCOLLECTION` recurses correctly) per member
+/// rather than tagging the outer keyword.
+///
+/// Members are split on commas at paren depth zero: WKT has no quoted
+/// strings, so a plain depth counter tells a member-separating comma apart
+/// from one inside a member's own coordinate list. `None` when `text` is not
+/// a `GEOMETRYCOLLECTION(...)`, or when no member needed tagging.
+///
+/// If the rewrite is wrong for any reason (a malformed member, an unbalanced
+/// paren), the caller's follow-up parse simply fails and the ORIGINAL error
+/// is reported — this never fabricates a geometry from a bad rewrite.
+fn with_z_tag_on_geometrycollection(text: &str) -> Option<String> {
+    let open = text.find('(')?;
+    let keyword = text[..open].trim_end();
+    if keyword != "GEOMETRYCOLLECTION" || !text.ends_with(')') {
+        return None;
+    }
+    let inner = &text[open + 1..text.len() - 1];
+    let mut changed = false;
+    let members: Vec<String> = split_top_level(inner)
+        .into_iter()
+        .map(|member| {
+            let trimmed = member.trim();
+            match bare_3d_retry(trimmed) {
+                Some(tagged) => {
+                    changed = true;
+                    tagged
+                }
+                None => trimmed.to_string(),
+            }
+        })
+        .collect();
+    changed.then(|| format!("{keyword}({})", members.join(", ")))
+}
+
+/// Splits `s` on commas that sit at paren depth zero: the top-level
+/// separators between a `GEOMETRYCOLLECTION`'s members, as opposed to a comma
+/// inside one member's own coordinate list (e.g. the ring separator in a
+/// member `POLYGON`).
+fn split_top_level(s: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0usize;
+    for (i, ch) in s.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => {
+                parts.push(&s[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(&s[start..]);
+    parts
 }
 
 /// One `wkt` geometry as a new-model `Geometry`.
@@ -948,5 +1033,102 @@ mod tests {
             }
             other => panic!("expected a 2D collection, got {other:?}"),
         }
+    }
+
+    /// The gap the review found: our own writer emits bare-3D members inside a
+    /// `GEOMETRYCOLLECTION` (e.g. `GEOMETRYCOLLECTION(POINT(0 0 0), ...)`),
+    /// and unlike `MULTI*`, tagging only the outer keyword does not parse --
+    /// verified directly: `GEOMETRYCOLLECTION Z(POINT(0 0 0))` is rejected by
+    /// the `wkt` crate ("Missing closing parenthesis for type"). Each member
+    /// needs its own tag, which `with_z_tag_on_geometrycollection` supplies.
+    #[test]
+    fn a_bare_3d_geometrycollection_from_our_own_writer_round_trips() {
+        let text = "GEOMETRYCOLLECTION(POINT(1 2 3), LINESTRING(0 0 0, 1 1 1))";
+        match parse(text).unwrap() {
+            Geometry::GeometryCollection(c) => {
+                assert_eq!(c.members().len(), 2);
+                assert!(
+                    matches!(
+                        c.members()[0],
+                        Geometry::Euclidean3D(Euclidean3DGeometry::Point(_))
+                    ),
+                    "the point member must keep its Z"
+                );
+                assert!(
+                    matches!(
+                        c.members()[1],
+                        Geometry::Euclidean3D(Euclidean3DGeometry::LineString(_))
+                    ),
+                    "the linestring member must keep its Z"
+                );
+            }
+            other => panic!("expected a GeometryCollection, got {other:?}"),
+        }
+    }
+
+    /// A holed polygon member makes sure the top-level comma splitter isn't
+    /// fooled by the ring-separating comma inside a member's own coordinate
+    /// list.
+    #[test]
+    fn a_bare_3d_geometrycollection_with_a_holed_polygon_member_round_trips() {
+        let text = "GEOMETRYCOLLECTION(POINT(9 9 9), \
+                     POLYGON((0 0 0, 4 0 0, 4 4 0, 0 4 0, 0 0 0), (1 1 0, 2 1 0, 2 2 0, 1 1 0)))";
+        match parse(text).unwrap() {
+            Geometry::GeometryCollection(c) => {
+                assert_eq!(c.members().len(), 2);
+                match &c.members()[1] {
+                    Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => {
+                        assert_eq!(p.interiors().count(), 1, "the hole must survive");
+                    }
+                    other => panic!("expected a 3D polygon member, got {other:?}"),
+                }
+            }
+            other => panic!("expected a GeometryCollection, got {other:?}"),
+        }
+    }
+
+    /// Mixed dimensions within one `GEOMETRYCOLLECTION`: only the members that
+    /// actually look like bare 3D get tagged, so a 2D member is left alone
+    /// rather than being force-tagged into a spurious Z.
+    #[test]
+    fn a_geometrycollection_mixing_a_bare_3d_and_a_2d_member_round_trips() {
+        let text = "GEOMETRYCOLLECTION(POINT(1 2 3), POINT(4 5))";
+        match parse(text).unwrap() {
+            Geometry::GeometryCollection(c) => {
+                assert_eq!(c.members().len(), 2);
+                assert!(matches!(
+                    c.members()[0],
+                    Geometry::Euclidean3D(Euclidean3DGeometry::Point(_))
+                ));
+                assert!(matches!(
+                    c.members()[1],
+                    Geometry::Euclidean2D(Euclidean2DGeometry::Point(_))
+                ));
+            }
+            other => panic!("expected a GeometryCollection, got {other:?}"),
+        }
+    }
+
+    /// `with_z_tag_on_geometrycollection` in isolation, pinning both the
+    /// top-level comma split and that an already-tagged member passes through
+    /// unchanged.
+    #[test]
+    fn with_z_tag_on_geometrycollection_tags_only_the_members_that_need_it() {
+        assert_eq!(
+            with_z_tag_on_geometrycollection(
+                "GEOMETRYCOLLECTION(POINT(1 2 3), POINT Z(4 5 6), POINT(7 8))"
+            ),
+            Some("GEOMETRYCOLLECTION(POINT Z(1 2 3), POINT Z(4 5 6), POINT(7 8))".to_string())
+        );
+        // Nothing needs tagging: no rewrite.
+        assert_eq!(
+            with_z_tag_on_geometrycollection("GEOMETRYCOLLECTION(POINT(1 2), POINT(3 4))"),
+            None
+        );
+        // Not a GEOMETRYCOLLECTION at all.
+        assert_eq!(
+            with_z_tag_on_geometrycollection("MULTIPOINT((0 0 0))"),
+            None
+        );
     }
 }
