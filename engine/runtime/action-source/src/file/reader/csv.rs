@@ -105,6 +105,16 @@ pub(crate) async fn read_csv(
     Ok(())
 }
 
+/// Why a row was routed to `rejected` instead of `features`. Distinct error
+/// codes, not just distinct messages: diagnostic messages are discarded in
+/// production, so the code is the only signal a user gets, and "bad geometry"
+/// and "wrong field count" point at very different fixes.
+#[cfg(feature = "new-geometry")]
+enum RowFailure {
+    Shape,
+    Geometry(String),
+}
+
 #[cfg(feature = "new-geometry")]
 pub(crate) async fn read_csv(
     delimiter: Delimiter,
@@ -125,8 +135,13 @@ pub(crate) async fn read_csv(
     let mut data_rows = 0usize;
 
     for rd in rdr.deserialize() {
-        // A structurally broken record means the file is wrong, not one cell.
-        // Still fatal, deliberately.
+        // A record the csv crate itself cannot make sense of (invalid UTF-8
+        // in a field, an IO failure) still fails the whole read: that is not
+        // "one bad row", it means the byte stream itself is unreadable. Note
+        // this is narrower than it might sound -- with `flexible(true)`
+        // above, a merely unusual record like an unterminated quoted field is
+        // *not* one of these; the csv crate absorbs it as a valid (if odd)
+        // field running to EOF rather than erroring.
         let record: Vec<String> =
             rd.map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
         data_rows += 1;
@@ -135,39 +150,51 @@ pub(crate) async fn read_csv(
             header = auto_generate_header(record.len());
         }
 
-        // `build_csv_reader` sets `flexible(true)` so the csv crate never
-        // enforces a consistent field count on its own (that check applies
-        // regardless of the deserialize target, but flexible mode disables
-        // it outright). Enforce it here instead: a record whose shape does
-        // not match the header means the file itself is wrong, not one
-        // cell, so it must fail the whole read rather than being routed to
-        // `rejected` alongside a geometry failure.
-        if record.len() != header.len() {
-            return Err(crate::errors::SourceError::CsvFileReader(format!(
-                "record has {} fields but the header has {}",
-                record.len(),
-                header.len()
-            )));
-        }
-
         let row_map: IndexMap<String, String> = record
             .iter()
             .enumerate()
             .filter_map(|(i, value)| header.get(i).map(|h| (h.clone(), value.clone())))
             .collect();
 
-        // A geometry that will not parse costs its own row and nothing more.
-        let (geometry, excluded_columns, failure) = match &props.geometry {
-            Some(config) => {
-                let excluded = super::csv_geometry::get_geometry_column_names(config);
-                match super::csv_geometry::parse_geometry(&row_map, config) {
-                    Ok(geometry) => (geometry, excluded, None),
-                    Err(why) => (Geometry::default(), excluded, Some(why.to_string())),
+        // `build_csv_reader` sets `flexible(true)`, so the csv crate never
+        // enforces a consistent field count on its own (that check applies to
+        // every deserialize target, not just fixed-shape ones, and flexible
+        // mode disables it outright). A ragged row -- one whose field count
+        // does not match the header -- is treated the same as any other bad
+        // row: it costs its own row, not the file. The tempting alternative,
+        // aborting the whole read, buys nothing: the scenario it would catch
+        // (a wrong delimiter, a truncated file) makes *every* row ragged, so
+        // every row rejects and the problem is still glaringly obvious. And
+        // aborting would cost the 900,000-row case everything for one bad
+        // line.
+        //
+        // When the shape is wrong the columns may be misaligned, so geometry
+        // is not parsed at all -- parsing out of misaligned columns could
+        // silently produce plausible-but-wrong coordinates. Shape rejection
+        // takes precedence over a geometry failure.
+        let shape_mismatch = record.len() != header.len();
+
+        let (geometry, excluded_columns, failure) = if shape_mismatch {
+            (Geometry::default(), Vec::new(), Some(RowFailure::Shape))
+        } else {
+            match &props.geometry {
+                Some(config) => {
+                    let excluded = super::csv_geometry::get_geometry_column_names(config);
+                    match super::csv_geometry::parse_geometry(&row_map, config) {
+                        Ok(geometry) => (geometry, excluded, None),
+                        Err(why) => (
+                            Geometry::default(),
+                            excluded,
+                            Some(RowFailure::Geometry(why.to_string())),
+                        ),
+                    }
                 }
+                None => (Geometry::default(), Vec::new(), None),
             }
-            None => (Geometry::default(), Vec::new(), None),
         };
 
+        let record_len = record.len();
+        let header_len = header.len();
         let attributes = row_map
             .into_iter()
             .filter(|(k, _)| !excluded_columns.contains(k))
@@ -179,12 +206,26 @@ pub(crate) async fn read_csv(
 
         let port = match failure {
             None => FEATURES_PORT.clone(),
-            Some(message) => {
-                feature.insert(GEOMETRY_ERROR_ATTRIBUTE, AttributeValue::String(message));
+            Some(RowFailure::Shape) => {
+                feature.insert(
+                    GEOMETRY_ERROR_ATTRIBUTE,
+                    AttributeValue::String(format!(
+                        "record has {record_len} fields but the header has {header_len}"
+                    )),
+                );
                 // One call per rejected row, so the aggregator's count is the
                 // number of rows. This is the backstop for an unwired port:
                 // without it, a disconnected `rejected` port loses rows in
                 // silence.
+                ctx.report_drop(
+                    ErrorCode::CsvRowShapeRejected,
+                    Some(feature.id),
+                    Some(false),
+                );
+                REJECTED_PORT.clone()
+            }
+            Some(RowFailure::Geometry(message)) => {
+                feature.insert(GEOMETRY_ERROR_ATTRIBUTE, AttributeValue::String(message));
                 ctx.report_drop(
                     ErrorCode::CsvGeometryRejected,
                     Some(feature.id),
@@ -328,18 +369,60 @@ mod tests {
         assert!(on_port(&sent, &REJECTED_PORT).is_empty());
     }
 
-    /// Recovery is scoped to geometry and must not widen to everything. A
-    /// structurally broken record means the file is wrong, not one cell, so it
-    /// still fails the whole read. Without this test, someone "improving"
-    /// resilience later could make a wrong-delimiter file silently return a
-    /// partial result.
+    /// A ragged row -- one whose field count doesn't match the header -- is a
+    /// bad row like any other: it costs its own row, not the file. The
+    /// columns may be misaligned, so its error names the shape mismatch
+    /// rather than attempting (and possibly silently mis-parsing) geometry.
     #[tokio::test]
-    async fn a_structurally_broken_record_still_fails_the_whole_read() {
-        // A row with more fields than the header, which the csv crate rejects
-        // when deserializing into a fixed shape.
-        let csv = "name,lon,lat\na,1.0,2.0\nb,1.0,2.0,3.0,4.0\n";
+    async fn a_ragged_row_is_rejected_and_the_others_survive() {
+        // A row with more fields than the header.
+        let csv = "name,lon,lat\na,1.0,2.0\nb,1.0,2.0,3.0,4.0\nc,3.0,4.0\n";
+        let sent = run(csv, &param(Some(coords_geometry()))).await;
+
+        assert_eq!(on_port(&sent, &FEATURES_PORT).len(), 2);
+        let rejected = on_port(&sent, &REJECTED_PORT);
+        assert_eq!(rejected.len(), 1);
+        let error = rejected[0]
+            .get(GEOMETRY_ERROR_ATTRIBUTE)
+            .expect("the error attribute must be present")
+            .to_string();
+        assert!(error.contains('5'), "{error}"); // 5 fields sent
+        assert!(error.contains('3'), "{error}"); // header has 3
+    }
+
+    /// The wrong-delimiter (or badly-configured header) case: every row is
+    /// ragged. Recovery still applies per row rather than aborting -- the
+    /// problem is glaringly obvious from an all-rejected result, and nothing
+    /// about it justifies losing the whole file.
+    #[tokio::test]
+    async fn a_file_where_every_row_is_ragged_rejects_every_row_and_still_succeeds() {
+        // Every data row has a different field count than the 3-column header.
+        let csv = "name,lon,lat\na,1.0\nb,2.0,3.0,4.0\nc,5.0\n";
+        let sent = run(csv, &param(Some(coords_geometry()))).await;
+
+        assert!(on_port(&sent, &FEATURES_PORT).is_empty());
+        assert_eq!(on_port(&sent, &REJECTED_PORT).len(), 3);
+    }
+
+    /// Genuine csv-crate errors are not "one bad row": the crate itself
+    /// cannot make sense of the byte stream, so the whole read still fails.
+    /// Only a field-count mismatch is recoverable.
+    ///
+    /// An unclosed quote is not actually one of these: with this reader's
+    /// settings (`flexible(true)`, default quoting) an unterminated quoted
+    /// field is not an error -- the csv crate treats everything up to EOF as
+    /// that field's content and returns it successfully. Invalid UTF-8 inside
+    /// a field is a genuine, reliably-fatal case instead: `deserialize`
+    /// requires `String` fields to be valid UTF-8, so a non-UTF-8 byte fails
+    /// the record with a `csv::Error`, independent of `flexible`.
+    #[tokio::test]
+    async fn invalid_utf8_in_a_field_still_fails_the_whole_read() {
+        let mut csv: Vec<u8> = b"name,lon,lat\na,1.0,2.0\nb,".to_vec();
+        csv.push(0xFF); // not valid UTF-8 on its own
+        csv.extend_from_slice(b",2.0\n");
+
         let (tx, _rx) = mpsc::channel(64);
-        let content = Bytes::from(csv.to_string());
+        let content = Bytes::from(csv);
         let result = read_csv(
             Delimiter::Comma,
             &content,
@@ -349,7 +432,10 @@ mod tests {
             &NodeContext::default(),
         )
         .await;
-        assert!(result.is_err(), "a broken record must fail the read");
+        assert!(
+            result.is_err(),
+            "invalid UTF-8 in a field must fail the read"
+        );
     }
 
     #[tokio::test]
