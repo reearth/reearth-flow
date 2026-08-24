@@ -207,7 +207,7 @@ fn balanced_to_end(s: &str) -> bool {
 fn with_z_tag_on_geometrycollection(text: &str) -> Option<String> {
     let open = text.find('(')?;
     let keyword = text[..open].trim_end();
-    if keyword != "GEOMETRYCOLLECTION" || !text.ends_with(')') {
+    if keyword != "GEOMETRYCOLLECTION" || !balanced_to_end(&text[open..]) {
         return None;
     }
     let inner = &text[open + 1..text.len() - 1];
@@ -1180,5 +1180,42 @@ mod tests {
             with_z_tag_on_geometrycollection("MULTIPOINT((0 0 0))"),
             None
         );
+    }
+
+    /// The sibling of `trailing_content_after_the_geometry_is_not_silently_dropped`,
+    /// but for the `GEOMETRYCOLLECTION` path: a re-review found
+    /// `with_z_tag_on_geometrycollection` guarded with `text.ends_with(')')`
+    /// rather than `balanced_to_end`, so trailing content after the
+    /// collection's own closing paren was silently dropped once any member
+    /// needed a bare-3D rewrite. Before the fix this parsed (dropping
+    /// `EXTRA)`); it must error instead, matching how `with_z_tag` already
+    /// treats the same shape of malformed input.
+    #[test]
+    fn trailing_content_after_a_geometrycollection_is_not_silently_dropped() {
+        let text = "GEOMETRYCOLLECTION(POINT(1 2 3), POINT(4 5))EXTRA)";
+        assert!(parse(text).is_err(), "{text} must still error");
+    }
+
+    /// `balanced_to_end` is stricter than the `ends_with(')')` it replaces, so
+    /// the risk of tightening the `GEOMETRYCOLLECTION` guard is over-rejection
+    /// of legitimate input that happens to end in more than one closing
+    /// paren. Re-verify every such shape the type supports still round-trips.
+    #[test]
+    fn balanced_to_end_does_not_over_reject_legitimate_geometrycollections() {
+        // The original sibling-fix case: a bare-3D GEOMETRYCOLLECTION.
+        assert!(parse("GEOMETRYCOLLECTION(POINT(1 2 3), LINESTRING(0 0 0, 1 1 1))").is_ok());
+        // A GEOMETRYCOLLECTION nested inside a GEOMETRYCOLLECTION.
+        assert!(parse("GEOMETRYCOLLECTION(GEOMETRYCOLLECTION(POINT(1 2 3)))").is_ok());
+        // A member with interior rings (extra closing parens before the
+        // collection's own).
+        assert!(parse(
+            "GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0 0, 4 0 0, 4 4 0, 0 4 0, 0 0 0), \
+             (1 1 0, 2 1 0, 2 2 0, 1 1 0))))"
+        )
+        .is_ok());
+        // EMPTY has no parens at all to balance.
+        assert!(parse("GEOMETRYCOLLECTION EMPTY").is_ok());
+        // A single member and no comma.
+        assert!(parse("GEOMETRYCOLLECTION(POINT(1 2 3))").is_ok());
     }
 }
