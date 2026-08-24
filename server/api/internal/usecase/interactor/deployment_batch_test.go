@@ -105,6 +105,58 @@ func TestDeployment_FindByProjects_DeniedWorkspaceOmittedNotErrored(t *testing.T
 	assert.NotContains(t, res, deniedPID, "caller was denied on this workspace, its deployment must not leak through the batch")
 }
 
+// TestDeployment_Fetch_NotFoundFirstElementDoesNotPanic pins a crash observed
+// in production: FindByIDs pads a not-found/unreadable id with nil, and if
+// that nil lands at index 0, deployments[0].Workspace() panics with a nil
+// pointer dereference. The permission check must fall back to the first
+// non-nil element instead of assuming index 0 is populated.
+func TestDeployment_Fetch_NotFoundFirstElementDoesNotPanic(t *testing.T) {
+	ws := accountsid.NewWorkspaceID()
+	projectRepo := memory.NewProject()
+	deploymentRepo := memory.NewDeployment()
+	newProjectAndDeployment(t, projectRepo, deploymentRepo, ws)
+
+	realDeployments, _, err := deploymentRepo.FindByWorkspace(context.Background(), ws, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, realDeployments, 1)
+	realID := realDeployments[0].ID()
+
+	missingID := id.NewDeploymentID()
+
+	checker := &recordingChecker{allow: true}
+	i := &Deployment{projectRepo: projectRepo, deploymentRepo: deploymentRepo, permissionChecker: checker}
+
+	require.NotPanics(t, func() {
+		res, err := i.Fetch(context.Background(), []id.DeploymentID{missingID, realID})
+		require.NoError(t, err)
+		require.Len(t, res, 2)
+		assert.Nil(t, res[0], "not-found id stays nil in the result")
+		require.NotNil(t, res[1])
+		require.Len(t, checker.gotWorkspace, 1)
+		assert.Equal(t, ws, checker.gotWorkspace[0], "permission check uses the first non-nil element's workspace")
+	})
+}
+
+// TestDeployment_Fetch_AllNotFound_UsesNoWorkspacePermissionPath pins the
+// other half of the same fix: when every id in the batch is unreadable or
+// missing, the permission check must take the no-items path rather than
+// dereferencing a nil element.
+func TestDeployment_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
+	projectRepo := memory.NewProject()
+	deploymentRepo := memory.NewDeployment()
+	checker := &recordingChecker{allow: true}
+	i := &Deployment{projectRepo: projectRepo, deploymentRepo: deploymentRepo, permissionChecker: checker}
+
+	require.NotPanics(t, func() {
+		res, err := i.Fetch(context.Background(), []id.DeploymentID{id.NewDeploymentID(), id.NewDeploymentID()})
+		require.NoError(t, err)
+		require.Len(t, res, 2)
+		assert.Nil(t, res[0])
+		assert.Nil(t, res[1])
+		assert.Empty(t, checker.gotWorkspace, "no non-nil element means no workspace-scoped check")
+	})
+}
+
 func TestDeployment_FindByProjects_EmptyBatch_DeniesAndTouchesNothing(t *testing.T) {
 	projectRepo := &countingProjectRepo{Project: memory.NewProject()}
 	deploymentRepo := memory.NewDeployment()
