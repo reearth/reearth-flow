@@ -40,6 +40,14 @@ impl SourceFactory for CsvReaderFactory {
         &["csv"]
     }
 
+    // Deliberately not gated on `feature = "new-geometry"`: the port list
+    // feeds the generated action schema, and gating it would make that
+    // schema depend on a compile-time feature -- worse than the alternative.
+    // The consequence is that the old world advertises `rejected` here even
+    // though its `start()` (the `#[cfg(not(feature = "new-geometry"))]` arm
+    // below) calls the old `read_csv`, which never sends to it: a wired
+    // `rejected` edge on an old-world CSV Reader simply never fires. That is
+    // an accepted trade, not a bug.
     fn get_output_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
