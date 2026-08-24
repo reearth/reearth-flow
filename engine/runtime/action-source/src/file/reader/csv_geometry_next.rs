@@ -7,11 +7,14 @@
 use std::str::FromStr;
 
 use indexmap::IndexMap;
+use reearth_flow_geometry::collection::{Collection2D, Collection3D};
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::point::{Point2D, Point3D};
 use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+use reearth_flow_geometry::{
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
+};
 
 use super::{GeometryConfig, GeometryMode};
 use crate::errors::GeometryParsingError;
@@ -151,9 +154,92 @@ fn wkt_to_geometry(
             }
             Ok(polygon_geometry(rings, frame))
         }
-        other => Err(GeometryParsingError::UnsupportedGeometryType(format!(
-            "{other:?}"
-        ))),
+        // The new model has no Multi* types, so a MULTI* becomes a same-
+        // dimension `Collection` via `collect`. `EMPTY` members are filtered
+        // out before folding, so an all-empty run yields `Geometry::None`
+        // rather than an empty `Collection`.
+        Wkt::MultiPoint(multi) => Ok(collect(
+            multi
+                .points()
+                .iter()
+                .filter_map(|p| p.coord())
+                .map(|c| point_geometry(c, frame.clone())),
+        )),
+        Wkt::MultiLineString(multi) => Ok(collect(
+            multi
+                .line_strings()
+                .iter()
+                .map(|l| l.coords())
+                .filter(|coords| !coords.is_empty())
+                .map(|coords| line_geometry(coords, frame.clone())),
+        )),
+        Wkt::MultiPolygon(multi) => Ok(collect(
+            multi
+                .polygons()
+                .iter()
+                .map(|p| p.rings())
+                .filter(|rings| !rings.is_empty())
+                .map(|rings| polygon_geometry(rings, frame.clone())),
+        )),
+        // Closes the gap the old reader named in its own error type
+        // (`GeometryParsingError::UnsupportedGeometryCollection`): the new
+        // path can represent a GeometryCollection, mixed dimensions included.
+        // Members are themselves WKT geometries, so this recurses — a nested
+        // GEOMETRYCOLLECTION works the same as any other member.
+        Wkt::GeometryCollection(collection) => {
+            let (geoms, _dim) = collection.into_inner();
+            let members = geoms
+                .into_iter()
+                .map(|g| wkt_to_geometry(g, frame.clone()))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .filter(|g| !matches!(g, Geometry::None))
+                .collect::<Vec<_>>();
+            if members.is_empty() {
+                return Ok(Geometry::None);
+            }
+            Ok(Geometry::GeometryCollection(GeometryCollection::new(
+                members,
+            )))
+        }
+    }
+}
+
+/// Fold members into a `Collection` of their own dimension. Mixed dimensions
+/// cannot share a `Collection`, so they fall back to a `GeometryCollection`,
+/// which is the type that spans dimensions. An empty run is no geometry.
+fn collect(members: impl Iterator<Item = Geometry>) -> Geometry {
+    let members: Vec<Geometry> = members.collect();
+    if members.is_empty() {
+        return Geometry::None;
+    }
+    let all_2d = members
+        .iter()
+        .all(|g| matches!(g, Geometry::Euclidean2D(_)));
+    let all_3d = members
+        .iter()
+        .all(|g| matches!(g, Geometry::Euclidean3D(_)));
+
+    if all_2d {
+        let leaves = members
+            .into_iter()
+            .filter_map(|g| match g {
+                Geometry::Euclidean2D(leaf) => Some(leaf),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(leaves)))
+    } else if all_3d {
+        let leaves = members
+            .into_iter()
+            .filter_map(|g| match g {
+                Geometry::Euclidean3D(leaf) => Some(leaf),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new(leaves)))
+    } else {
+        Geometry::GeometryCollection(GeometryCollection::new(members))
     }
 }
 
@@ -520,5 +606,70 @@ mod tests {
         );
         // Five ordinates is not bare 3D.
         assert_eq!(with_z_tag("POINT(1 2 3 4 5)"), None);
+    }
+
+    /// The new model has no Multi* types, so a MULTI* becomes a Collection.
+    /// The writer emits MULTIPOINT in the flat spelling, so both must work.
+    #[test]
+    fn multipoint_becomes_a_collection_in_both_spellings() {
+        for text in ["MULTIPOINT(0 0, 1 1)", "MULTIPOINT((0 0), (1 1))"] {
+            match parse(text).unwrap() {
+                Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => {
+                    assert_eq!(c.members().len(), 2, "{text}");
+                }
+                other => panic!("{text} gave {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn multilinestring_becomes_a_collection() {
+        match parse("MULTILINESTRING((0 0, 1 1), (2 2, 3 3))").unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => {
+                assert_eq!(c.members().len(), 2);
+            }
+            other => panic!("expected a 2D collection, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn multipolygon_becomes_a_collection_keeping_holes() {
+        let text = "MULTIPOLYGON(((0 0, 9 0, 9 9, 0 0), (1 1, 2 1, 2 2, 1 1)), ((20 20, 21 20, 21 21, 20 20)))";
+        match parse(text).unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => {
+                assert_eq!(c.members().len(), 2);
+            }
+            other => panic!("expected a 2D collection, got {other:?}"),
+        }
+    }
+
+    /// The gap the old reader named in its own error type:
+    /// "GeometryCollection is not yet supported in CSV reader".
+    #[test]
+    fn a_geometrycollection_is_supported_and_holds_mixed_members() {
+        match parse("GEOMETRYCOLLECTION(POINT(1 2), LINESTRING(0 0, 1 1))").unwrap() {
+            Geometry::GeometryCollection(c) => {
+                assert_eq!(c.members().len(), 2);
+            }
+            other => panic!("expected a GeometryCollection, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_collections_become_an_absent_geometry() {
+        for text in ["MULTIPOINT EMPTY", "GEOMETRYCOLLECTION EMPTY"] {
+            assert!(matches!(parse(text).unwrap(), Geometry::None), "{text}");
+        }
+    }
+
+    /// A 3D MULTI* yields a 3D collection, so the writer's mesh output
+    /// (emitted as MULTIPOLYGON) reads back in 3D.
+    #[test]
+    fn a_3d_multipolygon_yields_a_3d_collection() {
+        let text = "MULTIPOLYGON Z(((0 0 0, 9 0 0, 9 9 1, 0 0 0)))";
+        assert!(matches!(
+            parse(text).unwrap(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(_))
+        ));
     }
 }
