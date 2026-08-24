@@ -307,6 +307,14 @@ func TestFile_CheckJobUserFacingLogExists(t *testing.T) {
 	assert.False(t, exists)
 }
 
+func TestFile_IssueUploadAssetLink(t *testing.T) {
+	f, _ := NewFile(mockFs(), "", "")
+
+	link, err := f.IssueUploadAssetLink(context.Background(), gateway.IssueUploadAssetParam{})
+	assert.Nil(t, link)
+	assert.ErrorIs(t, err, gateway.ErrAssetUploadNotConfigured)
+}
+
 func mockFs() afero.Fs {
 	files := map[string]string{
 		filepath.Join("assets", "xxx.txt"):    "hello",

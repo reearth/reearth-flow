@@ -2272,7 +2272,7 @@ graphs:
   - id: 9c4a7f2e-8d1b-4c9a-f3e6-4a9c7f2e8d1b
     from: 2d8a5f3c-4b7e-4c1d-f9a6-8c2d5a8f3b6e
     to: 4a6c9f2d-7e3b-4d8a-c5f2-1a4c7e9f2d5b
-    fromPort: outershell
+    fromPort: exterior
     toPort: features
   - id: 2e7b4a1c-6f9d-4e2b-a8c5-7b2e4a1c6f9d
     from: 2d8a5f3c-4b7e-4c1d-f9a6-8c2d5a8f3b6e
