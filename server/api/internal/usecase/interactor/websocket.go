@@ -46,35 +46,35 @@ func (i *Websocket) authorize(ctx context.Context, projectID string, action stri
 }
 
 func (i *Websocket) GetLatest(ctx context.Context, docID string) (*ws.Document, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.GetLatest(ctx, docID)
 }
 
 func (i *Websocket) GetHistory(ctx context.Context, docID string) ([]*ws.History, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.GetHistory(ctx, docID)
 }
 
 func (i *Websocket) GetHistoryByVersion(ctx context.Context, docID string, version int) (*ws.History, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.GetHistoryByVersion(ctx, docID, version)
 }
 
 func (i *Websocket) GetHistoryMetadata(ctx context.Context, docID string) ([]*ws.HistoryMetadata, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.GetHistoryMetadata(ctx, docID)
 }
 
 func (i *Websocket) GetNamedSnapshots(ctx context.Context, docID string) ([]*ws.SnapshotMetadata, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.GetNamedSnapshots(ctx, docID)
@@ -87,10 +87,10 @@ func (i *Websocket) SaveNamedSnapshot(ctx context.Context, docID, label string) 
 	return i.client.SaveNamedSnapshot(ctx, docID, label)
 }
 
-// GetSnapshotState reads one snapshot's state. ActionAny, not ActionEdit: read-only,
-// so restore's write is gated by the collaborative document path, not by this.
+// GetSnapshotState reads one snapshot's state. ActionRead: read-only, so
+// restore's write is gated by the collaborative document path, not by this.
 func (i *Websocket) GetSnapshotState(ctx context.Context, docID string, snapshotNumber int) (*ws.SnapshotState, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.GetSnapshotState(ctx, docID, snapshotNumber)
@@ -104,8 +104,9 @@ func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*w
 	return i.client.Rollback(ctx, docID, version)
 }
 
-// FlushToGCS backs the editor's save action. ActionAny, not ActionEdit, which is
-// maintainer/owner and would stop writers saving.
+// FlushToGCS backs the editor's save action. ActionAny, not ActionEdit, which
+// is maintainer/owner and would stop writers saving: ActionAny on
+// ResourceProject is writer/maintainer/owner, deliberately excluding reader.
 func (i *Websocket) FlushToGCS(ctx context.Context, docID string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
 		return err
@@ -115,18 +116,18 @@ func (i *Websocket) FlushToGCS(ctx context.Context, docID string) error {
 
 // CreateSnapshot backs previewSnapshot; it materializes state without writing.
 func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*ws.Document, error) {
-	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
 	}
 	return i.client.CreateSnapshot(ctx, docID, version, name)
 }
 
-// CopyDocument needs write on the destination and access to the source.
+// CopyDocument needs write on the destination and read access to the source.
 func (i *Websocket) CopyDocument(ctx context.Context, docID string, source string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
 		return err
 	}
-	if err := i.authorize(ctx, source, rbac.ActionAny); err != nil {
+	if err := i.authorize(ctx, source, rbac.ActionRead); err != nil {
 		return err
 	}
 	return i.client.CopyDocument(ctx, docID, source)

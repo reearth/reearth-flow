@@ -180,19 +180,44 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 
 // TestWebsocket_ChecksTargetProjectWorkspace pins the action each operation
 // demands, and that it is evaluated against the addressed project's workspace.
+//
+// The read-only operations use ActionRead, not ActionAny: ResourceProject's
+// ActionAny grants writer/maintainer/owner only (deliberately excluding
+// reader), because FlushToGCS — the editor's save path — is also gated by
+// ActionAny and must not be reachable by a reader. Genuine reads need their
+// own action so a reader can still view a document without also being able
+// to write one. Getting this wrong previously let any reader call
+// FlushToGCS and persist writes to a project they can only read.
 func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
-	assertChecks(t, "GetLatest", rbac.ActionAny, getLatest)
-	assertChecks(t, "GetHistory", rbac.ActionAny, getHistory)
-	assertChecks(t, "GetHistoryByVersion", rbac.ActionAny, getHistoryByVersion)
-	assertChecks(t, "GetHistoryMetadata", rbac.ActionAny, getHistoryMetadata)
-	assertChecks(t, "CreateSnapshot", rbac.ActionAny, createSnapshot)
-	assertChecks(t, "GetNamedSnapshots", rbac.ActionAny, getNamedSnapshots)
-	assertChecks(t, "GetSnapshotState", rbac.ActionAny, getSnapshotState)
+	assertChecks(t, "GetLatest", rbac.ActionRead, getLatest)
+	assertChecks(t, "GetHistory", rbac.ActionRead, getHistory)
+	assertChecks(t, "GetHistoryByVersion", rbac.ActionRead, getHistoryByVersion)
+	assertChecks(t, "GetHistoryMetadata", rbac.ActionRead, getHistoryMetadata)
+	assertChecks(t, "CreateSnapshot", rbac.ActionRead, createSnapshot)
+	assertChecks(t, "GetNamedSnapshots", rbac.ActionRead, getNamedSnapshots)
+	assertChecks(t, "GetSnapshotState", rbac.ActionRead, getSnapshotState)
 	assertChecks(t, "SaveNamedSnapshot", rbac.ActionEdit, saveNamedSnapshot)
 	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
 	assertChecks(t, "FlushToGCS", rbac.ActionAny, flushToGCS)
 	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
 	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
+}
+
+// TestWebsocket_ReaderCannotFlushToGCS is the exact regression this fix
+// closes: a reader-scoped caller must be denied FlushToGCS, the write that
+// persists live document state to storage. Before this fix, ResourceProject's
+// live Cerbos policy granted ActionAny — which FlushToGCS is gated by — to
+// role "reader" as well as writer/maintainer/owner, so a Reader could
+// silently persist writes to a document they could only view. This test
+// pins the code-side half of the fix (the action FlushToGCS requests); the
+// role→action mapping itself is enforced by the deployed Cerbos policy, not
+// by this codebase, and was independently verified against the live service.
+func TestWebsocket_ReaderCannotFlushToGCS(t *testing.T) {
+	i, client, rc, docID, _ := wsFixture(t, true)
+	require.NoError(t, i.FlushToGCS(context.Background(), docID))
+	assert.Equal(t, rbac.ActionAny, rc.gotAction, "FlushToGCS must request an action whose live policy excludes reader")
+	assert.NotEqual(t, rbac.ActionRead, rc.gotAction, "ActionRead is reader-inclusive by design; FlushToGCS must never use it")
+	assert.Equal(t, 1, client.calls)
 }
 
 // TestWebsocket_UnresolvableProjectIsDenied: authorization depends on resolving
