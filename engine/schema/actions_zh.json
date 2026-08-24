@@ -3671,10 +3671,11 @@
     {
       "name": "Feature CityGML 3 Reader",
       "type": "processor",
-      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取每个输入地物所指向的 CityGML 3.0 文件，并解析所有已读取文件之间的 gml:id 引用和 xlink:href 链接。指定文件的地物的属性会被带到由该文件生成的地物上。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 3 Reader Parameters",
+        "description": "要读取的文件，以及其元素如何转换为地物属性。",
         "type": "object",
         "required": [
           "dataset"
@@ -3753,7 +3754,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML Reader",
@@ -3950,14 +3954,39 @@
     {
       "name": "Feature Duplicate Filter",
       "type": "processor",
-      "description": "移除重复要素",
-      "parameter": null,
+      "description": "转发每个不同值的第一个地物，并将重复该值的地物分离出来。除非指定要比较的属性，否则按地物的全部内容进行比较。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Duplicate Filter Parameters",
+        "description": "Which features count as repeats of one another.",
+        "type": "object",
+        "properties": {
+          "filterBy": {
+            "title": "Filter Attributes",
+            "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "duplicate"
       ],
       "categories": [
         "Feature"
@@ -4112,11 +4141,11 @@
     {
       "name": "Feature GeoJSON Writer",
       "type": "processor",
-      "description": "Writes features to a GeoJSON file for each resolved output path.",
+      "description": "将接收到的地物按解析出的每个输出路径写入 GeoJSON 文件，然后为每个已写入的文件输出一个携带该文件路径的地物。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureGeoJsonWriter Parameters",
-        "description": "Configuration for writing features to GeoJSON files.",
+        "title": "Feature GeoJSON Writer Parameters",
+        "description": "Where the GeoJSON is written, and what is declared about its coordinates.",
         "type": "object",
         "required": [
           "output"
@@ -5750,7 +5779,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Coercer Parameters",
-        "description": "Configuration for coercing geometries to specific target types.",
+        "description": "Which geometry type each feature is coerced into.",
         "type": "object",
         "required": [
           "targetType"
@@ -7699,7 +7728,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Hole Counter Parameters",
-        "description": "Configure where to store the count of holes found in polygon geometries",
+        "description": "Where the total number of holes is stored on each feature.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -7707,7 +7736,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Name of the attribute where the hole count will be stored as a number",
+            "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -7736,14 +7765,14 @@
     {
       "name": "Hole Extractor",
       "type": "processor",
-      "description": "提取几何中的孔并作为属性添加",
+      "description": "将几何的每个面拆分为环，并将外环和每个内环（孔）各自作为独立地物输出。",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "outershell",
+        "exterior",
         "hole",
         "rejected"
       ],
@@ -8395,46 +8424,50 @@
     {
       "name": "List Concatenator",
       "type": "processor",
-      "description": "从列表的每个元素中提取特定属性，并将其连接成单个字符串",
+      "description": "将列表属性中每个元素的某一个属性值连接成单个字符串。非键值对的元素，以及缺少该属性的元素将被跳过。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Concatenator Parameters",
-        "description": "Configuration for concatenating a specific attribute from list elements.",
+        "description": "Which list to read, which attribute to take from its elements, and where the result goes.",
         "type": "object",
         "required": [
-          "attribute",
+          "elementAttribute",
           "list",
-          "outputAttributeName",
-          "separateCharacter"
+          "outputAttribute"
         ],
         "properties": {
           "list": {
-            "description": "List attribute to read from",
+            "title": "List",
+            "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "attribute": {
-            "description": "Attribute name to extract from each list element",
+          "elementAttribute": {
+            "title": "Element Attribute",
+            "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "separateCharacter": {
-            "description": "Character(s) to use as separator between concatenated values",
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute the joined string is written to.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "separator": {
+            "title": "Separator",
+            "description": "Text placed between consecutive values. Defaults to a comma.",
+            "default": ",",
             "type": "string"
-          },
-          "outputAttributeName": {
-            "description": "Name of the attribute to store the concatenated result",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8451,9 +8484,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "List Exploder",
@@ -8502,33 +8537,36 @@
     {
       "name": "List Indexer",
       "type": "processor",
-      "description": "将特定列表元素的属性复制为要素的主要属性",
+      "description": "将列表属性中某一个元素的键值对复制到地物本身，同名属性将被覆盖，其余属性保持不变。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Indexer Parameters",
-        "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+        "description": "Which list to read, which of its elements to copy, and how to name what is copied.",
         "type": "object",
         "required": [
-          "listAttribute",
-          "listIndexToCopy"
+          "index",
+          "list"
         ],
         "properties": {
-          "listAttribute": {
-            "description": "List attribute to read from",
+          "list": {
+            "title": "List",
+            "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "listIndexToCopy": {
-            "description": "Index of the list element to copy (0-based)",
+          "index": {
+            "title": "Index",
+            "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged.",
             "type": "integer",
             "format": "uint",
             "minimum": 0.0
           },
           "copiedAttributePrefix": {
-            "description": "Optional prefix to add to copied attribute names",
+            "title": "Copied Attribute Prefix",
+            "description": "Text placed before each copied attribute name. Omitted by default.",
             "default": null,
             "type": [
               "string",
@@ -8536,7 +8574,8 @@
             ]
           },
           "copiedAttributeSuffix": {
-            "description": "Optional suffix to add to copied attribute names",
+            "title": "Copied Attribute Suffix",
+            "description": "Text placed after each copied attribute name. Omitted by default.",
             "default": null,
             "type": [
               "string",
@@ -8558,9 +8597,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "MVT Writer",

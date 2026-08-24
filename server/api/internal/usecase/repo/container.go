@@ -18,7 +18,6 @@ type Container struct {
 	Config          Config
 	WorkerConfig    WorkerConfig
 	Deployment      Deployment
-	EdgeExecution   EdgeExecution
 	Job             Job
 	Lock            Lock
 	NodeDiagnostics NodeDiagnostics
@@ -60,7 +59,6 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		Config:          c.Config,
 		WorkerConfig:    c.WorkerConfig,
 		Deployment:      c.Deployment.Filtered(workspace),
-		EdgeExecution:   c.EdgeExecution,
 		Job:             c.Job.Filtered(workspace),
 		Lock:            c.Lock,
 		NodeDiagnostics: c.NodeDiagnostics,

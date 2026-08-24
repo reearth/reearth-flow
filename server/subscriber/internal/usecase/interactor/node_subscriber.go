@@ -59,12 +59,12 @@ func (u *nodeSubscriberUseCase) ProcessNodeEvent(ctx context.Context, event *nod
 		log.Printf("DEBUG: Setting CompletedAt=%s for node %s", now.Format(time.RFC3339), event.NodeID)
 
 		if err := u.storage.SaveNodeExecution(ctx, event.JobID, nodeExec); err != nil {
-			log.Printf("WARNING: Failed to save node execution for JobID=%s, NodeID=%s: %v",
+			log.Printf("ERROR: Failed to save node execution for JobID=%s, NodeID=%s: %v",
 				event.JobID, event.NodeID, err)
-		} else {
-			log.Printf("DEBUG: Successfully saved node execution for JobID=%s, NodeID=%s",
-				event.JobID, event.NodeID)
+			return fmt.Errorf("failed to save node execution: %w", err)
 		}
+		log.Printf("DEBUG: Successfully saved node execution for JobID=%s, NodeID=%s",
+			event.JobID, event.NodeID)
 	} else {
 		log.Printf("DEBUG: Skipping node execution save for non-terminal status %s", event.Status)
 	}

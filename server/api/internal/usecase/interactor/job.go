@@ -331,7 +331,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 
 	i.activeWatchers[jobKey] = true
 
-	monitorCtx, cancel := context.WithCancel(context.Background())
+	monitorCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 
 	i.monitor.Register(jobKey, &monitor.Config{
 		Cancel:          cancel,
@@ -373,7 +373,7 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
+			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 			if err != nil {
 				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
 				continue
