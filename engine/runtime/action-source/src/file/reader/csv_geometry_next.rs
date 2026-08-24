@@ -822,4 +822,131 @@ mod tests {
             other => panic!("expected a 3D point, got {other:?}"),
         }
     }
+    // Every assertion above the following block is on a `POINT`. `line_geometry`
+    // and `polygon_geometry` each call `xy(c, swap)` at multiple independent
+    // sites (2D and 3D, exterior and interior ring), and none of those sites
+    // were exercised under a swapping CRS: a review mutated all six call sites
+    // to ignore `swap` and the full suite still passed. The tests below close
+    // that gap, one per dimension/shape, plus a collection (which routes
+    // through the same functions via `collect`'s fold rather than being called
+    // directly).
+
+    /// Guards `line_geometry`'s 2D `xy(c, swap)` call site.
+    #[test]
+    fn a_reversed_axis_crs_swaps_a_2d_linestrings_coordinates() {
+        let g = parse_geometry(
+            &row(&[("geom", "LINESTRING(10 20, 30 40)")]),
+            &wkt_config(Some(4326)),
+        )
+        .unwrap();
+        match g {
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(l)) => {
+                assert_eq!(l.coords(), &[[20.0, 10.0], [40.0, 30.0]]);
+            }
+            other => panic!("expected a 2D linestring, got {other:?}"),
+        }
+    }
+
+    /// Guards `line_geometry`'s 3D `xy(c, swap)` call site. Z must survive
+    /// untouched alongside the swapped X/Y.
+    #[test]
+    fn a_reversed_axis_crs_swaps_a_3d_linestrings_coordinates() {
+        let g = parse_geometry(
+            &row(&[("geom", "LINESTRING Z(10 20 1, 30 40 2)")]),
+            &wkt_config(Some(4326)),
+        )
+        .unwrap();
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(l)) => {
+                assert_eq!(l.coords(), &[[20.0, 10.0, 1.0], [40.0, 30.0, 2.0]]);
+            }
+            other => panic!("expected a 3D linestring, got {other:?}"),
+        }
+    }
+
+    /// Guards `polygon_geometry`'s 2D exterior and interior `xy(c, swap)` call
+    /// sites together: a holed polygon exercises both.
+    #[test]
+    fn a_reversed_axis_crs_swaps_a_2d_polygons_coordinates_including_its_hole() {
+        let text = "POLYGON((0 10, 4 10, 4 14, 0 14, 0 10), (1 11, 2 11, 2 12, 1 11))";
+        let g = parse_geometry(&row(&[("geom", text)]), &wkt_config(Some(4326))).unwrap();
+        match g {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) => {
+                assert_eq!(
+                    p.exterior(),
+                    &[
+                        [10.0, 0.0],
+                        [10.0, 4.0],
+                        [14.0, 4.0],
+                        [14.0, 0.0],
+                        [10.0, 0.0],
+                    ]
+                );
+                let interior = p.interiors().next().expect("the hole must survive");
+                assert_eq!(
+                    interior,
+                    &[[11.0, 1.0], [11.0, 2.0], [12.0, 2.0], [11.0, 1.0]]
+                );
+            }
+            other => panic!("expected a 2D polygon, got {other:?}"),
+        }
+    }
+
+    /// Guards `polygon_geometry`'s 3D exterior and interior `xy(c, swap)` call
+    /// sites. Z must survive untouched.
+    #[test]
+    fn a_reversed_axis_crs_swaps_a_3d_polygons_coordinates_including_its_hole() {
+        let text = "POLYGON Z((0 10 5, 4 10 5, 4 14 5, 0 14 5, 0 10 5), \
+                     (1 11 5, 2 11 5, 2 12 5, 1 11 5))";
+        let g = parse_geometry(&row(&[("geom", text)]), &wkt_config(Some(4326))).unwrap();
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => {
+                assert_eq!(
+                    p.exterior(),
+                    &[
+                        [10.0, 0.0, 5.0],
+                        [10.0, 4.0, 5.0],
+                        [14.0, 4.0, 5.0],
+                        [14.0, 0.0, 5.0],
+                        [10.0, 0.0, 5.0],
+                    ]
+                );
+                let interior = p.interiors().next().expect("the hole must survive");
+                assert_eq!(
+                    interior,
+                    &[
+                        [11.0, 1.0, 5.0],
+                        [11.0, 2.0, 5.0],
+                        [12.0, 2.0, 5.0],
+                        [11.0, 1.0, 5.0],
+                    ]
+                );
+            }
+            other => panic!("expected a 3D polygon, got {other:?}"),
+        }
+    }
+
+    /// A collection routes members through `line_geometry`/`polygon_geometry`
+    /// via `collect`'s fold rather than being called directly, so it is a
+    /// distinct path worth its own coverage under a swapping CRS.
+    #[test]
+    fn a_reversed_axis_crs_swaps_a_multipolygons_member_coordinates() {
+        let text = "MULTIPOLYGON(((0 10, 4 10, 4 14, 0 10)))";
+        let g = parse_geometry(&row(&[("geom", text)]), &wkt_config(Some(4326))).unwrap();
+        match g {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => {
+                assert_eq!(c.members().len(), 1);
+                match &c.members()[0] {
+                    Euclidean2DGeometry::Polygon(p) => {
+                        assert_eq!(
+                            p.exterior(),
+                            &[[10.0, 0.0], [10.0, 4.0], [14.0, 4.0], [10.0, 0.0]]
+                        );
+                    }
+                    other => panic!("expected a polygon member, got {other:?}"),
+                }
+            }
+            other => panic!("expected a 2D collection, got {other:?}"),
+        }
+    }
 }
