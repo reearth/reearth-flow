@@ -107,14 +107,29 @@ func TestWorkspace_MutationsProceedWhenAllowed(t *testing.T) {
 	}
 }
 
-// TestWorkspace_CreateIsNotWorkspaceScoped: creating a workspace has no
-// workspace to authorize against, so it must not send one — otherwise the
-// check would be evaluated against a workspace that does not exist yet.
-func TestWorkspace_CreateIsNotWorkspaceScoped(t *testing.T) {
+// TestWorkspace_CreateIsAuthorizedButNotWorkspaceScoped: creating a workspace
+// still has to pass the create rule, but there is no workspace to authorize
+// against yet, so the check must be sent unscoped.
+func TestWorkspace_CreateIsAuthorizedButNotWorkspaceScoped(t *testing.T) {
+	repo := &countingWorkspaceGQLRepo{}
 	rc := &recordingChecker{allow: true}
-	i := NewWorkspace(&countingWorkspaceGQLRepo{}, rc)
+	i := NewWorkspace(repo, rc)
 
-	_, _ = i.Create(context.Background(), "n")
+	_, err := i.Create(context.Background(), "n")
 
-	assert.Empty(t, rc.gotWorkspace)
+	require.NoError(t, err)
+	assert.Equal(t, rbac.ResourceWorkspace, rc.gotResource)
+	assert.Equal(t, rbac.ActionCreate, rc.gotAction)
+	assert.Empty(t, rc.gotWorkspace, "no workspace exists yet to scope the check to")
+	assert.Equal(t, 1, repo.writes)
+}
+
+func TestWorkspace_CreateDeniedNeverReachesAccounts(t *testing.T) {
+	repo := &countingWorkspaceGQLRepo{}
+	i := NewWorkspace(repo, &recordingChecker{allow: false})
+
+	_, err := i.Create(context.Background(), "n")
+
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	assert.Zero(t, repo.writes, "denied Create still reached the accounts service")
 }

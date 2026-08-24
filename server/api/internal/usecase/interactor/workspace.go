@@ -37,7 +37,13 @@ func (i *Workspace) FindByUser(ctx context.Context, uid accountsid.UserID) (acco
 	return i.workspaceRepo.FindByUser(ctx, uid.String())
 }
 
+// Create takes no workspace id: the workspace does not exist yet, so the check
+// is unscoped and resolves against the caller's global roles.
 func (i *Workspace) Create(ctx context.Context, name string) (*accountsworkspace.Workspace, error) {
+	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+		return nil, err
+	}
+
 	return i.workspaceRepo.CreateWorkspace(ctx, gqlworkspace.CreateWorkspaceInput{
 		Name:  name,
 		Alias: name,
