@@ -133,6 +133,11 @@ pub(crate) async fn read_csv(
         .map_err(crate::errors::SourceError::CsvFileReader)?;
 
     let mut data_rows = 0usize;
+    // Counted locally and reported once after the loop -- see the comment
+    // above the `report_drop` calls below for why per-row reporting would be
+    // wrong here.
+    let mut shape_rejected = 0usize;
+    let mut geometry_rejected = 0usize;
 
     for rd in rdr.deserialize() {
         // A record the csv crate itself cannot make sense of (invalid UTF-8
@@ -213,24 +218,12 @@ pub(crate) async fn read_csv(
                         "record has {record_len} fields but the header has {header_len}"
                     )),
                 );
-                // One call per rejected row, so the aggregator's count is the
-                // number of rows. This is the backstop for an unwired port:
-                // without it, a disconnected `rejected` port loses rows in
-                // silence.
-                ctx.report_drop(
-                    ErrorCode::CsvRowShapeRejected,
-                    Some(feature.id),
-                    Some(false),
-                );
+                shape_rejected += 1;
                 REJECTED_PORT.clone()
             }
             Some(RowFailure::Geometry(message)) => {
                 feature.insert(GEOMETRY_ERROR_ATTRIBUTE, AttributeValue::String(message));
-                ctx.report_drop(
-                    ErrorCode::CsvGeometryRejected,
-                    Some(feature.id),
-                    Some(false),
-                );
+                geometry_rejected += 1;
                 REJECTED_PORT.clone()
             }
         };
@@ -241,6 +234,27 @@ pub(crate) async fn read_csv(
             .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
     }
 
+    // Sources get no diagnostics aggregator: `NodeContext::new` (what
+    // `source_node.rs` builds this `ctx` from) always sets `diagnostics:
+    // None`, so `report_drop` always takes the `None` branch -- there is no
+    // batching, no disposition resolution, and no `node_id` on the resulting
+    // event, unlike a sink or processor whose `NodeDiagnosticsHandle`
+    // aggregates and later summarises. Each call here is one raw diagnostic
+    // event, published immediately.
+    //
+    // Calling it per row would mean one event per rejected row -- a
+    // 900,000-row file with every row ragged would emit 900,000 events. That
+    // is not what the diagnostic is for: it exists only as a backstop so a
+    // disconnected `rejected` port doesn't lose rows in total silence, which
+    // needs exactly one signal per run, not one per row. So rejections are
+    // counted locally in the loop above and reported at most once per
+    // failure kind here, after it.
+    if shape_rejected > 0 {
+        ctx.report_drop(ErrorCode::CsvRowShapeRejected, None, None);
+    }
+    if geometry_rejected > 0 {
+        ctx.report_drop(ErrorCode::CsvGeometryRejected, None, None);
+    }
     if data_rows == 0 {
         ctx.report_drop(ErrorCode::CsvNoDataRows, None, None);
     }
