@@ -98,6 +98,49 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	return i.deploymentRepo.FindByProject(ctx, id)
 }
 
+// FindByProjects batches FindByProject for a dataloader: one project lookup and
+// one permission check per distinct workspace instead of one of each per project.
+// Projects in a workspace the caller can't see are simply omitted from the result.
+func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*deployment.Deployment, error) {
+	if len(ids) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+		return map[id.ProjectID]*deployment.Deployment{}, nil
+	}
+
+	projects, err := i.projectRepo.FindByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	byWorkspace := map[accountsid.WorkspaceID][]id.ProjectID{}
+	for _, p := range projects {
+		if p == nil { // some repo implementations pad not-found/unreadable entries with nil
+			continue
+		}
+		byWorkspace[p.Workspace()] = append(byWorkspace[p.Workspace()], p.ID())
+	}
+
+	result := make(map[id.ProjectID]*deployment.Deployment, len(projects))
+	for ws, pids := range byWorkspace {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+			continue // caller can't see this workspace; omit its projects' deployments
+		}
+		for _, pid := range pids {
+			dep, err := i.deploymentRepo.FindByProject(ctx, pid)
+			if err != nil {
+				return nil, err
+			}
+			if dep != nil {
+				result[pid] = dep
+			}
+		}
+	}
+
+	return result, nil
+}
+
 func (i *Deployment) FindByVersion(ctx context.Context, wsID accountsid.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny, wsID); err != nil {
 		return nil, err
