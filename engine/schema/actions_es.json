@@ -3676,10 +3676,11 @@
     {
       "name": "Feature CityGML 3 Reader",
       "type": "processor",
-      "description": "Lee archivos CityGML 3.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "description": "Lee el archivo CityGML 3.0 al que apunta cada entidad entrante, resolviendo las referencias gml:id y xlink:href entre todos los archivos leídos. Los atributos de la entidad que nombra un archivo se transfieren a las entidades generadas a partir de él.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 3 Reader Parameters",
+        "description": "Qué archivo leer y cómo sus elementos se convierten en atributos de la entidad.",
         "type": "object",
         "required": [
           "dataset"
@@ -3758,7 +3759,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML Reader",
@@ -3955,14 +3959,39 @@
     {
       "name": "Feature Duplicate Filter",
       "type": "processor",
-      "description": "Elimina características duplicadas",
-      "parameter": null,
+      "description": "Reenvía la primera entidad que presenta cada valor distinto y separa las que lo repiten. Las entidades se comparan por su contenido completo salvo que se indiquen los atributos a comparar.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Duplicate Filter Parameters",
+        "description": "Which features count as repeats of one another.",
+        "type": "object",
+        "properties": {
+          "filterBy": {
+            "title": "Filter Attributes",
+            "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "duplicate"
       ],
       "categories": [
         "Feature"
@@ -4117,11 +4146,11 @@
     {
       "name": "Feature GeoJSON Writer",
       "type": "processor",
-      "description": "Writes features to a GeoJSON file for each resolved output path.",
+      "description": "Escribe las entidades que recibe en un archivo GeoJSON por cada ruta de salida resuelta y luego emite una entidad por archivo escrito, con la ruta de ese archivo.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureGeoJsonWriter Parameters",
-        "description": "Configuration for writing features to GeoJSON files.",
+        "title": "Feature GeoJSON Writer Parameters",
+        "description": "Where the GeoJSON is written, and what is declared about its coordinates.",
         "type": "object",
         "required": [
           "output"
@@ -8416,46 +8445,50 @@
     {
       "name": "List Concatenator",
       "type": "processor",
-      "description": "Extrae un atributo específico de cada elemento de una lista y los concatena en una sola cadena de texto",
+      "description": "Une el valor de un atributo de cada elemento de un atributo de lista en una sola cadena. Los elementos que no son pares clave-valor, o que carecen del atributo, se omiten.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Concatenator Parameters",
-        "description": "Configuration for concatenating a specific attribute from list elements.",
+        "description": "Which list to read, which attribute to take from its elements, and where the result goes.",
         "type": "object",
         "required": [
-          "attribute",
+          "elementAttribute",
           "list",
-          "outputAttributeName",
-          "separateCharacter"
+          "outputAttribute"
         ],
         "properties": {
           "list": {
-            "description": "List attribute to read from",
+            "title": "List",
+            "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "attribute": {
-            "description": "Attribute name to extract from each list element",
+          "elementAttribute": {
+            "title": "Element Attribute",
+            "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "separateCharacter": {
-            "description": "Character(s) to use as separator between concatenated values",
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute the joined string is written to.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "separator": {
+            "title": "Separator",
+            "description": "Text placed between consecutive values. Defaults to a comma.",
+            "default": ",",
             "type": "string"
-          },
-          "outputAttributeName": {
-            "description": "Name of the attribute to store the concatenated result",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8472,9 +8505,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "List Exploder",
@@ -8523,33 +8558,36 @@
     {
       "name": "List Indexer",
       "type": "processor",
-      "description": "Copia los atributos de un elemento de lista específico para convertirlos en los atributos principales de una entidad",
+      "description": "Copia los pares clave-valor de un elemento de un atributo de lista en la entidad misma, sobrescribiendo un atributo del mismo nombre y dejando el resto intacto.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Indexer Parameters",
-        "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+        "description": "Which list to read, which of its elements to copy, and how to name what is copied.",
         "type": "object",
         "required": [
-          "listAttribute",
-          "listIndexToCopy"
+          "index",
+          "list"
         ],
         "properties": {
-          "listAttribute": {
-            "description": "List attribute to read from",
+          "list": {
+            "title": "List",
+            "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "listIndexToCopy": {
-            "description": "Index of the list element to copy (0-based)",
+          "index": {
+            "title": "Index",
+            "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged.",
             "type": "integer",
             "format": "uint",
             "minimum": 0.0
           },
           "copiedAttributePrefix": {
-            "description": "Optional prefix to add to copied attribute names",
+            "title": "Copied Attribute Prefix",
+            "description": "Text placed before each copied attribute name. Omitted by default.",
             "default": null,
             "type": [
               "string",
@@ -8557,7 +8595,8 @@
             ]
           },
           "copiedAttributeSuffix": {
-            "description": "Optional suffix to add to copied attribute names",
+            "title": "Copied Attribute Suffix",
+            "description": "Text placed after each copied attribute name. Omitted by default.",
             "default": null,
             "type": [
               "string",
@@ -8579,9 +8618,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "MVT Writer",

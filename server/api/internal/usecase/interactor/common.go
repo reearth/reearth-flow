@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -52,7 +53,6 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		CMS:           NewCMS(r, g, permissionChecker),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
-		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
 		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
 		NodeExecution: NewNodeExecution(r.NodeExecution, r.Job, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
@@ -108,12 +108,30 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		return nil
 	}
 
+	memoUser := ""
+	if u := adapter.User(ctx); u != nil {
+		memoUser = u.ID().String()
+	}
+	memoWorkspace := ""
+	if len(workspaceID) == 1 {
+		memoWorkspace = workspaceID[0].String()
+	}
+	memo := adapter.PermissionVerdicts(ctx)
+	if hasPermission, ok := memo.Get(memoUser, resource, action, memoWorkspace); ok {
+		if !hasPermission {
+			return interfaces.ErrOperationDenied
+		}
+		return nil
+	}
+
 	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action, workspaceID...)
 	if err != nil {
 		log.Printf("WARNING: Permission check error for resource=%s action=%s: %v", resource, action, err)
 		span.RecordError(err)
-		return err
+		return err // never memoize an error result
 	}
+
+	memo.Set(memoUser, resource, action, memoWorkspace, hasPermission)
 
 	if !hasPermission {
 		log.Printf("WARNING: Permission denied for resource=%s action=%s", resource, action)

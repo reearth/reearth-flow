@@ -1234,10 +1234,11 @@
     },
     {
       "name": "Feature CityGML 3 Reader",
-      "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 3.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 3 Reader パラメータ"
+          "title": "Feature CityGML 3 Reader パラメータ",
+          "description": "読み込むファイル、およびその要素を地物の属性に変換する方法"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1325,7 +1326,17 @@
     },
     {
       "name": "Feature Duplicate Filter",
-      "description": "重複した地物を削除する"
+      "description": "各値について最初の地物を通過させ、それを繰り返す地物を分離する。比較する属性を指定しない場合は、地物の内容全体で比較する",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Duplicate Filter Parameters",
+          "description": "どの地物を互いの重複とみなすか"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "重複を判定する属性の組み合わせ。ある組み合わせを最初に持つ地物が通過し、以降の地物は分離される。属性が存在しないこと自体も組み合わせの一部として扱われるため、空の値を持つ場合とは区別される。省略した場合は、すべての属性とジオメトリを含む内容全体で比較する"
+        }
+      }
     },
     {
       "name": "Feature File Path Extractor",
@@ -1377,10 +1388,11 @@
     },
     {
       "name": "Feature GeoJSON Writer",
+      "description": "受け取った地物を、解決された出力パスごとに GeoJSON ファイルへ書き出し、書き出したファイルごとにそのパスを持つ地物を一つ出力する",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
-          "description": "Configuration for writing features to GeoJSON files."
+          "title": "Feature GeoJSON Writer パラメータ",
+          "description": "GeoJSON の書き出し先、および座標について宣言する内容"
         },
         "output": {
           "title": "Output",
@@ -2453,23 +2465,27 @@
     },
     {
       "name": "List Concatenator",
-      "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する",
+      "description": "リスト属性の各要素から一つの属性の値を取り出し、単一の文字列に連結する。キーと値の組でない要素、およびその属性を持たない要素は読み飛ばす",
       "parameterI18n": {
         "": {
           "title": "List Concatenator パラメータ",
-          "description": "リスト要素から特定の属性を取り出して連結する設定"
+          "description": "読み込むリスト、その要素から取り出す属性、および結果の格納先"
         },
-        "attribute": {
-          "description": "各リスト要素から取り出す属性名"
+        "elementAttribute": {
+          "title": "Element Attribute",
+          "description": "リストの各要素から取り出す属性。キーと値の組でない要素、およびこの属性を持たない要素は何も寄与しない"
         },
         "list": {
-          "description": "読み込むリスト属性"
+          "title": "List",
+          "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         },
-        "outputAttributeName": {
-          "description": "連結結果を格納する属性名"
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "連結した文字列を格納する属性"
         },
-        "separateCharacter": {
-          "description": "連結された値の間の区切り文字"
+        "separator": {
+          "title": "Separator",
+          "description": "連続する値の間に挿入する文字列。既定はカンマ"
         }
       }
     },
@@ -2489,23 +2505,27 @@
     },
     {
       "name": "List Indexer",
-      "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする",
+      "description": "リスト属性の一つの要素が持つキーと値の組を地物自体にコピーする。同名の属性は上書きし、それ以外はそのまま残す",
       "parameterI18n": {
         "": {
           "title": "List Indexer パラメータ",
-          "description": "特定のリスト要素の属性をメインのフィーチャー属性にコピーする設定"
+          "description": "読み込むリスト、コピーする要素、およびコピーした属性名の付け方"
         },
         "copiedAttributePrefix": {
-          "description": "コピーした属性名に追加するプレフィックス（任意）"
+          "title": "Copied Attribute Prefix",
+          "description": "コピーした各属性名の前に付ける文字列。既定では付けない"
         },
         "copiedAttributeSuffix": {
-          "description": "コピーした属性名に追加するサフィックス（任意）"
+          "title": "Copied Attribute Suffix",
+          "description": "コピーした各属性名の後に付ける文字列。既定では付けない"
         },
-        "listAttribute": {
-          "description": "読み込むリスト属性"
+        "index": {
+          "title": "Index",
+          "description": "コピーする要素の位置。0 から数える。リストがこれより短い地物、およびこの位置の要素がキーと値の組でない地物は、そのまま通過する"
         },
-        "listIndexToCopy": {
-          "description": "コピーするリスト要素のインデックス（0 始まり）"
+        "list": {
+          "title": "List",
+          "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         }
       }
     },

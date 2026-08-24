@@ -504,16 +504,16 @@ nodes:
   type: action
   action: List Indexer
   with:
-    listAttribute: list
-    listIndexToCopy: 0
+    list: list
+    index: 0
     copiedAttributeSuffix: _1
 - id: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
   name: ListIndexer2
   type: action
   action: List Indexer
   with:
-    listAttribute: list
-    listIndexToCopy: 1
+    list: list
+    index: 1
     copiedAttributeSuffix: _2
 - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
   name: Lod0SurfaceIntersectionCounter

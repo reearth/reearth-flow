@@ -204,8 +204,8 @@ nodes:
     type: action
     action: List Indexer
     with:
-      listAttribute: list
-      listIndexToCopy: 0
+      list: list
+      index: 0
       copiedAttributeSuffix: _1
 
   - id: af899976-7fb2-4c38-a0ff-c76ce7d00709
@@ -213,8 +213,8 @@ nodes:
     type: action
     action: List Indexer
     with:
-      listAttribute: list
-      listIndexToCopy: 1
+      list: list
+      index: 1
       copiedAttributeSuffix: _2
 
   - id: 2a060073-02a0-460a-8b68-c3ea965a96d6
