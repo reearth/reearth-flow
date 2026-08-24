@@ -7,7 +7,7 @@ use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
 use super::slice::PolygonPart;
-use crate::file::mvt::tags::convert_properties;
+use crate::file::mvt::tags::convert_properties_with_separator;
 
 // Below this quantized bounding-box diagonal (extent-grid units) a feature covers less than a pixel; dropped unconditionally regardless of the size cap.
 const SUBPIXEL_DIAMETER: f64 = 1.0;
@@ -200,12 +200,21 @@ fn build_candidate(extent: i32, feature: &SlicedFeature) -> Option<Candidate> {
 }
 
 // Encodes `candidates` into a real tile and returns its exact bytes.
-fn encode_tile(extent: i32, candidates: &[Candidate]) -> Vec<u8> {
+fn encode_tile(
+    extent: i32,
+    candidates: &[Candidate],
+    array_map_separator: Option<&str>,
+) -> Vec<u8> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     for candidate in candidates {
         let layer = layers.entry(candidate.layer_name.clone()).or_default();
         for (key, value) in candidate.properties.iter() {
-            convert_properties(&mut layer.tags_enc, &key.inner().to_string(), value);
+            convert_properties_with_separator(
+                &mut layer.tags_enc,
+                &key.inner().to_string(),
+                value,
+                array_map_separator,
+            );
         }
         layer.features.push(vector_tile::tile::Feature {
             id: None,
@@ -240,6 +249,7 @@ pub(super) fn make_tile(
     extent: i32,
     feats: &[SlicedFeature],
     max_tile_bytes: u64,
+    array_map_separator: Option<&str>,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut candidates: Vec<Candidate> = feats
         .iter()
@@ -254,7 +264,7 @@ pub(super) fn make_tile(
     });
 
     loop {
-        let bytes = encode_tile(extent, &candidates);
+        let bytes = encode_tile(extent, &candidates, array_map_separator);
         let actual = bytes.len() as u64;
         if actual <= max_tile_bytes || candidates.is_empty() {
             return Ok(bytes);
@@ -303,12 +313,12 @@ mod tests {
         };
         let feats = vec![big_feature, small_feature];
 
-        let both_bytes = make_tile(extent, &feats, u64::MAX).unwrap();
-        let big_alone_bytes = make_tile(extent, &feats[..1], u64::MAX).unwrap();
+        let both_bytes = make_tile(extent, &feats, u64::MAX, None).unwrap();
+        let big_alone_bytes = make_tile(extent, &feats[..1], u64::MAX, None).unwrap();
         let cap = big_alone_bytes.len() as u64 + 1;
         assert!((cap as usize) < both_bytes.len());
 
-        let bytes = make_tile(extent, &feats, cap).unwrap();
+        let bytes = make_tile(extent, &feats, cap, None).unwrap();
         assert!(bytes.len() as u64 <= cap);
 
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
@@ -374,7 +384,7 @@ mod tests {
             properties: Arc::new(Attributes::default()),
         }];
 
-        let bytes = make_tile(extent, &feats, u64::MAX).unwrap();
+        let bytes = make_tile(extent, &feats, u64::MAX, None).unwrap();
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
         let feature_count: usize = tile.layers.iter().map(|l| l.features.len()).sum();
         assert_eq!(feature_count, 1);

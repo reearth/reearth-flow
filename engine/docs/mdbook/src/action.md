@@ -898,12 +898,13 @@ Replaces a feature's attributes with a new set built from mapping rules, each de
 ### Type
 * processor
 ### Description
-Map attribute values to ranges and assign corresponding output values
+Classifies a numeric attribute by looking its value up in a table of ranges and writing the matched range's output value to another attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Attribute Range Mapper Parameters",
+  "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
   "type": "object",
   "required": [
     "inputAttribute",
@@ -913,17 +914,17 @@ Map attribute values to ranges and assign corresponding output values
   "properties": {
     "inputAttribute": {
       "title": "Input Attribute",
-      "description": "The attribute to evaluate for range mapping",
+      "description": "Attribute holding the value to classify. Numbers are used directly, numeric strings are parsed, and booleans count as 1 and 0. Any other type is treated as unclassifiable and takes the default value.",
       "type": "string"
     },
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "The attribute to store the mapped value",
+      "description": "Attribute the matched value is written to. An existing value is overwritten.",
       "type": "string"
     },
     "rangeTable": {
       "title": "Range Lookup Table",
-      "description": "List of ranges and their corresponding output values",
+      "description": "Ranges to test the input against, in order. The first match wins, so overlapping ranges resolve to whichever is listed first.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/RangeEntry"
@@ -931,7 +932,7 @@ Map attribute values to ranges and assign corresponding output values
     },
     "defaultValue": {
       "title": "Default Value",
-      "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected."
     }
   },
   "definitions": {
@@ -946,19 +947,19 @@ Map attribute values to ranges and assign corresponding output values
       "properties": {
         "from": {
           "title": "From (Minimum)",
-          "description": "The minimum value of the range (inclusive)",
+          "description": "Lower bound of the range, inclusive.",
           "type": "number",
           "format": "double"
         },
         "to": {
           "title": "To (Maximum)",
-          "description": "The maximum value of the range (exclusive)",
+          "description": "Upper bound of the range, exclusive — a value equal to it falls into the next range. Setting it equal to the lower bound makes the entry match that one exact value instead.",
           "type": "number",
           "format": "double"
         },
         "outputValue": {
           "title": "Output Value",
-          "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+          "description": "Value written to the output attribute when the input falls in this range. Any JSON type is accepted."
         }
       }
     }
@@ -982,12 +983,12 @@ Moves values between nested map/list attribute paths, following a table of sourc
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Attribute Table Extractor Parameters",
-  "description": "Configures the table of source/destination path pairs used to move nested attribute values.",
+  "description": "Configures the table of source/destination path pairs used to move nested attribute values. Supply the table either as a file, via Dataset URI, or directly, via Inline Table — one of the two is required.",
   "type": "object",
   "properties": {
     "dataset": {
       "title": "Dataset URI",
-      "description": "Path or URI of the extraction table file. Provide either this or inline data.",
+      "description": "Path or URI of a JSON file holding the extraction table. Provide either this or Inline Table.",
       "type": [
         "object",
         "null"
@@ -1012,7 +1013,17 @@ Moves values between nested map/list attribute paths, following a table of sourc
     },
     "inline": {
       "title": "Inline Table",
-      "description": "Extraction table content provided directly as JSON. Used when no dataset URI is given."
+      "description": "Extraction table given directly, keyed by feature type. Each key is a feature type name as it appears in the type attribute, and its value is the list of rules applied to features of that type. Provide either this or Dataset URI.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/ExtractRule"
+        }
+      }
     },
     "typeAttribute": {
       "title": "Feature Type Attribute",
@@ -1020,6 +1031,62 @@ Moves values between nested map/list attribute paths, following a table of sourc
       "type": [
         "string",
         "null"
+      ]
+    }
+  },
+  "definitions": {
+    "ExtractRule": {
+      "title": "Extraction Rule",
+      "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",
+      "type": "object",
+      "required": [
+        "destinationPath",
+        "sourcePath"
+      ],
+      "properties": {
+        "destinationPath": {
+          "title": "Destination Path",
+          "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed.",
+          "type": "string"
+        },
+        "sourcePath": {
+          "title": "Source Path",
+          "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+          "type": "string"
+        },
+        "dataType": {
+          "title": "Value Type",
+          "description": "Converts the extracted value before writing it. Leave unset to write it unchanged.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ExtractDataType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ExtractDataType": {
+      "oneOf": [
+        {
+          "title": "Integer",
+          "description": "Parses a string value as an integer.",
+          "type": "string",
+          "enum": [
+            "int"
+          ]
+        },
+        {
+          "title": "Float",
+          "description": "Parses a string value as a floating point number.",
+          "type": "string",
+          "enum": [
+            "float"
+          ]
+        }
       ]
     }
   }
@@ -1184,7 +1251,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
+      "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it.",
       "type": "number",
       "format": "double"
     }
@@ -1194,7 +1261,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
       "oneOf": [
         {
           "title": "2D Area Buffer",
-          "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried.",
+          "description": "Creates an areal buffer around the input geometry: a 2D geometry is buffered in its coordinate plane, a planar 3D polygon within its own plane. An elevation shared by the buffered geometry is kept.",
           "type": "string",
           "enum": [
             "area2d"
@@ -2739,23 +2806,12 @@ Reprojects geometry between coordinate reference systems and converts between a 
   "properties": {
     "destinationFrame": {
       "title": "Destination Frame",
-      "description": "Coordinate frame to convert geometry into.",
+      "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code.",
       "allOf": [
         {
           "$ref": "#/definitions/DestinationFrame"
         }
       ]
-    },
-    "epsgCode": {
-      "title": "EPSG Code",
-      "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
-      "default": null,
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint16",
-      "minimum": 0.0
     },
     "basePointSource": {
       "title": "Base Point",
@@ -2772,23 +2828,47 @@ Reprojects geometry between coordinate reference systems and converts between a 
   },
   "definitions": {
     "DestinationFrame": {
-      "description": "The destination coordinate frame kind.",
+      "description": "The destination coordinate frame, carrying the input each kind needs.",
       "oneOf": [
         {
           "title": "CRS",
           "description": "Reproject to a coordinate reference system identified by an EPSG code.",
-          "type": "string",
-          "enum": [
-            "crs"
-          ]
+          "type": "object",
+          "required": [
+            "epsgCode",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "crs"
+              ]
+            },
+            "epsgCode": {
+              "title": "EPSG Code",
+              "description": "EPSG code of the destination coordinate reference system.",
+              "type": "integer",
+              "format": "uint16",
+              "minimum": 0.0
+            }
+          }
         },
         {
           "title": "Euclidean",
-          "description": "Convert to a non-georeferenced Euclidean frame.",
-          "type": "string",
-          "enum": [
-            "euclidean"
-          ]
+          "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "euclidean"
+              ]
+            }
+          }
         }
       ]
     },
@@ -2905,23 +2985,26 @@ Reprojects geometry between coordinate reference systems and converts between a 
 ### Type
 * processor
 ### Description
-Convert datetime values between different formats
+Reads a datetime from an attribute and rewrites it in another format, either as a typed datetime value or as a formatted string or Unix timestamp.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Date Time Converter Parameters",
+  "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back.",
   "type": "object",
   "required": [
     "attribute"
   ],
   "properties": {
     "attribute": {
-      "description": "Attribute containing the datetime value to convert",
+      "title": "Source Attribute",
+      "description": "Attribute holding the datetime to convert. Features that do not carry it pass through unchanged.",
       "type": "string"
     },
     "inputFormat": {
-      "description": "Format of the input value (default: auto)",
+      "title": "Input Format",
+      "description": "How to interpret the existing value. Leave unset to detect it from the value itself.",
       "default": "auto",
       "allOf": [
         {
@@ -2930,7 +3013,8 @@ Convert datetime values between different formats
       ]
     },
     "outputFormat": {
-      "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
+      "title": "Output Format",
+      "description": "Format to write back. Leave unset to store a typed datetime value; choose any other format to write a string or a number instead.",
       "default": "auto",
       "allOf": [
         {
@@ -2939,7 +3023,8 @@ Convert datetime values between different formats
       ]
     },
     "outputAttribute": {
-      "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
+      "title": "Output Attribute",
+      "description": "Attribute to write the result to, leaving the source untouched. Defaults to overwriting the source attribute.",
       "default": null,
       "type": [
         "string",
@@ -2952,42 +3037,48 @@ Convert datetime values between different formats
       "description": "Input format options for Date Time Converter",
       "oneOf": [
         {
-          "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+          "title": "Detect Automatically",
+          "description": "Recognises the value from its own shape. A bare number is always read as Unix seconds — choose Unix Milliseconds explicitly for millisecond timestamps.",
           "type": "string",
           "enum": [
             "auto"
           ]
         },
         {
-          "description": "RFC3339 / ISO 8601 format",
+          "title": "RFC 3339",
+          "description": "Internet date and time format, the profile of ISO 8601 used by most APIs.",
           "type": "string",
           "enum": [
             "rfc3339"
           ]
         },
         {
-          "description": "Unix timestamp in seconds",
+          "title": "Unix Seconds",
+          "description": "Seconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_s"
+            "unixS"
           ]
         },
         {
-          "description": "Unix timestamp in milliseconds",
+          "title": "Unix Milliseconds",
+          "description": "Milliseconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_ms"
+            "unixMs"
           ]
         },
         {
-          "description": "Date only format (YYYY-MM-DD)",
+          "title": "Date Only",
+          "description": "Calendar date with no time part, as YYYY-MM-DD.",
           "type": "string",
           "enum": [
             "date"
           ]
         },
         {
-          "description": "Custom format using chrono format specifiers",
+          "title": "Custom Pattern",
+          "description": "Field-by-field pattern, for values none of the fixed formats match.",
           "type": "object",
           "required": [
             "custom"
@@ -3005,42 +3096,48 @@ Convert datetime values between different formats
       "description": "Output format options for Date Time Converter",
       "oneOf": [
         {
-          "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
+          "title": "Typed Datetime",
+          "description": "Stores a datetime value rather than text, keeping it comparable and sortable downstream.",
           "type": "string",
           "enum": [
             "auto"
           ]
         },
         {
-          "description": "RFC3339 / ISO 8601 format",
+          "title": "RFC 3339",
+          "description": "Writes a string in the internet date and time format, the profile of ISO 8601 used by most APIs.",
           "type": "string",
           "enum": [
             "rfc3339"
           ]
         },
         {
-          "description": "Unix timestamp in seconds",
+          "title": "Unix Seconds",
+          "description": "Writes a number: seconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_s"
+            "unixS"
           ]
         },
         {
-          "description": "Unix timestamp in milliseconds",
+          "title": "Unix Milliseconds",
+          "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC.",
           "type": "string",
           "enum": [
-            "unix_ms"
+            "unixMs"
           ]
         },
         {
-          "description": "Date only format (YYYY-MM-DD)",
+          "title": "Date Only",
+          "description": "Writes a string holding just the calendar date, as YYYY-MM-DD.",
           "type": "string",
           "enum": [
             "date"
           ]
         },
         {
-          "description": "Custom format using chrono format specifiers",
+          "title": "Custom Pattern",
+          "description": "Writes a string built from a field-by-field pattern.",
           "type": "object",
           "required": [
             "custom"
@@ -3132,18 +3229,18 @@ Decompresses zip and 7z archives referenced by feature attributes, replacing eac
 ### Type
 * processor
 ### Description
-Dissolve Features by Grouping Attributes
+Merges area features that share the same grouping attribute values into one feature per group, combining their geometries and dropping the boundaries between them. Inputs must be flat 2D areas sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dissolver Parameters",
-  "description": "Configure how to dissolve features by grouping them based on shared attributes",
+  "description": "Sets which features are dissolved together, how closely their vertices must line up, and which of their attributes the merged feature keeps.",
   "type": "object",
   "properties": {
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together",
+      "description": "Attributes whose values decide which features dissolve together — features matching on all of them are merged into one. When omitted, every feature forms a single group.",
       "type": [
         "array",
         "null"
@@ -3154,7 +3251,7 @@ Dissolve Features by Grouping Attributes
     },
     "tolerance": {
       "title": "Tolerance",
-      "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation.",
+      "description": "Distance below which two vertices are treated as the same point when merging geometries, in the unit of the input's coordinate frame. Defaults to zero, which merges only exactly coincident vertices and can leave slivers between edges that nearly meet.",
       "type": [
         "number",
         "null"
@@ -3163,7 +3260,7 @@ Dissolve Features by Grouping Attributes
     },
     "attributeAccumulation": {
       "title": "Attribute Accumulation",
-      "description": "Strategy for handling attributes when dissolving features",
+      "description": "Which attributes the merged feature keeps.",
       "default": "useOneFeature",
       "allOf": [
         {
@@ -3178,11 +3275,11 @@ Dissolve Features by Grouping Attributes
     },
     "AttributeAccumulationStrategy": {
       "title": "Attribute Accumulation Strategy",
-      "description": "Defines how attributes should be handled when dissolving multiple features into one",
+      "description": "Which attributes a merged feature keeps.",
       "oneOf": [
         {
           "title": "Drop Incoming Attributes",
-          "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)",
+          "description": "Keeps only the grouping attributes, discarding everything else.",
           "type": "string",
           "enum": [
             "dropAttributes"
@@ -3190,7 +3287,7 @@ Dissolve Features by Grouping Attributes
         },
         {
           "title": "Merge Incoming Attributes",
-          "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array",
+          "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
           "type": "string",
           "enum": [
             "mergeAttributes"
@@ -3198,7 +3295,7 @@ Dissolve Features by Grouping Attributes
         },
         {
           "title": "Use Attributes From One Feature",
-          "description": "The output inherits the attributes of one representative feature of the group",
+          "description": "Keeps the attributes of a single feature from the group and discards the rest.",
           "type": "string",
           "enum": [
             "useOneFeature"
@@ -3212,7 +3309,7 @@ Dissolve Features by Grouping Attributes
 ### Input Ports
 * features
 ### Output Ports
-* area
+* features
 * rejected
 ### Category
 * Geometry
@@ -3472,12 +3569,13 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
 ### Type
 * processor
 ### Description
-Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files
+Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature CityGML 3 Reader Parameters",
+  "description": "Which file to read, and how its elements become feature attributes.",
   "type": "object",
   "required": [
     "dataset"
@@ -3740,13 +3838,40 @@ Creates features from a script expression that returns one or more attribute map
 ### Type
 * processor
 ### Description
-Filter Out Duplicate Features
+Forwards the first feature carrying each distinct value and separates out the ones that repeat it. Features are compared on their whole content unless the attributes to compare are named.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature Duplicate Filter Parameters",
+  "description": "Which features count as repeats of one another.",
+  "type": "object",
+  "properties": {
+    "filterBy": {
+      "title": "Filter Attributes",
+      "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports
 * features
+* duplicate
 ### Category
 * Feature
 
@@ -3894,13 +4019,13 @@ Routes features to named output ports based on user-defined filter conditions.
 ### Type
 * processor
 ### Description
-Writes features to a GeoJSON file for each resolved output path.
+Writes the features it receives to a GeoJSON file per resolved output path, then emits one feature per file written, carrying that file's path.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureGeoJsonWriter Parameters",
-  "description": "Configuration for writing features to GeoJSON files.",
+  "title": "Feature GeoJSON Writer Parameters",
+  "description": "Where the GeoJSON is written, and what is declared about its coordinates.",
   "type": "object",
   "required": [
     "output"
@@ -5488,13 +5613,13 @@ Writes features to a GeoPackage (.gpkg) file.
 ### Type
 * processor
 ### Description
-Coerces and converts feature geometries to specified target geometry types
+Coerces a feature's geometry into a different geometry type, rebuilding it as polylines, faces, or triangles.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Coercer Parameters",
-  "description": "Configuration for coercing geometries to specific target types.",
+  "description": "Which geometry type each feature is coerced into.",
   "type": "object",
   "required": [
     "targetType"
@@ -7412,13 +7537,13 @@ Make HTTP/HTTPS requests and enrich features with response data
 ### Type
 * processor
 ### Description
-Count Polygon Holes to Attribute
+Counts the holes in every face of a feature's geometry and stores the total in an attribute. A geometry that cannot carry a hole, and a feature with no geometry, both count as zero.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Hole Counter Parameters",
-  "description": "Configure where to store the count of holes found in polygon geometries",
+  "description": "Where the total number of holes is stored on each feature.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -7426,7 +7551,7 @@ Count Polygon Holes to Attribute
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Name of the attribute where the hole count will be stored as a number",
+      "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -7452,13 +7577,13 @@ Count Polygon Holes to Attribute
 ### Type
 * processor
 ### Description
-Extract Polygon Holes as Separate Features
+Splits each face of a geometry into its rings, emitting the exterior ring and every interior ring (hole) as a feature of its own.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
-* outershell
+* exterior
 * hole
 * rejected
 ### Category
@@ -8091,48 +8216,52 @@ Splits lines where they cross and turns each intersection into a point feature c
 ### Type
 * processor
 ### Description
-Extracts a specific attribute from each element in a list and concatenates them into a single string
+Joins one attribute's value from every element of a list attribute into a single string. Elements that are not key-value pairs, or that lack the attribute, are skipped.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "List Concatenator Parameters",
-  "description": "Configuration for concatenating a specific attribute from list elements.",
+  "description": "Which list to read, which attribute to take from its elements, and where the result goes.",
   "type": "object",
   "required": [
-    "attribute",
+    "elementAttribute",
     "list",
-    "outputAttributeName",
-    "separateCharacter"
+    "outputAttribute"
   ],
   "properties": {
     "list": {
-      "description": "List attribute to read from",
+      "title": "List",
+      "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "attribute": {
-      "description": "Attribute name to extract from each list element",
+    "elementAttribute": {
+      "title": "Element Attribute",
+      "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "separateCharacter": {
-      "description": "Character(s) to use as separator between concatenated values",
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Attribute the joined string is written to.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "separator": {
+      "title": "Separator",
+      "description": "Text placed between consecutive values. Defaults to a comma.",
+      "default": ",",
       "type": "string"
-    },
-    "outputAttributeName": {
-      "description": "Name of the attribute to store the concatenated result",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
     }
   },
   "definitions": {
@@ -8147,7 +8276,7 @@ Extracts a specific attribute from each element in a list and concatenates them 
 ### Output Ports
 * features
 ### Category
-* Feature
+* Attribute
 
 ## List Exploder
 ### Type
@@ -8194,35 +8323,38 @@ Creates one feature per element of a list attribute, merging the element's key-v
 ### Type
 * processor
 ### Description
-Copies attributes from a specific list element to become the main attributes of a feature
+Copies the key-value pairs of one element of a list attribute onto the feature itself, overwriting an attribute of the same name and leaving the rest in place.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "List Indexer Parameters",
-  "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+  "description": "Which list to read, which of its elements to copy, and how to name what is copied.",
   "type": "object",
   "required": [
-    "listAttribute",
-    "listIndexToCopy"
+    "index",
+    "list"
   ],
   "properties": {
-    "listAttribute": {
-      "description": "List attribute to read from",
+    "list": {
+      "title": "List",
+      "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "listIndexToCopy": {
-      "description": "Index of the list element to copy (0-based)",
+    "index": {
+      "title": "Index",
+      "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged.",
       "type": "integer",
       "format": "uint",
       "minimum": 0.0
     },
     "copiedAttributePrefix": {
-      "description": "Optional prefix to add to copied attribute names",
+      "title": "Copied Attribute Prefix",
+      "description": "Text placed before each copied attribute name. Omitted by default.",
       "default": null,
       "type": [
         "string",
@@ -8230,7 +8362,8 @@ Copies attributes from a specific list element to become the main attributes of 
       ]
     },
     "copiedAttributeSuffix": {
-      "description": "Optional suffix to add to copied attribute names",
+      "title": "Copied Attribute Suffix",
+      "description": "Text placed after each copied attribute name. Omitted by default.",
       "default": null,
       "type": [
         "string",
@@ -8250,7 +8383,7 @@ Copies attributes from a specific list element to become the main attributes of 
 ### Output Ports
 * features
 ### Category
-* Feature
+* Attribute
 
 ## MVT Writer
 ### Type
@@ -8395,6 +8528,14 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "arrayMapSeparator": {
+      "title": "Array/Map Separator",
+      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   }
 }

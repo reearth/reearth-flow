@@ -19,7 +19,11 @@ cargo make schema-base        # regenerates actions.json and syncs i18n skeleton
 cargo make schema-translated  # regenerates per-language JSON files
 ```
 
-**Verify against the implementation before writing — do this first, every time.** A title or description must describe what the code actually does, not what the parameter name suggests or what a prior description claimed. Polishing text for clarity without reading the code produces confident, wrong documentation. Before adding or editing any title or description, read the factory's `build`, the parameter struct, and the action's execution path (`process`/`start`/`run`), and confirm each of the following:
+**The implementation is the source of truth — verify against it first, every time.** Every user-facing property of an action must be traceable to code that delivers it. A name, title, or description must describe what the code actually does — not what the parameter name suggests, not what a prior description claimed, not what was intended.
+
+Text that reads well is not evidence. A description can be fluent, accurate-sounding, and compliant with every rule below while describing behavior that does not exist, so **a property that looks correct is not exempt from being checked.** This is the most common way the surface starts lying: nobody writes an obviously wrong description, so the wrong ones are the ones that read best.
+
+Whether authoring an action or reviewing one, before the schema is regenerated read the factory's `build`, the parameter struct, and the execution path (`process`/`start`/`run`), and confirm each of the following:
 
 - **Every parameter is actually read and applied.** A parameter accepted but never used (e.g. stored into a field with a `_` prefix and never referenced) is a bug, not something to document — flag it for removal rather than writing a description for behavior that does not exist. Check for *forwarding*: a parameter copied into another struct in `build` and never read from there is still unused. And check **which build it is unused in** — a `cfg`-gated action can read a parameter in one geometry world and ignore it in the other, so establish whether it is dead everywhere, dead only in the shipped build (a migration artifact — leave it, it belongs to the migration's own cleanup), or dead only in the legacy build (live, keep it). `schema/actions.json` is generated from the default build, so anything appearing there is what users see today.
 - **Enum variants behave as their names and descriptions claim** — trace each variant to its branch in the code.
@@ -230,14 +234,21 @@ New categories can be added when a meaningful group of actions does not fit any 
 
 ## 6. Tags
 
+Tags exist to cut **across** categories. The category is where a user browses; a tag is how they find the action from somewhere else. `citygml` earns its place because it spans `Input`, `Output`, `Geometry`, and `Filter` — one tag collects the whole CityGML toolkit. `geometry` on a `Geometry` action tells the user nothing they did not already know from where they found it.
+
 - All lowercase, hyphenated if multi-word: `coordinate-system`, `citygml`
-- Aim for 2–4 tags; 1 is acceptable when no second tag adds genuine discovery value. Never pad to meet a count.
+- **The test:** would this tag help someone find the action from *outside* its category? If not, it is padding.
+- **Zero tags is a valid and complete answer.** When every candidate would restate the category, the action has no cross-cutting axis and takes none. This is normal for general-purpose processors — most `Geometry` and `Debug` actions are in this position. Never invent a tag to avoid an empty list.
+- Two to four tags where the axes genuinely exist — typically format, dimensionality, or domain. Readers and writers almost always qualify (`csv`, `gltf`, `geopackage`, `citygml`); a plain geometry operation usually does not.
+- **Check the siblings.** An action doing the same kind of work as a tagged action should carry the same tag. A gap between siblings — `Three Dimension Forcer` tagged `3d` while `Two Dimension Forcer` has nothing — is an oversight, not a judgement, and it is the reliable way to tell the two apart.
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
 `3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
-New tags can be proposed when an established term does not adequately describe an action's domain. Avoid adding tags that duplicate an action's category.
+Some vocabulary entries share a name with a category (`geometry`, `filter`, `file`, `debug`, `attribute`). Those are valid only *outside* the matching category, where they still cut across — `geometry` on `Dimension Filter` and `file` on `Zip File Writer` both earn their place; `file` on a `File` action does not.
+
+New tags can be proposed when an established term does not adequately describe an action's domain.
 
 ---
 
@@ -285,13 +296,18 @@ For each action, flag anything that violates the rules above. Only log issues �
 ActionName
   runs:    [only if it does NOT run in the shipped build, or is listed in
               base_actions.go while broken (§7)]
+  impl:    [parameters declared but never applied; enum variants with no branch;
+              defaults or "when omitted" text the code contradicts; declared
+              ports never emitted]
   name:    [proposed space-case name if different]
   desc:    [issue if any]
   params:  [list issues by param name; flag if count exceeds 8 without justification (§3.5)]
   ports:   [failure-vs-no-op errors (§4.3); missing or unemitted ports]
   cat:     [issue if wrong category]
-  tags:    [missing tags | irrelevant tags]
+  tags:    [missing cross-cutting tag | tag that restates the category (§6)]
 ```
+
+**Every line except `impl:` can be answered from the generated `actions.json`. `impl:` cannot.** It is the only one that requires opening the code, and it is therefore the only one that catches a description which is well-written and false, or a parameter the UI offers and the code ignores. An action marked clean without `impl:` having been worked through has been *read*, not checked.
 
 If an action is clean on all dimensions, write: `ActionName — OK`
 
@@ -302,6 +318,12 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-21
+
+- **§"How to use" rescoped — this widens what the rule covers.** The verify-against-implementation duty was previously worded as a precondition for *adding or editing* a title or description, which exempted any property that already looked compliant. It now attaches to the action itself: every user-facing property must be traceable to code that delivers it, checked before the schema is regenerated, whether authoring or reviewing. Reviews done under the old wording may have triaged on how the text reads rather than on what the code does.
+- **§8** — added an `impl:` line to the checklist, for parameters never applied, enum variants with no branch, defaults the code contradicts, and ports never emitted. Every other line in the checklist can be answered from the generated schema; this one cannot, which is the point.
+- **§6 corrected — this reverses previous guidance.** The old wording set a floor ("aim for 2–4; 1 is acceptable") while also forbidding tags that duplicate the category, which made the floor unreachable for single-domain actions and invited padding. Tags are now defined by their purpose — cross-category discovery — and **zero tags is explicitly valid** when no orthogonal axis exists. Actions reviewed under the old wording may carry a tag that only restates the category, and a zero-tag action is no longer a finding on its own. Sibling comparison is the test for a genuine omission.
 
 ### 2026-08-20
 

@@ -343,7 +343,8 @@
       "description": "Mapper les valeurs d'attributs aux plages et attribuer les valeurs de sortie correspondantes",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper Parameters"
+          "title": "Attribute Range Mapper Parameters",
+          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
         },
         "defaultValue": {
           "title": "Default Value",
@@ -398,6 +399,34 @@
         "typeAttribute": {
           "title": "Attribut de Type d'Entité",
           "description": "Attribut dont la valeur sélectionne quel ensemble de règles de la table s'applique à l'entité. Par défaut `__citygml_feature_type`"
+        }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
         }
       }
     },
@@ -457,14 +486,14 @@
         },
         "interpolationAngle": {
           "title": "Interpolation Angle",
-          "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value."
+          "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it."
         }
       },
       "enumI18n": {
         "BufferType": {
           "area2d": {
             "title": "2D Area Buffer",
-            "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried."
+            "description": "Creates an areal buffer around the input geometry: a 2D geometry is buffered in its coordinate plane, a planar 3D polygon within its own plane. An elevation shared by the buffered geometry is kept."
           }
         }
       }
@@ -973,22 +1002,6 @@
         "destinationFrame": {
           "title": "Destination Frame",
           "description": "Coordinate frame to convert geometry into."
-        },
-        "epsgCode": {
-          "title": "EPSG Code",
-          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
-        }
-      },
-      "enumI18n": {
-        "DestinationFrame": {
-          "crs": {
-            "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
-          },
-          "euclidean": {
-            "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame."
-          }
         }
       }
     },
@@ -997,54 +1010,69 @@
       "description": "Convertit les valeurs de date et heure entre différents formats",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter Parameters"
+          "title": "Date Time Converter Parameters",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "Attribute containing the datetime value to convert"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "Format of the input value (default: auto)"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode)."
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format."
+            "title": "Detect Automatically",
+            "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format."
           },
           "date": {
+            "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 format"
           },
-          "unix_ms": {
-            "description": "Unix timestamp in milliseconds"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unix timestamp in seconds"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string."
           },
           "date": {
+            "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 format"
           },
-          "unix_ms": {
-            "description": "Unix timestamp in milliseconds"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unix timestamp in seconds"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }
@@ -1196,10 +1224,11 @@
     },
     {
       "name": "Feature CityGML 3 Reader",
-      "description": "Lit des fichiers CityGML 3.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "description": "Lit le fichier CityGML 3.0 désigné par chaque entité entrante, en résolvant les références gml:id et les liens xlink:href entre tous les fichiers lus. Les attributs de l'entité désignant un fichier sont reportés sur les entités qui en sont issues.",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 3 Reader Parameters"
+          "title": "Feature CityGML 3 Reader Parameters",
+          "description": "Quel fichier lire et comment ses éléments deviennent des attributs d'entité."
         },
         "cityGmlAttributesKey": {
           "title": "Clé des Attributs CityGML",
@@ -1287,7 +1316,17 @@
     },
     {
       "name": "Feature Duplicate Filter",
-      "description": "Filter Out Duplicate Features"
+      "description": "Transmet la première entité portant chaque valeur distincte et sépare celles qui la répètent. Les entités sont comparées sur leur contenu entier sauf si les attributs à comparer sont nommés.",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Duplicate Filter Parameters",
+          "description": "Which features count as repeats of one another."
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry."
+        }
+      }
     },
     {
       "name": "Feature File Path Extractor",
@@ -1339,10 +1378,11 @@
     },
     {
       "name": "Feature GeoJSON Writer",
+      "description": "Écrit les entités reçues dans un fichier GeoJSON par chemin de sortie résolu, puis émet une entité par fichier écrit, portant le chemin de ce fichier.",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
-          "description": "Configuration for writing features to GeoJSON files."
+          "title": "Feature GeoJSON Writer Parameters",
+          "description": "Where the GeoJSON is written, and what is declared about its coordinates."
         },
         "output": {
           "title": "Output",
@@ -1731,11 +1771,11 @@
     },
     {
       "name": "Geometry Coercer",
-      "description": "Coerces and converts feature geometries to specified target geometry types",
+      "description": "Coerces a feature's geometry into a different geometry type, rebuilding it as polylines, faces, or triangles.",
       "parameterI18n": {
         "": {
           "title": "Geometry Coercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
+          "description": "Which geometry type each feature is coerced into."
         },
         "targetType": {
           "title": "Target Type",
@@ -2251,21 +2291,21 @@
     },
     {
       "name": "Hole Counter",
-      "description": "Count Polygon Holes to Attribute",
+      "description": "Counts the holes in every face of a feature's geometry and stores the total in an attribute. A geometry that cannot carry a hole, and a feature with no geometry, both count as zero.",
       "parameterI18n": {
         "": {
           "title": "Hole Counter Parameters",
-          "description": "Configure where to store the count of holes found in polygon geometries"
+          "description": "Where the total number of holes is stored on each feature."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the hole count will be stored as a number"
+          "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero."
         }
       }
     },
     {
       "name": "Hole Extractor",
-      "description": "Extract Polygon Holes as Separate Features"
+      "description": "Divise chaque face d'une géométrie en ses anneaux, en émettant l'anneau extérieur et chaque anneau intérieur (trou) comme une entité distincte."
     },
     {
       "name": "Horizontal Reprojector",
@@ -2404,23 +2444,27 @@
     },
     {
       "name": "List Concatenator",
-      "description": "Extrait un attribut spécifique de chaque élément d'une liste et les concatène en une seule chaîne",
+      "description": "Joint la valeur d'un attribut de chaque élément d'un attribut de liste en une seule chaîne. Les éléments qui ne sont pas des paires clé-valeur, ou qui n'ont pas cet attribut, sont ignorés.",
       "parameterI18n": {
         "": {
           "title": "List Concatenator Parameters",
-          "description": "Configuration for concatenating a specific attribute from list elements."
+          "description": "Which list to read, which attribute to take from its elements, and where the result goes."
         },
-        "attribute": {
-          "description": "Attribute name to extract from each list element"
+        "elementAttribute": {
+          "title": "Element Attribute",
+          "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing."
         },
         "list": {
-          "description": "List attribute to read from"
+          "title": "List",
+          "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged."
         },
-        "outputAttributeName": {
-          "description": "Name of the attribute to store the concatenated result"
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Attribute the joined string is written to."
         },
-        "separateCharacter": {
-          "description": "Character(s) to use as separator between concatenated values"
+        "separator": {
+          "title": "Separator",
+          "description": "Text placed between consecutive values. Defaults to a comma."
         }
       }
     },
@@ -2440,23 +2484,27 @@
     },
     {
       "name": "List Indexer",
-      "description": "Copie les attributs d'un élément de liste spécifique pour en faire les attributs principaux d'une entité",
+      "description": "Copie les paires clé-valeur d'un élément d'un attribut de liste sur l'entité elle-même, en écrasant un attribut de même nom et en laissant le reste en place.",
       "parameterI18n": {
         "": {
           "title": "List Indexer Parameters",
-          "description": "Configuration for copying attributes from a specific list element to main feature attributes."
+          "description": "Which list to read, which of its elements to copy, and how to name what is copied."
         },
         "copiedAttributePrefix": {
-          "description": "Optional prefix to add to copied attribute names"
+          "title": "Copied Attribute Prefix",
+          "description": "Text placed before each copied attribute name. Omitted by default."
         },
         "copiedAttributeSuffix": {
-          "description": "Optional suffix to add to copied attribute names"
+          "title": "Copied Attribute Suffix",
+          "description": "Text placed after each copied attribute name. Omitted by default."
         },
-        "listAttribute": {
-          "description": "List attribute to read from"
+        "index": {
+          "title": "Index",
+          "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged."
         },
-        "listIndexToCopy": {
-          "description": "Index of the list element to copy (0-based)"
+        "list": {
+          "title": "List",
+          "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged."
         }
       }
     },
@@ -2467,6 +2515,10 @@
         "": {
           "title": "MVTWriter Parameters",
           "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs)."
+        },
+        "arrayMapSeparator": {
+          "title": "Array/Map Separator",
+          "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely."
         },
         "colonToUnderscore": {
           "title": "Colon to Underscore",

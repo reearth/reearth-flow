@@ -343,7 +343,8 @@
       "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper パラメータ"
+          "title": "Attribute Range Mapper パラメータ",
+          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -399,11 +400,39 @@
           "title": "地物タイプ属性",
           "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`"
         }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
+        }
       }
     },
     {
       "name": "Boundary Extractor",
-      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる。"
+      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる"
     },
     {
       "name": "Bounds Extractor",
@@ -457,14 +486,14 @@
         },
         "interpolationAngle": {
           "title": "補間角度",
-          "description": "点や曲線のバッファの丸みを近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。ポリゴンのバッファではこの値は使用されない"
+          "description": "バッファ輪郭の丸い端部、接合部、円を近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。1.8度から45度の範囲外の値はこの範囲に収められる"
         }
       },
       "enumI18n": {
         "BufferType": {
           "area2d": {
             "title": "2D エリアバッファ",
-            "description": "入力ジオメトリの周囲に平坦なポリゴンバッファを作成し、標高は破棄する"
+            "description": "入力ジオメトリの周囲に面バッファを作成する。2D ジオメトリはその座標平面上で、平面的な 3D ポリゴンは自身の平面上でバッファされる。バッファ対象が共有する標高は保持される"
           }
         }
       }
@@ -973,22 +1002,6 @@
         "destinationFrame": {
           "title": "Destination Frame",
           "description": "Coordinate frame to convert geometry into."
-        },
-        "epsgCode": {
-          "title": "EPSG Code",
-          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
-        }
-      },
-      "enumI18n": {
-        "DestinationFrame": {
-          "crs": {
-            "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
-          },
-          "euclidean": {
-            "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame."
-          }
         }
       }
     },
@@ -997,54 +1010,69 @@
       "description": "日時値を異なるフォーマット間で変換する",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter パラメータ"
+          "title": "Date Time Converter パラメータ",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "変換する日時値を含む属性"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "入力値の形式（デフォルト: auto）"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "結果を別の属性に書き込む（入力をそのまま保持）。デフォルトは `attribute` と同じ。"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "希望する出力形式（デフォルト: auto）。`auto` は型付き DateTime 値として格納（パーサーモード）。その他の形式は文字列/数値として出力（フォーマッターモード）。"
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unix_ms` 入力形式を明示的に指定する。"
+            "title": "Detect Automatically",
+            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unixMs` 入力形式を明示的に指定する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "自動: 型付き DateTime 値として格納する（ネイティブのバリアントを保持）。日時を文字列ではなく適切な DateTime 型として扱いたい場合に使用する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }
@@ -1196,10 +1224,11 @@
     },
     {
       "name": "Feature CityGML 3 Reader",
-      "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 3.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 3 Reader パラメータ"
+          "title": "Feature CityGML 3 Reader パラメータ",
+          "description": "読み込むファイル、およびその要素を地物の属性に変換する方法"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1287,7 +1316,17 @@
     },
     {
       "name": "Feature Duplicate Filter",
-      "description": "重複した地物を削除する"
+      "description": "各値について最初の地物を通過させ、それを繰り返す地物を分離する。比較する属性を指定しない場合は、地物の内容全体で比較する",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Duplicate Filter Parameters",
+          "description": "どの地物を互いの重複とみなすか"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "重複を判定する属性の組み合わせ。ある組み合わせを最初に持つ地物が通過し、以降の地物は分離される。属性が存在しないこと自体も組み合わせの一部として扱われるため、空の値を持つ場合とは区別される。省略した場合は、すべての属性とジオメトリを含む内容全体で比較する"
+        }
+      }
     },
     {
       "name": "Feature File Path Extractor",
@@ -1339,10 +1378,11 @@
     },
     {
       "name": "Feature GeoJSON Writer",
+      "description": "受け取った地物を、解決された出力パスごとに GeoJSON ファイルへ書き出し、書き出したファイルごとにそのパスを持つ地物を一つ出力する",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
-          "description": "Configuration for writing features to GeoJSON files."
+          "title": "Feature GeoJSON Writer パラメータ",
+          "description": "GeoJSON の書き出し先、および座標について宣言する内容"
         },
         "output": {
           "title": "Output",
@@ -1731,11 +1771,11 @@
     },
     {
       "name": "Geometry Coercer",
-      "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
+      "description": "地物のジオメトリを別のジオメトリタイプに強制変換し、ポリライン・面・三角形として組み立て直す",
       "parameterI18n": {
         "": {
           "title": "Geometry Coercer パラメータ",
-          "description": "ジオメトリを特定のターゲットタイプに強制変換する設定"
+          "description": "各地物を強制変換するジオメトリタイプ"
         },
         "targetType": {
           "title": "ターゲットタイプ",
@@ -2251,21 +2291,21 @@
     },
     {
       "name": "Hole Counter",
-      "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
+      "description": "地物のジオメトリの各面にある穴の数を数え、合計を属性に格納する。穴を持ちえないジオメトリ、およびジオメトリを持たない地物は、いずれも 0 として数える",
       "parameterI18n": {
         "": {
           "title": "Hole Counter パラメータ",
-          "description": "ポリゴンジオメトリで検出した穴の数の格納先を設定する"
+          "description": "各地物における穴の合計数の格納先を指定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "穴の数を数値として格納する属性名"
+          "description": "穴の数を数値として格納する属性名。すべての地物に設定されるため、穴のないジオメトリは 0 が記録される"
         }
       }
     },
     {
       "name": "Hole Extractor",
-      "description": "ジオメトリ内の穴を抽出し、属性として追加する"
+      "description": "ジオメトリの各面をリングに分割し、外周リングと各内周リング（穴）をそれぞれ個別の地物として出力する"
     },
     {
       "name": "Horizontal Reprojector",
@@ -2404,23 +2444,27 @@
     },
     {
       "name": "List Concatenator",
-      "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する",
+      "description": "リスト属性の各要素から一つの属性の値を取り出し、単一の文字列に連結する。キーと値の組でない要素、およびその属性を持たない要素は読み飛ばす",
       "parameterI18n": {
         "": {
           "title": "List Concatenator パラメータ",
-          "description": "リスト要素から特定の属性を取り出して連結する設定"
+          "description": "読み込むリスト、その要素から取り出す属性、および結果の格納先"
         },
-        "attribute": {
-          "description": "各リスト要素から取り出す属性名"
+        "elementAttribute": {
+          "title": "Element Attribute",
+          "description": "リストの各要素から取り出す属性。キーと値の組でない要素、およびこの属性を持たない要素は何も寄与しない"
         },
         "list": {
-          "description": "読み込むリスト属性"
+          "title": "List",
+          "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         },
-        "outputAttributeName": {
-          "description": "連結結果を格納する属性名"
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "連結した文字列を格納する属性"
         },
-        "separateCharacter": {
-          "description": "連結された値の間の区切り文字"
+        "separator": {
+          "title": "Separator",
+          "description": "連続する値の間に挿入する文字列。既定はカンマ"
         }
       }
     },
@@ -2440,23 +2484,27 @@
     },
     {
       "name": "List Indexer",
-      "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする",
+      "description": "リスト属性の一つの要素が持つキーと値の組を地物自体にコピーする。同名の属性は上書きし、それ以外はそのまま残す",
       "parameterI18n": {
         "": {
           "title": "List Indexer パラメータ",
-          "description": "特定のリスト要素の属性をメインのフィーチャー属性にコピーする設定"
+          "description": "読み込むリスト、コピーする要素、およびコピーした属性名の付け方"
         },
         "copiedAttributePrefix": {
-          "description": "コピーした属性名に追加するプレフィックス（任意）"
+          "title": "Copied Attribute Prefix",
+          "description": "コピーした各属性名の前に付ける文字列。既定では付けない"
         },
         "copiedAttributeSuffix": {
-          "description": "コピーした属性名に追加するサフィックス（任意）"
+          "title": "Copied Attribute Suffix",
+          "description": "コピーした各属性名の後に付ける文字列。既定では付けない"
         },
-        "listAttribute": {
-          "description": "読み込むリスト属性"
+        "index": {
+          "title": "Index",
+          "description": "コピーする要素の位置。0 から数える。リストがこれより短い地物、およびこの位置の要素がキーと値の組でない地物は、そのまま通過する"
         },
-        "listIndexToCopy": {
-          "description": "コピーするリスト要素のインデックス（0 始まり）"
+        "list": {
+          "title": "List",
+          "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         }
       }
     },
@@ -2467,6 +2515,10 @@
         "": {
           "title": "MVTWriter パラメータ",
           "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す設定"
+        },
+        "arrayMapSeparator": {
+          "title": "配列/マップの区切り文字",
+          "description": "ネストした配列やマップの属性をタグに平坦化する際、子のキーやインデックスとの間に挿入する区切り文字。未設定の場合、配列やマップの属性は出力から除外される"
         },
         "colonToUnderscore": {
           "title": "コロンをアンダースコアに変換",

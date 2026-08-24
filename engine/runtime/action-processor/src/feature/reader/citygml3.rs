@@ -28,7 +28,9 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files"
+        "Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and \
+         xlink:href references across every file read. The attributes of the feature naming a \
+         file are carried onto the features parsed from it."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -37,6 +39,10 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Feature"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -93,6 +99,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
 }
 
 /// # Feature CityGML 3 Reader Parameters
+///
+/// Which file to read, and how its elements become feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGml3ReaderParam {

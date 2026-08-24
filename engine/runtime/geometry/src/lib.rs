@@ -68,7 +68,7 @@ use ops::{
 // be in scope here.
 use ops::Split;
 #[cfg(feature = "new-geometry")]
-use ops::{Area, Footprint, FootprintError, FootprintPlane, FootprintSink};
+use ops::{Area, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -211,6 +211,7 @@ impl GeometryCollection {
         ExtractHoles,
         ExtractBoundary,
         Footprint,
+        Elevation,
         Area
     )
 )]
@@ -271,6 +272,7 @@ pub enum Euclidean2DGeometry {
         ExtractHoles,
         ExtractBoundary,
         Footprint,
+        Elevation,
         Area
     )
 )]
@@ -690,6 +692,26 @@ impl Geometry {
         let mut sink = FootprintSink::new(plane);
         self.footprint(&mut sink)?;
         sink.finish()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Geometry {
+    fn elevation(&self) -> Option<f64> {
+        match self {
+            // An absent geometry has no vertex to read.
+            Geometry::None => None,
+            Geometry::Euclidean2D(g) => g.elevation(),
+            Geometry::Euclidean3D(g) => g.elevation(),
+            Geometry::GeometryCollection(c) => c.elevation(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for GeometryCollection {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
     }
 }
 

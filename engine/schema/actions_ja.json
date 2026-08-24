@@ -923,6 +923,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Range Mapper パラメータ",
+        "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -993,7 +994,9 @@
       "categories": [
         "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "mapping"
+      ]
     },
     {
       "name": "Attribute Table Extractor",
@@ -1032,7 +1035,17 @@
           },
           "inline": {
             "title": "インラインテーブル",
-            "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
+            "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う",
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ExtractRule"
+              }
+            }
           },
           "typeAttribute": {
             "title": "地物タイプ属性",
@@ -1040,6 +1053,62 @@
             "type": [
               "string",
               "null"
+            ]
+          }
+        },
+        "definitions": {
+          "ExtractRule": {
+            "title": "Extraction Rule",
+            "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",
+            "type": "object",
+            "required": [
+              "destinationPath",
+              "sourcePath"
+            ],
+            "properties": {
+              "destinationPath": {
+                "title": "Destination Path",
+                "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed.",
+                "type": "string"
+              },
+              "sourcePath": {
+                "title": "Source Path",
+                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "type": "string"
+              },
+              "dataType": {
+                "title": "Value Type",
+                "description": "Converts the extracted value before writing it. Leave unset to write it unchanged.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ExtractDataType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "ExtractDataType": {
+            "oneOf": [
+              {
+                "title": "Integer",
+                "description": "Parses a string value as an integer.",
+                "type": "string",
+                "enum": [
+                  "int"
+                ]
+              },
+              {
+                "title": "Float",
+                "description": "Parses a string value as a floating point number.",
+                "type": "string",
+                "enum": [
+                  "float"
+                ]
+              }
             ]
           }
         }
@@ -1061,7 +1130,7 @@
     {
       "name": "Boundary Extractor",
       "type": "processor",
-      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる。",
+      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1214,7 +1283,7 @@
           },
           "interpolationAngle": {
             "title": "補間角度",
-            "description": "点や曲線のバッファの丸みを近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。ポリゴンのバッファではこの値は使用されない",
+            "description": "バッファ輪郭の丸い端部、接合部、円を近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。1.8度から45度の範囲外の値はこの範囲に収められる",
             "type": "number",
             "format": "double"
           }
@@ -1224,7 +1293,7 @@
             "oneOf": [
               {
                 "title": "2D エリアバッファ",
-                "description": "入力ジオメトリの周囲に平坦なポリゴンバッファを作成し、標高は破棄する",
+                "description": "入力ジオメトリの周囲に面バッファを作成する。2D ジオメトリはその座標平面上で、平面的な 3D ポリゴンは自身の平面上でバッファされる。バッファ対象が共有する標高は保持される",
                 "type": "string",
                 "enum": [
                   "area2d"
@@ -2806,17 +2875,6 @@
               }
             ]
           },
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint16",
-            "minimum": 0.0
-          },
           "basePointSource": {
             "title": "Base Point",
             "description": "How coordinates bridge the Euclidean/CRS boundary.",
@@ -2832,23 +2890,47 @@
         },
         "definitions": {
           "DestinationFrame": {
-            "description": "The destination coordinate frame kind.",
+            "description": "The destination coordinate frame, carrying the input each kind needs.",
             "oneOf": [
               {
                 "title": "CRS",
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
-                "type": "string",
-                "enum": [
-                  "crs"
-                ]
+                "type": "object",
+                "required": [
+                  "epsgCode",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "crs"
+                    ]
+                  },
+                  "epsgCode": {
+                    "title": "EPSG Code",
+                    "description": "EPSG code of the destination coordinate reference system.",
+                    "type": "integer",
+                    "format": "uint16",
+                    "minimum": 0.0
+                  }
+                }
               },
               {
                 "title": "Euclidean",
-                "description": "Convert to a non-georeferenced Euclidean frame.",
-                "type": "string",
-                "enum": [
-                  "euclidean"
-                ]
+                "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "euclidean"
+                    ]
+                  }
+                }
               }
             ]
           },
@@ -2975,16 +3057,19 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Date Time Converter パラメータ",
+        "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back.",
         "type": "object",
         "required": [
           "attribute"
         ],
         "properties": {
           "attribute": {
+            "title": "Source Attribute",
             "description": "変換する日時値を含む属性",
             "type": "string"
           },
           "inputFormat": {
+            "title": "Input Format",
             "description": "入力値の形式（デフォルト: auto）",
             "default": "auto",
             "allOf": [
@@ -2994,6 +3079,7 @@
             ]
           },
           "outputFormat": {
+            "title": "Output Format",
             "description": "希望する出力形式（デフォルト: auto）。`auto` は型付き DateTime 値として格納（パーサーモード）。その他の形式は文字列/数値として出力（フォーマッターモード）。",
             "default": "auto",
             "allOf": [
@@ -3003,6 +3089,7 @@
             ]
           },
           "outputAttribute": {
+            "title": "Output Attribute",
             "description": "結果を別の属性に書き込む（入力をそのまま保持）。デフォルトは `attribute` と同じ。",
             "default": null,
             "type": [
@@ -3016,13 +3103,15 @@
             "description": "Input format options for Date Time Converter",
             "oneOf": [
               {
-                "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unix_ms` 入力形式を明示的に指定する。",
+                "title": "Detect Automatically",
+                "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unixMs` 入力形式を明示的に指定する。",
                 "type": "string",
                 "enum": [
                   "auto"
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 形式",
                 "type": "string",
                 "enum": [
@@ -3030,20 +3119,23 @@
                 ]
               },
               {
-                "description": "Unixタイムスタンプ（秒）",
+                "title": "Unix Seconds",
+                "description": "Seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unixタイムスタンプ（ミリ秒）",
+                "title": "Unix Milliseconds",
+                "description": "Milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "日付のみの形式（YYYY-MM-DD）",
                 "type": "string",
                 "enum": [
@@ -3051,7 +3143,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Field-by-field pattern, for values none of the fixed formats match.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3069,6 +3162,7 @@
             "description": "Output format options for Date Time Converter",
             "oneOf": [
               {
+                "title": "Typed Datetime",
                 "description": "自動: 型付き DateTime 値として格納する（ネイティブのバリアントを保持）。日時を文字列ではなく適切な DateTime 型として扱いたい場合に使用する。",
                 "type": "string",
                 "enum": [
@@ -3076,6 +3170,7 @@
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 形式",
                 "type": "string",
                 "enum": [
@@ -3083,20 +3178,23 @@
                 ]
               },
               {
-                "description": "Unixタイムスタンプ（秒）",
+                "title": "Unix Seconds",
+                "description": "Writes a number: seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unixタイムスタンプ（ミリ秒）",
+                "title": "Unix Milliseconds",
+                "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "日付のみの形式（YYYY-MM-DD）",
                 "type": "string",
                 "enum": [
@@ -3104,7 +3202,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Writes a string built from a field-by-field pattern.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3253,7 +3352,7 @@
           },
           "AttributeAccumulationStrategy": {
             "title": "Attribute Accumulation Strategy",
-            "description": "Defines how attributes should be handled when dissolving multiple features into one",
+            "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
                 "title": "入力属性を破棄",
@@ -3288,13 +3387,16 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "features",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Echo Processor",
@@ -3569,10 +3671,11 @@
     {
       "name": "Feature CityGML 3 Reader",
       "type": "processor",
-      "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 3.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 3 Reader パラメータ",
+        "description": "読み込むファイル、およびその要素を地物の属性に変換する方法",
         "type": "object",
         "required": [
           "dataset"
@@ -3651,7 +3754,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML Reader",
@@ -3848,14 +3954,39 @@
     {
       "name": "Feature Duplicate Filter",
       "type": "processor",
-      "description": "重複した地物を削除する",
-      "parameter": null,
+      "description": "各値について最初の地物を通過させ、それを繰り返す地物を分離する。比較する属性を指定しない場合は、地物の内容全体で比較する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Duplicate Filter Parameters",
+        "description": "どの地物を互いの重複とみなすか",
+        "type": "object",
+        "properties": {
+          "filterBy": {
+            "title": "Filter Attributes",
+            "description": "重複を判定する属性の組み合わせ。ある組み合わせを最初に持つ地物が通過し、以降の地物は分離される。属性が存在しないこと自体も組み合わせの一部として扱われるため、空の値を持つ場合とは区別される。省略した場合は、すべての属性とジオメトリを含む内容全体で比較する",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "duplicate"
       ],
       "categories": [
         "Feature"
@@ -4010,11 +4141,11 @@
     {
       "name": "Feature GeoJSON Writer",
       "type": "processor",
-      "description": "Writes features to a GeoJSON file for each resolved output path.",
+      "description": "受け取った地物を、解決された出力パスごとに GeoJSON ファイルへ書き出し、書き出したファイルごとにそのパスを持つ地物を一つ出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureGeoJsonWriter Parameters",
-        "description": "Configuration for writing features to GeoJSON files.",
+        "title": "Feature GeoJSON Writer パラメータ",
+        "description": "GeoJSON の書き出し先、および座標について宣言する内容",
         "type": "object",
         "required": [
           "output"
@@ -5644,11 +5775,11 @@
     {
       "name": "Geometry Coercer",
       "type": "processor",
-      "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
+      "description": "地物のジオメトリを別のジオメトリタイプに強制変換し、ポリライン・面・三角形として組み立て直す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Coercer パラメータ",
-        "description": "ジオメトリを特定のターゲットタイプに強制変換する設定",
+        "description": "各地物を強制変換するジオメトリタイプ",
         "type": "object",
         "required": [
           "targetType"
@@ -7593,11 +7724,11 @@
     {
       "name": "Hole Counter",
       "type": "processor",
-      "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
+      "description": "地物のジオメトリの各面にある穴の数を数え、合計を属性に格納する。穴を持ちえないジオメトリ、およびジオメトリを持たない地物は、いずれも 0 として数える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Hole Counter パラメータ",
-        "description": "ポリゴンジオメトリで検出した穴の数の格納先を設定する",
+        "description": "各地物における穴の合計数の格納先を指定する",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -7605,7 +7736,7 @@
         "properties": {
           "outputAttribute": {
             "title": "出力属性",
-            "description": "穴の数を数値として格納する属性名",
+            "description": "穴の数を数値として格納する属性名。すべての地物に設定されるため、穴のないジオメトリは 0 が記録される",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -7634,14 +7765,14 @@
     {
       "name": "Hole Extractor",
       "type": "processor",
-      "description": "ジオメトリ内の穴を抽出し、属性として追加する",
+      "description": "ジオメトリの各面をリングに分割し、外周リングと各内周リング（穴）をそれぞれ個別の地物として出力する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "outershell",
+        "exterior",
         "hole",
         "rejected"
       ],
@@ -8293,46 +8424,50 @@
     {
       "name": "List Concatenator",
       "type": "processor",
-      "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する",
+      "description": "リスト属性の各要素から一つの属性の値を取り出し、単一の文字列に連結する。キーと値の組でない要素、およびその属性を持たない要素は読み飛ばす",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Concatenator パラメータ",
-        "description": "リスト要素から特定の属性を取り出して連結する設定",
+        "description": "読み込むリスト、その要素から取り出す属性、および結果の格納先",
         "type": "object",
         "required": [
-          "attribute",
+          "elementAttribute",
           "list",
-          "outputAttributeName",
-          "separateCharacter"
+          "outputAttribute"
         ],
         "properties": {
           "list": {
-            "description": "読み込むリスト属性",
+            "title": "List",
+            "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "attribute": {
-            "description": "各リスト要素から取り出す属性名",
+          "elementAttribute": {
+            "title": "Element Attribute",
+            "description": "リストの各要素から取り出す属性。キーと値の組でない要素、およびこの属性を持たない要素は何も寄与しない",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "separateCharacter": {
-            "description": "連結された値の間の区切り文字",
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "連結した文字列を格納する属性",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "separator": {
+            "title": "Separator",
+            "description": "連続する値の間に挿入する文字列。既定はカンマ",
+            "default": ",",
             "type": "string"
-          },
-          "outputAttributeName": {
-            "description": "連結結果を格納する属性名",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8349,9 +8484,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "List Exploder",
@@ -8400,33 +8537,36 @@
     {
       "name": "List Indexer",
       "type": "processor",
-      "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする",
+      "description": "リスト属性の一つの要素が持つキーと値の組を地物自体にコピーする。同名の属性は上書きし、それ以外はそのまま残す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Indexer パラメータ",
-        "description": "特定のリスト要素の属性をメインのフィーチャー属性にコピーする設定",
+        "description": "読み込むリスト、コピーする要素、およびコピーした属性名の付け方",
         "type": "object",
         "required": [
-          "listAttribute",
-          "listIndexToCopy"
+          "index",
+          "list"
         ],
         "properties": {
-          "listAttribute": {
-            "description": "読み込むリスト属性",
+          "list": {
+            "title": "List",
+            "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "listIndexToCopy": {
-            "description": "コピーするリスト要素のインデックス（0 始まり）",
+          "index": {
+            "title": "Index",
+            "description": "コピーする要素の位置。0 から数える。リストがこれより短い地物、およびこの位置の要素がキーと値の組でない地物は、そのまま通過する",
             "type": "integer",
             "format": "uint",
             "minimum": 0.0
           },
           "copiedAttributePrefix": {
-            "description": "コピーした属性名に追加するプレフィックス（任意）",
+            "title": "Copied Attribute Prefix",
+            "description": "コピーした各属性名の前に付ける文字列。既定では付けない",
             "default": null,
             "type": [
               "string",
@@ -8434,7 +8574,8 @@
             ]
           },
           "copiedAttributeSuffix": {
-            "description": "コピーした属性名に追加するサフィックス（任意）",
+            "title": "Copied Attribute Suffix",
+            "description": "コピーした各属性名の後に付ける文字列。既定では付けない",
             "default": null,
             "type": [
               "string",
@@ -8456,9 +8597,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "MVT Writer",
@@ -8600,6 +8743,14 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          },
+          "arrayMapSeparator": {
+            "title": "配列/マップの区切り文字",
+            "description": "ネストした配列やマップの属性をタグに平坦化する際、子のキーやインデックスとの間に挿入する区切り文字。未設定の場合、配列やマップの属性は出力から除外される",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

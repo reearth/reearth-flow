@@ -116,33 +116,6 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     }
 }
 
-// AUDIT NOTE (left by the Geometry A batch, 2026-07-30). This action has not been
-// audited yet. The observations below came from reading this file while deciding
-// something else, so treat them as leads to CHECK, not conclusions to apply —
-// verify each against the code and the standard before acting, and disagree freely
-// if the reading is wrong.
-//
-// 1. Suspected silent data loss. When `keepEmptyBoundaries` is false — the default —
-//    a feature whose boundary cannot be extracted appears to be dropped entirely:
-//    no port receives it and there is no `rejected` port. CityGML geometry looks
-//    worst affected, since the match arm for it extracts nothing at all, so every
-//    CityGML feature may vanish by default. Confirm by tracing each `None` branch
-//    in `process`. If it holds, §4.3 wants a `rejected` port.
-// 2. If `rejected` is added, re-examine whether `keepEmptyBoundaries` should exist
-//    at all. It reads as a routing decision expressed as a parameter, which ports
-//    already express; §3.5 would call that implementation leakage. Check whether any
-//    workflow relies on it before removing.
-// 3. `exteriorOnly` looks like a genuine semantic choice worth keeping, but it is
-//    negatively framed. Consider inverting it to `includeHoles` (default true).
-// 4. The description is three sentences, has no terminating period, and leaks
-//    implementation detail — see §2.
-//
-// Cross-check before consolidating this with any other action: its shape is one
-// feature in, one feature out with the geometry replaced. Geometry Part Extractor
-// and Hole Extractor instead emit one feature per part. Ports are declared
-// statically by the factory and cannot vary by parameter, so merging actions of
-// different shapes forces dead ports onto the node.
-
 /// # Boundary Extractor Parameters
 ///
 /// Configuration for extracting boundaries from geometries.

@@ -517,9 +517,9 @@ graphs:
         action: List Concatenator
         with:
           list: areaOverlapList
-          attribute: gmlId
-          separateCharacter: ","
-          outputAttributeName: concatenatedGmlIds
+          elementAttribute: gmlId
+          separator: ","
+          outputAttribute: concatenatedGmlIds
 
       # DuplicateFilter to remove duplicates based on gmlId
       - id: 518572d2-8561-4b60-ab28-fcd66d90afa2
@@ -996,7 +996,7 @@ graphs:
       - id: c472919a-4b86-462f-8570-34a149f69382
         from: c93837eb-e050-46f3-9c97-66d7273fe1e5
         to: 0c979585-82b2-41aa-909c-00d9b8d017d0
-        fromPort: area
+        fromPort: features
         toPort: features
 
       # FeatureSorter to GeometryExtractor

@@ -61,7 +61,7 @@ impl Cesium3DTilesWriter {
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
 
         self.buffer
-            .entry((output, None, None))
+            .entry(output)
             .or_default()
             .push(ctx.feature.clone());
         Ok(())
@@ -84,7 +84,7 @@ impl Cesium3DTilesWriter {
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
             texture_codec: self.params.texture_codec,
         };
-        for ((output, _, _), features) in &self.buffer {
+        for (output, features) in &self.buffer {
             if output.ends_with(".zip") {
                 let zip = reearth_flow_common::zip::StreamingZipWriter::new(std::io::Cursor::new(
                     Vec::new(),

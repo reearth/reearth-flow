@@ -4,28 +4,16 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 type projectResolver struct{ *Resolver }
 
 func (r *projectResolver) Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error) {
-	return loaders(ctx).Deployment.FindByProject(ctx, obj.ID)
+	return dataloaders(ctx).DeploymentByProject.Load(obj.ID)
 }
 
 func (r *projectResolver) Parameters(ctx context.Context, obj *gqlmodel.Project) ([]*gqlmodel.Parameter, error) {
-	sid, err := gqlmodel.ToID[id.Project](obj.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	parameters, err := usecases(ctx).Parameter.FetchByProject(ctx, sid)
-	if err != nil {
-		return nil, err
-	}
-
-	res := gqlmodel.ToParameters(parameters)
-	return res, nil
+	return dataloaders(ctx).ParametersByProject.Load(obj.ID)
 }
 
 func (r *projectResolver) Workspace(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Workspace, error) {

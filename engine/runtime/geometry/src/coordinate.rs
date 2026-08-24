@@ -379,6 +379,16 @@ impl TangentPlane {
         let d = sub3(position, self.origin);
         [dot3(d, self.u), dot3(d, self.v)]
     }
+
+    /// The base-frame position of an in-plane `(x, y)`: `origin + x * u + y * v`.
+    #[inline]
+    pub fn lift(&self, [x, y]: [f64; 2]) -> [f64; 3] {
+        [
+            self.origin[0] + x * self.u[0] + y * self.v[0],
+            self.origin[1] + x * self.u[1] + y * self.v[1],
+            self.origin[2] + x * self.u[2] + y * self.v[2],
+        ]
+    }
 }
 
 /// `a` scaled to unit length, or `None` when it is (near) zero.

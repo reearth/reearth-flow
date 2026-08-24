@@ -6,7 +6,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 
 use indexmap::IndexMap;
-use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
     errors::BoxedError,
@@ -46,21 +45,20 @@ fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
 }
 
-pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
-
 /// # Attribute Accumulation Strategy
-/// Defines how attributes should be handled when dissolving multiple features into one
+/// Which attributes a merged feature keeps.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum AttributeAccumulationStrategy {
     /// # Drop Incoming Attributes
-    /// No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)
+    /// Keeps only the grouping attributes, discarding everything else.
     DropAttributes,
     /// # Merge Incoming Attributes
-    /// The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array
+    /// Keeps every attribute from every feature in the group. Where features disagree on a
+    /// value, all the differing values are collected into an array.
     MergeAttributes,
     /// # Use Attributes From One Feature
-    /// The output inherits the attributes of one representative feature of the group
+    /// Keeps the attributes of a single feature from the group and discards the rest.
     #[default]
     UseOneFeature,
 }
@@ -74,7 +72,7 @@ impl ProcessorFactory for DissolverFactory {
     }
 
     fn description(&self) -> &str {
-        "Dissolve Features by Grouping Attributes"
+        "Merges area features that share the same grouping attribute values into one feature per group, combining their geometries and dropping the boundaries between them. Inputs must be flat 2D areas sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -85,12 +83,16 @@ impl ProcessorFactory for DissolverFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "aggregation"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![AREA_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -140,18 +142,22 @@ impl ProcessorFactory for DissolverFactory {
 }
 
 /// # Dissolver Parameters
-/// Configure how to dissolve features by grouping them based on shared attributes
+/// Sets which features are dissolved together, how closely their vertices must line up, and
+/// which of their attributes the merged feature keeps.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DissolverParam {
     /// # Group By Attributes
-    /// List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together
+    /// Attributes whose values decide which features dissolve together — features matching on
+    /// all of them are merged into one. When omitted, every feature forms a single group.
     group_by: Option<Vec<Attribute>>,
     /// # Tolerance
-    /// Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation.
+    /// Distance below which two vertices are treated as the same point when merging geometries,
+    /// in the unit of the input's coordinate frame. Defaults to zero, which merges only exactly
+    /// coincident vertices and can leave slivers between edges that nearly meet.
     tolerance: Option<f64>,
     /// # Attribute Accumulation
-    /// Strategy for handling attributes when dissolving features
+    /// Which attributes the merged feature keeps.
     #[serde(default)]
     attribute_accumulation: AttributeAccumulationStrategy,
 }
@@ -482,7 +488,7 @@ impl Processor for Dissolver {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 dissolved,
-                AREA_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
         Ok(())
@@ -743,7 +749,7 @@ mod tests {
         let mut area = Vec::new();
         let mut rejected = Vec::new();
         for (port, feature) in ports.iter().zip(sent) {
-            if *port == *AREA_PORT {
+            if *port == *FEATURES_PORT {
                 area.push(feature);
             } else if *port == *REJECTED_PORT {
                 rejected.push(feature);
