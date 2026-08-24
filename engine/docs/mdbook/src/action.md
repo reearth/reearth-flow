@@ -8528,6 +8528,14 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "arrayMapSeparator": {
+      "title": "Array/Map Separator",
+      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   }
 }

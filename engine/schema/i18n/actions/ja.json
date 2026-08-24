@@ -2516,6 +2516,10 @@
           "title": "MVTWriter パラメータ",
           "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す設定"
         },
+        "arrayMapSeparator": {
+          "title": "配列/マップの区切り文字",
+          "description": "ネストした配列やマップの属性をタグに平坦化する際、子のキーやインデックスとの間に挿入する区切り文字。未設定の場合、配列やマップの属性は出力から除外される"
+        },
         "colonToUnderscore": {
           "title": "コロンをアンダースコアに変換",
           "description": "属性キーのコロン（XML名前空間など）をアンダースコアに置換するか"
