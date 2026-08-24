@@ -1,0 +1,13 @@
+[[codes]]
+code = "csv.geometry_rejected"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "sent a row to the rejected port because its geometry could not be parsed"
+help = "Connect the CSV Reader's rejected port to inspect the failing rows; each carries its original columns plus the parse error."
+
+[[codes]]
+code = "csv.no_data_rows"
+category = "io"
+default_disposition = "warn_drop"
+message = "the file contained no data rows"
+help = "Check the file path, and check the header row settings if the file does have data."
