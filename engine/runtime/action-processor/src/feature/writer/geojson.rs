@@ -26,7 +26,8 @@ impl ProcessorFactory for FeatureGeoJsonWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a GeoJSON file for each resolved output path."
+        "Writes the features it receives to a GeoJSON file per resolved output path, then \
+         emits one feature per file written, carrying that file's path."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -86,12 +87,14 @@ impl ProcessorFactory for FeatureGeoJsonWriterFactory {
     }
 }
 
-/// # FeatureGeoJsonWriter Parameters
+/// # Feature GeoJSON Writer Parameters
 ///
-/// Configuration for writing features to GeoJSON files.
+/// Where the GeoJSON is written, and what is declared about its coordinates.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[schemars(description = "Configuration for writing features to GeoJSON files.")]
+#[schemars(
+    description = "Where the GeoJSON is written, and what is declared about its coordinates."
+)]
 struct FeatureGeoJsonWriterParam {
     /// # Output
     ///

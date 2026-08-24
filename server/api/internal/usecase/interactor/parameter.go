@@ -196,6 +196,47 @@ func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*para
 	return params, err
 }
 
+// FetchByProjects batches FetchByProject for a dataloader: one project lookup and
+// one permission check per distinct workspace instead of one of each per project.
+// Projects in a workspace the caller can't see are simply omitted from the result.
+func (i *Parameter) FetchByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*parameter.ParameterList, error) {
+	if len(ids) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+		return map[id.ProjectID]*parameter.ParameterList{}, nil
+	}
+
+	projects, err := i.projectRepo.FindByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	byWorkspace := map[accountsid.WorkspaceID][]id.ProjectID{}
+	for _, p := range projects {
+		if p == nil { // some repo implementations pad not-found/unreadable entries with nil
+			continue
+		}
+		byWorkspace[p.Workspace()] = append(byWorkspace[p.Workspace()], p.ID())
+	}
+
+	result := make(map[id.ProjectID]*parameter.ParameterList, len(projects))
+	for ws, pids := range byWorkspace {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+			continue // caller can't see this workspace; omit its projects' parameters
+		}
+		for _, pid := range pids {
+			params, err := i.paramRepo.FindByProject(ctx, pid)
+			if err != nil {
+				return nil, err
+			}
+			result[pid] = params
+		}
+	}
+
+	return result, nil
+}
+
 func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id.ParameterID, error) {
 	// Use the batch delete method for consistency
 	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{pid})

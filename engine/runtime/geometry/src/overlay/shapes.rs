@@ -9,7 +9,16 @@
 //! union-boundary rings first (see
 //! [`boundary`](crate::predicates::relate::boundary)), which cancels shared
 //! internal edges exactly (before `i_overlay`'s snap to its integer grid) and
-//! preserves the interior-left direction of every surviving ring.
+//! preserves the interior-left direction of every surviving ring. Those rings
+//! carry the union under the non-zero rule but are not a shape: a mesh whose
+//! face union has several outer contours (detached parts, corner-only touches)
+//! or that is not edge-conforming yields several of them. Such a ring set is
+//! regrouped into one shape per region before it leaves this module, so every
+//! shape a caller sees holds one outer contour followed by its holes.
+
+use i_overlay::core::fill_rule::FillRule;
+use i_overlay::core::overlay_rule::OverlayRule;
+use i_overlay::float::single::SingleFloatOverlay;
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
@@ -25,9 +34,14 @@ pub(super) type Path = Vec<[f64; 2]>;
 pub(super) type Shape = Vec<Path>;
 
 /// Convert areal leaves into `i_overlay` shapes: a polygon contributes its
-/// rings verbatim, a mesh its union-boundary rings. Empty leaves contribute
-/// nothing. Errs with the leaf's type name on the first non-areal leaf.
+/// rings verbatim, a mesh one shape per region of its face union. Empty leaves
+/// contribute nothing. Errs with the leaf's type name on the first non-areal
+/// leaf.
 pub(super) fn areal_shapes(leaves: &[Leaf2D<'_>]) -> Result<Vec<Shape>, &'static str> {
+    let sign = leaves
+        .first()
+        .and_then(|leaf| frame_sign(leaf.frame()))
+        .unwrap_or(1.0);
     let mut shapes = Vec::new();
     for leaf in leaves {
         let shape: Shape = match leaf {
@@ -37,11 +51,13 @@ pub(super) fn areal_shapes(leaves: &[Leaf2D<'_>]) -> Result<Vec<Shape>, &'static
                 .collect(),
             Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => {
                 let area = leaf.area_view().expect("mesh leaves are areal");
-                union_boundary_rings(&area)
+                let rings: Shape = union_boundary_rings(&area)
                     .into_iter()
                     .map(|ring| ring_to_path(RingView::Slice(&ring)))
                     .filter(|path| !path.is_empty())
-                    .collect()
+                    .collect();
+                shapes.extend(regroup_rings(rings, sign));
+                continue;
             }
             Leaf2D::Point(_) | Leaf2D::Line(_) => return Err(leaf_type_name(leaf)),
         };
@@ -50,6 +66,37 @@ pub(super) fn areal_shapes(leaves: &[Leaf2D<'_>]) -> Result<Vec<Shape>, &'static
         }
     }
     Ok(shapes)
+}
+
+/// Split a mesh's union-boundary rings into one shape per region, keeping the
+/// stored winding `sign` they are wound to.
+fn regroup_rings(rings: Shape, sign: f64) -> Vec<Shape> {
+    // The non-zero rule reads winding, so a clockwise-storing frame's rings go
+    // in counter-clockwise and come back reversed.
+    let flip = sign < 0.0;
+    let rings = if flip { reverse_shape(rings) } else { rings };
+    let regions = dissolve(vec![rings]);
+    if flip {
+        regions.into_iter().map(reverse_shape).collect()
+    } else {
+        regions
+    }
+}
+
+/// The stored winding direction of `frame`'s canonical orientation.
+pub(super) fn frame_sign(frame: &CoordinateFrame) -> Option<f64> {
+    frame.orientation_sign().ok().map(f64::from)
+}
+
+/// Reverse every ring of a shape, flipping its winding.
+pub(super) fn reverse_shape(shape: Shape) -> Shape {
+    shape
+        .into_iter()
+        .map(|mut ring| {
+            ring.reverse();
+            ring
+        })
+        .collect()
 }
 
 /// A ring as an implicitly closed `i_overlay` path: the stored vertices with
@@ -76,16 +123,30 @@ pub(super) fn line_paths(leaves: &[Leaf2D<'_>]) -> Result<Vec<Path>, &'static st
     Ok(paths)
 }
 
+/// The union of `shapes` under the non-zero rule.
+pub(super) fn dissolve(shapes: Vec<Shape>) -> Vec<Shape> {
+    let empty: Vec<Shape> = Vec::new();
+    shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero)
+}
+
 /// Convert `i_overlay` result shapes back into polygons in `frame`, closing
-/// each ring. The backend emits the outer contour first (CCW) and holes after
-/// (CW), Flow's winding convention, so rings pass through verbatim.
-pub(super) fn shapes_to_polygons(shapes: Vec<Shape>, frame: &CoordinateFrame) -> Vec<Polygon2D> {
+/// each ring and placing them at `elevation` when one is given. The backend
+/// emits the outer contour first (CCW) and holes after (CW), Flow's winding
+/// convention, so rings pass through verbatim.
+pub(super) fn shapes_to_polygons(
+    shapes: Vec<Shape>,
+    frame: &CoordinateFrame,
+    elevation: Option<f64>,
+) -> Vec<Polygon2D> {
     shapes
         .into_iter()
         .filter_map(|shape| {
             let mut rings = shape.into_iter().map(close_path);
             let exterior = rings.next()?;
-            Some(Polygon2D::from_rings(frame.clone(), exterior, rings))
+            Some(match elevation {
+                Some(z) => Polygon2D::from_rings_at_elevation(frame.clone(), exterior, rings, z),
+                None => Polygon2D::from_rings(frame.clone(), exterior, rings),
+            })
         })
         .collect()
 }
@@ -102,7 +163,7 @@ pub(super) fn paths_to_line_strings(
 }
 
 /// Close an implicitly closed path by appending its first vertex.
-fn close_path(mut path: Path) -> Path {
+pub(super) fn close_path(mut path: Path) -> Path {
     if let Some(&first) = path.first() {
         path.push(first);
     }

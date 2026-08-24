@@ -12,6 +12,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -146,13 +147,16 @@ func TestGraphqlBodyLimitMiddleware_UsesConfiguredMaxUploadSize(t *testing.T) {
 func TestInitEcho_EnforcesNonGraphQLBodyLimit(t *testing.T) {
 	t.Parallel()
 
+	// initEcho builds the usecase container at boot, so the client it reads
+	// repos off must be present even though no request here reaches it.
 	cfg := &ServerConfig{
 		Config: &config.Config{
 			Web_Disabled: true,
 			AuthSrv:      config.AuthSrvConfig{Disabled: true},
 		},
-		Repos:    &repo.Container{},
-		Gateways: &gateway.Container{},
+		Repos:            &repo.Container{},
+		Gateways:         &gateway.Container{},
+		AccountGQLClient: gqlclient.NewClient("http://localhost", 1, nil),
 	}
 	e := initEcho(context.Background(), cfg)
 

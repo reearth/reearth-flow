@@ -1251,7 +1251,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
+      "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it.",
       "type": "number",
       "format": "double"
     }
@@ -1261,7 +1261,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
       "oneOf": [
         {
           "title": "2D Area Buffer",
-          "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried.",
+          "description": "Creates an areal buffer around the input geometry: a 2D geometry is buffered in its coordinate plane, a planar 3D polygon within its own plane. An elevation shared by the buffered geometry is kept.",
           "type": "string",
           "enum": [
             "area2d"
@@ -3569,12 +3569,13 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
 ### Type
 * processor
 ### Description
-Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across files
+Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature CityGML 3 Reader Parameters",
+  "description": "Which file to read, and how its elements become feature attributes.",
   "type": "object",
   "required": [
     "dataset"
@@ -3837,13 +3838,40 @@ Creates features from a script expression that returns one or more attribute map
 ### Type
 * processor
 ### Description
-Filter Out Duplicate Features
+Forwards the first feature carrying each distinct value and separates out the ones that repeat it. Features are compared on their whole content unless the attributes to compare are named.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature Duplicate Filter Parameters",
+  "description": "Which features count as repeats of one another.",
+  "type": "object",
+  "properties": {
+    "filterBy": {
+      "title": "Filter Attributes",
+      "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports
 * features
+* duplicate
 ### Category
 * Feature
 
@@ -3991,13 +4019,13 @@ Routes features to named output ports based on user-defined filter conditions.
 ### Type
 * processor
 ### Description
-Writes features to a GeoJSON file for each resolved output path.
+Writes the features it receives to a GeoJSON file per resolved output path, then emits one feature per file written, carrying that file's path.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureGeoJsonWriter Parameters",
-  "description": "Configuration for writing features to GeoJSON files.",
+  "title": "Feature GeoJSON Writer Parameters",
+  "description": "Where the GeoJSON is written, and what is declared about its coordinates.",
   "type": "object",
   "required": [
     "output"
@@ -8188,48 +8216,52 @@ Splits lines where they cross and turns each intersection into a point feature c
 ### Type
 * processor
 ### Description
-Extracts a specific attribute from each element in a list and concatenates them into a single string
+Joins one attribute's value from every element of a list attribute into a single string. Elements that are not key-value pairs, or that lack the attribute, are skipped.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "List Concatenator Parameters",
-  "description": "Configuration for concatenating a specific attribute from list elements.",
+  "description": "Which list to read, which attribute to take from its elements, and where the result goes.",
   "type": "object",
   "required": [
-    "attribute",
+    "elementAttribute",
     "list",
-    "outputAttributeName",
-    "separateCharacter"
+    "outputAttribute"
   ],
   "properties": {
     "list": {
-      "description": "List attribute to read from",
+      "title": "List",
+      "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "attribute": {
-      "description": "Attribute name to extract from each list element",
+    "elementAttribute": {
+      "title": "Element Attribute",
+      "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "separateCharacter": {
-      "description": "Character(s) to use as separator between concatenated values",
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Attribute the joined string is written to.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "separator": {
+      "title": "Separator",
+      "description": "Text placed between consecutive values. Defaults to a comma.",
+      "default": ",",
       "type": "string"
-    },
-    "outputAttributeName": {
-      "description": "Name of the attribute to store the concatenated result",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
     }
   },
   "definitions": {
@@ -8244,7 +8276,7 @@ Extracts a specific attribute from each element in a list and concatenates them 
 ### Output Ports
 * features
 ### Category
-* Feature
+* Attribute
 
 ## List Exploder
 ### Type
@@ -8291,35 +8323,38 @@ Creates one feature per element of a list attribute, merging the element's key-v
 ### Type
 * processor
 ### Description
-Copies attributes from a specific list element to become the main attributes of a feature
+Copies the key-value pairs of one element of a list attribute onto the feature itself, overwriting an attribute of the same name and leaving the rest in place.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "List Indexer Parameters",
-  "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+  "description": "Which list to read, which of its elements to copy, and how to name what is copied.",
   "type": "object",
   "required": [
-    "listAttribute",
-    "listIndexToCopy"
+    "index",
+    "list"
   ],
   "properties": {
-    "listAttribute": {
-      "description": "List attribute to read from",
+    "list": {
+      "title": "List",
+      "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "listIndexToCopy": {
-      "description": "Index of the list element to copy (0-based)",
+    "index": {
+      "title": "Index",
+      "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged.",
       "type": "integer",
       "format": "uint",
       "minimum": 0.0
     },
     "copiedAttributePrefix": {
-      "description": "Optional prefix to add to copied attribute names",
+      "title": "Copied Attribute Prefix",
+      "description": "Text placed before each copied attribute name. Omitted by default.",
       "default": null,
       "type": [
         "string",
@@ -8327,7 +8362,8 @@ Copies attributes from a specific list element to become the main attributes of 
       ]
     },
     "copiedAttributeSuffix": {
-      "description": "Optional suffix to add to copied attribute names",
+      "title": "Copied Attribute Suffix",
+      "description": "Text placed after each copied attribute name. Omitted by default.",
       "default": null,
       "type": [
         "string",
@@ -8347,7 +8383,7 @@ Copies attributes from a specific list element to become the main attributes of 
 ### Output Ports
 * features
 ### Category
-* Feature
+* Attribute
 
 ## MVT Writer
 ### Type

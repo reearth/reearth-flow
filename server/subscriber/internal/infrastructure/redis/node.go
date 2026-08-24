@@ -20,29 +20,12 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 	log.Printf("DEBUG: Starting Redis save for NodeID=%s, JobID=%s, WorkflowID=%s with status %s",
 		event.NodeID, event.JobID, event.WorkflowID, event.Status)
 
-	jobNodesKey := fmt.Sprintf("nodeEvents:%s", event.JobID)
-	log.Printf("DEBUG: Using Redis list key: %s", jobNodesKey)
-
 	serializedBytes, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("ERROR: Failed to marshal node event for JobID=%s: %v", event.JobID, err)
 		return fmt.Errorf("failed to marshal node event: %w", err)
 	}
 	log.Printf("DEBUG: Successfully serialized event, size=%d bytes", len(serializedBytes))
-
-	serialized := string(serializedBytes)
-
-	if err := r.tracedLPush(ctx, jobNodesKey, serialized); err != nil {
-		log.Printf("ERROR: Failed to push event to Redis list %s: %v", jobNodesKey, err)
-		return fmt.Errorf("failed to push event to Redis list: %w", err)
-	}
-	log.Printf("DEBUG: Successfully pushed event to Redis list %s", jobNodesKey)
-
-	if err := r.tracedExpire(ctx, jobNodesKey, 12*time.Hour); err != nil {
-		log.Printf("WARNING: Failed to set expiration on Redis key %s: %v", jobNodesKey, err)
-	} else {
-		log.Printf("DEBUG: Set 12-hour expiration on Redis key %s", jobNodesKey)
-	}
 
 	// Store individual node status
 	nodeKey := fmt.Sprintf("node:%s:%s", event.JobID, event.NodeID)
@@ -74,6 +57,25 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 	}
 	log.Printf("DEBUG: Successfully set node data in Redis with key %s and 12-hour expiration", nodeKey)
 
+	if err := r.saveNodeStatusToHash(ctx, event.JobID, event.NodeID, string(nodeDataBytes)); err != nil {
+		log.Printf("ERROR: Failed to set node status hash for JobID=%s, NodeID=%s: %v", event.JobID, event.NodeID, err)
+		return err
+	}
+
 	log.Printf("DEBUG: Completed saving node data to Redis for JobID=%s, NodeID=%s", event.JobID, event.NodeID)
+	return nil
+}
+
+func (r *RedisStorage) saveNodeStatusToHash(ctx context.Context, jobID, nodeID, serialized string) error {
+	hashKey := fmt.Sprintf("node:%s", jobID)
+
+	if err := r.tracedHSet(ctx, hashKey, nodeID, serialized); err != nil {
+		return fmt.Errorf("failed to set node status in redis hash: %w", err)
+	}
+
+	if err := r.tracedExpire(ctx, hashKey, 12*time.Hour); err != nil {
+		return fmt.Errorf("failed to set expiration on redis hash: %w", err)
+	}
+
 	return nil
 }
