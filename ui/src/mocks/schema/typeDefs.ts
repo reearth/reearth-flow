@@ -192,6 +192,23 @@ export const typeDefs = `
     workspaceId: ID!
   }
 
+  # Diagnostic Types
+  # category/severity/effectiveDisposition are plain strings, not enums, so an
+  # engine value this build has never seen still round trips.
+  type Diagnostic {
+    code: String!
+    category: String!
+    severity: String!
+    effectiveDisposition: String
+    nodeId: String
+    actionType: String
+    featureId: ID
+    message: String!
+    help: String
+    aggregatedCount: Int
+    sampleFeatureIds: [ID!]
+  }
+
   # Job Types
   type Job implements Node {
     completedAt: DateTime
@@ -207,6 +224,8 @@ export const typeDefs = `
     workspace: Workspace
     workspaceId: ID!
     logs(since: DateTime!): [Log]
+    failedNodes: [Diagnostic!]
+    droppedEventCount: Int
   }
 
   enum JobStatus {
@@ -240,9 +259,14 @@ export const typeDefs = `
     nodeId: ID!
     jobId: ID!
     status: NodeExecutionStatus!
+    createdAt: DateTime
     startedAt: DateTime
     completedAt: DateTime
     logs: [Log!]!
+    diagnostics: [Diagnostic!]
+    featuresProcessed: Int
+    featuresWritten: Int
+    finishFeatureCount: Int
   }
 
   enum NodeExecutionStatus {
@@ -722,6 +746,7 @@ export const typeDefs = `
 
     # Node execution queries
     nodeExecution(jobId: ID!, nodeId: ID!): NodeExecution
+    nodeExecutions(jobId: ID!): [NodeExecution!]
 
     # Document queries
     latestProjectSnapshot(projectId: ID!): ProjectDocument

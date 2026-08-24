@@ -139,12 +139,14 @@ export type JobStatus =
   | 'CANCELLED'
   | 'COMPLETED'
   | 'FAILED'
+  /** Never emitted by the runtime; retained for API compatibility. */
   | 'PENDING'
   | 'RUNNING';
 
 export type NodeStatus =
   | 'COMPLETED'
   | 'FAILED'
+  /** Never emitted by the runtime; retained for API compatibility. */
   | 'PENDING'
   | 'PROCESSING'
   | 'STARTING';
@@ -459,7 +461,7 @@ export type ExecuteDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteDeploymentMutation = { executeDeployment: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
+export type ExecuteDeploymentMutation = { executeDeployment: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } } | null };
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: string;
@@ -557,9 +559,11 @@ export type VariableFragment = { key: string, type: ParameterType, value: any };
 
 export type TriggerFragment = { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null }, variables: Array<{ key: string, type: ParameterType, value: any }> };
 
-export type NodeExecutionFragment = { id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt: any, startedAt: any, completedAt: any };
+export type DiagnosticFragment = { code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null };
 
-export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null };
+export type NodeExecutionFragment = { id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt: any, startedAt: any, completedAt: any, featuresProcessed: number | null, featuresWritten: number | null, finishFeatureCount: number | null, diagnostics: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null };
+
+export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null };
 
 export type AssetFragment = { id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus: ArchiveExtractionStatus | null };
 
@@ -588,14 +592,14 @@ export type GetJobsQueryVariables = Exact<{
 }>;
 
 
-export type GetJobsQuery = { jobs: { totalCount: number, nodes: Array<{ id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
+export type GetJobsQuery = { jobs: { totalCount: number, nodes: Array<{ id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: string;
 }>;
 
 
-export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null };
+export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null };
 
 export type GetNodeExecutionQueryVariables = Exact<{
   jobId: string;
@@ -603,14 +607,21 @@ export type GetNodeExecutionQueryVariables = Exact<{
 }>;
 
 
-export type GetNodeExecutionQuery = { nodeExecution: { id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt: any, startedAt: any, completedAt: any } | null };
+export type GetNodeExecutionQuery = { nodeExecution: { id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt: any, startedAt: any, completedAt: any, featuresProcessed: number | null, featuresWritten: number | null, finishFeatureCount: number | null, diagnostics: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null } | null };
+
+export type GetNodeExecutionsQueryVariables = Exact<{
+  jobId: string;
+}>;
+
+
+export type GetNodeExecutionsQuery = { nodeExecutions: Array<{ id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt: any, startedAt: any, completedAt: any, featuresProcessed: number | null, featuresWritten: number | null, finishFeatureCount: number | null, diagnostics: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null }> | null };
 
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
 
 
-export type CancelJobMutation = { cancelJob: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null } };
+export type CancelJobMutation = { cancelJob: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null } };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
@@ -664,14 +675,14 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
+export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } } | null };
 
 export type PreviewSchemaMutationVariables = Exact<{
   input: PreviewSchemaInput;
 }>;
 
 
-export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } };
+export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } } };
 
 export type CopyProjectMutationVariables = Exact<{
   projectId: string;
@@ -1008,6 +1019,21 @@ export const TriggerFragmentDoc = gql`
 }
     ${DeploymentFragmentDoc}
 ${VariableFragmentDoc}`;
+export const DiagnosticFragmentDoc = gql`
+    fragment Diagnostic on Diagnostic {
+  code
+  category
+  severity
+  effectiveDisposition
+  nodeId
+  actionType
+  featureId
+  message
+  help
+  aggregatedCount
+  sampleFeatureIds
+}
+    `;
 export const NodeExecutionFragmentDoc = gql`
     fragment NodeExecution on NodeExecution {
   id
@@ -1017,8 +1043,14 @@ export const NodeExecutionFragmentDoc = gql`
   createdAt
   startedAt
   completedAt
+  featuresProcessed
+  featuresWritten
+  finishFeatureCount
+  diagnostics {
+    ...Diagnostic
+  }
 }
-    `;
+    ${DiagnosticFragmentDoc}`;
 export const JobFragmentDoc = gql`
     fragment Job on Job {
   id
@@ -1029,12 +1061,16 @@ export const JobFragmentDoc = gql`
   outputURLs
   userFacingLogsURL
   debug
+  droppedEventCount
+  failedNodes {
+    ...Diagnostic
+  }
   deployment {
     id
     description
   }
 }
-    `;
+    ${DiagnosticFragmentDoc}`;
 export const AssetFragmentDoc = gql`
     fragment Asset on Asset {
   id
@@ -1439,6 +1475,13 @@ export const GetJobDocument = gql`
 export const GetNodeExecutionDocument = gql`
     query GetNodeExecution($jobId: ID!, $nodeId: String!) {
   nodeExecution(jobId: $jobId, nodeId: $nodeId) {
+    ...NodeExecution
+  }
+}
+    ${NodeExecutionFragmentDoc}`;
+export const GetNodeExecutionsDocument = gql`
+    query GetNodeExecutions($jobId: ID!) {
+  nodeExecutions(jobId: $jobId) {
     ...NodeExecution
   }
 }
@@ -1887,6 +1930,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetNodeExecution(variables: GetNodeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetNodeExecutionQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetNodeExecutionQuery>({ document: GetNodeExecutionDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetNodeExecution', 'query', variables);
+    },
+    GetNodeExecutions(variables: GetNodeExecutionsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetNodeExecutionsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetNodeExecutionsQuery>({ document: GetNodeExecutionsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetNodeExecutions', 'query', variables);
     },
     CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CancelJobMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>({ document: CancelJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CancelJob', 'mutation', variables);
