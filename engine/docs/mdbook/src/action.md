@@ -2847,10 +2847,12 @@ Reprojects geometry between coordinate reference systems and converts between a 
             },
             "epsgCode": {
               "title": "EPSG Code",
-              "description": "EPSG code of the destination coordinate reference system.",
-              "type": "integer",
-              "format": "uint16",
-              "minimum": 0.0
+              "description": "EPSG code of the destination coordinate reference system, as a literal or as an expression over the workflow variables.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/EpsgCodeParam"
+                }
+              ]
             }
           }
         },
@@ -2867,6 +2869,39 @@ Reprojects geometry between coordinate reference systems and converts between a 
               "enum": [
                 "euclidean"
               ]
+            }
+          }
+        }
+      ]
+    },
+    "EpsgCodeParam": {
+      "description": "An EPSG code given as a literal or as an expression evaluated once against the workflow variables.",
+      "anyOf": [
+        {
+          "title": "Literal",
+          "description": "The EPSG code itself.",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        },
+        {
+          "title": "Expression",
+          "description": "An expression yielding the EPSG code; only workflow variables are in scope.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
             }
           }
         }

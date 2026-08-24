@@ -19,8 +19,8 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include surface_checks.yml
   - !include building_part_validation.yml
   - !include format_checks.yml
   - !include ref_and_type_checks.yml
@@ -127,15 +127,106 @@ graphs:
       - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["gmlPath"]
+          extractTags:
+            - Building
+            - BuildingPart
+            - RoofSurface
+            - GroundSurface
+            - WallSurface
+            - ClosureSurface
+            - OuterCeilingSurface
+            - OuterFloorSurface
+            - BuildingInstallation
+            - Door
+            - Window
+            - Room
+            - InteriorWallSurface
+            - CeilingSurface
+            - FloorSurface
+            - IntBuildingInstallation
+            - BuildingFurniture
+          cityGmlAttributesKey: cityGmlAttributes
+
+      # Derives the attributes the checks key on from the reader output, and
+      # regroups the CityGML attribute tree by feature type (`uro:BuildingIDAttribute`,
+      # `uro:BuildingDetailAttribute`, ...) with property wrappers removed and
+      # element text unwrapped.
+      - id: b5000000-0000-4000-8000-000000000001
+        name: AttributeManagerReaderAdapter
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: featureType
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: gmlName
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: gmlId
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_root_gml_id") or attributes.get("__citygml_gml_id")
+            - attribute: featureId
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_gml_id")
+            - attribute: cityGmlAttributes
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  is_type_key = fn(k) { local = k.split(":")[-1]; c = local[:1]; c != "" and c == c.upper() and c != c.lower() };
+                  is_wrapper = fn(d) { ks = d.keys(); ok = len(ks) > 0; for k in ks { if k[:1] != "@" and not is_type_key(k) { ok = false } } ok };
+                  reshape_value = fn(v) {
+                    r = v;
+                    if type(v) == list { r = itertools.map(v, fn(x) { reshape_value(x) }) } else { if type(v) == dict { if "$" in v { r = v["$"] } else { r = reshape_map(v) } } }
+                    r
+                  };
+                  reshape_map = fn(m) {
+                    out = {};
+                    for kv in m.items() {
+                      k = kv[0]; v = kv[1];
+                      items = [v];
+                      if type(v) == list { items = v }
+                      wrapper = len(items) > 0;
+                      for it in items { if not (type(it) == dict and is_wrapper(it)) { wrapper = false } }
+                      if wrapper {
+                        for it in items {
+                          for tkv in it.items() {
+                            t = tkv[0];
+                            if t[:1] != "@" {
+                              inners = [tkv[1]];
+                              if type(tkv[1]) == list { inners = tkv[1] }
+                              for one in inners { cur = out.get(t, []); cur.append(reshape_value(one)); out[t] = cur }
+                            }
+                          }
+                        }
+                      } else {
+                        if type(v) == dict and "$" in v and "@codeSpace" in v {
+                          out[k] = v["$"];
+                          code_key = k + "_code";
+                          if not (code_key in m) { out[code_key] = v["$"] }
+                        } else {
+                          out[k] = reshape_value(v)
+                        }
+                      }
+                    }
+                    out
+                  };
+                  cga = attributes.get("cityGmlAttributes");
+                  if type(cga) == dict { reshape_map(cga) } else { {} }
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         name: AttributeMapperGmlPathAndFilename
         type: action
@@ -187,13 +278,15 @@ graphs:
               method: remove
 
       - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        name: HorizontalReprojector
+        name: CoordinateFrameReprojector
         type: action
-        action: Horizontal Reprojector
+        action: Coordinate Frame Reprojector
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          destinationFrame:
+            type: crs
+            epsgCode:
+              type: flowExpr
+              value: variables["prcs"]
 
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         name: FeatureFilterBuildingPart
@@ -672,6 +765,11 @@ graphs:
         toPort: features
       - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
         from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        to: b5000000-0000-4000-8000-000000000001
+        fromPort: features
+        toPort: features
+      - id: b5000000-0000-4000-8000-000000000101
+        from: b5000000-0000-4000-8000-000000000001
         to: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         fromPort: features
         toPort: features
@@ -740,12 +838,6 @@ graphs:
         from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
         to: 4712539b-5103-41ee-9359-0333eefb82ef
         fromPort: errorCountCityCode
-        toPort: features
-
-      - id: e9f0a1b2-4c5d-6e7f-8a9b-0c1d2e3f4a5b
-        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
-        to: 4712539b-5103-41ee-9359-0333eefb82ef
-        fromPort: errorCountLbldg02
         toPort: features
 
       - id: a3b4c5d6-8e9f-0a1b-2c3d-4e5f6a7b8c9d
@@ -873,12 +965,6 @@ graphs:
         from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
         to: 4712539b-5103-41ee-9359-0333eefb82ef
         fromPort: errorCountLod4SolidIssues
-        toPort: features
-
-      - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
-        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
-        to: 4712539b-5103-41ee-9359-0333eefb82ef
-        fromPort: errorCountIncorrectMeshcode
         toPort: features
 
       - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d

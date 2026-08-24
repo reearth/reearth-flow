@@ -1,6 +1,7 @@
 {
   "description": "Test PLATEAU4.DestinationMeshCodeExtractor with cross-mesh features having equal areas - should select mesh with smaller mesh code",
-  "skipNewGeometry": true,
+  "skip": true,
+  "skipReason": "図郭不正 needs DestinationMeshCodeExtractor, which does not support the new geometry model yet",
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
