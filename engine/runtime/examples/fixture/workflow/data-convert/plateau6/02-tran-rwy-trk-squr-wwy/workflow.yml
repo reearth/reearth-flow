@@ -309,16 +309,11 @@ graphs:
         toPort: features
       - id: f39ed34e-befe-4028-a4a3-0bf6d02af0f5
         from: 615752ac-2d0f-46c3-b3d3-e62400234b85
-        to: eb7833a5-a11d-4481-9e80-8d4d64d0b7c8
+        to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
         fromPort: features
         toPort: features
       - id: 8ca81130-5a89-4f91-9dc4-e09c3fb6b5d1
         from: b410723e-979a-4eb1-9dde-4316ce3ee9d9
         to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
         fromPort: curve
-        toPort: features
-      - id: 79682e87-8ded-46ab-9f3f-2e389150786b
-        from: eb7833a5-a11d-4481-9e80-8d4d64d0b7c8
-        to: e0dc2253-b75a-4bde-bc9f-01901b1af1c7
-        fromPort: features
         toPort: features

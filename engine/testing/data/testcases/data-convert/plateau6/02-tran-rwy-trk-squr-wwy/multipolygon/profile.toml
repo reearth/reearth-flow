@@ -1,1 +1,26 @@
+# To test:
+# - dissolver merging polygons
+# - tran attribute/geometry smoke test
 citygml_zip_name = "13115_suginami-ku_city_2024_citygml_1_op_tran.zip"
+
+[convs.mvt_attributes.tran_lod2]
+path = "13115_suginami-ku_city_2024_citygml_1_op_tran_mvt_lod2"
+truth_path = "tran_lod2_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.tran_lod2.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.tran_lod2]
+path = "tran_lod2_truth.json"
+
+[convs.mvt_png.tran_lod2]
+path = "13115_suginami-ku_city_2024_citygml_1_op_tran_mvt_lod2"
+truth_path = "tran_lod2_png_truth"
+generate_truth = true
+tiles = ["16/58193/25808"]
+mode = "wireframe"
+stroke = 2.0
+
+[tests.raster.tran_lod2]
+threshold = 0.001

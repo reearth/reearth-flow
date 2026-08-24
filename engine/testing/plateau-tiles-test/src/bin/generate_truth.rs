@@ -79,6 +79,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             w,
             h,
             entry.stroke,
+            entry.mode,
         );
         fs::remove_dir_all(&tmp_mvt_dir).ok();
 
