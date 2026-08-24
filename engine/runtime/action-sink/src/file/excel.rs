@@ -32,14 +32,8 @@ pub(super) fn write_excel(
 
     for (row_num, feature) in features.iter().enumerate() {
         let row = row_num as u32 + 1;
-        for (key, value) in feature.iter() {
-            let key = key.clone().into_inner();
-            // Companion attributes have no column of their own; they are read
-            // when the column they belong to is written.
-            let Some(&col) = columns.get(&key) else {
-                continue;
-            };
-            write_cell(worksheet, row, col as u16, &key, value, &feature.attributes)?;
+        for (col, cell) in row_of(&feature.attributes, &columns) {
+            write_cell(worksheet, row, col, cell)?;
         }
     }
 
@@ -91,42 +85,77 @@ fn is_companion(key: &str, all_keys: &HashSet<&str>) -> bool {
         .any(|base| all_keys.contains(base))
 }
 
-/// Write one cell: a formula or a hyperlink when the column's companion
-/// attributes ask for one, and otherwise the value in its own type.
+/// What a column's cell holds for one feature.
+#[derive(Debug, PartialEq)]
+enum Cell<'a> {
+    /// The column's `.formula` companion asked for a formula.
+    Formula(&'a str),
+    /// The column's `.hyperlink` companion asked for a link.
+    Hyperlink(&'a str),
+    /// The feature's own value for the column.
+    Value(&'a AttributeValue),
+    /// The feature has nothing for this column.
+    Empty,
+}
+
+/// What the column named `key` holds for a feature carrying `attributes`.
+///
+/// A companion wins over the plain value, and it applies whether or not the
+/// feature also carries that value: a formula is usually the cell's content
+/// rather than an annotation on it.
+fn cell_of<'a>(attributes: &'a IndexMap<Attribute, AttributeValue>, key: &str) -> Cell<'a> {
+    if let Some(AttributeValue::String(formula)) = companion(attributes, key, FORMULA_SUFFIX) {
+        return Cell::Formula(formula);
+    }
+    if let Some(AttributeValue::String(url)) = companion(attributes, key, HYPERLINK_SUFFIX) {
+        return Cell::Hyperlink(url);
+    }
+    match attributes.get(&Attribute::new(key)) {
+        Some(value) => Cell::Value(value),
+        None => Cell::Empty,
+    }
+}
+
+/// One feature's row: what every column holds for it, in column order.
+///
+/// Walks the COLUMNS, not the feature's own attributes. A feature can carry
+/// `a.formula` without carrying `a` — a formula is usually the cell's content
+/// rather than an annotation on a value beside it — and walking the feature
+/// would never reach column `a` to write it.
+fn row_of<'a>(
+    attributes: &'a IndexMap<Attribute, AttributeValue>,
+    columns: &IndexMap<String, usize>,
+) -> Vec<(u16, Cell<'a>)> {
+    columns
+        .iter()
+        .map(|(key, &col)| (col as u16, cell_of(attributes, key)))
+        .collect()
+}
+
+/// Write one cell in the type its content calls for.
 fn write_cell(
     worksheet: &mut Worksheet,
     row: u32,
     col: u16,
-    key: &str,
-    value: &AttributeValue,
-    attributes: &IndexMap<Attribute, AttributeValue>,
+    cell: Cell<'_>,
 ) -> Result<(), crate::errors::SinkError> {
-    if let Some(AttributeValue::String(formula)) = companion(attributes, key, FORMULA_SUFFIX) {
-        worksheet
-            .write_formula(row, col, Formula::new(formula))
-            .map_err(crate::errors::SinkError::excel_writer)?;
-        return Ok(());
-    }
-    if let Some(AttributeValue::String(url)) = companion(attributes, key, HYPERLINK_SUFFIX) {
-        worksheet
-            .write_url(row, col, Url::new(url))
-            .map_err(crate::errors::SinkError::excel_writer)?;
-        return Ok(());
-    }
-
-    // Numbers and booleans are written in their own type rather than
-    // stringified, so the sheet can sum, sort and filter them.
-    match value {
-        AttributeValue::String(s) => worksheet.write_string(row, col, s),
-        AttributeValue::Number(n) => match n.as_f64() {
+    match cell {
+        Cell::Formula(formula) => worksheet.write_formula(row, col, Formula::new(formula)),
+        Cell::Hyperlink(url) => worksheet.write_url(row, col, Url::new(url)),
+        // Numbers and booleans are written in their own type rather than
+        // stringified, so the sheet can sum, sort and filter them.
+        Cell::Value(AttributeValue::String(s)) => worksheet.write_string(row, col, s),
+        Cell::Value(AttributeValue::Number(n)) => match n.as_f64() {
             Some(n) => worksheet.write_number(row, col, n),
             None => worksheet.write_string(row, col, n.to_string()),
         },
-        AttributeValue::Bool(b) => worksheet.write_boolean(row, col, *b),
-        AttributeValue::Null => worksheet.write_string(row, col, ""),
+        Cell::Value(AttributeValue::Bool(b)) => worksheet.write_boolean(row, col, *b),
+        Cell::Value(AttributeValue::Null) => worksheet.write_string(row, col, ""),
         // A cell holds one value, so a nested array or map is written as its
         // JSON rather than silently dropped.
-        other => worksheet.write_string(row, col, json_text(other)),
+        Cell::Value(other) => worksheet.write_string(row, col, json_text(other)),
+        // Nothing to write leaves the cell untouched rather than blanking it.
+        Cell::Empty => return Ok(()),
     }
     .map_err(crate::errors::SinkError::excel_writer)?;
 
@@ -168,6 +197,80 @@ mod tests {
         let columns = columns_of(&features);
         assert_eq!(columns.get("a"), Some(&0));
         assert_eq!(columns.get("b"), Some(&1));
+    }
+
+    #[test]
+    fn a_formula_fills_its_column_even_with_no_value_beside_it() {
+        // A formula is usually the cell's content, so a feature supplying only
+        // `a.formula` must still fill column `a`. Building the row from the
+        // feature's own attributes instead of from the columns skipped this row
+        // entirely, dropping the formula with no trace.
+        let with_value = feature(&[("a", AttributeValue::String("1".into()))]);
+        let formula_only = feature(&[("a.formula", AttributeValue::String("=1+1".into()))]);
+        let features = vec![with_value.clone(), formula_only.clone()];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 1, "`a.formula` is a companion, not a column");
+
+        assert_eq!(
+            row_of(&formula_only.attributes, &columns),
+            vec![(0, Cell::Formula("=1+1"))]
+        );
+        assert_eq!(
+            row_of(&with_value.attributes, &columns),
+            vec![(0, Cell::Value(&AttributeValue::String("1".into())))]
+        );
+    }
+
+    #[test]
+    fn every_row_covers_every_column() {
+        // Each row must have one entry per column regardless of which
+        // attributes the feature happens to carry, so a sparse feature cannot
+        // shift later columns or skip them.
+        let features = vec![
+            feature(&[("a", AttributeValue::String("1".into()))]),
+            feature(&[("c", AttributeValue::String("3".into()))]),
+            feature(&[("b", AttributeValue::String("2".into()))]),
+        ];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 3);
+        for f in &features {
+            let row = row_of(&f.attributes, &columns);
+            assert_eq!(row.len(), 3);
+            assert_eq!(
+                row.iter().map(|(col, _)| *col).collect::<Vec<_>>(),
+                vec![0, 1, 2]
+            );
+            assert_eq!(row.iter().filter(|(_, c)| *c == Cell::Empty).count(), 2);
+        }
+    }
+
+    #[test]
+    fn a_hyperlink_fills_its_column_even_with_no_value_beside_it() {
+        let f = feature(&[(
+            "site.hyperlink",
+            AttributeValue::String("https://e.test".into()),
+        )]);
+        // `site` is not a column here, but the resolution is what matters: were
+        // any feature to carry `site`, this row would still link.
+        assert_eq!(
+            cell_of(&f.attributes, "site"),
+            Cell::Hyperlink("https://e.test")
+        );
+    }
+
+    #[test]
+    fn a_companion_wins_over_the_value_beside_it() {
+        let f = feature(&[
+            ("a", AttributeValue::String("stale".into())),
+            ("a.formula", AttributeValue::String("=1+1".into())),
+        ]);
+        assert_eq!(cell_of(&f.attributes, "a"), Cell::Formula("=1+1"));
+    }
+
+    #[test]
+    fn a_column_the_feature_has_nothing_for_is_empty() {
+        let f = feature(&[("a", AttributeValue::String("1".into()))]);
+        assert_eq!(cell_of(&f.attributes, "b"), Cell::Empty);
     }
 
     #[test]
