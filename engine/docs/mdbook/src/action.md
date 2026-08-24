@@ -1738,6 +1738,7 @@ Reads features from CSV and TSV files.
 ### Input Ports
 ### Output Ports
 * features
+* rejected
 ### Category
 * Input
 

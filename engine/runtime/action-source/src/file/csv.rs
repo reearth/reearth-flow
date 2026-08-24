@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,7 +41,7 @@ impl SourceFactory for CsvReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -157,6 +157,26 @@ impl Source for CsvReader {
             &self.params.property,
             self.params.encoding.as_deref(),
             sender,
+        )
+        .await
+        .map_err(Into::<BoxedError>::into)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+        csv::read_csv(
+            self.params.format.delimiter(),
+            &content,
+            &self.params.property,
+            self.params.encoding.as_deref(),
+            sender,
+            &ctx,
         )
         .await
         .map_err(Into::<BoxedError>::into)

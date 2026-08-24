@@ -4987,6 +4987,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "reearth-flow-action-log",
  "reearth-flow-common",
+ "reearth-flow-diagnostics",
  "reearth-flow-geometry",
  "reearth-flow-gltf",
  "reearth-flow-runtime",

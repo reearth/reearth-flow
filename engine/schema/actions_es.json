@@ -1775,7 +1775,8 @@
       "builtin": true,
       "inputPorts": [],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Input"
