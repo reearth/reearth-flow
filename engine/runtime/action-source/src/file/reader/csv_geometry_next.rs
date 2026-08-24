@@ -73,11 +73,54 @@ pub fn parse_geometry(
             if text.is_empty() {
                 return Ok(Geometry::None);
             }
-            let parsed = wkt::Wkt::<f64>::from_str(text)
-                .map_err(|e| GeometryParsingError::WktParsing(e.to_string()))?;
+            let parsed = parse_wkt_tolerantly(text)?;
             wkt_to_geometry(parsed, frame)
         }
     }
+}
+
+/// Parse WKT, accepting the bare 3D form alongside the tagged OGC form.
+///
+/// The `wkt` crate requires an explicit dimension tag: `POINT Z(1 2 3)` parses
+/// and `POINT(1 2 3)` does not. Our own CSV Writer emits the bare form (a
+/// reviewed parity decision with the old writer), so reading our own output
+/// needs this. On failure we count the ordinates of the first coordinate group
+/// and retry once with a `Z` tag inserted.
+///
+/// Bare three-ordinate WKT is formally ambiguous between XYZ and XYM. We treat
+/// it as XYZ, matching both our writer and the older PostGIS convention.
+fn parse_wkt_tolerantly(text: &str) -> Result<wkt::Wkt<f64>, GeometryParsingError> {
+    match wkt::Wkt::<f64>::from_str(text) {
+        Ok(parsed) => Ok(parsed),
+        Err(original) => match with_z_tag(text) {
+            Some(tagged) => wkt::Wkt::<f64>::from_str(&tagged)
+                // Report the ORIGINAL error, not the retry's: the retry is our
+                // invention, and its message would confuse a user whose input
+                // was simply malformed.
+                .map_err(|_| GeometryParsingError::WktParsing(original.to_string())),
+            None => Err(GeometryParsingError::WktParsing(original.to_string())),
+        },
+    }
+}
+
+/// `text` with a ` Z` tag inserted after the type keyword, when its first
+/// coordinate group holds exactly three ordinates. `None` when the shape does
+/// not look like bare 3D, in which case there is nothing to retry.
+fn with_z_tag(text: &str) -> Option<String> {
+    let open = text.find('(')?;
+    let keyword = text[..open].trim_end();
+    // An already-tagged or EMPTY input is not bare 3D.
+    if keyword.is_empty() || keyword.split_whitespace().count() > 1 {
+        return None;
+    }
+    // The first coordinate group is the run after the opening parens, so
+    // `POLYGON((0 0 0, ...` and `POINT(0 0 0)` both work.
+    let after_parens = text[open..].trim_start_matches(['(', ' ']);
+    let first_coord = after_parens.split([',', ')']).next()?.trim();
+    if first_coord.split_whitespace().count() != 3 {
+        return None;
+    }
+    Some(format!("{keyword} Z{}", &text[open..]))
 }
 
 /// One `wkt` geometry as a new-model `Geometry`.
@@ -353,5 +396,55 @@ mod tests {
     fn malformed_wkt_errors_rather_than_panicking() {
         assert!(parse("NOT WKT AT ALL").is_err());
         assert!(parse("POINT(").is_err());
+    }
+
+    /// Our own CSV Writer emits the bare 3D form. The `wkt` crate refuses it, so
+    /// reading back what we wrote used to abort the whole file. Verified
+    /// against wkt 0.14: `POINT(1 2 3)` fails with "Missing closing parenthesis
+    /// for type".
+    #[test]
+    fn the_bare_3d_form_our_writer_emits_is_accepted() {
+        match parse("POINT(1 2 3)").unwrap() {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => {
+                assert_eq!(p.position()[2], 3.0);
+            }
+            other => panic!("expected a 3D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bare_3d_linestrings_and_polygons_are_accepted() {
+        assert!(matches!(
+            parse("LINESTRING(0 0 0, 1 1 1)").unwrap(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(_))
+        ));
+        assert!(matches!(
+            parse("POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))").unwrap(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(_))
+        ));
+    }
+
+    /// Nested parens are where a normalising pre-pass is most likely to go
+    /// wrong, so a holed bare-3D polygon is the case that matters.
+    #[test]
+    fn a_bare_3d_polygon_with_a_hole_keeps_both_rings() {
+        let text = "POLYGON((0 0 0, 9 0 0, 9 9 0, 0 9 0, 0 0 0), (1 1 0, 2 1 0, 2 2 0, 1 1 0))";
+        match parse(text).unwrap() {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => {
+                assert_eq!(p.interiors().count(), 1);
+            }
+            other => panic!("expected a 3D polygon, got {other:?}"),
+        }
+    }
+
+    /// Tolerance must not swallow real errors, and must not mangle 2D input.
+    #[test]
+    fn tolerance_does_not_change_2d_or_hide_malformed_input() {
+        assert!(matches!(
+            parse("POINT(1 2)").unwrap(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(_))
+        ));
+        assert!(parse("POINT(1 2 3 4 5)").is_err());
+        assert!(parse("POINT EMPTY").is_ok());
     }
 }
