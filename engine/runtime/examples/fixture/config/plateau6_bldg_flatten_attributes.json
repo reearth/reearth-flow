@@ -40,7 +40,7 @@
     },
     {
       "destinationPath": "attributes bldg:address",
-      "sourcePath": "cityGmlAttributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement $"
+      "sourcePath": "cityGmlAttributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement"
     },
     {
       "destinationPath": "attributes uro:BuildingIDAttribute_uro:buildingID",
@@ -276,7 +276,7 @@
     },
     {
       "destinationPath": "attributes bldg:address",
-      "sourcePath": "cityGmlAttributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement $"
+      "sourcePath": "cityGmlAttributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement"
     },
     {
       "destinationPath": "attributes uro:BuildingIDAttribute_uro:buildingID",
