@@ -138,11 +138,22 @@ fn bare_3d_retry(text: &str) -> Option<String> {
 /// actually a nested member's type keyword plus parens, not a coordinate, so
 /// this must not be called on one directly (`bare_3d_retry` routes those to
 /// `with_z_tag_on_geometrycollection` instead).
+///
+/// Requires the text to end exactly at its own closing paren: `wkt` does not
+/// require EOF after a complete geometry, so without this, a cell like
+/// `POINT(1 2 3) EXTRA` or `POINT(1 2 3),POINT(4 5 6)` -- both rejected by
+/// `wkt` as written -- would rewrite to `POINT Z(1 2 3) EXTRA` /
+/// `POINT Z(1 2 3),POINT(4 5 6)`, both of which parse, silently dropping the
+/// trailing text (or a second geometry) rather than erroring on what is
+/// genuinely malformed input.
 fn with_z_tag(text: &str) -> Option<String> {
     let open = text.find('(')?;
     let keyword = text[..open].trim_end();
     // An already-tagged or EMPTY input is not bare 3D.
     if keyword.is_empty() || keyword.split_whitespace().count() > 1 {
+        return None;
+    }
+    if !balanced_to_end(&text[open..]) {
         return None;
     }
     // The first coordinate group is the run after the opening parens, so
@@ -153,6 +164,27 @@ fn with_z_tag(text: &str) -> Option<String> {
         return None;
     }
     Some(format!("{keyword} Z{}", &text[open..]))
+}
+
+/// Whether `s` -- which starts with its own opening paren -- is a single
+/// balanced parenthesized group that runs to the end of the string, with
+/// nothing after its closing paren. WKT has no quoted strings, so a plain
+/// depth counter is enough.
+fn balanced_to_end(s: &str) -> bool {
+    let mut depth = 0i32;
+    for (i, ch) in s.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return i == s.len() - 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 /// `text` with each bare-3D member of a `GEOMETRYCOLLECTION` individually
@@ -699,6 +731,24 @@ mod tests {
         ));
         assert!(parse("POINT(1 2 3 4 5)").is_err());
         assert!(parse("POINT EMPTY").is_ok());
+    }
+
+    /// A prior version of `with_z_tag` rewrote `POINT(1 2 3) EXTRA` to
+    /// `POINT Z(1 2 3) EXTRA`, which `wkt` parses -- silently dropping the
+    /// trailing text and turning genuinely malformed input into a successful
+    /// (and wrong) 2-point-looking parse. Same for a second geometry crammed
+    /// into one cell after a comma. `balanced_to_end` closes this: all three
+    /// are rejected by `wkt` as written, and must stay rejected after the
+    /// retry too.
+    #[test]
+    fn trailing_content_after_the_geometry_is_not_silently_dropped() {
+        for text in [
+            "POINT(1 2 3) EXTRA",
+            "POINT(1 2 3)trailing",
+            "POINT(1 2 3),POINT(4 5 6)",
+        ] {
+            assert!(parse(text).is_err(), "{text} must still error");
+        }
     }
 
     /// The retry-also-fails branch of `parse_wkt_tolerantly` is dead unless an
