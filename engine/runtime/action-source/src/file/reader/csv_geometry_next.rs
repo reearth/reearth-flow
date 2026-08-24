@@ -80,13 +80,58 @@ pub fn parse_geometry(
             if text.is_empty() {
                 return Ok(Geometry::None);
             }
-            let parsed = parse_wkt_tolerantly(text)?;
+            let parsed = parse_wkt_tolerantly(text)
+                .map_err(|error| annotate_wkt_parse_error(error, column, text))?;
             // Computed once here, never per member: `orientation_sign` resolves
             // the CRS through PROJ, so a MULTIPOLYGON with a thousand members
             // must not repeat that resolution per member.
             let swap = swaps_axes(&frame);
             wkt_to_geometry(parsed, frame, swap)
         }
+    }
+}
+
+/// A WKT cell can hold a several-thousand-vertex polygon, and the error text
+/// this caps lands in a CSV cell of the rejected output alongside it. 120
+/// characters is enough to recognize which value is at fault (its geometry
+/// type, its first few coordinates) without the error cell dwarfing the row
+/// it describes; the untruncated original always survives in the row's own
+/// geometry column (see `csv.rs`), so nothing here is actually lost.
+const WKT_ERROR_VALUE_MAX_CHARS: usize = 120;
+
+/// Caps `value` to `WKT_ERROR_VALUE_MAX_CHARS`, appending `...` when cut.
+/// Truncates on `char` boundaries so multi-byte input is never split mid-
+/// character.
+fn truncate_for_error(value: &str) -> String {
+    if value.chars().count() <= WKT_ERROR_VALUE_MAX_CHARS {
+        return value.to_string();
+    }
+    let mut truncated: String = value.chars().take(WKT_ERROR_VALUE_MAX_CHARS).collect();
+    truncated.push_str("...");
+    truncated
+}
+
+/// Wraps a WKT parse failure with the offending column name and a (truncated)
+/// copy of its value, mirroring `InvalidCoordinate`'s column+value on the
+/// coordinates path -- without this, `WktParsing`'s message is only ever the
+/// `wkt` crate's own parser text, which names neither.
+///
+/// `GeometryParsingError::WktParsing` itself is not restructured to carry
+/// `column`/`value` as fields: the old-world parser in `csv_geometry.rs`
+/// constructs that same variant and is deliberately left byte-for-byte
+/// untouched by this migration, so the detail is folded into the existing
+/// `String` at this call site instead.
+fn annotate_wkt_parse_error(
+    error: GeometryParsingError,
+    column: &str,
+    value: &str,
+) -> GeometryParsingError {
+    match error {
+        GeometryParsingError::WktParsing(message) => GeometryParsingError::WktParsing(format!(
+            "column '{column}': {message} (value: {})",
+            truncate_for_error(value)
+        )),
+        other => other,
     }
 }
 
