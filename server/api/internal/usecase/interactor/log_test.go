@@ -13,7 +13,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -26,16 +25,6 @@ import (
 type mockLogGateway struct {
 	logs []*log.Log
 	err  error
-}
-
-// GetNodeExecution implements gateway.Redis.
-func (m *mockLogGateway) GetNodeExecution(ctx context.Context, jobID id.JobID, edgeID string) (*graph.NodeExecution, error) {
-	panic("unimplemented")
-}
-
-// GetNodeExecutions implements gateway.Redis.
-func (m *mockLogGateway) GetNodeExecutions(ctx context.Context, jobID id.JobID) ([]*graph.NodeExecution, error) {
-	panic("unimplemented")
 }
 
 func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*log.Log, error) {

@@ -18,7 +18,6 @@ type Loaders struct {
 	Deployment   *DeploymentLoader
 	Job          *JobLoader
 	Log          *LogLoader
-	Node         *NodeExLoader
 	Parameter    *ParameterLoader
 	Project      *ProjectLoader
 	Trigger      *TriggerLoader
@@ -49,7 +48,6 @@ func NewLoaders(usecases *interfaces.Container) *Loaders {
 		Deployment:   NewDeploymentLoader(usecases.Deployment),
 		Job:          NewJobLoader(usecases.Job),
 		Log:          NewLogLoader(usecases.Log),
-		Node:         NewNodeExLoader(usecases.NodeExecution),
 		Parameter:    NewParameterLoader(usecases.Parameter),
 		Project:      NewProjectLoader(usecases.Project),
 		Trigger:      NewTriggerLoader(usecases.Trigger),

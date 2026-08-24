@@ -30,10 +30,7 @@ type Querier interface {
 	GetAssetUpload(ctx context.Context, uuid string) (AssetUpload, error)
 	GetConfig(ctx context.Context) (GetConfigRow, error)
 	GetDeployment(ctx context.Context, id string) (Deployment, error)
-	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
-	GetEdgeExecutionByJobEdgeID(ctx context.Context, arg GetEdgeExecutionByJobEdgeIDParams) (EdgeExecution, error)
 	GetJob(ctx context.Context, id string) (Job, error)
-	GetNodeExecutionByJobNodeID(ctx context.Context, arg GetNodeExecutionByJobNodeIDParams) (NodeExecution, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
@@ -43,7 +40,6 @@ type Querier interface {
 	GetWorkflow(ctx context.Context, id string) (Workflow, error)
 	ListAssetsByIDs(ctx context.Context, dollar_1 []string) ([]Asset, error)
 	ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) ([]Deployment, error)
-	ListEdgeExecutionsByJobID(ctx context.Context, jobID string) ([]EdgeExecution, error)
 	ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error)
 	ListParametersByIDs(ctx context.Context, dollar_1 []string) ([]Parameter, error)
 	ListParametersByProject(ctx context.Context, projectID string) ([]Parameter, error)
@@ -57,9 +53,7 @@ type Querier interface {
 	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error
 	UpsertConfigAuth(ctx context.Context, arg UpsertConfigAuthParams) error
 	UpsertDeployment(ctx context.Context, arg UpsertDeploymentParams) error
-	UpsertEdgeExecution(ctx context.Context, arg UpsertEdgeExecutionParams) error
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
-	UpsertNodeExecution(ctx context.Context, arg UpsertNodeExecutionParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
 	UpsertProject(ctx context.Context, arg UpsertProjectParams) error
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error

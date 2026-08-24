@@ -487,21 +487,6 @@ export const resolvers = {
 
     job: (_: any, args: { id: string }) => jobs.find((j) => j.id === args.id),
 
-    nodeExecution: (_: any, args: { jobId: string; nodeId: string }) => {
-      // Mock node execution data
-      return {
-        id: `exec-${args.jobId}-${args.nodeId}`,
-        nodeId: args.nodeId,
-        jobId: args.jobId,
-        status: "COMPLETED",
-        startedAt: "2024-01-28T10:00:00Z",
-        completedAt: "2024-01-28T10:05:00Z",
-        logs: logs.filter(
-          (l) => l.jobId === args.jobId && l.nodeId === args.nodeId,
-        ),
-      };
-    },
-
     latestProjectSnapshot: (_: any, args: { projectId: string }) => {
       // Mock project document
       return {

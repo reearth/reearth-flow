@@ -34,8 +34,8 @@ returning nil commits; returning an error rolls back.
 ## Status
 
 All flow-owned repos are ported to Postgres (Trigger, Lock, Config, Parameter,
-WorkerConfig, ProjectAccess, Workflow, Edge/NodeExecution, Deployment, Job,
-Project, Asset, AssetUpload; AuthRequest via reearthx `authserver.Postgres`).
+WorkerConfig, ProjectAccess, Workflow, Deployment, Job, Project, Asset,
+AssetUpload; AuthRequest via reearthx `authserver.Postgres`).
 The interim `mustComplete` boot guard has been removed — `DB_DRIVER=postgres`
 boots a complete backend. Mongo is untouched and remains the default; the
 per-environment rollout is a deployment concern (design A1).
