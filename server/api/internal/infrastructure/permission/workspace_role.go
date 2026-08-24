@@ -53,12 +53,24 @@ func (c *checker) workspaceRoleAllows(ctx context.Context, resource, action stri
 		return true // no user principal (integration, API trigger): not a workspace member, leave to Cerbos
 	}
 
+	// Cannot determine the role: keep the Cerbos verdict rather than deny a real
+	// user. Logged because this is the guard's blind spot — a spike here means
+	// it is silently not running, so it needs to be visible in production.
 	ws, err := c.workspaceRepo.FindByID(ctx, wsID.String())
-	if err != nil || ws == nil || ws.Members() == nil {
-		return true // cannot determine the role; keep the Cerbos verdict rather than deny a real user
+	if err != nil {
+		log.Warnfc(ctx, "permission: workspace %s lookup failed, skipping the workspace-role guard for %s/%s: %v", wsID, resource, action, err)
+		return true
+	}
+	// No membership at all is a data problem, not an answer: every caller would
+	// be denied. Distinguish it from a populated list the caller is absent
+	// from, which is a real non-member and a real deny.
+	members := ws.Members()
+	if ws == nil || members == nil || members.Count() == 0 {
+		log.Warnfc(ctx, "permission: workspace %s has no membership data, skipping the workspace-role guard for %s/%s", wsID, resource, action)
+		return true
 	}
 
-	role := string(ws.Members().UserRole(accountsid.UserID(u.ID())))
+	role := string(members.UserRole(accountsid.UserID(u.ID())))
 	if role == "" {
 		log.Warnfc(ctx, "permission: caller is not a member of workspace %s; denying %s/%s", wsID, resource, action)
 		return false

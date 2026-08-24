@@ -2,6 +2,7 @@ package permission
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient/cerbos"
@@ -99,4 +100,35 @@ func TestChecker_DeniedByCerbosStaysDenied(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.False(t, allowed, "the guard can only deny; it must never turn a Cerbos deny into an allow")
+}
+
+// The guard has three deliberate fall-throughs where it cannot determine the
+// caller's role and keeps the Cerbos verdict rather than denying a real user.
+// They are pinned so switching any of them to fail-closed is a conscious
+// change rather than an accident, since each one is a hole while it lasts.
+
+func TestChecker_WorkspaceLookupErrorKeepsCerbosVerdict(t *testing.T) {
+	_, ctx, _ := wsWithMember(t, role.RoleReader)
+	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
+	c := NewChecker(cer, &fakeWorkspaceRepo{err: errors.New("accounts unavailable")}, "flow")
+
+	allowed, err := c.CheckPermission(ctx, "deployment", "any", accountsid.NewWorkspaceID())
+
+	// resolveAlias surfaces the lookup failure first and fails closed.
+	assert.Error(t, err)
+	assert.False(t, allowed)
+}
+
+// An empty membership list means accounts returned no members at all, which
+// would otherwise deny every caller for that workspace.
+func TestChecker_EmptyMembershipKeepsCerbosVerdict(t *testing.T) {
+	_, ctx, _ := wsWithMember(t, role.RoleReader)
+	noMembers := workspace.New().NewID().Alias("acme").MustBuild()
+	cer := &fakeCerbosRepo{result: &cerbos.CheckPermissionResult{Allowed: true}}
+	c := NewChecker(cer, &fakeWorkspaceRepo{ws: noMembers}, "flow")
+
+	allowed, err := c.CheckPermission(ctx, "deployment", "any", noMembers.ID())
+
+	require.NoError(t, err)
+	assert.True(t, allowed, "with no membership data the guard must not deny a real user")
 }
