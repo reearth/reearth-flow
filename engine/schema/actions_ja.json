@@ -8743,6 +8743,14 @@
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
+          },
+          "arrayMapSeparator": {
+            "title": "配列/マップの区切り文字",
+            "description": "ネストした配列やマップの属性をタグに平坦化する際、子のキーやインデックスとの間に挿入する区切り文字。未設定の場合、配列やマップの属性は出力から除外される",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

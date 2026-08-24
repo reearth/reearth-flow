@@ -2516,6 +2516,10 @@
           "title": "MVTWriter Parameters",
           "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs)."
         },
+        "arrayMapSeparator": {
+          "title": "Array/Map Separator",
+          "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely."
+        },
         "colonToUnderscore": {
           "title": "Colon to Underscore",
           "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
