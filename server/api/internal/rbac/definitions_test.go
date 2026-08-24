@@ -22,26 +22,33 @@ func actionsFor(t *testing.T, resource string) map[string]generator.ActionRule {
 // TestProjectPolicyCoversTheDocumentActions: an action with no rule is denied for
 // everyone, owners included. The interactor tests use a mock checker, so they
 // prove the action is requested but never that the policy grants it.
+//
+// ActionAny and ActionRead must NOT grant the same role sets. ActionAny also
+// gates FlushToGCS — interactor.Websocket's editor-save write — so it must
+// exclude reader; ActionRead gates the read-only document calls and must
+// include reader. A previous version of this policy let ActionAny include
+// reader (to satisfy "readers must see version history", since no ActionRead
+// rule existed yet for this resource), which meant any reader could also call
+// FlushToGCS and persist writes to a project they could only view. Do not
+// reintroduce that: readers get their access through ActionRead now.
 func TestProjectPolicyCoversTheDocumentActions(t *testing.T) {
 	actions := actionsFor(t, ResourceProject)
 
-	for _, action := range []string{ActionAny, ActionEdit, ActionDelete} {
+	for _, action := range []string{ActionAny, ActionRead, ActionEdit, ActionDelete} {
 		require.Contains(t, actions, action,
 			"interactor.Websocket checks %q on %s; with no rule it is denied for everyone",
 			action, ResourceProject)
 	}
 
-	// Reads and save use ActionAny, so it must reach everyone who can see the
-	// project — including writers, who would otherwise be unable to save.
 	assert.Contains(t, actions[ActionAny].Roles, roleWriter,
-		"writers must be able to save; saveSnapshot authorizes with ActionAny")
-	assert.Contains(t, actions[ActionAny].Roles, roleReader,
-		"readers must be able to view version history")
+		"writers must be able to save; FlushToGCS authorizes with ActionAny")
+	assert.NotContains(t, actions[ActionAny].Roles, roleReader,
+		"ActionAny also gates FlushToGCS (a write); reader must not be granted it")
 
-	// ActionRead is deliberately NOT used: flow:project has no read rule, so
-	// checking it would deny every user. Guard against a well-meaning switch back.
-	assert.NotContains(t, actions, ActionRead,
-		"if a read rule is added here, revisit interactor.Websocket, which avoids ActionRead precisely because there is none")
+	assert.Contains(t, actions[ActionRead].Roles, roleReader,
+		"readers must be able to view version history")
+	assert.Contains(t, actions[ActionRead].Roles, roleWriter,
+		"writers must retain read access alongside readers")
 }
 
 // TestProjectDocumentPolicyStaysDeclared keeps the target model intact so the
