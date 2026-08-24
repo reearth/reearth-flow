@@ -203,21 +203,68 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
 }
 
-// TestWebsocket_ReaderCannotFlushToGCS is the exact regression this fix
-// closes: a reader-scoped caller must be denied FlushToGCS, the write that
-// persists live document state to storage. Before this fix, ResourceProject's
-// live Cerbos policy granted ActionAny — which FlushToGCS is gated by — to
-// role "reader" as well as writer/maintainer/owner, so a Reader could
-// silently persist writes to a document they could only view. This test
-// pins the code-side half of the fix (the action FlushToGCS requests); the
-// role→action mapping itself is enforced by the deployed Cerbos policy, not
-// by this codebase, and was independently verified against the live service.
+// rolesGrantedFor returns the roles the policy definition grants for an
+// action on a resource. It reads the same DefineResources() the Cerbos
+// policies are generated from, so a test can tie an action the interactor
+// requests to the roles that action actually admits.
+func rolesGrantedFor(t *testing.T, resource, action string) []string {
+	t.Helper()
+	for _, r := range rbac.DefineResources() {
+		if r.Resource != resource {
+			continue
+		}
+		rule, ok := r.Actions[action]
+		require.True(t, ok, "resource %q declares no rule for action %q; Cerbos denies unruled actions for everyone", resource, action)
+		return rule.Roles
+	}
+	t.Fatalf("resource %q is not declared in DefineResources", resource)
+	return nil
+}
+
+// TestWebsocket_ReaderCannotFlushToGCS is the regression this fix closes.
+// FlushToGCS persists live document state to storage, so a reader-scoped
+// caller must not be able to invoke it. Previously ResourceProject granted
+// ActionAny — which FlushToGCS is gated by — to "reader" alongside
+// writer/maintainer/owner, so a Reader could silently persist writes to a
+// document they could only view.
+//
+// This closes the loop rather than asserting half of it: it captures the
+// action FlushToGCS actually requests, then looks that action up in the
+// policy definition and asserts "reader" is not among its roles. Asserting
+// only the requested action would still pass if the policy re-granted it to
+// readers, which is precisely the bug that shipped.
 func TestWebsocket_ReaderCannotFlushToGCS(t *testing.T) {
 	i, client, rc, docID, _ := wsFixture(t, true)
 	require.NoError(t, i.FlushToGCS(context.Background(), docID))
-	assert.Equal(t, rbac.ActionAny, rc.gotAction, "FlushToGCS must request an action whose live policy excludes reader")
-	assert.NotEqual(t, rbac.ActionRead, rc.gotAction, "ActionRead is reader-inclusive by design; FlushToGCS must never use it")
-	assert.Equal(t, 1, client.calls)
+	require.Equal(t, 1, client.calls)
+
+	roles := rolesGrantedFor(t, rbac.ResourceProject, rc.gotAction)
+	assert.NotContains(t, roles, "reader",
+		"FlushToGCS is a write; it requests %q on %s, which must not be granted to reader",
+		rc.gotAction, rbac.ResourceProject)
+	assert.Contains(t, roles, "writer",
+		"writers must still be able to save; FlushToGCS requests %q", rc.gotAction)
+}
+
+// TestWebsocket_ReadOnlyCallsUseAReaderInclusiveAction is the counterpart:
+// the read-only document calls must request an action readers *are* granted,
+// otherwise fixing the write hole would silently take view access away.
+func TestWebsocket_ReadOnlyCallsUseAReaderInclusiveAction(t *testing.T) {
+	for name, call := range map[string]func(context.Context, *Websocket, string) error{
+		"GetLatest":          getLatest,
+		"GetHistory":         getHistory,
+		"GetHistoryMetadata": getHistoryMetadata,
+		"GetNamedSnapshots":  getNamedSnapshots,
+		"GetSnapshotState":   getSnapshotState,
+	} {
+		t.Run(name, func(t *testing.T) {
+			i, _, rc, docID, _ := wsFixture(t, true)
+			require.NoError(t, call(context.Background(), i, docID))
+			roles := rolesGrantedFor(t, rbac.ResourceProject, rc.gotAction)
+			assert.Contains(t, roles, "reader",
+				"%s is read-only; it requests %q, which readers must be granted", name, rc.gotAction)
+		})
+	}
 }
 
 // TestWebsocket_UnresolvableProjectIsDenied: authorization depends on resolving
