@@ -1381,7 +1381,7 @@
       "description": "Écrit les entités reçues dans un fichier GeoJSON par chemin de sortie résolu, puis émet une entité par fichier écrit, portant le chemin de ce fichier.",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
+          "title": "Feature GeoJSON Writer Parameters",
           "description": "Where the GeoJSON is written, and what is declared about its coordinates."
         },
         "output": {

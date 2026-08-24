@@ -4144,7 +4144,7 @@
       "description": "受け取った地物を、解決された出力パスごとに GeoJSON ファイルへ書き出し、書き出したファイルごとにそのパスを持つ地物を一つ出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureGeoJsonWriter Parameters",
+        "title": "Feature GeoJSON Writer パラメータ",
         "description": "GeoJSON の書き出し先、および座標について宣言する内容",
         "type": "object",
         "required": [

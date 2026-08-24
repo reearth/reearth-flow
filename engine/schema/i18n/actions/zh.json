@@ -1381,7 +1381,7 @@
       "description": "将接收到的地物按解析出的每个输出路径写入 GeoJSON 文件，然后为每个已写入的文件输出一个携带该文件路径的地物。",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
+          "title": "Feature GeoJSON Writer Parameters",
           "description": "Where the GeoJSON is written, and what is declared about its coordinates."
         },
         "output": {

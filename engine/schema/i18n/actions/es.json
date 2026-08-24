@@ -1381,7 +1381,7 @@
       "description": "Escribe las entidades que recibe en un archivo GeoJSON por cada ruta de salida resuelta y luego emite una entidad por archivo escrito, con la ruta de ese archivo.",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
+          "title": "Feature GeoJSON Writer Parameters",
           "description": "Where the GeoJSON is written, and what is declared about its coordinates."
         },
         "output": {

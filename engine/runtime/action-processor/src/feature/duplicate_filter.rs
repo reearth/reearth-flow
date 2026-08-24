@@ -111,18 +111,43 @@ impl FeatureDuplicateFilter {
     /// carrying `{a: "1", b: "2"}` cannot collide with one carrying `{a: "1,2"}`, which
     /// joining on a separator would allow.
     fn key(&self, feature: &Feature) -> Result<String, serde_json::Error> {
-        match &self.filter_by {
-            Some(attributes) => {
-                let values = attributes
+        let value = match &self.filter_by {
+            Some(attributes) => serde_json::to_value(
+                attributes
                     .iter()
                     .map(|attribute| feature.get(attribute))
-                    .collect::<Vec<_>>();
-                serde_json::to_string(&values)
-            }
+                    .collect::<Vec<_>>(),
+            )?,
             // `Feature`'s own equality is its id, which is unique per feature, so the content
             // has to be compared explicitly.
-            None => serde_json::to_string(&(&*feature.attributes, &*feature.geometry)),
+            None => serde_json::to_value((&*feature.attributes, &*feature.geometry))?,
+        };
+        serde_json::to_string(&canonical(value))
+    }
+}
+
+/// The same value with every object's keys in a fixed order, so that equal content always
+/// serializes to an equal string.
+///
+/// Two containers make this necessary. `Attributes` is an `IndexMap`, so its order is the order
+/// the attributes were added, and `AttributeValue::Map` is a `std::collections::HashMap`, whose
+/// iteration order differs between instances holding identical entries. Without this, two
+/// features with the same content can produce different keys and escape comparison. Sorting is
+/// applied to objects only — array order is part of the value, not an artifact of the container.
+fn canonical(value: Value) -> Value {
+    match value {
+        Value::Object(object) => {
+            let mut entries: Vec<_> = object.into_iter().collect();
+            entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+            Value::Object(
+                entries
+                    .into_iter()
+                    .map(|(key, value)| (key, canonical(value)))
+                    .collect(),
+            )
         }
+        Value::Array(items) => Value::Array(items.into_iter().map(canonical).collect()),
+        other => other,
     }
 }
 
@@ -264,6 +289,68 @@ mod tests {
             Some(vec!["a", "b"]),
             &[feature(&[("a", "1")]), feature(&[("b", "1")])],
         );
+        assert_eq!(sent, ["features", "features"]);
+    }
+
+    /// `Attributes` is an `IndexMap`, so it preserves the order attributes were added. Two
+    /// features holding the same pairs added in different orders are still the same feature.
+    #[test]
+    fn attribute_insertion_order_does_not_change_the_key() {
+        let sent = ports(
+            None,
+            &[
+                feature(&[("a", "1"), ("b", "2")]),
+                feature(&[("b", "2"), ("a", "1")]),
+            ],
+        );
+        assert_eq!(sent, ["features", "duplicate"]);
+    }
+
+    /// `AttributeValue::Map` is a `std::collections::HashMap`, whose iteration order differs
+    /// between instances holding identical entries. Enough keys are used here that an
+    /// uncanonicalized key would be very unlikely to match.
+    #[test]
+    fn a_nested_map_compares_by_content_not_by_iteration_order() {
+        let nested = |pairs: &[(&str, &str)]| {
+            let mut feature = Feature::new_with_attributes(Default::default());
+            let map = pairs
+                .iter()
+                .map(|(k, v)| ((*k).to_string(), AttributeValue::String((*v).to_string())))
+                .collect::<std::collections::HashMap<_, _>>();
+            feature.insert("nested", AttributeValue::Map(map));
+            feature
+        };
+        let pairs: Vec<(&str, &str)> = vec![
+            ("a", "1"),
+            ("b", "2"),
+            ("c", "3"),
+            ("d", "4"),
+            ("e", "5"),
+            ("f", "6"),
+        ];
+        let reversed: Vec<(&str, &str)> = pairs.iter().rev().copied().collect();
+
+        let sent = ports(None, &[nested(&pairs), nested(&reversed)]);
+        assert_eq!(sent, ["features", "duplicate"]);
+    }
+
+    /// Array order IS part of the value, so it must not be sorted away.
+    #[test]
+    fn array_order_still_distinguishes_features() {
+        let listed = |values: &[&str]| {
+            let mut feature = Feature::new_with_attributes(Default::default());
+            feature.insert(
+                "list",
+                AttributeValue::Array(
+                    values
+                        .iter()
+                        .map(|v| AttributeValue::String((*v).to_string()))
+                        .collect(),
+                ),
+            );
+            feature
+        };
+        let sent = ports(None, &[listed(&["a", "b"]), listed(&["b", "a"])]);
         assert_eq!(sent, ["features", "features"]);
     }
 
