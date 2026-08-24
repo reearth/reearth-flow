@@ -66,9 +66,11 @@ mod snap;
 mod tests;
 
 use i_overlay::core::fill_rule::FillRule;
+use i_overlay::core::overlay::ContourDirection;
 use i_overlay::core::overlay_rule::OverlayRule;
+use i_overlay::core::solver::Solver;
 use i_overlay::float::clip::FloatClip;
-use i_overlay::float::single::SingleFloatOverlay;
+use i_overlay::float::overlay::{FloatOverlay, OverlayOptions};
 use i_overlay::string::clip::ClipRule;
 
 use crate::coordinate::CoordinateFrame;
@@ -215,7 +217,22 @@ pub(crate) fn dissolve_shapes(
     shapes: Vec<shapes::Shape>,
     frame: &CoordinateFrame,
 ) -> Vec<Polygon2D> {
-    shapes::shapes_to_polygons(shapes::dissolve(shapes), frame, None)
+    let options = OverlayOptions {
+        output_direction: output_direction(frame),
+        ..Default::default()
+    };
+    let result = FloatOverlay::with_subj_custom(&shapes, options, Solver::AUTO)
+        .overlay(OverlayRule::Union, FillRule::NonZero);
+    shapes::shapes_to_polygons(result, frame, None)
+}
+
+/// `i_overlay`'s output direction that lands on Flow's convention in `frame`.
+fn output_direction(frame: &CoordinateFrame) -> ContourDirection {
+    if frame.orientation_sign().unwrap_or(1) == -1 {
+        ContourDirection::Clockwise
+    } else {
+        ContourDirection::CounterClockwise
+    }
 }
 
 // --- leaf-level implementations ------------------------------------------------
@@ -238,7 +255,12 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
             Ok(out)
         }
         Plan::Run(op) => {
-            let result = subject.overlay(&clip, op.into(), FillRule::NonZero);
+            let options = OverlayOptions {
+                output_direction: output_direction(frame),
+                ..Default::default()
+            };
+            let result = FloatOverlay::with_subj_and_clip_custom(&subject, &clip, options, Solver::AUTO)
+                .overlay(op.into(), FillRule::NonZero);
             Ok(shapes::shapes_to_polygons(result, frame, None))
         }
     }
