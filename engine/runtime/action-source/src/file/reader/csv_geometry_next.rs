@@ -56,6 +56,10 @@ pub fn parse_geometry(
         } => {
             let x = number(row, x_column)?;
             let y = number(row, y_column)?;
+            // Mirrors the WKT arm: a frame whose CRS declares reversed axis
+            // order (e.g. EPSG:4326, latitude-first) stores (y, x), not the
+            // text/column order. Z is never swapped.
+            let [x, y] = if swaps_axes(&frame) { [y, x] } else { [x, y] };
             match z_column {
                 None => Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
                     Point2D::new(frame, [x, y]),
@@ -444,6 +448,41 @@ mod tests {
     fn a_missing_column_errors_naming_the_column() {
         let err = parse_geometry(&row(&[("lat", "2.0")]), &coords_config(None, None)).unwrap_err();
         assert!(err.to_string().contains("lon"), "{err}");
+    }
+
+    /// Mirrors `a_reversed_axis_crs_reads_transposed_and_a_normal_one_does_not`
+    /// below, but for `GeometryMode::Coordinates`: the x/y columns are read in
+    /// declared (lon, lat) order regardless of CRS, so the frame's axis order
+    /// must still be applied when the values are stored. EPSG:4326 swaps
+    /// (latitude-first); EPSG:3857 does not.
+    #[test]
+    fn a_coordinates_row_in_a_swapping_crs_stores_its_ordinates_exchanged() {
+        let g = parse_geometry(
+            &row(&[("lon", "10.0"), ("lat", "20.0")]),
+            &coords_config(None, Some(4326)),
+        )
+        .unwrap();
+        match g {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
+                assert_eq!(p.position(), [20.0, 10.0], "EPSG:4326 must swap");
+            }
+            other => panic!("expected a 2D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_coordinates_row_in_a_non_swapping_crs_does_not_exchange_ordinates() {
+        let g = parse_geometry(
+            &row(&[("lon", "10.0"), ("lat", "20.0")]),
+            &coords_config(None, Some(3857)),
+        )
+        .unwrap();
+        match g {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
+                assert_eq!(p.position(), [10.0, 20.0], "EPSG:3857 must not swap");
+            }
+            other => panic!("expected a 2D point, got {other:?}"),
+        }
     }
 
     fn wkt_config(epsg: Option<u16>) -> GeometryConfig {
