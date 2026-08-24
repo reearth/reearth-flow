@@ -746,4 +746,41 @@ mod tests {
         assert_eq!(position(plain), [10.0, 20.0], "EPSG:3857 must not swap");
         assert_eq!(position(swapped), [20.0, 10.0], "EPSG:4326 must swap");
     }
+
+    /// The swap exchanges only the first two ordinates. A reversed-axis CRS on
+    /// a 3D point must swap X and Y but leave Z untouched — asserting the full
+    /// position, not just Z, so a regression that stops swapping X/Y would
+    /// still be caught even though it would not move Z.
+    #[test]
+    fn a_reversed_axis_crs_swaps_xy_but_never_z() {
+        let g = parse_geometry(
+            &row(&[("geom", "POINT Z(10 20 30)")]),
+            &wkt_config(Some(4326)),
+        )
+        .unwrap();
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => {
+                assert_eq!(p.position(), [20.0, 10.0, 30.0]);
+            }
+            other => panic!("expected a 3D point, got {other:?}"),
+        }
+    }
+
+    /// The bare 3D form our own writer emits for a reversed-axis CRS: it
+    /// routes through Task 4's tolerant `Z`-tag retry as well as the swap, so
+    /// it exercises both together.
+    #[test]
+    fn a_bare_3d_point_under_a_swapping_crs_swaps_xy_but_never_z() {
+        let g = parse_geometry(
+            &row(&[("geom", "POINT(10 20 30)")]),
+            &wkt_config(Some(4326)),
+        )
+        .unwrap();
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => {
+                assert_eq!(p.position(), [20.0, 10.0, 30.0]);
+            }
+            other => panic!("expected a 3D point, got {other:?}"),
+        }
+    }
 }
