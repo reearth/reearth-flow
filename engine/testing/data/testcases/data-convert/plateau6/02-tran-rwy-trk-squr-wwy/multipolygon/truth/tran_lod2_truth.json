@@ -1,77 +1,103 @@
 {
-  "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413": {
-    "tran:function": "島",
-    "attributes": {
-      "tran:function": "島"
-    },
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "gml_id": "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
-    "parent_gml_id": "space_traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
-    "city_code": "13115",
-    "lod": 2
-  },
-  "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519": {
-    "tran:function": "島",
-    "attributes": {
-      "tran:function": "島"
-    },
-    "feature_type": "tran:AuxiliaryTrafficArea",
-    "gml_id": "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
-    "parent_gml_id": "space_traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
-    "city_code": "13115",
-    "lod": 2
-  },
   "traf_97b992eb-54b1-426f-8705-67bbf89c6a24": {
-    "tran:function": "島",
     "attributes": {
       "tran:function": "島"
     },
+    "city_code": "13115",
+    "core_creationDate": "",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "traf_97b992eb-54b1-426f-8705-67bbf89c6a24",
+    "lod": "2",
     "parent_gml_id": "space_traf_97b992eb-54b1-426f-8705-67bbf89c6a24",
-    "city_code": "13115",
-    "lod": 2
-  },
-  "tran_947e130c-7a22-4ed5-855b-c91047ea0feb": {
-    "core:creationDate": "2024-03-15T00:00:00",
-    "attributes": {
-      "tran:function": "不明",
-      "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-      "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
-      "core:creationDate": "2024-03-15T00:00:00",
-      "tran:usage": "不明",
-      "tran:class": "道路"
-    },
-    "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-    "tran:function": "不明",
-    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
-    "tran:usage": "不明",
-    "tran:class": "道路",
-    "feature_type": "tran:Road",
-    "gml_id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
-    "city_code": "13115",
-    "lod": 2
+    "tran_class": "",
+    "tran_function": "島",
+    "tran_usage": "",
+    "urc_geometrySrcDescLod1": "",
+    "uro_RoadStructureAttribute_uro_sectionType": ""
   },
   "traf_aad39605-4836-42da-9c5a-d6c4817a7e57": {
-    "tran:function": "歩道部",
     "attributes": {
       "tran:function": "歩道部"
     },
+    "city_code": "13115",
+    "core_creationDate": "",
     "feature_type": "tran:TrafficArea",
     "gml_id": "traf_aad39605-4836-42da-9c5a-d6c4817a7e57",
+    "lod": "2",
     "parent_gml_id": "space_traf_aad39605-4836-42da-9c5a-d6c4817a7e57",
+    "tran_class": "",
+    "tran_function": "歩道部",
+    "tran_usage": "",
+    "urc_geometrySrcDescLod1": "",
+    "uro_RoadStructureAttribute_uro_sectionType": ""
+  },
+  "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519": {
+    "attributes": {
+      "tran:function": "島"
+    },
     "city_code": "13115",
-    "lod": 2
+    "core_creationDate": "",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "gml_id": "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
+    "lod": "2",
+    "parent_gml_id": "space_traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
+    "tran_class": "",
+    "tran_function": "島",
+    "tran_usage": "",
+    "urc_geometrySrcDescLod1": "",
+    "uro_RoadStructureAttribute_uro_sectionType": ""
   },
   "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f": {
-    "tran:function": "車道交差部",
     "attributes": {
       "tran:function": "車道交差部"
     },
+    "city_code": "13115",
+    "core_creationDate": "",
     "feature_type": "tran:TrafficArea",
     "gml_id": "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f",
+    "lod": "2",
     "parent_gml_id": "space_traf_e5ea50ce-7198-4879-a380-9d99f1c6491f",
+    "tran_class": "",
+    "tran_function": "車道交差部",
+    "tran_usage": "",
+    "urc_geometrySrcDescLod1": "",
+    "uro_RoadStructureAttribute_uro_sectionType": ""
+  },
+  "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413": {
+    "attributes": {
+      "tran:function": "島"
+    },
     "city_code": "13115",
-    "lod": 2
+    "core_creationDate": "",
+    "feature_type": "tran:AuxiliaryTrafficArea",
+    "gml_id": "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
+    "lod": "2",
+    "parent_gml_id": "space_traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
+    "tran_class": "",
+    "tran_function": "島",
+    "tran_usage": "",
+    "urc_geometrySrcDescLod1": "",
+    "uro_RoadStructureAttribute_uro_sectionType": ""
+  },
+  "tran_947e130c-7a22-4ed5-855b-c91047ea0feb": {
+    "attributes": {
+      "tran:class": "道路",
+      "core:creationDate": "2024-03-15T00:00:00",
+      "tran:usage": "不明",
+      "uro:RoadStructureAttribute_uro:sectionType": "交差部",
+      "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+      "tran:function": "不明"
+    },
+    "city_code": "13115",
+    "core_creationDate": "2024-03-15T00:00:00",
+    "feature_type": "tran:Road",
+    "gml_id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
+    "lod": "2",
+    "parent_gml_id": "null",
+    "tran_class": "道路",
+    "tran_function": "不明",
+    "tran_usage": "不明",
+    "urc_geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro_RoadStructureAttribute_uro_sectionType": "交差部"
   }
 }
