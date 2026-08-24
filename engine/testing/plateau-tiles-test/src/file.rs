@@ -27,11 +27,15 @@ pub fn decompress_glbs(dir: &Path) {
         cmd.arg(glb_file.as_os_str());
     }
 
-    let status = cmd
-        .status()
+    let output = cmd
+        .output()
         .expect("Failed to execute glb-decompress command");
-    if !status.success() {
-        panic!("glb-decompress failed");
+    if !output.status.success() {
+        panic!(
+            "glb-decompress failed (status: {}): {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
 
