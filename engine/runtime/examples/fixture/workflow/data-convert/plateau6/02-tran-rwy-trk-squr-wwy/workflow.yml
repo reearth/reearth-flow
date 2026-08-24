@@ -55,21 +55,21 @@ graphs:
           cityGmlAttributesKey: cityGmlAttributes
           extractTags:
             - tran:AuxiliaryTrafficArea
-            - tran:AuxiliaryTrafficSpace
-            - tran:ClearanceSpace
-            - tran:Hole
-            - tran:HoleSurface
-            - tran:Intersection
-            - tran:Marking
+            # - tran:AuxiliaryTrafficSpace
+            # - tran:ClearanceSpace
+            # - tran:Hole
+            # - tran:HoleSurface
+            # - tran:Intersection
+            # - tran:Marking
             - tran:Railway
             - tran:Road
-            - tran:Section
+            # - tran:Section
             - tran:Square
             - tran:Track
             - tran:TrafficArea
-            - tran:TrafficSpace
+            # - tran:TrafficSpace
             - tran:Waterway
-            - urc:DmGeometricAttribute
+            # - urc:DmGeometricAttribute
 
       - id: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         name: AttributeTableExtractor
