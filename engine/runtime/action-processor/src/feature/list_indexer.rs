@@ -23,7 +23,8 @@ impl ProcessorFactory for ListIndexerFactory {
     }
 
     fn description(&self) -> &str {
-        "Copies attributes from a specific list element to become the main attributes of a feature"
+        "Copies the key-value pairs of one element of a list attribute onto the feature \
+         itself, overwriting an attribute of the same name and leaving the rest in place."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -31,7 +32,11 @@ impl ProcessorFactory for ListIndexerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Attribute"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["list"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -72,18 +77,25 @@ impl ProcessorFactory for ListIndexerFactory {
 
 /// # List Indexer Parameters
 ///
-/// Configuration for copying attributes from a specific list element to main feature attributes.
+/// Which list to read, which of its elements to copy, and how to name what is copied.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ListIndexer {
-    /// List attribute to read from
-    list_attribute: Attribute,
-    /// Index of the list element to copy (0-based)
-    list_index_to_copy: usize,
-    /// Optional prefix to add to copied attribute names
+    /// # List
+    /// Attribute holding the list to read. A feature whose attribute is missing, or is not a
+    /// list, passes through unchanged.
+    list: Attribute,
+    /// # Index
+    /// Position of the element to copy, counting from zero. A feature whose list is shorter
+    /// than this, or whose element at this position is not a set of key-value pairs, passes
+    /// through unchanged.
+    index: usize,
+    /// # Copied Attribute Prefix
+    /// Text placed before each copied attribute name. Omitted by default.
     #[serde(default)]
     copied_attribute_prefix: Option<String>,
-    /// Optional suffix to add to copied attribute names
+    /// # Copied Attribute Suffix
+    /// Text placed after each copied attribute name. Omitted by default.
     #[serde(default)]
     copied_attribute_suffix: Option<String>,
 }
@@ -98,22 +110,21 @@ impl Processor for ListIndexer {
 
         // Get the list attribute and extract element attributes if valid
         let element_attributes = {
-            let Some(AttributeValue::Array(list)) = feature.attributes.get(&self.list_attribute)
-            else {
+            let Some(AttributeValue::Array(list)) = feature.attributes.get(&self.list) else {
                 // If list attribute doesn't exist or isn't an array, pass through unchanged
                 fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 return Ok(());
             };
 
             // Check if the specified index exists
-            if self.list_index_to_copy >= list.len() {
+            if self.index >= list.len() {
                 // If index is out of bounds, pass through unchanged
                 fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 return Ok(());
             }
 
             // Get the element at the specified index
-            let element = &list[self.list_index_to_copy];
+            let element = &list[self.index];
 
             // Only process if the element is a Map (object with attributes)
             if let AttributeValue::Map(element_attributes) = element {

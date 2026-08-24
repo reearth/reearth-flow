@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -62,12 +64,23 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deplo
 		return nil, err
 	}
 
-	if len(deployments) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a deployment — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, d := range deployments {
+		if d != nil {
+			ws, haveWorkspace = d.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := i.checkPermission(ctx, rbac.ActionAny, deployments[0].Workspace()); err != nil { // single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil { // single-workspace batch assumption
 			return nil, err
 		}
 	}
@@ -96,6 +109,52 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	}
 
 	return i.deploymentRepo.FindByProject(ctx, id)
+}
+
+// FindByProjects batches FindByProject for a dataloader: one project lookup and
+// one permission check per distinct workspace instead of one of each per project.
+// Projects in a workspace the caller can't see are simply omitted from the result.
+func (i *Deployment) FindByProjects(ctx context.Context, ids []id.ProjectID) (map[id.ProjectID]*deployment.Deployment, error) {
+	if len(ids) == 0 {
+		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+		return map[id.ProjectID]*deployment.Deployment{}, nil
+	}
+
+	projects, err := i.projectRepo.FindByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	byWorkspace := map[accountsid.WorkspaceID][]id.ProjectID{}
+	for _, p := range projects {
+		if p == nil { // some repo implementations pad not-found/unreadable entries with nil
+			continue
+		}
+		byWorkspace[p.Workspace()] = append(byWorkspace[p.Workspace()], p.ID())
+	}
+
+	result := make(map[id.ProjectID]*deployment.Deployment, len(projects))
+	for ws, pids := range byWorkspace {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+			continue // caller can't see this workspace; omit its projects' deployments
+		}
+		for _, pid := range pids {
+			dep, err := i.deploymentRepo.FindByProject(ctx, pid)
+			if err != nil {
+				if errors.Is(err, rerror.ErrNotFound) {
+					continue // project has no deployment yet
+				}
+				return nil, err
+			}
+			if dep != nil {
+				result[pid] = dep
+			}
+		}
+	}
+
+	return result, nil
 }
 
 func (i *Deployment) FindByVersion(ctx context.Context, wsID accountsid.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
