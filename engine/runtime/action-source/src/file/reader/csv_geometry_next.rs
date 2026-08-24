@@ -77,7 +77,11 @@ pub fn parse_geometry(
                 return Ok(Geometry::None);
             }
             let parsed = parse_wkt_tolerantly(text)?;
-            wkt_to_geometry(parsed, frame)
+            // Computed once here, never per member: `orientation_sign` resolves
+            // the CRS through PROJ, so a MULTIPOLYGON with a thousand members
+            // must not repeat that resolution per member.
+            let swap = swaps_axes(&frame);
+            wkt_to_geometry(parsed, frame, swap)
         }
     }
 }
@@ -133,26 +137,27 @@ fn with_z_tag(text: &str) -> Option<String> {
 fn wkt_to_geometry(
     parsed: wkt::Wkt<f64>,
     frame: CoordinateFrame,
+    swap: bool,
 ) -> Result<Geometry, GeometryParsingError> {
     use wkt::Wkt;
     match parsed {
         Wkt::Point(point) => match point.coord() {
             None => Ok(Geometry::None),
-            Some(coord) => Ok(point_geometry(coord, frame)),
+            Some(coord) => Ok(point_geometry(coord, frame, swap)),
         },
         Wkt::LineString(line) => {
             let coords = line.coords();
             if coords.is_empty() {
                 return Ok(Geometry::None);
             }
-            Ok(line_geometry(coords, frame))
+            Ok(line_geometry(coords, frame, swap))
         }
         Wkt::Polygon(polygon) => {
             let rings = polygon.rings();
             if rings.is_empty() {
                 return Ok(Geometry::None);
             }
-            Ok(polygon_geometry(rings, frame))
+            Ok(polygon_geometry(rings, frame, swap))
         }
         // The new model has no Multi* types, so a MULTI* becomes a same-
         // dimension `Collection` via `collect`. `EMPTY` members are filtered
@@ -163,7 +168,7 @@ fn wkt_to_geometry(
                 .points()
                 .iter()
                 .filter_map(|p| p.coord())
-                .map(|c| point_geometry(c, frame.clone())),
+                .map(|c| point_geometry(c, frame.clone(), swap)),
         )),
         Wkt::MultiLineString(multi) => Ok(collect(
             multi
@@ -171,7 +176,7 @@ fn wkt_to_geometry(
                 .iter()
                 .map(|l| l.coords())
                 .filter(|coords| !coords.is_empty())
-                .map(|coords| line_geometry(coords, frame.clone())),
+                .map(|coords| line_geometry(coords, frame.clone(), swap)),
         )),
         Wkt::MultiPolygon(multi) => Ok(collect(
             multi
@@ -179,18 +184,20 @@ fn wkt_to_geometry(
                 .iter()
                 .map(|p| p.rings())
                 .filter(|rings| !rings.is_empty())
-                .map(|rings| polygon_geometry(rings, frame.clone())),
+                .map(|rings| polygon_geometry(rings, frame.clone(), swap)),
         )),
         // Closes the gap the old reader named in its own error type
         // (`GeometryParsingError::UnsupportedGeometryCollection`): the new
         // path can represent a GeometryCollection, mixed dimensions included.
         // Members are themselves WKT geometries, so this recurses — a nested
-        // GEOMETRYCOLLECTION works the same as any other member.
+        // GEOMETRYCOLLECTION works the same as any other member. `swap` is
+        // threaded through rather than recomputed, since it is derived from
+        // the same frame at every recursion depth.
         Wkt::GeometryCollection(collection) => {
             let (geoms, _dim) = collection.into_inner();
             let members = geoms
                 .into_iter()
-                .map(|g| wkt_to_geometry(g, frame.clone()))
+                .map(|g| wkt_to_geometry(g, frame.clone(), swap))
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
                 .filter(|g| !matches!(g, Geometry::None))
@@ -249,34 +256,64 @@ fn is_3d(coords: &[wkt::types::Coord<f64>]) -> bool {
     coords.iter().any(|c| c.z.is_some())
 }
 
-fn point_geometry(coord: &wkt::types::Coord<f64>, frame: CoordinateFrame) -> Geometry {
-    match coord.z {
-        None => Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            frame,
-            [coord.x, coord.y],
-        ))),
-        Some(z) => Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            frame,
-            [coord.x, coord.y, z],
-        ))),
+/// Whether a frame's CRS declares its axes in reversed order, so the first two
+/// ordinates in the text are (y, x). Mirrors `swaps_axes` in the CSV writer's
+/// `writer_geometry_next.rs`; the two must agree or the round-trip transposes.
+///
+/// A CRS whose axis order cannot be resolved is treated as not swapping, which
+/// is the same fallback the writer takes. `Euclidean` and `Tangent` frames are
+/// not CRSs and have no declared axis order, so `orientation_sign` returns
+/// `Ok(1)` for them and this is always `false`.
+fn swaps_axes(frame: &CoordinateFrame) -> bool {
+    matches!(frame.orientation_sign(), Ok(sign) if sign < 0)
+}
+
+/// One coord's (x, y) in storage order. The Z ordinate, handled separately by
+/// every caller, is never swapped.
+fn xy(coord: &wkt::types::Coord<f64>, swap: bool) -> [f64; 2] {
+    if swap {
+        [coord.y, coord.x]
+    } else {
+        [coord.x, coord.y]
     }
 }
 
-fn line_geometry(coords: &[wkt::types::Coord<f64>], frame: CoordinateFrame) -> Geometry {
+fn point_geometry(coord: &wkt::types::Coord<f64>, frame: CoordinateFrame, swap: bool) -> Geometry {
+    let [x, y] = xy(coord, swap);
+    match coord.z {
+        None => Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame, [x, y]))),
+        Some(z) => {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame, [x, y, z])))
+        }
+    }
+}
+
+fn line_geometry(
+    coords: &[wkt::types::Coord<f64>],
+    frame: CoordinateFrame,
+    swap: bool,
+) -> Geometry {
     if is_3d(coords) {
         Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
             frame,
-            coords.iter().map(|c| [c.x, c.y, c.z.unwrap_or(0.0)]),
+            coords.iter().map(|c| {
+                let [x, y] = xy(c, swap);
+                [x, y, c.z.unwrap_or(0.0)]
+            }),
         )))
     } else {
         Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
             frame,
-            coords.iter().map(|c| [c.x, c.y]),
+            coords.iter().map(|c| xy(c, swap)),
         )))
     }
 }
 
-fn polygon_geometry(rings: &[wkt::types::LineString<f64>], frame: CoordinateFrame) -> Geometry {
+fn polygon_geometry(
+    rings: &[wkt::types::LineString<f64>],
+    frame: CoordinateFrame,
+    swap: bool,
+) -> Geometry {
     let any_3d = rings.iter().any(|r| is_3d(r.coords()));
     let exterior = rings[0].coords();
     let interiors = &rings[1..];
@@ -286,14 +323,20 @@ fn polygon_geometry(rings: &[wkt::types::LineString<f64>], frame: CoordinateFram
                 frame,
                 exterior
                     .iter()
-                    .map(|c| [c.x, c.y, c.z.unwrap_or(0.0)])
+                    .map(|c| {
+                        let [x, y] = xy(c, swap);
+                        [x, y, c.z.unwrap_or(0.0)]
+                    })
                     .collect::<Vec<_>>(),
                 interiors
                     .iter()
                     .map(|r| {
                         r.coords()
                             .iter()
-                            .map(|c| [c.x, c.y, c.z.unwrap_or(0.0)])
+                            .map(|c| {
+                                let [x, y] = xy(c, swap);
+                                [x, y, c.z.unwrap_or(0.0)]
+                            })
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>(),
@@ -303,10 +346,10 @@ fn polygon_geometry(rings: &[wkt::types::LineString<f64>], frame: CoordinateFram
         Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings(
                 frame,
-                exterior.iter().map(|c| [c.x, c.y]).collect::<Vec<_>>(),
+                exterior.iter().map(|c| xy(c, swap)).collect::<Vec<_>>(),
                 interiors
                     .iter()
-                    .map(|r| r.coords().iter().map(|c| [c.x, c.y]).collect::<Vec<_>>())
+                    .map(|r| r.coords().iter().map(|c| xy(c, swap)).collect::<Vec<_>>())
                     .collect::<Vec<_>>(),
             ),
         )))
@@ -671,5 +714,36 @@ mod tests {
             parse(text).unwrap(),
             Geometry::Euclidean3D(Euclidean3DGeometry::Collection(_))
         ));
+    }
+
+    /// The writer swaps axes when a CRS declares reversed order, so for
+    /// EPSG:4326 it writes latitude first. The reader must mirror that or the
+    /// round-trip transposes coordinates. Driven by the frame, never hardcoded:
+    /// EPSG:3857 (Web Mercator, metres, easting-first) must NOT swap.
+    ///
+    /// The brief for this task named EPSG:6677 (a Japan Plane Rectangular CS
+    /// zone) as the "must not swap" fixture, on the assumption that it stores
+    /// (x, y) in standard order. That assumption is wrong: `axis_order_sign`
+    /// resolves it to `-1` (northing-first), the same family member as
+    /// EPSG:6669, which `reearth-flow-geometry`'s own
+    /// `northing_first_projected_is_negative` test already documents as
+    /// northing-first. Verified directly against this crate's PROJ build
+    /// before substituting. EPSG:3857 is used instead: it is asserted `+1`
+    /// (easting-first) by that same crate's `easting_first_projected_is_positive`
+    /// test, so it is a genuine, verified non-swapping counterexample.
+    #[test]
+    fn a_reversed_axis_crs_reads_transposed_and_a_normal_one_does_not() {
+        let text = "POINT(10 20)";
+
+        let swapped = parse_geometry(&row(&[("geom", text)]), &wkt_config(Some(4326))).unwrap();
+        let plain = parse_geometry(&row(&[("geom", text)]), &wkt_config(Some(3857))).unwrap();
+
+        let position = |g: Geometry| match g {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => p.position(),
+            other => panic!("expected a 2D point, got {other:?}"),
+        };
+
+        assert_eq!(position(plain), [10.0, 20.0], "EPSG:3857 must not swap");
+        assert_eq!(position(swapped), [20.0, 10.0], "EPSG:4326 must swap");
     }
 }
