@@ -48,13 +48,24 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 		return nil, err
 	}
 
-	if len(res) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily an asset — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, a := range res {
+		if a != nil {
+			ws, haveWorkspace = a.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
 		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, res[0].Workspace()); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
 			return nil, err
 		}
 	}

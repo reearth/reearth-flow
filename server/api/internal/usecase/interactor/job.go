@@ -264,13 +264,24 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 		return nil, err
 	}
 
-	if len(jobs) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a job — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, j := range jobs {
+		if j != nil {
+			ws, haveWorkspace = j.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
 		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, jobs[0].Workspace()); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
 			return nil, err
 		}
 	}
