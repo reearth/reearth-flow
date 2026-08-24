@@ -447,4 +447,78 @@ mod tests {
         assert!(parse("POINT(1 2 3 4 5)").is_err());
         assert!(parse("POINT EMPTY").is_ok());
     }
+
+    /// The retry-also-fails branch of `parse_wkt_tolerantly` is dead unless an
+    /// input both (a) looks like bare 3D (three tokens in its first coordinate
+    /// group, triggering the rewrite) and (b) is still malformed after the `Z`
+    /// tag is added. `"POINT(1 2 x)"` is such an input: it rewrites to
+    /// `"POINT Z(1 2 x)"`, which still fails, landing on the map_err.
+    ///
+    /// The assertion that matters is not that this errors (a weaker test would
+    /// pass even if the branch reported the wrong thing) but that the reported
+    /// text is the error from parsing the ORIGINAL input, not the rewritten
+    /// one. Verified directly: `wkt` reports "Missing closing parenthesis for
+    /// type" for the bare original and "Expected a number for the Z
+    /// coordinate" for the retried rewrite. Those two strings differ, so
+    /// asserting the former and refuting the latter actually pins which one
+    /// surfaces.
+    #[test]
+    fn a_failed_retry_reports_the_original_error_not_the_rewritten_ones() {
+        let err = parse("POINT(1 2 x)").unwrap_err().to_string();
+        assert!(
+            err.contains("Missing closing parenthesis for type"),
+            "expected the ORIGINAL parse error, got: {err}"
+        );
+        assert!(
+            !err.contains("Expected a number for the Z coordinate"),
+            "leaked the RETRY's error instead of the original: {err}"
+        );
+    }
+
+    /// `with_z_tag` in isolation, asserting its exact return value rather than
+    /// inferring its behavior through the parser. The dangerous failure mode
+    /// for this function is a rewrite that is syntactically valid but
+    /// semantically wrong (e.g. tagging the wrong keyword, or splicing at the
+    /// wrong offset) — such a rewrite would still parse downstream and would
+    /// only be caught by pinning the exact string.
+    #[test]
+    fn with_z_tag_returns_the_exact_expected_rewrite() {
+        // 2D must never be rewritten.
+        assert_eq!(with_z_tag("POINT(1 2)"), None);
+        // The canonical bare-3D case.
+        assert_eq!(
+            with_z_tag("POINT(1 2 3)"),
+            Some("POINT Z(1 2 3)".to_string())
+        );
+        // Already tagged: must not double-tag.
+        assert_eq!(with_z_tag("POINT Z(1 2 3)"), None);
+        // No paren at all.
+        assert_eq!(with_z_tag("POINT EMPTY"), None);
+        // The coordinate run is two parens deep.
+        assert_eq!(
+            with_z_tag("POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))"),
+            Some("POLYGON Z((0 0 0, 4 0 0, 4 4 1, 0 0 0))".to_string())
+        );
+        // A second ring follows the first; only the keyword gets tagged, the
+        // rest of the text (including the hole) passes through untouched.
+        assert_eq!(
+            with_z_tag(
+                "POLYGON((0 0 0, 9 0 0, 9 9 0, 0 9 0, 0 0 0), (1 1 0, 2 1 0, 2 2 0, 1 1 0))"
+            ),
+            Some(
+                "POLYGON Z((0 0 0, 9 0 0, 9 9 0, 0 9 0, 0 0 0), (1 1 0, 2 1 0, 2 2 0, 1 1 0))"
+                    .to_string()
+            )
+        );
+        // A bare multi-geometry whose first point is 2D must not be rewritten.
+        assert_eq!(with_z_tag("MULTIPOINT(0 0, 1 1)"), None);
+        // A bare multi-geometry whose first point is 3D: only the outer
+        // keyword is tagged.
+        assert_eq!(
+            with_z_tag("MULTIPOINT((0 0 0), (1 1 1))"),
+            Some("MULTIPOINT Z((0 0 0), (1 1 1))".to_string())
+        );
+        // Five ordinates is not bare 3D.
+        assert_eq!(with_z_tag("POINT(1 2 3 4 5)"), None);
+    }
 }
