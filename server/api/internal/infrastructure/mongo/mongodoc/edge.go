@@ -3,42 +3,16 @@ package mongodoc
 import (
 	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/rerror"
 )
 
+// EdgeExecutionDocument decodes the legacy "edgeExecutions" Mongo collection.
+// Kept for cmd/dbmigrate's Mongo->Postgres ETL; there is no Mongo repo for
+// this collection anymore.
 type EdgeExecutionDocument struct {
 	IntermediateDataURL *string `bson:"intermediateDataUrl,omitempty"`
 	ID                  string  `bson:"id"`
 	EdgeID              string  `bson:"edgeId"`
 	JobID               string  `bson:"jobId"`
-}
-
-type EdgeExecutionConsumer = Consumer[*EdgeExecutionDocument, *graph.EdgeExecution]
-
-func NewEdgeExecutionConsumer() *EdgeExecutionConsumer {
-	return NewConsumer[*EdgeExecutionDocument](func(a *graph.EdgeExecution) bool {
-		return true
-	})
-}
-
-func NewEdgeExecution(e *graph.EdgeExecution) (*EdgeExecutionDocument, error) {
-	if e == nil {
-		return nil, rerror.ErrNotFound
-	}
-
-	eeid := e.ID().String()
-	if eeid == "" {
-		return nil, rerror.ErrNotFound
-	}
-
-	doc := &EdgeExecutionDocument{
-		ID:                  eeid,
-		EdgeID:              e.EdgeID(),
-		JobID:               e.JobID().String(),
-		IntermediateDataURL: e.IntermediateDataURL(),
-	}
-
-	return doc, nil
 }
 
 func (d *EdgeExecutionDocument) Model() (*graph.EdgeExecution, error) {

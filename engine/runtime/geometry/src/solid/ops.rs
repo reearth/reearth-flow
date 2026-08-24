@@ -296,6 +296,21 @@ impl ExtractBoundary for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Solid {
+    /// The exterior shell's first face; the voids are inside it and are not
+    /// reached. A shell with no face has no vertex to read.
+    fn elevation(&self) -> Option<f64> {
+        match &self.exterior {
+            Shell::PolygonMesh(data) => data.first_face_elevation(),
+            Shell::TriangularMesh(data) => data.first_triangle_elevation(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
