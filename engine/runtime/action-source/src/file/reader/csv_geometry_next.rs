@@ -4,9 +4,13 @@
 //! converts through `geo_types` on its WKT path, and `geo_types` is 2D-only, so
 //! it silently discards Z. Nothing here touches `geo_types`.
 
+use std::str::FromStr;
+
 use indexmap::IndexMap;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+use reearth_flow_geometry::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::point::{Point2D, Point3D};
+use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 use super::{GeometryConfig, GeometryMode};
@@ -61,10 +65,122 @@ pub fn parse_geometry(
                 }
             }
         }
-        // Task 3 replaces this arm with a real WKT parser.
-        GeometryMode::Wkt { .. } => Err(GeometryParsingError::WktParsing(
-            "WKT parsing is not yet implemented for the new geometry model".to_string(),
-        )),
+        GeometryMode::Wkt { column } => {
+            let text = row
+                .get(column)
+                .ok_or_else(|| GeometryParsingError::ColumnNotFound(column.clone()))?
+                .trim();
+            if text.is_empty() {
+                return Ok(Geometry::None);
+            }
+            let parsed = wkt::Wkt::<f64>::from_str(text)
+                .map_err(|e| GeometryParsingError::WktParsing(e.to_string()))?;
+            wkt_to_geometry(parsed, frame)
+        }
+    }
+}
+
+/// One `wkt` geometry as a new-model `Geometry`.
+///
+/// `EMPTY` forms parse successfully with an absent coord or empty ring lists, so
+/// every arm checks for emptiness rather than unwrapping.
+fn wkt_to_geometry(
+    parsed: wkt::Wkt<f64>,
+    frame: CoordinateFrame,
+) -> Result<Geometry, GeometryParsingError> {
+    use wkt::Wkt;
+    match parsed {
+        Wkt::Point(point) => match point.coord() {
+            None => Ok(Geometry::None),
+            Some(coord) => Ok(point_geometry(coord, frame)),
+        },
+        Wkt::LineString(line) => {
+            let coords = line.coords();
+            if coords.is_empty() {
+                return Ok(Geometry::None);
+            }
+            Ok(line_geometry(coords, frame))
+        }
+        Wkt::Polygon(polygon) => {
+            let rings = polygon.rings();
+            if rings.is_empty() {
+                return Ok(Geometry::None);
+            }
+            Ok(polygon_geometry(rings, frame))
+        }
+        other => Err(GeometryParsingError::UnsupportedGeometryType(format!(
+            "{other:?}"
+        ))),
+    }
+}
+
+/// Whether any coord in a run carries a Z ordinate. A run is 3D if any of its
+/// coords is, so a mixed run is lifted rather than truncated.
+fn is_3d(coords: &[wkt::types::Coord<f64>]) -> bool {
+    coords.iter().any(|c| c.z.is_some())
+}
+
+fn point_geometry(coord: &wkt::types::Coord<f64>, frame: CoordinateFrame) -> Geometry {
+    match coord.z {
+        None => Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            frame,
+            [coord.x, coord.y],
+        ))),
+        Some(z) => Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            frame,
+            [coord.x, coord.y, z],
+        ))),
+    }
+}
+
+fn line_geometry(coords: &[wkt::types::Coord<f64>], frame: CoordinateFrame) -> Geometry {
+    if is_3d(coords) {
+        Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+            frame,
+            coords.iter().map(|c| [c.x, c.y, c.z.unwrap_or(0.0)]),
+        )))
+    } else {
+        Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            frame,
+            coords.iter().map(|c| [c.x, c.y]),
+        )))
+    }
+}
+
+fn polygon_geometry(rings: &[wkt::types::LineString<f64>], frame: CoordinateFrame) -> Geometry {
+    let any_3d = rings.iter().any(|r| is_3d(r.coords()));
+    let exterior = rings[0].coords();
+    let interiors = &rings[1..];
+    if any_3d {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                frame,
+                exterior
+                    .iter()
+                    .map(|c| [c.x, c.y, c.z.unwrap_or(0.0)])
+                    .collect::<Vec<_>>(),
+                interiors
+                    .iter()
+                    .map(|r| {
+                        r.coords()
+                            .iter()
+                            .map(|c| [c.x, c.y, c.z.unwrap_or(0.0)])
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )))
+    } else {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                frame,
+                exterior.iter().map(|c| [c.x, c.y]).collect::<Vec<_>>(),
+                interiors
+                    .iter()
+                    .map(|r| r.coords().iter().map(|c| [c.x, c.y]).collect::<Vec<_>>())
+                    .collect::<Vec<_>>(),
+            ),
+        )))
     }
 }
 
@@ -156,5 +272,86 @@ mod tests {
     fn a_missing_column_errors_naming_the_column() {
         let err = parse_geometry(&row(&[("lat", "2.0")]), &coords_config(None, None)).unwrap_err();
         assert!(err.to_string().contains("lon"), "{err}");
+    }
+
+    fn wkt_config(epsg: Option<u16>) -> GeometryConfig {
+        GeometryConfig {
+            mode: GeometryMode::Wkt {
+                column: "geom".to_string(),
+            },
+            epsg,
+        }
+    }
+
+    fn parse(text: &str) -> Result<Geometry, GeometryParsingError> {
+        parse_geometry(&row(&[("geom", text)]), &wkt_config(None))
+    }
+
+    #[test]
+    fn a_2d_point_parses() {
+        match parse("POINT(1 2)").unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(_)) => {}
+            other => panic!("expected a 2D point, got {other:?}"),
+        }
+    }
+
+    /// The case the old reader silently truncated to 2D by hopping through
+    /// `geo_types`. Z must survive.
+    #[test]
+    fn an_ogc_3d_point_keeps_its_z() {
+        match parse("POINT Z(1 2 3)").unwrap() {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => {
+                assert_eq!(p.position()[2], 3.0);
+            }
+            other => panic!("expected a 3D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_linestring_parses_in_both_dimensions() {
+        assert!(matches!(
+            parse("LINESTRING(0 0, 1 1)").unwrap(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(_))
+        ));
+        assert!(matches!(
+            parse("LINESTRING Z(0 0 0, 1 1 1)").unwrap(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(_))
+        ));
+    }
+
+    #[test]
+    fn a_polygon_keeps_its_hole() {
+        let text = "POLYGON((0 0, 4 0, 4 4, 0 4, 0 0), (1 1, 2 1, 2 2, 1 2, 1 1))";
+        match parse(text).unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) => {
+                assert_eq!(p.interiors().count(), 1, "the hole must survive");
+            }
+            other => panic!("expected a 2D polygon, got {other:?}"),
+        }
+    }
+
+    /// EMPTY is a parse *success* in the wkt crate, yielding `coord: None` and
+    /// empty ring lists. An `unwrap()` on those panics on valid input.
+    #[test]
+    fn empty_geometries_become_an_absent_geometry_not_a_panic() {
+        for text in ["POINT EMPTY", "POLYGON EMPTY", "LINESTRING EMPTY"] {
+            assert!(
+                matches!(parse(text).unwrap(), Geometry::None),
+                "{text} should map to Geometry::None"
+            );
+        }
+    }
+
+    /// A blank cell is a row without geometry, not a malformed one.
+    #[test]
+    fn a_blank_cell_is_an_absent_geometry_not_an_error() {
+        assert!(matches!(parse("").unwrap(), Geometry::None));
+        assert!(matches!(parse("   ").unwrap(), Geometry::None));
+    }
+
+    #[test]
+    fn malformed_wkt_errors_rather_than_panicking() {
+        assert!(parse("NOT WKT AT ALL").is_err());
+        assert!(parse("POINT(").is_err());
     }
 }
