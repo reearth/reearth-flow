@@ -104,7 +104,7 @@ type (
 		// worker
 		Worker_AllowedLocations         []string      `envconfig:"WORKER_BATCH_ALLOWED_LOCATIONS" pp:",omitempty"`
 		GraphQL                         GraphQLConfig `pp:",omitempty"`
-		TracerSample                    float64       `pp:",omitempty"`
+		TracerSample                    float64       `envconfig:"TRACER_SAMPLE" pp:",omitempty"`
 		AssetUploadURLReplacement       bool          `default:"false" pp:",omitempty"`
 		Dev                             bool          `pp:",omitempty"`
 		HTTPSREDIRECT                   bool          `pp:",omitempty"`
