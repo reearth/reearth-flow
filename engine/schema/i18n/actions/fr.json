@@ -1224,10 +1224,11 @@
     },
     {
       "name": "Feature CityGML 3 Reader",
-      "description": "Lit des fichiers CityGML 3.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "description": "Lit le fichier CityGML 3.0 désigné par chaque entité entrante, en résolvant les références gml:id et les liens xlink:href entre tous les fichiers lus. Les attributs de l'entité désignant un fichier sont reportés sur les entités qui en sont issues.",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 3 Reader Parameters"
+          "title": "Feature CityGML 3 Reader Parameters",
+          "description": "Quel fichier lire et comment ses éléments deviennent des attributs d'entité."
         },
         "cityGmlAttributesKey": {
           "title": "Clé des Attributs CityGML",
@@ -1315,7 +1316,17 @@
     },
     {
       "name": "Feature Duplicate Filter",
-      "description": "Filter Out Duplicate Features"
+      "description": "Transmet la première entité portant chaque valeur distincte et sépare celles qui la répètent. Les entités sont comparées sur leur contenu entier sauf si les attributs à comparer sont nommés.",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Duplicate Filter Parameters",
+          "description": "Which features count as repeats of one another."
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry."
+        }
+      }
     },
     {
       "name": "Feature File Path Extractor",
@@ -1367,10 +1378,11 @@
     },
     {
       "name": "Feature GeoJSON Writer",
+      "description": "Écrit les entités reçues dans un fichier GeoJSON par chemin de sortie résolu, puis émet une entité par fichier écrit, portant le chemin de ce fichier.",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
-          "description": "Configuration for writing features to GeoJSON files."
+          "title": "Feature GeoJSON Writer Parameters",
+          "description": "Where the GeoJSON is written, and what is declared about its coordinates."
         },
         "output": {
           "title": "Output",
@@ -1759,11 +1771,11 @@
     },
     {
       "name": "Geometry Coercer",
-      "description": "Coerces and converts feature geometries to specified target geometry types",
+      "description": "Coerces a feature's geometry into a different geometry type, rebuilding it as polylines, faces, or triangles.",
       "parameterI18n": {
         "": {
           "title": "Geometry Coercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
+          "description": "Which geometry type each feature is coerced into."
         },
         "targetType": {
           "title": "Target Type",
@@ -2279,21 +2291,21 @@
     },
     {
       "name": "Hole Counter",
-      "description": "Count Polygon Holes to Attribute",
+      "description": "Counts the holes in every face of a feature's geometry and stores the total in an attribute. A geometry that cannot carry a hole, and a feature with no geometry, both count as zero.",
       "parameterI18n": {
         "": {
           "title": "Hole Counter Parameters",
-          "description": "Configure where to store the count of holes found in polygon geometries"
+          "description": "Where the total number of holes is stored on each feature."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the hole count will be stored as a number"
+          "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero."
         }
       }
     },
     {
       "name": "Hole Extractor",
-      "description": "Extract Polygon Holes as Separate Features"
+      "description": "Divise chaque face d'une géométrie en ses anneaux, en émettant l'anneau extérieur et chaque anneau intérieur (trou) comme une entité distincte."
     },
     {
       "name": "Horizontal Reprojector",
@@ -2432,23 +2444,27 @@
     },
     {
       "name": "List Concatenator",
-      "description": "Extrait un attribut spécifique de chaque élément d'une liste et les concatène en une seule chaîne",
+      "description": "Joint la valeur d'un attribut de chaque élément d'un attribut de liste en une seule chaîne. Les éléments qui ne sont pas des paires clé-valeur, ou qui n'ont pas cet attribut, sont ignorés.",
       "parameterI18n": {
         "": {
           "title": "List Concatenator Parameters",
-          "description": "Configuration for concatenating a specific attribute from list elements."
+          "description": "Which list to read, which attribute to take from its elements, and where the result goes."
         },
-        "attribute": {
-          "description": "Attribute name to extract from each list element"
+        "elementAttribute": {
+          "title": "Element Attribute",
+          "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing."
         },
         "list": {
-          "description": "List attribute to read from"
+          "title": "List",
+          "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged."
         },
-        "outputAttributeName": {
-          "description": "Name of the attribute to store the concatenated result"
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Attribute the joined string is written to."
         },
-        "separateCharacter": {
-          "description": "Character(s) to use as separator between concatenated values"
+        "separator": {
+          "title": "Separator",
+          "description": "Text placed between consecutive values. Defaults to a comma."
         }
       }
     },
@@ -2468,23 +2484,27 @@
     },
     {
       "name": "List Indexer",
-      "description": "Copie les attributs d'un élément de liste spécifique pour en faire les attributs principaux d'une entité",
+      "description": "Copie les paires clé-valeur d'un élément d'un attribut de liste sur l'entité elle-même, en écrasant un attribut de même nom et en laissant le reste en place.",
       "parameterI18n": {
         "": {
           "title": "List Indexer Parameters",
-          "description": "Configuration for copying attributes from a specific list element to main feature attributes."
+          "description": "Which list to read, which of its elements to copy, and how to name what is copied."
         },
         "copiedAttributePrefix": {
-          "description": "Optional prefix to add to copied attribute names"
+          "title": "Copied Attribute Prefix",
+          "description": "Text placed before each copied attribute name. Omitted by default."
         },
         "copiedAttributeSuffix": {
-          "description": "Optional suffix to add to copied attribute names"
+          "title": "Copied Attribute Suffix",
+          "description": "Text placed after each copied attribute name. Omitted by default."
         },
-        "listAttribute": {
-          "description": "List attribute to read from"
+        "index": {
+          "title": "Index",
+          "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged."
         },
-        "listIndexToCopy": {
-          "description": "Index of the list element to copy (0-based)"
+        "list": {
+          "title": "List",
+          "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged."
         }
       }
     },

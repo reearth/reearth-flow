@@ -745,6 +745,35 @@ impl ExtractBoundary for PolygonMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for PolygonMesh2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for PolygonMesh3D {
+    fn elevation(&self) -> Option<f64> {
+        self.data().first_face_elevation()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh3DData {
+    /// The z of the first face's first exterior vertex. The CSR index buffer
+    /// begins with that face's exterior ring, so this is where the mesh's
+    /// traversal starts — the vertex pool's own order is unrelated.
+    pub(crate) fn first_face_elevation(&self) -> Option<f64> {
+        let (face_indices, _, _) = self.csr_buffers();
+        let [i] = face_indices.iter_u32().next()?;
+        Some(self.vertices()[i as usize][2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
