@@ -186,6 +186,29 @@ graphs:
         with:
           groupBy: "lod"
 
+      - id: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
+        name: FeatureFilterLod3
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == 3
+              outputPort: lod3
+
+      - id: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        name: Cesium3DTilesWriterLod3
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          targetTileSize: 1048576
+          attachTexture: true
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_3dtiles_lod3.zip"
+
       - id: aef63371-49d5-484b-bdca-0e4f00520526
         name: TwoDimensionForcer
         type: action
@@ -294,8 +317,18 @@ graphs:
         toPort: features
       - id: 58c321ad-e100-4696-9b6b-e9a4566709f9
         from: d46e567a-831f-476a-bbb2-ce130a2db7a0
-        to: aef63371-49d5-484b-bdca-0e4f00520526
+        to: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
         fromPort: features
+        toPort: features
+      - id: 4c5d6e7f-8091-4a23-9c3d-4e5f6a7b8c9d
+        from: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
+        to: aef63371-49d5-484b-bdca-0e4f00520526
+        fromPort: unfiltered
+        toPort: features
+      - id: 5d6e7f80-9102-4b34-ad4e-5f6a7b8c9d0e
+        from: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
+        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        fromPort: lod3
         toPort: features
       - id: 83e293f8-a23d-4e5d-87b7-ea83924c7907
         from: aef63371-49d5-484b-bdca-0e4f00520526
