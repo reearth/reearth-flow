@@ -7,10 +7,12 @@
 //! only a planar `Polygon` is accepted, buffered in its own plane.
 //! Any other 3D leaf is [`Unsupported`].
 //!
-//! An areal input whose hole winds the same way as its exterior is
-//! [`InvalidHoleWinding`]. Output rings follow the frame's orientation
-//! convention when it can be resolved, else the stored winding of the areal
-//! input. Coordinates are snapped to `i_overlay`'s adaptive grid, arcs are
+//! A polygon input whose hole winds the same way as its exterior is
+//! [`InvalidHoleWinding`]; a mesh's rings are wound by construction. Output
+//! rings follow the frame's orientation convention when it can be resolved,
+//! else the stored winding of the areal input. A mesh whose face union falls
+//! into several regions buffers region by region, so it can yield several
+//! polygons. Coordinates are snapped to `i_overlay`'s adaptive grid, arcs are
 //! polygonal approximations stepped by [`BufferStyle::arc_step`], and
 //! appearance does not propagate.
 //!
@@ -24,17 +26,16 @@ use i_overlay::mesh::outline::offset::OutlineOffset;
 use i_overlay::mesh::stroke::offset::StrokeOffset;
 use i_overlay::mesh::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
 
-use super::shapes::{self, close_path, dissolve, Path, Shape};
+use super::shapes::{self, close_path, dissolve, frame_sign, reverse_shape, Path, Shape};
 use super::{common_frame, is_areal, is_line};
 use crate::collection::{Collection2D, Collection3D};
-use crate::coordinate::{BaseFrame, CoordinateFrame, TangentPlane};
+use crate::coordinate::{BaseFrame, TangentPlane};
 use crate::ops::triangulation::normal;
 use crate::polygon::{Polygon2D, Polygon3D};
 use crate::predicates::view::{flatten_2d, polygon3d_rings, require_common_frame_leaves, Leaf2D};
 use crate::predicates::{PredicateError, Result};
 use crate::validation_next::{
-    check_face_orientation_3d, check_planarity_3d, open_ring, signed_area_2d, PlanarityThreshold,
-    ValidationReport,
+    check_face_orientation_3d, check_planarity_3d, open_ring, PlanarityThreshold, ValidationReport,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
@@ -339,10 +340,11 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
 }
 
 /// Err with [`PredicateError::InvalidHoleWinding`] when a hole of any shape
-/// winds the same way as its exterior; a zero-area ring is skipped.
+/// winds the same way as its exterior; a zero-area ring is skipped. Only a
+/// polygon leaf can carry such a hole: mesh shapes arrive regrouped.
 fn require_opposing_holes(shapes: &[Shape]) -> Result<()> {
     for shape in shapes {
-        let mut areas = shape.iter().map(|ring| signed_area_2d(ring));
+        let mut areas = shape.iter().map(|ring| ring_area(ring));
         let Some(exterior) = areas.next() else {
             continue;
         };
@@ -397,7 +399,21 @@ fn normalize_shape(shape: Shape) -> Shape {
 
 /// Twice the total signed area of a shape's rings.
 fn shape_area(shape: &Shape) -> f64 {
-    shape.iter().map(|ring| signed_area_2d(ring)).sum()
+    shape.iter().map(|ring| ring_area(ring)).sum()
+}
+
+/// Twice the signed area of a ring (shoelace), wrapping the last vertex back to
+/// the first. Positive = counter-clockwise, negative = clockwise, zero =
+/// degenerate.
+fn ring_area(ring: &[[f64; 2]]) -> f64 {
+    let n = ring.len();
+    (0..n)
+        .map(|i| {
+            let a = ring[i];
+            let b = ring[(i + 1) % n];
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum()
 }
 
 /// `-1.0` when the shapes' total signed area is negative, else `1.0`.
@@ -407,20 +423,6 @@ fn shapes_sign(shapes: &[Shape]) -> f64 {
     } else {
         1.0
     }
-}
-
-fn frame_sign(frame: &CoordinateFrame) -> Option<f64> {
-    frame.orientation_sign().ok().map(f64::from)
-}
-
-fn reverse_shape(shape: Shape) -> Shape {
-    shape
-        .into_iter()
-        .map(|mut ring| {
-            ring.reverse();
-            ring
-        })
-        .collect()
 }
 
 /// The elevation shared by every leaf, if any.

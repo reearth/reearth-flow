@@ -9,7 +9,12 @@
 //! union-boundary rings first (see
 //! [`boundary`](crate::predicates::relate::boundary)), which cancels shared
 //! internal edges exactly (before `i_overlay`'s snap to its integer grid) and
-//! preserves the interior-left direction of every surviving ring.
+//! preserves the interior-left direction of every surviving ring. Those rings
+//! carry the union under the non-zero rule but are not a shape: a mesh whose
+//! face union has several outer contours (detached parts, corner-only touches)
+//! or that is not edge-conforming yields several of them. Such a ring set is
+//! regrouped into one shape per region before it leaves this module, so every
+//! shape a caller sees holds one outer contour followed by its holes.
 
 use i_overlay::core::fill_rule::FillRule;
 use i_overlay::core::overlay_rule::OverlayRule;
@@ -29,9 +34,14 @@ pub(super) type Path = Vec<[f64; 2]>;
 pub(super) type Shape = Vec<Path>;
 
 /// Convert areal leaves into `i_overlay` shapes: a polygon contributes its
-/// rings verbatim, a mesh its union-boundary rings. Empty leaves contribute
-/// nothing. Errs with the leaf's type name on the first non-areal leaf.
+/// rings verbatim, a mesh one shape per region of its face union. Empty leaves
+/// contribute nothing. Errs with the leaf's type name on the first non-areal
+/// leaf.
 pub(super) fn areal_shapes(leaves: &[Leaf2D<'_>]) -> Result<Vec<Shape>, &'static str> {
+    let sign = leaves
+        .first()
+        .and_then(|leaf| frame_sign(leaf.frame()))
+        .unwrap_or(1.0);
     let mut shapes = Vec::new();
     for leaf in leaves {
         let shape: Shape = match leaf {
@@ -41,11 +51,13 @@ pub(super) fn areal_shapes(leaves: &[Leaf2D<'_>]) -> Result<Vec<Shape>, &'static
                 .collect(),
             Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => {
                 let area = leaf.area_view().expect("mesh leaves are areal");
-                union_boundary_rings(&area)
+                let rings: Shape = union_boundary_rings(&area)
                     .into_iter()
                     .map(|ring| ring_to_path(RingView::Slice(&ring)))
                     .filter(|path| !path.is_empty())
-                    .collect()
+                    .collect();
+                shapes.extend(regroup_rings(rings, sign));
+                continue;
             }
             Leaf2D::Point(_) | Leaf2D::Line(_) => return Err(leaf_type_name(leaf)),
         };
@@ -54,6 +66,37 @@ pub(super) fn areal_shapes(leaves: &[Leaf2D<'_>]) -> Result<Vec<Shape>, &'static
         }
     }
     Ok(shapes)
+}
+
+/// Split a mesh's union-boundary rings into one shape per region, keeping the
+/// stored winding `sign` they are wound to.
+fn regroup_rings(rings: Shape, sign: f64) -> Vec<Shape> {
+    // The non-zero rule reads winding, so a clockwise-storing frame's rings go
+    // in counter-clockwise and come back reversed.
+    let flip = sign < 0.0;
+    let rings = if flip { reverse_shape(rings) } else { rings };
+    let regions = dissolve(vec![rings]);
+    if flip {
+        regions.into_iter().map(reverse_shape).collect()
+    } else {
+        regions
+    }
+}
+
+/// The stored winding direction of `frame`'s canonical orientation.
+pub(super) fn frame_sign(frame: &CoordinateFrame) -> Option<f64> {
+    frame.orientation_sign().ok().map(f64::from)
+}
+
+/// Reverse every ring of a shape, flipping its winding.
+pub(super) fn reverse_shape(shape: Shape) -> Shape {
+    shape
+        .into_iter()
+        .map(|mut ring| {
+            ring.reverse();
+            ring
+        })
+        .collect()
 }
 
 /// A ring as an implicitly closed `i_overlay` path: the stored vertices with

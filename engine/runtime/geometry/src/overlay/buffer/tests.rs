@@ -3,6 +3,7 @@ use core::f64::consts::PI;
 use pretty_assertions::assert_eq;
 
 use super::*;
+use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
 use crate::point::Point2D;
 use crate::predicates::covers;
@@ -49,7 +50,7 @@ fn geometry(polygons: Vec<Polygon2D>) -> Geometry {
 }
 
 fn signed_area(ring: &[[f64; 2]]) -> f64 {
-    signed_area_2d(ring) / 2.0
+    ring_area(ring) / 2.0
 }
 
 fn area(polygons: &[Polygon2D]) -> f64 {
@@ -320,4 +321,34 @@ fn non_finite_distance_buffers_to_nothing() {
             .unwrap()
             .is_empty());
     }
+}
+
+#[test]
+fn a_mesh_with_several_outer_contours_buffers_region_by_region() {
+    use crate::polygon_mesh::PolygonMesh2D;
+
+    // Two detached unit squares in one mesh, buffered part by part.
+    let detached = Euclidean2DGeometry::PolygonMesh(Box::new(
+        PolygonMesh2D::from_parts(
+            e(),
+            vec![
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [1.0, 1.0],
+                [0.0, 1.0],
+                [5.0, 0.0],
+                [6.0, 0.0],
+                [6.0, 1.0],
+                [5.0, 1.0],
+            ],
+            vec![vec![0u32, 1, 2, 3], vec![4, 5, 6, 7]],
+        )
+        .unwrap(),
+    ));
+    let result = buffer_2d(&detached, &style(0.25)).unwrap();
+    assert_eq!(result.len(), 2);
+    for polygon in &result {
+        assert_eq!(polygon2d_rings(polygon).count(), 1);
+    }
+    assert_close(area(&result), 2.0 * (1.0 + 1.0 + PI / 16.0), 0.01);
 }
