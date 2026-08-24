@@ -1,7 +1,9 @@
 import {
+  DiagnosticFragment,
   JobFragment,
+  NodeExecutionFragment,
   UserFacingLogFragment,
-} from "@flow/lib/gql/__gen__/graphql";
+} from "@flow/lib/gql/__gen__/plugins/graphql-request";
 
 export const mockJobs: JobFragment[] = [
   {
@@ -20,6 +22,8 @@ export const mockJobs: JobFragment[] = [
       "https://output.reearth.io/job-1/processed_data.geojson",
     ],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
   {
     id: "job-2",
@@ -34,6 +38,8 @@ export const mockJobs: JobFragment[] = [
     completedAt: null,
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
   {
     id: "job-3",
@@ -48,6 +54,22 @@ export const mockJobs: JobFragment[] = [
     completedAt: "2024-01-25T09:18:45Z",
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: 12,
+    failedNodes: [
+      {
+        code: "expression_eval_failed",
+        category: "expression",
+        severity: "fatal",
+        effectiveDisposition: "fatal",
+        nodeId: "node-3",
+        actionType: "FeatureTransformer",
+        featureId: null,
+        message: "Expression evaluation failed: unknown attribute `heigth`",
+        help: "Did you mean `height`?",
+        aggregatedCount: null,
+        sampleFeatureIds: null,
+      },
+    ],
   },
   {
     id: "job-4",
@@ -62,6 +84,8 @@ export const mockJobs: JobFragment[] = [
     completedAt: null,
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
   {
     id: "job-5",
@@ -76,6 +100,8 @@ export const mockJobs: JobFragment[] = [
     completedAt: "2024-01-20T11:35:15Z",
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
 ];
 
@@ -87,5 +113,78 @@ export const mockLogs: UserFacingLogFragment[] = [
     nodeName: null,
     level: "INFO",
     message: "Job started successfully",
+  },
+];
+
+const droppedGeometryDiagnostic: DiagnosticFragment = {
+  code: "geometry_invalid",
+  category: "geometry",
+  severity: "warn",
+  effectiveDisposition: "warn_drop",
+  nodeId: "node-2",
+  actionType: "GeometryValidator",
+  featureId: null,
+  message: "1,204 features dropped: self-intersecting polygon",
+  help: "Run the geometry through a repair action before validating.",
+  aggregatedCount: 1204,
+  sampleFeatureIds: [
+    "6f1b8f30-0f5d-4a3f-9f3e-1f0c5a2d7b11",
+    "b21b8f30-0f5d-4a3f-9f3e-1f0c5a2d7b12",
+  ],
+};
+
+export const mockNodeExecutions: NodeExecutionFragment[] = [
+  {
+    id: "exec-job-3-node-1",
+    jobId: "job-3",
+    nodeId: "node-1",
+    status: "COMPLETED",
+    createdAt: "2024-01-25T09:15:00Z",
+    startedAt: "2024-01-25T09:15:02Z",
+    completedAt: "2024-01-25T09:16:00Z",
+    featuresProcessed: null,
+    featuresWritten: null,
+    finishFeatureCount: null,
+    diagnostics: [],
+  },
+  {
+    id: "exec-job-3-node-2",
+    jobId: "job-3",
+    nodeId: "node-2",
+    status: "COMPLETED",
+    createdAt: "2024-01-25T09:15:00Z",
+    startedAt: "2024-01-25T09:16:00Z",
+    completedAt: "2024-01-25T09:17:30Z",
+    featuresProcessed: 8451,
+    featuresWritten: null,
+    finishFeatureCount: null,
+    diagnostics: [droppedGeometryDiagnostic],
+  },
+  {
+    id: "exec-job-3-node-3",
+    jobId: "job-3",
+    nodeId: "node-3",
+    status: "FAILED",
+    createdAt: "2024-01-25T09:15:00Z",
+    startedAt: "2024-01-25T09:17:30Z",
+    completedAt: "2024-01-25T09:18:45Z",
+    featuresProcessed: null,
+    featuresWritten: null,
+    finishFeatureCount: null,
+    diagnostics: [
+      {
+        code: "expression_eval_failed",
+        category: "expression",
+        severity: "fatal",
+        effectiveDisposition: "fatal",
+        nodeId: "node-3",
+        actionType: "FeatureTransformer",
+        featureId: "c31b8f30-0f5d-4a3f-9f3e-1f0c5a2d7b13",
+        message: "Expression evaluation failed: unknown attribute `heigth`",
+        help: "Did you mean `height`?",
+        aggregatedCount: null,
+        sampleFeatureIds: null,
+      },
+    ],
   },
 ];

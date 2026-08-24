@@ -28,6 +28,12 @@ query GetNodeExecution($jobId: ID!, $nodeId: String!) {
   }
 }
 
+query GetNodeExecutions($jobId: ID!) {
+  nodeExecutions(jobId: $jobId) {
+    ...NodeExecution
+  }
+}
+
 mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
     job {

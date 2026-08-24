@@ -6,11 +6,14 @@ import {
   type CmsModelFragment,
   type CmsProjectFragment,
   type DeploymentFragment,
-  type JobFragment,
   type ProjectFragment,
   type WorkspaceFragment,
   type UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
+// The mock schema models the wire shape, so it needs the unmasked fragment
+// types: `Job.failedNodes` spreads `...Diagnostic`, which the client preset
+// masks behind a fragment ref that no fixture can satisfy.
+import { type JobFragment } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 
 import { mockAssets } from "../data/asset";
 import {
@@ -19,7 +22,7 @@ import {
   mockCmsItems,
 } from "../data/cmsIntegration";
 import { mockDeployments } from "../data/deployments";
-import { mockJobs, mockLogs } from "../data/jobs";
+import { mockJobs, mockLogs, mockNodeExecutions } from "../data/jobs";
 import { mockProjects } from "../data/projects";
 import {
   mockUsers,
@@ -264,6 +267,9 @@ export const resolvers = {
     completedAt: (job: JobFragment) => job.completedAt,
     userFacingLogsURL: (job: JobFragment) => job.userFacingLogsURL,
     outputURLs: (job: JobFragment) => job.outputURLs,
+    droppedEventCount: (job: JobFragment) => job.droppedEventCount,
+    // Persisted at job completion, so it stays null while a job is running.
+    failedNodes: (job: JobFragment) => job.failedNodes,
     deployment: (job: JobFragment) =>
       deployments.find((d) => d.id === job.deployment?.id),
     workspace: (job: JobFragment) =>
@@ -488,6 +494,10 @@ export const resolvers = {
     job: (_: any, args: { id: string }) => jobs.find((j) => j.id === args.id),
 
     nodeExecution: (_: any, args: { jobId: string; nodeId: string }) => {
+      const known = mockNodeExecutions.find(
+        (n) => n.jobId === args.jobId && n.nodeId === args.nodeId,
+      );
+
       // Mock node execution data
       return {
         id: `exec-${args.jobId}-${args.nodeId}`,
@@ -496,11 +506,22 @@ export const resolvers = {
         status: "COMPLETED",
         startedAt: "2024-01-28T10:00:00Z",
         completedAt: "2024-01-28T10:05:00Z",
+        ...known,
         logs: logs.filter(
           (l) => l.jobId === args.jobId && l.nodeId === args.nodeId,
         ),
       };
     },
+
+    nodeExecutions: (_: any, args: { jobId: string }) =>
+      mockNodeExecutions
+        .filter((n) => n.jobId === args.jobId)
+        .map((n) => ({
+          ...n,
+          logs: logs.filter(
+            (l) => l.jobId === n.jobId && l.nodeId === n.nodeId,
+          ),
+        })),
 
     latestProjectSnapshot: (_: any, args: { projectId: string }) => {
       // Mock project document
@@ -941,6 +962,8 @@ export const resolvers = {
         completedAt: null,
         outputURLs: [],
         userFacingLogsURL: null,
+        droppedEventCount: null,
+        failedNodes: null,
         deployment: null,
       };
 
@@ -993,6 +1016,8 @@ export const resolvers = {
         completedAt: null,
         outputURLs: [],
         userFacingLogsURL: null,
+        droppedEventCount: null,
+        failedNodes: null,
         deployment: null,
       };
 
@@ -1199,6 +1224,8 @@ export const resolvers = {
         completedAt: null,
         outputURLs: [],
         userFacingLogsURL: null,
+        droppedEventCount: null,
+        failedNodes: null,
         deployment: null,
       };
 

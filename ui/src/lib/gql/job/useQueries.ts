@@ -8,15 +8,23 @@ import {
 import { isDefined } from "@flow/utils";
 
 import { CancelJobInput } from "../__gen__/graphql";
-import { toJob } from "../convert";
+import { toJob, toNodeExecution } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum JobQueryKeys {
   GetJobs = "getJobs",
   GetJob = "getJob",
+  GetNodeExecutions = "getNodeExecutions",
 }
 
 export const JOBS_FETCH_RATE = 15;
+
+/**
+ * Diagnostics and feature counts are not part of the nodeStatus/jobStatus
+ * subscription payloads — those carry the status enum and nothing else — so the
+ * only way to show them while a job runs is to poll for them.
+ */
+export const NODE_EXECUTIONS_POLL_RATE = 5000;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -65,6 +73,23 @@ export const useQueries = () => {
       enabled: !!jobId,
     });
 
+  const useGetNodeExecutionsQuery = (jobId?: string, poll?: boolean) =>
+    useQuery({
+      queryKey: [JobQueryKeys.GetNodeExecutions, jobId],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetNodeExecutions({
+          jobId: jobId ?? "",
+        });
+        // An empty list is a legitimate answer, not a failure: live rows come
+        // from a TTL-bound cache that is only merged with the persisted rows at
+        // job completion, so there is a window right after a job starts where
+        // nothing exists yet.
+        return (data?.nodeExecutions ?? []).map(toNodeExecution);
+      },
+      enabled: !!jobId,
+      refetchInterval: poll ? NODE_EXECUTIONS_POLL_RATE : false,
+    });
+
   const cancelJobMutation = useMutation({
     mutationFn: async ({ jobId }: { jobId: string }) => {
       const input: CancelJobInput = {
@@ -90,6 +115,7 @@ export const useQueries = () => {
   return {
     useGetJobsQuery,
     useGetJobQuery,
+    useGetNodeExecutionsQuery,
     cancelJobMutation,
   };
 };

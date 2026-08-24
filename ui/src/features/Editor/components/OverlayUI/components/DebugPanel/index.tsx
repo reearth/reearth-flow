@@ -6,6 +6,7 @@ import {
   CornersOutIcon,
   EyeIcon,
   MinusIcon,
+  WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { memo, useEffect, useRef, useState } from "react";
@@ -28,6 +29,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
+import DebugDiagnostics from "./DebugDiagnostics";
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
 import TableViewer from "./DebugPreview/components/TableViewer";
@@ -38,6 +40,7 @@ const DebugPanel: React.FC = () => {
   const {
     debugJobId,
     debugJobState,
+    isDebugJobActive,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -121,6 +124,13 @@ const DebugPanel: React.FC = () => {
                   <EyeIcon className="group-data-active:fill-logo" />
                   <p className="text-sm select-none">{t("Data Preview")}</p>
                 </TabsTrigger>
+                <TabsTrigger
+                  className="group h-8 gap-1 border border-transparent bg-card font-light data-active:border-logo/40 dark:font-thin"
+                  value="debug-diagnostics"
+                  onClick={handleTabChange}>
+                  <WarningCircleIcon className="group-data-active:fill-logo" />
+                  <p className="text-sm select-none">{t("Diagnostics")}</p>
+                </TabsTrigger>
               </TabsList>
               <div className="ml-2 h-full w-1 border-l" />
               <OutputDataDownload outputData={outputDataForDownload} />
@@ -179,6 +189,18 @@ const DebugPanel: React.FC = () => {
             }
             hidden={tabValue !== "debug-logs"}>
             <DebugLogs debugJobId={debugJobId} />
+          </TabsContent>
+          <TabsContent
+            value="debug-diagnostics"
+            className="h-[calc(100%-30px)] overflow-hidden"
+            keepMounted={
+              debugJobIdRef.current !== debugJobId ? undefined : true
+            }
+            hidden={tabValue !== "debug-diagnostics"}>
+            <DebugDiagnostics
+              debugJobId={debugJobId}
+              isJobActive={isDebugJobActive}
+            />
           </TabsContent>
           {dataURLs && (
             <TabsContent
