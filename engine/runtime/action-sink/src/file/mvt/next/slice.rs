@@ -155,14 +155,25 @@ fn ring_area(ring: &[Point]) -> f64 {
 fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>) {
     let holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
-    if ring_area(&exterior) > 0.0 {
+    let exterior_area = ring_area(&exterior);
+    if exterior_area < 0.0 {
+        // invalid geometry in Flow, but coincidentally consistent with MVT's CW convention, so we don't reverse twice but simply reuse
+        // not dropped because float error may occasionally cause sign flip for tiny features
+        tracing::warn!(
+            area = exterior_area,
+            "MVT Writer: polygon exterior ring is not CCW"
+        );
+    } else {
+        // correct, but since MVT needs CW, we still need to do a reverse
         exterior.reverse();
     }
     let holes = holes
         .into_iter()
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
-            if hole_area < 0.0 {
+            if hole_area > 0.0 {
+                tracing::warn!(area = hole_area, "MVT Writer: polygon hole ring is not CW");
+            } else {
                 hole.reverse();
             }
             hole
