@@ -1,0 +1,1613 @@
+{
+  "tran:Road": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:usage",
+      "sourcePath": "cityGmlAttributes tran:usage"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:widthType",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:RoadStructureAttribute uro:widthType"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:width",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:RoadStructureAttribute uro:width",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:numberOfLanes",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:RoadStructureAttribute uro:numberOfLanes",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:sectionType",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:RoadStructureAttribute uro:sectionType"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:sectionID",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:sectionID"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:routeName",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:routeName"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:largeVehicleRate",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:largeVehicleRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:congestionRate",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:congestionRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:observationPointName",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:observationPointName"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:reference",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:reference"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:surveyYear",
+      "sourcePath": "cityGmlAttributes tran:adeOfRoad uro:TrafficVolumeAttribute uro:surveyYear",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "tran:TrafficArea": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes ancestors gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes ancestors core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes ancestors tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:Road_tran:function",
+      "sourcePath": "cityGmlAttributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes uro:numberOfLanes",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:TrafficAreaStructureAttribute uro:numberOfLanes",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes tran:usage",
+      "sourcePath": "cityGmlAttributes ancestors tran:usage"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:widthType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:widthType"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:width",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:width",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:numberOfLanes",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:numberOfLanes",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:sectionType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:sectionType"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:sectionID",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:sectionID"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:routeName",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:routeName"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:largeVehicleRate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:largeVehicleRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:congestionRate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:congestionRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:observationPointName",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:observationPointName"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:reference",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:reference"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:surveyYear",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:surveyYear",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes ancestors uro:DataQualityAttribute uro:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes uro:lodType",
+      "sourcePath": "cityGmlAttributes ancestors uro:DataQualityAttribute uro:lodType"
+    },
+    {
+      "destinationPath": "attributes uro:operatorType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:operatorType"
+    },
+    {
+      "destinationPath": "attributes uro:operator",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:operator"
+    },
+    {
+      "destinationPath": "attributes uro:railwayType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "attributes uro:startStation",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:startStation"
+    },
+    {
+      "destinationPath": "attributes uro:endStation",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:endStation"
+    },
+    {
+      "destinationPath": "attributes uro:routeName",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:routeName"
+    },
+    {
+      "destinationPath": "attributes uro:directionType",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:directionType"
+    },
+    {
+      "destinationPath": "attributes uro:trackType",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:trackType"
+    },
+    {
+      "destinationPath": "attributes uro:startPost",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:startPost"
+    },
+    {
+      "destinationPath": "attributes uro:endPost",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:endPost"
+    },
+    {
+      "destinationPath": "attributes uro:alignmentType",
+      "sourcePath": "cityGmlAttributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:alignmentType"
+    },
+    {
+      "destinationPath": "attributes tran:Square_tran:function",
+      "sourcePath": "cityGmlAttributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:station",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:station"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:route",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:route"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:railwayType",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:terminalType",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:terminalType"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:structure",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:structure"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:numberOfBerthsInService",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:userType",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:userType"
+    },
+    {
+      "destinationPath": "attributes tran:Track_tran:function",
+      "sourcePath": "cityGmlAttributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "attributes uro:routeId",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:routeId"
+    },
+    {
+      "destinationPath": "attributes uro:routeDirection",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:routeDirection"
+    },
+    {
+      "destinationPath": "attributes uro:minimumWidth",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:minimumWidth",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:maximumWidth",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:maximumWidth",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:length",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:length",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:navigation",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:navigation"
+    },
+    {
+      "destinationPath": "attributes uro:plannedDepth",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:plannedDepth",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:speedLimit",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:speedLimit",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:targetShipType",
+      "sourcePath": "cityGmlAttributes ancestors uro:WaterwayDetailAttribute uro:targetShipType"
+    }
+  ],
+  "tran:AuxiliaryTrafficArea": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes ancestors gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes ancestors core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes ancestors tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:Road_tran:function",
+      "sourcePath": "cityGmlAttributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:surfaceMaterial",
+      "sourcePath": "cityGmlAttributes tran:surfaceMaterial"
+    },
+    {
+      "destinationPath": "attributes tran:usage",
+      "sourcePath": "cityGmlAttributes ancestors tran:usage"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:widthType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:widthType"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:width",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:width",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:numberOfLanes",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:numberOfLanes",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:RoadStructureAttribute_uro:sectionType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RoadStructureAttribute uro:sectionType"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:sectionID",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:sectionID"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:routeName",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:routeName"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:weekday12hourTrafficVolume",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:weekday24hourTrafficVolume",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:largeVehicleRate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:largeVehicleRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:congestionRate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:congestionRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedInCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageInboundTravelSpeedNotCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:averageOutboundTravelSpeedNotCongestion",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:observationPointName",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:observationPointName"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:reference",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:reference"
+    },
+    {
+      "destinationPath": "attributes uro:TrafficVolumeAttribute_uro:surveyYear",
+      "sourcePath": "cityGmlAttributes ancestors uro:TrafficVolumeAttribute uro:surveyYear",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes ancestors uro:DataQualityAttribute uro:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes uro:lodType",
+      "sourcePath": "cityGmlAttributes ancestors uro:DataQualityAttribute uro:lodType"
+    },
+    {
+      "destinationPath": "attributes uro:operatorType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:operatorType"
+    },
+    {
+      "destinationPath": "attributes uro:operator",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:operator"
+    },
+    {
+      "destinationPath": "attributes uro:railwayType",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "attributes uro:startStation",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:startStation"
+    },
+    {
+      "destinationPath": "attributes uro:endStation",
+      "sourcePath": "cityGmlAttributes ancestors uro:RailwayRouteAttribute uro:endStation"
+    },
+    {
+      "destinationPath": "attributes tran:Square_tran:function",
+      "sourcePath": "cityGmlAttributes ancestors tran:function"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes ancestors uro:SquareUrbanPlanAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:station",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:station"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:route",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:route"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:railwayType",
+      "sourcePath": "cityGmlAttributes ancestors uro:StationSquareAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:terminalType",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:terminalType"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:structure",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:structure"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:numberOfBerthsInService",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:userType",
+      "sourcePath": "cityGmlAttributes ancestors uro:TerminalAttribute uro:userType"
+    },
+    {
+      "destinationPath": "attributes tran:Track_tran:function",
+      "sourcePath": "cityGmlAttributes ancestors tran:function"
+    }
+  ],
+  "tran:Railway": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes uro:operatorType",
+      "sourcePath": "cityGmlAttributes tran:adeOfRailway uro:RailwayRouteAttribute uro:operatorType"
+    },
+    {
+      "destinationPath": "attributes uro:operator",
+      "sourcePath": "cityGmlAttributes tran:adeOfRailway uro:RailwayRouteAttribute uro:operator"
+    },
+    {
+      "destinationPath": "attributes uro:railwayType",
+      "sourcePath": "cityGmlAttributes tran:adeOfRailway uro:RailwayRouteAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "attributes uro:startStation",
+      "sourcePath": "cityGmlAttributes tran:adeOfRailway uro:RailwayRouteAttribute uro:startStation"
+    },
+    {
+      "destinationPath": "attributes uro:endStation",
+      "sourcePath": "cityGmlAttributes tran:adeOfRailway uro:RailwayRouteAttribute uro:endStation"
+    },
+    {
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "tran:Square": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:SquareUrbanPlanAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:SquareUrbanPlanAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:station",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:station"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:route",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:route"
+    },
+    {
+      "destinationPath": "attributes uro:StationSquareAttribute_uro:railwayType",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:StationSquareAttribute uro:railwayType"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:prefecture",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:city",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:city"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:urbanPlanningAreaName"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:enforcer",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:enforcer"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:dateOfDecision",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:dateOfDecision"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:dateOfRevision",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:dateOfRevision"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaPlanned",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:areaPlanned",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaInService",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:areaInService",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:remarks",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:remarks"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:status",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:status"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaImproved",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:areaImproved",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:areaCompleted",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:areaCompleted",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:projectStartDate",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:projectStartDate"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:projectEndDate",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:projectEndDate"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:isCompleted",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:isCompleted"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:isAuthorized",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:isAuthorized"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:purpose",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:purpose"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:note",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:note"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:terminalType",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:terminalType"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:structure",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:structure"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsPlanned",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:numberOfBerthsInService",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "attributes uro:TerminalAttribute_uro:userType",
+      "sourcePath": "cityGmlAttributes tran:adeOfSquare uro:TerminalAttribute uro:userType"
+    },
+    {
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "tran:Track": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:usage",
+      "sourcePath": "cityGmlAttributes tran:usage"
+    },
+    {
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "tran:Waterway": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes uro:routeId",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeId"
+    },
+    {
+      "destinationPath": "attributes uro:routeDirection",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:routeDirection"
+    },
+    {
+      "destinationPath": "attributes uro:minimumWidth",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:minimumWidth",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:maximumWidth",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:maximumWidth",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:length",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:length",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:navigation",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:navigation"
+    },
+    {
+      "destinationPath": "attributes uro:plannedDepth",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:plannedDepth",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:speedLimit",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:speedLimit",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes uro:targetShipType",
+      "sourcePath": "cityGmlAttributes tran:adeOfWaterway uro:WaterwayDetailAttribute uro:targetShipType"
+    },
+    {
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "cityGmlAttributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "tran:TrafficSpace": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:usage",
+      "sourcePath": "cityGmlAttributes tran:usage"
+    },
+    {
+      "destinationPath": "attributes tran:granularity",
+      "sourcePath": "cityGmlAttributes tran:granularity"
+    },
+    {
+      "destinationPath": "attributes tran:trafficDirection",
+      "sourcePath": "cityGmlAttributes tran:trafficDirection"
+    }
+  ],
+  "tran:AuxiliaryTrafficSpace": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    },
+    {
+      "destinationPath": "attributes tran:function",
+      "sourcePath": "cityGmlAttributes tran:function"
+    },
+    {
+      "destinationPath": "attributes tran:usage",
+      "sourcePath": "cityGmlAttributes tran:usage"
+    },
+    {
+      "destinationPath": "attributes tran:granularity",
+      "sourcePath": "cityGmlAttributes tran:granularity"
+    }
+  ],
+  "tran:ClearanceSpace": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    }
+  ],
+  "tran:Hole": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    }
+  ],
+  "tran:HoleSurface": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    }
+  ],
+  "tran:Intersection": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    }
+  ],
+  "tran:Marking": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    }
+  ],
+  "tran:Section": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "cityGmlAttributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes tran:class",
+      "sourcePath": "cityGmlAttributes tran:class"
+    }
+  ],
+  "urc:DmGeometricAttribute": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "cityGmlAttributes gml:name"
+    },
+    {
+      "destinationPath": "attributes urc:geometryType",
+      "sourcePath": "cityGmlAttributes urc:geometryType"
+    },
+    {
+      "destinationPath": "attributes urc:mapLevel",
+      "sourcePath": "cityGmlAttributes urc:mapLevel"
+    },
+    {
+      "destinationPath": "attributes urc:shapeType",
+      "sourcePath": "cityGmlAttributes urc:shapeType"
+    },
+    {
+      "destinationPath": "attributes urc:visibility",
+      "sourcePath": "cityGmlAttributes urc:visibility"
+    },
+    {
+      "destinationPath": "attributes urc:is3d",
+      "sourcePath": "cityGmlAttributes urc:is3d"
+    },
+    {
+      "destinationPath": "attributes urc:isInstallation",
+      "sourcePath": "cityGmlAttributes urc:isInstallation"
+    },
+    {
+      "destinationPath": "attributes urc:isEdited",
+      "sourcePath": "cityGmlAttributes urc:isEdited"
+    },
+    {
+      "destinationPath": "attributes urc:isSupplementarySymbol",
+      "sourcePath": "cityGmlAttributes urc:isSupplementarySymbol"
+    },
+    {
+      "destinationPath": "attributes urc:angle",
+      "sourcePath": "cityGmlAttributes urc:angle",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes urc:elevation",
+      "sourcePath": "cityGmlAttributes urc:elevation",
+      "dataType": "float"
+    }
+  ]
+}

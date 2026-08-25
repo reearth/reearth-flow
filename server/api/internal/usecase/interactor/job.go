@@ -264,13 +264,24 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 		return nil, err
 	}
 
-	if len(jobs) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a job — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, j := range jobs {
+		if j != nil {
+			ws, haveWorkspace = j.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
 		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, jobs[0].Workspace()); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
 			return nil, err
 		}
 	}
@@ -328,7 +339,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 
 	i.activeWatchers[jobKey] = true
 
-	monitorCtx, cancel := context.WithCancel(context.Background())
+	monitorCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 
 	i.monitor.Register(jobKey, &monitor.Config{
 		Cancel:          cancel,
@@ -370,7 +381,7 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
+			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 			if err != nil {
 				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
 				continue

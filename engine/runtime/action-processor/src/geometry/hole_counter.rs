@@ -29,7 +29,9 @@ impl ProcessorFactory for HoleCounterFactory {
     }
 
     fn description(&self) -> &str {
-        "Count Polygon Holes to Attribute"
+        "Counts the holes in every face of a feature's geometry and stores the total in an \
+         attribute. A geometry that cannot carry a hole, and a feature with no geometry, both \
+         count as zero."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -78,12 +80,13 @@ impl ProcessorFactory for HoleCounterFactory {
 }
 
 /// # Hole Counter Parameters
-/// Configure where to store the count of holes found in polygon geometries
+/// Where the total number of holes is stored on each feature.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HoleCounterParam {
     /// # Output Attribute
-    /// Name of the attribute where the hole count will be stored as a number
+    /// Attribute the count is written to, as a number. It is set on every feature, so a
+    /// geometry with no holes records zero.
     output_attribute: Attribute,
 }
 
@@ -266,8 +269,8 @@ mod tests {
     }
 
     /// Unlike the legacy processor, which passes a feature with no geometry
-    /// through untouched, the attribute is always set — matching FME, where every
-    /// other kind of geometry receives a hole count of zero.
+    /// through untouched, the attribute is always set: a geometry with nothing to
+    /// count records zero, which is what a counting operation is expected to do.
     #[test]
     fn a_feature_without_geometry_reports_zero() {
         let feature = count(Feature::from(Geometry::None));

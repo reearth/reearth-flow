@@ -115,6 +115,11 @@ pub enum PredicateError {
     /// [`relate_coplanar`] is defined only for mutually coplanar 3D
     /// geometries; there is no volumetric DE-9IM to fall back to.
     NotCoplanar,
+    /// A 3D face handed to an in-plane construction is not planar within the
+    /// tolerance given, or is too degenerate to fit a plane to.
+    NotPlanar,
+    /// A hole of an areal operand winds the same way as its exterior ring.
+    InvalidHoleWinding,
 }
 
 impl core::fmt::Display for PredicateError {
@@ -137,6 +142,12 @@ impl core::fmt::Display for PredicateError {
             }
             PredicateError::NotCoplanar => {
                 write!(f, "operands do not lie in one common plane")
+            }
+            PredicateError::NotPlanar => {
+                write!(f, "face is not planar")
+            }
+            PredicateError::InvalidHoleWinding => {
+                write!(f, "hole winds the same way as its exterior")
             }
         }
     }

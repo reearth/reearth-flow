@@ -20,7 +20,7 @@ use crate::ops::{
     Reproject, ReprojectionCache, UnsupportedOperation,
 };
 #[cfg(feature = "new-geometry")]
-use crate::ops::{Footprint, FootprintError, FootprintSink};
+use crate::ops::{Elevation, Footprint, FootprintError, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -442,6 +442,23 @@ impl Footprint for Collection3D {
     }
 }
 
+// A collection reports the first member that has an elevation, rather than only
+// its head: a member with none (an absent geometry, a 2D point, an empty leaf) is
+// ordinary and must not hide the ones behind it.
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection2D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection3D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.
@@ -505,6 +522,70 @@ impl Coerce for Collection3D {
             std::mem::take(self),
         )))
     }
+}
+
+impl crate::ops::ExtractBoundary for Collection2D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean2D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_2d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
+    }
+}
+
+impl crate::ops::ExtractBoundary for Collection3D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean3D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_3d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
+    }
+}
+
+/// Gather members into a collection, keeping their attributes when the source
+/// carried any. A collection's boundary stays a collection even when one member
+/// gave it, so the shape does not turn on how many members contributed.
+fn wrap_members_2d(members: Vec<Euclidean2DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D {
+        members,
+        attrs,
+    }))
+}
+
+/// The 3D counterpart of [`wrap_members_2d`].
+fn wrap_members_3d(members: Vec<Euclidean3DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D {
+        members,
+        attrs,
+    }))
 }
 
 #[cfg(test)]

@@ -703,6 +703,77 @@ impl PolygonMesh3DData {
     }
 }
 
+use crate::ops::boundary::{Boundary, ExtractBoundary};
+use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+
+fn csr_boundary_edges(
+    face_indices: &IndexBuffer<1>,
+    face_offsets: &IndexBuffer<1>,
+    interior_offsets: &IndexBuffer<1>,
+) -> BoundaryEdges {
+    let mut edges = BoundaryEdges::new();
+    super::faces::for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
+        edges.add_ring(ring)
+    });
+    edges
+}
+
+// A hole ring no neighbouring face fills is walked once, like any outer edge, so
+// it bounds the surface too.
+impl ExtractBoundary for PolygonMesh2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        Ok(surface_boundary_2d(
+            self.frame(),
+            self.vertices(),
+            self.elevation(),
+            csr_boundary_edges(face_indices, face_offsets, interior_offsets),
+        )
+        .into())
+    }
+}
+
+impl ExtractBoundary for PolygonMesh3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let (face_indices, face_offsets, interior_offsets) = self.data().csr_buffers();
+        Ok(surface_boundary_3d(
+            self.frame(),
+            self.vertices(),
+            csr_boundary_edges(face_indices, face_offsets, interior_offsets),
+        )
+        .into())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for PolygonMesh2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for PolygonMesh3D {
+    fn elevation(&self) -> Option<f64> {
+        self.data().first_face_elevation()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh3DData {
+    /// The z of the first face's first exterior vertex. The CSR index buffer
+    /// begins with that face's exterior ring, so this is where the mesh's
+    /// traversal starts — the vertex pool's own order is unrelated.
+    pub(crate) fn first_face_elevation(&self) -> Option<f64> {
+        let (face_indices, _, _) = self.csr_buffers();
+        let [i] = face_indices.iter_u32().next()?;
+        Some(self.vertices()[i as usize][2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

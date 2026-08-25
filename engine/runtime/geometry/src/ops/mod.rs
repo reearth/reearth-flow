@@ -8,7 +8,10 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+pub mod boundary;
 pub mod coerce;
+#[cfg(feature = "new-geometry")]
+pub mod elevation;
 #[cfg(feature = "new-geometry")]
 pub mod footprint;
 pub mod hole;
@@ -16,7 +19,13 @@ pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
+pub(crate) use boundary::{
+    container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
+};
+pub use boundary::{Boundary, ExtractBoundary};
 pub use coerce::{Coerce, CoercionTarget};
+#[cfg(feature = "new-geometry")]
+pub use elevation::Elevation;
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};

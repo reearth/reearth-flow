@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -74,5 +75,25 @@ func TestNodeSubscriberUseCase_ProcessNodeEvent(t *testing.T) {
 		u := NewNodeSubscriberUseCase(mockStorage)
 
 		assert.Error(t, u.ProcessNodeEvent(ctx, nil))
+	})
+
+	t.Run("Error: SaveNodeExecution failure is propagated so the message is nacked", func(t *testing.T) {
+		mockStorage := new(mockNodeStorage)
+		u := NewNodeSubscriberUseCase(mockStorage)
+
+		event := &node.NodeStatusEvent{
+			JobID:  "job-123",
+			NodeID: "node-456",
+			Status: node.StatusCompleted,
+		}
+
+		saveErr := errors.New("storage unavailable")
+		mockStorage.On("SaveToRedis", ctx, event).Return(nil)
+		mockStorage.On("SaveNodeExecution", ctx, "job-123", mock.Anything).Return(saveErr)
+
+		err := u.ProcessNodeEvent(ctx, event)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, saveErr)
+		mockStorage.AssertExpectations(t)
 	})
 }
