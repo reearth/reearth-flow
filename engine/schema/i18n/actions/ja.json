@@ -1003,6 +1003,14 @@
           "title": "Destination Frame",
           "description": "Coordinate frame to convert geometry into."
         }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
+        }
       }
     },
     {

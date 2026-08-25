@@ -2897,75 +2897,38 @@
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
                 "type": "object",
                 "required": [
-                  "epsgCode",
-                  "type"
+                  "crs"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "crs"
-                    ]
-                  },
-                  "epsgCode": {
-                    "title": "EPSG Code",
-                    "description": "EPSG code of the destination coordinate reference system, as a literal or as an expression over the workflow variables.",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/EpsgCodeParam"
+                  "crs": {
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
                       }
-                    ]
+                    }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               {
                 "title": "Euclidean",
                 "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "euclidean"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          "EpsgCodeParam": {
-            "description": "An EPSG code given as a literal or as an expression evaluated once against the workflow variables.",
-            "anyOf": [
-              {
-                "title": "Literal",
-                "description": "The EPSG code itself.",
-                "type": "integer",
-                "format": "uint16",
-                "minimum": 0.0
-              },
-              {
-                "title": "Expression",
-                "description": "An expression yielding the EPSG code; only workflow variables are in scope.",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
+                "type": "string",
+                "enum": [
+                  "euclidean"
+                ]
               }
             ]
           },
