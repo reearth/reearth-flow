@@ -243,7 +243,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
+	// A debug run executes the project without changing it, so anyone who can
+	// see the project may run one. ActionRead is the only rule carrying
+	// reader; ActionAny is writer and above, ActionEdit maintainer and above.
+	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
