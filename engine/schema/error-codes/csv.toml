@@ -11,10 +11,3 @@ category = "io"
 default_disposition = "warn_drop"
 message = "the file contained no data rows"
 help = "Check the file path, and check the header row settings if the file does have data."
-
-[[codes]]
-code = "csv.row_shape_rejected"
-category = "parse"
-default_disposition = "warn_drop"
-message = "sent a row to the rejected port because its field count did not match the header"
-help = "Check the file's delimiter and header row settings; a mismatched field count usually means the wrong delimiter or an incorrect header row count."

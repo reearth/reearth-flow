@@ -1,3 +1,5 @@
+#[cfg(feature = "new-geometry")]
+use crate::errors::GeometryParsingError;
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::csv::{
@@ -105,14 +107,36 @@ pub(crate) async fn read_csv(
     Ok(())
 }
 
-/// Why a row was routed to `rejected` instead of `features`. Distinct error
-/// codes, not just distinct messages: diagnostic messages are discarded in
-/// production, so the code is the only signal a user gets, and "bad geometry"
-/// and "wrong field count" point at very different fixes.
+/// Why a row was routed to `rejected` instead of `features`: its geometry
+/// value was present but failed to parse. A row that is merely short -- so a
+/// configured geometry column has no value on it -- is not this; the row
+/// loop below catches that case (`ColumnNotFound`) and treats it as "no
+/// geometry" instead, sending the feature out `features` like any other.
 #[cfg(feature = "new-geometry")]
 enum RowFailure {
-    Shape,
     Geometry(String),
+}
+
+/// Fails the whole read when a configured geometry column is not in `header`.
+/// A missing *column* is a configuration error, not a row error -- every row
+/// would fail identically, so this belongs up front as one clear error rather
+/// than as a rejection repeated once per row. The message lists the available
+/// columns alongside the missing one, since that is the actionable half.
+#[cfg(feature = "new-geometry")]
+fn validate_geometry_columns(
+    header: &[String],
+    config: &GeometryConfig,
+) -> Result<(), crate::errors::SourceError> {
+    for column in super::csv_geometry::get_geometry_column_names(config) {
+        if !header.contains(&column) {
+            return Err(GeometryParsingError::ConfiguredColumnMissing {
+                column,
+                available: header.join(", "),
+            }
+            .into());
+        }
+    }
+    Ok(())
 }
 
 #[cfg(feature = "new-geometry")]
@@ -132,11 +156,23 @@ pub(crate) async fn read_csv(
     let mut header = read_merged_header(&mut rdr, header_rows)
         .map_err(crate::errors::SourceError::CsvFileReader)?;
 
+    // With a real header (`header_rows >= 1`) it is known before any row is
+    // read, so a misconfigured geometry column is caught right here: the
+    // whole read fails with one clear error instead of every row rejecting
+    // for the same reason. With `header_rows == 0` there is no header yet --
+    // `read_merged_header` returns an empty list, and column names are only
+    // auto-generated from the first data row inside the loop below -- so that
+    // path validates there instead, right after the header is synthesised.
+    if header_rows != 0 {
+        if let Some(config) = &props.geometry {
+            validate_geometry_columns(&header, config)?;
+        }
+    }
+
     let mut data_rows = 0usize;
     // Counted locally and reported once after the loop -- see the comment
-    // above the `report_drop` calls below for why per-row reporting would be
+    // above the `report_drop` call below for why per-row reporting would be
     // wrong here.
-    let mut shape_rejected = 0usize;
     let mut geometry_rejected = 0usize;
 
     for rd in rdr.deserialize() {
@@ -153,6 +189,9 @@ pub(crate) async fn read_csv(
 
         if header_rows == 0 && header.is_empty() {
             header = auto_generate_header(record.len());
+            if let Some(config) = &props.geometry {
+                validate_geometry_columns(&header, config)?;
+            }
         }
 
         let row_map: IndexMap<String, String> = record
@@ -164,54 +203,47 @@ pub(crate) async fn read_csv(
         // `build_csv_reader` sets `flexible(true)`, so the csv crate never
         // enforces a consistent field count on its own (that check applies to
         // every deserialize target, not just fixed-shape ones, and flexible
-        // mode disables it outright). A ragged row -- one whose field count
-        // does not match the header -- is treated the same as any other bad
-        // row: it costs its own row, not the file. The tempting alternative,
-        // aborting the whole read, buys nothing: the scenario it would catch
-        // (a wrong delimiter, a truncated file) makes *every* row ragged, so
-        // every row rejects and the problem is still glaringly obvious. And
-        // aborting would cost the 900,000-row case everything for one bad
-        // line.
-        //
-        // When the shape is wrong the columns may be misaligned, so geometry
-        // is not parsed at all -- parsing out of misaligned columns could
-        // silently produce plausible-but-wrong coordinates. Shape rejection
-        // takes precedence over a geometry failure.
-        let shape_mismatch = record.len() != header.len();
-
-        let (geometry, excluded_columns, failure) = if shape_mismatch {
-            (Geometry::default(), Vec::new(), Some(RowFailure::Shape))
-        } else {
-            match &props.geometry {
-                Some(config) => {
-                    let excluded = super::csv_geometry::get_geometry_column_names(config);
-                    match super::csv_geometry::parse_geometry(&row_map, config) {
-                        Ok(geometry) => (geometry, excluded, None),
-                        // Keep the geometry column(s) in the rejected row's
-                        // attributes instead of excluding them: the error
-                        // message may carry only a truncated copy of the
-                        // offending value (see `annotate_wkt_parse_error` in
-                        // `csv_geometry_next.rs`), so the full original value
-                        // has to be recoverable from the row itself. This
-                        // also brings geometry-failure rejections in line
-                        // with shape-mismatch ones just above, which already
-                        // keep every column. A row that parses successfully
-                        // (the `Ok` arm) still excludes them exactly as
-                        // before, so a good row's attributes never duplicate
-                        // its own geometry column.
-                        Err(why) => (
-                            Geometry::default(),
-                            Vec::new(),
-                            Some(RowFailure::Geometry(why.to_string())),
-                        ),
+        // mode disables it outright). That is fine: varying field counts are
+        // normal in real CSV files. A long row's extra fields have no header
+        // name and are silently dropped by the `header.get(i)` lookup above.
+        // A short row simply has no value for whichever columns it didn't
+        // reach -- the same as any other blank cell -- which is handled below
+        // as the `ColumnNotFound` arm.
+        let (geometry, excluded_columns, failure) = match &props.geometry {
+            Some(config) => {
+                let excluded = super::csv_geometry::get_geometry_column_names(config);
+                match super::csv_geometry::parse_geometry(&row_map, config) {
+                    Ok(geometry) => (geometry, excluded, None),
+                    // The validation above guarantees every configured column
+                    // exists in the header, so a per-row `ColumnNotFound` can
+                    // now only mean the row was too short to reach it (e.g.
+                    // `xColumn` present but `zColumn` fell off the end of a
+                    // short row -- the same case, not a special one). That is
+                    // a value that is simply absent, not one that is present
+                    // and broken, so it is treated like the `Ok` arm above --
+                    // no geometry, not a rejection.
+                    Err(GeometryParsingError::ColumnNotFound(_)) => {
+                        (Geometry::default(), excluded, None)
                     }
+                    // Keep the geometry column(s) in the rejected row's
+                    // attributes instead of excluding them: the error
+                    // message may carry only a truncated copy of the
+                    // offending value (see `annotate_wkt_parse_error` in
+                    // `csv_geometry_next.rs`), so the full original value has
+                    // to be recoverable from the row itself. A row that
+                    // parses successfully (the `Ok` arm) still excludes them
+                    // exactly as before, so a good row's attributes never
+                    // duplicate its own geometry column.
+                    Err(why) => (
+                        Geometry::default(),
+                        Vec::new(),
+                        Some(RowFailure::Geometry(why.to_string())),
+                    ),
                 }
-                None => (Geometry::default(), Vec::new(), None),
             }
+            None => (Geometry::default(), Vec::new(), None),
         };
 
-        let record_len = record.len();
-        let header_len = header.len();
         let attributes = row_map
             .into_iter()
             .filter(|(k, _)| !excluded_columns.contains(k))
@@ -223,16 +255,6 @@ pub(crate) async fn read_csv(
 
         let port = match failure {
             None => FEATURES_PORT.clone(),
-            Some(RowFailure::Shape) => {
-                feature.insert(
-                    GEOMETRY_ERROR_ATTRIBUTE,
-                    AttributeValue::String(format!(
-                        "record has {record_len} fields but the header has {header_len}"
-                    )),
-                );
-                shape_rejected += 1;
-                REJECTED_PORT.clone()
-            }
             Some(RowFailure::Geometry(message)) => {
                 feature.insert(GEOMETRY_ERROR_ATTRIBUTE, AttributeValue::String(message));
                 geometry_rejected += 1;
@@ -255,15 +277,12 @@ pub(crate) async fn read_csv(
     // event, published immediately.
     //
     // Calling it per row would mean one event per rejected row -- a
-    // 900,000-row file with every row ragged would emit 900,000 events. That
-    // is not what the diagnostic is for: it exists only as a backstop so a
-    // disconnected `rejected` port doesn't lose rows in total silence, which
-    // needs exactly one signal per run, not one per row. So rejections are
-    // counted locally in the loop above and reported at most once per
-    // failure kind here, after it.
-    if shape_rejected > 0 {
-        ctx.report_drop(ErrorCode::CsvRowShapeRejected, None, None);
-    }
+    // 900,000-row file with every row's geometry value unparseable would
+    // emit 900,000 events. That is not what the diagnostic is for: it exists
+    // only as a backstop so a disconnected `rejected` port doesn't lose rows
+    // in total silence, which needs exactly one signal per run, not one per
+    // row. So rejections are counted locally in the loop above and reported
+    // at most once here, after it.
     if geometry_rejected > 0 {
         ctx.report_drop(ErrorCode::CsvGeometryRejected, None, None);
     }
@@ -441,39 +460,155 @@ mod tests {
         assert!(on_port(&sent, &REJECTED_PORT).is_empty());
     }
 
-    /// A ragged row -- one whose field count doesn't match the header -- is a
-    /// bad row like any other: it costs its own row, not the file. The
-    /// columns may be misaligned, so its error names the shape mismatch
-    /// rather than attempting (and possibly silently mis-parsing) geometry.
+    /// A long row -- more fields than the header -- is not a bad row at all.
+    /// Its extra fields simply have no header name and are dropped, same as
+    /// before; the row still gets its geometry and goes out `features`.
     #[tokio::test]
-    async fn a_ragged_row_is_rejected_and_the_others_survive() {
-        // A row with more fields than the header.
-        let csv = "name,lon,lat\na,1.0,2.0\nb,1.0,2.0,3.0,4.0\nc,3.0,4.0\n";
+    async fn a_long_row_still_has_its_extra_fields_dropped_and_is_not_rejected() {
+        let csv = "name,lon,lat\na,1.0,2.0\nb,3.0,4.0,extra,fields\nc,5.0,6.0\n";
         let sent = run(csv, &param(Some(coords_geometry()))).await;
 
-        assert_eq!(on_port(&sent, &FEATURES_PORT).len(), 2);
-        let rejected = on_port(&sent, &REJECTED_PORT);
-        assert_eq!(rejected.len(), 1);
-        let error = rejected[0]
-            .get(GEOMETRY_ERROR_ATTRIBUTE)
-            .expect("the error attribute must be present")
-            .to_string();
-        assert!(error.contains('5'), "{error}"); // 5 fields sent
-        assert!(error.contains('3'), "{error}"); // header has 3
+        assert_eq!(on_port(&sent, &FEATURES_PORT).len(), 3);
+        assert!(on_port(&sent, &REJECTED_PORT).is_empty());
     }
 
-    /// The wrong-delimiter (or badly-configured header) case: every row is
-    /// ragged. Recovery still applies per row rather than aborting -- the
-    /// problem is glaringly obvious from an all-rejected result, and nothing
-    /// about it justifies losing the whole file.
+    /// A short row -- fewer fields than the header -- leaves a configured
+    /// geometry column with no value on that row. That is a blank, not a
+    /// broken value: the feature goes out `features` with no geometry,
+    /// exactly like an explicit blank cell, rather than being rejected.
     #[tokio::test]
-    async fn a_file_where_every_row_is_ragged_rejects_every_row_and_still_succeeds() {
-        // Every data row has a different field count than the 3-column header.
-        let csv = "name,lon,lat\na,1.0\nb,2.0,3.0,4.0\nc,5.0\n";
+    async fn a_short_row_missing_its_geometry_column_yields_no_geometry_on_the_normal_port() {
+        let csv = "name,lon,lat\na,1.0,2.0\nb,3.0\nc,5.0,6.0\n";
         let sent = run(csv, &param(Some(coords_geometry()))).await;
 
-        assert!(on_port(&sent, &FEATURES_PORT).is_empty());
-        assert_eq!(on_port(&sent, &REJECTED_PORT).len(), 3);
+        assert!(on_port(&sent, &REJECTED_PORT).is_empty());
+        let features = on_port(&sent, &FEATURES_PORT);
+        assert_eq!(features.len(), 3);
+
+        let short_row = features
+            .iter()
+            .find(|f| f.get("name").map(|v| v.to_string()) == Some("b".to_string()))
+            .expect("the short row must still produce a feature");
+        assert_eq!(*short_row.geometry, Geometry::None);
+        assert!(
+            short_row.get("lon").is_none(),
+            "the geometry column is still excluded from attributes, as for any other row"
+        );
+    }
+
+    /// The same short-row case for `zColumn`: `xColumn` reaches the row,
+    /// `zColumn` falls off the end. No special-casing by which column is
+    /// missing -- it is still just "no geometry".
+    #[tokio::test]
+    async fn a_short_row_missing_only_its_z_column_still_yields_no_geometry() {
+        let config = GeometryConfig {
+            mode: GeometryMode::Coordinates {
+                x_column: "lon".to_string(),
+                y_column: "lat".to_string(),
+                z_column: Some("h".to_string()),
+            },
+            epsg: None,
+        };
+        let csv = "name,lon,lat,h\na,1.0,2.0\n";
+        let sent = run(csv, &param(Some(config))).await;
+
+        assert!(on_port(&sent, &REJECTED_PORT).is_empty());
+        let features = on_port(&sent, &FEATURES_PORT);
+        assert_eq!(features.len(), 1);
+        assert_eq!(*features[0].geometry, Geometry::None);
+    }
+
+    /// The safety net a shape check used to provide: a wrong delimiter (or a
+    /// truncated header) collapses every field on the header line into one,
+    /// so the configured geometry column can never be found in it. That is a
+    /// configuration error, so it must still fail the whole read loudly,
+    /// rather than degrading into a per-row "no geometry" for every single
+    /// row.
+    #[tokio::test]
+    async fn a_wrong_delimiter_still_fails_the_read_via_the_missing_column_check() {
+        // Comma-delimited content read with a tab-delimited reader: the
+        // entire header line becomes a single field.
+        let csv = "name,lon,lat\na,1.0,2.0\n";
+        let content = Bytes::from(csv.to_string());
+        let (tx, _rx) = mpsc::channel(64);
+        let result = read_csv(
+            Delimiter::Tab,
+            &content,
+            &param(Some(coords_geometry())),
+            None,
+            tx,
+            &NodeContext::default(),
+        )
+        .await;
+
+        let error = result
+            .expect_err("a wrong delimiter must fail the read")
+            .to_string();
+        assert!(error.contains("lon"), "{error}");
+        assert!(error.contains("name,lon,lat"), "{error}");
+    }
+
+    /// A configured geometry column that isn't in the header at all is a
+    /// configuration error, not a row error -- every row would fail
+    /// identically, so the whole read fails up front with one message naming
+    /// the missing column and listing what is actually available, rather than
+    /// rejecting every row for the same reason.
+    #[tokio::test]
+    async fn a_missing_configured_column_fails_the_read_naming_it_and_the_available_columns() {
+        let csv = "name,longitude,latitude\na,1.0,2.0\n";
+        let content = Bytes::from(csv.to_string());
+        let (tx, _rx) = mpsc::channel(64);
+        let result = read_csv(
+            Delimiter::Comma,
+            &content,
+            &param(Some(coords_geometry())), // configured for "lon"/"lat"
+            None,
+            tx,
+            &NodeContext::default(),
+        )
+        .await;
+
+        let error = result
+            .expect_err("a missing configured column must fail the read")
+            .to_string();
+        assert!(error.contains("lon"), "{error}");
+        assert!(error.contains("longitude"), "{error}");
+        assert!(error.contains("latitude"), "{error}");
+        assert!(error.contains("name"), "{error}");
+    }
+
+    /// The same check in `headerRows: 0` mode, where column names don't exist
+    /// until they are auto-generated from the first data row. The failure
+    /// still has to land on that first row, not silently pass through to
+    /// every later one.
+    #[tokio::test]
+    async fn a_missing_configured_column_fails_the_read_with_auto_generated_headers() {
+        let params = CsvReaderParam {
+            offset: None,
+            header_rows: Some(0),
+            geometry: Some(wkt_geometry("geom")),
+        };
+        let csv = "a,1.0\nb,2.0\n";
+        let content = Bytes::from(csv.to_string());
+        let (tx, _rx) = mpsc::channel(64);
+        let result = read_csv(
+            Delimiter::Comma,
+            &content,
+            &params,
+            None,
+            tx,
+            &NodeContext::default(),
+        )
+        .await;
+
+        let error = result
+            .expect_err(
+                "a missing configured column must fail the read even with auto-generated headers",
+            )
+            .to_string();
+        assert!(error.contains("geom"), "{error}");
+        assert!(error.contains("column1"), "{error}");
+        assert!(error.contains("column2"), "{error}");
     }
 
     /// A WKT parse failure has to name the offending column and repeat the

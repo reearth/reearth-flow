@@ -49,13 +49,6 @@
     "help": "Check the file path, and check the header row settings if the file does have data."
   },
   {
-    "code": "csv.row_shape_rejected",
-    "category": "parse",
-    "defaultDisposition": "warn_drop",
-    "message": "sent a row to the rejected port because its field count did not match the header",
-    "help": "Check the file's delimiter and header row settings; a mismatched field count usually means the wrong delimiter or an incorrect header row count."
-  },
-  {
     "code": "czml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
