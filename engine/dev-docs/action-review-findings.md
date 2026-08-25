@@ -435,11 +435,15 @@ Center Point Replacer
 
 ### Still to verify
 
-Behavioural claims not yet traced to a code path (7): `Attribute Aggregator.calculationValue`
+Behavioural claims not yet traced to a code path (6): `Attribute Aggregator.calculationValue`
 precedence · `Statistics Calculator.groupBy` single-group · `Image Rasterizer.onOverlap`
-arrival-order default · `JSON Writer.converter` omitted-case · `Shapefile Reader.encoding`
-case-insensitivity · `Directory Decompressor.findDeepestSingleFolder` · `Cesium 3D Tiles
-Writer.targetTileSize` merge behaviour.
+arrival-order default · `JSON Writer.converter` omitted-case ·
+`Directory Decompressor.findDeepestSingleFolder` · `Cesium 3D Tiles Writer.targetTileSize`
+merge behaviour.
+
+`Shapefile Reader.encoding` case-insensitivity is **verified accurate** — `Encoding::from_name`
+upper-cases before matching the UTF-8 and UTF-16 labels, and `encoding_rs::Encoding::for_label`
+is ASCII-case-insensitive by specification for everything else.
 
 Stated-default mismatches to adjudicate (3, all likely wording rather than defect):
 `Footprint Replacer.projectionPlane` · `Geometry Validator.degenerateThresholds` ·
@@ -458,16 +462,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **69** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **70** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 69 | — |
+| Exposed and audited | 70 | — |
 | Does not run in the shipped build | 21 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **12** | An engine-side §8 pass — the list below |
+| **Pending audit** | **11** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -491,23 +495,11 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 12 actions, with preliminary findings
+### Pending audit — 11 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
-
-#### Newly eligible — its port landed (1)
-
-```
-Elevation Extractor
-  runs:    Ported in #2384 (2026-08-21), so it now has a `#[cfg(feature = "new-geometry")]`
-             process and runs in the shipped build. That was its trigger for leaving the
-             does-not-run bucket, so it is recorded here rather than left to expire silently.
-  scan:    NOT scanned. Everything else in this list carries preliminary findings from an
-             earlier schema pass; this one was in the unported bucket then, so it has had no
-             review of any kind. Budget a full §8 pass, not a re-check.
-```
 
 #### Group C — CSG pair and Excel Writer (3)
 
@@ -671,6 +663,74 @@ user-facing text today, but it must be fixed before either is re-exposed.
 - Fail when a parameter in `actions.json` lacks a `description`. Would have caught all four
   dead GeoPackage Reader parameters in 2025. Start description-only — a `title` rule needs the
   Group B/C/D cleanup above to land first.
+
+**7. The readers' file path renders last, on 6 of 9.** `schemars` appends `#[serde(flatten)]`
+properties *after* the struct's own, so a reader that flattens `FileReaderCommonParam` first and
+declares format options after it emits `dataset`/`inline` at the END of the schema. §3.5 wants
+required and commonly-adjusted parameters first, and the file path is the one parameter every
+reader needs. Confirmed order today:
+
+| Reader | Schema order |
+|---|---|
+| Shapefile Reader | `encoding, force2D, allowEmptyPath, dataset, inline` |
+| CZML Reader | `force2d, skipDocumentPacket, timeSampling, dataset, inline` |
+| GeoPackage Reader | `readMode, layerName, force2D, dataset, inline` |
+| OBJ Reader | `parseMaterials, materialFile, triangulate, mergeGroups, includeTexcoords, dataset, inline` |
+| glTF Reader | `mergeMeshes, includeNodes, featureClassAttribute, featureGranularity, dataset, inline` |
+| CSV Reader | `format, encoding, dataset, inline, offset, headerRows, geometry` |
+
+`CityGML Reader`, `GeoJSON Reader` and `JSON Reader` are correct only incidentally — they
+declare nothing but flattened params, so there is nothing for schemars to put in front.
+
+**Fix:** declare `dataset`/`inline` on each reader's own param struct instead of flattening, and
+build `FileReaderCommonParam` in `build`. Deliberately NOT fixed for `Shapefile Reader` alone —
+a lone correct reader is worse than six consistent ones, and §6's "check the siblings" reasoning
+applies to ordering too. **Trigger:** a PR that takes all six together.
+
+**8. `inline` cannot work on any binary-format reader.** `FileReaderCommonParam::compile`
+evaluates `inline` to a `String` and wraps it with `Bytes::from`, so the parameter can only ever
+carry UTF-8 text. `Shapefile Reader` rejects anything that is not a ZIP archive
+(`archive::is_zip`, then `ShapefileError::DirectBytesNotSupported`), so no value a user can write
+will read. The same reasoning covers `GeoPackage Reader` (SQLite), `glTF Reader` (`.glb`) and
+`OBJ Reader`'s material sidecars. This is the §"How to use" dead-parameter class: the UI offers a
+control the code cannot honour.
+
+**Fix:** drop `inline` from the readers whose formats are binary, which means splitting
+`FileReaderCommonParam` into a text-capable and a path-only form. Same trigger as finding 7 and
+best done in the same PR, since both change the same structs.
+
+---
+
+### Deferred: Shapefile Writer output naming (its own PR — Kyle, 2026-08-25)
+
+```
+Shapefile Writer
+  impl:    `output` does not name the output file. It is `create_dir_all`'d as a DIRECTORY
+             (pipeline.rs:43-47) and each file set inside it is named after the `groupBy` key
+             (`key.to_string()`, pipeline.rs:69). With no `groupBy` the key is
+             `AttributeValue::Null`, whose `Display` is the literal `"null"`
+             (common/src/attribute.rs:247). So `output: roads.shp` writes a directory named
+             `roads.shp` containing `null.shp`, `null.shx`, `null.dbf` and `null.cpg`, and there
+             is no way to name the file at all without grouping. All five PLATEAU4 08-dem nodes
+             pass a `.shp` filename and get exactly this.
+  scope:   NOT a port regression — legacy `shapefile/pipeline.rs:72-73` is identical, so this
+             predates new-geometry. The port carried it forward faithfully.
+  tests:   The new-geometry writer has NO workflow coverage. All eight `08-dem` test cases are
+             `"skipNewGeometry": true`, so nothing has run this path end-to-end. Any fix must
+             land that coverage with it, or it is unverified twice over.
+  fix:     Give the writer a real naming scheme — `output`'s stem names the file set, `groupBy`
+             appends a suffix — and migrate the 08-dem fixtures. Behaviour-changing and
+             user-visible, so it wants its own PR with the fixtures regenerated deliberately.
+  interim: This PR documents what the code does today rather than what the parameter name
+             suggests, so the surface stops lying while the fix is pending. Re-word both
+             `output` and `groupBy` again when the scheme changes.
+  desc:    Also undocumented, and left so: the writer silently drops point clouds, CSG trees,
+             all but the first kind of a mixed collection, and array/map/byte attribute values,
+             each with a warning (see `shapefile_next.rs`'s module doc). Worth surfacing once
+             the naming is settled, since both touch the same text.
+```
+
+**Trigger:** none pending — this is ready to start whenever it is picked up.
 
 ---
 
