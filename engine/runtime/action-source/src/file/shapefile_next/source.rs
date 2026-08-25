@@ -33,7 +33,8 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)."
+        "Reads features from a shapefile packaged in a ZIP archive. The archive must hold a \
+         .shp and a .dbf sharing one name."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -111,10 +112,10 @@ pub(super) struct ShapefileReader {
     params: ShapefileReaderCompiledParam,
 }
 
-/// # ShapefileReader Parameters
+/// # Shapefile Reader Parameters
 ///
-/// Configuration for reading Shapefile archives as geographic features.
-/// Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).
+/// Sets which archive is read, the encoding of its attribute table, and whether elevations are
+/// kept.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ShapefileReaderParam {
@@ -124,12 +125,14 @@ pub(super) struct ShapefileReaderParam {
     /// Character encoding for attribute data in the DBF file, such as "UTF-8", "Shift-JIS", or "Windows-1252"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, else from the code page the .dbf header declares, otherwise UTF-8 (UTF-16 is not supported).
     pub(super) encoding: Option<String>,
     /// # Force 2D
-    /// If true, forces all geometries to be 2D (ignoring Z values).
+    /// If true, drops elevations and reads every geometry as 2D. The read fails on a multipatch,
+    /// which describes a surface in space and has no 2D form.
     #[serde(default, rename = "force2D", alias = "force2d")]
     pub(super) force_2d: bool,
-    /// # Allow Null Path
-    /// If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.
-    #[serde(default, alias = "allowEmptyPath")]
+    /// # Allow Empty Path
+    /// If true, a dataset path that is empty or null yields no features instead of failing,
+    /// allowing an optional shapefile input.
+    #[serde(default)]
     pub(super) allow_empty_path: bool,
 }
 
