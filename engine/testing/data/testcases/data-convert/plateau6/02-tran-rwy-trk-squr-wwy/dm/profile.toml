@@ -1,1 +1,35 @@
+# To test:
+# - DmG attributes/geometry test
+# - trk geometry/attributes smoke test
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_trk.zip"
+
+[convs.mvt_attributes.dm]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_dm_geometric_attributes"
+truth_path = "dm_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.dm.casts]
+".attributes" = "json"
+
+[convs.mvt_png.dm]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_dm_geometric_attributes"
+truth_path = "dm_png_truth"
+generate_truth = true
+tiles = ["17/116548/51431"]
+
+[tests.json_attributes_v2.dm]
+path = "dm_truth.json"
+
+[tests.raster.dm]
+threshold = 0.001
+
+[convs.cesium_attributes.trk_lod2]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_trk_3dtiles_lod2"
+truth_path = "trk_lod2_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.trk_lod2.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.trk_lod2]
+path = "trk_lod2_truth.json"

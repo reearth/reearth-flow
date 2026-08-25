@@ -92,6 +92,11 @@ pub struct Parser {
     /// file with no entry declared no (or an unrecognized) srsName.
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
     version: CityGmlVersion,
+    /// Counter for synthesizing a `gml:id` on `extract_tags`-matched elements that have none.
+    pub(super) synthetic_gml_id_seq: u64,
+    /// Tags `strip()` may synthesize a `gml:id` for; same set the reader will later hoist
+    /// with `flatten::extract`.
+    pub(super) extract_tags: std::collections::HashSet<String>,
 }
 
 impl std::fmt::Debug for Parser {
@@ -106,12 +111,15 @@ impl std::fmt::Debug for Parser {
 
 impl Parser {
     pub fn new(version: CityGmlVersion) -> Self {
-        Self::with_owner_tracking(true, version)
+        Self::with_owner_tracking(true, version, Default::default())
     }
 
-    /// A parser that records geometry owner `gml:id`s only when `track_owners` is
-    /// set; leave it off unless `flatten` will hoist children.
-    pub(super) fn with_owner_tracking(track_owners: bool, version: CityGmlVersion) -> Self {
+    /// `extract_tags` is the set `strip()` may synthesize a `gml:id` for.
+    pub(crate) fn with_owner_tracking(
+        track_owners: bool,
+        version: CityGmlVersion,
+        extract_tags: std::collections::HashSet<String>,
+    ) -> Self {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
@@ -121,6 +129,8 @@ impl Parser {
             track_owners,
             srs_by_file: HashMap::new(),
             version,
+            synthetic_gml_id_seq: 0,
+            extract_tags,
         }
     }
 

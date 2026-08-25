@@ -82,6 +82,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             .map_err(|e| FeatureProcessorError::FileCityGml2ReaderFactory(format!("{e:?}")))?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
+        let parser = Parser::with_owner_tracking(true, CityGmlVersion::V2, extract_tags.clone());
 
         Ok(Box::new(FeatureCityGml2Reader {
             dataset,
@@ -91,7 +92,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
             inherit_input_attributes: params.inherit_input_attributes,
-            parser: Parser::new(CityGmlVersion::V2),
+            parser,
             base_attributes: HashMap::new(),
         }))
     }
@@ -178,7 +179,11 @@ impl Clone for FeatureCityGml2Reader {
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             inherit_input_attributes: self.inherit_input_attributes,
-            parser: Parser::new(CityGmlVersion::V2),
+            parser: Parser::with_owner_tracking(
+                true,
+                CityGmlVersion::V2,
+                self.extract_tags.clone(),
+            ),
             base_attributes: HashMap::new(),
         }
     }
@@ -238,8 +243,10 @@ impl Processor for FeatureCityGml2Reader {
         } else {
             Vec::new()
         };
+        let next_parser =
+            Parser::with_owner_tracking(true, CityGmlVersion::V2, self.extract_tags.clone());
         for feature in build_features(
-            std::mem::replace(&mut self.parser, Parser::new(CityGmlVersion::V2)),
+            std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),

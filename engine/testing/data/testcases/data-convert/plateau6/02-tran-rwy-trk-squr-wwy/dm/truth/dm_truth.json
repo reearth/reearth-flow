@@ -1,0 +1,16 @@
+{
+  "_synid1": {
+    "urc:shapeType": "非区分（下記に該当しない全データ）",
+    "attributes": {
+      "urc:shapeType": "非区分（下記に該当しない全データ）",
+      "urc:geometryType": "線",
+      "urc:mapLevel": "地図情報レベル2500"
+    },
+    "urc:mapLevel": "地図情報レベル2500",
+    "urc:geometryType": "線",
+    "feature_type": "urc:DmGeometricAttribute",
+    "gml_id": "_synid1",
+    "parent_gml_id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
+    "city_code": "08220"
+  }
+}
