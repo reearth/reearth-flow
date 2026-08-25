@@ -458,9 +458,7 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	if statusChanged {
 		currentJob.SetStatus(currentJob.Status())
 
-		// Must persist before the Redis event is deleted below — the job
-		// still goes terminal in Save regardless, so a persist failure here
-		// permanently drops the diagnostics once the event's 24h TTL expires.
+		// Must run before the event is deleted below, or a failure here loses the diagnostics.
 		diagnosticsPersisted := true
 		if workerEvent != nil {
 			if err := i.persistTerminalDiagnostics(ctx, currentJob.ID(), workerEvent); err != nil {

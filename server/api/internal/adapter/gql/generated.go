@@ -3983,21 +3983,12 @@ extend type Mutation {
   executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/diagnostic.graphql", Input: `"""
-A single structured diagnostic emitted by the engine: a per-feature error or
-warning, a finish()-time aggregated summary, or a terminal per-node failure.
-category/severity/effectiveDisposition are plain strings, not GraphQL enums,
-so newer engine-emitted values survive a round trip without breaking older
-API clients.
-"""
+	{Name: "../../../gql/diagnostic.graphql", Input: `"A structured diagnostic from the engine. Enum-like fields are Strings so new engine values do not break clients."
 type Diagnostic {
   code: String!
   category: String!
   severity: String!
-  """
-  The authoritative fatality signal for this diagnostic. ` + "`" + `severity` + "`" + ` is
-  display-only and must never be used to infer whether the run failed.
-  """
+  "The authoritative fatality signal; severity is display-only."
   effectiveDisposition: String
   nodeId: String
   actionType: String
@@ -4095,9 +4086,7 @@ enum JobStatus {
   CANCELLED
   COMPLETED
   FAILED
-  """
-  Never emitted by the runtime; retained for API compatibility.
-  """
+  "Never emitted by the runtime; retained for API compatibility."
   PENDING
   RUNNING
 }
@@ -4176,29 +4165,16 @@ extend type Subscription {
   startedAt: DateTime
   completedAt: DateTime
   diagnostics: [Diagnostic!]
-  """
-  Successfully processed feature count. Populated for processor nodes on
-  terminal status; sink/source nodes and non-terminal executions report
-  null, not 0 — don't infer node kind from nullness alone.
-  """
+  "Processed feature count for processor nodes; null until the node is terminal."
   featuresProcessed: Int
-  """
-  Successfully written feature count. Populated for sink nodes on terminal
-  status; processor/source nodes and non-terminal executions report null.
-  """
+  "Written feature count for sink nodes; null until the node is terminal."
   featuresWritten: Int
-  """
-  Feature count emitted during finish() — meaningful for accumulating
-  processor actions that flush at finish rather than per-feature. Populated
-  for processor nodes on terminal status; otherwise null.
-  """
+  "Features emitted during finish() by accumulating processors; null until the node is terminal."
   finishFeatureCount: Int
 }
 
 enum NodeStatus {
-  """
-  Never emitted by the runtime; retained for API compatibility.
-  """
+  "Never emitted by the runtime; retained for API compatibility."
   PENDING
   STARTING
   PROCESSING

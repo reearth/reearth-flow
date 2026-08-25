@@ -26,8 +26,7 @@ func NewDiagnosticLoader(usecase interfaces.NodeDiagnostics) *DiagnosticLoader {
 	return &DiagnosticLoader{usecase: usecase}
 }
 
-// Safe because GetJobDiagnostics is a strict superset of any single node's
-// rows, with the same permission scope.
+// Loads the whole job's rows and filters: a superset under the same permission scope.
 func (l *DiagnosticLoader) GetNodeDiagnostics(ctx context.Context, jobID gqlmodel.ID, nodeID string) ([]*gqlmodel.Diagnostic, error) {
 	jId, err := id.JobIDFrom(string(jobID))
 	if err != nil {

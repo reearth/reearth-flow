@@ -28,8 +28,7 @@ type Redis interface {
 	GetNodeExecution(ctx context.Context, jobID id.JobID, nodeID string) (*graph.NodeExecution, error)
 	GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*JobCompleteEvent, error)
 	DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error
-	// Both return (nil, nil) for a missing/empty key — LRANGE on an absent
-	// key is an empty list, not an error.
+	// Both return (nil, nil) for a missing key rather than an error.
 	GetNodeDiagnostics(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error)
 	GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
 }

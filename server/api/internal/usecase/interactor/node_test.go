@@ -15,10 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockNodeExecutionsRedis is a dedicated gateway.Redis fake for
-// TestNodeExecution_GetNodeExecutions: the shared mocks in this package
-// (mockDiagnosticsRedis, mockCheckStatusRedis) always return nil for
-// GetNodeExecutions, so this one lets the result and error be configured.
+// Unlike the shared mocks in this package, this one lets GetNodeExecutions be configured.
 type mockNodeExecutionsRedis struct {
 	err            error
 	nodeExecutions []*graph.NodeExecution

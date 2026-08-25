@@ -16,6 +16,7 @@ const (
 	StatusFailed     Status = "FAILED"
 )
 
+// The feature-count fields are nil until the node is terminal, and 0 when its kind doesn't report them.
 type NodeExecution struct {
 	startedAt          *time.Time
 	completedAt        *time.Time
@@ -66,20 +67,14 @@ func (e *NodeExecution) CompletedAt() *time.Time {
 	return e.completedAt
 }
 
-// 0 for sink nodes (not applicable); nil means not-yet-terminal — don't
-// infer node kind from a 0 value.
 func (e *NodeExecution) FeaturesProcessed() *int {
 	return e.featuresProcessed
 }
 
-// 0 for processor nodes (not applicable); nil means not-yet-terminal —
-// don't infer node kind from a 0 value.
 func (e *NodeExecution) FeaturesWritten() *int {
 	return e.featuresWritten
 }
 
-// 0 for sink nodes (not applicable); nil means not-yet-terminal — don't
-// infer node kind from a 0 value.
 func (e *NodeExecution) FinishFeatureCount() *int {
 	return e.finishFeatureCount
 }

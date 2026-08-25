@@ -17,7 +17,7 @@ type DiagnosticEvent struct {
 	WireDiagnostic
 }
 
-// Only schema and jobId are validated; Category/Severity/EffectiveDisposition round-trip unvalidated.
+// Only schema and jobId are validated; the rest round-trips unvalidated.
 func NewDiagnosticEvent(
 	schema string,
 	workflowID string,

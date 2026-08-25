@@ -106,9 +106,7 @@ func TestRedisStorage_SaveNodeEventToRedis_HashError(t *testing.T) {
 	assert.Equal(t, []string{"Set", "HSet"}, mClient.calls)
 }
 
-// nodeStatusTerminalFixturePath is shared, by design, with the api side
-// (api/internal/infrastructure/redis/node_test.go): it pins that
-// `NodeMetrics` fields survive subscriber -> Redis -> api unchanged.
+// Shared with the api's node_test.go: pins that metrics survive the Redis hop.
 const nodeStatusTerminalFixturePath = "../../../../testdata/node/node_status_terminal.json"
 
 func TestRedisStorage_SaveNodeEventToRedis_WithMetrics_MatchesSharedFixture(t *testing.T) {
@@ -145,8 +143,6 @@ func TestRedisStorage_SaveNodeEventToRedis_WithMetrics_MatchesSharedFixture(t *t
 	assert.NoError(t, err)
 	mClient.AssertExpectations(t)
 
-	// Compare the individual node key's Set payload against the shared
-	// fixture (the wire shape api's NodeEntry unmarshals from).
 	var setCall *mock.Call
 	for i, c := range mClient.Calls {
 		if c.Method == "Set" {

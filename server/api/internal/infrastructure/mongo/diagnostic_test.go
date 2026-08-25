@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mongotest.Connect self-skips without a test DB URI: runs under CI's ci-api-test job, not plain `make test`.
+// mongotest.Connect self-skips without a test DB URI; CI's ci-api-test job supplies one.
 func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
@@ -90,7 +90,7 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 	})
 
 	t.Run("SaveTerminalDiagnostics upserts the same failed-node row idempotently", func(t *testing.T) {
-		// Redelivery of the same JobCompleteEvent must not duplicate rows: the deterministic ID upserts in place.
+		// Redelivery must not duplicate: the deterministic ID upserts in place.
 		require.NoError(t, r.SaveTerminalDiagnostics(
 			ctx, jobID, workflowID, now,
 			[]*diagnostic.Diagnostic{failedNode},
@@ -102,7 +102,7 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		require.Len(t, got, 3)
 	})
 
-	// FindByJobID does not dedupe live vs. terminal copies; that's the caller's (GetFailedNodes) job.
+	// FindByJobID does not dedupe; that is GetFailedNodes' job.
 	t.Run("a fatal persisted via both the live and terminal paths is distinguishable only by Terminal()", func(t *testing.T) {
 		dupJobID := id.NewJobID()
 		dupNode := "subgraph-a.node-9"
@@ -175,7 +175,7 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		assert.Nil(t, got)
 	})
 
-	// The nodeId bson field must carry the "_job" sentinel too (mirroring the ID's "_job" segment); FindByJobNodeID("") depends on it.
+	// The nodeId field must carry the "_job" sentinel, not just the ID segment.
 	t.Run("FindByJobNodeID with empty nodeID finds a subscriber-written job-level row", func(t *testing.T) {
 		jobLevelJobID := id.NewJobID()
 		nodeSegment := mongodoc.JobDiagnosticNodeSegment

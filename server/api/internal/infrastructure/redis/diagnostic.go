@@ -12,8 +12,7 @@ import (
 	reearth_log "github.com/reearth/reearthx/log"
 )
 
-// WireDiagnostic is embedded, not nested — needed to match the subscriber's
-// flattened JSON shape on Unmarshal.
+// WireDiagnostic is embedded, not nested, to match the subscriber's flat JSON shape.
 type DiagnosticEntry struct {
 	Timestamp  time.Time `json:"timestamp"`
 	WorkflowID string    `json:"workflowId"`
@@ -52,8 +51,7 @@ func (r *redisLog) GetJobDiagnostics(
 }
 
 func (r *redisLog) getDiagnosticsList(ctx context.Context, key string) ([]*diagnostic.Diagnostic, error) {
-	// LRANGE on a missing key returns an empty slice, not an error (unlike
-	// GET's redis.Nil).
+	// LRANGE on a missing key returns an empty slice, not redis.Nil.
 	vals, err := r.client.LRange(ctx, key, 0, -1).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to lrange redis key=%s: %w", key, err)

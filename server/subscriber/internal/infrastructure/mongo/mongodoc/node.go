@@ -7,10 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// NodeExecutionDocument mirrors the api-side `mongo/mongodoc.NodeExecutionDocument`
-// for the shared `nodeExecutions` collection: the metrics fields are stored
-// flat (not nested under a `metrics` sub-document), matching that side's
-// existing startedAt/completedAt shape.
+// Mirrors the api-side NodeExecutionDocument; metrics are stored flat, not nested.
 type NodeExecutionDocument struct {
 	ID                 string     `bson:"id"`
 	JobID              string     `bson:"jobId"`

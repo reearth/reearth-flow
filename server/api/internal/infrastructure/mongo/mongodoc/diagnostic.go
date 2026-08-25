@@ -7,8 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// Mirrors (bson field-for-field) the subscriber's mongodoc.DiagnosticDocument
-// — keep tags in lockstep with that file.
 type diagnosticSourceSpanDocument struct {
 	Length *uint `bson:"length,omitempty"`
 	Offset uint  `bson:"offset"`
@@ -19,9 +17,7 @@ type diagnosticAggregateInfoDocument struct {
 	Count            uint64   `bson:"count"`
 }
 
-// Terminal rows (see NewFailedNodeDocument / NewAggregatedDiagnosticDocument)
-// use a deterministic ID, not a random suffix, so redeliveries upsert
-// instead of duplicating.
+// bson tags mirror the subscriber's DiagnosticDocument field-for-field.
 type DiagnosticDocument struct {
 	Timestamp            time.Time                        `bson:"timestamp"`
 	Aggregated           *diagnosticAggregateInfoDocument `bson:"aggregated,omitempty"`
@@ -41,8 +37,7 @@ type DiagnosticDocument struct {
 	Message              string                           `bson:"message"`
 }
 
-// Mirrors the subscriber's constant — keep in lockstep. Model() strips it
-// back to nil before it reaches GraphQL.
+// Mirrors the subscriber's constant; Model() strips it back to nil.
 const JobDiagnosticNodeSegment = "_job"
 
 func normalizedNodeSegment(nodeID *string) string {
@@ -109,6 +104,7 @@ func NewAggregatedDiagnosticDocument(jobID id.JobID, workflowID string, d *diagn
 	return newTerminalDiagnosticDocument(jobID, workflowID, d, "aggregated")
 }
 
+// The ID is deterministic so redeliveries upsert instead of duplicating.
 func newTerminalDiagnosticDocument(jobID id.JobID, workflowID string, d *diagnostic.Diagnostic, kind string) DiagnosticDocument {
 	nodeSegment := normalizedNodeSegment(d.NodeID())
 
@@ -139,9 +135,7 @@ func newTerminalDiagnosticDocument(jobID id.JobID, workflowID string, d *diagnos
 	return doc
 }
 
-// Deliberately doesn't reuse DiagnosticDocument's shape: the
-// {"code": {"$exists": true}} filter in FindByJobNodeID/FindByJobID relies
-// on this row having no code field.
+// Has no code field on purpose: the diagnostic queries filter summary rows out on its absence.
 type JobDiagnosticsSummaryDocument struct {
 	Timestamp         time.Time `bson:"timestamp"`
 	DroppedEventCount *uint64   `bson:"droppedEventCount,omitempty"`
@@ -166,8 +160,6 @@ func NewJobDiagnosticsSummaryDocument(
 	}
 }
 
-// DroppedEventCount is never nil here: SaveTerminalDiagnostics only writes
-// this row when it's non-nil.
 func (d *JobDiagnosticsSummaryDocument) Model() (*uint64, error) {
 	if d == nil {
 		return nil, nil

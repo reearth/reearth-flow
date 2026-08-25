@@ -10,8 +10,7 @@ import (
 type NodeDiagnostics interface {
 	GetNodeDiagnostics(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error)
 	GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
-	// Mongo-only, never Redis (rows are terminal, persisted only at
-	// job-completion). EffectiveDisposition == "fatal" for every entry.
+	// Every entry has effectiveDisposition "fatal".
 	GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
 	// nil, nil means no summary row exists (not zero dropped events).
 	GetDroppedEventCount(ctx context.Context, jobID id.JobID) (*uint64, error)

@@ -22,7 +22,7 @@ type Config struct {
 	DBDriver     string `envconfig:"DB_DRIVER" default:"mongo"`
 	DBPG         string `envconfig:"DB_PG" pp:",omitempty"`
 	Dev          bool   `pp:",omitempty"`
-	// No default: an empty/defaulted value crash-loops the ENTIRE subscriber, taking down all ingestion.
+	// No default: a defaulted value would crash-loop the whole subscriber.
 	DiagnosticSubscriptionID    string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`

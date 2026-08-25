@@ -31,7 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Shared fixture, also used by gateway/job_complete_event_test.go and the subscriber module.
+// Shared fixture, also read by the gateway tests and the subscriber module.
 const jobCompleteDiagnosticsFixturePath = "../../../../testdata/diagnostics/job_complete_with_diagnostics.json"
 
 func loadJobCompleteEventFixture(t *testing.T) gateway.JobCompleteEvent {
@@ -82,7 +82,7 @@ func (m *mockCheckStatusRedis) GetJobDiagnostics(ctx context.Context, jobID id.J
 	return nil, nil
 }
 
-// Needs a working Save — the shared mockJobRepo panics on Save.
+// The shared mockJobRepo panics on Save; these tests need it to work.
 type mockCheckStatusJobRepo struct {
 	job       *job.Job
 	saveCalls int
@@ -187,7 +187,7 @@ func (m *mockCheckStatusFile) UploadedAsset(context.Context, *asset.Upload) (*fi
 func (m *mockCheckStatusFile) WriteCancelFlag(ctx context.Context, jobID string) error { return nil }
 func (m *mockCheckStatusFile) CancelFlagURI(jobID string) string                       { return "" }
 
-// Empty GCPJobID: Batch polling is skipped and Batch/CloudRunWorker stay nil.
+// Leaves GCPJobID empty, which skips Batch polling.
 func newCheckStatusJob(jobRepo *mockCheckStatusJobRepo, diagRepo repo.NodeDiagnostics, redisMock *mockCheckStatusRedis) *Job {
 	return &Job{
 		jobRepo:             jobRepo,
@@ -248,7 +248,7 @@ func TestJob_checkJobStatus_PersistFailure_RetainsEvent(t *testing.T) {
 	require.NoError(t, i.checkJobStatus(context.Background(), testJob))
 
 	assert.Equal(t, 1, diagRepo.saveCalls)
-	// Delete must be skipped on failure so a later poll retries against the same event (deterministic-ID upsert).
+	// Delete is skipped on failure so a later poll can retry against the same event.
 	assert.Equal(t, 0, redisMock.deleteCalls)
 
 	assert.Equal(t, job.StatusFailed, jobRepo.job.Status())
@@ -256,11 +256,11 @@ func TestJob_checkJobStatus_PersistFailure_RetainsEvent(t *testing.T) {
 }
 
 func TestJob_checkJobStatus_OldWireEvent_Unchanged(t *testing.T) {
-	// Simulates an engine build predating diagnostics (all three fields absent).
+	// An engine build predating diagnostics: all three fields absent.
 	jobID := id.NewJobID()
 	testJob := job.NewJob(jobID, nil, accountsid.NewWorkspaceID(), "")
 
-	// Result "failed": with GCPJobID=="" batchStatus stays Pending, so workerStatus=Failed alone drives terminal — isolating diagnostics fields as the only variable.
+	// With no GCPJobID the worker status alone drives the job terminal.
 	event := &gateway.JobCompleteEvent{
 		Timestamp: time.Now(),
 		JobID:     jobID.String(),

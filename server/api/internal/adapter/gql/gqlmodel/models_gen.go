@@ -290,17 +290,12 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
-// A single structured diagnostic emitted by the engine: a per-feature error or
-// warning, a finish()-time aggregated summary, or a terminal per-node failure.
-// category/severity/effectiveDisposition are plain strings, not GraphQL enums,
-// so newer engine-emitted values survive a round trip without breaking older
-// API clients.
+// A structured diagnostic from the engine. Enum-like fields are Strings so new engine values do not break clients.
 type Diagnostic struct {
 	Code     string `json:"code"`
 	Category string `json:"category"`
 	Severity string `json:"severity"`
-	// The authoritative fatality signal for this diagnostic. `severity` is
-	// display-only and must never be used to infer whether the run failed.
+	// The authoritative fatality signal; severity is display-only.
 	EffectiveDisposition *string `json:"effectiveDisposition,omitempty"`
 	NodeID               *string `json:"nodeId,omitempty"`
 	ActionType           *string `json:"actionType,omitempty"`
@@ -397,16 +392,11 @@ type NodeExecution struct {
 	StartedAt   *time.Time    `json:"startedAt,omitempty"`
 	CompletedAt *time.Time    `json:"completedAt,omitempty"`
 	Diagnostics []*Diagnostic `json:"diagnostics,omitempty"`
-	// Successfully processed feature count. Populated for processor nodes on
-	// terminal status; sink/source nodes and non-terminal executions report
-	// null, not 0 — don't infer node kind from nullness alone.
+	// Processed feature count for processor nodes; null until the node is terminal.
 	FeaturesProcessed *int `json:"featuresProcessed,omitempty"`
-	// Successfully written feature count. Populated for sink nodes on terminal
-	// status; processor/source nodes and non-terminal executions report null.
+	// Written feature count for sink nodes; null until the node is terminal.
 	FeaturesWritten *int `json:"featuresWritten,omitempty"`
-	// Feature count emitted during finish() — meaningful for accumulating
-	// processor actions that flush at finish rather than per-feature. Populated
-	// for processor nodes on terminal status; otherwise null.
+	// Features emitted during finish() by accumulating processors; null until the node is terminal.
 	FinishFeatureCount *int `json:"finishFeatureCount,omitempty"`
 }
 

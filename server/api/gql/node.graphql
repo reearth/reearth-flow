@@ -7,29 +7,16 @@ type NodeExecution implements Node {
   startedAt: DateTime
   completedAt: DateTime
   diagnostics: [Diagnostic!]
-  """
-  Successfully processed feature count. Populated for processor nodes on
-  terminal status; sink/source nodes and non-terminal executions report
-  null, not 0 — don't infer node kind from nullness alone.
-  """
+  "Processed feature count for processor nodes; null until the node is terminal."
   featuresProcessed: Int
-  """
-  Successfully written feature count. Populated for sink nodes on terminal
-  status; processor/source nodes and non-terminal executions report null.
-  """
+  "Written feature count for sink nodes; null until the node is terminal."
   featuresWritten: Int
-  """
-  Feature count emitted during finish() — meaningful for accumulating
-  processor actions that flush at finish rather than per-feature. Populated
-  for processor nodes on terminal status; otherwise null.
-  """
+  "Features emitted during finish() by accumulating processors; null until the node is terminal."
   finishFeatureCount: Int
 }
 
 enum NodeStatus {
-  """
-  Never emitted by the runtime; retained for API compatibility.
-  """
+  "Never emitted by the runtime; retained for API compatibility."
   PENDING
   STARTING
   PROCESSING

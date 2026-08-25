@@ -55,12 +55,10 @@ func (m *mockLogGateway) DeleteJobCompleteEvent(ctx context.Context, jobID id.Jo
 	return nil
 }
 
-// GetNodeDiagnostics implements gateway.Redis.
 func (m *mockLogGateway) GetNodeDiagnostics(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
 	return nil, nil
 }
 
-// GetJobDiagnostics implements gateway.Redis.
 func (m *mockLogGateway) GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	return nil, nil
 }

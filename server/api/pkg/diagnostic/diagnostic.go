@@ -40,9 +40,7 @@ func (a *AggregateInfo) SampleFeatureIDs() []string {
 	return a.sampleFeatureIDs
 }
 
-// NodeID/Category/Severity/EffectiveDisposition are plain strings, not
-// id.NodeID or enums: engine node IDs aren't always UUIDs, and unknown
-// engine values must round-trip verbatim.
+// Strings rather than typed IDs or enums: engine values must round-trip verbatim.
 type Diagnostic struct {
 	timestamp            time.Time
 	featureID            *string

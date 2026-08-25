@@ -8,17 +8,13 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// SaveTerminalDiagnostics must run before the source JobCompleteEvent is
-// deleted from Redis (see interactor/job.go).
 type NodeDiagnostics interface {
-	// Empty nodeID reads the job-level bucket, mirroring
-	// gateway.Redis.GetNodeDiagnostics' "" → "_job" fallback.
+	// Empty nodeID reads the job-level bucket.
 	FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error)
 	FindByJobID(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
 	// Returns (nil, nil) when no summary row exists.
 	FindJobSummary(ctx context.Context, jobID id.JobID) (*uint64, error)
-	// Deterministic IDs make this idempotent across JobCompleteEvent
-	// redeliveries.
+	// Idempotent across redeliveries: the row IDs are deterministic.
 	SaveTerminalDiagnostics(
 		ctx context.Context,
 		jobID id.JobID,

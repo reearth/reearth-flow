@@ -95,7 +95,7 @@ func TestGetJobCompleteEvent(t *testing.T) {
 	})
 }
 
-// Shared fixture (also used by the subscriber module and gateway.TestJobCompleteEvent_RoundTripsDiagnosticsFixture); the subscriber and api modules don't share code, so this simulates the subscriber -> Redis -> api hop by treating the fixture bytes as what the subscriber wrote.
+// Shared with the subscriber module, which has no code in common with this one.
 const fixturePath = "../../../../testdata/diagnostics/job_complete_with_diagnostics.json"
 
 func TestGetJobCompleteEvent_DiagnosticsSurviveSubscriberRedisHop(t *testing.T) {

@@ -14,9 +14,7 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// Always queries both Redis and Mongo — short-circuiting on a non-empty
-// Redis result would hide Mongo-only terminal rows until the Redis TTL
-// expires.
+// Reads hit both Redis and Mongo: stopping at a non-empty Redis result would hide terminal rows.
 type NodeDiagnostics struct {
 	diagnosticsRepo   repo.NodeDiagnostics
 	jobRepo           repo.Job
@@ -103,13 +101,10 @@ func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID)
 	return dedupeDiagnostics(rows), nil
 }
 
-// failedNodes rows are always stamped Fatal; aggregatedDiagnostics rows
-// never are — this is how GetFailedNodes recovers which wire array a
-// persisted row came from.
+// Stamped on failedNodes rows and never on aggregated ones, which is how the two are told apart.
 const fatalEffectiveDisposition = "fatal"
 
-// Deliberately Mongo-only, never Redis: failedNodes rows are persisted only
-// at job-completion merge time.
+// Mongo-only: these rows are written just once, at job-completion merge.
 func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	if err := i.checkJobPermission(ctx, jobID); err != nil {
 		return nil, err
@@ -133,8 +128,7 @@ func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([
 	return dedupeDiagnostics(failed), nil
 }
 
-// effectiveDisposition is part of the dedup key: a failed-node row and an
-// aggregated row can otherwise share (nodeId, code) and wrongly collapse.
+// disposition is in the key because a failed and an aggregated row can share (nodeID, code).
 func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 	type dedupeKey struct {
 		nodeID      string

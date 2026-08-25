@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Fixture intentionally duplicated on the subscriber side (subscriber/internal/infrastructure/redis/node_test.go): proves NodeMetrics fields survive subscriber -> Redis -> api.
+// Shared with the subscriber's node_test.go: pins that metrics survive the Redis hop.
 const nodeStatusTerminalFixturePath = "../../../../testdata/node/node_status_terminal.json"
 
 func TestGetNodeExecution_MetricsSurviveSharedFixtureRoundTrip(t *testing.T) {

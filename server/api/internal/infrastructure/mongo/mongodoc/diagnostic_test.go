@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Shared fixture, also used by internal/usecase/gateway/diagnostic_test.go and the subscriber module.
+// Shared fixture, also read by the gateway tests and the subscriber module.
 const diagnosticEventFixturePath = "../../../../../testdata/diagnostics/diagnostic_event.json"
 
 func TestDiagnosticDocument_Model_RoundTripsFixture(t *testing.T) {
@@ -47,7 +47,7 @@ func TestDiagnosticDocument_Model_RoundTripsFixture(t *testing.T) {
 	assert.Equal(t, "subgraph-a.node-4", *modelDiagnostic.NodeID())
 	require.NotNil(t, modelDiagnostic.Aggregated())
 	assert.Equal(t, uint64(5), modelDiagnostic.Aggregated().Count())
-	// Terminal() is the signal dedupeDiagnostics uses to prefer this row over its live diagnostic.v1 counterpart.
+	// dedupeDiagnostics uses Terminal() to prefer this row over its live counterpart.
 	assert.True(t, modelDiagnostic.Terminal())
 }
 
@@ -85,11 +85,11 @@ func TestNewFailedNodeDocument_FallsBackToJobSegment(t *testing.T) {
 
 	doc := NewFailedNodeDocument(jobID, "", d)
 	assert.Equal(t, jobID.String()+":_job:failed:internal.unclassified", doc.ID)
-	// nodeId bson field carries the "_job" sentinel, not nil or the raw empty string.
+	// Carries the "_job" sentinel, not nil or "".
 	require.NotNil(t, doc.NodeID)
 	assert.Equal(t, JobDiagnosticNodeSegment, *doc.NodeID)
 
-	// Model() must strip the sentinel back to nil: the domain layer's nil-means-job-level semantics must not see the storage convention.
+	// Model() strips the sentinel back to nil; the storage convention stops here.
 	modelDiagnostic, err := doc.Model()
 	require.NoError(t, err)
 	assert.Nil(t, modelDiagnostic.NodeID())

@@ -160,7 +160,7 @@ func main() {
 
 				nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, flow_postgres.NewPostgresStorage(pgxx.NewClient(pool)))
 			}
-			// DiagnosticStorage has no Postgres implementation yet, so it always needs Mongo, even under the Postgres node-storage driver.
+			// DiagnosticStorage is Mongo-only, even under the Postgres node-storage driver.
 			if conf.DiagnosticSubscriptionID != "" {
 				mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
 				if err != nil {

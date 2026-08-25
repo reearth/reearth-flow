@@ -43,8 +43,7 @@ func TestDiagnosticEvent_DecodesDiagnosticEventFixture(t *testing.T) {
 	assert.Equal(t, uint64(5), evt.Aggregated.Count)
 	assert.Len(t, evt.Aggregated.SampleFeatureIds, 2)
 
-	// Round trip: Marshal -> Unmarshal must survive byte-safely (this is
-	// the hazard the spec calls out for the pubsub -> Redis -> api hop).
+	// Marshal -> Unmarshal must survive byte-safely across the pubsub -> Redis -> api hop.
 	data, err := json.Marshal(&evt)
 	require.NoError(t, err)
 

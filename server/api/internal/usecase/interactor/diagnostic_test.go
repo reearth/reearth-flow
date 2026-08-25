@@ -55,7 +55,7 @@ func (m *mockDiagnosticsRedis) GetJobDiagnostics(ctx context.Context, jobID id.J
 	return m.jobDiagnostics, m.jobDiagnosticsErr
 }
 
-// Also reused by job_test.go's checkJobStatus merge tests; keep lastX fields in sync.
+// Also used by job_test.go's merge tests.
 type mockDiagnosticsRepo struct {
 	lastTimestamp   time.Time
 	byNodeErr       error
@@ -129,7 +129,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 	jobID := id.NewJobID()
 
 	t.Run("Redis and Mongo rows are merged, not short-circuited", func(t *testing.T) {
-		// A Mongo-only terminal row must not be hidden until Redis's TTL expires.
+		// A Mongo-only terminal row must not be hidden by a non-empty Redis result.
 		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
 		redisMock := &mockDiagnosticsRedis{nodeDiagnostics: redisRows}
 		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
@@ -144,7 +144,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 	})
 
 	t.Run("an aggregated summary that rode both the live and terminal paths dedupes to its terminal copy", func(t *testing.T) {
-		// A summary published live is folded into aggregated_diagnostics again at completion; must dedupe to one row.
+		// The same summary arrives live and again at completion; it must dedupe to one row.
 		nodeID := "node-1"
 		warnDrop := "warn_drop"
 		olderTimestamp := time.Now().Add(-time.Hour)
@@ -335,7 +335,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 
 	t.Run("two fatal rows sharing a key still dedupe to one, preferring terminal", func(t *testing.T) {
-		// Unreachable in production (fatals never publish live); pins that the dedupe backstop still resolves same-key collisions deterministically.
+		// Unreachable in production; pins that same-key collisions resolve deterministically.
 		nodeID := "node-1"
 		fatal := fatalEffectiveDisposition
 
@@ -385,7 +385,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 
 	t.Run("nil repo: empty slice, not nil, not error", func(t *testing.T) {
-		// GraphQL normalizes no-data to [] (gqlmodel.ToDiagnostics); must return non-nil empty, not nil.
+		// Must be non-nil empty, not nil, so GraphQL renders [].
 		jobRepo := &mockJobRepo{}
 
 		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
@@ -419,7 +419,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 }
 
-// Pins a case only reachable via FindByJobID's mix; GetFailedNodes filters it out first.
+// Covers a case only FindByJobID can produce; GetFailedNodes filters it out first.
 func TestDedupeDiagnostics(t *testing.T) {
 	jobID := id.NewJobID()
 	nodeID := "node-1"
@@ -459,7 +459,7 @@ func TestDedupeDiagnostics(t *testing.T) {
 	})
 
 	t.Run("a failedNodes row and an aggregatedDiagnostics row sharing (nodeId, code) both survive", func(t *testing.T) {
-		// Regression guard: the old (nodeId, code)-only key let these nondeterministically collapse into one via preferOver's tie-break.
+		// Regression guard: a (nodeID, code)-only key collapsed these two nondeterministically.
 		fatal := fatalEffectiveDisposition
 		warnDrop := "warn_drop"
 

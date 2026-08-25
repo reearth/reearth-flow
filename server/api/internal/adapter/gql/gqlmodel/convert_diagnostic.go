@@ -4,8 +4,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 )
 
-// category/severity/effectiveDisposition pass through as plain strings, no
-// enum mapping — by design, so unknown values survive.
+// Enum-like fields stay strings so unknown engine values survive the round trip.
 func ToDiagnostic(d *diagnostic.Diagnostic) *Diagnostic {
 	if d == nil {
 		return nil
@@ -41,8 +40,7 @@ func ToDiagnostic(d *diagnostic.Diagnostic) *Diagnostic {
 	return res
 }
 
-// Always returns non-nil (even for empty input): a nil slice would marshal
-// as GraphQL null instead of [] for this [Diagnostic!] field.
+// Never nil: a nil slice would marshal as GraphQL null rather than [].
 func ToDiagnostics(ds []*diagnostic.Diagnostic) []*Diagnostic {
 	res := make([]*Diagnostic, 0, len(ds))
 	for _, d := range ds {

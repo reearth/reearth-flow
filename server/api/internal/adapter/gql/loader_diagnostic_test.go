@@ -121,7 +121,7 @@ func TestDiagnosticLoader_GetNodeDiagnostics(t *testing.T) {
 			newTestLoaderNodeDiagnostic(t, jID, "node-1", "internal.unclassified"),
 			newTestLoaderNodeDiagnostic(t, jID, "node-2", "gltf.zero_face_solid"),
 		}
-		// Delay so concurrent callers overlap on the in-flight fetch instead of serializing trivially.
+		// Delay so concurrent callers actually overlap on the in-flight fetch.
 		mockUsecase.On("GetJobDiagnostics", ctx, jID).
 			After(20*time.Millisecond).
 			Return(rows, nil).

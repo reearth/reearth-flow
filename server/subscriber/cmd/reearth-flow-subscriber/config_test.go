@@ -8,9 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty pins that
-// DiagnosticSubscriptionID defaults to "" (unlike its siblings): a
-// defaulted value would crash-loop the whole subscriber (see config.go).
+// Unlike its siblings, a default here would crash-loop the whole subscriber.
 func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 	for _, key := range []string{
 		"REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID",
@@ -30,7 +28,7 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 		"DiagnosticSubscriptionID must default to empty so the subscriber "+
 			"skips starting the diagnostic listener until explicitly configured")
 
-	// Sanity check: siblings still get real defaults (envconfig isn't just failing silently).
+	// Sanity check that envconfig is not silently failing.
 	assert.Equal(t, "flow-log-stream-main", conf.LogSubscriptionID)
 	assert.Equal(t, "flow-node-status-main", conf.NodeSubscriptionID)
 	assert.Equal(t, "flow-job-complete-main", conf.JobCompleteSubscriptionID)
