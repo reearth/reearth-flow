@@ -134,12 +134,12 @@ func TestRedisStorage_SaveNodeEventToRedis_WithMetrics_MatchesSharedFixture(t *t
 		},
 	}
 
-	jobNodesKey := "nodeEvents:" + jobID
 	nodeKey := "node:" + jobID + ":" + nodeID
+	hashKey := "node:" + jobID
 
-	mClient.On("LPush", mock.Anything, jobNodesKey, mock.Anything).Return(nil)
-	mClient.On("Expire", mock.Anything, jobNodesKey, 12*time.Hour).Return(nil)
 	mClient.On("Set", mock.Anything, nodeKey, mock.Anything, 12*time.Hour).Return(nil)
+	mClient.On("HSet", mock.Anything, hashKey, mock.Anything).Return(nil)
+	mClient.On("Expire", mock.Anything, hashKey, 12*time.Hour).Return(nil)
 
 	err := rStorage.SaveNodeEventToRedis(ctx, event)
 	assert.NoError(t, err)

@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
@@ -54,6 +55,14 @@ func (m *countingRedisGateway) GetNodeExecution(_ context.Context, _ id.JobID, _
 
 func (m *countingRedisGateway) GetNodeExecutions(_ context.Context, _ id.JobID) ([]*graph.NodeExecution, error) {
 	panic("unimplemented")
+}
+
+func (m *countingRedisGateway) GetNodeDiagnostics(_ context.Context, _ id.JobID, _ string) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
+}
+
+func (m *countingRedisGateway) GetJobDiagnostics(_ context.Context, _ id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
 }
 
 func (m *countingRedisGateway) GetUserFacingLogs(_ context.Context, _ time.Time, _ time.Time, _ id.JobID) ([]*userfacinglog.UserFacingLog, error) {
