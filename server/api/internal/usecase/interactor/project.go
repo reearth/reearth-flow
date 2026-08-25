@@ -66,12 +66,23 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 		return nil, err
 	}
 
-	if len(projects) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a project — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, p := range projects {
+		if p != nil {
+			ws, haveWorkspace = p.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := i.checkPermission(ctx, rbac.ActionList, projects[0].Workspace()); err != nil { // single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionList, ws); err != nil { // single-workspace batch assumption
 			return nil, err
 		}
 	}
@@ -232,7 +243,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
+	// A debug run executes the project without changing it, so anyone who can
+	// see the project may run one. ActionRead is the only rule carrying
+	// reader; ActionAny is writer and above, ActionEdit maintainer and above.
+	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
 		return nil, err
 	}
 

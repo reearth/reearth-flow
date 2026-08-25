@@ -61,8 +61,8 @@ func (a *Adapter) materializeLegacy(ctx context.Context, room string) ([]byte, e
 		if derr != nil {
 			return nil, derr
 		}
-		doc := crdt.New()
-		if aerr := crdt.ApplyUpdateV2(doc, v2, nil); aerr != nil {
+		doc, aerr := docFromV2(v2)
+		if aerr != nil {
 			return nil, aerr
 		}
 		base := crdt.EncodeStateAsUpdateV1(doc, nil)
@@ -150,8 +150,8 @@ func (a *Adapter) loadPrimaryV2(ctx context.Context, room string) ([]byte, bool,
 	if err != nil {
 		return nil, false, err
 	}
-	doc := crdt.New()
-	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+	doc, err := docFromV2(v2)
+	if err != nil {
 		return nil, false, err
 	}
 	return crdt.EncodeStateAsUpdateV1(doc, nil), true, nil

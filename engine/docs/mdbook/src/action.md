@@ -1251,7 +1251,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
+      "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it.",
       "type": "number",
       "format": "double"
     }
@@ -1261,7 +1261,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
       "oneOf": [
         {
           "title": "2D Area Buffer",
-          "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried.",
+          "description": "Creates an areal buffer around the input geometry: a 2D geometry is buffered in its coordinate plane, a planar 3D polygon within its own plane. An elevation shared by the buffered geometry is kept.",
           "type": "string",
           "enum": [
             "area2d"
@@ -8528,6 +8528,14 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "arrayMapSeparator": {
+      "title": "Array/Map Separator",
+      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   }
 }

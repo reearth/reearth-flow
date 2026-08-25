@@ -21,7 +21,7 @@ func (r *jobResolver) Workspace(ctx context.Context, obj *gqlmodel.Job) (*gqlmod
 }
 
 func (r *jobResolver) Logs(ctx context.Context, obj *gqlmodel.Job, since time.Time) ([]*gqlmodel.Log, error) {
-	return loaders(ctx).Log.GetLogs(ctx, since, obj.ID)
+	return dataloaders(ctx).LogsByJob.Load(LogsBatchKey(obj.ID, since))
 }
 
 // Mongo-only — never written to Redis (see loader_diagnostic.go).

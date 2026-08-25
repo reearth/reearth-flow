@@ -2,7 +2,7 @@ use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
 use plateau_tiles_test::conv::raster3d as conv_raster3d;
-use plateau_tiles_test::file::{extract_dir, zip_dir};
+use plateau_tiles_test::file::{decompress_glbs, extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
 use plateau_tiles_test::tester::cesium::{self, CesiumConfig};
@@ -25,7 +25,6 @@ use std::sync::Once;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
-use walkdir::WalkDir;
 
 static INIT: Once = Once::new();
 
@@ -152,6 +151,7 @@ const DEFAULT_TESTS: &[&str] = &[
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau6/01-bldg/ward",
     "data-convert/plateau6/01-bldg/osaka-ward",
+    "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/multipolygon",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
@@ -264,8 +264,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let flow_extracted_dir = output_dir.join("flow_extracted");
         extract_dir(&flow_source_dir, &flow_extracted_dir).unwrap();
 
-        // Decompress draco-compressed glb in flow output
-        // truth zips should be preprocessed to contain only decompressed glb files
         decompress_glbs(&flow_extracted_dir);
 
         let tests = &profile.tests;
@@ -323,6 +321,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                         w,
                         h,
                         entry.stroke,
+                        entry.mode,
                     )?;
                 }
                 Ok(())
@@ -465,33 +464,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     if let Some("1") = env::var("PLATEAU_TILES_TEST_CLEANUP").ok().as_deref() {
         info!("Cleaning up output directory: {}", output_dir.display());
         fs::remove_dir_all(&output_dir).unwrap();
-    }
-}
-
-fn decompress_glbs(flow_extracted_dir: &Path) {
-    let glb_files: Vec<_> = WalkDir::new(flow_extracted_dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter_map(|entry| {
-            let path = entry.path();
-            if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
-                Some(path.to_path_buf())
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut cmd = std::process::Command::new("glb-decompress");
-    for glb_file in &glb_files {
-        cmd.arg(glb_file.as_os_str());
-    }
-
-    let status = cmd
-        .status()
-        .expect("Failed to execute glb-decompress command");
-    if !status.success() {
-        panic!("glb-decompress failed");
     }
 }
 

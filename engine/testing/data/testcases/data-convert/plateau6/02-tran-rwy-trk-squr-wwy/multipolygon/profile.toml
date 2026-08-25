@@ -1,1 +1,15 @@
+# To test:
+# - tran attribute smoke test
+# - lod2 (and lod3) tran features are written via Cesium 3D Tiles Writer, not MVT/dissolver
 citygml_zip_name = "13115_suginami-ku_city_2024_citygml_1_op_tran.zip"
+
+[convs.cesium_attributes.tran_lod2]
+path = "13115_suginami-ku_city_2024_citygml_1_op_tran_3dtiles_lod2"
+truth_path = "tran_lod2_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.tran_lod2.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.tran_lod2]
+path = "tran_lod2_truth.json"
