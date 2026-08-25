@@ -54,6 +54,10 @@ static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
 /// The attribute the overlap count lands in when the parameter is omitted.
 const DEFAULT_OVERLAP_COUNT_ATTRIBUTE: &str = "overlayCount";
 
+fn default_overlap_count_attribute() -> String {
+    DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct AreaOnAreaOverlayerFactory;
 
@@ -119,12 +123,10 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         };
         let process = AreaOnAreaOverlayer {
             group_by: param.group_by,
-            output_attribute: param
-                .output_attribute
-                .unwrap_or_else(|| DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()),
+            output_attribute: param.output_attribute,
             list_attribute: param.list_attribute,
             attribute_accumulation: param.attribute_accumulation,
-            tolerance: param.tolerance.unwrap_or(0.0),
+            tolerance: param.tolerance,
             group_map: HashMap::new(),
             group_crs: HashMap::new(),
             group_count: 0,
@@ -157,7 +159,8 @@ struct AreaOnAreaOverlayerParam {
     /// coincide but miss by less than this are pulled together before the
     /// overlay, and overlaps smaller than its square are discarded as slivers.
     /// Defaults to zero, which snaps nothing.
-    tolerance: Option<f64>,
+    #[serde(default)]
+    tolerance: f64,
 
     /// # Attribute Accumulation
     /// Which attributes the resulting pieces keep.
@@ -168,7 +171,8 @@ struct AreaOnAreaOverlayerParam {
     /// Attribute that receives the number of input features covering the
     /// piece — two or more on `overlaps`, always one on `remnants`.
     /// Defaults to `overlayCount`.
-    output_attribute: Option<String>,
+    #[serde(default = "default_overlap_count_attribute")]
+    output_attribute: String,
 
     /// # List Attribute
     /// Attribute that receives one entry per covering feature, each holding

@@ -84,8 +84,13 @@ impl SinkFactory for ExcelWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct ExcelWriter {
     output: CompiledCode,
-    sheet_name: Option<String>,
+    sheet_name: String,
     pub(super) buffer: HashMap<String, (crate::SinkOutput, Vec<Feature>)>,
+}
+
+/// The worksheet rows land in when the parameter is omitted.
+fn default_sheet_name() -> String {
+    "Sheet1".to_string()
 }
 
 /// # Excel Writer Parameters
@@ -101,7 +106,8 @@ pub struct ExcelWriterParam {
 
     /// # Sheet Name
     /// Name of the worksheet the rows are written to. Defaults to `Sheet1`.
-    pub(super) sheet_name: Option<String>,
+    #[serde(default = "default_sheet_name")]
+    pub(super) sheet_name: String,
 }
 
 impl Sink for ExcelWriter {
@@ -136,7 +142,7 @@ impl Sink for ExcelWriter {
 
     fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
         for (out, features) in self.buffer.values() {
-            write_excel(out, self.sheet_name.as_deref(), features)?;
+            write_excel(out, &self.sheet_name, features)?;
         }
         Ok(())
     }

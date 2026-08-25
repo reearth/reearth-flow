@@ -120,10 +120,8 @@
           "tolerance": {
             "title": "許容誤差",
             "description": "2つの頂点を同一の点として扱う距離。入力の座標フレームの単位で指定する。本来一致すべき境界がこの距離未満のずれで離れている場合はオーバーレイ前に引き寄せられ、この値の2乗より小さい重なりはスライバーとして破棄される。デフォルトは 0 で、頂点は引き寄せられない",
-            "type": [
-              "number",
-              "null"
-            ],
+            "default": 0.0,
+            "type": "number",
             "format": "double"
           },
           "attributeAccumulation": {
@@ -139,10 +137,8 @@
           "outputAttribute": {
             "title": "重複数属性",
             "description": "その断片を覆う入力地物の数を格納する属性。`overlaps` では2以上、`remnants` では常に1になる。デフォルトは `overlayCount`",
-            "type": [
-              "string",
-              "null"
-            ]
+            "default": "overlayCount",
+            "type": "string"
           },
           "listAttribute": {
             "title": "リスト属性",
@@ -1548,11 +1544,9 @@
         "properties": {
           "tolerance": {
             "title": "許容誤差",
-            "description": "頂点が切断面上にあるとみなす距離、および2つの頂点を同一とみなす距離。オペランドの座標系の単位で指定する。省略時は、ほぼ一致する頂点のみをマージする十分に小さい距離が使われる",
-            "type": [
-              "number",
-              "null"
-            ],
+            "description": "頂点が切断面上にあるとみなす距離、および2つの頂点を同一とみなす距離。オペランドの座標系の単位で指定する。デフォルトは、ほぼ一致する頂点のみがマージされる十分に小さい距離",
+            "default": 1e-9,
+            "type": "number",
             "format": "double"
           }
         }
@@ -3516,10 +3510,8 @@
           "sheetName": {
             "title": "シート名",
             "description": "行を書き出すワークシートの名前。デフォルトは `Sheet1`",
-            "type": [
-              "string",
-              "null"
-            ]
+            "default": "Sheet1",
+            "type": "string"
           }
         }
       },
@@ -8405,10 +8397,8 @@
           "outputAttribute": {
             "title": "重複数属性",
             "description": "分割後のセグメントに沿って走る入力ラインの数を格納する属性。デフォルトは `overlayCount`",
-            "type": [
-              "string",
-              "null"
-            ]
+            "default": "overlayCount",
+            "type": "string"
           },
           "listAttribute": {
             "title": "リスト属性",

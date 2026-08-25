@@ -5,6 +5,9 @@ use std::sync::Arc;
 use once_cell::sync::Lazy;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
+// The kernel's default tolerance is named in both geometry worlds, so this
+// import is not gated even though the boolean itself is.
+use reearth_flow_geometry::csg;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 use reearth_flow_runtime::{
@@ -101,16 +104,23 @@ pub struct CSGEvaluatorParam {
     /// # Tolerance
     /// Distance below which a vertex counts as lying on a cutting plane and two
     /// vertices count as one, in the unit of the operands' coordinate
-    /// reference. When omitted, a distance small enough to merge only
-    /// near-identical vertices is used.
-    pub tolerance: Option<f64>,
+    /// reference. Defaults to a distance small enough that only near-identical
+    /// vertices merge.
+    #[serde(default = "default_tolerance")]
+    pub tolerance: f64,
+}
+
+/// The evaluator's own default is the kernel's, named rather than copied so the
+/// advertised default cannot drift from the one actually applied.
+fn default_tolerance() -> f64 {
+    csg::DEFAULT_TOLERANCE
 }
 
 /// # CSG Evaluator
 /// Evaluates a boolean tree into the solid it denotes.
 #[derive(Debug, Clone)]
 pub struct CSGEvaluator {
-    tolerance: Option<f64>,
+    tolerance: f64,
 }
 
 impl Processor for CSGEvaluator {
@@ -121,9 +131,7 @@ impl Processor for CSGEvaluator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        // A non-positive tolerance makes the kernel fall back to its own small
-        // default, which is exactly the "when omitted" behaviour.
-        let tolerance = self.tolerance.unwrap_or(0.0);
+        let tolerance = self.tolerance;
 
         // Extract CSG from the geometry
         let csg = match &feature.geometry.value {
@@ -176,9 +184,7 @@ impl Processor for CSGEvaluator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        // A non-positive tolerance makes the kernel fall back to its own small
-        // default, which is exactly the "when omitted" behaviour.
-        let tolerance = self.tolerance.unwrap_or(0.0);
+        let tolerance = self.tolerance;
 
         let Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg)) = feature.geometry.as_ref() else {
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));

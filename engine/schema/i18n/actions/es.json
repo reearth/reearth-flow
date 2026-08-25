@@ -602,7 +602,7 @@
         },
         "tolerance": {
           "title": "Tolerance",
-          "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. When omitted, a distance small enough to merge only near-identical vertices is used."
+          "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. Defaults to a distance small enough that only near-identical vertices merge."
         }
       }
     },

@@ -55,6 +55,10 @@ pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
 /// The attribute the overlap count lands in when the parameter is omitted.
 const DEFAULT_OVERLAP_COUNT_ATTRIBUTE: &str = "overlayCount";
 
+fn default_overlap_count_attribute() -> String {
+    DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct LineOnLineOverlayerFactory;
 
@@ -117,9 +121,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         Ok(Box::new(LineOnLineOverlayer {
             group_by: params.group_by,
             tolerance: params.tolerance,
-            output_attribute: params
-                .output_attribute
-                .unwrap_or_else(|| DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()),
+            output_attribute: params.output_attribute,
             list_attribute: params.list_attribute,
             group_map: HashMap::new(),
             #[cfg(feature = "new-geometry")]
@@ -157,7 +159,8 @@ pub struct LineOnLineOverlayerParam {
     /// # Overlap Count Attribute
     /// Attribute that receives the number of input lines running along the
     /// resulting segment. Defaults to `overlayCount`.
-    output_attribute: Option<String>,
+    #[serde(default = "default_overlap_count_attribute")]
+    output_attribute: String,
 
     /// # List Attribute
     /// Attribute that receives one entry per line running along the resulting

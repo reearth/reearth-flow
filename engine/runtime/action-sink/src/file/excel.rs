@@ -14,13 +14,13 @@ const HYPERLINK_SUFFIX: &str = ".hyperlink";
 
 pub(super) fn write_excel(
     output: &crate::SinkOutput,
-    sheet_name: Option<&str>,
+    sheet_name: &str,
     features: &[Feature],
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
     worksheet
-        .set_name(sheet_name.unwrap_or("Sheet1"))
+        .set_name(sheet_name)
         .map_err(crate::errors::SinkError::excel_writer)?;
 
     let columns = columns_of(features);

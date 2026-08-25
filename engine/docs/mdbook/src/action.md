@@ -116,10 +116,8 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
     "tolerance": {
       "title": "Tolerance",
       "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. Boundaries that were meant to coincide but miss by less than this are pulled together before the overlay, and overlaps smaller than its square are discarded as slivers. Defaults to zero, which snaps nothing.",
-      "type": [
-        "number",
-        "null"
-      ],
+      "default": 0.0,
+      "type": "number",
       "format": "double"
     },
     "attributeAccumulation": {
@@ -135,10 +133,8 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
     "outputAttribute": {
       "title": "Overlap Count Attribute",
       "description": "Attribute that receives the number of input features covering the piece — two or more on `overlaps`, always one on `remnants`. Defaults to `overlayCount`.",
-      "type": [
-        "string",
-        "null"
-      ]
+      "default": "overlayCount",
+      "type": "string"
     },
     "listAttribute": {
       "title": "List Attribute",
@@ -1505,11 +1501,9 @@ Computes the solid a Constructive Solid Geometry tree describes, replacing the t
   "properties": {
     "tolerance": {
       "title": "Tolerance",
-      "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. When omitted, a distance small enough to merge only near-identical vertices is used.",
-      "type": [
-        "number",
-        "null"
-      ],
+      "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. Defaults to a distance small enough that only near-identical vertices merge.",
+      "default": 1e-9,
+      "type": "number",
       "format": "double"
     }
   }
@@ -3414,10 +3408,8 @@ Writes each feature as a row of an .xlsx worksheet, one column per attribute. An
     "sheetName": {
       "title": "Sheet Name",
       "description": "Name of the worksheet the rows are written to. Defaults to `Sheet1`.",
-      "type": [
-        "string",
-        "null"
-      ]
+      "default": "Sheet1",
+      "type": "string"
     }
   }
 }
@@ -8189,10 +8181,8 @@ Splits lines where they cross, recording on each resulting segment how many inpu
     "outputAttribute": {
       "title": "Overlap Count Attribute",
       "description": "Attribute that receives the number of input lines running along the resulting segment. Defaults to `overlayCount`.",
-      "type": [
-        "string",
-        "null"
-      ]
+      "default": "overlayCount",
+      "type": "string"
     },
     "listAttribute": {
       "title": "List Attribute",
