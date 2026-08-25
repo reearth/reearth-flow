@@ -180,6 +180,13 @@ graphs:
                   }
                   city_gml + suffix
 
+      - id: 6ebb79f9-67e8-490d-b397-187e9889b4da
+        name: GeometryFilterHasGeometry
+        type: action
+        action: Geometry Filter
+        with:
+          filterType: none
+
       - id: d46e567a-831f-476a-bbb2-ce130a2db7a0
         name: GeometrySplitterByLod
         type: action
@@ -365,6 +372,11 @@ graphs:
         toPort: features
       - id: 47982be2-ac52-4eed-b678-aea71c234cf0
         from: b7f7453c-3f9f-45c2-8517-b6104b94de42
+        to: 6ebb79f9-67e8-490d-b397-187e9889b4da
+        fromPort: unfiltered
+        toPort: features
+      - id: 2136fe5c-48ba-4933-8854-85a80bad0b28
+        from: 6ebb79f9-67e8-490d-b397-187e9889b4da
         to: d46e567a-831f-476a-bbb2-ce130a2db7a0
         fromPort: unfiltered
         toPort: features
