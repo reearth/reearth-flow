@@ -12516,11 +12516,15 @@
               }
             ]
           },
-          "passOnMultipleMatches": {
-            "title": "Pass on Multiple Matches",
-            "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
-            "default": true,
-            "type": "boolean"
+          "matchMode": {
+            "title": "Match Mode",
+            "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature.",
+            "default": "any",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MatchMode"
+              }
+            ]
           },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
@@ -12615,6 +12619,28 @@
                 "type": "string",
                 "enum": [
                   "covers"
+                ]
+              }
+            ]
+          },
+          "MatchMode": {
+            "title": "Match Mode",
+            "description": "How the tests against the individual filter features combine into pass or fail.",
+            "oneOf": [
+              {
+                "title": "Any",
+                "description": "Passes a candidate that matches at least one filter feature.",
+                "type": "string",
+                "enum": [
+                  "any"
+                ]
+              },
+              {
+                "title": "All",
+                "description": "Passes a candidate only when every filter feature matches it.",
+                "type": "string",
+                "enum": [
+                  "all"
                 ]
               }
             ]

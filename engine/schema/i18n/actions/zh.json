@@ -3579,6 +3579,10 @@
           "title": "SpatialFilter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
         },
+        "matchMode": {
+          "title": "Match Mode",
+          "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature."
+        },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
           "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
@@ -3591,16 +3595,22 @@
           "title": "Output Match Count Attribute",
           "description": "Optional attribute name to store the number of matching filters"
         },
-        "passOnMultipleMatches": {
-          "title": "Pass on Multiple Matches",
-          "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic)."
-        },
         "predicate": {
           "title": "Spatial Predicate",
           "description": "The spatial relationship to test between filter and candidate geometries"
         }
       },
       "enumI18n": {
+        "MatchMode": {
+          "all": {
+            "title": "All",
+            "description": "Passes a candidate only when every filter feature matches it."
+          },
+          "any": {
+            "title": "Any",
+            "description": "Passes a candidate that matches at least one filter feature."
+          }
+        },
         "SpatialPredicate": {
           "contains": {
             "description": "Filter geometry completely contains candidate"

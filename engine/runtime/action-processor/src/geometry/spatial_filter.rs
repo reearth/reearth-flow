@@ -1,9 +1,20 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::relate::Relate;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::polygon::Polygon2D;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{
+    coordinate::CoordinateFrame,
+    ops::{Aabb, BoundingBox, FootprintError, FootprintPlane},
+    predicates::view::{flatten_2d, Leaf2D},
+    predicates::{contains, covers, intersects, relate},
+    Geometry,
+};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -12,7 +23,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, AttributeValue, CityGmlGeometry, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{CityGmlGeometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,7 +44,7 @@ impl ProcessorFactory for SpatialFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters candidate features based on their spatial relationship to filter geometry."
+        "Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -76,11 +89,15 @@ impl ProcessorFactory for SpatialFilterFactory {
             params,
             filters: Vec::new(),
             candidates: Vec::new(),
+            #[cfg(feature = "new-geometry")]
+            frame: None,
+            #[cfg(feature = "new-geometry")]
+            frame_mismatch_reported: false,
         }))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 #[schemars(
     title = "Spatial Filter Parameters",
@@ -88,17 +105,17 @@ impl ProcessorFactory for SpatialFilterFactory {
 )]
 pub struct SpatialFilterParams {
     /// # Spatial Predicate
-    /// The spatial relationship to test between filter and candidate geometries.
+    /// The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.
     #[serde(default)]
     pub predicate: SpatialPredicate,
 
-    /// # Pass on Multiple Matches
-    /// If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).
-    #[serde(default = "default_pass_on_multiple")]
-    pub pass_on_multiple_matches: bool,
+    /// # Match Mode
+    /// Whether a candidate passes by matching any single filter feature, or only by matching every filter feature.
+    #[serde(default)]
+    pub match_mode: MatchMode,
 
     /// # Merge Filter Attributes
-    /// If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.
+    /// If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.
     #[serde(default)]
     pub merge_filter_attributes: bool,
 
@@ -108,31 +125,29 @@ pub struct SpatialFilterParams {
     pub merged_attributes_prefix: Option<String>,
 
     /// # Output Match Count Attribute
-    /// Optional attribute name to store the number of matching filters.
+    /// Optional attribute name to store the number of filter features the candidate matched.
     #[serde(default)]
     pub output_match_count_attribute: Option<Attribute>,
 }
 
-fn default_pass_on_multiple() -> bool {
-    true
-}
-
-impl Default for SpatialFilterParams {
-    fn default() -> Self {
-        Self {
-            predicate: SpatialPredicate::Intersects,
-            pass_on_multiple_matches: true,
-            output_match_count_attribute: None,
-            merge_filter_attributes: false,
-            merged_attributes_prefix: None,
-        }
-    }
+/// # Match Mode
+/// How the tests against the individual filter features combine into pass or fail.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum MatchMode {
+    /// # Any
+    /// Passes a candidate that matches at least one filter feature.
+    #[default]
+    Any,
+    /// # All
+    /// Passes a candidate only when every filter feature matches it.
+    All,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum SpatialPredicate {
-    /// Filter geometry completely contains candidate
+    /// Candidate completely contains the filter geometry
     Contains,
     /// Candidate completely within filter geometry
     Within,
@@ -149,18 +164,37 @@ pub enum SpatialPredicate {
     Overlaps,
     /// Candidate is covered by filter geometry
     CoveredBy,
-    /// Filter geometry covers candidate
+    /// Candidate covers the filter geometry
     Covers,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 struct SpatialFilter {
     params: SpatialFilterParams,
+    #[cfg(not(feature = "new-geometry"))]
     filters: Vec<Feature>,
+    #[cfg(not(feature = "new-geometry"))]
     candidates: Vec<Feature>,
+    #[cfg(feature = "new-geometry")]
+    filters: Vec<PreparedFeature>,
+    #[cfg(feature = "new-geometry")]
+    candidates: Vec<PreparedFeature>,
+    /// The coordinate frame every operand must share, fixed by the first
+    /// accepted feature. Spatial relationships are only meaningful within one
+    /// frame.
+    #[cfg(feature = "new-geometry")]
+    frame: Option<CoordinateFrame>,
+    /// Whether the frame mismatch has already been reported, so the same
+    /// upstream problem is logged once rather than once per feature.
+    #[cfg(feature = "new-geometry")]
+    frame_mismatch_reported: bool,
 }
 
 impl Processor for SpatialFilter {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -246,17 +280,392 @@ impl Processor for SpatialFilter {
         Ok(())
     }
 
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let is_filter = match &ctx.port {
+            port if port == &*FILTER_PORT => true,
+            port if port == &*CANDIDATE_PORT => false,
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            }
+        };
+        match self.prepare(&ctx) {
+            Ok(prepared) => {
+                if is_filter {
+                    self.filters.push(prepared);
+                } else {
+                    self.candidates.push(prepared);
+                }
+            }
+            Err(rejection) => {
+                let message = format!("Spatial Filter rejected a feature: {}", rejection.message);
+                if rejection.warn {
+                    ctx.event_hub.warn_log(Some(ctx.error_span()), message);
+                } else {
+                    ctx.event_hub.debug_log(Some(ctx.error_span()), message);
+                }
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        if self.filters.is_empty() {
+            // No filters provided, pass all candidates (no restrictions).
+            for candidate in &self.candidates {
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    candidate.feature.clone(),
+                    PASSED_PORT.clone(),
+                ));
+            }
+            return Ok(());
+        }
+
+        // Filter bounding boxes, indexed for the per-candidate prefilter.
+        let tree = rstar::RTree::bulk_load(
+            self.filters
+                .iter()
+                .enumerate()
+                .map(|(index, filter)| FilterEntry {
+                    index,
+                    env: envelope(&filter.aabb),
+                })
+                .collect(),
+        );
+
+        // The early exits below skip tests whose outcome cannot change the
+        // routing, which is only sound when nothing observes the full set of
+        // matches.
+        let exhaustive = self.params.output_match_count_attribute.is_some()
+            || self.params.merge_filter_attributes;
+        let match_all = self.params.match_mode == MatchMode::All;
+
+        for candidate in &self.candidates {
+            let mut bbox_hit = vec![false; self.filters.len()];
+            for entry in tree.locate_in_envelope_intersecting(&envelope(&candidate.aabb)) {
+                bbox_hit[entry.index] = true;
+            }
+
+            let mut matched: Vec<usize> = Vec::new();
+            let mut error = None;
+            for (i, filter) in self.filters.iter().enumerate() {
+                // Every predicate except `disjoint` needs the bounding boxes to
+                // intersect; `disjoint` holds outright when they do not.
+                let result = if matches!(self.params.predicate, SpatialPredicate::Disjoint) {
+                    if bbox_hit[i] {
+                        test_predicate(
+                            &candidate.prepared,
+                            &filter.prepared,
+                            &self.params.predicate,
+                        )
+                    } else {
+                        Ok(true)
+                    }
+                } else if bbox_hit[i] {
+                    test_predicate(
+                        &candidate.prepared,
+                        &filter.prepared,
+                        &self.params.predicate,
+                    )
+                } else {
+                    Ok(false)
+                };
+                match result {
+                    Ok(true) => {
+                        matched.push(i);
+                        if !match_all && !exhaustive {
+                            break;
+                        }
+                    }
+                    Ok(false) => {
+                        if match_all && !exhaustive {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        error = Some(e);
+                        break;
+                    }
+                }
+            }
+
+            if let Some(e) = error {
+                ctx.event_hub.warn_log(
+                    None,
+                    format!("Spatial Filter rejected a feature: the spatial test failed: {e}"),
+                );
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    candidate.feature.clone(),
+                    REJECTED_PORT.clone(),
+                ));
+                continue;
+            }
+
+            let passed = if match_all {
+                matched.len() == self.filters.len()
+            } else {
+                !matched.is_empty()
+            };
+            self.emit(&ctx, fw, candidate, passed, &matched);
+        }
+        Ok(())
+    }
+
     fn name(&self) -> &str {
         "Spatial Filter"
     }
 }
 
+// --- new geometry --------------------------------------------------------------
+
+/// A feature made relate-ready at intake, so unusable geometry is rejected on
+/// arrival and `finish` runs on 2D operands only.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+struct PreparedFeature {
+    feature: Feature,
+    /// The 2D geometry the spatial tests run on: the feature's own 2D geometry,
+    /// or the horizontal footprint of a geometry with any 3D part.
+    prepared: Geometry,
+    /// The prepared geometry's bounding box, for the prefilter.
+    aabb: Aabb,
+}
+
+/// Why a feature was turned away at intake, and whether that is an upstream
+/// problem worth a warning rather than a debug note.
+#[cfg(feature = "new-geometry")]
+struct Rejection {
+    message: String,
+    warn: bool,
+}
+
+#[cfg(feature = "new-geometry")]
+impl Rejection {
+    fn debug(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            warn: false,
+        }
+    }
+
+    fn warn(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            warn: true,
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl SpatialFilter {
+    /// The feature made relate-ready, or why it cannot take part: no geometry,
+    /// no computable footprint, or a coordinate frame other than the one this
+    /// node's inputs fixed.
+    fn prepare(&mut self, ctx: &ExecutorContext) -> Result<PreparedFeature, Rejection> {
+        let geometry = ctx.feature.geometry.as_ref();
+        if matches!(geometry, Geometry::None) {
+            return Err(Rejection::debug("the feature has no geometry"));
+        }
+
+        let prepared = if has_3d(geometry) {
+            geometry
+                .footprint_on(&FootprintPlane::Horizontal)
+                .map_err(|e| match e {
+                    FootprintError::Empty | FootprintError::Unsupported(_) => {
+                        Rejection::debug(format!("the geometry has no testable footprint: {e}"))
+                    }
+                    FootprintError::NonLinearFrame(_) => Rejection::warn(format!(
+                        "{e}. Reproject 3D input to a coordinate system in linear units upstream."
+                    )),
+                    _ => Rejection::warn(format!("the footprint could not be computed: {e}")),
+                })?
+        } else {
+            geometry.clone()
+        };
+
+        let mut leaves = Vec::new();
+        if !collect_2d_leaves(&prepared, &mut leaves) {
+            return Err(Rejection::warn(
+                "the geometry mixes 2D and 3D parts in a way the footprint could not flatten",
+            ));
+        }
+        let Some(frame) = leaves.first().map(|leaf| leaf.frame().clone()) else {
+            return Err(Rejection::debug("the geometry has nothing to test"));
+        };
+        if leaves.iter().any(|leaf| leaf.frame() != &frame) {
+            return Err(Rejection::warn(
+                "the geometry mixes coordinate frames; reproject it to one frame upstream",
+            ));
+        }
+
+        match &self.frame {
+            None => self.frame = Some(frame),
+            Some(node_frame) if *node_frame != frame => {
+                let message = format!(
+                    "the feature is in {frame:?} while this node's inputs are in {node_frame:?}. \
+                     Reproject the input to one coordinate frame upstream."
+                );
+                return Err(if self.frame_mismatch_reported {
+                    Rejection::debug(message)
+                } else {
+                    self.frame_mismatch_reported = true;
+                    Rejection::warn(message)
+                });
+            }
+            Some(_) => {}
+        }
+
+        let aabb = prepared
+            .bounding_box()
+            .map_err(|e| Rejection::debug(format!("the geometry has no bounding box: {e}")))?;
+
+        Ok(PreparedFeature {
+            feature: ctx.feature.clone(),
+            prepared,
+            aabb,
+        })
+    }
+
+    /// Route the candidate to `passed` or `failed`, stamping the match count
+    /// and merged filter attributes where configured.
+    fn emit(
+        &self,
+        ctx: &NodeContext,
+        fw: &ProcessorChannelForwarder,
+        candidate: &PreparedFeature,
+        passed: bool,
+        matched: &[usize],
+    ) {
+        let mut feature = candidate.feature.clone();
+
+        if let Some(ref attr_name) = self.params.output_match_count_attribute {
+            feature.attributes_mut().insert(
+                attr_name.clone(),
+                AttributeValue::Number(serde_json::Number::from(matched.len())),
+            );
+        }
+
+        if self.params.merge_filter_attributes && passed {
+            for &filter_index in matched {
+                let filter = &self.filters[filter_index].feature;
+                for (key, value) in filter.attributes.iter() {
+                    let merged_key = match &self.params.merged_attributes_prefix {
+                        Some(prefix) => Attribute::new(format!("{prefix}{key}")),
+                        None => key.clone(),
+                    };
+                    feature.attributes_mut().insert(merged_key, value.clone());
+                }
+            }
+        }
+
+        let port = if passed {
+            PASSED_PORT.clone()
+        } else {
+            FAILED_PORT.clone()
+        };
+        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+            ctx, feature, port,
+        ));
+    }
+}
+
+/// Whether the geometry has any 3D part, and so compares by its footprint.
+#[cfg(feature = "new-geometry")]
+fn has_3d(geometry: &Geometry) -> bool {
+    match geometry {
+        Geometry::Euclidean3D(_) => true,
+        Geometry::GeometryCollection(c) => c.members().iter().any(has_3d),
+        _ => false,
+    }
+}
+
+/// Collect the geometry's 2D leaves; `false` if a 3D part appears.
+#[cfg(feature = "new-geometry")]
+fn collect_2d_leaves<'a>(geometry: &'a Geometry, leaves: &mut Vec<Leaf2D<'a>>) -> bool {
+    match geometry {
+        Geometry::None => true,
+        Geometry::Euclidean2D(g) => {
+            flatten_2d(g, leaves);
+            true
+        }
+        Geometry::Euclidean3D(_) => false,
+        Geometry::GeometryCollection(c) => c
+            .members()
+            .iter()
+            .all(|member| collect_2d_leaves(member, leaves)),
+    }
+}
+
+/// Whether the candidate-relative predicate holds between two prepared 2D
+/// geometries sharing one frame. The point-set predicates take the exact fast
+/// paths, which stay correct on collections with overlapping members; only the
+/// predicates needing the full DE-9IM matrix go through `relate`.
+#[cfg(feature = "new-geometry")]
+fn test_predicate(
+    candidate: &Geometry,
+    filter: &Geometry,
+    predicate: &SpatialPredicate,
+) -> reearth_flow_geometry::predicates::Result<bool> {
+    match predicate {
+        SpatialPredicate::Intersects => intersects(candidate, filter),
+        SpatialPredicate::Disjoint => Ok(!intersects(candidate, filter)?),
+        SpatialPredicate::Contains => contains(candidate, filter),
+        SpatialPredicate::Within => contains(filter, candidate),
+        SpatialPredicate::Covers => covers(candidate, filter),
+        SpatialPredicate::CoveredBy => covers(filter, candidate),
+        SpatialPredicate::Touches => Ok(relate(candidate, filter)?.is_touches()),
+        SpatialPredicate::Crosses => Ok(relate(candidate, filter)?.is_crosses()),
+        SpatialPredicate::Overlaps => Ok(relate(candidate, filter)?.is_overlaps()),
+    }
+}
+
+/// A filter's index under its bounding box, for the R-tree prefilter.
+#[cfg(feature = "new-geometry")]
+struct FilterEntry {
+    index: usize,
+    env: rstar::AABB<[f64; 2]>,
+}
+
+#[cfg(feature = "new-geometry")]
+impl rstar::RTreeObject for FilterEntry {
+    type Envelope = rstar::AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.env
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+fn envelope(aabb: &Aabb) -> rstar::AABB<[f64; 2]> {
+    match *aabb {
+        Aabb::D2 { min, max } => rstar::AABB::from_corners(min, max),
+        Aabb::D3 { min, max } => rstar::AABB::from_corners([min[0], min[1]], [max[0], max[1]]),
+    }
+}
+
+// --- legacy geometry -------------------------------------------------------------
+
+#[cfg(not(feature = "new-geometry"))]
 struct TestResult {
     passed: bool,
     match_count: usize,
     matched_filter_indices: Vec<usize>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn forward_result(
     result: TestResult,
     feature: &Feature,
@@ -305,6 +714,7 @@ fn test_2d_geometry(
     filters: &[Feature],
     params: &SpatialFilterParams,
 ) -> TestResult {
+    let match_any = params.match_mode == MatchMode::Any;
     let mut match_count = 0;
     let mut matched_filter_indices: Vec<usize> = Vec::new();
 
@@ -333,7 +743,7 @@ fn test_2d_geometry(
 
         if filter_matches {
             match_count += 1;
-            if params.pass_on_multiple_matches {
+            if match_any {
                 // OR logic: return early on first match
                 return TestResult {
                     passed: true,
@@ -344,7 +754,7 @@ fn test_2d_geometry(
                 // AND logic: accumulate index for potential attribute merging
                 matched_filter_indices.push(i);
             }
-        } else if !params.pass_on_multiple_matches {
+        } else if !match_any {
             // AND logic: return early on first non-match
             return TestResult {
                 passed: false,
@@ -355,14 +765,10 @@ fn test_2d_geometry(
     }
 
     // If we get here:
-    // - For OR logic (pass_on_multiple): no matches found, so fail
-    // - For AND logic (!pass_on_multiple): all filters matched, so pass
+    // - For OR logic (match any): no matches found, so fail
+    // - For AND logic (match all): all filters matched, so pass
     TestResult {
-        passed: if params.pass_on_multiple_matches {
-            false
-        } else {
-            match_count > 0
-        },
+        passed: if match_any { false } else { match_count > 0 },
         match_count,
         matched_filter_indices,
     }
@@ -374,6 +780,7 @@ fn test_3d_geometry(
     filters: &[Feature],
     params: &SpatialFilterParams,
 ) -> TestResult {
+    let match_any = params.match_mode == MatchMode::Any;
     let mut match_count = 0;
     let mut matched_filter_indices: Vec<usize> = Vec::new();
 
@@ -400,7 +807,7 @@ fn test_3d_geometry(
 
         if filter_matches {
             match_count += 1;
-            if params.pass_on_multiple_matches {
+            if match_any {
                 return TestResult {
                     passed: true,
                     match_count,
@@ -409,7 +816,7 @@ fn test_3d_geometry(
             } else {
                 matched_filter_indices.push(i);
             }
-        } else if !params.pass_on_multiple_matches {
+        } else if !match_any {
             return TestResult {
                 passed: false,
                 match_count,
@@ -419,11 +826,7 @@ fn test_3d_geometry(
     }
 
     TestResult {
-        passed: if params.pass_on_multiple_matches {
-            false
-        } else {
-            match_count > 0
-        },
+        passed: if match_any { false } else { match_count > 0 },
         match_count,
         matched_filter_indices,
     }
@@ -435,6 +838,7 @@ fn test_citygml_geometry(
     filters: &[Feature],
     params: &SpatialFilterParams,
 ) -> TestResult {
+    let match_any = params.match_mode == MatchMode::Any;
     let mut match_count = 0;
     let mut matched_filter_indices: Vec<usize> = Vec::new();
 
@@ -488,7 +892,7 @@ fn test_citygml_geometry(
 
         if filter_matches {
             match_count += 1;
-            if params.pass_on_multiple_matches {
+            if match_any {
                 return TestResult {
                     passed: true,
                     match_count,
@@ -497,7 +901,7 @@ fn test_citygml_geometry(
             } else {
                 matched_filter_indices.push(i);
             }
-        } else if !params.pass_on_multiple_matches {
+        } else if !match_any {
             return TestResult {
                 passed: false,
                 match_count,
@@ -507,11 +911,7 @@ fn test_citygml_geometry(
     }
 
     TestResult {
-        passed: if params.pass_on_multiple_matches {
-            false
-        } else {
-            match_count > 0
-        },
+        passed: if match_any { false } else { match_count > 0 },
         match_count,
         matched_filter_indices,
     }
@@ -521,6 +921,7 @@ fn test_citygml_geometry(
 ///
 /// This function works with both pure 2D geometries (no Z coordinates) and 2D geometries with Z coordinates.
 /// Pure 2D geometries are projected to the Z=0 plane for internal orientation calculations.
+#[cfg(not(feature = "new-geometry"))]
 fn test_predicate_2d(
     candidate: &Geometry2D,
     filter: &Geometry2D,
@@ -541,6 +942,7 @@ fn test_predicate_2d(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_predicate_3d(
     candidate: &Geometry3D,
     filter: &Geometry3D,
@@ -561,6 +963,7 @@ fn test_predicate_3d(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_predicate_3d_poly(
     candidate: &Geometry3D,
     filter: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
@@ -570,6 +973,7 @@ fn test_predicate_3d_poly(
     test_predicate_3d(candidate, &filter_geo, predicate)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_predicate_3d_poly_reverse(
     filter: &Geometry3D,
     candidate: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
@@ -579,6 +983,7 @@ fn test_predicate_3d_poly_reverse(
     test_predicate_3d(&candidate_geo, filter, predicate)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn test_predicate_poly_poly(
     candidate: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
     filter: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
@@ -591,450 +996,517 @@ fn test_predicate_poly_poly(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use reearth_flow_geometry::types::coordinate::Coordinate2D;
-    use reearth_flow_geometry::types::line_string::LineString2D;
-    use reearth_flow_geometry::types::polygon::Polygon2D;
-    use reearth_flow_runtime::executor_operation::NodeContext;
+    use pretty_assertions::assert_eq;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::feature::Attributes;
-    use reearth_flow_types::Geometry;
 
+    use super::*;
     use crate::tests::utils::create_default_execute_context;
 
-    fn create_test_polygon_2d() -> Polygon2D<f64> {
-        let exterior = LineString2D::new(vec![
-            Coordinate2D::new_(0.0, 0.0),
-            Coordinate2D::new_(10.0, 0.0),
-            Coordinate2D::new_(10.0, 10.0),
-            Coordinate2D::new_(0.0, 10.0),
-            Coordinate2D::new_(0.0, 0.0),
-        ]);
-        Polygon2D::new(exterior, vec![])
+    // --- shared fixtures -----------------------------------------------------
+
+    /// A closed CCW square ring with the corner at `min` and the given side.
+    fn square_ring(min: [f64; 2], side: f64) -> Vec<[f64; 2]> {
+        vec![
+            [min[0], min[1]],
+            [min[0] + side, min[1]],
+            [min[0] + side, min[1] + side],
+            [min[0], min[1] + side],
+            [min[0], min[1]],
+        ]
     }
 
-    fn create_filter_polygon_2d() -> Polygon2D<f64> {
-        let exterior = LineString2D::new(vec![
-            Coordinate2D::new_(5.0, 5.0),
-            Coordinate2D::new_(15.0, 5.0),
-            Coordinate2D::new_(15.0, 15.0),
-            Coordinate2D::new_(5.0, 15.0),
-            Coordinate2D::new_(5.0, 5.0),
-        ]);
-        Polygon2D::new(exterior, vec![])
+    fn attributes(pairs: &[(&str, &str)]) -> Attributes {
+        pairs
+            .iter()
+            .map(|(k, v)| {
+                (
+                    Attribute::new(k.to_string()),
+                    AttributeValue::String(v.to_string()),
+                )
+            })
+            .collect()
     }
 
-    fn create_disjoint_polygon_2d() -> Polygon2D<f64> {
-        let exterior = LineString2D::new(vec![
-            Coordinate2D::new_(20.0, 20.0),
-            Coordinate2D::new_(30.0, 20.0),
-            Coordinate2D::new_(30.0, 30.0),
-            Coordinate2D::new_(20.0, 30.0),
-            Coordinate2D::new_(20.0, 20.0),
-        ]);
-        Polygon2D::new(exterior, vec![])
+    fn attribute(feature: &Feature, key: &str) -> Option<AttributeValue> {
+        feature
+            .attributes
+            .get(&Attribute::new(key.to_string()))
+            .cloned()
     }
 
-    #[cfg(not(feature = "new-geometry"))]
-    #[test]
-    fn test_spatial_filter_accepts_features() {
-        let mut filter = SpatialFilter {
-            params: SpatialFilterParams {
-                predicate: SpatialPredicate::Intersects,
-                pass_on_multiple_matches: true,
-                output_match_count_attribute: None,
-                merge_filter_attributes: false,
-                merged_attributes_prefix: None,
-            },
-            filters: Vec::new(),
-            candidates: Vec::new(),
-        };
-
-        let filter_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_filter_polygon_2d(),
-                )),
-                ..Default::default()
-            },
-        );
-
-        let candidate_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
-                ..Default::default()
-            },
-        );
-
-        // Process filter
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let mut ctx = create_default_execute_context(&filter_feature);
-        ctx.port = FILTER_PORT.clone();
-        let result = filter.process(ctx, &fw);
-        assert!(result.is_ok());
-        assert_eq!(filter.filters.len(), 1);
-
-        // Process candidate
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let mut ctx = create_default_execute_context(&candidate_feature);
-        ctx.port = CANDIDATE_PORT.clone();
-        let result = filter.process(ctx, &fw);
-        assert!(result.is_ok());
-        assert_eq!(filter.candidates.len(), 1);
-    }
-
-    #[cfg(not(feature = "new-geometry"))]
-    #[test]
-    fn test_spatial_filter_processes_multiple_ports() {
-        let mut filter = SpatialFilter {
-            params: SpatialFilterParams {
-                predicate: SpatialPredicate::Disjoint,
-                pass_on_multiple_matches: true,
-                output_match_count_attribute: None,
-                merge_filter_attributes: false,
-                merged_attributes_prefix: None,
-            },
-            filters: Vec::new(),
-            candidates: Vec::new(),
-        };
-
-        let filter_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_filter_polygon_2d(),
-                )),
-                ..Default::default()
-            },
-        );
-
-        let candidate_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_disjoint_polygon_2d(),
-                )),
-                ..Default::default()
-            },
-        );
-
-        // Process filter
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let mut ctx = create_default_execute_context(&filter_feature);
-        ctx.port = FILTER_PORT.clone();
-        let result = filter.process(ctx, &fw);
-        assert!(result.is_ok());
-
-        // Process candidate
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let mut ctx = create_default_execute_context(&candidate_feature);
-        ctx.port = CANDIDATE_PORT.clone();
-        let result = filter.process(ctx, &fw);
-        assert!(result.is_ok());
-
-        // Verify both were added
-        assert_eq!(
-            filter.filters.len(),
-            1,
-            "Filter should have 1 filter geometry"
-        );
-        assert_eq!(
-            filter.candidates.len(),
-            1,
-            "Filter should have 1 candidate geometry"
-        );
-    }
-
-    #[cfg(not(feature = "new-geometry"))]
-    #[test]
-    fn test_spatial_filter_no_filters() {
-        let mut filter = SpatialFilter {
-            params: SpatialFilterParams::default(),
-            filters: Vec::new(),
-            candidates: vec![Feature::new_with_attributes(Attributes::new())],
-        };
-
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let ctx = NodeContext::default();
-        let _ = filter.finish(ctx, &fw);
-
-        if let ProcessorChannelForwarder::Noop(noop) = fw {
-            let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports.len(), 1);
-            assert_eq!(
-                ports[0], *PASSED_PORT,
-                "No filters should pass all candidates"
-            );
+    fn params(predicate: SpatialPredicate, match_mode: MatchMode) -> SpatialFilterParams {
+        SpatialFilterParams {
+            predicate,
+            match_mode,
+            ..Default::default()
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
-    #[test]
-    fn test_merge_filter_attributes_onto_passed_candidate() {
-        let mut filter_attrs = Attributes::new();
-        filter_attrs.insert(
-            Attribute::new("zone"),
-            AttributeValue::String("commercial".to_string()),
-        );
-
-        let filter_feature = Feature::new_with_attributes_and_geometry(
-            filter_attrs,
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_filter_polygon_2d(),
-                )),
-                ..Default::default()
-            },
-        );
-
-        let candidate_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
-                ..Default::default()
-            },
-        );
-
-        let mut spatial_filter = SpatialFilter {
-            params: SpatialFilterParams {
-                predicate: SpatialPredicate::Intersects,
-                pass_on_multiple_matches: true,
-                output_match_count_attribute: None,
-                merge_filter_attributes: true,
-                merged_attributes_prefix: None,
-            },
-            filters: vec![filter_feature],
-            candidates: vec![candidate_feature],
+    /// Feed filters and candidates through the processor and collect what the
+    /// `passed`, `failed`, and `rejected` ports received.
+    fn run(
+        params: SpatialFilterParams,
+        filters: Vec<Feature>,
+        candidates: Vec<Feature>,
+    ) -> (Vec<Feature>, Vec<Feature>, Vec<Feature>) {
+        let mut processor = SpatialFilter {
+            params,
+            filters: Vec::new(),
+            candidates: Vec::new(),
+            #[cfg(feature = "new-geometry")]
+            frame: None,
+            #[cfg(feature = "new-geometry")]
+            frame_mismatch_reported: false,
         };
-
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let ctx = NodeContext::default();
-        let _ = spatial_filter.finish(ctx, &fw);
-
-        if let ProcessorChannelForwarder::Noop(noop) = fw {
-            let features = noop.send_features.lock().unwrap();
-            let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(features.len(), 1);
-            assert_eq!(ports[0], *PASSED_PORT);
-            let zone = features[0].attributes.get(&Attribute::new("zone"));
-            assert_eq!(
-                zone,
-                Some(&AttributeValue::String("commercial".to_string())),
-                "Filter attribute 'zone' should be merged onto passed candidate"
-            );
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        for feature in &filters {
+            let mut ctx = create_default_execute_context(feature);
+            ctx.port = FILTER_PORT.clone();
+            processor.process(ctx, &fw).unwrap();
         }
+        for feature in &candidates {
+            let mut ctx = create_default_execute_context(feature);
+            ctx.port = CANDIDATE_PORT.clone();
+            processor.process(ctx, &fw).unwrap();
+        }
+        processor.finish(NodeContext::default(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("the forwarder is the one built above");
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        let sent = noop.send_features.lock().unwrap().clone();
+        let (mut passed, mut failed, mut rejected) = (Vec::new(), Vec::new(), Vec::new());
+        for (port, feature) in ports.iter().zip(sent) {
+            if *port == *PASSED_PORT {
+                passed.push(feature);
+            } else if *port == *FAILED_PORT {
+                failed.push(feature);
+            } else if *port == *REJECTED_PORT {
+                rejected.push(feature);
+            } else {
+                panic!("unexpected port {port:?}");
+            }
+        }
+        (passed, failed, rejected)
     }
 
+    // --- per-world fixtures ----------------------------------------------------
+
+    /// A feature carrying a square with the corner at `min`.
     #[cfg(not(feature = "new-geometry"))]
-    #[test]
-    fn test_merge_filter_attributes_with_prefix() {
-        let mut filter_attrs = Attributes::new();
-        filter_attrs.insert(
-            Attribute::new("name"),
-            AttributeValue::String("zone_a".to_string()),
-        );
+    fn square(min: [f64; 2], side: f64) -> Feature {
+        use reearth_flow_geometry::types::{coordinate::Coordinate2D, line_string::LineString2D};
+        use reearth_flow_types::Geometry;
 
-        let filter_feature = Feature::new_with_attributes_and_geometry(
-            filter_attrs,
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_filter_polygon_2d(),
-                )),
-                ..Default::default()
-            },
-        );
-
-        let candidate_feature = Feature::new_with_attributes_and_geometry(
+        let ring: Vec<Coordinate2D<f64>> = square_ring(min, side)
+            .into_iter()
+            .map(|[x, y]| Coordinate2D::new_(x, y))
+            .collect();
+        let polygon = Polygon2D::new(LineString2D::from(ring), vec![]);
+        Feature::new_with_attributes_and_geometry(
             Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
-                ..Default::default()
-            },
-        );
+            Geometry::with_value(GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon))),
+        )
+    }
 
-        let mut spatial_filter = SpatialFilter {
-            params: SpatialFilterParams {
-                predicate: SpatialPredicate::Intersects,
-                pass_on_multiple_matches: true,
-                output_match_count_attribute: None,
+    #[cfg(feature = "new-geometry")]
+    fn square(min: [f64; 2], side: f64) -> Feature {
+        square_in(CoordinateFrame::Euclidean, min, side)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn square_in(frame: CoordinateFrame, min: [f64; 2], side: f64) -> Feature {
+        use reearth_flow_geometry::{polygon::Polygon2D, Euclidean2DGeometry};
+
+        Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+                Polygon2D::from_rings(frame, square_ring(min, side), Vec::<Vec<[f64; 2]>>::new()),
+            ))),
+        )
+    }
+
+    fn with_attrs(mut feature: Feature, pairs: &[(&str, &str)]) -> Feature {
+        feature.attributes = std::sync::Arc::new(attributes(pairs));
+        feature
+    }
+
+    // --- shared behavior ---------------------------------------------------------
+
+    #[test]
+    fn intersecting_candidates_split_between_passed_and_failed() {
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![square([5.0, 5.0], 10.0)],
+            vec![square([0.0, 0.0], 10.0), square([20.0, 20.0], 5.0)],
+        );
+        assert_eq!(passed.len(), 1, "the overlapping candidate passes");
+        assert_eq!(failed.len(), 1, "the distant candidate fails");
+        assert_eq!(rejected.len(), 0);
+    }
+
+    #[test]
+    fn no_filters_pass_all_candidates() {
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            Vec::new(),
+            vec![square([0.0, 0.0], 10.0), square([20.0, 20.0], 5.0)],
+        );
+        assert_eq!(passed.len(), 2, "no filters means no restrictions");
+        assert_eq!(failed.len(), 0);
+        assert_eq!(rejected.len(), 0);
+    }
+
+    #[test]
+    fn features_without_geometry_are_rejected() {
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![square([0.0, 0.0], 10.0)],
+            vec![Feature::new_with_attributes(Attributes::new())],
+        );
+        assert_eq!(passed.len(), 0);
+        assert_eq!(failed.len(), 0);
+        assert_eq!(rejected.len(), 1, "a feature with no geometry is rejected");
+    }
+
+    #[test]
+    fn merged_attributes_take_the_configured_prefix() {
+        let (passed, _, _) = run(
+            SpatialFilterParams {
                 merge_filter_attributes: true,
                 merged_attributes_prefix: Some("filter_".to_string()),
+                ..Default::default()
             },
-            filters: vec![filter_feature],
-            candidates: vec![candidate_feature],
-        };
+            vec![with_attrs(square([5.0, 5.0], 10.0), &[("name", "zone_a")])],
+            vec![square([0.0, 0.0], 10.0)],
+        );
+        assert_eq!(passed.len(), 1);
+        assert_eq!(
+            attribute(&passed[0], "filter_name"),
+            Some(AttributeValue::String("zone_a".to_string())),
+            "the attribute appears under the prefixed key"
+        );
+        assert_eq!(
+            attribute(&passed[0], "name"),
+            None,
+            "the attribute does not appear under the unprefixed key"
+        );
+    }
 
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let ctx = NodeContext::default();
-        let _ = spatial_filter.finish(ctx, &fw);
+    #[test]
+    fn failed_candidates_get_no_merged_attributes() {
+        let (passed, failed, _) = run(
+            SpatialFilterParams {
+                merge_filter_attributes: true,
+                ..Default::default()
+            },
+            vec![with_attrs(
+                square([5.0, 5.0], 10.0),
+                &[("zone", "commercial")],
+            )],
+            vec![square([20.0, 20.0], 5.0)],
+        );
+        assert_eq!(passed.len(), 0);
+        assert_eq!(failed.len(), 1);
+        assert_eq!(
+            attribute(&failed[0], "zone"),
+            None,
+            "filter attributes are not merged onto failed candidates"
+        );
+    }
 
-        if let ProcessorChannelForwarder::Noop(noop) = fw {
-            let features = noop.send_features.lock().unwrap();
-            assert_eq!(features.len(), 1);
-            let prefixed = features[0].attributes.get(&Attribute::new("filter_name"));
-            let unprefixed = features[0].attributes.get(&Attribute::new("name"));
-            assert_eq!(
-                prefixed,
-                Some(&AttributeValue::String("zone_a".to_string())),
-                "Attribute should appear under prefixed key"
-            );
-            assert!(
-                unprefixed.is_none(),
-                "Attribute should not appear under unprefixed key"
-            );
+    #[test]
+    fn all_mode_merges_every_filter() {
+        let (passed, _, _) = run(
+            SpatialFilterParams {
+                match_mode: MatchMode::All,
+                merge_filter_attributes: true,
+                ..Default::default()
+            },
+            vec![
+                with_attrs(square([5.0, 5.0], 10.0), &[("zone", "commercial")]),
+                with_attrs(square([-5.0, -5.0], 10.0), &[("category", "retail")]),
+            ],
+            vec![square([0.0, 0.0], 10.0)],
+        );
+        assert_eq!(passed.len(), 1);
+        assert_eq!(
+            attribute(&passed[0], "zone"),
+            Some(AttributeValue::String("commercial".to_string()))
+        );
+        assert_eq!(
+            attribute(&passed[0], "category"),
+            Some(AttributeValue::String("retail".to_string()))
+        );
+    }
+
+    // --- new geometry ------------------------------------------------------------
+
+    #[cfg(feature = "new-geometry")]
+    fn match_count(feature: &Feature) -> Option<u64> {
+        match attribute(feature, "matches") {
+            Some(AttributeValue::Number(n)) => n.as_u64(),
+            _ => None,
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
     #[test]
-    fn test_merge_filter_attributes_not_applied_to_failed_candidate() {
-        let mut filter_attrs = Attributes::new();
-        filter_attrs.insert(
-            Attribute::new("zone"),
-            AttributeValue::String("commercial".to_string()),
-        );
-
-        let filter_feature = Feature::new_with_attributes_and_geometry(
-            filter_attrs,
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_filter_polygon_2d(),
-                )),
+    fn any_mode_match_count_reports_every_match() {
+        let (passed, _, _) = run(
+            SpatialFilterParams {
+                output_match_count_attribute: Some(Attribute::new("matches")),
                 ..Default::default()
             },
+            vec![square([5.0, 5.0], 10.0), square([-5.0, -5.0], 10.0)],
+            vec![square([0.0, 0.0], 10.0)],
         );
-
-        // Disjoint candidate: will not intersect the filter, so routed to failed port
-        let candidate_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_disjoint_polygon_2d(),
-                )),
-                ..Default::default()
-            },
+        assert_eq!(passed.len(), 1);
+        assert_eq!(
+            match_count(&passed[0]),
+            Some(2),
+            "the count reports every matching filter, not the first"
         );
-
-        let mut spatial_filter = SpatialFilter {
-            params: SpatialFilterParams {
-                predicate: SpatialPredicate::Intersects,
-                pass_on_multiple_matches: true,
-                output_match_count_attribute: None,
-                merge_filter_attributes: true,
-                merged_attributes_prefix: None,
-            },
-            filters: vec![filter_feature],
-            candidates: vec![candidate_feature],
-        };
-
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let ctx = NodeContext::default();
-        let _ = spatial_filter.finish(ctx, &fw);
-
-        if let ProcessorChannelForwarder::Noop(noop) = fw {
-            let features = noop.send_features.lock().unwrap();
-            let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports[0], *FAILED_PORT);
-            let zone = features[0].attributes.get(&Attribute::new("zone"));
-            assert!(
-                zone.is_none(),
-                "Filter attributes should not be merged onto failed candidates"
-            );
-        }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
     #[test]
-    fn test_merge_filter_attributes_and_mode_multiple_filters() {
-        // Filter 1: overlaps candidate from one side, has attribute "zone"
-        let mut filter1_attrs = Attributes::new();
-        filter1_attrs.insert(
-            Attribute::new("zone"),
-            AttributeValue::String("commercial".to_string()),
-        );
-        let filter1 = Feature::new_with_attributes_and_geometry(
-            filter1_attrs,
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                    create_filter_polygon_2d(), // (5,5)-(15,15), intersects (0,0)-(10,10)
-                )),
+    fn all_mode_failure_still_reports_the_true_count() {
+        let (passed, failed, _) = run(
+            SpatialFilterParams {
+                match_mode: MatchMode::All,
+                output_match_count_attribute: Some(Attribute::new("matches")),
                 ..Default::default()
             },
+            vec![square([5.0, 5.0], 10.0), square([100.0, 100.0], 5.0)],
+            vec![square([0.0, 0.0], 10.0)],
         );
+        assert_eq!(passed.len(), 0);
+        assert_eq!(failed.len(), 1);
+        assert_eq!(
+            match_count(&failed[0]),
+            Some(1),
+            "the failed candidate reports how many filters it did match"
+        );
+    }
 
-        // Filter 2: also overlaps candidate, has attribute "category"
-        let mut filter2_attrs = Attributes::new();
-        filter2_attrs.insert(
-            Attribute::new("category"),
-            AttributeValue::String("retail".to_string()),
-        );
-        let exterior = LineString2D::new(vec![
-            Coordinate2D::new_(-5.0, -5.0),
-            Coordinate2D::new_(5.0, -5.0),
-            Coordinate2D::new_(5.0, 5.0),
-            Coordinate2D::new_(-5.0, 5.0),
-            Coordinate2D::new_(-5.0, -5.0),
-        ]);
-        let filter2 = Feature::new_with_attributes_and_geometry(
-            filter2_attrs,
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(Polygon2D::new(
-                    exterior,
-                    vec![],
-                ))),
-                ..Default::default()
-            },
-        );
-
-        let candidate_feature = Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
-            Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_test_polygon_2d())),
-                ..Default::default()
-            },
-        );
-
-        let mut spatial_filter = SpatialFilter {
-            params: SpatialFilterParams {
-                predicate: SpatialPredicate::Intersects,
-                pass_on_multiple_matches: false, // AND mode: all filters must match
-                output_match_count_attribute: None,
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn any_mode_merges_every_matching_filter_with_last_value_winning() {
+        let (passed, _, _) = run(
+            SpatialFilterParams {
                 merge_filter_attributes: true,
-                merged_attributes_prefix: None,
+                ..Default::default()
             },
-            filters: vec![filter1, filter2],
-            candidates: vec![candidate_feature],
+            vec![
+                with_attrs(square([5.0, 5.0], 10.0), &[("zone", "first"), ("a", "1")]),
+                with_attrs(
+                    square([-5.0, -5.0], 10.0),
+                    &[("zone", "second"), ("b", "2")],
+                ),
+                with_attrs(square([100.0, 100.0], 5.0), &[("zone", "unmatched")]),
+            ],
+            vec![square([0.0, 0.0], 10.0)],
+        );
+        assert_eq!(passed.len(), 1);
+        assert_eq!(
+            attribute(&passed[0], "zone"),
+            Some(AttributeValue::String("second".to_string())),
+            "the last matching filter wins a shared attribute"
+        );
+        assert_eq!(
+            attribute(&passed[0], "a"),
+            Some(AttributeValue::String("1".to_string())),
+            "attributes from every matching filter are merged"
+        );
+        assert_eq!(
+            attribute(&passed[0], "b"),
+            Some(AttributeValue::String("2".to_string()))
+        );
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn disjoint_counts_filters_outside_the_bounding_box() {
+        let (passed, failed, _) = run(
+            SpatialFilterParams {
+                predicate: SpatialPredicate::Disjoint,
+                match_mode: MatchMode::All,
+                output_match_count_attribute: Some(Attribute::new("matches")),
+                ..Default::default()
+            },
+            vec![square([100.0, 100.0], 5.0), square([200.0, 200.0], 5.0)],
+            vec![square([0.0, 0.0], 10.0), square([98.0, 98.0], 10.0)],
+        );
+        assert_eq!(
+            passed.len(),
+            1,
+            "the candidate away from both filters passes"
+        );
+        assert_eq!(match_count(&passed[0]), Some(2));
+        assert_eq!(failed.len(), 1, "the candidate overlapping a filter fails");
+        assert_eq!(match_count(&failed[0]), Some(1));
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn candidate_relative_containment_predicates() {
+        // The candidate square strictly contains the small filter square.
+        let (passed, failed, _) = run(
+            params(SpatialPredicate::Contains, MatchMode::Any),
+            vec![square([4.0, 4.0], 2.0)],
+            vec![square([0.0, 0.0], 10.0), square([4.5, 4.5], 1.0)],
+        );
+        assert_eq!(
+            passed.len(),
+            1,
+            "only the enclosing candidate contains the filter"
+        );
+        assert_eq!(failed.len(), 1);
+
+        // And `within` is the converse: the small candidate lies inside the filter.
+        let (passed, failed, _) = run(
+            params(SpatialPredicate::Within, MatchMode::Any),
+            vec![square([0.0, 0.0], 10.0)],
+            vec![square([4.0, 4.0], 2.0), square([20.0, 20.0], 5.0)],
+        );
+        assert_eq!(
+            passed.len(),
+            1,
+            "only the enclosed candidate is within the filter"
+        );
+        assert_eq!(failed.len(), 1);
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn three_dimensional_candidates_compare_by_their_footprint() {
+        use reearth_flow_geometry::{polygon::Polygon3D, Euclidean3DGeometry};
+
+        // A roof panel at z = 25 whose footprint overlaps the 2D filter zone.
+        let roof = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+                Polygon3D::from_rings(
+                    CoordinateFrame::Euclidean,
+                    square_ring([0.0, 0.0], 10.0)
+                        .into_iter()
+                        .map(|[x, y]| [x, y, 25.0]),
+                    Vec::<Vec<[f64; 3]>>::new(),
+                ),
+            ))),
+        );
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![square([5.0, 5.0], 10.0)],
+            vec![roof],
+        );
+        assert_eq!(
+            passed.len(),
+            1,
+            "the elevated candidate matches by footprint"
+        );
+        assert_eq!(failed.len(), 0);
+        assert_eq!(rejected.len(), 0);
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn closed_shells_compare_by_their_dissolved_footprint() {
+        use reearth_flow_geometry::{triangular_mesh::TriangularMesh3D, Euclidean3DGeometry};
+
+        // A closed box: its faces overlap in (x, y), which the footprint
+        // dissolves into one square before the 2D test.
+        let corners = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 0.0, 4.0],
+            [4.0, 0.0, 4.0],
+            [4.0, 4.0, 4.0],
+            [0.0, 4.0, 4.0],
+        ];
+        let triangles: [u32; 36] = [
+            0, 2, 1, 0, 3, 2, // bottom
+            4, 5, 6, 4, 6, 7, // top
+            0, 1, 5, 0, 5, 4, // front
+            1, 2, 6, 1, 6, 5, // right
+            2, 3, 7, 2, 7, 6, // back
+            3, 0, 4, 3, 4, 7, // left
+        ];
+        let mesh =
+            TriangularMesh3D::from_parts(CoordinateFrame::Euclidean, corners.to_vec(), triangles)
+                .unwrap();
+        let building = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        );
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Within, MatchMode::Any),
+            vec![square([-1.0, -1.0], 10.0)],
+            vec![building],
+        );
+        assert_eq!(
+            passed.len(),
+            1,
+            "the shell's footprint lies within the filter"
+        );
+        assert_eq!(failed.len(), 0);
+        assert_eq!(rejected.len(), 0);
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn three_dimensional_input_in_angular_frames_is_rejected() {
+        use reearth_flow_geometry::{
+            coordinate::EpsgCode, polygon::Polygon3D, Euclidean3DGeometry,
         };
 
-        let noop = NoopChannelForwarder::default();
-        let fw = ProcessorChannelForwarder::Noop(noop);
-        let ctx = NodeContext::default();
-        let _ = spatial_filter.finish(ctx, &fw);
+        // EPSG:4326 is geographic (degrees): no horizontal footprint.
+        let candidate = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+                Polygon3D::from_rings(
+                    CoordinateFrame::Crs(EpsgCode::new(4326)),
+                    square_ring([0.0, 0.0], 1.0)
+                        .into_iter()
+                        .map(|[x, y]| [x, y, 25.0]),
+                    Vec::<Vec<[f64; 3]>>::new(),
+                ),
+            ))),
+        );
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![square_in(
+                CoordinateFrame::Crs(EpsgCode::new(4326)),
+                [0.0, 0.0],
+                1.0,
+            )],
+            vec![candidate],
+        );
+        assert_eq!(passed.len(), 0);
+        assert_eq!(failed.len(), 0);
+        assert_eq!(rejected.len(), 1, "an angular-frame 3D feature is rejected");
+    }
 
-        if let ProcessorChannelForwarder::Noop(noop) = fw {
-            let features = noop.send_features.lock().unwrap();
-            let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports[0], *PASSED_PORT);
-            assert_eq!(
-                features[0].attributes.get(&Attribute::new("zone")),
-                Some(&AttributeValue::String("commercial".to_string())),
-                "Attribute from filter 1 should be merged"
-            );
-            assert_eq!(
-                features[0].attributes.get(&Attribute::new("category")),
-                Some(&AttributeValue::String("retail".to_string())),
-                "Attribute from filter 2 should be merged"
-            );
-        }
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn frames_other_than_the_first_accepted_one_are_rejected() {
+        use reearth_flow_geometry::coordinate::EpsgCode;
+
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![square([5.0, 5.0], 10.0)],
+            vec![
+                square_in(CoordinateFrame::Crs(EpsgCode::new(6677)), [0.0, 0.0], 10.0),
+                square([0.0, 0.0], 10.0),
+            ],
+        );
+        assert_eq!(rejected.len(), 1, "the off-frame candidate is rejected");
+        assert_eq!(passed.len(), 1, "the same-frame candidate still passes");
+        assert_eq!(failed.len(), 0);
     }
 }
