@@ -12499,7 +12499,7 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "Filtre les entités par relation spatiale",
+      "description": "Filtre les entités candidates selon leur relation spatiale avec des géométries de filtre, évaluée dans le plan horizontal : une géométrie 3D est comparée par son emprise et doit être dans un référentiel de coordonnées en unités linéaires.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Spatial Filter Parameters",
@@ -12508,7 +12508,7 @@
         "properties": {
           "predicate": {
             "title": "Spatial Predicate",
-            "description": "The spatial relationship to test between filter and candidate geometries.",
+            "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
             "default": "intersects",
             "allOf": [
               {
@@ -12528,7 +12528,7 @@
           },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
-            "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
+            "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
             "default": false,
             "type": "boolean"
           },
@@ -12543,7 +12543,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of matching filters.",
+            "description": "Optional attribute name to store the number of filter features the candidate matched.",
             "default": null,
             "anyOf": [
               {
@@ -12559,7 +12559,7 @@
           "SpatialPredicate": {
             "oneOf": [
               {
-                "description": "Filter geometry completely contains candidate",
+                "description": "Candidate completely contains the filter geometry",
                 "type": "string",
                 "enum": [
                   "contains"
@@ -12615,7 +12615,7 @@
                 ]
               },
               {
-                "description": "Filter geometry covers candidate",
+                "description": "Candidate covers the filter geometry",
                 "type": "string",
                 "enum": [
                   "covers"

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::relate::Relate;
 #[cfg(not(feature = "new-geometry"))]
@@ -304,10 +306,9 @@ impl Processor for SpatialFilter {
             }
             Err(rejection) => {
                 let message = format!("Spatial Filter rejected a feature: {}", rejection.message);
-                if rejection.warn {
-                    ctx.event_hub.warn_log(Some(ctx.error_span()), message);
-                } else {
-                    ctx.event_hub.debug_log(Some(ctx.error_span()), message);
+                match rejection.code {
+                    Some(code) => ctx.warn(DiagnosticDraft::new(code).with_message(message)),
+                    None => ctx.event_hub.debug_log(Some(ctx.error_span()), message),
                 }
                 fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             }
@@ -402,15 +403,17 @@ impl Processor for SpatialFilter {
             }
 
             if let Some(e) = error {
-                ctx.event_hub.warn_log(
-                    None,
-                    format!("Spatial Filter rejected a feature: the spatial test failed: {e}"),
-                );
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                let rejected = ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     candidate.feature.clone(),
                     REJECTED_PORT.clone(),
-                ));
+                );
+                rejected.warn(
+                    DiagnosticDraft::new(ErrorCode::GeometrySpatialTestFailed).with_message(
+                        format!("Spatial Filter rejected a feature: the spatial test failed: {e}"),
+                    ),
+                );
+                fw.send(rejected);
                 continue;
             }
 
@@ -449,7 +452,8 @@ struct PreparedFeature {
 #[cfg(feature = "new-geometry")]
 struct Rejection {
     message: String,
-    warn: bool,
+    /// `Some` when the cause is worth a warning; `None` keeps it on the debug lane.
+    code: Option<ErrorCode>,
 }
 
 #[cfg(feature = "new-geometry")]
@@ -457,14 +461,14 @@ impl Rejection {
     fn debug(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
-            warn: false,
+            code: None,
         }
     }
 
-    fn warn(message: impl Into<String>) -> Self {
+    fn warn(code: ErrorCode, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
-            warn: true,
+            code: Some(code),
         }
     }
 }
@@ -487,10 +491,16 @@ impl SpatialFilter {
                     FootprintError::Empty | FootprintError::Unsupported(_) => {
                         Rejection::debug(format!("the geometry has no testable footprint: {e}"))
                     }
-                    FootprintError::NonLinearFrame(_) => Rejection::warn(format!(
-                        "{e}. Reproject 3D input to a coordinate system in linear units upstream."
-                    )),
-                    _ => Rejection::warn(format!("the footprint could not be computed: {e}")),
+                    FootprintError::NonLinearFrame(_) => Rejection::warn(
+                        ErrorCode::GeometryNonLinearFrame,
+                        format!(
+                            "{e}. Reproject 3D input to a coordinate system in linear units upstream."
+                        ),
+                    ),
+                    _ => Rejection::warn(
+                        ErrorCode::GeometryFootprintUnavailable,
+                        format!("the footprint could not be computed: {e}"),
+                    ),
                 })?
         } else {
             geometry.clone()
@@ -499,6 +509,7 @@ impl SpatialFilter {
         let mut leaves = Vec::new();
         if !collect_2d_leaves(&prepared, &mut leaves) {
             return Err(Rejection::warn(
+                ErrorCode::GeometryMixedDimensions,
                 "the geometry mixes 2D and 3D parts in a way the footprint could not flatten",
             ));
         }
@@ -507,6 +518,7 @@ impl SpatialFilter {
         };
         if leaves.iter().any(|leaf| leaf.frame() != &frame) {
             return Err(Rejection::warn(
+                ErrorCode::GeometryMixedCoordinateFrames,
                 "the geometry mixes coordinate frames; reproject it to one frame upstream",
             ));
         }
@@ -522,7 +534,7 @@ impl SpatialFilter {
                     Rejection::debug(message)
                 } else {
                     self.frame_mismatch_reported = true;
-                    Rejection::warn(message)
+                    Rejection::warn(ErrorCode::GeometryCoordinateFrameMismatch, message)
                 });
             }
             Some(_) => {}

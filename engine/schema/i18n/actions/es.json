@@ -3573,10 +3573,10 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "Filtra entidades por relación espacial",
+      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales.",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter Parameters",
+          "title": "Spatial Filter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
         },
         "matchMode": {
@@ -3585,7 +3585,7 @@
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
+          "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
@@ -3593,11 +3593,11 @@
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of matching filters"
+          "description": "Optional attribute name to store the number of filter features the candidate matched."
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test between filter and candidate geometries"
+          "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one."
         }
       },
       "enumI18n": {
@@ -3613,13 +3613,13 @@
         },
         "SpatialPredicate": {
           "contains": {
-            "description": "Filter geometry completely contains candidate"
+            "description": "Candidate completely contains the filter geometry"
           },
           "coveredBy": {
             "description": "Candidate is covered by filter geometry"
           },
           "covers": {
-            "description": "Filter geometry covers candidate"
+            "description": "Candidate covers the filter geometry"
           },
           "crosses": {
             "description": "Geometries cross each other"
