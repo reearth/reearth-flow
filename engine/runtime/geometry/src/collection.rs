@@ -345,14 +345,6 @@ impl crate::ops::Area for Collection2D {
     /// rather than failing its siblings; [`area_report`](crate::ops::area::area_report)
     /// counts the skips so a caller can say how many there were. An empty
     /// collection measures zero.
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        Ok(self
-            .members
-            .iter()
-            .filter_map(|m| m.projected_area().ok())
-            .sum())
-    }
-
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         Ok(self
             .members
@@ -366,14 +358,6 @@ impl crate::ops::Area for Collection2D {
 impl crate::ops::Area for Collection3D {
     /// See [`Collection2D`]'s impl: measurable members summed, unmeasurable
     /// ones skipped, empty is zero.
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        Ok(self
-            .members
-            .iter()
-            .filter_map(|m| m.projected_area().ok())
-            .sum())
-    }
-
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         Ok(self
             .members

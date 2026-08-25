@@ -6,7 +6,7 @@
     },
     {
       "name": "Area Calculator",
-      "description": "Calcula el área plana o inclinada de geometrías de polígono y agrega los resultados como atributos",
+      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
       "parameterI18n": {
         "": {
           "title": "Area Calculator Parameters",
@@ -14,7 +14,7 @@
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Attribute to store the calculated area in. Defaults to `area`."
+          "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one."
         }
       }
     },

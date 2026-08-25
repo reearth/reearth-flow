@@ -1,22 +1,15 @@
-//! Area measurement: how much ground a geometry covers, and how much surface
-//! it actually has.
+//! Area measurement: how much surface a geometry actually has.
 //!
-//! Both measures come from one piece of ring math. A planar ring's Newell
-//! vector has magnitude twice the ring's true area, and its z component is
-//! twice the ring's signed XY-projected area — so
-//! [`newell_vector_3d`](crate::validation_next::newell_vector_3d)
-//! answers both questions and the two can never drift apart. A face standing
-//! vertical projects to a line, and its zero falls out of the z component
-//! rather than needing a special case.
+//! A planar ring's Newell vector has magnitude twice the ring's true area, so
+//! [`newell_vector_3d`](crate::validation_next::newell_vector_3d) answers the
+//! question directly. A face standing vertical still has its full area; only
+//! its projection onto a plane would vanish, and this module never takes one.
 //!
-//! **Faces are summed, never unioned.** `projected_area` on a closed body adds
-//! up each face's own projection, so a unit cube covers `2.0` (its top and its
-//! bottom; the four walls project to nothing) and has `6.0` of surface. That is
-//! deliberate: the old geometry model's action summed each CityGML polygon's
-//! own projection too, so a user measuring a whole building has always got
-//! roughly twice its footprint, and measurements do not move under the
-//! migration. Footprint semantics would need a 2D union and would silently
-//! change every existing workflow's numbers.
+//! **Faces are summed, never unioned.** A closed body's surface area adds up
+//! each face's own area, so a unit cube has `6.0` of surface (its six unit
+//! faces), and a hollow body has *more* surface than a solid one, because a
+//! void's faces are real surfaces too. See the `Area` trait doc and the tests
+//! below for the cube and void cases this pins.
 
 use crate::coordinate::CoordinateFrame;
 use crate::ops::UnsupportedOperation;
@@ -24,9 +17,9 @@ use crate::polygon::Polygon3D;
 use crate::validation_next::newell_vector_3d;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
-/// The area of a geometry, measured two ways.
+/// The area of a geometry.
 ///
-/// The default bodies return [`UnsupportedOperation`], so a leaf that cannot be
+/// The default body returns [`UnsupportedOperation`], so a leaf that cannot be
 /// measured needs only an (empty) `impl`, stamped by
 /// [`unsupported!`](crate::unsupported). A geometry that genuinely encloses
 /// nothing — a point, a curve, a point cloud — measures `0.0` instead, stamped
@@ -34,15 +27,6 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollecti
 /// caller should never have to tell "no area" from "not measured".
 #[enum_dispatch::enum_dispatch]
 pub trait Area {
-    /// The area the geometry covers on the XY plane: each face projected and
-    /// the projections summed, never unioned. Vertical faces contribute zero.
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        Err(UnsupportedOperation {
-            geometry: core::any::type_name::<Self>(),
-            operation: "projected_area",
-        })
-    }
-
     /// The true surface area, following the slope of each face.
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         Err(UnsupportedOperation {
@@ -55,10 +39,6 @@ pub trait Area {
 // The boxed enum variants (`Box<Polygon2D>`, `Box<Solid>`, …) need the trait on
 // the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
 impl<T: Area + ?Sized> Area for Box<T> {
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        (**self).projected_area()
-    }
-
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         (**self).surface_area()
     }
@@ -72,26 +52,11 @@ pub(crate) fn ring_surface_area(ring: &[[f64; 3]]) -> f64 {
     (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt() / 2.0
 }
 
-/// The area of one 3D ring projected onto the XY plane: half the magnitude of
-/// its Newell vector's z component. A ring standing vertical projects to a line
-/// and measures zero.
-pub(crate) fn ring_projected_area(ring: &[[f64; 3]]) -> f64 {
-    newell_vector_3d(ring)[2].abs() / 2.0
-}
-
 /// One face's area: its exterior ring's, less its holes', floored at zero —
 /// holes larger than the ring holding them would otherwise measure negative.
 /// Mirrors [`Polygon2D::area`](crate::polygon::Polygon2D::area).
 pub(crate) fn face_area(exterior: f64, holes: impl Iterator<Item = f64>) -> f64 {
     (exterior - holes.sum::<f64>()).max(0.0)
-}
-
-/// A 3D face's XY-projected area, holes subtracted.
-pub(crate) fn polygon_3d_projected_area(p: &Polygon3D) -> f64 {
-    face_area(
-        ring_projected_area(p.exterior()),
-        p.interiors().map(ring_projected_area),
-    )
 }
 
 /// A 3D face's true surface area, holes subtracted.
@@ -272,24 +237,13 @@ mod tests {
         )
     }
 
+    /// The only test that proves surface area follows the slope of a face
+    /// rather than measuring it flat: a tilted unit square still has a full
+    /// unit of surface, not the `1/sqrt(2)` a flat XY measurement would give.
     #[test]
-    fn unit_square_measures_one_both_ways() {
-        let p = unit_square_3d();
-        assert_eq!(p.projected_area().unwrap(), 1.0);
-        assert_eq!(p.surface_area().unwrap(), 1.0);
-    }
-
-    /// The test that makes the two measures impossible to conflate: a plain
-    /// unit square would pass with either method wired to both.
-    #[test]
-    fn tilted_square_projects_smaller_than_its_surface() {
+    fn a_tilted_square_measures_its_true_surface_not_a_flat_projection() {
         let p = tilted_square_3d();
         assert!((p.surface_area().unwrap() - 1.0).abs() < 1e-12);
-        assert!(
-            (p.projected_area().unwrap() - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12,
-            "projected {}",
-            p.projected_area().unwrap()
-        );
     }
 
     #[test]
@@ -314,39 +268,14 @@ mod tests {
 
         for hole in [hole, reversed] {
             let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, exterior.clone(), vec![hole]);
-            assert_eq!(p.projected_area().unwrap(), 12.0);
             assert_eq!(p.surface_area().unwrap(), 12.0);
         }
-    }
-
-    /// A 2D face has no elevation to slope, so it answers both questions with
-    /// its planar area — matching the old world, which ignored `areaType`
-    /// entirely for 2D geometry.
-    #[test]
-    fn a_2d_face_answers_both_questions_identically() {
-        let p = Polygon2D::from_rings(
-            CoordinateFrame::Euclidean,
-            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0], [0.0, 0.0]],
-            Vec::<Vec<[f64; 2]>>::new(),
-        );
-        assert_eq!(p.projected_area().unwrap(), 6.0);
-        assert_eq!(p.surface_area().unwrap(), 6.0);
     }
 
     /// A point encloses nothing, which is an answer rather than a refusal.
     #[test]
     fn a_point_measures_zero_rather_than_refusing() {
         let p = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
-        assert_eq!(p.projected_area().unwrap(), 0.0);
-        assert_eq!(p.surface_area().unwrap(), 0.0);
-    }
-
-    /// The `no_area!` macro's 2D stamp, previously proved only for `Point3D`.
-    #[test]
-    fn a_2d_point_measures_zero_rather_than_refusing() {
-        use crate::point::Point2D;
-        let p = Point2D::new(CoordinateFrame::Euclidean, [1.0, 2.0]);
-        assert_eq!(p.projected_area().unwrap(), 0.0);
         assert_eq!(p.surface_area().unwrap(), 0.0);
     }
 
@@ -375,28 +304,28 @@ mod tests {
         Euclidean3DGeometry::Polygon(Box::new(square))
     }
 
+    /// Two measurable members, so a wiring mistake (e.g. always returning the
+    /// first member's area instead of summing) would not hide behind a
+    /// single-element list.
     #[test]
     fn a_collection_sums_its_members() {
         let c = Collection3D::new(vec![
             polygon_member(unit_square_3d()),
             polygon_member(unit_square_3d()),
         ]);
-        assert_eq!(c.projected_area().unwrap(), 2.0);
         assert_eq!(c.surface_area().unwrap(), 2.0);
     }
 
     #[test]
     fn an_empty_collection_measures_zero() {
         let c = Collection3D::new(Vec::<Euclidean3DGeometry>::new());
-        assert_eq!(c.projected_area().unwrap(), 0.0);
         assert_eq!(c.surface_area().unwrap(), 0.0);
     }
 
-    /// `Collection2D::projected_area`/`surface_area` were previously untested
-    /// (only `Collection3D` was covered). A 2D member has no elevation to
-    /// slope, so both measures must agree, and the total is deliberately not
-    /// `1.0` so a wiring mistake (e.g. always returning the first member's
-    /// area) would not hide behind a coincidentally-correct value.
+    /// `Collection2D::surface_area` was previously untested (only
+    /// `Collection3D` was covered). The total is deliberately not `1.0` so a
+    /// wiring mistake (e.g. always returning the first member's area) would
+    /// not hide behind a coincidentally-correct value.
     #[test]
     fn a_2d_collection_sums_its_members() {
         use crate::collection::Collection2D;
@@ -416,7 +345,6 @@ mod tests {
             )))
         };
         let c = Collection2D::new(vec![square(0.0), square(10.0)]);
-        assert_eq!(c.projected_area().unwrap(), 12.0);
         assert_eq!(c.surface_area().unwrap(), 12.0);
     }
 
@@ -446,14 +374,12 @@ mod tests {
             polygon_member(unit_square_3d()),
             Euclidean3DGeometry::Csg(csg()),
         ]);
-        assert_eq!(c.projected_area().unwrap(), 1.0);
         assert_eq!(c.surface_area().unwrap(), 1.0);
     }
 
     /// The refusal itself, so the skip above is provably skipping something.
     #[test]
     fn a_csg_refuses_rather_than_measuring_zero() {
-        assert!(csg().projected_area().is_err());
         assert!(csg().surface_area().is_err());
     }
 
@@ -461,7 +387,6 @@ mod tests {
     /// always has a number to write.
     #[test]
     fn an_absent_geometry_measures_zero() {
-        assert_eq!(Geometry::None.projected_area().unwrap(), 0.0);
         assert_eq!(Geometry::None.surface_area().unwrap(), 0.0);
     }
 
@@ -478,9 +403,6 @@ mod tests {
         let c = Geometry::GeometryCollection(GeometryCollection::new(vec![flat, tilted]));
 
         assert!((c.surface_area().unwrap() - 3.0).abs() < 1e-12);
-        assert!(
-            (c.projected_area().unwrap() - (2.0 + std::f64::consts::FRAC_1_SQRT_2)).abs() < 1e-12
-        );
     }
 
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
@@ -500,49 +422,50 @@ mod tests {
             [0u32, 1, 2, 0, 2, 3],
         )
         .unwrap();
-        assert_eq!(m.projected_area().unwrap(), 1.0);
         assert_eq!(m.surface_area().unwrap(), 1.0);
     }
 
-    /// A vertical triangle covers no ground but still has surface.
+    /// A vertical triangle has no footprint but still has real surface: this
+    /// pins that `TriangularMesh3D`'s surface area follows the face's slope
+    /// rather than a flat XY measurement.
     #[test]
-    fn a_vertical_triangle_projects_to_nothing() {
+    fn a_vertical_triangle_still_has_real_surface_area() {
         let m = TriangularMesh3D::from_parts(
             CoordinateFrame::Euclidean,
             vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 2.0]],
             [0u32, 1, 2],
         )
         .unwrap();
-        assert_eq!(m.projected_area().unwrap(), 0.0);
         assert_eq!(m.surface_area().unwrap(), 2.0);
     }
 
+    /// The sole test of `TriangularMesh2D::surface_area`, which now computes
+    /// the sum directly rather than delegating to the removed
+    /// `projected_area`.
     #[test]
-    fn a_2d_triangle_mesh_answers_both_questions_identically() {
+    fn a_2d_triangle_mesh_measures_its_area() {
         let m = TriangularMesh2D::from_parts(
             CoordinateFrame::Euclidean,
             vec![[0.0, 0.0], [4.0, 0.0], [0.0, 3.0]],
             [0u32, 1, 2],
         )
         .unwrap();
-        assert_eq!(m.projected_area().unwrap(), 6.0);
         assert_eq!(m.surface_area().unwrap(), 6.0);
     }
 
-    /// `PolygonMesh2D::projected_area`/`surface_area` were previously
-    /// untested (only `PolygonMesh3D` was covered). A 2D face has no
-    /// elevation to slope, so both measures must agree; the two triangles
+    /// The sole test of `PolygonMesh2D::surface_area` (only `PolygonMesh3D`
+    /// was covered otherwise), which now computes the sum directly rather
+    /// than delegating to the removed `projected_area`. The two triangles
     /// form a 3x2 rectangle rather than a unit shape, so a wiring mistake
     /// could not hide behind a value of `1.0`.
     #[test]
-    fn a_2d_polygon_mesh_sums_its_faces_and_answers_both_questions_identically() {
+    fn a_2d_polygon_mesh_sums_its_faces() {
         let mesh = PolygonMesh2D::from_parts(
             CoordinateFrame::Euclidean,
             vec![[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
             vec![vec![0u32, 1, 2], vec![0, 2, 3]],
         )
         .unwrap();
-        assert_eq!(mesh.projected_area().unwrap(), 6.0);
         assert_eq!(mesh.surface_area().unwrap(), 6.0);
     }
 
@@ -573,7 +496,6 @@ mod tests {
             PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, &[holed, unit_square_3d()])
                 .unwrap();
         // 12 from the holed face, 1 from the unit square.
-        assert_eq!(mesh.projected_area().unwrap(), 13.0);
         assert_eq!(mesh.surface_area().unwrap(), 13.0);
     }
 
@@ -585,7 +507,6 @@ mod tests {
             Vec::<u32>::new(),
         )
         .unwrap();
-        assert_eq!(m.projected_area().unwrap(), 0.0);
         assert_eq!(m.surface_area().unwrap(), 0.0);
     }
 
@@ -617,22 +538,15 @@ mod tests {
         TriangularMesh3DData::from_parts(corners, TRIS).unwrap()
     }
 
-    /// **Pin.** A unit cube covers 2.0 and has 6.0 of surface: the top and the
-    /// bottom each project to 1.0, the four walls project to zero-area lines,
-    /// and all six faces contribute their full area to the surface.
-    ///
-    /// This is deliberately not footprint semantics. The old geometry model's
-    /// action summed each CityGML polygon's own XY projection too, so a user
-    /// measuring a whole building has always got roughly twice its footprint.
-    /// Changing it would need a 2D union and would silently move every existing
-    /// workflow's numbers. Do not "correct" this test.
+    /// **Pin.** A unit cube's surface area is exactly 6.0: each of its six
+    /// unit faces contributes its full area to the sum. Do not "correct" this
+    /// test.
     #[test]
-    fn a_unit_cube_covers_two_and_has_six_of_surface() {
+    fn a_unit_cube_has_six_of_surface() {
         let cube = Solid::from_exterior(
             CoordinateFrame::Euclidean,
             Shell::TriangularMesh(box_shell([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])),
         );
-        assert!((cube.projected_area().unwrap() - 2.0).abs() < 1e-12);
         assert!((cube.surface_area().unwrap() - 6.0).abs() < 1e-12);
     }
 

@@ -483,19 +483,14 @@ impl Footprint for Polygon3D {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::{polygon_3d_projected_area, polygon_3d_surface_area};
+use crate::ops::area::polygon_3d_surface_area;
 #[cfg(feature = "new-geometry")]
 use crate::ops::Area;
 
 #[cfg(feature = "new-geometry")]
 impl Area for Polygon2D {
-    /// A 2D face has no elevation to slope, so both measures are its planar
-    /// area — matching the old world, which ignored the area type entirely for
-    /// 2D geometry.
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        Ok(self.area())
-    }
-
+    /// A 2D face has no elevation to slope, so its area is simply its planar
+    /// area.
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         Ok(self.area())
     }
@@ -503,10 +498,6 @@ impl Area for Polygon2D {
 
 #[cfg(feature = "new-geometry")]
 impl Area for Polygon3D {
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        Ok(polygon_3d_projected_area(self))
-    }
-
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         Ok(polygon_3d_surface_area(self))
     }

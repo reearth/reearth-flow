@@ -27,10 +27,6 @@ macro_rules! unsupported {
 macro_rules! no_area {
     ($($ty:ty),+ $(,)?) => { $(
         impl $crate::ops::Area for $ty {
-            fn projected_area(&self) -> Result<f64, $crate::ops::UnsupportedOperation> {
-                Ok(0.0)
-            }
-
             fn surface_area(&self) -> Result<f64, $crate::ops::UnsupportedOperation> {
                 Ok(0.0)
             }

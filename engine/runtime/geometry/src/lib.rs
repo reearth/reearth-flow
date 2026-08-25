@@ -325,21 +325,12 @@ impl BoundingBox for GeometryCollection {
 
 #[cfg(feature = "new-geometry")]
 impl Area for Geometry {
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         match self {
             // An absent geometry encloses nothing. Unlike `bounding_box`, which
             // refuses because there is no box to give, there is a correct number
             // here — and the action's promise is that the attribute is always
             // written.
-            Geometry::None => Ok(0.0),
-            Geometry::Euclidean2D(g) => g.projected_area(),
-            Geometry::Euclidean3D(g) => g.projected_area(),
-            Geometry::GeometryCollection(c) => c.projected_area(),
-        }
-    }
-
-    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
-        match self {
             Geometry::None => Ok(0.0),
             Geometry::Euclidean2D(g) => g.surface_area(),
             Geometry::Euclidean3D(g) => g.surface_area(),
@@ -354,14 +345,6 @@ impl Area for GeometryCollection {
     /// Members sitting in different frames are summed anyway; the caller is
     /// told through [`area_report`](ops::area::area_report) that the sum mixes
     /// units.
-    fn projected_area(&self) -> Result<f64, UnsupportedOperation> {
-        Ok(self
-            .members
-            .iter()
-            .filter_map(|m| m.projected_area().ok())
-            .sum())
-    }
-
     fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
         Ok(self
             .members
