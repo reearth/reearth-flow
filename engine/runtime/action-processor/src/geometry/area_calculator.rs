@@ -35,7 +35,7 @@ impl ProcessorFactory for AreaCalculatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Calculates the planar or sloped area of a feature's geometry and stores it in an attribute."
+        "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -81,62 +81,31 @@ impl ProcessorFactory for AreaCalculatorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
-#[serde(rename_all = "camelCase")]
-enum AreaType {
-    /// # Planar Area
-    /// Calculates the flat area of the geometry projected onto the XY plane.
-    #[serde(alias = "plane_area")]
-    #[serde(alias = "planeArea")]
-    #[default]
-    PlaneArea,
-    /// # Sloped Area
-    /// Calculates the true surface area, accounting for the slope of each face.
-    #[serde(alias = "sloped_area")]
-    #[serde(alias = "slopedArea")]
-    SlopedArea,
-}
-
 /// # Area Calculator Parameters
 ///
 /// Configure how the area of each feature's geometry is measured and stored.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaCalculator {
-    /// # Area Type
-    /// Whether to measure the flat projected area or the true sloped surface
-    /// area. Has no effect on a geometry with no elevation, which is always flat.
-    #[serde(default)]
-    area_type: AreaType,
-
     /// # Output Attribute
-    /// Attribute to store the calculated area in. Defaults to `area`.
+    /// Attribute to store the calculated true surface area in. Defaults to
+    /// `area`. A solid's area sums the areas of all of its boundary
+    /// surfaces, so a void's faces count toward the total just like the
+    /// exterior's do — a hollow body measures *more* surface than a solid one.
     #[serde(default = "default_output_attribute")]
     output_attribute: Attribute,
-
-    /// # Multiplier
-    /// Factor applied to the calculated area, for converting to another unit.
-    /// Defaults to 1.0.
-    #[serde(default = "default_multiplier")]
-    multiplier: f64,
 }
 
 impl Default for AreaCalculator {
     fn default() -> Self {
         Self {
-            area_type: AreaType::default(),
             output_attribute: default_output_attribute(),
-            multiplier: default_multiplier(),
         }
     }
 }
 
 fn default_output_attribute() -> Attribute {
     Attribute::new("area".to_string())
-}
-
-fn default_multiplier() -> f64 {
-    1.0
 }
 
 #[cfg(feature = "new-geometry")]
@@ -200,10 +169,7 @@ impl Processor for AreaCalculator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let geometry = &*ctx.feature.geometry;
-        let measured = match self.area_type {
-            AreaType::PlaneArea => geometry.projected_area(),
-            AreaType::SlopedArea => geometry.surface_area(),
-        };
+        let measured = geometry.surface_area();
         // The attribute is always written, so an unmeasurable geometry records
         // zero — but says so, rather than passing silently.
         let area = match measured {
@@ -212,7 +178,7 @@ impl Processor for AreaCalculator {
                 // qualify. On the `Err` path the warning below has already said
                 // the whole story.
                 self.warn_about_frames(&ctx, geometry);
-                area * self.multiplier
+                area
             }
             Err(_) => {
                 // No `with_message` here either — see the comment on
@@ -247,45 +213,26 @@ impl Processor for AreaCalculator {
         // A geometry with no area — a point, a curve, or no geometry at all —
         // measures zero. The attribute is written either way, so that downstream
         // steps never have to distinguish "no area" from "not measured".
+        //
+        // Always the true surface area, following the slope of each face —
+        // matching `slopedArea`'s old behaviour now that `areaType` and
+        // `multiplier` are gone (see the new-geometry world's `Area::surface_area`
+        // and its module docs for why a closed body's faces are summed, not
+        // unioned, and why a solid's voids add to its surface rather than
+        // subtracting).
         let area = match &geometry.value {
             GeometryValue::None => 0.0,
-            GeometryValue::FlowGeometry2D(geom_2d) => geom_2d.unsigned_area2d() * self.multiplier,
-            GeometryValue::FlowGeometry3D(geom_3d) => {
-                // For 3D geometries, the behavior depends on the area type
-                match self.area_type {
-                    AreaType::PlaneArea => {
-                        // For plane area, we convert the 3D geometry to 2D (dropping Z coordinates)
-                        // and then calculate the area
-                        let projected_2d: reearth_flow_geometry::types::geometry::Geometry2D<_> =
-                            geom_3d.clone().into();
-                        projected_2d.unsigned_area2d() * self.multiplier
-                    }
-                    AreaType::SlopedArea => {
-                        // Calculate the true 3D area including Z coordinates
-                        geom_3d.unsigned_area3d() * self.multiplier
-                    }
-                }
-            }
+            GeometryValue::FlowGeometry2D(geom_2d) => geom_2d.unsigned_area2d(),
+            GeometryValue::FlowGeometry3D(geom_3d) => geom_3d.unsigned_area3d(),
             GeometryValue::CityGmlGeometry(city_gml_geom) => {
                 // For CityGML geometry, we calculate area for each polygon
                 let mut total_area = 0.0;
                 for gml_feature in &city_gml_geom.gml_geometries {
                     for polygon in &gml_feature.polygons {
-                        match self.area_type {
-                            AreaType::PlaneArea => {
-                                // Convert 3D polygon to 2D for plane area calculation
-                                let projected_2d: reearth_flow_geometry::types::polygon::Polygon2D<
-                                    _,
-                                > = polygon.clone().into();
-                                total_area += projected_2d.unsigned_area2d();
-                            }
-                            AreaType::SlopedArea => {
-                                total_area += polygon.unsigned_area3d();
-                            }
-                        }
+                        total_area += polygon.unsigned_area3d();
                     }
                 }
-                total_area * self.multiplier
+                total_area
             }
         };
 
@@ -326,16 +273,17 @@ mod tests {
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::csg::Csg;
     use reearth_flow_geometry::polygon::Polygon3D;
-    use reearth_flow_geometry::solid::Solid;
+    use reearth_flow_geometry::solid::{Shell, Solid};
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3DData;
     use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::Feature;
     use serde_json::json;
 
-    /// The unit square tilted 45 degrees about the x axis: 1.0 of surface,
-    /// 1/sqrt(2) of it projected. Any test that can tell the two area types
-    /// apart has to use a sloped face.
+    /// The unit square tilted 45 degrees about the x axis: 1.0 of true
+    /// surface, 1/sqrt(2) of it projected onto the XY plane. A flat face
+    /// would not tell surface area apart from projected area, so tests that
+    /// need to pin the former use this instead.
     fn tilted_square() -> Geometry {
         let h = std::f64::consts::FRAC_1_SQRT_2;
         Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
@@ -389,37 +337,18 @@ mod tests {
         }
     }
 
-    /// The two area types must reach the two different measures. A flat face
-    /// would pass with either one wired to both.
+    /// The action always measures the true surface area, following the slope
+    /// of each face, not the flatter XY-projected area a tilted face would
+    /// give if it dropped elevation.
     #[test]
-    fn plane_area_and_sloped_area_measure_differently() {
+    fn the_action_computes_true_surface_area() {
         let feature = Feature::from(tilted_square());
-
-        let plane = run(
-            &mut *build(Some(json!({"areaType": "planeArea"}))),
-            &feature,
-        );
+        let out = run(&mut *build(None), &feature);
         assert!(
-            (area_of(&plane, "area") - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12,
-            "plane area was {}",
-            area_of(&plane, "area")
+            (area_of(&out, "area") - 1.0).abs() < 1e-12,
+            "surface area was {}",
+            area_of(&out, "area")
         );
-
-        let sloped = run(
-            &mut *build(Some(json!({"areaType": "slopedArea"}))),
-            &feature,
-        );
-        assert!((area_of(&sloped, "area") - 1.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn the_multiplier_scales_the_result() {
-        let feature = Feature::from(tilted_square());
-        let out = run(
-            &mut *build(Some(json!({"areaType": "slopedArea", "multiplier": 4.0}))),
-            &feature,
-        );
-        assert!((area_of(&out, "area") - 4.0).abs() < 1e-12);
     }
 
     #[test]
@@ -436,7 +365,7 @@ mod tests {
             &mut *build(Some(json!({"outputAttribute": "roofArea"}))),
             &feature,
         );
-        assert!((area_of(&named, "roofArea") - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12);
+        assert!((area_of(&named, "roofArea") - 1.0).abs() < 1e-12);
     }
 
     /// The old code commented this explicitly and the promise is kept: a
@@ -468,6 +397,34 @@ mod tests {
 
         let out = run(&mut *build(None), &Feature::from(g));
         assert_eq!(area_of(&out, "area"), 0.0);
+    }
+
+    /// A solid's area is the sum of its boundary surfaces: the exterior's
+    /// faces and every void's, since a void's faces are real surfaces too and
+    /// count toward the total rather than subtracting from it. This is the
+    /// behaviour the parameter doc comment promises, and nothing else at the
+    /// action level pins it.
+    #[test]
+    fn a_solids_area_sums_its_boundary_surfaces_including_voids() {
+        // A right triangle with legs of length 1 has area 0.5. Used as both
+        // the exterior shell and a void, so the solid's total surface is the
+        // two added together rather than the void cancelling the exterior out.
+        let triangle = || {
+            TriangularMesh3DData::from_parts(
+                vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                [0u32, 1, 2],
+            )
+            .unwrap()
+        };
+        let solid = Solid::new(
+            CoordinateFrame::Euclidean,
+            triangle(),
+            vec![Shell::from(triangle())],
+        );
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
+
+        let out = run(&mut *build(None), &Feature::from(g));
+        assert!((area_of(&out, "area") - 1.0).abs() < 1e-12);
     }
 
     #[test]

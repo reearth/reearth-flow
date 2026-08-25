@@ -30,16 +30,6 @@
         "description": "各地物のジオメトリの面積を計算し格納する方法を設定する",
         "type": "object",
         "properties": {
-          "areaType": {
-            "title": "面積タイプ",
-            "description": "平面投影面積と実際の傾斜表面積のどちらを計算するか。標高を持たないジオメトリは常に平面のため影響しない",
-            "default": "planeArea",
-            "allOf": [
-              {
-                "$ref": "#/definitions/AreaType"
-              }
-            ]
-          },
           "outputAttribute": {
             "title": "出力属性",
             "description": "計算された面積を格納する属性。デフォルトは `area`",
@@ -49,36 +39,9 @@
                 "$ref": "#/definitions/Attribute"
               }
             ]
-          },
-          "multiplier": {
-            "title": "乗数",
-            "description": "計算された面積に適用する係数。単位を変換する場合に使用する。デフォルトは 1.0",
-            "default": 1.0,
-            "type": "number",
-            "format": "double"
           }
         },
         "definitions": {
-          "AreaType": {
-            "oneOf": [
-              {
-                "title": "平面面積",
-                "description": "ジオメトリを XY 平面に投影した平坦な面積を計算する",
-                "type": "string",
-                "enum": [
-                  "planeArea"
-                ]
-              },
-              {
-                "title": "傾斜面積",
-                "description": "各面の傾斜を考慮した実際の表面積を計算する",
-                "type": "string",
-                "enum": [
-                  "slopedArea"
-                ]
-              }
-            ]
-          },
           "Attribute": {
             "type": "string"
           }
