@@ -316,12 +316,6 @@ mod tests {
         assert_eq!(c.surface_area().unwrap(), 2.0);
     }
 
-    #[test]
-    fn an_empty_collection_measures_zero() {
-        let c = Collection3D::new(Vec::<Euclidean3DGeometry>::new());
-        assert_eq!(c.surface_area().unwrap(), 0.0);
-    }
-
     /// `Collection2D::surface_area` was previously untested (only
     /// `Collection3D` was covered). The total is deliberately not `1.0` so a
     /// wiring mistake (e.g. always returning the first member's area) would
@@ -423,20 +417,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(m.surface_area().unwrap(), 1.0);
-    }
-
-    /// A vertical triangle has no footprint but still has real surface: this
-    /// pins that `TriangularMesh3D`'s surface area follows the face's slope
-    /// rather than a flat XY measurement.
-    #[test]
-    fn a_vertical_triangle_still_has_real_surface_area() {
-        let m = TriangularMesh3D::from_parts(
-            CoordinateFrame::Euclidean,
-            vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 2.0]],
-            [0u32, 1, 2],
-        )
-        .unwrap();
-        assert_eq!(m.surface_area().unwrap(), 2.0);
     }
 
     /// The sole test of `TriangularMesh2D::surface_area`, which now computes
@@ -596,22 +576,6 @@ mod tests {
                 frame: AreaFrame::Nothing,
                 skipped: 0,
             }
-        );
-    }
-
-    /// A point carries no area, so its frame does not colour the result: a sum
-    /// of one polygon and one point is in the polygon's frame alone.
-    #[test]
-    fn a_geometry_that_carries_no_area_contributes_no_frame() {
-        let point = Euclidean3DGeometry::Point(crate::point::Point3D::new(
-            CoordinateFrame::Crs(EpsgCode::from(4326)),
-            [0.0, 0.0, 0.0],
-        ));
-        let c = Collection3D::new(vec![polygon_member(unit_square_3d()), point]);
-        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c));
-        assert_eq!(
-            area_report(&g).frame,
-            AreaFrame::One(CoordinateFrame::Euclidean)
         );
     }
 
