@@ -83,10 +83,11 @@ func DefineResources() []generator.ResourceRule {
 		{Resource: ResourceParameter, Actions: writerMaintainerOwner},
 		{Resource: ResourceProject, Actions: map[string]generator.ActionRule{
 			ActionList:   {Roles: []string{roleSelf, roleMaintainer}},
+			ActionRead:   {Roles: []string{roleReader, roleWriter, roleMaintainer, roleOwner}},
 			ActionCreate: {Roles: []string{roleMaintainer, roleOwner}},
 			ActionEdit:   {Roles: []string{roleMaintainer, roleOwner}},
 			ActionDelete: {Roles: []string{roleMaintainer, roleOwner}},
-			ActionAny:    {Roles: []string{roleReader, roleWriter, roleOwner, roleMaintainer}},
+			ActionAny:    {Roles: []string{roleWriter, roleOwner, roleMaintainer}},
 		}},
 		{Resource: ResourceProjectAccess, Actions: maintainerOwner},
 		{Resource: ResourceProjectDocument, Actions: map[string]generator.ActionRule{

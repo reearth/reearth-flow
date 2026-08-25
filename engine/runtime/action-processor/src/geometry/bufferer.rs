@@ -1,10 +1,18 @@
 use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
 use std::sync::Arc;
 
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::bufferable::{buffer_polygon, Bufferable};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::overlay::{buffer, BufferStyle};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry3D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::line_string::LineString2D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -14,6 +22,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -85,8 +94,9 @@ impl ProcessorFactory for BuffererFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum BufferType {
     /// # 2D Area Buffer
-    /// Creates a flat polygon buffer around the input geometry, discarding any
-    /// elevation it carried.
+    /// Creates an areal buffer around the input geometry: a 2D geometry is
+    /// buffered in its coordinate plane, a planar 3D polygon within its own
+    /// plane. An elevation shared by the buffered geometry is kept.
     #[serde(rename = "area2d")]
     Area2D,
 }
@@ -104,13 +114,34 @@ struct Bufferer {
     /// the geometry's coordinate system. A negative distance contracts it.
     distance: f64,
     /// # Interpolation Angle
-    /// Angular step in degrees used to approximate the rounded corners of a
-    /// buffered point or curve. A smaller angle produces a smoother outline.
-    /// Buffering a polygon does not use this value.
+    /// Angular step in degrees used to approximate the rounded caps, joins,
+    /// and discs of the buffer outline. A smaller angle produces a smoother
+    /// outline. Values outside the range of 1.8 to 45 degrees are clamped to
+    /// it.
     interpolation_angle: f64,
 }
 
 impl Processor for Bufferer {
+    /// A geometry that cannot be buffered leaves via `rejected`; one that
+    /// buffers to nothing leaves via `features` with no geometry.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let style = BufferStyle::new(self.distance).arc_step(self.interpolation_angle.to_radians());
+        match buffer(&ctx.feature.geometry, &style) {
+            Ok(buffered) => {
+                let mut feature = ctx.feature.clone();
+                feature.set_geometry(buffered);
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+            }
+            Err(e) => reject(&ctx, fw, &e.to_string()),
+        }
+        Ok(())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -137,7 +168,6 @@ impl Processor for Bufferer {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -154,7 +184,6 @@ impl Processor for Bufferer {
 /// Route a feature the action cannot buffer to `rejected`. Emitting it on
 /// `features` would leave it indistinguishable from a buffered one, and a
 /// geometry this action does not handle should not panic the run.
-#[cfg(not(feature = "new-geometry"))]
 fn reject(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, reason: &str) {
     ctx.event_hub
         .debug_log(Some(ctx.error_span()), format!("buffer rejected: {reason}"));

@@ -17,6 +17,9 @@
 //!   outside) an areal geometry.
 //! - [`segment_intersections()`]: the pairwise segment × segment
 //!   intersections between two polyline sets.
+//! - `buffer()` (feature `new-geometry`): the offset region within a signed
+//!   distance of a geometry, with its own operand policy documented on the
+//!   `buffer` module.
 //!
 //! The operand policy is the predicates': both operands in one coordinate
 //! frame ([`MixedFrames`](PredicateError::MixedFrames) otherwise, reprojection
@@ -53,9 +56,12 @@
 //!   relationship that alone determines the result (disjoint, boundary-only
 //!   touch, containment, equality) bypasses the backend instead of trusting
 //!   its snapped output near zero-area configurations.
-//! - Output is pure 2D: any elevation on the inputs is ignored and dropped, and
-//!   appearance does not propagate.
+//! - Output is 2D: the boolean operations ignore and drop any elevation on
+//!   the inputs, while `buffer::buffer` keeps an elevation shared by the
+//!   inputs it buffers. Appearance does not propagate.
 
+#[cfg(feature = "new-geometry")]
+pub mod buffer;
 mod segments;
 mod shapes;
 mod snap;
@@ -63,9 +69,11 @@ mod snap;
 mod tests;
 
 use i_overlay::core::fill_rule::FillRule;
+use i_overlay::core::overlay::ContourDirection;
 use i_overlay::core::overlay_rule::OverlayRule;
+use i_overlay::core::solver::Solver;
 use i_overlay::float::clip::FloatClip;
-use i_overlay::float::single::SingleFloatOverlay;
+use i_overlay::float::overlay::{FloatOverlay, OverlayOptions};
 use i_overlay::string::clip::ClipRule;
 
 use crate::coordinate::CoordinateFrame;
@@ -78,6 +86,8 @@ use crate::predicates::{flatten_2d_pair, PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
 
 pub use crate::predicates::kernel::SegmentIntersection;
+#[cfg(feature = "new-geometry")]
+pub use buffer::{buffer, buffer_2d, buffer_polygon_3d, BufferStyle};
 
 /// The boolean overlay operation to apply.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -286,11 +296,22 @@ pub(crate) fn dissolve_shapes(
     shapes: Vec<shapes::Shape>,
     frame: &CoordinateFrame,
 ) -> Vec<Polygon2D> {
-    let empty: Vec<shapes::Shape> = Vec::new();
-    shapes::shapes_to_polygons(
-        shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero),
-        frame,
-    )
+    let options = OverlayOptions {
+        output_direction: output_direction(frame),
+        ..Default::default()
+    };
+    let result = FloatOverlay::with_subj_custom(&shapes, options, Solver::AUTO)
+        .overlay(OverlayRule::Union, FillRule::NonZero);
+    shapes::shapes_to_polygons(result, frame, None)
+}
+
+/// `i_overlay`'s output direction that lands on Flow's convention in `frame`.
+fn output_direction(frame: &CoordinateFrame) -> ContourDirection {
+    if frame.orientation_sign().unwrap_or(1) == -1 {
+        ContourDirection::Clockwise
+    } else {
+        ContourDirection::CounterClockwise
+    }
 }
 
 // --- leaf-level implementations ------------------------------------------------
@@ -313,8 +334,14 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
             Ok(out)
         }
         Plan::Run(op) => {
-            let result = subject.overlay(&clip, op.into(), FillRule::NonZero);
-            Ok(shapes::shapes_to_polygons(result, frame))
+            let options = OverlayOptions {
+                output_direction: output_direction(frame),
+                ..Default::default()
+            };
+            let result =
+                FloatOverlay::with_subj_and_clip_custom(&subject, &clip, options, Solver::AUTO)
+                    .overlay(op.into(), FillRule::NonZero);
+            Ok(shapes::shapes_to_polygons(result, frame, None))
         }
     }
 }

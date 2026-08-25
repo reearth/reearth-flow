@@ -188,7 +188,7 @@ mod build_next {
         extract_tags: &HashSet<String>,
         _base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
-        _keep_attributes: bool,
+        keep_attributes: bool,
         _flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
     ) -> Vec<Feature> {
@@ -210,6 +210,7 @@ mod build_next {
             &ns_registry,
             extract_tags,
             citygml_attribute_key,
+            keep_attributes,
             flatten_leaf_attributes,
         )
     }
@@ -227,6 +228,7 @@ mod build_next {
         ns_registry: &NamespaceRegistry,
         extract_tags: &HashSet<String>,
         citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
         flatten_leaf_attributes: &[String],
     ) -> Vec<Feature> {
         let mut out = Vec::new();
@@ -247,6 +249,7 @@ mod build_next {
                 let mut feature = parser::to_feature(
                     &feature_root,
                     citygml_attribute_key,
+                    keep_attributes,
                     flatten_leaf_attributes,
                 );
                 attach_geometry(&mut feature, &geoms, geom_registry, appearance, srs_by_file);
@@ -270,8 +273,12 @@ mod build_next {
                     }
                 }
                 for (node, parent_id) in &extracted {
-                    let mut feature =
-                        parser::to_feature(node, citygml_attribute_key, flatten_leaf_attributes);
+                    let mut feature = parser::to_feature(
+                        node,
+                        citygml_attribute_key,
+                        keep_attributes,
+                        flatten_leaf_attributes,
+                    );
                     if let Some(id) = parent_id {
                         feature.insert(
                             CITYGML_PARENT_GML_ID_KEY,
@@ -381,6 +388,7 @@ mod build_next {
                 &ns_registry,
                 &tags,
                 None,
+                true,
                 &[],
             )
         }

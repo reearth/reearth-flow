@@ -278,7 +278,12 @@ When an action cannot run, removing it from `base_actions.go` is the immediate m
 
 **A geometry port changes an action's bucket, and the porting PR will not say so.** An action that could not run because its only implementation was under `#[cfg(not(feature = "new-geometry"))]` starts running the moment its port merges. It does not thereby become exposable — it now owes the engine-side review it never had. So a port PR silently moves its action out of "does not run" and into "pending audit", and porting PRs are written and reviewed as geometry work: they touch the action's `process`, not `base_actions.go` and not the audit's records.
 
-**So after any geometry-port PR merges, move the action into the pending-audit list.** Do not add it to `base_actions.go` at the same time — running is only half of §7.2, and promoting it there is what §7.2's first failure mode describes. This is not hypothetical: `Elevation Extractor`'s port merged in #2384 leaving the action running, unexposed, and absent from every list in `action-review-findings.md`, and it was found only because an unrelated branch merged `main` and re-counted the buckets. Nothing checks this, so it needs a person to do it.
+**So after any geometry-port PR merges, record the move — and check the action's review state to know where it moves to.** The two cases are not the same, and both have now occurred:
+
+- **Never reviewed** — it joins the pending-audit list and owes a full §8 pass. `Elevation Extractor`'s port merged in #2384 leaving the action running, unexposed, and absent from every list, found only because an unrelated branch merged `main` and re-counted the buckets.
+- **Already reviewed** — it owes a decision rather than an audit, and the decision is not automatic. `Bufferer`'s port merged in #2370; it was reviewed in #2317, but that review left an open `impl:` finding, and it predates this standard's rescoping, so the `impl:` trace has never been run against the new-geometry code that now ships. Both have to be settled before it is exposed.
+
+In neither case add it to `base_actions.go` as part of the same step — running is only half of §7.2, and promoting on "it runs now" alone is the first failure mode above. Nothing checks any of this, so it needs a person to do it.
 
 ### 7.3 Disabled behaviour must not stay documented
 
@@ -325,7 +330,7 @@ Material rule changes, newest first. **A rule added here does not retroactively 
 
 ### 2026-08-24
 
-- **§7.2** — added the rule that a merged geometry-port PR moves its action from "does not run" into *pending audit*, and that the porting PR will not do that bookkeeping itself. No past verdict changes; it names a step that was being missed rather than altering a judgement.
+- **§7.2** — added the rule that a merged geometry-port PR moves its action out of "does not run", and that the porting PR will not do that bookkeeping itself. Amended the same day it was first written: the destination depends on whether the action has been reviewed. A never-reviewed one joins pending audit (`Elevation Extractor`); an already-reviewed one owes a decision instead (`Bufferer`), since a stale review plus open findings is not the same as no review. No past verdict changes.
 
 ### 2026-08-21 (later)
 

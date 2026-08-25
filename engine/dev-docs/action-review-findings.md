@@ -466,10 +466,26 @@ workflow that names it, so no existing workflow broke.
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
 | Exposed and audited | 74 | — |
-| Does not run in the shipped build | 21 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| Does not run in the shipped build | 20 | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **7** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
+
+**`Bufferer` needs a decision, not a bucket.** Its new-geometry port landed in #2370
+(2026-08-25), so it has left the does-not-run bucket, and it was already reviewed in the
+Geometry A batch (#2317) — which would ordinarily make it exposable. It is deliberately still
+absent from `base_actions.go` for two reasons, and neither is mine to settle:
+
+- Its review left an open `impl:` finding (recorded above): only points, curves and single
+  polygons are buffered, and every other type — multi-polygons above all — is emitted on
+  `features` **unbuffered**, so the distance is silently not applied to them. Exposing an action
+  that quietly ignores its own main parameter for most inputs is a product call.
+- It was reviewed on 2026-07-30, before the standard was rescoped on 2026-08-20/21 (§7, the §8
+  `impl:` line, the §6 tag rewrite), and its new-geometry implementation did not exist then. So
+  the `impl:` trace has never been run against the code that now ships, whatever the old review
+  concluded about the legacy one.
+
+Trigger: a decision on the first point, plus an `impl:` re-check against the new-geometry build.
 
 `Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
@@ -498,6 +514,13 @@ none has had the full `impl:` trace except where stated. Grouped as they were ba
 grouping is a suggestion, not a constraint.
 
 #### Newly eligible — its port landed (1)
+
+**`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
+two cases differ and the difference is the whole point of §7.2's rule. Elevation Extractor had
+never been reviewed, so its port landing hands it to this list. Bufferer *was* reviewed, in the
+Geometry A batch (#2317), so its port landing hands it to a decision instead — see the note under
+the bucket table. Do not assume a port landing means "needs an audit"; check the review state
+first.
 
 ```
 Elevation Extractor
