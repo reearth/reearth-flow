@@ -79,6 +79,16 @@ impl Parser {
         }
     }
 
+    /// Same shape as the new-geometry `Parser`'s constructor, ignored here: this
+    /// legacy parser doesn't do owner-tracking or `gml:id` synthesis.
+    pub(crate) fn with_owner_tracking(
+        _track_owners: bool,
+        version: CityGmlVersion,
+        _extract_tags: std::collections::HashSet<String>,
+    ) -> Self {
+        Self::new(version)
+    }
+
     pub fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
         let src = std::str::from_utf8(source)
             .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;

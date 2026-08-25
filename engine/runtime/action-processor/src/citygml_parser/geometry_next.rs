@@ -68,7 +68,16 @@ impl Parser {
         owner: Option<&Owner>,
         geoms: &mut Vec<PendingGeom>,
     ) -> Arc<RawNode> {
-        let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
+        let real_id = gml_id_ref(node).map(str::to_string);
+        let needs_synthetic_id = real_id.is_none()
+            && (self.extract_tags.contains(&node.name.0)
+                || self.extract_tags.contains(local_name(&node.name.0)));
+        let synthetic_id = needs_synthetic_id.then(|| {
+            self.synthetic_gml_id_seq += 1;
+            format!("_synid{}", self.synthetic_gml_id_seq)
+        });
+        let id = real_id.as_deref().or(synthetic_id.as_deref());
+        let here = id.map(|id| Owner { id, parent: owner });
         let owner = here.as_ref().or(owner);
         let mut new_children: Option<Vec<RawChild>> = None;
 
@@ -122,7 +131,7 @@ impl Parser {
             }
         }
 
-        match new_children {
+        let node = match new_children {
             None => Arc::clone(node),
             Some(children) => Arc::new(RawNode {
                 name: node.name.clone(),
@@ -130,6 +139,19 @@ impl Parser {
                 children,
                 source_url: Arc::clone(&node.source_url),
             }),
+        };
+        match synthetic_id {
+            None => node,
+            Some(sid) => {
+                let mut attrs = node.attrs.clone();
+                attrs.push((("gml:id".to_string(), GML_NS_ID), sid));
+                Arc::new(RawNode {
+                    name: node.name.clone(),
+                    attrs,
+                    children: node.children.clone(),
+                    source_url: Arc::clone(&node.source_url),
+                })
+            }
         }
     }
 

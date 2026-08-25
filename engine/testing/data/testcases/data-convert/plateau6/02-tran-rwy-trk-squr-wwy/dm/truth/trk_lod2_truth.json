@@ -1,0 +1,24 @@
+{
+  "synth_trafficarea_1": {
+    "attributes": "",
+    "cityGmlAttributes": "",
+    "city_code": "08220",
+    "feature_type": "tran:TrafficArea",
+    "gml_id": "synth_trafficarea_1",
+    "lod": "2",
+    "parent_gml_id": "space_synth_trafficarea_1",
+    "tran_function": ""
+  },
+  "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
+    "attributes": {
+      "tran:function": "歩道部"
+    },
+    "cityGmlAttributes": "",
+    "city_code": "08220",
+    "feature_type": "tran:TrafficArea",
+    "gml_id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
+    "lod": "2",
+    "parent_gml_id": "space_trk_98823040-65c2-4be4-97e1-62bf21bddf33",
+    "tran_function": "歩道部"
+  }
+}
