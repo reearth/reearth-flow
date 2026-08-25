@@ -243,9 +243,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	// A debug run exercises the project without changing it. ActionAny is
-	// writer/maintainer/owner, where ActionEdit excludes writers.
-	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
+	// A debug run executes the project without changing it, so anyone who can
+	// see the project may run one. ActionRead is the only rule carrying
+	// reader; ActionAny is writer and above, ActionEdit maintainer and above.
+	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
