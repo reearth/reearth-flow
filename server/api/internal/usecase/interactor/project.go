@@ -243,7 +243,9 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
+	// A debug run exercises the project without changing it. ActionAny is
+	// writer/maintainer/owner, where ActionEdit excludes writers.
+	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
