@@ -56,6 +56,7 @@ var baseActions = map[string]bool{
 	"Bounds Extractor":             true,
 	"Coordinate Frame Reprojector": true,
 	"Dissolver":                    true,
+	"Elevation Extractor":          true,
 	"Footprint Replacer":           true,
 	"Geometry Coercer":             true,
 	"Geometry Extractor":           true,
