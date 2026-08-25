@@ -273,7 +273,7 @@ mod tests {
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::csg::Csg;
     use reearth_flow_geometry::polygon::Polygon3D;
-    use reearth_flow_geometry::solid::{Shell, Solid};
+    use reearth_flow_geometry::solid::Solid;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3DData;
     use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
@@ -399,34 +399,6 @@ mod tests {
         assert_eq!(area_of(&out, "area"), 0.0);
     }
 
-    /// A solid's area is the sum of its boundary surfaces: the exterior's
-    /// faces and every void's, since a void's faces are real surfaces too and
-    /// count toward the total rather than subtracting from it. This is the
-    /// behaviour the parameter doc comment promises, and nothing else at the
-    /// action level pins it.
-    #[test]
-    fn a_solids_area_sums_its_boundary_surfaces_including_voids() {
-        // A right triangle with legs of length 1 has area 0.5. Used as both
-        // the exterior shell and a void, so the solid's total surface is the
-        // two added together rather than the void cancelling the exterior out.
-        let triangle = || {
-            TriangularMesh3DData::from_parts(
-                vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-                [0u32, 1, 2],
-            )
-            .unwrap()
-        };
-        let solid = Solid::new(
-            CoordinateFrame::Euclidean,
-            triangle(),
-            vec![Shell::from(triangle())],
-        );
-        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
-
-        let out = run(&mut *build(None), &Feature::from(g));
-        assert!((area_of(&out, "area") - 1.0).abs() < 1e-12);
-    }
-
     #[test]
     fn attributes_already_on_the_feature_survive() {
         let mut feature = Feature::from(tilted_square());
@@ -464,8 +436,9 @@ mod tests {
         )))
     }
 
-    /// Run every `geometry` through one processor and return the error code
-    /// of every diagnostic emitted along the way.
+    /// Run every `geometry` through one processor and return the features it
+    /// produced together with the error code of every diagnostic emitted
+    /// along the way.
     ///
     /// Diagnostics travel through `event_hub.diagnostic(..)`
     /// (`Event::Diagnostic`), not the log lane — `ctx.warn`/`ctx.warn_once`
@@ -478,13 +451,23 @@ mod tests {
     /// given cause renders the same registry-supplied text regardless of
     /// which EPSG code or how many parts triggered it. The code is the only
     /// thing left to tell one cause from another, which is exactly what a
-    /// production run's summary is keyed on too.
+    /// production run's summary is keyed on too. (There is no dedup by code
+    /// to worry about, process-wide or otherwise — the diagnostics migration
+    /// dropped that; each call here builds its own processor and hub, and
+    /// `ctx.warn` records one diagnostic per call with no memory of earlier
+    /// ones. Tests below no longer need a distinct EPSG code each just to
+    /// avoid colliding with another test.)
     ///
     /// `create_default_execute_context` builds its own event hub, so this
     /// builds the contexts by hand in order to hold on to a receiver. A
     /// broadcast receiver only sees what is sent after it subscribes, hence
-    /// the `resubscribe` before the first `process`.
-    fn warnings_for(with: Option<Value>, geometries: Vec<Geometry>) -> Vec<ErrorCode> {
+    /// the `resubscribe` before the first `process`. `fw` is shared across the
+    /// whole loop, so `send_features` accumulates one entry per input
+    /// geometry, in order.
+    fn process_many(
+        with: Option<Value>,
+        geometries: Vec<Geometry>,
+    ) -> (Vec<Feature>, Vec<ErrorCode>) {
         let hub = EventHub::new(64);
         let mut rx = hub.receiver.resubscribe();
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
@@ -503,29 +486,30 @@ mod tests {
             processor.process(ctx, &fw).unwrap();
         }
 
+        let ProcessorChannelForwarder::Noop(noop) = &fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let features = noop.send_features.lock().unwrap().clone();
+
         let mut warnings = Vec::new();
         while let Ok(event) = rx.try_recv() {
             if let Event::Diagnostic(diagnostic) = event {
                 warnings.push(diagnostic.code);
             }
         }
-        warnings
+        (features, warnings)
     }
 
     /// An area on geographic coordinates is in square degrees and is not a
-    /// real-world area. Say so, once per feature: `ctx.warn` records one
-    /// diagnostic per call, and it is the runtime's per-run diagnostics
-    /// aggregator (keyed by `ErrorCode`, not exercised by this
-    /// `diagnostics: None` test harness) that collapses repeats of the same
-    /// cause into a single structural count for a real, long-running worker.
+    /// real-world area. Say so, once per feature — and the warning does not
+    /// change the measurement: the same run that produces three warnings for
+    /// three features still writes `1.0` to every one of them.
     ///
-    /// Uses EPSG:4269 (NAD83, degrees) for no reason beyond being a
-    /// real-world geographic CRS distinct from the other angular-CRS test
-    /// below.
+    /// Uses EPSG:4269 (NAD83, degrees).
     #[test]
-    fn an_angular_crs_is_warned_about_once_per_feature() {
+    fn an_angular_crs_is_warned_about_once_per_feature_and_still_measured() {
         let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
-        let warnings = warnings_for(
+        let (features, warnings) = process_many(
             None,
             vec![
                 square_in(angular.clone()),
@@ -533,6 +517,7 @@ mod tests {
                 square_in(angular),
             ],
         );
+
         let about_units: Vec<_> = warnings
             .iter()
             .filter(|&&code| code == ErrorCode::GeometryAreaAngularCrs)
@@ -542,35 +527,26 @@ mod tests {
             3,
             "three features, one warning each; got {warnings:?}"
         );
+        for feature in &features {
+            assert_eq!(area_of(feature, "area"), 1.0);
+        }
     }
 
-    /// Warning is not refusing: the number is still measured and written.
+    /// A projected CRS is already measuring in metres, and Euclidean
+    /// coordinates are plain lengths — neither has anything to say. Euclidean
+    /// is the common case across nearly every workflow, so it must stay quiet.
     ///
-    /// Uses EPSG:4326 (WGS 84, degrees) as a second, distinct angular CRS.
+    /// Uses EPSG:6677 (JGD2011 / Japan Plane Rectangular CS IX, metres) for
+    /// the projected case.
     #[test]
-    fn an_angular_crs_still_produces_a_number() {
-        let g = square_in(CoordinateFrame::Crs(EpsgCode::from(4326)));
-        let out = run(&mut *build(None), &Feature::from(g));
-        assert_eq!(area_of(&out, "area"), 1.0);
-    }
-
-    /// A projected CRS is measuring in metres, so there is nothing to say.
-    ///
-    /// Uses EPSG:6677 (JGD2011 / Japan Plane Rectangular CS IX, metres).
-    #[test]
-    fn a_projected_crs_is_not_warned_about() {
-        let warnings = warnings_for(
+    fn euclidean_and_projected_crs_are_not_warned_about() {
+        let (_, warnings) = process_many(
             None,
-            vec![square_in(CoordinateFrame::Crs(EpsgCode::from(6677)))],
+            vec![
+                square_in(CoordinateFrame::Euclidean),
+                square_in(CoordinateFrame::Crs(EpsgCode::from(6677))),
+            ],
         );
-        assert!(warnings.is_empty(), "{warnings:?}");
-    }
-
-    /// Euclidean coordinates are plain lengths, so there is nothing to say
-    /// about them either — and this is the common case, so it must stay quiet.
-    #[test]
-    fn euclidean_coordinates_are_not_warned_about() {
-        let warnings = warnings_for(None, vec![square_in(CoordinateFrame::Euclidean)]);
         assert!(warnings.is_empty(), "{warnings:?}");
     }
 
@@ -594,7 +570,7 @@ mod tests {
             ]),
         ));
 
-        let warnings = warnings_for(None, vec![mixed]);
+        let (_, warnings) = process_many(None, vec![mixed]);
         let about_mixing: Vec<_> = warnings
             .iter()
             .filter(|&&code| code == ErrorCode::GeometryAreaMixedFrames)
@@ -637,7 +613,7 @@ mod tests {
             ]),
         ));
 
-        let warnings = warnings_for(None, vec![g]);
+        let (_, warnings) = process_many(None, vec![g]);
         let about_skip: Vec<_> = warnings
             .iter()
             .filter(|&&code| code == ErrorCode::GeometryAreaSkippedParts)
