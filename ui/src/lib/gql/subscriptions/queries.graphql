@@ -2,10 +2,6 @@ subscription OnJobStatusChange($jobId: ID!) {
   jobStatus(jobId: $jobId)
 }
 
-subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
-  nodeStatus(jobId: $jobId, nodeId: $nodeId)
-}
-
 subscription UserFacingLogs($jobId: ID!) {
   userFacingLogs(jobId: $jobId) {
     jobId

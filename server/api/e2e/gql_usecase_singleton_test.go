@@ -15,7 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
-	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -37,14 +36,6 @@ func (g *countingRedisGateway) GetLogs(_ context.Context, _, _ time.Time, _ id.J
 }
 
 func (g *countingRedisGateway) GetUserFacingLogs(_ context.Context, _, _ time.Time, _ id.JobID) ([]*userfacinglog.UserFacingLog, error) {
-	return nil, nil
-}
-
-func (g *countingRedisGateway) GetNodeExecutions(_ context.Context, _ id.JobID) ([]*graph.NodeExecution, error) {
-	return nil, nil
-}
-
-func (g *countingRedisGateway) GetNodeExecution(_ context.Context, _ id.JobID, _ string) (*graph.NodeExecution, error) {
 	return nil, nil
 }
 

@@ -21,7 +21,6 @@ type Container struct {
 	Job             Job
 	Lock            Lock
 	NodeDiagnostics NodeDiagnostics
-	NodeExecution   NodeExecution
 	Parameter       Parameter
 	Permittable     accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
 	Project         Project
@@ -62,7 +61,6 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		Job:             c.Job.Filtered(workspace),
 		Lock:            c.Lock,
 		NodeDiagnostics: c.NodeDiagnostics,
-		NodeExecution:   c.NodeExecution,
 		Parameter:       c.Parameter,
 		Project:         c.Project.Filtered(workspace),
 		ProjectAccess:   c.ProjectAccess,

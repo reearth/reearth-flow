@@ -7,9 +7,18 @@ import (
 
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/subscriber/pkg/diagnostic"
+	"github.com/reearth/reearthx/mongox"
 )
 
 var diagnosticIndexKeys = []string{"jobId,nodeId", "jobId"}
+
+type MongoStorage struct {
+	diagnosticsClient *mongox.ClientCollection
+}
+
+func NewMongoStorage(client *mongox.Client) *MongoStorage {
+	return &MongoStorage{diagnosticsClient: client.WithCollection("nodeDiagnostics")}
+}
 
 func (m *MongoStorage) Init(ctx context.Context) error {
 	_, _, err := m.diagnosticsClient.Indexes(ctx, diagnosticIndexKeys, nil)

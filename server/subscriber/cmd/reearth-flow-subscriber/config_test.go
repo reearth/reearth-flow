@@ -13,7 +13,6 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 	for _, key := range []string{
 		"REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID",
 		"REEARTH_FLOW_SUBSCRIBER_LOG_SUBSCRIPTION_ID",
-		"REEARTH_FLOW_SUBSCRIBER_NODE_STATUS_SUBSCRIPTION_ID",
 		"REEARTH_FLOW_SUBSCRIBER_JOB_COMPLETE_SUBSCRIPTION_ID",
 		"REEARTH_FLOW_SUBSCRIBER_USER_FACING_LOG_SUBSCRIPTION_ID",
 	} {
@@ -30,7 +29,6 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 
 	// Sanity check that envconfig is not silently failing.
 	assert.Equal(t, "flow-log-stream-main", conf.LogSubscriptionID)
-	assert.Equal(t, "flow-node-status-main", conf.NodeSubscriptionID)
 	assert.Equal(t, "flow-job-complete-main", conf.JobCompleteSubscriptionID)
 	assert.Equal(t, "flow-user-facing-log-main", conf.UserFacingLogSubscriptionID)
 }

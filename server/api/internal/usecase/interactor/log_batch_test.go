@@ -11,7 +11,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
-	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -47,14 +46,6 @@ func (m *countingRedisGateway) GetLogs(_ context.Context, _ time.Time, _ time.Ti
 	m.calls = append(m.calls, jobID)
 	m.mu.Unlock()
 	return []*log.Log{log.NewLog(jobID, nil, time.Now().UTC(), log.LevelInfo, "hi")}, nil
-}
-
-func (m *countingRedisGateway) GetNodeExecution(_ context.Context, _ id.JobID, _ string) (*graph.NodeExecution, error) {
-	panic("unimplemented")
-}
-
-func (m *countingRedisGateway) GetNodeExecutions(_ context.Context, _ id.JobID) ([]*graph.NodeExecution, error) {
-	panic("unimplemented")
 }
 
 func (m *countingRedisGateway) GetNodeDiagnostics(_ context.Context, _ id.JobID, _ string) ([]*diagnostic.Diagnostic, error) {

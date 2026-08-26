@@ -383,19 +383,6 @@ type NamedSnapshot struct {
 	Size           int64     `json:"size"`
 }
 
-type NodeExecution struct {
-	ID          ID         `json:"id"`
-	JobID       ID         `json:"jobId"`
-	NodeID      ID         `json:"nodeId"`
-	Status      NodeStatus `json:"status"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	StartedAt   *time.Time `json:"startedAt,omitempty"`
-	CompletedAt *time.Time `json:"completedAt,omitempty"`
-}
-
-func (NodeExecution) IsNode()        {}
-func (this NodeExecution) GetID() ID { return this.ID }
-
 type PageBasedPagination struct {
 	Page     int             `json:"page"`
 	PageSize int             `json:"pageSize"`
@@ -1413,67 +1400,6 @@ func (e *LogLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e LogLevel) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-type NodeStatus string
-
-const (
-	NodeStatusPending    NodeStatus = "PENDING"
-	NodeStatusStarting   NodeStatus = "STARTING"
-	NodeStatusProcessing NodeStatus = "PROCESSING"
-	NodeStatusCompleted  NodeStatus = "COMPLETED"
-	NodeStatusFailed     NodeStatus = "FAILED"
-)
-
-var AllNodeStatus = []NodeStatus{
-	NodeStatusPending,
-	NodeStatusStarting,
-	NodeStatusProcessing,
-	NodeStatusCompleted,
-	NodeStatusFailed,
-}
-
-func (e NodeStatus) IsValid() bool {
-	switch e {
-	case NodeStatusPending, NodeStatusStarting, NodeStatusProcessing, NodeStatusCompleted, NodeStatusFailed:
-		return true
-	}
-	return false
-}
-
-func (e NodeStatus) String() string {
-	return string(e)
-}
-
-func (e *NodeStatus) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = NodeStatus(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid NodeStatus", str)
-	}
-	return nil
-}
-
-func (e NodeStatus) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *NodeStatus) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e NodeStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

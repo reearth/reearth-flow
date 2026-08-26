@@ -8,7 +8,6 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
-	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
@@ -28,14 +27,6 @@ func (m *mockDiagnosticsRedis) GetLogs(ctx context.Context, since, until time.Ti
 }
 
 func (m *mockDiagnosticsRedis) GetUserFacingLogs(ctx context.Context, since, until time.Time, jobID id.JobID) ([]*userfacinglog.UserFacingLog, error) {
-	return nil, nil
-}
-
-func (m *mockDiagnosticsRedis) GetNodeExecutions(ctx context.Context, jobID id.JobID) ([]*graph.NodeExecution, error) {
-	return nil, nil
-}
-
-func (m *mockDiagnosticsRedis) GetNodeExecution(ctx context.Context, jobID id.JobID, nodeID string) (*graph.NodeExecution, error) {
 	return nil, nil
 }
 

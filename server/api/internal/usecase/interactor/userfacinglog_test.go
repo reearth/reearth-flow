@@ -11,7 +11,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
-	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -31,14 +30,6 @@ func (m *mockUserFacingLogGateway) GetUserFacingLogs(ctx context.Context, since 
 }
 
 func (m *mockUserFacingLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*log.Log, error) {
-	return nil, nil
-}
-
-func (m *mockUserFacingLogGateway) GetNodeExecution(ctx context.Context, jobID id.JobID, nodeID string) (*graph.NodeExecution, error) {
-	return nil, nil
-}
-
-func (m *mockUserFacingLogGateway) GetNodeExecutions(ctx context.Context, jobID id.JobID) ([]*graph.NodeExecution, error) {
 	return nil, nil
 }
 

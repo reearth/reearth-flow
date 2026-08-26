@@ -28,7 +28,6 @@ type Container struct {
 	Job             Job
 	Log             Log
 	NodeDiagnostics NodeDiagnostics
-	NodeExecution   NodeExecution
 	Parameter       Parameter
 	Project         Project
 	ProjectAccess   ProjectAccess
