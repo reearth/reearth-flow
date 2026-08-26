@@ -80,6 +80,7 @@ const ActionBar: React.FC<Props> = ({
             <IconButton
               tooltipText={t("Deploy project's workflow")}
               tooltipOffset={tooltipOffset}
+              disabled={isReaderRestricted}
               icon={<RocketIcon weight="thin" size={18} />}
               onClick={() => onDialogOpen("deploy")}
             />
@@ -119,6 +120,7 @@ const ActionBar: React.FC<Props> = ({
           className="bg-primary/50 backdrop-blur">
           {showDialog === "share" && (
             <SharePopover
+              readonly={isReaderRestricted}
               sharingUrl={sharingUrl}
               onProjectShare={onProjectShare}
             />

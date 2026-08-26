@@ -121,8 +121,6 @@ const MembersSettings: React.FC = () => {
     }
   };
 
-  console.log("CURRENT USERROLE", currentUserRole);
-
   const columns: ColumnDef<UserMember>[] = [
     {
       accessorKey: "user.name",
