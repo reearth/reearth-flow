@@ -40,6 +40,7 @@ use reearth_flow_types::{Geometry, GeometryValue};
 use reearth_flow_geometry::{
     coordinate::CoordinateFrame,
     line_string::LineString2D,
+    overlay::snap_positions,
     point::Point2D,
     predicates::kernel::{segment_intersection, SegmentIntersection},
     predicates::view::{flatten_2d, Leaf2D},
@@ -1017,6 +1018,16 @@ fn overlay_entries(
     lss_per_feature: &[Vec<Polyline>],
     tolerance: f64,
 ) -> OverlayResult {
+    // The intersection kernel below is exact, so two copies of a shared edge
+    // differing in their last bits read as a crossing at an arbitrary point
+    // along them instead of as a collinear overlap. Snapping the vertices onto
+    // one position first restores the coincidence.
+    let snapped = snap_group_vertices(lss_per_feature, tolerance);
+    let (entries, lss_per_feature) = match &snapped {
+        Some(snapped) => (rebuilt_aabbs(entries, snapped), snapped.as_slice()),
+        None => (entries, lss_per_feature),
+    };
+
     let rtree: RTree<AabbEntry> = RTree::bulk_load(entries);
     let rtree_items: Vec<&AabbEntry> = rtree.iter().collect();
 
@@ -1245,6 +1256,51 @@ fn coords_match(a: &[[f64; 2]], b: &[[f64; 2]], tolerance: f64) -> bool {
         .rev()
         .zip(b.iter())
         .all(|(&c1, &c2)| dist(c1, c2) < tolerance)
+}
+
+/// The group's polylines with their vertices closer together than `tolerance`
+/// pulled onto one shared position, or `None` when nothing snaps.
+#[cfg(feature = "new-geometry")]
+fn snap_group_vertices(
+    lss_per_feature: &[Vec<Polyline>],
+    tolerance: f64,
+) -> Option<Vec<Vec<Polyline>>> {
+    let points: Vec<[f64; 2]> = lss_per_feature
+        .iter()
+        .flat_map(|lss| lss.iter().flat_map(|pl| pl.coords.iter().copied()))
+        .collect();
+    let snapped = snap_positions(&points, tolerance)?;
+
+    let mut read = 0;
+    let mut out = Vec::with_capacity(lss_per_feature.len());
+    for lss in lss_per_feature {
+        let mut lines = Vec::with_capacity(lss.len());
+        for pl in lss {
+            let end = read + pl.coords.len();
+            lines.push(Polyline {
+                frame: pl.frame.clone(),
+                coords: snapped[read..end].to_vec(),
+            });
+            read = end;
+        }
+        out.push(lines);
+    }
+    Some(out)
+}
+
+/// The entries with each bounding box recomputed from the polyline it stands
+/// for; snapping may have moved a vertex out of the box taken at intake.
+#[cfg(feature = "new-geometry")]
+fn rebuilt_aabbs(entries: Vec<AabbEntry>, lss_per_feature: &[Vec<Polyline>]) -> Vec<AabbEntry> {
+    entries
+        .into_iter()
+        .map(|entry| AabbEntry {
+            aabb: aabb_to_rstar(polyline_bbox(
+                &lss_per_feature[entry.feature_idx][entry.ls_local_idx].coords,
+            )),
+            ..entry
+        })
+        .collect()
 }
 
 /// Every pairwise segment intersection of two polylines, appended to `out`:
@@ -1831,6 +1887,46 @@ mod tests {
         overlay_counts.sort();
         assert_eq!(overlay_counts, vec![1, 2, 2, 3]);
         assert_eq!(result.split_coords.len(), 3);
+    }
+
+    #[test]
+    fn a_shared_edge_whose_copies_differ_in_their_last_bits_stays_one_overlap() {
+        // Two triangles meeting along [0, 0]-[1, 0], the second one's copy of
+        // that edge off by a fraction of a nanometre.
+        let drift = 1e-10;
+        let result = overlay_lines(
+            vec![
+                vec![[0.0, 0.0], [1.0, 0.0], [0.4, 0.6], [0.0, 0.0]],
+                vec![
+                    [1.0 + drift, -drift],
+                    [-drift, drift],
+                    [0.4, -0.6],
+                    [1.0 + drift, -drift],
+                ],
+            ],
+            0.01,
+        );
+
+        // The shared edge, plus the remaining two vertices of each triangle.
+        assert_eq!(result.line_strings_with_metadata.len(), 3);
+        let shared: Vec<_> = result
+            .line_strings_with_metadata
+            .iter()
+            .filter(|meta| meta.source_feature_idxs.len() == 2)
+            .collect();
+        assert_eq!(shared.len(), 1);
+        let mut endpoints = shared[0].line_string.coords.clone();
+        endpoints.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        assert_eq!(endpoints, vec![[0.0, 0.0], [1.0, 0.0]]);
+        // Nothing crosses anything: the edge is cut only where it begins and
+        // ends, never part-way along.
+        for point in &result.split_coords {
+            assert!(
+                dist(point.coord, [0.0, 0.0]) < 0.01 || dist(point.coord, [1.0, 0.0]) < 0.01,
+                "split part-way along the shared edge at {:?}",
+                point.coord
+            );
+        }
     }
 
     #[test]

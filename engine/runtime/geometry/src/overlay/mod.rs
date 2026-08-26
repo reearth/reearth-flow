@@ -150,6 +150,18 @@ pub fn overlay_2d(
     overlay_leaves(&a_leaves, &b_leaves, op)
 }
 
+/// The position each of `points` snaps to, or `None` when there is nothing to
+/// snap. Scanning in index order, a point not yet claimed becomes an anchor and
+/// claims every later unclaimed point within `tolerance` of it, so no point
+/// moves further than the tolerance and anchors keep their exact coordinates. A
+/// non-positive tolerance snaps nothing.
+pub fn snap_positions(points: &[[f64; 2]], tolerance: f64) -> Option<Vec<[f64; 2]>> {
+    if tolerance <= 0.0 {
+        return None;
+    }
+    snap::snapped_positions(points, tolerance)
+}
+
 /// The union of one areal operand's own leaves, as disjoint polygons in their
 /// common frame (empty when they enclose no area). Taking leaves lets several
 /// geometries dissolve as one operand. Vertices closer together than

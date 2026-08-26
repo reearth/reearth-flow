@@ -112,6 +112,17 @@ graphs:
               value:
                 type: string
                 value: feature_type
+            # The reader copies the input feature's attributes onto every
+            # parsed city object; drop them so local paths do not end up as
+            # tile properties, as the plateau4 workflows do here too.
+            - attribute: city_gml_path
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: extension
+              method: remove
             - attribute: gml_id
               method: create
               value:

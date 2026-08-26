@@ -46,7 +46,7 @@ pub(super) fn snap_shapes(shapes: &mut [Shape], tolerance: f64) {
 /// The position each of `points` snaps to, or `None` when there is nothing to
 /// snap. Scanning in index order, a point not yet claimed becomes an anchor and
 /// claims every later unclaimed point within `tolerance` of it.
-fn snapped_positions(points: &[[f64; 2]], tolerance: f64) -> Option<Vec<[f64; 2]>> {
+pub(super) fn snapped_positions(points: &[[f64; 2]], tolerance: f64) -> Option<Vec<[f64; 2]>> {
     let n = points.len();
     if n <= 1 {
         return None;

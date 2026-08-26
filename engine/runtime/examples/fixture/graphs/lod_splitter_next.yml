@@ -1,0 +1,204 @@
+# New-geometry counterpart of `lod_splitter_with_dm.yml`, kept as a separate
+# graph because the legacy one's string `lod` filter and single-level split do
+# not fit the new `Geometry Splitter`, and old-world tile-comparison tests
+# depend on it as it stands.
+#
+# Emits one feature per face, with `lod` promoted from the reader's per-member
+# geometry attributes.
+id: bf2ceaf8-f2b0-49ca-b05e-fd1469f15eb0
+name: LodSplitterNext
+nodes:
+  - id: c0b6fef5-38e5-49e6-9746-307814da02c9
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: 7d41915b-e078-4216-a661-fc7796b83d08
+    name: DmGeometricAttributeFilter
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("dm_feature_type") == "DmGeometricAttribute"
+          outputPort: DmGeometricAttribute
+
+  - id: a6421580-d816-47fa-b197-e042e5f757d4
+    name: GeometryFilter
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: none
+
+  - id: e0293925-1a3e-4b44-aa5a-832dff6750b9
+    name: FeatureFilterByExceptSplit
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: variables.get("exceptSplit", false)
+          outputPort: exceptSplit
+
+  # A split descends one container level and passes a non-container through
+  # untouched, so the deepest case sets the stage count: per-LOD collection ->
+  # `gml:MultiSurface` -> `gml:CompositeSurface` mesh.
+  - id: 6449b421-7945-466b-972c-d035fb0bdfca
+    name: GeometrySplitterByLod
+    type: action
+    action: Geometry Splitter
+
+  - id: 033780b6-5ffc-4f45-9b66-c50b2cc71fd8
+    name: GeometrySplitterByMember
+    type: action
+    action: Geometry Splitter
+
+  - id: 89659aed-7a89-4735-a393-9d85497a1583
+    name: GeometrySplitterByFace
+    type: action
+    action: Geometry Splitter
+
+  - id: 927a6653-643f-47f6-9b42-61979467069f
+    name: FeatureFilterByLod
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 0
+          outputPort: lod0
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 1
+          outputPort: lod1
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 2
+          outputPort: lod2
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 3
+          outputPort: lod3
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 4
+          outputPort: lod4
+
+  - id: fad22518-83b8-42a1-b8dc-0daeae225e68
+    name: DmGeometricAttributeRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: DmGeometricAttribute
+
+  - id: 05d74816-5bca-4e99-b4fb-ee276981ec2c
+    name: Lod0Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod0
+
+  - id: ed8957ee-df5e-404c-84ed-d2e1bf02b791
+    name: Lod1Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod1
+
+  - id: 1516f5af-899f-438a-8439-58d09305105e
+    name: Lod2Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod2
+
+  - id: 50b479ff-9ac8-400f-b267-103beb277d7d
+    name: Lod3Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod3
+
+  - id: 4e92069d-be86-41f2-ad86-a7972f2093dc
+    name: Lod4Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod4
+
+edges:
+  - id: 5d1a5940-bb5c-437b-a865-e1f1b07a49c7
+    from: c0b6fef5-38e5-49e6-9746-307814da02c9
+    to: 7d41915b-e078-4216-a661-fc7796b83d08
+    fromPort: features
+    toPort: features
+  - id: 74a884bc-f6e7-455a-aff1-131a2a5d0bc0
+    from: 7d41915b-e078-4216-a661-fc7796b83d08
+    to: a6421580-d816-47fa-b197-e042e5f757d4
+    fromPort: unfiltered
+    toPort: features
+  - id: 27e59c82-dfaa-4b2f-aac1-45859b635226
+    from: 7d41915b-e078-4216-a661-fc7796b83d08
+    to: fad22518-83b8-42a1-b8dc-0daeae225e68
+    fromPort: DmGeometricAttribute
+    toPort: features
+  - id: 5433c1ee-8d76-4128-bc8b-1db3d262620a
+    from: a6421580-d816-47fa-b197-e042e5f757d4
+    to: e0293925-1a3e-4b44-aa5a-832dff6750b9
+    fromPort: unfiltered
+    toPort: features
+  - id: 652502f4-49c4-452a-b921-8127836cfdee
+    from: e0293925-1a3e-4b44-aa5a-832dff6750b9
+    to: 6449b421-7945-466b-972c-d035fb0bdfca
+    fromPort: unfiltered
+    toPort: features
+  - id: 0438ccc2-9aec-498f-843b-56b1ad426386
+    from: 6449b421-7945-466b-972c-d035fb0bdfca
+    to: 033780b6-5ffc-4f45-9b66-c50b2cc71fd8
+    fromPort: features
+    toPort: features
+  - id: 2db63f87-c8f0-4afe-9d75-e56a48c8ede3
+    from: 033780b6-5ffc-4f45-9b66-c50b2cc71fd8
+    to: 89659aed-7a89-4735-a393-9d85497a1583
+    fromPort: features
+    toPort: features
+  - id: 46748dfa-3bb5-439e-810e-7feed369a708
+    from: 89659aed-7a89-4735-a393-9d85497a1583
+    to: 927a6653-643f-47f6-9b42-61979467069f
+    fromPort: features
+    toPort: features
+  - id: c1aa46df-68ed-4fef-b29b-359e766c7698
+    from: e0293925-1a3e-4b44-aa5a-832dff6750b9
+    to: 927a6653-643f-47f6-9b42-61979467069f
+    fromPort: exceptSplit
+    toPort: features
+  - id: f55ae466-928b-462f-9989-631fd697c388
+    from: 927a6653-643f-47f6-9b42-61979467069f
+    to: 05d74816-5bca-4e99-b4fb-ee276981ec2c
+    fromPort: lod0
+    toPort: features
+  - id: 06901452-9184-4ba0-b256-b11440cb2d69
+    from: 927a6653-643f-47f6-9b42-61979467069f
+    to: ed8957ee-df5e-404c-84ed-d2e1bf02b791
+    fromPort: lod1
+    toPort: features
+  - id: f8495fd7-0bec-4d39-8ee9-006a9e9d84be
+    from: 927a6653-643f-47f6-9b42-61979467069f
+    to: 1516f5af-899f-438a-8439-58d09305105e
+    fromPort: lod2
+    toPort: features
+  - id: e44d6f20-6bbc-4f64-bec2-4caee971f5ec
+    from: 927a6653-643f-47f6-9b42-61979467069f
+    to: 50b479ff-9ac8-400f-b267-103beb277d7d
+    fromPort: lod3
+    toPort: features
+  - id: 68c13633-dd4a-4274-8891-14e160670788
+    from: 927a6653-643f-47f6-9b42-61979467069f
+    to: 4e92069d-be86-41f2-ad86-a7972f2093dc
+    fromPort: lod4
+    toPort: features

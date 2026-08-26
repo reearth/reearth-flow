@@ -1,0 +1,184 @@
+# New-geometry counterpart of `surface_validator.yml`. The legacy graph's
+# per-check actions have no new-world equivalent; `Geometry Validator` runs the
+# whole matrix and reports every failure on one `validationResult` attribute, so
+# checks are selected by filtering that attribute rather than by wiring a node
+# per check.
+#
+# Two validators, because a 3D face has no absolute winding: the 3D one only
+# compares each hole against the exterior ring, and the exterior ring's own
+# winding — the "incorrect orientation" error — is defined only once the face is
+# flattened by `Two Dimension Forcer`.
+#
+# Deliberate differences from the legacy graph: ring intersections are decided
+# exactly instead of with a proximity tolerance, and an interior ring crossing
+# the exterior is no longer told apart from one crossing another interior ring.
+#
+# Expects one feature per face, already reprojected to a linear-unit CRS: the
+# planarity check does not run on angular (geographic) coordinates.
+id: 51454aa9-c17c-43ca-a377-4c7b4622682b
+name: SurfaceValidatorNext
+nodes:
+  - id: 05bfb591-97fa-4cca-b528-4de949418504
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: 43b33bb0-200f-4cfe-be7c-05f61f3ff13f
+    name: Noop
+    type: action
+    action: Noop Processor
+
+  - id: fcbe7688-7434-4845-8ef2-2eb430c90163
+    name: SurfaceRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+  ## Invalid surface
+  # Every failing check lands here, as in the legacy graph, whose 0.03 m
+  # absolute planarity bound carries over.
+  #
+  # `duplicateTolerance` is deliberately unset, so duplicate points are found by
+  # exact equality: the tolerant path builds a k-d tree whose bucket overflows —
+  # aborting the process — on rings that real road surfaces produce.
+  - id: 45840964-7c81-473d-abc3-d8f9b767445a
+    name: GeometryValidator3D
+    type: action
+    action: Geometry Validator
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
+
+  - id: 6df74ac6-b2c2-474e-9673-e230394c42e4
+    name: AttributeManagerSurfaceIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].keys()[0]
+
+  - id: c1405582-1ad9-4ee8-a8af-a7474b41dd72
+    name: InvalidSurfaceRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: invalidSurface
+
+  ## Incorrect orientation
+  - id: af8289ff-34cf-45f5-a6a7-c7c12a5ec43e
+    name: TwoDimensionForcer
+    type: action
+    action: Two Dimension Forcer
+
+  # Runs the whole matrix again, but only its `Orientation` verdict is read
+  # below. The planarity threshold is inert on a flattened face and is set
+  # only because the action takes no empty parameter block.
+  - id: ca0a5de6-c6b6-422e-8748-c13d3debf33d
+    name: GeometryValidator2D
+    type: action
+    action: Geometry Validator
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
+
+  # Only the winding matters here; every other check on the flattened face
+  # repeats what GeometryValidator3D already reported on the same feature.
+  - id: 3db5a2b9-b2e3-4509-8e11-2b2f95417d7d
+    name: FeatureFilterByOrientation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0
+          outputPort: inCorrectOrientation
+
+  - id: 07d49e5a-2839-4911-847e-282021bfd991
+    name: InCorrectOrientationRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: inCorrectOrientation
+
+  # Features whose geometry could not be flattened or validated at all. Routed
+  # out rather than dropped so a caller can see them.
+  - id: 81220ae1-2143-478d-b861-e5672cb00e95
+    name: RejectedRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: rejected
+
+edges:
+  - id: 1cae1ad8-cf80-444e-8e2e-7017d5a8c1e4
+    from: 05bfb591-97fa-4cca-b528-4de949418504
+    to: 43b33bb0-200f-4cfe-be7c-05f61f3ff13f
+    fromPort: features
+    toPort: features
+  - id: 91c47787-ed49-4c3f-a1a2-0310f53a880e
+    from: 43b33bb0-200f-4cfe-be7c-05f61f3ff13f
+    to: fcbe7688-7434-4845-8ef2-2eb430c90163
+    fromPort: features
+    toPort: features
+
+  ## Invalid surface
+  - id: 4be2cd01-5896-498e-a326-68aaa9c5b12f
+    from: 43b33bb0-200f-4cfe-be7c-05f61f3ff13f
+    to: 45840964-7c81-473d-abc3-d8f9b767445a
+    fromPort: features
+    toPort: features
+  - id: d9e463cb-04dd-4509-a18a-be0561e3742c
+    from: 45840964-7c81-473d-abc3-d8f9b767445a
+    to: 6df74ac6-b2c2-474e-9673-e230394c42e4
+    fromPort: failed
+    toPort: features
+  - id: 1d6089d7-b630-4fa3-b370-2af967619de9
+    from: 6df74ac6-b2c2-474e-9673-e230394c42e4
+    to: c1405582-1ad9-4ee8-a8af-a7474b41dd72
+    fromPort: features
+    toPort: features
+  - id: 7ff59f95-2dd6-4b42-8fc6-1579acb9899f
+    from: 45840964-7c81-473d-abc3-d8f9b767445a
+    to: 81220ae1-2143-478d-b861-e5672cb00e95
+    fromPort: rejected
+    toPort: features
+
+  ## Incorrect orientation
+  - id: c7f6b35b-b6a6-4055-8b91-934e8e24d341
+    from: 43b33bb0-200f-4cfe-be7c-05f61f3ff13f
+    to: af8289ff-34cf-45f5-a6a7-c7c12a5ec43e
+    fromPort: features
+    toPort: features
+  - id: 5cdfc415-da9d-45d4-899e-8dc3820f4d2c
+    from: af8289ff-34cf-45f5-a6a7-c7c12a5ec43e
+    to: ca0a5de6-c6b6-422e-8748-c13d3debf33d
+    fromPort: features
+    toPort: features
+  - id: 6092a398-493e-4517-a0d9-27f0a1eb5054
+    from: af8289ff-34cf-45f5-a6a7-c7c12a5ec43e
+    to: 81220ae1-2143-478d-b861-e5672cb00e95
+    fromPort: rejected
+    toPort: features
+  - id: faa94c90-1ad6-4c81-8ed5-cc1ad74e40c6
+    from: ca0a5de6-c6b6-422e-8748-c13d3debf33d
+    to: 3db5a2b9-b2e3-4509-8e11-2b2f95417d7d
+    fromPort: failed
+    toPort: features
+  - id: 807d866e-6275-420d-9e75-b58a30a028ba
+    from: ca0a5de6-c6b6-422e-8748-c13d3debf33d
+    to: 81220ae1-2143-478d-b861-e5672cb00e95
+    fromPort: rejected
+    toPort: features
+  - id: bb3d3273-1dc9-4c3f-adc2-a80c98826da8
+    from: 3db5a2b9-b2e3-4509-8e11-2b2f95417d7d
+    to: 07d49e5a-2839-4911-847e-282021bfd991
+    fromPort: inCorrectOrientation
+    toPort: features

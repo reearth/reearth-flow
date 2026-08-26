@@ -41,10 +41,10 @@ enum DestinationFrame {
     #[serde(rename_all = "camelCase")]
     Crs {
         /// # EPSG Code
-        /// EPSG code of the destination coordinate reference system.
-        // u16 is the width `EpsgCode` itself holds, so the generated schema states the real
-        // bound rather than a looser one that `build` would then have to re-check.
-        epsg_code: u16,
+        /// Expression evaluating to the EPSG code of the destination coordinate
+        /// reference system. Resolved once when the node is built, so only
+        /// `variables` is in scope.
+        epsg_code: Code<{ CodeType::FlowExpr as u32 }>,
     },
     /// # Euclidean
     /// Convert to a non-georeferenced Euclidean frame. This is the frame the
@@ -138,7 +138,7 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -164,7 +164,29 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
         // `epsgCode` rides inside the `crs` variant, so the schema cannot express a
         // CRS destination without one — no runtime check needed (§3.2).
         let target = match params.destination_frame {
-            DestinationFrame::Crs { epsg_code } => CoordinateFrame::Crs(EpsgCode::new(epsg_code)),
+            DestinationFrame::Crs { epsg_code } => {
+                let compiled = epsg_code.compile().map_err(|e| {
+                    GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
+                        "Failed to compile `epsgCode` expression: {e:?}"
+                    ))
+                })?;
+                let value = compiled
+                    .eval_variables_only(ctx.variables.clone())
+                    .map_err(|e| {
+                        GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
+                            "Failed to evaluate `epsgCode` expression: {e}"
+                        ))
+                    })?;
+                let code = value
+                    .as_i64()
+                    .and_then(|v| u16::try_from(v).ok())
+                    .ok_or_else(|| {
+                        GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
+                            "`epsgCode` expression did not evaluate to an EPSG code: {value:?}"
+                        ))
+                    })?;
+                CoordinateFrame::Crs(EpsgCode::new(code))
+            }
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
         };
 
@@ -437,7 +459,10 @@ mod tests {
     #[test]
     fn value_mode_carries_its_base_point() {
         let params = parse(json!({
-            "destinationFrame": { "type": "crs", "epsgCode": 6677 },
+            "destinationFrame": {
+                "type": "crs",
+                "epsgCode": { "type": "flowExpr", "value": "6677" },
+            },
             "basePointSource": {
                 "type": "value",
                 "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
@@ -481,11 +506,14 @@ mod tests {
     #[test]
     fn crs_destination_carries_its_epsg_code() {
         let params = parse(json!({
-            "destinationFrame": { "type": "crs", "epsgCode": 6677 },
+            "destinationFrame": {
+                "type": "crs",
+                "epsgCode": { "type": "flowExpr", "value": "variables[\"prcs\"]" },
+            },
         }));
         assert!(matches!(
             params.destination_frame,
-            DestinationFrame::Crs { epsg_code: 6677 }
+            DestinationFrame::Crs { .. }
         ));
     }
 

@@ -20,6 +20,15 @@ use super::{
 /// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
 pub const MEMBER_LOD_KEY: &str = "lod";
 
+/// Per-member attribute key holding the `gml:id` of the city object a geometry
+/// belongs to — the feature itself, or one of its nested city objects — so a
+/// surface split off from the feature stays attributable.
+pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
+
+/// Per-member attribute key holding the feature type of the city object a
+/// geometry belongs to, the counterpart of [`MEMBER_GEOMETRY_GML_ID_KEY`].
+pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
+
 /// Resolves the parsed document (xlink + codespace) and returns one feature per top-level city
 /// object, or — when `extract_tags` is non-empty — one feature per matching flattened node.
 /// `base_attributes` maps a source file URL to the input feature's attributes (e.g. `package`),
@@ -167,7 +176,7 @@ mod build_next {
         CITYGML_ROOT_GML_ID_KEY,
     };
 
-    use super::MEMBER_LOD_KEY;
+    use super::{MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_LOD_KEY};
 
     use crate::citygml_parser::{
         appearance::{self, AppearanceIndex},
@@ -182,11 +191,11 @@ mod build_next {
     /// `extract_tags` is non-empty — one feature per matching flattened node, each with its
     /// geometry attached. Signature mirrors the legacy `build_features` so the readers share one
     /// `finish` across geometry worlds.
-    // TODO: honor `base_attributes` and `flatten_single_child_objects` in the new-geometry path.
+    // TODO: honor `flatten_single_child_objects` in the new-geometry path.
     pub fn build_features(
         parser: Parser,
         extract_tags: &HashSet<String>,
-        _base_attributes: &HashMap<String, Attributes>,
+        base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         _flatten_single_child_objects: bool,
@@ -209,6 +218,7 @@ mod build_next {
             &srs_by_file,
             &ns_registry,
             extract_tags,
+            base_attributes,
             citygml_attribute_key,
             keep_attributes,
             flatten_leaf_attributes,
@@ -227,6 +237,7 @@ mod build_next {
         srs_by_file: &HashMap<String, EpsgCode>,
         ns_registry: &NamespaceRegistry,
         extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
@@ -245,6 +256,8 @@ mod build_next {
                 continue;
             };
 
+            let base = base_attributes.get(feature_root.source_url.as_str());
+
             if extract_tags.is_empty() {
                 let mut feature = parser::to_feature(
                     &feature_root,
@@ -253,6 +266,9 @@ mod build_next {
                     flatten_leaf_attributes,
                 );
                 attach_geometry(&mut feature, &geoms, geom_registry, appearance, srs_by_file);
+                if let Some(base) = base {
+                    feature.extend(base.clone());
+                }
                 out.push(feature);
             } else {
                 let root_gml_id = gml_id_attr(&feature_root.attrs);
@@ -299,6 +315,9 @@ mod build_next {
                             srs_by_file,
                         );
                     }
+                    if let Some(base) = base {
+                        feature.extend(base.clone());
+                    }
                     out.push(feature);
                 }
             }
@@ -316,7 +335,8 @@ mod build_next {
         srs_by_file: &HashMap<String, EpsgCode>,
     ) {
         // Each member records its source LOD (a `tin` has none) so downstream
-        // sinks can select a single LOD; gml:id is still TODO.
+        // sinks can select a single LOD, and its owning city object so a
+        // split-off surface stays attributable.
         let mut members: Vec<Geometry> = Vec::new();
         let mut attrs: Vec<Attributes> = Vec::new();
         for pending in geoms {
@@ -331,6 +351,16 @@ mod build_next {
                 member_attrs.insert(
                     Attribute::new(MEMBER_LOD_KEY),
                     AttributeValue::Number(lod.into()),
+                );
+            }
+            if let Some(city_object) = &pending.city_object {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY),
+                    AttributeValue::String(city_object.gml_id.clone()),
+                );
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
+                    AttributeValue::String(city_object.feature_type.clone()),
                 );
             }
             members.push(member);
@@ -357,6 +387,15 @@ mod build_next {
         /// Parse one CityModel wrapping `members`, then assemble features under
         /// `extract_tags` (the full pass-2 pipeline, minus forwarding).
         fn run(members: &str, extract_tags: &[&str]) -> Vec<Feature> {
+            run_with_base(members, extract_tags, &HashMap::new())
+        }
+
+        /// As [`run`], with the input feature's attributes to merge in, keyed by source URL.
+        fn run_with_base(
+            members: &str,
+            extract_tags: &[&str],
+            base_attributes: &HashMap<String, Attributes>,
+        ) -> Vec<Feature> {
             let xml = format!(
                 r#"<core:CityModel
                      xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -387,6 +426,7 @@ mod build_next {
                 &srs_by_file,
                 &ns_registry,
                 &tags,
+                base_attributes,
                 None,
                 true,
                 &[],
@@ -502,6 +542,49 @@ mod build_next {
             }
             assert_single_polygon_surface(by_type(&features, "con:WallSurface"));
             assert_single_polygon_surface(by_type(&features, "con:RoofSurface"));
+        }
+
+        /// The input feature's attributes, keyed by the URL `run_with_base` parses from.
+        fn base_for_test_gml() -> HashMap<String, Attributes> {
+            let mut attrs = Attributes::new();
+            attrs.insert(
+                Attribute::new("package"),
+                AttributeValue::String("tran".into()),
+            );
+            HashMap::from([("file:///test.gml".to_string(), attrs)])
+        }
+
+        #[test]
+        fn base_attributes_merge_into_top_level_features() {
+            let members = format!(
+                "<core:cityObjectMember><bldg:Building gml:id=\"b_base\">\
+                   <core:lod0MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod0MultiSurface>\
+                 </bldg:Building></core:cityObjectMember>"
+            );
+            let features = run_with_base(&members, &[], &base_for_test_gml());
+            assert_eq!(features.len(), 1);
+            assert_eq!(
+                features[0].get("package"),
+                Some(&AttributeValue::String("tran".into()))
+            );
+        }
+
+        #[test]
+        fn base_attributes_merge_into_hoisted_features() {
+            let members = format!(
+                "<core:cityObjectMember><bldg:Building gml:id=\"b_base2\">\
+                   <core:boundary><con:WallSurface gml:id=\"wall2\"><core:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface></con:WallSurface></core:boundary>\
+                 </bldg:Building></core:cityObjectMember>"
+            );
+            let features =
+                run_with_base(&members, &["Building", "WallSurface"], &base_for_test_gml());
+            assert_eq!(features.len(), 2);
+            for feature in &features {
+                assert_eq!(
+                    feature.get("package"),
+                    Some(&AttributeValue::String("tran".into()))
+                );
+            }
         }
     }
 }

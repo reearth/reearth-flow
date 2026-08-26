@@ -27,12 +27,24 @@ pub(super) struct PendingGeom {
     pub(super) lod: Option<u8>,
     pub(super) node: GeomNode,
     pub(super) owner_ids: Vec<String>,
+    /// The nearest `gml:id`-bearing ancestor: the city object owning this
+    /// geometry, which may be a nested child of the feature rather than the
+    /// feature itself.
+    pub(super) city_object: Option<CityObjectRef>,
+}
+
+/// Identifies one city object within its document.
+pub(super) struct CityObjectRef {
+    pub(super) gml_id: String,
+    /// The qualified element name, e.g. `tran:TrafficArea`.
+    pub(super) feature_type: String,
 }
 
 /// A `gml:id`-bearing ancestor, chained on the stack so the enclosing-id list is
 /// materialized only where a geometry is actually found.
 struct Owner<'a> {
     id: &'a str,
+    name: &'a str,
     parent: Option<&'a Owner<'a>>,
 }
 
@@ -68,7 +80,11 @@ impl Parser {
         owner: Option<&Owner>,
         geoms: &mut Vec<PendingGeom>,
     ) -> Arc<RawNode> {
-        let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
+        let here = gml_id_ref(node).map(|id| Owner {
+            id,
+            name: node.name.0.as_str(),
+            parent: owner,
+        });
         let owner = here.as_ref().or(owner);
         let mut new_children: Option<Vec<RawChild>> = None;
 
@@ -102,6 +118,10 @@ impl Parser {
                         lod,
                         node: gnode,
                         owner_ids,
+                        city_object: owner.map(|o| CityObjectRef {
+                            gml_id: o.id.to_string(),
+                            feature_type: o.name.to_string(),
+                        }),
                     });
                 }
                 if new_children.is_none() {
