@@ -3648,6 +3648,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Hériter des Attributs d'Entrée",
+            "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3739,6 +3745,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Hériter des Attributs d'Entrée",
+            "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },

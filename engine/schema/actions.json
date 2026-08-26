@@ -3648,6 +3648,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Inherit Input Attributes",
+            "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3739,6 +3745,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Inherit Input Attributes",
+            "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },

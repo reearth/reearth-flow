@@ -1224,6 +1224,10 @@
           "title": "単一子オブジェクトノードのフラット化",
           "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse"
         },
+        "inheritInputAttributes": {
+          "title": "入力属性の継承",
+          "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
+        },
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
@@ -1257,6 +1261,10 @@
         "flattenSingleChildObjects": {
           "title": "単一子オブジェクトノードのフラット化",
           "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+        },
+        "inheritInputAttributes": {
+          "title": "入力属性の継承",
+          "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
         },
         "keepAttributes": {
           "title": "属性の保持",

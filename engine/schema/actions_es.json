@@ -3648,6 +3648,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Heredar Atributos de Entrada",
+            "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3739,6 +3745,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Heredar Atributos de Entrada",
+            "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },

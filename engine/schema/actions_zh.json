@@ -3648,6 +3648,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "继承输入属性",
+            "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3739,6 +3745,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "继承输入属性",
+            "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
+            "default": true,
+            "type": "boolean"
           }
         }
       },

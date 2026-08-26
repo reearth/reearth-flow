@@ -1224,6 +1224,10 @@
           "title": "Aplanar Nodos de Objeto con Hijo Único",
           "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
         },
+        "inheritInputAttributes": {
+          "title": "Heredar Atributos de Entrada",
+          "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
+        },
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
@@ -1257,6 +1261,10 @@
         "flattenSingleChildObjects": {
           "title": "Aplanar Nodos de Objeto con Hijo Único",
           "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "inheritInputAttributes": {
+          "title": "Heredar Atributos de Entrada",
+          "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
         },
         "keepAttributes": {
           "title": "Conservar Atributos",

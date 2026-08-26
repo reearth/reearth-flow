@@ -3552,6 +3552,12 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
         "string",
         "null"
       ]
+    },
+    "inheritInputAttributes": {
+      "title": "Inherit Input Attributes",
+      "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
@@ -3639,6 +3645,12 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
         "string",
         "null"
       ]
+    },
+    "inheritInputAttributes": {
+      "title": "Inherit Input Attributes",
+      "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
