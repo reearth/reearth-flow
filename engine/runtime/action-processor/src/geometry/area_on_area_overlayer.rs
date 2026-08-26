@@ -141,9 +141,9 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 }
 
 /// # Area On Area Overlayer Parameters
-/// Sets which features are overlaid together, how closely their vertices must
-/// line up, and what the resulting pieces record about the features they came
-/// from.
+/// Sets which features are overlaid together, how small a piece of geometry has
+/// to be before it counts as noise, and what the resulting pieces record about
+/// the features they came from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaOnAreaOverlayerParam {
@@ -154,11 +154,12 @@ struct AreaOnAreaOverlayerParam {
     group_by: Option<Vec<Attribute>>,
 
     /// # Tolerance
-    /// Distance below which two vertices are treated as the same point, in the
-    /// unit of the input's coordinate frame. Boundaries that were meant to
-    /// coincide but miss by less than this are pulled together before the
-    /// overlay, and overlaps smaller than its square are discarded as slivers.
-    /// Defaults to zero, which snaps nothing.
+    /// The size below which geometry is treated as noise rather than shape, in
+    /// the unit of the input's coordinate frame: vertices closer together than
+    /// this are merged before the overlay, so boundaries meant to coincide do,
+    /// and an overlap covering less than its square is then discarded. Detail
+    /// finer than the tolerance may therefore not survive the overlay intact.
+    /// Defaults to zero, which merges and discards nothing.
     #[serde(default)]
     tolerance: f64,
 
@@ -1055,6 +1056,12 @@ fn overlay_2d_disk(
                     for subpolygon in queue {
                         let intersection = area_intersection(&subpolygon.polygon, area_j)?;
 
+                        // The tolerance's second role, and the same idea as its
+                        // first: an overlap this small is noise rather than
+                        // shape. Snapping removes the near-coincident
+                        // boundaries that produce most slivers; this catches
+                        // what the backend still constructs near zero area,
+                        // where its own grid snapping is least trustworthy.
                         let min_area = tolerance * tolerance;
                         let is_significant_intersection = area_measure(&intersection) > min_area;
 

@@ -99,7 +99,7 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Area On Area Overlayer Parameters",
-  "description": "Sets which features are overlaid together, how closely their vertices must line up, and what the resulting pieces record about the features they came from.",
+  "description": "Sets which features are overlaid together, how small a piece of geometry has to be before it counts as noise, and what the resulting pieces record about the features they came from.",
   "type": "object",
   "properties": {
     "groupBy": {
@@ -115,7 +115,7 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
     },
     "tolerance": {
       "title": "Tolerance",
-      "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. Boundaries that were meant to coincide but miss by less than this are pulled together before the overlay, and overlaps smaller than its square are discarded as slivers. Defaults to zero, which snaps nothing.",
+      "description": "The size below which geometry is treated as noise rather than shape, in the unit of the input's coordinate frame: vertices closer together than this are merged before the overlay, so boundaries meant to coincide do, and an overlap covering less than its square is then discarded. Detail finer than the tolerance may therefore not survive the overlay intact. Defaults to zero, which merges and discards nothing.",
       "default": 0.0,
       "type": "number",
       "format": "double"
