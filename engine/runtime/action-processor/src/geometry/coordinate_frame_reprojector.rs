@@ -41,7 +41,7 @@ enum DestinationFrame {
     /// # CRS
     /// Reproject to a coordinate reference system identified by an EPSG code.
     #[serde(rename_all = "camelCase")]
-    Crs (Code<{ CodeType::FlowExpr as u32 }>),
+    Crs(Code<{ CodeType::FlowExpr as u32 }>),
     /// # Euclidean
     /// Convert to a non-georeferenced Euclidean frame. This is the frame the
     /// planar geometry operations work in, so it is the on-ramp for actions that
@@ -100,7 +100,7 @@ pub struct CoordinateFrameReprojectorParam {
     base_point_source: BasePoint,
 }
 
-/// Resolves an `epsgCode` expression against `variables`; the result must be a
+/// Resolves a `crs` expression against `variables`; the result must be a
 /// positive integer that fits an EPSG code.
 fn resolve_epsg_code(
     code: &Code<{ CodeType::FlowExpr as u32 }>,
@@ -108,12 +108,12 @@ fn resolve_epsg_code(
 ) -> Result<EpsgCode, GeometryProcessorError> {
     let compiled = code.compile().map_err(|e| {
         GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
-            "Failed to compile `epsgCode` expression: {e}"
+            "Failed to compile `crs` expression: {e}"
         ))
     })?;
     let value = compiled.eval_variables_only(variables).map_err(|e| {
         GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
-            "Failed to evaluate `epsgCode` expression: {e}"
+            "Failed to evaluate `crs` expression: {e}"
         ))
     })?;
     let code = match value {
@@ -123,7 +123,7 @@ fn resolve_epsg_code(
     }
     .ok_or_else(|| {
         GeometryProcessorError::CoordinateFrameReprojectorFactory(
-            "`epsgCode` expression must yield an integer".to_string(),
+            "`crs` expression must yield an integer EPSG code".to_string(),
         )
     })?;
     u16::try_from(code)
@@ -132,7 +132,7 @@ fn resolve_epsg_code(
         .map(EpsgCode::new)
         .ok_or_else(|| {
             GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
-                "`epsgCode` {code} is not a valid EPSG code"
+                "`crs` expression yielded {code}, which is not a valid EPSG code"
             ))
         })
 }
@@ -195,7 +195,7 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
         };
 
         let target = match params.destination_frame {
-            DestinationFrame::Crs ( ref epsg_code ) => {
+            DestinationFrame::Crs(ref epsg_code) => {
                 CoordinateFrame::Crs(resolve_epsg_code(epsg_code, ctx.variables.clone())?)
             }
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
@@ -471,13 +471,14 @@ mod tests {
     fn value_mode_carries_its_base_point() {
         let params = parse(json!({
             "destinationFrame": {
-                "crs": { "epsgCode": { "type": "flowExpr", "value": "6677" } },
+                "crs": { "type": "flowExpr", "value": "6677" },
             },
             "basePointSource": {
                 "type": "value",
                 "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
             },
         }));
+        assert!(matches!(params.destination_frame, DestinationFrame::Crs(_)));
         assert!(matches!(params.base_point_source, BasePoint::Value { .. }));
     }
 
@@ -514,7 +515,7 @@ mod tests {
     #[test]
     fn bare_integer_epsg_code_is_rejected() {
         let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
-            "destinationFrame": { "crs": { "epsgCode": 6677 } },
+            "destinationFrame": { "crs": 6677 },
         }));
         assert!(result.is_err());
     }
@@ -539,7 +540,7 @@ mod tests {
     fn value_mode_without_its_base_point_is_rejected() {
         let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
             "destinationFrame": {
-                "crs": { "epsgCode": { "type": "flowExpr", "value": "6677" } },
+                "crs": { "type": "flowExpr", "value": "6677" },
             },
             "basePointSource": { "type": "value" },
         }));

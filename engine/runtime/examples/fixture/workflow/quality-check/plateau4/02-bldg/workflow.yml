@@ -284,9 +284,8 @@ graphs:
         with:
           destinationFrame:
             crs:
-              epsgCode:
-                type: flowExpr
-                value: variables["prcs"]
+              type: flowExpr
+              value: variables["prcs"]
 
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         name: FeatureFilterBuildingPart

@@ -1001,7 +1001,7 @@
         },
         "destinationFrame": {
           "title": "Destination Frame",
-          "description": "Coordinate frame to convert geometry into."
+          "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code."
         }
       },
       "enumI18n": {
