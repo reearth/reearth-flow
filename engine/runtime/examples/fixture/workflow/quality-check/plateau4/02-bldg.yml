@@ -2258,7 +2258,7 @@ graphs:
           type: flowExpr
           value: |
             attrs = attributes.get("cityGmlAttributes", {});
-            building_id_attr = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attr = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             building_id = building_id_attr.get("uro:buildingID", "");
             branch_id = building_id_attr.get("uro:branchID", "");
             part_id = building_id_attr.get("uro:partID", "");
@@ -2292,21 +2292,21 @@ graphs:
           type: flowExpr
           value: |
             city_gml = attributes.get("cityGmlAttributes", {});
-            bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+            bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             bldg_id_attr.get("uro:buildingID", "")
       - attribute: uro:branchID
         expr:
           type: flowExpr
           value: |
             city_gml = attributes.get("cityGmlAttributes", {});
-            bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+            bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             bldg_id_attr.get("uro:branchID", "（なし）")
       - attribute: uro:partID
         expr:
           type: flowExpr
           value: |
             city_gml = attributes.get("cityGmlAttributes", {});
-            bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+            bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             bldg_id_attr.get("uro:partID", "（なし）")
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     name: FeatureWriter-invalid-building-id-format
@@ -2328,21 +2328,21 @@ graphs:
           type: flowExpr
           value: |
             attrs = attributes.get("cityGmlAttributes", {});
-            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             building_id_attribute.get("uro:buildingID", "")
       - newAttribute: uroBranchId
         attributeValue:
           type: flowExpr
           value: |
             attrs = attributes.get("cityGmlAttributes", {});
-            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             building_id_attribute.get("uro:branchID", "")
       - newAttribute: uroPartId
         attributeValue:
           type: flowExpr
           value: |
             attrs = attributes.get("cityGmlAttributes", {});
-            building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+            building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             building_id_attribute.get("uro:partID", "")
       calculation:
         type: flowExpr
@@ -2358,7 +2358,7 @@ graphs:
         type: flowExpr
         value: |
           attrs = attributes.get("cityGmlAttributes", {});
-          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+          building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
           building_id_attribute.get("uro:buildingID", "") + "-" + building_id_attribute.get("uro:branchID", "") + "-" + building_id_attribute.get("uro:partID", "")
       supplierAttributeValue:
         type: flowExpr
@@ -2391,14 +2391,14 @@ graphs:
           type: flowExpr
           value: |
             city_gml = attributes.get("cityGmlAttributes", {});
-            bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+            bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             bldg_id_attr.get("uro:buildingID", "")
       - attribute: UroBranchId
         expr:
           type: flowExpr
           value: |
             city_gml = attributes.get("cityGmlAttributes", {});
-            bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+            bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             branch_id = bldg_id_attr.get("uro:branchID", "");
             if branch_id == "" { "（なし）" } else { branch_id }
       - attribute: UroPartId
@@ -2406,7 +2406,7 @@ graphs:
           type: flowExpr
           value: |
             city_gml = attributes.get("cityGmlAttributes", {});
-            bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+            bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
             part_id = bldg_id_attr.get("uro:partID", "");
             if part_id == "" { "（なし）" } else { part_id }
   - id: bba483d0-9813-499e-a0f6-22874646450d
@@ -4321,51 +4321,6 @@ graphs:
         value:
           type: flowExpr
           value: attributes.get("__citygml_gml_id")
-      - attribute: cityGmlAttributes
-        method: create
-        value:
-          type: flowExpr
-          value: |
-            is_type_key = fn(k) { local = k.split(":")[-1]; c = local[:1]; c != "" and c == c.upper() and c != c.lower() };
-            is_wrapper = fn(d) { ks = d.keys(); ok = len(ks) > 0; for k in ks { if k[:1] != "@" and not is_type_key(k) { ok = false } } ok };
-            reshape_value = fn(v) {
-              r = v;
-              if type(v) == list { r = itertools.map(v, fn(x) { reshape_value(x) }) } else { if type(v) == dict { if "$" in v { r = v["$"] } else { r = reshape_map(v) } } }
-              r
-            };
-            reshape_map = fn(m) {
-              out = {};
-              for kv in m.items() {
-                k = kv[0]; v = kv[1];
-                items = [v];
-                if type(v) == list { items = v }
-                wrapper = len(items) > 0;
-                for it in items { if not (type(it) == dict and is_wrapper(it)) { wrapper = false } }
-                if wrapper {
-                  for it in items {
-                    for tkv in it.items() {
-                      t = tkv[0];
-                      if t[:1] != "@" {
-                        inners = [tkv[1]];
-                        if type(tkv[1]) == list { inners = tkv[1] }
-                        for one in inners { cur = out.get(t, []); cur.append(reshape_value(one)); out[t] = cur }
-                      }
-                    }
-                  }
-                } else {
-                  if type(v) == dict and "$" in v and "@codeSpace" in v {
-                    out[k] = v["$"];
-                    code_key = k + "_code";
-                    if not (code_key in m) { out[code_key] = v["$"] }
-                  } else {
-                    out[k] = reshape_value(v)
-                  }
-                }
-              }
-              out
-            };
-            cga = attributes.get("cityGmlAttributes");
-            if type(cga) == dict { reshape_map(cga) } else { {} }
   - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
     name: AttributeMapperGmlPathAndFilename
     type: action

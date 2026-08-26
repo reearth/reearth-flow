@@ -152,10 +152,8 @@ graphs:
             - BuildingFurniture
           cityGmlAttributesKey: cityGmlAttributes
 
-      # Derives the attributes the checks key on from the reader output, and
-      # regroups the CityGML attribute tree by feature type (`uro:BuildingIDAttribute`,
-      # `uro:BuildingDetailAttribute`, ...) with property wrappers removed and
-      # element text unwrapped.
+      # Derives the identity attributes the checks key on from the reader
+      # output. The checks read `cityGmlAttributes` in the reader's own shape.
       - id: b5000000-0000-4000-8000-000000000001
         name: AttributeManagerReaderAdapter
         type: action
@@ -182,51 +180,6 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes.get("__citygml_gml_id")
-            - attribute: cityGmlAttributes
-              method: create
-              value:
-                type: flowExpr
-                value: |
-                  is_type_key = fn(k) { local = k.split(":")[-1]; c = local[:1]; c != "" and c == c.upper() and c != c.lower() };
-                  is_wrapper = fn(d) { ks = d.keys(); ok = len(ks) > 0; for k in ks { if k[:1] != "@" and not is_type_key(k) { ok = false } } ok };
-                  reshape_value = fn(v) {
-                    r = v;
-                    if type(v) == list { r = itertools.map(v, fn(x) { reshape_value(x) }) } else { if type(v) == dict { if "$" in v { r = v["$"] } else { r = reshape_map(v) } } }
-                    r
-                  };
-                  reshape_map = fn(m) {
-                    out = {};
-                    for kv in m.items() {
-                      k = kv[0]; v = kv[1];
-                      items = [v];
-                      if type(v) == list { items = v }
-                      wrapper = len(items) > 0;
-                      for it in items { if not (type(it) == dict and is_wrapper(it)) { wrapper = false } }
-                      if wrapper {
-                        for it in items {
-                          for tkv in it.items() {
-                            t = tkv[0];
-                            if t[:1] != "@" {
-                              inners = [tkv[1]];
-                              if type(tkv[1]) == list { inners = tkv[1] }
-                              for one in inners { cur = out.get(t, []); cur.append(reshape_value(one)); out[t] = cur }
-                            }
-                          }
-                        }
-                      } else {
-                        if type(v) == dict and "$" in v and "@codeSpace" in v {
-                          out[k] = v["$"];
-                          code_key = k + "_code";
-                          if not (code_key in m) { out[code_key] = v["$"] }
-                        } else {
-                          out[k] = reshape_value(v)
-                        }
-                      }
-                    }
-                    out
-                  };
-                  cga = attributes.get("cityGmlAttributes");
-                  if type(cga) == dict { reshape_map(cga) } else { {} }
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         name: AttributeMapperGmlPathAndFilename
         type: action
