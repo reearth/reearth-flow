@@ -277,14 +277,21 @@ impl PolygonMesh3DData {
         );
     }
 
-    /// The face-adjacency topology of this mesh, one face per decoded ring.
+    /// The face-adjacency topology of this mesh, one face per polygon (a face's
+    /// hole rings belong to the same face).
     fn topology(&self) -> FaceTopology {
         let mut topology = FaceTopology::new();
+        let mut face = usize::MAX;
         for_each_ring(
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| topology.add_face(ring),
+            |ring, is_exterior| {
+                if is_exterior {
+                    face = face.wrapping_add(1);
+                }
+                topology.add_ring(face, ring);
+            },
         );
         topology
     }
@@ -295,11 +302,15 @@ impl PolygonMesh3DData {
         self.topology().is_orientable()
     }
 
-    /// Whether the mesh is a single connected component whose every edge is
-    /// shared by exactly two faces: a watertight closed 2-manifold.
-    pub(crate) fn is_closed_connected_manifold(&self) -> bool {
-        let topo = self.topology();
-        topo.is_closed_manifold() && topo.is_connected()
+    /// Whether every edge is shared by exactly two faces: a watertight closed
+    /// 2-manifold.
+    pub(crate) fn is_closed_manifold(&self) -> bool {
+        self.topology().is_closed_manifold()
+    }
+
+    /// Whether the faces form a single connected component through shared edges.
+    pub(crate) fn is_connected(&self) -> bool {
+        self.topology().is_connected()
     }
 
     /// The signed volume enclosed by this mesh, taken as a closed surface: each
@@ -607,6 +618,44 @@ mod tests {
             ValidationResult::Failed(positions) => positions.len(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
+    }
+
+    /// A box pierced by a square hole: top and bottom faces carry a hole ring,
+    /// and four inner walls line the hole. Builds the mesh from polygons.
+    fn pierced_box() -> PolygonMesh3DData {
+        use crate::polygon::PolygonBuilder3D;
+        let frame = CoordinateFrame::Euclidean;
+        let outer = |z: f64| [[0.0, 0.0, z], [4.0, 0.0, z], [4.0, 4.0, z], [0.0, 4.0, z]];
+        let inner = |z: f64| [[1.0, 1.0, z], [3.0, 1.0, z], [3.0, 3.0, z], [1.0, 3.0, z]];
+        let mut polys = Vec::new();
+        for z in [0.0, 1.0] {
+            polys.push(
+                PolygonBuilder3D::new(frame.clone())
+                    .set_exterior(outer(z))
+                    .push_interior(inner(z))
+                    .build()
+                    .unwrap(),
+            );
+        }
+        let wall = |a: [f64; 3], b: [f64; 3]| {
+            PolygonBuilder3D::new(frame.clone())
+                .set_exterior([a, b, [b[0], b[1], 1.0], [a[0], a[1], 1.0]])
+                .build()
+                .unwrap()
+        };
+        for ring in [outer(0.0), inner(0.0)] {
+            for i in 0..4 {
+                polys.push(wall(ring[i], ring[(i + 1) % 4]));
+            }
+        }
+        PolygonMesh3DData::from_polygons(polys.iter())
+    }
+
+    #[test]
+    fn pierced_box_is_a_closed_connected_manifold() {
+        let mesh = pierced_box();
+        assert!(mesh.is_closed_manifold());
+        assert!(mesh.is_connected());
     }
 
     #[test]

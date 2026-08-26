@@ -2868,7 +2868,7 @@
         "properties": {
           "destinationFrame": {
             "title": "Destination Frame",
-            "description": "Coordinate frame to convert geometry into.",
+            "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code.",
             "allOf": [
               {
                 "$ref": "#/definitions/DestinationFrame"
@@ -2897,40 +2897,38 @@
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
                 "type": "object",
                 "required": [
-                  "epsgCode",
-                  "type"
+                  "crs"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "crs"
-                    ]
-                  },
-                  "epsgCode": {
-                    "title": "EPSG Code",
-                    "description": "EPSG code of the destination coordinate reference system.",
-                    "type": "integer",
-                    "format": "uint16",
-                    "minimum": 0.0
+                  "crs": {
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               {
                 "title": "Euclidean",
                 "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "euclidean"
-                    ]
-                  }
-                }
+                "type": "string",
+                "enum": [
+                  "euclidean"
+                ]
               }
             ]
           },
@@ -3650,6 +3648,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Heredar Atributos de Entrada",
+            "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3741,6 +3745,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Heredar Atributos de Entrada",
+            "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
