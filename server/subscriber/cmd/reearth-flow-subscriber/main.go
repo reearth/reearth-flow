@@ -13,25 +13,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/reearth/reearthx/mongox"
-	"github.com/reearth/reearthx/pgxx"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 
 	flow_pubsub "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
-	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
-	flow_postgres "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/postgres"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/telemetry"
-	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
 )
-
-const databaseName = "reearth-flow"
 
 func main() {
 
@@ -139,48 +128,6 @@ func main() {
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
 	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(redisStorage)
 
-	// Initialize MongoDB client and node storage if needed
-	var mongoClient *mongo.Client
-	var nodeStorage gateway.NodeStorage
-
-	if conf.NodeSubscriptionID != "" {
-		switch conf.DBDriver {
-		case "postgres":
-			pool, perr := pgxpool.New(ctx, conf.DBPG)
-			if perr != nil {
-				log.Fatalf("Failed to connect to Postgres: %v", perr)
-			}
-			if perr := pool.Ping(ctx); perr != nil {
-				log.Fatalf("Failed to ping Postgres: %v", perr)
-			}
-
-			defer pool.Close()
-
-			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, flow_postgres.NewPostgresStorage(pgxx.NewClient(pool)))
-		default:
-			mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
-			if err != nil {
-				log.Fatalf("Failed to connect to MongoDB: %v", err)
-			}
-			if err := mongoClient.Ping(ctx, nil); err != nil {
-				log.Fatalf("Failed to ping MongoDB: %v", err)
-			}
-
-			defer func() {
-				if merr := mongoClient.Disconnect(context.Background()); merr != nil {
-					log.Printf("failed to disconnet mongo client: %v", merr)
-				}
-			}()
-
-			mongoStorage := flow_mongo.NewMongoStorage(
-				mongox.NewClient(databaseName, mongoClient),
-				conf.GCSBucket,
-				conf.AssetBaseURL,
-			)
-			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
-		}
-	}
-
 	// Set up subscribers with respective subscriptions
 	var wg sync.WaitGroup
 
@@ -203,29 +150,6 @@ func main() {
 		}()
 	} else {
 		log.Println("Log subscription ID not provided, log subscriber will not be started")
-	}
-
-	// Set up node subscriber if configured
-	if conf.NodeSubscriptionID != "" && nodeStorage != nil {
-		nodeSub := pubsubClient.Subscriber(conf.NodeSubscriptionID)
-		nodeSubAdapter := flow_pubsub.NewRealSubscription(nodeSub)
-		nodeSubscriberUC := interactor.NewNodeSubscriberUseCase(nodeStorage)
-		nodeSubscriber := flow_pubsub.NewNodeSubscriber(nodeSubAdapter, nodeSubscriberUC)
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			log.Println("[subscriber] Starting node subscriber...")
-			if err := nodeSubscriber.StartListening(ctx); err != nil {
-				log.Printf("[subscriber] Node subscriber error: %v", err)
-				cancel()
-			}
-			log.Println("[subscriber] Node subscriber stopped")
-		}()
-	} else if conf.NodeSubscriptionID != "" {
-		log.Println("Node storage not properly initialized, node subscriber will not be started")
-	} else {
-		log.Println("Node subscription ID not provided, node subscriber will not be started")
 	}
 
 	// Set up user-facing log subscriber if configured
