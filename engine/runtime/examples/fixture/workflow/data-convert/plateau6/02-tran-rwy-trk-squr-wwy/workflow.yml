@@ -217,6 +217,17 @@ graphs:
                 value: attributes["lod"] == 3
               outputPort: lod3
 
+      - id: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
+        name: FeatureFilterTrafficAreaForLod2And3
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] in ["tran:TrafficArea", "tran:AuxiliaryTrafficArea"]
+              outputPort: features
+
       - id: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
         name: Cesium3DTilesWriterLod2And3
         type: action
@@ -224,6 +235,7 @@ graphs:
         with:
           targetTileSize: 1048576
           attachTexture: true
+          wrapTolerance: 0.1
           skipUnexposedAttributes: true
           output:
             type: flowExpr
@@ -407,13 +419,18 @@ graphs:
         toPort: features
       - id: 5d6e7f80-9102-4b34-ad4e-5f6a7b8c9d0e
         from: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
-        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        to: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
         fromPort: lod2
         toPort: features
       - id: 7f8091a2-b3c4-4d56-8e1f-6a7b8c9d0e2a
         from: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
-        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        to: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
         fromPort: lod3
+        toPort: features
+      - id: a0b1c2d3-e4f5-4678-9a0b-1c2d3e4f5a6b
+        from: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
+        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        fromPort: features
         toPort: features
       - id: 83e293f8-a23d-4e5d-87b7-ea83924c7907
         from: aef63371-49d5-484b-bdca-0e4f00520526

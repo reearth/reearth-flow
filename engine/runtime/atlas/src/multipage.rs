@@ -1,14 +1,6 @@
-//! Multi-page atlas packing.
-//!
-//! Unlike [`crate::build_atlas`] — which shrinks every texture by one global
-//! factor until the whole set fits a single page — this packs each texture at a
-//! caller-chosen target scale (metres-per-pixel driven, computed from geometry)
-//! and spills the overflow onto additional pages instead of downsampling
-//! further. A single region larger than one page is force-shrunk to fit, with a
-//! warning; page count is otherwise unbounded.
-//!
-//! Assumes the top-left UV origin used by the new-geometry writer (see
-//! [`crate::remap_polygon_uvs`], whose v-axis handling is `#[cfg]`-selected).
+//! Multi-page atlas packing: each texture at its own scale, overflow spilling onto
+//! further pages rather than downsampling the whole set as [`crate::build_atlas`] does.
+//! Assumes the top-left UV origin of the new-geometry writer.
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -22,9 +14,7 @@ use crate::damage::collect_damage;
 use crate::skyline::SkylinePacker;
 use crate::{remap_polygon_uvs, AtlasError, PolygonUVs, Rect, Result, TextureInput};
 
-/// Decoded-source-image cache, keyed by path. Source textures are shared across
-/// tiles, so decoding is the dominant cost of a tileset build; pass one cache
-/// to every [`build_atlas_multipage`] call so each file is decoded once.
+/// Decoded-source-image cache; share one across calls so each file is decoded once.
 #[derive(Default)]
 pub struct TextureCache {
     images: HashMap<PathBuf, DynamicImage>,
@@ -56,17 +46,25 @@ pub struct PolygonPlacement {
     pub uvs: PolygonUVs,
 }
 
-/// A packed multi-page atlas: one or more page images plus, per input material,
-/// the per-polygon placement (page + remapped UVs).
+/// How a page must be addressed outside `[0, 1]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PageWrap {
+    /// Packed page: several textures side by side.
+    Clamp,
+    /// One tiling texture, bound whole.
+    Repeat,
+}
+
+/// Page images plus, per input material, each polygon's placement.
 pub struct MultiPageAtlas {
     pub pages: Vec<RgbaImage>,
-    /// Parallel to the input `materials`; each inner vec is parallel to that
-    /// material's `TextureInput::uvs`.
+    /// Parallel to `pages`.
+    pub wrap: Vec<PageWrap>,
+    /// Parallel to the input `materials`, then to each one's `TextureInput::uvs`.
     pub remapped: Vec<Vec<PolygonPlacement>>,
 }
 
-/// One damage region to place: its source-pixel rect plus the target size it
-/// should occupy in the atlas (already scaled and clamped to a single page).
+/// A damage region to place: its source rect plus the size it takes in the atlas.
 struct RegionJob {
     /// Index into `damage_list`.
     damage: usize,
@@ -75,38 +73,25 @@ struct RegionJob {
     target_h: u32,
 }
 
-/// Upper bound (pixels) accepted for `max_atlas_size` and `extrusion`. Any real
-/// atlas or extrusion ring is orders of magnitude smaller. The cap keeps packing
-/// arithmetic clear of `u32` overflow and bounds a single page's pixel buffer: a
-/// full 65536x65536 RGBA page is already ~17 GB, so anything larger is a
-/// misconfiguration rather than a workable atlas.
+/// Upper bound (pixels) for `max_atlas_size` and `extrusion`; a page that large is
+/// already ~17 GB of RGBA, so anything beyond it is a misconfiguration.
 pub const MAX_ATLAS_DIMENSION: u32 = 65_536;
 
-/// Pack `materials` into one or more atlas pages. Each material carries the
-/// fraction of native resolution to keep (`TextureInput::scale`, `(0, 1]`; `1.0`
-/// = full resolution, never upsampled); materials sharing a path take the
-/// largest of their scales.
-///
-/// `extrusion` is the ring (pixels) blitted around each region to stop bilinear
-/// bleed; pass `0` to disable it.
-///
-/// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and `Err`
-/// when `max_atlas_size` is 0 or either `max_atlas_size`/`extrusion` exceeds
-/// [`MAX_ATLAS_DIMENSION`].
+/// Pack `materials` into atlas pages, giving any tiling texture a page of its own.
+/// `Ok(None)` when there is nothing to pack; `Err` when `max_atlas_size` is 0 or it
+/// or `extrusion` exceeds [`MAX_ATLAS_DIMENSION`].
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
     extrusion: u32,
     block_align: u32,
+    wrap_tolerance: f64,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
     if max_atlas_size == 0 {
         return Err(AtlasError::builder("atlas size must be at least 1"));
     }
-    // Both are pixel dimensions. Capping them well below `u32::MAX` keeps every
-    // downstream size computation (block-grid snapping, extrusion gaps, page
-    // footprints) far from overflow, so the packing arithmetic needs no
-    // per-operation checked math.
+    // Capping both keeps the packing arithmetic clear of `u32` overflow.
     if max_atlas_size > MAX_ATLAS_DIMENSION || extrusion > MAX_ATLAS_DIMENSION {
         return Err(AtlasError::builder(format!(
             "atlas size ({max_atlas_size}) and extrusion ({extrusion}) must each be \
@@ -114,17 +99,24 @@ pub fn build_atlas_multipage(
         )));
     }
     let block_align = block_align.max(1);
-    // Snap the gap to the block grid too, so every reserved footprint keeps
-    // placements on a multiple of `block_align`.
+    // Snap the gap too, so every reserved footprint stays on the block grid.
     let extrusion = extrusion.div_ceil(block_align) * block_align;
 
-    let damage_list = collect_damage(materials)?;
-    if damage_list.is_empty() {
-        return Ok(None);
-    }
+    // Past `wrap_tolerance` a UV is tiling, not drift; the sampler wraps such a
+    // texture, so it cannot share a page.
+    let tiling: Vec<bool> = materials
+        .iter()
+        .map(|mat| tiles(mat, wrap_tolerance))
+        .collect();
+    let damage_list = collect_damage(
+        materials
+            .iter()
+            .zip(&tiling)
+            .filter(|(_, &t)| !t)
+            .map(|(mat, _)| mat),
+    )?;
 
-    // One scale per source path (a path may be referenced by several
-    // materials); keep the largest, i.e. the least downsampling any use asks for.
+    // One scale per source path: the largest, i.e. the least downsampling asked for.
     let mut scale_by_path: HashMap<&PathBuf, f64> = HashMap::new();
     for mat in materials {
         let scale = mat.scale.clamp(f64::MIN_POSITIVE, 1.0);
@@ -134,8 +126,7 @@ pub fn build_atlas_multipage(
             .or_insert(scale);
     }
 
-    // Flatten every damage region into a placement job, recording where each
-    // (damage, region) lands so UV remapping can find it afterwards.
+    // Flatten every damage region into a placement job, recording where each lands.
     let mut jobs: Vec<RegionJob> = Vec::new();
     let mut region_job: Vec<Vec<usize>> = Vec::with_capacity(damage_list.len());
     for (di, (path, td)) in damage_list.iter().enumerate() {
@@ -145,9 +136,7 @@ pub fn build_atlas_multipage(
             let mut w = ((src.w as f64) * scale).round().max(1.0) as u32;
             let mut h = ((src.h as f64) * scale).round().max(1.0) as u32;
             if w > max_atlas_size || h > max_atlas_size {
-                // Bigger than a whole page even before packing: shrink to fit,
-                // preserving aspect. Geometric error is intentionally left
-                // untouched — this is a packing constraint, not user intent.
+                // Bigger than a whole page before packing even starts.
                 let shrink = max_atlas_size as f64 / w.max(h) as f64;
                 let sw = ((w as f64) * shrink)
                     .round()
@@ -163,8 +152,7 @@ pub fn build_atlas_multipage(
                 w = sw;
                 h = sh;
             }
-            // Round up to the block grid so no compression block straddles a
-            // region boundary; clamp back down if that would overflow a page.
+            // Round up so no compression block straddles a region boundary.
             let align_up = |v: u32| (v.div_ceil(block_align) * block_align).min(max_atlas_size);
             w = align_up(w);
             h = align_up(h);
@@ -179,8 +167,7 @@ pub fn build_atlas_multipage(
         region_job.push(per_region);
     }
 
-    // Next-fit, tallest-first: fill the current page until a region no longer
-    // fits, then open the next; earlier pages are never revisited.
+    // Next-fit, tallest-first; earlier pages are never revisited.
     let mut order: Vec<usize> = (0..jobs.len()).collect();
     order.sort_by(|&a, &b| {
         jobs[b]
@@ -226,6 +213,24 @@ pub fn build_atlas_multipage(
             .map_err(|_| AtlasError::builder("Internal bug: failed to copy texture into atlas"))?;
         fill_frame_extrusion(&mut pages[page], frame, extrusion);
     }
+    let mut wrap = vec![PageWrap::Clamp; pages.len()];
+
+    // One page per tiling texture, holding the whole image so its UVs address it unchanged.
+    let mut tiling_page: HashMap<&PathBuf, usize> = HashMap::new();
+    for (mat, _) in materials.iter().zip(&tiling).filter(|(_, &t)| t) {
+        if tiling_page.contains_key(&mat.path) {
+            continue;
+        }
+        let scale = scale_by_path.get(&mat.path).copied().unwrap_or(1.0);
+        let page = whole_page(cache.get(&mat.path)?, scale, max_atlas_size);
+        tiling_page.insert(&mat.path, pages.len());
+        pages.push(page);
+        wrap.push(PageWrap::Repeat);
+    }
+
+    if pages.is_empty() {
+        return Ok(None);
+    }
 
     // Remap each material's UVs into atlas space, tagged with its page.
     let mut di_by_path: HashMap<&PathBuf, usize> = HashMap::new();
@@ -234,7 +239,20 @@ pub fn build_atlas_multipage(
     }
     let remapped = materials
         .iter()
-        .map(|mat| {
+        .zip(&tiling)
+        .map(|(mat, &t)| {
+            // The page is the texture, so its UVs already address it.
+            if t {
+                let page = tiling_page[&mat.path];
+                return mat
+                    .uvs
+                    .iter()
+                    .map(|uvs| PolygonPlacement {
+                        page,
+                        uvs: uvs.clone(),
+                    })
+                    .collect();
+            }
             let Some(&di) = di_by_path.get(&mat.path) else {
                 return Vec::new(); // material contributed no polygons
             };
@@ -261,7 +279,34 @@ pub fn build_atlas_multipage(
         })
         .collect();
 
-    Ok(Some(MultiPageAtlas { pages, remapped }))
+    Ok(Some(MultiPageAtlas {
+        pages,
+        wrap,
+        remapped,
+    }))
+}
+
+fn tiles(mat: &TextureInput, wrap_tolerance: f64) -> bool {
+    let unit = -wrap_tolerance..=1.0 + wrap_tolerance;
+    mat.uvs
+        .iter()
+        .flatten()
+        .any(|[u, v]| !unit.contains(u) || !unit.contains(v))
+}
+
+/// The whole texture as its own page: `scale` first (never an upscale), then a hard clamp to one page.
+fn whole_page(source: &DynamicImage, scale: f64, max_atlas_size: u32) -> RgbaImage {
+    let (w, h) = (source.width(), source.height());
+    let scale = (scale.clamp(f64::MIN_POSITIVE, 1.0))
+        .min(max_atlas_size as f64 / w.max(h) as f64)
+        .min(1.0);
+    let target = |v: u32| ((v as f64 * scale).round() as u32).clamp(1, max_atlas_size);
+    let (tw, th) = (target(w), target(h));
+    if (tw, th) == (w, h) {
+        source.to_rgba8()
+    } else {
+        image::imageops::resize(&source.to_rgba8(), tw, th, FilterType::Triangle)
+    }
 }
 
 #[cfg(test)]
@@ -292,7 +337,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[a], 4096, 1, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[a], 4096, 1, 1, 0.0, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -319,11 +364,12 @@ mod tests {
             4096,
             1,
             1,
+            0.0,
             &mut TextureCache::default(),
         )
         .unwrap()
         .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, &mut TextureCache::default())
+        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, 0.0, &mut TextureCache::default())
             .unwrap()
             .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
@@ -344,7 +390,7 @@ mod tests {
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, 256, 1, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&mats, 256, 1, 1, 0.0, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
@@ -361,11 +407,73 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[mat], 128, 1, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 128, 1, 1, 0.0, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
         assert!(built.pages[0].width() <= 128 && built.pages[0].height() <= 128);
+    }
+
+    #[test]
+    fn tiling_texture_takes_its_own_page_whole() {
+        let tmp = TempDir::new().unwrap();
+        let packed = material(
+            write_texture(tmp.path(), "packed.png", 64, 64),
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            1.0,
+        );
+        let tiled = material(
+            write_texture(tmp.path(), "tiled.png", 64, 32),
+            vec![(0.0, 0.0), (8.0, 0.0), (8.0, 6.0), (0.0, 6.0)],
+            1.0,
+        );
+        let built =
+            build_atlas_multipage(&[packed, tiled], 4096, 1, 1, 0.0, &mut TextureCache::default())
+                .unwrap()
+                .expect("atlas built");
+
+        let packed_page = built.remapped[0][0].page;
+        let tiled_page = built.remapped[1][0].page;
+        assert_ne!(packed_page, tiled_page, "a tiling texture shares no page");
+        assert_eq!(built.wrap[packed_page], PageWrap::Clamp);
+        assert_eq!(built.wrap[tiled_page], PageWrap::Repeat);
+        // The page is the texture, so the source UVs address it unchanged.
+        assert_eq!(built.pages[tiled_page].dimensions(), (64, 32));
+        assert_eq!(
+            built.remapped[1][0].uvs,
+            vec![[0.0, 0.0], [8.0, 0.0], [8.0, 6.0], [0.0, 6.0]]
+        );
+    }
+
+    #[test]
+    fn tiling_page_obeys_scale_then_atlas_cap() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_texture(tmp.path(), "big.png", 512, 512);
+        let uvs = vec![(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)];
+
+        let scaled = build_atlas_multipage(
+            &[material(path.clone(), uvs.clone(), 0.5)],
+            4096,
+            1,
+            1,
+            0.0,
+            &mut TextureCache::default(),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(scaled.pages[0].dimensions(), (256, 256));
+
+        let capped = build_atlas_multipage(
+            &[material(path, uvs, 1.0)],
+            128,
+            1,
+            1,
+            0.0,
+            &mut TextureCache::default(),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(capped.pages[0].dimensions(), (128, 128));
     }
 
     #[test]
@@ -383,7 +491,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             0.5,
         );
-        let built = build_atlas_multipage(&[mat], 64, 0, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 64, 0, 1, 0.0, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         let page_w = built.pages[0].width() as f64;
