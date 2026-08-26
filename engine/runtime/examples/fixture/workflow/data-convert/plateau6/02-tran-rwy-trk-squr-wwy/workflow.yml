@@ -70,7 +70,7 @@ graphs:
             - tran:TrafficArea
             # - tran:TrafficSpace
             - tran:Waterway
-            # - urc:DmGeometricAttribute
+            - urc:DmGeometricAttribute
 
       - id: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         name: AttributeTableExtractor
@@ -180,6 +180,13 @@ graphs:
                   }
                   city_gml + suffix
 
+      - id: 6ebb79f9-67e8-490d-b397-187e9889b4da
+        name: GeometryFilterHasGeometry
+        type: action
+        action: Geometry Filter
+        with:
+          filterType: none
+
       - id: d46e567a-831f-476a-bbb2-ce130a2db7a0
         name: GeometrySplitterByLod
         type: action
@@ -210,6 +217,17 @@ graphs:
                 value: attributes["lod"] == 3
               outputPort: lod3
 
+      - id: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
+        name: FeatureFilterTrafficAreaForLod2And3
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] in ["tran:TrafficArea", "tran:AuxiliaryTrafficArea"]
+              outputPort: features
+
       - id: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
         name: Cesium3DTilesWriterLod2And3
         type: action
@@ -217,6 +235,7 @@ graphs:
         with:
           targetTileSize: 1048576
           attachTexture: true
+          wrapTolerance: 0.1
           skipUnexposedAttributes: true
           output:
             type: flowExpr
@@ -266,6 +285,41 @@ graphs:
           compressOutput:
             type: flowExpr
             value: attributes["__output_base"] + "_mvt_lod" + str(attributes["lod"]) + ".zip"
+
+      - id: b7f7453c-3f9f-45c2-8517-b6104b94de42
+        name: FeatureFilterDmGeometricAttribute
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "urc:DmGeometricAttribute"
+              outputPort: features
+
+      - id: 5bdceaa7-6805-426b-9a26-1bbde0902a56
+        name: TwoDimensionForcerDmGeometricAttribute
+        type: action
+        action: Two Dimension Forcer
+
+      - id: 370b68fa-0b0f-413b-98ad-08de83b5a5f4
+        name: MVTWriterDmGeometricAttribute
+        type: action
+        action: MVT Writer
+        with:
+          layerName:
+            type: flowExpr
+            value: attributes["feature_type"].split(":")[1]
+          skipUnexposedAttributes: true
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_dm_geometric_attributes"
+          compressOutput:
+            type: flowExpr
+            value: attributes["__output_base"] + "_dm_geometric_attributes.zip"
 
     edges:
       - id: 70e3d5c3-bb1e-4528-ac75-778a502fbf83
@@ -325,7 +379,27 @@ graphs:
         toPort: features
       - id: 58af97c5-7c9d-418f-b02b-0385a7ff7df8
         from: 048967ac-f0ac-4bfb-90b5-c5a80d0acede
+        to: b7f7453c-3f9f-45c2-8517-b6104b94de42
+        fromPort: features
+        toPort: features
+      - id: 47982be2-ac52-4eed-b678-aea71c234cf0
+        from: b7f7453c-3f9f-45c2-8517-b6104b94de42
+        to: 6ebb79f9-67e8-490d-b397-187e9889b4da
+        fromPort: unfiltered
+        toPort: features
+      - id: 2136fe5c-48ba-4933-8854-85a80bad0b28
+        from: 6ebb79f9-67e8-490d-b397-187e9889b4da
         to: d46e567a-831f-476a-bbb2-ce130a2db7a0
+        fromPort: unfiltered
+        toPort: features
+      - id: f90f995c-ee96-4374-bdd9-2e63aab3e268
+        from: b7f7453c-3f9f-45c2-8517-b6104b94de42
+        to: 5bdceaa7-6805-426b-9a26-1bbde0902a56
+        fromPort: features
+        toPort: features
+      - id: f8f07710-46e9-4405-82d0-6ea3be10bcc2
+        from: 5bdceaa7-6805-426b-9a26-1bbde0902a56
+        to: 370b68fa-0b0f-413b-98ad-08de83b5a5f4
         fromPort: features
         toPort: features
       - id: 58c321ad-e100-4696-9b6b-e9a4566709f9
@@ -345,13 +419,18 @@ graphs:
         toPort: features
       - id: 5d6e7f80-9102-4b34-ad4e-5f6a7b8c9d0e
         from: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
-        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        to: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
         fromPort: lod2
         toPort: features
       - id: 7f8091a2-b3c4-4d56-8e1f-6a7b8c9d0e2a
         from: 2a3b4c5d-6e7f-4801-8a1b-2c3d4e5f6a7b
-        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        to: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
         fromPort: lod3
+        toPort: features
+      - id: a0b1c2d3-e4f5-4678-9a0b-1c2d3e4f5a6b
+        from: f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b
+        to: 3b4c5d6e-7f80-4912-8b2c-3d4e5f6a7b8c
+        fromPort: features
         toPort: features
       - id: 83e293f8-a23d-4e5d-87b7-ea83924c7907
         from: aef63371-49d5-484b-bdca-0e4f00520526

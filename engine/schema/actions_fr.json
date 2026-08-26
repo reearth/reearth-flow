@@ -2380,6 +2380,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "Tolérance de Répétition",
+            "description": "Écart maximal hors de 0-1 qu'une coordonnée de texture peut présenter tout en étant ramenée dans l'intervalle comme dérive du jeu de données. Au-delà, la texture est considérée comme répétée et reçoit sa propre page d'atlas afin que l'échantillonneur puisse la répéter. Valeur par défaut : 0.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "Codec de Texture",
             "description": "Codec d'image pour les pages de l'atlas. Valeur par défaut : `KTX2/ETC1S` ; choisissez `Untextured` pour n'attacher aucune texture.",

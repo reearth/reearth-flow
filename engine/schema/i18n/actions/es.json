@@ -880,6 +880,10 @@
         "textureCodec": {
           "title": "Códec de Textura",
           "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas."
+        },
+        "wrapTolerance": {
+          "title": "Tolerancia de Repetición",
+          "description": "Cuánto puede desviarse una coordenada de textura fuera de 0-1 y aun así recortarse como desviación del conjunto de datos. Más allá de ese margen, se considera que la textura se repite y se le asigna una página de atlas propia para que el muestreador pueda repetirla. Valor predeterminado: 0."
         }
       },
       "enumI18n": {

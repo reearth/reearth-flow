@@ -2380,6 +2380,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "ラップ許容値",
+            "description": "テクスチャ座標が 0〜1 の範囲外にどこまでずれてもデータの誤差としてクランプするかを指定する。これを超えた場合はタイリングテクスチャとみなし、サンプラーが繰り返せるように専用のアトラスページを割り当てる。デフォルトは 0。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "テクスチャコーデック",
             "description": "アトラスページの画像コーデック。デフォルトは `KTX2/ETC1S`。テクスチャを付与しない場合は `Untextured` を選択する。",
