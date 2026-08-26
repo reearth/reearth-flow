@@ -2380,6 +2380,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "Wrap Tolerance",
+            "description": "How far outside 0-1 a texture coordinate may stray and still be clamped as dataset drift. Past it the texture is taken to tile and is given an atlas page of its own so the sampler can repeat it. Defaults to 0.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "Texture Codec",
             "description": "Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select `Untextured` to attach no textures.",

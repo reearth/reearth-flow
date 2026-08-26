@@ -95,6 +95,8 @@ pub struct ViewOptions {
     pub texel_size: f64,
     pub atlas_size: u32,
     pub atlas_extrusion: u32,
+    /// How far outside `[0, 1]` a UV is still drift rather than a tiling texture.
+    pub wrap_tolerance: f64,
     /// JPEG by default: a view is built on demand, so we need fast encoding.
     pub texture_codec: TextureCodec,
 }
@@ -107,6 +109,7 @@ impl Default for ViewOptions {
             texel_size: 0.0,
             atlas_size: 2048,
             atlas_extrusion: 0,
+            wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Jpeg,
         }
     }
@@ -120,6 +123,7 @@ impl ViewOptions {
             texel_size: self.texel_size,
             atlas_size: self.atlas_size,
             atlas_extrusion: self.atlas_extrusion,
+            wrap_tolerance: self.wrap_tolerance,
             texture_codec: self.texture_codec,
         }
     }

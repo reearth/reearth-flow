@@ -2380,6 +2380,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "重复容差",
+            "description": "纹理坐标可以超出 0-1 范围多远仍按数据偏差进行钳制。超出该范围则视为平铺纹理，并为其单独分配一个图集页面，以便采样器重复该纹理。默认为 0。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "纹理编解码器",
             "description": "图集页面的图像编解码器。默认为 `KTX2/ETC1S`；选择 `Untextured` 则不附加纹理。",
