@@ -1,6 +1,7 @@
 import { ThemeProps, withTheme } from "@rjsf/core";
 import { FormContextType, RJSFSchema, StrictRJSFSchema } from "@rjsf/utils";
 
+import { AnyValueField } from "./Fields/AnyValueField";
 import { FlowExprField } from "./Fields/FlowExprField";
 import { generateTemplates } from "./Templates";
 import { generateWidgets } from "./Widgets";
@@ -13,7 +14,7 @@ export function generateTheme<
   return {
     templates: generateTemplates<T, S, F>(),
     widgets: generateWidgets<T, S, F>(),
-    fields: { FlowExprField } as any,
+    fields: { FlowExprField, FallbackField: AnyValueField } as any,
   };
 }
 
