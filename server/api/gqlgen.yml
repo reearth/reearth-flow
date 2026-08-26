@@ -51,10 +51,6 @@ models:
         resolver: true
       droppedEventCount:
         resolver: true
-  NodeExecution:
-    fields:
-      diagnostics:
-        resolver: true
   Parameter:
     fields:
       project:
