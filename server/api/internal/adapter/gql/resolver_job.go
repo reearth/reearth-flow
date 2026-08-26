@@ -32,3 +32,7 @@ func (r *jobResolver) FailedNodes(ctx context.Context, obj *gqlmodel.Job) ([]*gq
 func (r *jobResolver) DroppedEventCount(ctx context.Context, obj *gqlmodel.Job) (*int, error) {
 	return loaders(ctx).Diagnostic.GetDroppedEventCount(ctx, obj.ID)
 }
+
+func (r *jobResolver) NodeDiagnostics(ctx context.Context, obj *gqlmodel.Job, nodeID string) ([]*gqlmodel.Diagnostic, error) {
+	return loaders(ctx).Diagnostic.GetNodeDiagnostics(ctx, obj.ID, nodeID)
+}

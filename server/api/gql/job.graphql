@@ -16,6 +16,8 @@ type Job implements Node {
   variables: [Variable!]!
   failedNodes: [Diagnostic!]
   droppedEventCount: Int
+  "Diagnostics for one node. Pass an empty nodeId for the job-level bucket."
+  nodeDiagnostics(nodeId: String!): [Diagnostic!]
 }
 
 enum JobStatus {

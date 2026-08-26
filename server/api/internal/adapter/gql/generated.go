@@ -260,6 +260,7 @@ type ComplexityRoot struct {
 		ID                func(childComplexity int) int
 		Logs              func(childComplexity int, since time.Time) int
 		LogsURL           func(childComplexity int) int
+		NodeDiagnostics   func(childComplexity int, nodeID string) int
 		OutputURLs        func(childComplexity int) int
 		StartedAt         func(childComplexity int) int
 		Status            func(childComplexity int) int
@@ -621,6 +622,7 @@ type JobResolver interface {
 
 	FailedNodes(ctx context.Context, obj *gqlmodel.Job) ([]*gqlmodel.Diagnostic, error)
 	DroppedEventCount(ctx context.Context, obj *gqlmodel.Job) (*int, error)
+	NodeDiagnostics(ctx context.Context, obj *gqlmodel.Job, nodeID string) ([]*gqlmodel.Diagnostic, error)
 }
 type MeResolver interface {
 	MyWorkspace(ctx context.Context, obj *gqlmodel.Me) (*gqlmodel.Workspace, error)
@@ -1508,6 +1510,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.LogsURL(childComplexity), true
+	case "Job.nodeDiagnostics":
+		if e.complexity.Job.NodeDiagnostics == nil {
+			break
+		}
+
+		args, err := ec.field_Job_nodeDiagnostics_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Job.NodeDiagnostics(childComplexity, args["nodeId"].(string)), true
 	case "Job.outputURLs":
 		if e.complexity.Job.OutputURLs == nil {
 			break
@@ -3956,6 +3969,8 @@ extend type Query {
   variables: [Variable!]!
   failedNodes: [Diagnostic!]
   droppedEventCount: Int
+  "Diagnostics for one node. Pass an empty nodeId for the job-level bucket."
+  nodeDiagnostics(nodeId: String!): [Diagnostic!]
 }
 
 enum JobStatus {
@@ -4680,6 +4695,17 @@ func (ec *executionContext) field_Job_logs_args(ctx context.Context, rawArgs map
 		return nil, err
 	}
 	args["since"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Job_nodeDiagnostics_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "nodeId", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["nodeId"] = arg0
 	return args, nil
 }
 
@@ -8006,6 +8032,8 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_failedNodes(ctx, field)
 			case "droppedEventCount":
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -9941,6 +9969,71 @@ func (ec *executionContext) fieldContext_Job_droppedEventCount(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_nodeDiagnostics(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_nodeDiagnostics,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Job().NodeDiagnostics(ctx, obj, fc.Args["nodeId"].(string))
+		},
+		nil,
+		ec.marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDiagnosticᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_nodeDiagnostics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_Diagnostic_code(ctx, field)
+			case "category":
+				return ec.fieldContext_Diagnostic_category(ctx, field)
+			case "severity":
+				return ec.fieldContext_Diagnostic_severity(ctx, field)
+			case "effectiveDisposition":
+				return ec.fieldContext_Diagnostic_effectiveDisposition(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_Diagnostic_nodeId(ctx, field)
+			case "actionType":
+				return ec.fieldContext_Diagnostic_actionType(ctx, field)
+			case "featureId":
+				return ec.fieldContext_Diagnostic_featureId(ctx, field)
+			case "message":
+				return ec.fieldContext_Diagnostic_message(ctx, field)
+			case "help":
+				return ec.fieldContext_Diagnostic_help(ctx, field)
+			case "aggregatedCount":
+				return ec.fieldContext_Diagnostic_aggregatedCount(ctx, field)
+			case "sampleFeatureIds":
+				return ec.fieldContext_Diagnostic_sampleFeatureIds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Diagnostic", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Job_nodeDiagnostics_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9999,6 +10092,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_failedNodes(ctx, field)
 			case "droppedEventCount":
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -10130,6 +10225,8 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_failedNodes(ctx, field)
 			case "droppedEventCount":
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -13185,6 +13282,8 @@ func (ec *executionContext) fieldContext_PreviewSchemaPayload_job(_ context.Cont
 				return ec.fieldContext_Job_failedNodes(ctx, field)
 			case "droppedEventCount":
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -15540,6 +15639,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_failedNodes(ctx, field)
 			case "droppedEventCount":
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -16179,6 +16280,8 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_failedNodes(ctx, field)
 			case "droppedEventCount":
 				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -23756,6 +23859,39 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 					}
 				}()
 				res = ec._Job_droppedEventCount(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "nodeDiagnostics":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Job_nodeDiagnostics(ctx, field, obj)
 				return res
 			}
 

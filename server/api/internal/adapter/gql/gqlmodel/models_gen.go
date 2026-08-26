@@ -339,6 +339,8 @@ type Job struct {
 	Variables         []*Variable   `json:"variables"`
 	FailedNodes       []*Diagnostic `json:"failedNodes,omitempty"`
 	DroppedEventCount *int          `json:"droppedEventCount,omitempty"`
+	// Diagnostics for one node. Pass an empty nodeId for the job-level bucket.
+	NodeDiagnostics []*Diagnostic `json:"nodeDiagnostics,omitempty"`
 }
 
 func (Job) IsNode()        {}
