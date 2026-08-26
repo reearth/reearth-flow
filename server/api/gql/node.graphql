@@ -6,17 +6,9 @@ type NodeExecution implements Node {
   createdAt: DateTime
   startedAt: DateTime
   completedAt: DateTime
-  diagnostics: [Diagnostic!]
-  "Processed feature count for processor nodes; null until the node is terminal."
-  featuresProcessed: Int
-  "Written feature count for sink nodes; null until the node is terminal."
-  featuresWritten: Int
-  "Features emitted during finish() by accumulating processors; null until the node is terminal."
-  finishFeatureCount: Int
 }
 
 enum NodeStatus {
-  "Never emitted by the runtime; retained for API compatibility."
   PENDING
   STARTING
   PROCESSING
@@ -30,5 +22,4 @@ extend type Subscription {
 
 extend type Query {
   nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
-  nodeExecutions(jobId: ID!): [NodeExecution!]
 }

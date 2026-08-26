@@ -16,17 +16,13 @@ const (
 	StatusFailed     Status = "FAILED"
 )
 
-// The feature-count fields are nil until the node is terminal, and 0 when its kind doesn't report them.
 type NodeExecution struct {
-	startedAt          *time.Time
-	completedAt        *time.Time
-	featuresProcessed  *int
-	featuresWritten    *int
-	finishFeatureCount *int
-	id                 string
-	status             Status
-	jobID              id.JobID
-	nodeID             id.NodeID
+	startedAt   *time.Time
+	completedAt *time.Time
+	id          string
+	status      Status
+	jobID       id.JobID
+	nodeID      id.NodeID
 }
 
 func NewNodeExecution(
@@ -65,16 +61,4 @@ func (e *NodeExecution) StartedAt() *time.Time {
 
 func (e *NodeExecution) CompletedAt() *time.Time {
 	return e.completedAt
-}
-
-func (e *NodeExecution) FeaturesProcessed() *int {
-	return e.featuresProcessed
-}
-
-func (e *NodeExecution) FeaturesWritten() *int {
-	return e.featuresWritten
-}
-
-func (e *NodeExecution) FinishFeatureCount() *int {
-	return e.finishFeatureCount
 }

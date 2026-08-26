@@ -7,21 +7,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// Mirrors the api-side NodeExecutionDocument; metrics are stored flat, not nested.
 type NodeExecutionDocument struct {
-	ID                 string     `bson:"id"`
-	JobID              string     `bson:"jobId"`
-	NodeID             string     `bson:"nodeId"`
-	Status             string     `bson:"status"`
-	StartedAt          *time.Time `bson:"startedAt,omitempty"`
-	CompletedAt        *time.Time `bson:"completedAt,omitempty"`
-	FeaturesProcessed  *uint64    `bson:"featuresProcessed,omitempty"`
-	FeaturesWritten    *uint64    `bson:"featuresWritten,omitempty"`
-	FinishFeatureCount *uint64    `bson:"finishFeatureCount,omitempty"`
+	ID          string     `bson:"id"`
+	JobID       string     `bson:"jobId"`
+	NodeID      string     `bson:"nodeId"`
+	Status      string     `bson:"status"`
+	StartedAt   *time.Time `bson:"startedAt,omitempty"`
+	CompletedAt *time.Time `bson:"completedAt,omitempty"`
 }
 
 func NewNodeExecution(n *node.NodeExecution) NodeExecutionDocument {
-	doc := NodeExecutionDocument{
+	return NodeExecutionDocument{
 		ID:          n.ID,
 		JobID:       n.JobID,
 		NodeID:      n.NodeID,
@@ -29,12 +25,6 @@ func NewNodeExecution(n *node.NodeExecution) NodeExecutionDocument {
 		StartedAt:   n.StartedAt,
 		CompletedAt: n.CompletedAt,
 	}
-	if n.Metrics != nil {
-		doc.FeaturesProcessed = &n.Metrics.FeaturesProcessed
-		doc.FeaturesWritten = &n.Metrics.FeaturesWritten
-		doc.FinishFeatureCount = &n.Metrics.FinishFeatureCount
-	}
-	return doc
 }
 
 type NodeExecutionConsumer struct {
@@ -57,21 +47,6 @@ func (c *NodeExecutionConsumer) Consume(raw bson.Raw) error {
 		return err
 	}
 
-	var metrics *node.NodeMetrics
-	if doc.FeaturesProcessed != nil || doc.FeaturesWritten != nil || doc.FinishFeatureCount != nil {
-		m := node.NodeMetrics{}
-		if doc.FeaturesProcessed != nil {
-			m.FeaturesProcessed = *doc.FeaturesProcessed
-		}
-		if doc.FeaturesWritten != nil {
-			m.FeaturesWritten = *doc.FeaturesWritten
-		}
-		if doc.FinishFeatureCount != nil {
-			m.FinishFeatureCount = *doc.FinishFeatureCount
-		}
-		metrics = &m
-	}
-
 	c.Result = append(c.Result, &node.NodeExecution{
 		ID:          doc.ID,
 		JobID:       doc.JobID,
@@ -79,7 +54,6 @@ func (c *NodeExecutionConsumer) Consume(raw bson.Raw) error {
 		Status:      node.Status(doc.Status),
 		StartedAt:   doc.StartedAt,
 		CompletedAt: doc.CompletedAt,
-		Metrics:     metrics,
 	})
 
 	return nil

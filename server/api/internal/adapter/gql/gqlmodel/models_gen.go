@@ -384,20 +384,13 @@ type NamedSnapshot struct {
 }
 
 type NodeExecution struct {
-	ID          ID            `json:"id"`
-	JobID       ID            `json:"jobId"`
-	NodeID      ID            `json:"nodeId"`
-	Status      NodeStatus    `json:"status"`
-	CreatedAt   *time.Time    `json:"createdAt,omitempty"`
-	StartedAt   *time.Time    `json:"startedAt,omitempty"`
-	CompletedAt *time.Time    `json:"completedAt,omitempty"`
-	Diagnostics []*Diagnostic `json:"diagnostics,omitempty"`
-	// Processed feature count for processor nodes; null until the node is terminal.
-	FeaturesProcessed *int `json:"featuresProcessed,omitempty"`
-	// Written feature count for sink nodes; null until the node is terminal.
-	FeaturesWritten *int `json:"featuresWritten,omitempty"`
-	// Features emitted during finish() by accumulating processors; null until the node is terminal.
-	FinishFeatureCount *int `json:"finishFeatureCount,omitempty"`
+	ID          ID         `json:"id"`
+	JobID       ID         `json:"jobId"`
+	NodeID      ID         `json:"nodeId"`
+	Status      NodeStatus `json:"status"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	StartedAt   *time.Time `json:"startedAt,omitempty"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
 }
 
 func (NodeExecution) IsNode()        {}
@@ -1428,7 +1421,6 @@ func (e LogLevel) MarshalJSON() ([]byte, error) {
 type NodeStatus string
 
 const (
-	// Never emitted by the runtime; retained for API compatibility.
 	NodeStatusPending    NodeStatus = "PENDING"
 	NodeStatusStarting   NodeStatus = "STARTING"
 	NodeStatusProcessing NodeStatus = "PROCESSING"

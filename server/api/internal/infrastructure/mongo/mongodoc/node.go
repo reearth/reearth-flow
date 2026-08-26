@@ -8,15 +8,12 @@ import (
 )
 
 type NodeExecutionDocument struct {
-	StartedAt          *time.Time `bson:"startedAt,omitempty"`
-	CompletedAt        *time.Time `bson:"completedAt,omitempty"`
-	FeaturesProcessed  *int       `bson:"featuresProcessed,omitempty"`
-	FeaturesWritten    *int       `bson:"featuresWritten,omitempty"`
-	FinishFeatureCount *int       `bson:"finishFeatureCount,omitempty"`
-	ID                 string     `bson:"id"`
-	JobID              string     `bson:"jobId"`
-	NodeID             string     `bson:"nodeId"`
-	Status             string     `bson:"status"`
+	StartedAt   *time.Time `bson:"startedAt,omitempty"`
+	CompletedAt *time.Time `bson:"completedAt,omitempty"`
+	ID          string     `bson:"id"`
+	JobID       string     `bson:"jobId"`
+	NodeID      string     `bson:"nodeId"`
+	Status      string     `bson:"status"`
 }
 
 type NodeExecutionConsumer = Consumer[*NodeExecutionDocument, *graph.NodeExecution]
@@ -49,8 +46,5 @@ func (d *NodeExecutionDocument) Model() (*graph.NodeExecution, error) {
 		Status(graph.Status(d.Status)).
 		StartedAt(d.StartedAt).
 		CompletedAt(d.CompletedAt).
-		FeaturesProcessed(d.FeaturesProcessed).
-		FeaturesWritten(d.FeaturesWritten).
-		FinishFeatureCount(d.FinishFeatureCount).
 		Build()
 }

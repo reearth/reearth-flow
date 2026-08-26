@@ -45,14 +45,6 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 		log.Printf("DEBUG: Node %s has featureId=%s", event.NodeID, *event.FeatureID)
 	}
 
-	// Flattened onto the node key to match the shape the api side already reads.
-	if event.Metrics != nil {
-		nodeData["featuresProcessed"] = event.Metrics.FeaturesProcessed
-		nodeData["featuresWritten"] = event.Metrics.FeaturesWritten
-		nodeData["finishFeatureCount"] = event.Metrics.FinishFeatureCount
-		log.Printf("DEBUG: Node %s has metrics=%+v", event.NodeID, *event.Metrics)
-	}
-
 	nodeDataBytes, err := json.Marshal(nodeData)
 	if err != nil {
 		log.Printf("ERROR: Failed to marshal node data for NodeID=%s: %v", event.NodeID, err)

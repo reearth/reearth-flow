@@ -26,10 +26,6 @@ func (r *Resolver) Mutation() MutationResolver {
 	return &mutationResolver{r}
 }
 
-func (r *Resolver) NodeExecution() NodeExecutionResolver {
-	return &nodeExecutionResolver{r}
-}
-
 func (r *Resolver) Project() ProjectResolver {
 	return &projectResolver{r}
 }
