@@ -297,6 +297,7 @@ graphs:
         with:
           targetTileSize: 1048576
           attachTexture: false
+          wrapTolerance: 0.1
           skipUnexposedAttributes: true
           output:
             type: flowExpr
@@ -358,6 +359,7 @@ graphs:
         with:
           targetTileSize: 1048576
           attachTexture: true
+          wrapTolerance: 0.1
           skipUnexposedAttributes: true
           output:
             type: flowExpr
@@ -431,6 +433,7 @@ graphs:
         with:
           targetTileSize: 1048576
           attachTexture: true
+          wrapTolerance: 0.1
           skipUnexposedAttributes: true
           output:
             type: flowExpr
