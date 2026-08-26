@@ -1,7 +1,6 @@
 {
   "description": "Test PLATEAU4.DestinationMeshCodeExtractor",
-  "skip": true,
-  "skipReason": "図郭不正 needs DestinationMeshCodeExtractor, which does not support the new geometry model yet",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
