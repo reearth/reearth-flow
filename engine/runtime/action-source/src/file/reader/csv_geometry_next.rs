@@ -28,14 +28,27 @@ pub(crate) fn frame_for(config: &GeometryConfig) -> CoordinateFrame {
     }
 }
 
-/// Read one named column as an `f64`, naming the column and the offending value
-/// on failure. That text reaches the user in the rejected row's error
-/// attribute, so it has to be specific.
-fn number(row: &IndexMap<String, String>, column: &str) -> Result<f64, GeometryParsingError> {
-    let raw = row
-        .get(column)
-        .ok_or_else(|| GeometryParsingError::ColumnNotFound(column.to_string()))?;
-    raw.parse()
+/// Read one named column as an `f64`.
+///
+/// Returns `Ok(None)` when the row supplies no value for the column -- either
+/// the row was too short to reach it, or the cell is there but blank. Those
+/// are the same thing to a reader: a value that is absent, not one that is
+/// present and broken. `Err` is reserved for the latter, and names the column
+/// and the offending value, since that text is what the user has to act on.
+fn number(
+    row: &IndexMap<String, String>,
+    column: &str,
+) -> Result<Option<f64>, GeometryParsingError> {
+    let Some(raw) = row.get(column) else {
+        return Ok(None);
+    };
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    trimmed
+        .parse()
+        .map(Some)
         .map_err(|_| GeometryParsingError::InvalidCoordinate {
             column: column.to_string(),
             value: raw.clone(),
@@ -54,8 +67,15 @@ pub fn parse_geometry(
             y_column,
             z_column,
         } => {
-            let x = number(row, x_column)?;
-            let y = number(row, y_column)?;
+            // A row that does not supply every configured coordinate has no
+            // point to build, so it gets no geometry rather than a partial or
+            // fabricated one. This matches the WKT arm's treatment of a blank
+            // cell below: both mean "this row has no geometry", and neither is
+            // an error. Half a point is not a point, so one missing ordinate
+            // is enough -- there is no 3D-config-falls-back-to-2D case.
+            let (Some(x), Some(y)) = (number(row, x_column)?, number(row, y_column)?) else {
+                return Ok(Geometry::None);
+            };
             // Mirrors the WKT arm: a frame whose CRS declares reversed axis
             // order (e.g. EPSG:4326, latitude-first) stores (y, x), not the
             // text/column order. Z is never swapped.
@@ -65,7 +85,9 @@ pub fn parse_geometry(
                     Point2D::new(frame, [x, y]),
                 ))),
                 Some(z_column) => {
-                    let z = number(row, z_column)?;
+                    let Some(z) = number(row, z_column)? else {
+                        return Ok(Geometry::None);
+                    };
                     Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
                         Point3D::new(frame, [x, y, z]),
                     )))
@@ -73,10 +95,13 @@ pub fn parse_geometry(
             }
         }
         GeometryMode::Wkt { column } => {
+            // A row too short to reach the column and a row with a blank cell
+            // in it are the same thing here, exactly as in the coordinate arm
+            // above: no value, so no geometry, and not an error.
             let text = row
                 .get(column)
-                .ok_or_else(|| GeometryParsingError::ColumnNotFound(column.clone()))?
-                .trim();
+                .map(|value| value.trim())
+                .unwrap_or_default();
             if text.is_empty() {
                 return Ok(Geometry::None);
             }
@@ -606,10 +631,39 @@ mod tests {
         assert!(text.contains("abc"), "{text}");
     }
 
+    /// A row that does not supply every configured ordinate has no geometry,
+    /// and that is an answer rather than an error. The three ways a value can
+    /// be absent -- the column missing from a short row, a blank cell, a
+    /// whitespace-only cell -- are deliberately the same answer, and are
+    /// pinned together here because treating any one of them as corrupt input
+    /// would fail the whole read over an ordinary empty cell.
     #[test]
-    fn a_missing_column_errors_naming_the_column() {
-        let err = parse_geometry(&row(&[("lat", "2.0")]), &coords_config(None, None)).unwrap_err();
-        assert!(err.to_string().contains("lon"), "{err}");
+    fn a_row_missing_an_ordinate_has_no_geometry_rather_than_an_error() {
+        for absent in [
+            vec![("lat", "2.0")],
+            vec![("lon", ""), ("lat", "2.0")],
+            vec![("lon", "   "), ("lat", "2.0")],
+            vec![("lon", "1.0"), ("lat", "")],
+        ] {
+            let parsed = parse_geometry(&row(&absent), &coords_config(None, None))
+                .expect("an absent ordinate is not an error");
+            assert!(
+                matches!(parsed, Geometry::None),
+                "expected no geometry for {absent:?}, got {parsed:?}"
+            );
+        }
+    }
+
+    /// The 3D counterpart: a configured Z column that the row never supplies
+    /// yields no geometry, not a 2D point with the Z quietly dropped.
+    #[test]
+    fn a_row_missing_its_configured_z_has_no_geometry() {
+        let parsed = parse_geometry(
+            &row(&[("lon", "1.0"), ("lat", "2.0")]),
+            &coords_config(Some("height"), None),
+        )
+        .expect("an absent ordinate is not an error");
+        assert!(matches!(parsed, Geometry::None), "{parsed:?}");
     }
 
     /// Mirrors `a_reversed_axis_crs_reads_transposed_and_a_normal_one_does_not`

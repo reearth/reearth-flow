@@ -35,13 +35,6 @@
     "help": "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
   },
   {
-    "code": "csv.geometry_rejected",
-    "category": "geometry",
-    "defaultDisposition": "warn_drop",
-    "message": "sent a row to the rejected port because its geometry could not be parsed",
-    "help": "Connect the CSV Reader's rejected port to inspect the failing rows; each carries its original columns plus the parse error."
-  },
-  {
     "code": "csv.no_data_rows",
     "category": "io",
     "defaultDisposition": "warn_drop",

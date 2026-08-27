@@ -11,8 +11,6 @@ use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::Geometry;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_runtime::executor_operation::NodeContext;
-#[cfg(feature = "new-geometry")]
-use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -22,13 +20,6 @@ use tokio::sync::mpsc::Sender;
 use super::csv_geometry::GeometryConfig;
 #[cfg(all(test, feature = "new-geometry"))]
 use super::csv_geometry::GeometryMode;
-
-/// Attribute holding the parse error on a rejected row. Fixed rather than
-/// configurable: a configurable name means a new parameter, and that would move
-/// the action's parameter schema. Follows the `_http_error` convention in
-/// `action-processor/src/http/processor.rs`.
-#[cfg(feature = "new-geometry")]
-pub(crate) const GEOMETRY_ERROR_ATTRIBUTE: &str = "_csv_geometry_error";
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -107,16 +98,6 @@ pub(crate) async fn read_csv(
     Ok(())
 }
 
-/// Why a row was routed to `rejected` instead of `features`: its geometry
-/// value was present but failed to parse. A row that is merely short -- so a
-/// configured geometry column has no value on it -- is not this; the row
-/// loop below catches that case (`ColumnNotFound`) and treats it as "no
-/// geometry" instead, sending the feature out `features` like any other.
-#[cfg(feature = "new-geometry")]
-enum RowFailure {
-    Geometry(String),
-}
-
 /// Fails the whole read when a configured geometry column is not in `header`.
 /// A missing *column* is a configuration error, not a row error -- every row
 /// would fail identically, so this belongs up front as one clear error rather
@@ -170,10 +151,6 @@ pub(crate) async fn read_csv(
     }
 
     let mut data_rows = 0usize;
-    // Counted locally and reported once after the loop -- see the comment
-    // above the `report_drop` call below for why per-row reporting would be
-    // wrong here.
-    let mut geometry_rejected = 0usize;
 
     for rd in rdr.deserialize() {
         // A record the csv crate itself cannot make sense of (invalid UTF-8
@@ -209,39 +186,32 @@ pub(crate) async fn read_csv(
         // A short row simply has no value for whichever columns it didn't
         // reach -- the same as any other blank cell -- which is handled below
         // as the `ColumnNotFound` arm.
-        let (geometry, excluded_columns, failure) = match &props.geometry {
+        let (geometry, excluded_columns) = match &props.geometry {
             Some(config) => {
                 let excluded = super::csv_geometry::get_geometry_column_names(config);
                 match super::csv_geometry::parse_geometry(&row_map, config) {
-                    Ok(geometry) => (geometry, excluded, None),
-                    // The validation above guarantees every configured column
-                    // exists in the header, so a per-row `ColumnNotFound` can
-                    // now only mean the row was too short to reach it (e.g.
-                    // `xColumn` present but `zColumn` fell off the end of a
-                    // short row -- the same case, not a special one). That is
-                    // a value that is simply absent, not one that is present
-                    // and broken, so it is treated like the `Ok` arm above --
-                    // no geometry, not a rejection.
-                    Err(GeometryParsingError::ColumnNotFound(_)) => {
-                        (Geometry::default(), excluded, None)
+                    Ok(geometry) => (geometry, excluded),
+                    // A geometry value that is present but will not parse is
+                    // corrupt input, and corrupt input fails the read rather
+                    // than being routed somewhere. Note how narrow this is
+                    // after `parse_geometry`'s own handling: a row too short
+                    // to reach the column, and a blank cell, both come back
+                    // as `Ok(Geometry::None)`, so neither reaches here. What
+                    // is left is a cell with actual content in it that is not
+                    // the geometry it claims to be.
+                    //
+                    // The row number is part of the message because it is the
+                    // only way back to the offending line in a large file --
+                    // the error names the column and the value, but a file
+                    // can repeat both.
+                    Err(why) => {
+                        return Err(crate::errors::SourceError::CsvFileReader(format!(
+                            "row {data_rows}: {why}"
+                        )))
                     }
-                    // Keep the geometry column(s) in the rejected row's
-                    // attributes instead of excluding them: the error
-                    // message may carry only a truncated copy of the
-                    // offending value (see `annotate_wkt_parse_error` in
-                    // `csv_geometry_next.rs`), so the full original value has
-                    // to be recoverable from the row itself. A row that
-                    // parses successfully (the `Ok` arm) still excludes them
-                    // exactly as before, so a good row's attributes never
-                    // duplicate its own geometry column.
-                    Err(why) => (
-                        Geometry::default(),
-                        Vec::new(),
-                        Some(RowFailure::Geometry(why.to_string())),
-                    ),
                 }
             }
-            None => (Geometry::default(), Vec::new(), None),
+            None => (Geometry::default(), Vec::new()),
         };
 
         let attributes = row_map
@@ -253,17 +223,11 @@ pub(crate) async fn read_csv(
         let mut feature = Feature::from(attributes);
         feature.set_geometry(geometry);
 
-        let port = match failure {
-            None => FEATURES_PORT.clone(),
-            Some(RowFailure::Geometry(message)) => {
-                feature.insert(GEOMETRY_ERROR_ATTRIBUTE, AttributeValue::String(message));
-                geometry_rejected += 1;
-                REJECTED_PORT.clone()
-            }
-        };
-
         sender
-            .send((port, IngestionMessage::OperationEvent { feature }))
+            .send((
+                FEATURES_PORT.clone(),
+                IngestionMessage::OperationEvent { feature },
+            ))
             .await
             .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
     }
@@ -275,17 +239,6 @@ pub(crate) async fn read_csv(
     // event, unlike a sink or processor whose `NodeDiagnosticsHandle`
     // aggregates and later summarises. Each call here is one raw diagnostic
     // event, published immediately.
-    //
-    // Calling it per row would mean one event per rejected row -- a
-    // 900,000-row file with every row's geometry value unparseable would
-    // emit 900,000 events. That is not what the diagnostic is for: it exists
-    // only as a backstop so a disconnected `rejected` port doesn't lose rows
-    // in total silence, which needs exactly one signal per run, not one per
-    // row. So rejections are counted locally in the loop above and reported
-    // at most once here, after it.
-    if geometry_rejected > 0 {
-        ctx.report_drop(ErrorCode::CsvGeometryRejected, None, None);
-    }
     if data_rows == 0 {
         ctx.report_drop(ErrorCode::CsvNoDataRows, None, None);
     }
@@ -328,6 +281,15 @@ mod tests {
 
     /// Drain everything the reader sent, grouped by port.
     async fn run(csv: &str, props: &CsvReaderParam) -> Vec<(Port, Feature)> {
+        try_run(csv, props).await.expect("the read should succeed")
+    }
+
+    /// Same, but hands back the read's own result so a test can assert that a
+    /// file fails rather than that it succeeds.
+    async fn try_run(
+        csv: &str,
+        props: &CsvReaderParam,
+    ) -> Result<Vec<(Port, Feature)>, crate::errors::SourceError> {
         let (tx, mut rx) = mpsc::channel(64);
         let content = Bytes::from(csv.to_string());
         read_csv(
@@ -338,14 +300,13 @@ mod tests {
             tx,
             &NodeContext::default(),
         )
-        .await
-        .expect("the read should succeed");
+        .await?;
         let mut out = Vec::new();
         while let Ok((port, msg)) = rx.try_recv() {
             let IngestionMessage::OperationEvent { feature } = msg;
             out.push((port, feature));
         }
-        out
+        Ok(out)
     }
 
     fn on_port<'a>(sent: &'a [(Port, Feature)], port: &Port) -> Vec<&'a Feature> {
@@ -355,60 +316,41 @@ mod tests {
             .collect()
     }
 
-    /// The whole point of decision 3: one bad row costs one row.
+    /// A geometry value with content in it that is not the geometry it claims
+    /// to be is corrupt input, and corrupt input fails the read. There is no
+    /// second port for it to go to.
     #[tokio::test]
-    async fn a_bad_row_is_rejected_and_the_others_survive() {
+    async fn a_value_that_will_not_parse_fails_the_read() {
         let csv = "name,lon,lat\na,1.0,2.0\nb,oops,2.0\nc,3.0,4.0\n";
-        let sent = run(csv, &param(Some(coords_geometry()))).await;
+        let error = try_run(csv, &param(Some(coords_geometry())))
+            .await
+            .expect_err("an unparseable geometry value must fail the read");
 
-        assert_eq!(on_port(&sent, &FEATURES_PORT).len(), 2);
-        assert_eq!(on_port(&sent, &REJECTED_PORT).len(), 1);
-    }
-
-    /// The rejected row has to be actionable: its own columns, plus why.
-    #[tokio::test]
-    async fn a_rejected_row_carries_its_columns_and_the_reason() {
-        let csv = "name,lon,lat\nb,oops,2.0\n";
-        let sent = run(csv, &param(Some(coords_geometry()))).await;
-        let rejected = on_port(&sent, &REJECTED_PORT);
-        assert_eq!(rejected.len(), 1);
-        let feature = rejected[0];
-
-        assert_eq!(
-            feature.get("name").map(|v| v.to_string()),
-            Some("b".to_string()),
-            "the original columns must survive"
+        let error = error.to_string();
+        assert!(error.contains("lon"), "must name the column: {error}");
+        assert!(error.contains("oops"), "must quote the value: {error}");
+        assert!(
+            error.contains("row 2"),
+            "must locate the row, since a file can repeat a column and value: {error}"
         );
-        let error = feature
-            .get(GEOMETRY_ERROR_ATTRIBUTE)
-            .expect("the error attribute must be present")
-            .to_string();
-        assert!(error.contains("lon"), "{error}");
-        assert!(error.contains("oops"), "{error}");
     }
 
-    /// Ten bad rows surface in one pass. This is the needle-in-a-haystack case.
+    /// Only the reader's own output port exists. Asserted directly rather than
+    /// through the factory so that removing `rejected` from `get_output_ports`
+    /// cannot silently disagree with what the reader actually sends to.
     #[tokio::test]
-    async fn ten_bad_rows_all_surface_in_a_single_pass() {
-        let mut csv = String::from("name,lon,lat\n");
-        for i in 0..10 {
-            csv.push_str(&format!("bad{i},oops,2.0\n"));
-        }
-        for i in 0..5 {
-            csv.push_str(&format!("good{i},1.0,2.0\n"));
-        }
-        let sent = run(&csv, &param(Some(coords_geometry()))).await;
+    async fn every_row_leaves_by_the_features_port() {
+        let csv = "name,lon,lat\na,1.0,2.0\nb,,\nc,3.0,4.0\n";
+        let sent = run(csv, &param(Some(coords_geometry()))).await;
 
-        assert_eq!(on_port(&sent, &REJECTED_PORT).len(), 10);
-        assert_eq!(on_port(&sent, &FEATURES_PORT).len(), 5);
+        assert_eq!(sent.len(), 3);
+        assert!(
+            sent.iter().all(|(port, _)| *port == *FEATURES_PORT),
+            "the reader has one output port"
+        );
     }
 
-    /// Geometry columns are consumed on a successful row, exactly as before.
-    /// A rejected row now keeps them instead (see the next test): this used
-    /// to assert exclusion "on either port", which stopped being true once a
-    /// geometry-failure rejection started keeping its geometry column so the
-    /// offending value is recoverable from the row itself, not just from a
-    /// (possibly truncated) copy inside the error message.
+    /// Geometry columns are consumed rather than duplicated into attributes.
     #[tokio::test]
     async fn geometry_columns_are_excluded_from_a_successful_rows_attributes() {
         let csv = "name,lon,lat\na,1.0,2.0\n";
@@ -419,37 +361,6 @@ mod tests {
             assert!(feature.get("lat").is_none(), "lat leaked into attributes");
             assert!(feature.get("name").is_some(), "name should survive");
         }
-    }
-
-    /// A geometry-failure rejection keeps its geometry column(s), unlike a
-    /// successful row. This is what makes the offending value recoverable
-    /// even when the error message's own copy is truncated, and it brings
-    /// geometry-failure rejections in line with shape-mismatch ones, which
-    /// already kept every column.
-    #[tokio::test]
-    async fn a_geometry_failure_rejection_keeps_its_geometry_columns() {
-        let csv = "name,lon,lat\na,1.0,2.0\nb,oops,2.0\n";
-        let sent = run(csv, &param(Some(coords_geometry()))).await;
-
-        let good = on_port(&sent, &FEATURES_PORT);
-        assert_eq!(good.len(), 1);
-        assert!(
-            good[0].get("lon").is_none(),
-            "a successful row must still exclude its geometry column"
-        );
-        assert!(good[0].get("lat").is_none());
-
-        let rejected = on_port(&sent, &REJECTED_PORT);
-        assert_eq!(rejected.len(), 1);
-        assert_eq!(
-            rejected[0].get("lon").map(|v| v.to_string()),
-            Some("oops".to_string()),
-            "a rejected row must keep its geometry column"
-        );
-        assert_eq!(
-            rejected[0].get("lat").map(|v| v.to_string()),
-            Some("2.0".to_string())
-        );
     }
 
     #[tokio::test]
@@ -617,66 +528,35 @@ mod tests {
     #[tokio::test]
     async fn a_wkt_parse_failure_names_the_column_and_the_value() {
         let csv = "name,geom\nb,NOT WKT AT ALL\n";
-        let sent = run(csv, &param(Some(wkt_geometry("geom")))).await;
-        let rejected = on_port(&sent, &REJECTED_PORT);
-        assert_eq!(rejected.len(), 1);
-        let error = rejected[0]
-            .get(GEOMETRY_ERROR_ATTRIBUTE)
-            .expect("the error attribute must be present")
+        let error = try_run(csv, &param(Some(wkt_geometry("geom"))))
+            .await
+            .expect_err("unparseable WKT must fail the read")
             .to_string();
         assert!(error.contains("geom"), "{error}");
         assert!(error.contains("NOT WKT AT ALL"), "{error}");
+        assert!(error.contains("row 1"), "{error}");
     }
 
     /// A long WKT value must not blow up the error message: it is capped and
-    /// marked with a trailing "...". The untruncated original still has to
-    /// survive, in the row's own geometry column.
+    /// marked with a trailing "...". The row number is what leads the user
+    /// back to the untruncated original in the file.
     #[tokio::test]
-    async fn a_long_wkt_value_is_truncated_in_the_error_but_intact_in_its_column() {
+    async fn a_long_wkt_value_is_truncated_in_the_error() {
         let bad_wkt = format!("POINT({}", "1".repeat(200));
-        let csv = format!("name,geom\nb,{bad_wkt}\n");
-        let sent = run(&csv, &param(Some(wkt_geometry("geom")))).await;
-        let rejected = on_port(&sent, &REJECTED_PORT);
-        assert_eq!(rejected.len(), 1);
-        let feature = rejected[0];
-
-        let error = feature
-            .get(GEOMETRY_ERROR_ATTRIBUTE)
-            .expect("the error attribute must be present")
+        let csv = format!("name,geom\na,POINT(1 2)\nb,{bad_wkt}\n");
+        let error = try_run(&csv, &param(Some(wkt_geometry("geom"))))
+            .await
+            .expect_err("unparseable WKT must fail the read")
             .to_string();
+
         assert!(
-            error.len() < bad_wkt.len(),
-            "the error must truncate the value: {error}"
+            !error.contains(&bad_wkt),
+            "the error must not repeat the whole value: {error}"
         );
         assert!(error.contains("..."), "{error}");
-
-        assert_eq!(
-            feature.get("geom").map(|v| v.to_string()),
-            Some(bad_wkt.clone()),
-            "the untruncated value must survive in its own column"
-        );
-    }
-
-    /// A rejected WKT row keeps its geometry column; a successful WKT row
-    /// still excludes it, exactly as the coordinates-mode case does.
-    #[tokio::test]
-    async fn a_rejected_wkt_row_keeps_its_geometry_column_but_a_successful_row_still_excludes_it() {
-        let csv = "name,geom\na,POINT(1 2)\nb,NOT WKT AT ALL\n";
-        let sent = run(csv, &param(Some(wkt_geometry("geom")))).await;
-
-        let good = on_port(&sent, &FEATURES_PORT);
-        assert_eq!(good.len(), 1);
         assert!(
-            good[0].get("geom").is_none(),
-            "a successful row must still exclude its geometry column"
-        );
-
-        let rejected = on_port(&sent, &REJECTED_PORT);
-        assert_eq!(rejected.len(), 1);
-        assert_eq!(
-            rejected[0].get("geom").map(|v| v.to_string()),
-            Some("NOT WKT AT ALL".to_string()),
-            "a rejected row must keep its geometry column"
+            error.contains("row 2"),
+            "the row number is the way back to the full value: {error}"
         );
     }
 

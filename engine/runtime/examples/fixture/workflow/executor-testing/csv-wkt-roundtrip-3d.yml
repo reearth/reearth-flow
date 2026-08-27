@@ -18,15 +18,12 @@ graphs:
       # polygon_3d_writes_its_exterior_and_closes_its_ring), so this is
       # exactly the text our own writer is proven to emit for 3D geometry.
       #
-      # The fourth row ("bad") is deliberately unparseable WKT. Without it,
-      # disabling the bare-3D tolerance would just make the `features` output
-      # empty and the `rejected` output absent -- an "output file not found"
-      # failure indistinguishable from an unrelated regression (wrong
-      # delimiter, renamed column, broken fixture path). With it, the healthy
-      # case always produces a non-empty `rejected` output (this one known-bad
-      # row), so disabling the tolerance is caught by a content mismatch
-      # specific to this seam: the three good rows join the bad one in
-      # `rejected`, taking it from one row to four.
+      # Every row here is good on purpose. An unparseable geometry value now
+      # fails the whole read, so disabling the bare-3D tolerance makes this
+      # workflow error out naming the column, the value and the row -- a loud,
+      # specific failure. An earlier version of this case carried a fourth,
+      # deliberately-unparseable row to force that signal, which the reader's
+      # own semantics now provide.
       - id: f2445523-24fc-4f2b-8031-b6bacba7ea59
         name: CsvReader
         type: action
@@ -40,7 +37,6 @@ graphs:
               point3d,POINT(1 2 3)
               line3d,"LINESTRING(0 0 0, 1 1 1)"
               polygon3d,"POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))"
-              bad,NOT WKT
           geometry:
             geometryMode: wkt
             column: geometry
@@ -58,27 +54,9 @@ graphs:
             geometryMode: wkt
             column: geometry
 
-      # Captures the `rejected` port's content so a regression that widens or
-      # narrows rejection shows up as a row-count/content mismatch here, not
-      # as a missing-file error on the `features` side.
-      - id: a9c9cd56-0c70-4d5b-afdb-16708daab9b5
-        name: RejectedWriter
-        type: action
-        action: CSV Writer
-        with:
-          format: csv
-          output:
-            type: string
-            value: rejected.csv
-
     edges:
       - id: aa21edc7-abf6-4521-9867-12f8167cf148
         from: f2445523-24fc-4f2b-8031-b6bacba7ea59
         to: ab7621a5-3dc9-491b-a2bc-07035d30dc9c
         fromPort: features
-        toPort: features
-      - id: 8063099c-21c3-4ab0-ab21-da746497d700
-        from: f2445523-24fc-4f2b-8031-b6bacba7ea59
-        to: a9c9cd56-0c70-4d5b-afdb-16708daab9b5
-        fromPort: rejected
         toPort: features
