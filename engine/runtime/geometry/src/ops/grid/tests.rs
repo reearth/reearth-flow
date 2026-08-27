@@ -1183,3 +1183,68 @@ fn polygon_mesh_world_to_texture_survives_a_genuine_cut() {
     .expect("divides");
     assert_eq!(checked, 2, "the face is genuinely severed across two cells");
 }
+
+#[test]
+fn collection_members_together_filling_a_cell_report_full() {
+    let left = square_2d_at(0.0, 0.0, 0.5, 1.0);
+    let right = square_2d_at(0.5, 0.0, 1.0, 1.0);
+    let coll = crate::collection::Collection2D::new([
+        crate::Euclidean2DGeometry::Polygon(Box::new(left)),
+        crate::Euclidean2DGeometry::Polygon(Box::new(right)),
+    ]);
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Collection(coll));
+
+    let out = collect(&geom, &unit_grid()).expect("divides");
+    assert_eq!(out.len(), 1, "one collection per cell, not one per member");
+    assert_eq!(out[0].1, CellCoverage::Full);
+}
+
+#[test]
+fn collection_with_an_undividable_member_still_divides_the_rest() {
+    // A bag holding one face and one point divides the face and skips the
+    // point, rather than the point costing the caller the face.
+    let face = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    let mixed = crate::collection::Collection3D::new([
+        crate::Euclidean3DGeometry::Polygon(Box::new(face)),
+        crate::Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::default(),
+            [0.5, 0.5, 0.0],
+        )),
+    ]);
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(mixed));
+    let out = collect(&geom, &unit_grid()).expect("the face still divides");
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].1, CellCoverage::Full, "the face fills the cell");
+}
+
+#[test]
+fn collection_of_only_undividable_members_is_empty() {
+    // Empty, not Unsupported: a bag is something we know how to divide, it just
+    // had nothing to give.
+    let only_point = crate::collection::Collection3D::new([crate::Euclidean3DGeometry::Point(
+        Point3D::new(CoordinateFrame::default(), [0.5, 0.5, 0.0]),
+    )]);
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(only_point));
+    assert!(matches!(
+        collect(&geom, &unit_grid()),
+        Err(GridDivideError::Empty)
+    ));
+}
+
+fn square_2d_at(x0: f64, y0: f64, x1: f64, y1: f64) -> Polygon2D {
+    Polygon2D::from_rings(
+        CoordinateFrame::default(),
+        [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]],
+        std::iter::empty::<Vec<[f64; 2]>>(),
+    )
+}

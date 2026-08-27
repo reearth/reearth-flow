@@ -679,14 +679,19 @@ impl DivideByGrid for Geometry {
             Geometry::None => Err(GridDivideError::Empty),
             Geometry::Euclidean2D(g) => g.divide_by_grid(grid, emit),
             Geometry::Euclidean3D(g) => g.divide_by_grid(grid, emit),
-            // Filled in by Task 5.
-            Geometry::GeometryCollection(_) => {
-                Err(GridDivideError::Unsupported(ops::UnsupportedOperation {
-                    geometry: "GeometryCollection",
-                    operation: "divide_by_grid",
-                }))
-            }
+            Geometry::GeometryCollection(c) => c.divide_by_grid(grid, emit),
         }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl DivideByGrid for GeometryCollection {
+    fn divide_by_grid(
+        &self,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        collection::grid_divide_members(self.members.iter().cloned(), grid, emit)
     }
 }
 

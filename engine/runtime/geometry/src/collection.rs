@@ -470,11 +470,191 @@ impl Footprint for Collection3D {
     }
 }
 
-// Temporary: implemented in Task 5.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(Collection2D: DivideByGrid);
+mod grid_impl {
+    //! `DivideByGrid` for `Collection2D`/`Collection3D`, plus the regrouping
+    //! `GeometryCollection` (in `lib.rs`) reuses through
+    //! [`grid_divide_members`].
+    //!
+    //! A collection is a bag: a member that cannot be divided (`Unsupported`,
+    //! e.g. a bare `Point`) or has nothing to give (`Empty`) is skipped rather
+    //! than failing its siblings, so one undividable member never costs the
+    //! caller the rest. Any other error (`MixedFrames`, `InvalidSpec`)
+    //! propagates, since those describe the request itself, not one member's
+    //! shape.
+    //!
+    //! Pieces are regrouped by cell into a `BTreeMap` keyed `(row, col)` --
+    //! sorting row-major for free, the same idiom the mesh leaves use -- so one
+    //! cell yields one `GeometryCollection` holding every survivor that landed
+    //! there, not one geometry per member. Coverage is judged once per cell
+    //! over that whole group's XY area (`geometry_area_xy`, summed), so
+    //! members that only *together* fill a cell still report `Full`. A
+    //! container whose members all declined reports `Empty`, not
+    //! `Unsupported`: a collection is something this op knows how to divide,
+    //! it just had nothing to give.
+    //!
+    //! `Collection2D`/`Collection3D` members each carry their own frame (see
+    //! the module doc above), and this op lays one grid over all of them, so
+    //! they must agree or the grid would be silently misapplied to whichever
+    //! member does not share it -- checked by [`frames_agree`]. Only frames
+    //! belonging to a member this op could actually divide are considered:
+    //! `PointCloud`/`Solid`/`Csg` carry no frame this module can read, but
+    //! `DivideByGrid` is `Unsupported` for all three regardless (see their
+    //! `unsupported!` stamps), so they are skipped by the division loop below
+    //! either way and a frame this op will never apply a grid to cannot
+    //! disagree with one it does. `GeometryCollection` members are `Geometry`,
+    //! which carry no single frame to compare at all, so
+    //! [`grid_divide_members`] skips this check entirely rather than
+    //! fabricating one.
+
+    use std::collections::BTreeMap;
+
+    use super::{Collection2D, Collection3D};
+    use crate::coordinate::CoordinateFrame;
+    use crate::ops::grid::{
+        geometry_area_xy, CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec,
+    };
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// Collect the frame of every member this op could actually divide,
+    /// recursing into a nested `Collection`. See the module doc for why
+    /// `PointCloud`/`Solid`/`Csg` (3D-only) are not represented here.
+    fn collect_frames_2d(m: &Euclidean2DGeometry, out: &mut Vec<CoordinateFrame>) {
+        match m {
+            Euclidean2DGeometry::Point(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::LineString(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::Polygon(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::PolygonMesh(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::TriangularMesh(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::Collection(c) => {
+                c.members().iter().for_each(|m| collect_frames_2d(m, out));
+            }
+        }
+    }
+
+    /// As [`collect_frames_2d`], for the 3D leaf.
+    fn collect_frames_3d(m: &Euclidean3DGeometry, out: &mut Vec<CoordinateFrame>) {
+        match m {
+            Euclidean3DGeometry::Point(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::LineString(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::Polygon(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::PolygonMesh(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::TriangularMesh(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::Collection(c) => {
+                c.members().iter().for_each(|m| collect_frames_3d(m, out));
+            }
+            Euclidean3DGeometry::PointCloud(_)
+            | Euclidean3DGeometry::Solid(_)
+            | Euclidean3DGeometry::Csg(_) => {}
+        }
+    }
+
+    /// Whether every collected frame agrees (vacuously true when none were
+    /// collected at all).
+    fn frames_agree<T>(members: &[T], collect: impl Fn(&T, &mut Vec<CoordinateFrame>)) -> bool {
+        let mut frames = Vec::new();
+        for m in members {
+            collect(m, &mut frames);
+        }
+        match frames.split_first() {
+            Some((first, rest)) => rest.iter().all(|f| f == first),
+            None => true,
+        }
+    }
+
+    /// Divide every member, regroup the pieces by cell, and emit one geometry
+    /// per cell. See the module doc for the skip/propagate and coverage
+    /// rules; this performs no frame check of its own -- callers that need
+    /// one (`Collection2D`/`Collection3D`) run it first.
+    fn regroup_and_emit(
+        members: impl Iterator<Item = Geometry>,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        // BTreeMap keyed `(row, col)` sorts row-major for free, which is the
+        // emission order the op promises.
+        let mut by_cell: BTreeMap<(i64, i64), Vec<Geometry>> = BTreeMap::new();
+        let mut any = false;
+
+        for member in members {
+            let divided = member.divide_by_grid(grid, &mut |cell, _cov, piece| {
+                by_cell.entry((cell.row, cell.col)).or_default().push(piece);
+            });
+            match divided {
+                Ok(()) => any = true,
+                // A member with nothing to give is not the container's failure.
+                Err(GridDivideError::Unsupported(_)) | Err(GridDivideError::Empty) => {}
+                Err(other) => return Err(other),
+            }
+        }
+
+        if !any || by_cell.is_empty() {
+            return Err(GridDivideError::Empty);
+        }
+
+        let cell_area = grid.cell_size() * grid.cell_size();
+        for ((row, col), pieces) in by_cell {
+            let cell = GridCell { row, col };
+            let area: f64 = pieces.iter().map(geometry_area_xy).sum();
+            let geom = crate::GeometryCollection::new(pieces);
+            emit(
+                cell,
+                CellCoverage::from_area(area, cell_area),
+                Geometry::GeometryCollection(geom),
+            );
+        }
+        Ok(())
+    }
+
+    /// Entry point [`GeometryCollection`](crate::GeometryCollection) reuses
+    /// from `lib.rs`: its members are already `Geometry`, which carry no
+    /// single frame to compare, so this skips straight to regrouping with no
+    /// frame check.
+    pub(crate) fn grid_divide_members(
+        members: impl Iterator<Item = Geometry>,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        regroup_and_emit(members, grid, emit)
+    }
+
+    impl DivideByGrid for Collection2D {
+        fn divide_by_grid(
+            &self,
+            grid: &GridSpec,
+            emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+        ) -> Result<(), GridDivideError> {
+            if !frames_agree(self.members(), collect_frames_2d) {
+                return Err(GridDivideError::MixedFrames);
+            }
+            regroup_and_emit(
+                self.members().iter().cloned().map(Geometry::Euclidean2D),
+                grid,
+                emit,
+            )
+        }
+    }
+
+    impl DivideByGrid for Collection3D {
+        fn divide_by_grid(
+            &self,
+            grid: &GridSpec,
+            emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+        ) -> Result<(), GridDivideError> {
+            if !frames_agree(self.members(), collect_frames_3d) {
+                return Err(GridDivideError::MixedFrames);
+            }
+            regroup_and_emit(
+                self.members().iter().cloned().map(Geometry::Euclidean3D),
+                grid,
+                emit,
+            )
+        }
+    }
+}
+
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(Collection3D: DivideByGrid);
+pub(crate) use grid_impl::grid_divide_members;
 
 // A collection reports the first member that has an elevation, rather than only
 // its head: a member with none (an absent geometry, a 2D point, an empty leaf) is

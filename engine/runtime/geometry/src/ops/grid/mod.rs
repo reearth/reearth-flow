@@ -23,8 +23,9 @@ mod tests;
 pub(crate) use halfplane::Corner;
 pub(crate) use window::{clip_to_window, faces_area_xy, signed_area_xy, Face, Window};
 
+use crate::ops::area::triangle_area_2d;
 use crate::ops::UnsupportedOperation;
-use crate::Geometry;
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Relative tolerance for judging a cell full by area.
 ///
@@ -211,5 +212,97 @@ impl<T: DivideByGrid + ?Sized> DivideByGrid for Box<T> {
         emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
     ) -> Result<(), GridDivideError> {
         (**self).divide_by_grid(grid, emit)
+    }
+}
+
+/// The XY area a divided piece contributes to its cell's coverage.
+///
+/// Only areal leaves contribute; anything else counts as zero rather than
+/// erroring, because this is a coverage question, not a validity one.
+pub(crate) fn geometry_area_xy(g: &Geometry) -> f64 {
+    match g {
+        Geometry::None => 0.0,
+        Geometry::Euclidean2D(_) | Geometry::Euclidean3D(_) => leaf_area_xy(g),
+        Geometry::GeometryCollection(c) => c.members().iter().map(geometry_area_xy).sum(),
+    }
+}
+
+/// The XY area of one `Euclidean2D`/`Euclidean3D` leaf, recursing into a
+/// nested `Collection` (distinct from `GeometryCollection`, which
+/// `geometry_area_xy` already handles). A point or curve has no area and
+/// contributes `0.0`, matching [`geometry_area_xy`]'s "not an error" rule.
+///
+/// Each areal leaf reuses the area routine the mesh `divide_by_grid` impls
+/// already judge coverage with, rather than a fourth shoelace: a face's
+/// [`Polygon2D::area_xy`]/[`Polygon3D::area_xy`] (used verbatim by
+/// `polygon/ops.rs` and `polygon_mesh/ops.rs`), and a triangle mesh's own
+/// per-triangle XY projection via [`triangle_area_2d`] (the same function
+/// `TriangularMesh2D::surface_area` sums; the 3D leaf drops `z` per vertex
+/// first, since coverage is judged by projection, not true sloped area).
+fn leaf_area_xy(g: &Geometry) -> f64 {
+    match g {
+        Geometry::Euclidean2D(g) => leaf_area_xy_2d(g),
+        Geometry::Euclidean3D(g) => leaf_area_xy_3d(g),
+        // `geometry_area_xy` never calls this arm with `None` or
+        // `GeometryCollection`; kept exhaustive rather than panicking so a
+        // future direct caller degrades to zero instead of crashing.
+        Geometry::None | Geometry::GeometryCollection(_) => 0.0,
+    }
+}
+
+fn leaf_area_xy_2d(g: &Euclidean2DGeometry) -> f64 {
+    match g {
+        Euclidean2DGeometry::Point(_) | Euclidean2DGeometry::LineString(_) => 0.0,
+        Euclidean2DGeometry::Polygon(p) => p.area_xy(),
+        Euclidean2DGeometry::PolygonMesh(m) => {
+            let mut total = 0.0;
+            m.for_each_face_polygon(|face| total += face.area_xy());
+            total
+        }
+        Euclidean2DGeometry::TriangularMesh(m) => {
+            let vertices = m.vertices();
+            m.triangles()
+                .map(|[a, b, c]| {
+                    triangle_area_2d(
+                        vertices[a as usize],
+                        vertices[b as usize],
+                        vertices[c as usize],
+                    )
+                })
+                .sum()
+        }
+        Euclidean2DGeometry::Collection(c) => c.members().iter().map(leaf_area_xy_2d).sum(),
+    }
+}
+
+fn leaf_area_xy_3d(g: &Euclidean3DGeometry) -> f64 {
+    match g {
+        // No areal extent, or (`PointCloud`/`Solid`/`Csg`) not a divisible
+        // leaf to begin with -- `DivideByGrid` is `Unsupported` for all
+        // three, so a piece of this shape never actually reaches a coverage
+        // calculation; zero is the correct, defensive answer regardless.
+        Euclidean3DGeometry::Point(_)
+        | Euclidean3DGeometry::PointCloud(_)
+        | Euclidean3DGeometry::LineString(_)
+        | Euclidean3DGeometry::Solid(_)
+        | Euclidean3DGeometry::Csg(_) => 0.0,
+        Euclidean3DGeometry::Polygon(p) => p.area_xy(),
+        Euclidean3DGeometry::PolygonMesh(m) => {
+            let mut total = 0.0;
+            m.for_each_face_polygon(|face| total += face.area_xy());
+            total
+        }
+        Euclidean3DGeometry::TriangularMesh(m) => {
+            let vertices = m.vertices();
+            m.triangles()
+                .map(|[a, b, c]| {
+                    let [ax, ay, _] = vertices[a as usize];
+                    let [bx, by, _] = vertices[b as usize];
+                    let [cx, cy, _] = vertices[c as usize];
+                    triangle_area_2d([ax, ay], [bx, by], [cx, cy])
+                })
+                .sum()
+        }
+        Euclidean3DGeometry::Collection(c) => c.members().iter().map(leaf_area_xy_3d).sum(),
     }
 }
