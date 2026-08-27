@@ -270,13 +270,6 @@ impl GridDivider {
     }
 }
 
-// Gated to the old world: a manual `Drop` impl forbids moving fields out of
-// `GridDivider` (struct-update syntax included), which `GridDivider::empty()`
-// (below) needs for the new-geometry tests. Nothing on the new-geometry
-// streaming path (this task) ever populates `temp_dir`, so there is nothing
-// yet for a `new-geometry` `Drop` to clean up; the accumulating path (Task 8)
-// will need to reintroduce cleanup once it spools to disk.
-#[cfg(not(feature = "new-geometry"))]
 impl Drop for GridDivider {
     fn drop(&mut self) {
         if let Some(ref dir) = self.temp_dir {
@@ -710,13 +703,20 @@ impl GridDivider {
     }
 
     /// Say so once when the grid is measured in degrees rather than metres.
+    ///
+    /// A feature whose frame is not angular, or whose frame cannot be
+    /// determined at all (`Geometry::frame()` returns `None` on disagreement
+    /// or when nothing exposes one), leaves the check armed: only a feature
+    /// that is actually found angular latches `angular_warned`, so an early
+    /// non-angular or indeterminate feature can never permanently silence a
+    /// later, genuinely angular one.
     fn warn_if_angular(&mut self, ctx: &ExecutorContext) {
         if self.angular_warned {
             return;
         }
-        self.angular_warned = true;
         if let Some(frame) = ctx.feature.geometry.frame() {
             if matches!(frame.unit_kind(), UnitKind::Angular) {
+                self.angular_warned = true;
                 ctx.warn(DiagnosticDraft::new(ErrorCode::GridAngularFrame));
             }
         }
@@ -1655,19 +1655,20 @@ mod new_geometry_tests {
 
     #[test]
     fn explicit_origin_makes_the_processor_streaming() {
-        let streaming = GridDivider {
-            cell_size: 1.0,
-            complete_cells_only: false,
-            group_by: None,
-            origin: Some([0.0, 0.0]),
-            ..GridDivider::empty()
-        };
+        // Built via `empty()` then direct field assignment, not struct-update
+        // syntax (`..base`): `GridDivider` implements `Drop`, and Rust refuses
+        // to move fields out of a `Drop` type via `..base` (E0509). Direct
+        // assignment on an owned value has no such restriction and keeps
+        // `Drop` unconditional.
+        let mut streaming = GridDivider::empty();
+        streaming.cell_size = 1.0;
+        streaming.complete_cells_only = false;
+        streaming.group_by = None;
+        streaming.origin = Some([0.0, 0.0]);
         assert!(!streaming.is_accumulating());
 
-        let accumulating = GridDivider {
-            origin: None,
-            ..streaming.clone()
-        };
+        let mut accumulating = streaming.clone();
+        accumulating.origin = None;
         assert!(accumulating.is_accumulating());
     }
 
@@ -1925,11 +1926,11 @@ mod new_geometry_tests {
             );
         }
 
-        /// The angular-frame warning checks only the first feature a
-        /// processor instance sees, then stays quiet for the rest of the run
-        /// (`GridDivider::warn_if_angular`) — one grid is one origin and one
-        /// cell size for the whole stream, so a second look never tells the
-        /// run anything new. Two angular features in, one warning out.
+        /// Once a feature is found angular, the warning stays quiet for the
+        /// rest of the run (`GridDivider::warn_if_angular` latches
+        /// `angular_warned` only on that path) — one grid is one origin and
+        /// one cell size for the whole stream, so a second look never tells
+        /// the run anything new. Two angular features in, one warning out.
         #[test]
         fn the_angular_frame_warning_fires_once_per_run_not_once_per_feature() {
             let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
@@ -1948,6 +1949,35 @@ mod new_geometry_tests {
                     .count(),
                 1,
                 "{warnings:?}"
+            );
+        }
+
+        /// The check must stay armed past a feature that turns out not to be
+        /// angular (or whose frame can't be determined at all): only a
+        /// feature that is actually found angular may latch `angular_warned`.
+        /// A non-angular first feature followed by a genuinely angular one
+        /// must still warn — the bug this guards against is the flag being
+        /// set unconditionally on the first call, which would permanently
+        /// silence every angular feature behind a non-angular first one.
+        #[test]
+        fn a_non_angular_first_feature_does_not_suppress_a_later_angular_one() {
+            let euclidean = CoordinateFrame::Euclidean;
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, warnings) = process_many(
+                json!({"cellSize": 1.0, "origin": [0.0, 0.0]}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], euclidean)),
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], angular)),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "a non-angular first feature must not permanently silence the check: {warnings:?}"
             );
         }
     }
