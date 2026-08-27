@@ -452,11 +452,319 @@ impl Footprint for TriangularMesh3D {
     }
 }
 
-// Temporary: implemented in Task 4.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(TriangularMesh2D: DivideByGrid);
-#[cfg(feature = "new-geometry")]
-crate::unsupported!(TriangularMesh3D: DivideByGrid);
+mod grid_impl {
+    //! `DivideByGrid` for the two triangular-mesh leaves.
+    //!
+    //! Unlike the polygon-mesh leaves (`polygon_mesh/ops.rs`), a triangular
+    //! mesh divides its triangles directly against [`clip_to_window`] rather
+    //! than detouring through a per-face `Polygon`: a clipped triangle is
+    //! already the easy case (a convex 3-to-7-gon), so it is fan-triangulated
+    //! straight back rather than reassembled as an n-gon face.
+    //!
+    //! UV lives differently here than on a `Polygon` / `PolygonMesh`: a
+    //! triangular mesh's `Explicit` UV set is parallel to the *triangle
+    //! corner* buffer (`3 * num_triangles()` entries, corner `c` of triangle
+    //! `t` at `3*t + c`), not to a shared vertex pool -- two triangles
+    //! sharing a vertex may legitimately disagree on its UV. Only the default
+    //! theme's front, default-channel `Explicit` UV is threaded through
+    //! [`Corner`]'s single UV channel (see [`explicit_uv`]); every other
+    //! `Explicit` UV set is dropped by [`rebuild_mesh_appearance`], mirroring
+    //! the rule `polygon/ops.rs`'s `rebuild_appearance` documents, but
+    //! applied uniformly to the whole output mesh rather than per piece: a
+    //! mesh aggregates many triangles into one `Appearance`, so there is no
+    //! single piece to ask "was this one left untouched by the clip" the way
+    //! a lone `Polygon` piece can. `WorldToTexture` still carries through on
+    //! any theme, since it is positional and needs no threading.
+
+    use super::{TriangularMesh2D, TriangularMesh3D};
+    use crate::appearance::{
+        Appearance, ChannelId, FaceBinding, Side, ThemeBinding, UvSet, UvSource,
+    };
+    use crate::ops::grid::{
+        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, GridCell,
+        GridDivideError, GridSpec,
+    };
+    use crate::ops::{Aabb, BoundingBox};
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// The single scalar elevation a 2D mesh's whole surface lies at (`None`
+    /// for a 3D mesh, which has no such field -- its elevation lives in every
+    /// vertex's own `z`, already carried by construction). A grid clip only
+    /// ever cuts in XY, so this constant is never recomputed from the
+    /// divided output -- it is simply reattached to each cell's piece
+    /// verbatim, the same way `polygon_mesh/ops.rs`'s `PolygonMesh2D` path
+    /// does.
+    trait CarryElevation {
+        fn elevation_for_grid(&self) -> Option<f64>;
+        fn set_elevation_for_grid(&mut self, elevation: Option<f64>);
+    }
+
+    impl CarryElevation for TriangularMesh2D {
+        fn elevation_for_grid(&self) -> Option<f64> {
+            self.elevation()
+        }
+        fn set_elevation_for_grid(&mut self, elevation: Option<f64>) {
+            self.z = elevation;
+        }
+    }
+
+    impl CarryElevation for TriangularMesh3D {
+        fn elevation_for_grid(&self) -> Option<f64> {
+            None
+        }
+        fn set_elevation_for_grid(&mut self, _elevation: Option<f64>) {}
+    }
+
+    /// Fan-triangulate a convex ring: vertex 0 to every non-adjacent edge.
+    ///
+    /// Exact here, because clipping a triangle by a rectangle always yields a
+    /// convex polygon, so no fan diagonal can leave the shape.
+    fn fan<const N: usize>(ring: &[Corner<N>]) -> Vec<[usize; 3]> {
+        (1..ring.len().saturating_sub(1))
+            .map(|i| [0, i, i + 1])
+            .collect()
+    }
+
+    /// The mesh's default-theme, front-side, default-channel UV, borrowed
+    /// whole when it is `Explicit` -- the one UV channel a [`Corner`] can
+    /// carry through the clip. `WorldToTexture` UV is positional, not
+    /// per-corner, so there is nothing to gather; [`rebuild_mesh_appearance`]
+    /// carries it through unchanged instead.
+    fn explicit_uv(appearance: &Option<Appearance>) -> Option<&[[f64; 2]]> {
+        match appearance.as_ref()?.default_uv()? {
+            UvSource::Explicit(coords) => Some(coords),
+            UvSource::WorldToTexture(_) => None,
+        }
+    }
+
+    /// Rebuild the appearance for one cell's output mesh.
+    ///
+    /// Every theme is judged as a genuine cut (there is no mesh-wide
+    /// "untouched" fast path, since different source triangles in the same
+    /// output mesh can each be touched differently, and the mesh needs one
+    /// consistent `Appearance`): a `FaceBinding` is expanded by repeating
+    /// each source triangle's material once per fan-triangle it contributed
+    /// to this cell (`face_tri_counts`); an `Explicit` UV set survives only
+    /// at the default theme's default slot, rebuilt from `gathered_uv`
+    /// (already parallel to the output corner buffer); `WorldToTexture`
+    /// carries through untouched on any theme. Dropping a front-side set
+    /// drops the whole theme (`front` is mandatory); dropping a back-side set
+    /// drops just the back binding. See `polygon/ops.rs`'s
+    /// `rebuild_appearance` for the same rule applied per piece.
+    fn rebuild_mesh_appearance(
+        src: &Option<Appearance>,
+        gathered_uv: Option<&[[f64; 2]]>,
+        face_tri_counts: &[u32],
+    ) -> Option<Appearance> {
+        let app = src.as_ref()?;
+        let default_theme = app.default_theme().clone();
+        let (materials, themes, _) = app.clone().into_parts();
+
+        let expand = |binding: FaceBinding| -> FaceBinding {
+            match binding {
+                FaceBinding::Uniform(index) => FaceBinding::Uniform(index),
+                FaceBinding::PerFace(faces) => {
+                    debug_assert_eq!(faces.len(), face_tri_counts.len());
+                    let total: usize = face_tri_counts.iter().map(|&c| c as usize).sum();
+                    let mut per_triangle = Vec::with_capacity(total);
+                    for (material, &count) in faces.into_iter().zip(face_tri_counts) {
+                        per_triangle.extend(std::iter::repeat_n(material, count as usize));
+                    }
+                    FaceBinding::PerFace(per_triangle)
+                }
+            }
+        };
+
+        let mut new_themes = Vec::with_capacity(themes.len());
+        for theme in themes {
+            let ThemeBinding {
+                theme: theme_id,
+                front,
+                mut back,
+                uv_sets,
+            } = theme;
+            let is_default_theme = theme_id == default_theme;
+            let mut drop_front = false;
+            let mut drop_back = false;
+
+            let mut kept_uv_sets = Vec::with_capacity(uv_sets.len());
+            for uv_set in uv_sets {
+                let is_default_slot = is_default_theme
+                    && uv_set.side == Side::Front
+                    && uv_set.channel == ChannelId::default();
+                match &uv_set.uv {
+                    UvSource::WorldToTexture(_) => kept_uv_sets.push(uv_set),
+                    UvSource::Explicit(_) if is_default_slot => match gathered_uv {
+                        Some(coords) => kept_uv_sets.push(UvSet {
+                            uv: UvSource::Explicit(coords.into()),
+                            ..uv_set
+                        }),
+                        None => match uv_set.side {
+                            Side::Front => drop_front = true,
+                            Side::Back => drop_back = true,
+                        },
+                    },
+                    UvSource::Explicit(_) => match uv_set.side {
+                        Side::Front => drop_front = true,
+                        Side::Back => drop_back = true,
+                    },
+                }
+            }
+
+            if drop_back {
+                back = None;
+                kept_uv_sets.retain(|uv| uv.side != Side::Back);
+            }
+            if drop_front {
+                continue;
+            }
+
+            new_themes.push(ThemeBinding {
+                theme: theme_id,
+                front: expand(front),
+                back: back.map(expand),
+                uv_sets: kept_uv_sets,
+            });
+        }
+
+        if new_themes.is_empty() {
+            return None;
+        }
+        let new_default = if new_themes.iter().any(|t| t.theme == default_theme) {
+            default_theme
+        } else {
+            new_themes[0].theme.clone()
+        };
+        let mut result = Appearance::from_parts(materials, new_themes, new_default);
+        result.compact_materials();
+        Some(result)
+    }
+
+    macro_rules! divide_tri_mesh {
+        ($ty:ident, $dim:literal, $wrap:path) => {
+            impl DivideByGrid for $ty {
+                fn divide_by_grid(
+                    &self,
+                    grid: &GridSpec,
+                    emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+                ) -> Result<(), GridDivideError> {
+                    let (min, max) = match self.bounding_box()? {
+                        Aabb::D2 { min, max } => (min, max),
+                        Aabb::D3 { min, max } => ([min[0], min[1]], [max[0], max[1]]),
+                    };
+
+                    let tris: Vec<[u32; 3]> = self.triangles().collect();
+                    if tris.is_empty() {
+                        return Err(GridDivideError::Empty);
+                    }
+                    let verts = self.vertices();
+                    let src_uv = explicit_uv(self.appearance());
+                    let elevation = self.elevation_for_grid();
+
+                    let (lo, hi) = grid.cell_range(min, max);
+                    let cell_area = grid.cell_size() * grid.cell_size();
+
+                    for row in lo.row..=hi.row {
+                        for col in lo.col..=hi.col {
+                            let cell = GridCell { row, col };
+                            let window = grid.window(cell);
+
+                            let mut out_verts: Vec<[f64; $dim]> = Vec::new();
+                            // One entry per `out_verts` vertex -- *not* yet
+                            // the mesh's own per-triangle-corner convention.
+                            // `out_tris` can (and typically does) reference
+                            // the same `out_verts` index from more than one
+                            // triangle -- shared fan spokes within one clipped
+                            // face, and vertices two *different* source
+                            // triangles both landed on after the clip -- and
+                            // each such triangle needs its own copy of that
+                            // vertex's uv, so the per-triangle-corner array
+                            // actually written to the mesh is re-gathered
+                            // from this, through `out_tris`, below.
+                            let mut vert_uv: Vec<Option<[f64; 2]>> = Vec::new();
+                            let mut out_tris: Vec<[u32; 3]> = Vec::new();
+                            let mut face_tri_counts: Vec<u32> = vec![0; tris.len()];
+                            let mut area = 0.0;
+
+                            for (ti, t) in tris.iter().enumerate() {
+                                let ring: Vec<Corner<$dim>> = t
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(corner, &i)| Corner {
+                                        pos: verts[i as usize],
+                                        uv: src_uv.map(|uv| uv[3 * ti + corner]),
+                                    })
+                                    .collect();
+                                let clipped = clip_to_window(vec![ring], &window);
+                                if clipped.is_empty() {
+                                    continue;
+                                }
+                                area += faces_area_xy(&clipped);
+                                for face in clipped {
+                                    let outline = &face.rings[0];
+                                    let fan_tris = fan(outline);
+                                    face_tri_counts[ti] += fan_tris.len() as u32;
+                                    let base = out_verts.len() as u32;
+                                    out_verts.extend(outline.iter().map(|c| c.pos));
+                                    vert_uv.extend(outline.iter().map(|c| c.uv));
+                                    out_tris.extend(fan_tris.into_iter().map(|[a, b, c]| {
+                                        [base + a as u32, base + b as u32, base + c as u32]
+                                    }));
+                                }
+                            }
+
+                            if out_tris.is_empty() {
+                                continue;
+                            }
+                            // Re-gather one uv per *triangle corner* (3 per
+                            // output triangle, matching the mesh's own
+                            // convention), in exactly `out_tris`' order, from
+                            // each referenced vertex's `vert_uv`. Missing even
+                            // one (`src_uv` absent for some corner) drops the
+                            // whole gather, mirroring the `Option<Vec<_>>`
+                            // short-circuit `polygon/ops.rs`'s `build_one`
+                            // uses for the same purpose.
+                            let out_uv: Option<Vec<[f64; 2]>> = src_uv.and_then(|_| {
+                                out_tris
+                                    .iter()
+                                    .flat_map(|t| t.iter())
+                                    .map(|&i| vert_uv[i as usize])
+                                    .collect::<Option<Vec<_>>>()
+                            });
+                            let appearance = rebuild_mesh_appearance(
+                                self.appearance(),
+                                out_uv.as_deref(),
+                                &face_tri_counts,
+                            );
+                            let mut mesh = $ty::from_parts(
+                                self.frame().clone(),
+                                out_verts,
+                                out_tris.into_iter().flatten(),
+                            )
+                            .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
+                            *mesh.appearance_mut() = appearance;
+                            mesh.set_elevation_for_grid(elevation);
+                            emit(cell, CellCoverage::from_area(area, cell_area), $wrap(mesh));
+                        }
+                    }
+                    Ok(())
+                }
+            }
+        };
+    }
+
+    divide_tri_mesh!(TriangularMesh2D, 2, wrap_tri_2d);
+    divide_tri_mesh!(TriangularMesh3D, 3, wrap_tri_3d);
+
+    fn wrap_tri_2d(m: TriangularMesh2D) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(m)))
+    }
+
+    fn wrap_tri_3d(m: TriangularMesh3D) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(m)))
+    }
+}
 
 #[cfg(feature = "new-geometry")]
 impl TriangularMesh3DData {

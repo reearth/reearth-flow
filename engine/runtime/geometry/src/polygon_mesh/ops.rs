@@ -688,11 +688,307 @@ impl Footprint for PolygonMesh3D {
     }
 }
 
-// Temporary: implemented in Task 4.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(PolygonMesh2D: DivideByGrid);
-#[cfg(feature = "new-geometry")]
-crate::unsupported!(PolygonMesh3D: DivideByGrid);
+mod grid_impl {
+    //! `DivideByGrid` for the two polygon-mesh leaves.
+    //!
+    //! Rather than clip a mesh's CSR face data directly, this decomposes the
+    //! mesh into its faces as standalone [`Polygon2D`] / [`Polygon3D`] values
+    //! -- each carrying its own *slice* of the mesh's appearance (see
+    //! [`face_appearance`]), unlike
+    //! [`PolygonMesh2D::for_each_face_polygon`], which explicitly does not --
+    //! divides each through the already-reviewed [`Polygon::divide_by_grid`]
+    //! (which owns the clip and the per-piece appearance rebuild described in
+    //! `polygon/ops.rs`), and welds the pieces that land in the same cell
+    //! back into one mesh per cell.
+    //!
+    //! This calls each face's own `divide_by_grid` once with the *whole*
+    //! grid (not a fresh single-cell `GridSpec` per cell): each face's own
+    //! bounding box already limits it to the cells it can possibly touch, so
+    //! nothing is re-derived per cell, and every cell a face lands in is
+    //! collected in one pass. Buckets are keyed `(row, col)` in a `BTreeMap`,
+    //! which sorts row-major for free, matching the row-major emission every
+    //! other leaf promises.
+    //!
+    //! Coverage is judged once per cell over the *union* of every face's
+    //! piece landing there (`Polygon::area_xy`, summed), not per source face:
+    //! two faces that only together fill a cell must report `Full`, which a
+    //! per-face check cannot see (this is `B1` in the spec; see
+    //! `mesh_whose_faces_together_fill_a_cell_reports_full`).
+
+    use std::collections::BTreeMap;
+
+    use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
+    use crate::appearance::{
+        Appearance, FaceBinding, MaterialIndex, Side, ThemeBinding, UvSet, UvSource,
+    };
+    use crate::coordinate::CoordinateFrame;
+    use crate::ops::grid::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
+    use crate::polygon::{Polygon2D, Polygon3D};
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// Slice one mesh face's own appearance out of the mesh-wide appearance:
+    /// the same material palette (indices don't move -- this is a slice, not
+    /// a merge), each theme's binding reduced to this one face's material
+    /// (the whole theme is dropped if this face is unbound for it, since a
+    /// `Polygon`'s `front` binding is mandatory), and each `Explicit` UV set
+    /// sliced to this face's own `corners` range -- the same span its rings
+    /// occupy in the per-face polygon this attaches to, so the UV stays
+    /// parallel exactly as `Polygon::set_appearance` requires.
+    /// `WorldToTexture` needs no slicing at all: it is positional.
+    fn face_appearance(
+        mesh_appearance: &Option<Appearance>,
+        face_index: usize,
+        corners: std::ops::Range<usize>,
+    ) -> Option<Appearance> {
+        let app = mesh_appearance.as_ref()?;
+
+        let single = |binding: &FaceBinding| -> Option<MaterialIndex> {
+            match binding {
+                FaceBinding::Uniform(idx) => Some(*idx),
+                FaceBinding::PerFace(v) => v.get(face_index).copied().flatten(),
+            }
+        };
+
+        let mut themes = Vec::new();
+        for theme in app.themes() {
+            let Some(front) = single(&theme.front) else {
+                // This face is unbound for this theme's front; `front` is
+                // mandatory on a single-face polygon, so the theme cannot be
+                // represented for this face at all.
+                continue;
+            };
+            let back = theme.back.as_ref().and_then(single);
+            let uv_sets = theme
+                .uv_sets
+                .iter()
+                .filter(|uv| uv.side == Side::Front || back.is_some())
+                .map(|uv| UvSet {
+                    side: uv.side,
+                    channel: uv.channel,
+                    uv: match &uv.uv {
+                        UvSource::Explicit(arr) => {
+                            UvSource::Explicit(arr[corners.clone()].to_vec().into_boxed_slice())
+                        }
+                        UvSource::WorldToTexture(m) => UvSource::WorldToTexture(*m),
+                    },
+                })
+                .collect();
+            themes.push(ThemeBinding {
+                theme: theme.theme.clone(),
+                front: FaceBinding::Uniform(front),
+                back: back.map(FaceBinding::Uniform),
+                uv_sets,
+            });
+        }
+
+        if themes.is_empty() {
+            return None;
+        }
+        let default_theme = if themes.iter().any(|t| t.theme == *app.default_theme()) {
+            app.default_theme().clone()
+        } else {
+            themes[0].theme.clone()
+        };
+        let mut result = Appearance::from_parts(app.materials().to_vec(), themes, default_theme);
+        result.compact_materials();
+        Some(result)
+    }
+
+    /// Every face of a 2D mesh as a standalone `Polygon2D`, each carrying its
+    /// own slice of the mesh's appearance.
+    fn faces_2d(mesh: &PolygonMesh2D) -> Vec<Polygon2D> {
+        let (face_indices, face_offsets, interior_offsets) = mesh.csr_buffers();
+        let frame = mesh.frame();
+        let mut out = Vec::new();
+        let mut face_index = 0usize;
+        let mut cursor = 0usize;
+        super::super::faces::for_each_face_coords(
+            mesh.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings: &[Vec<[f64; 2]>]| {
+                let count: usize = rings.iter().map(Vec::len).sum();
+                let exterior = rings.first().cloned().unwrap_or_default();
+                let interiors: Vec<Vec<[f64; 2]>> = rings.iter().skip(1).cloned().collect();
+                let mut poly = Polygon2D::from_rings(frame.clone(), exterior, interiors);
+                *poly.appearance_mut() =
+                    face_appearance(mesh.appearance(), face_index, cursor..cursor + count);
+                out.push(poly);
+                face_index += 1;
+                cursor += count;
+            },
+        );
+        out
+    }
+
+    /// As [`faces_2d`], for a 3D mesh's coordinate-free data.
+    fn faces_3d(data: &PolygonMesh3DData, frame: &CoordinateFrame) -> Vec<Polygon3D> {
+        let (face_indices, face_offsets, interior_offsets) = data.csr_buffers();
+        let mut out = Vec::new();
+        let mut face_index = 0usize;
+        let mut cursor = 0usize;
+        super::super::faces::for_each_face_coords(
+            data.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings: &[Vec<[f64; 3]>]| {
+                let count: usize = rings.iter().map(Vec::len).sum();
+                let exterior = rings.first().cloned().unwrap_or_default();
+                let interiors: Vec<Vec<[f64; 3]>> = rings.iter().skip(1).cloned().collect();
+                let mut poly = Polygon3D::from_rings(frame.clone(), exterior, interiors);
+                *poly.appearance_mut() =
+                    face_appearance(&data.appearance, face_index, cursor..cursor + count);
+                out.push(poly);
+                face_index += 1;
+                cursor += count;
+            },
+        );
+        out
+    }
+
+    /// Unwrap what a `Polygon2D::divide_by_grid` emitted for one cell (a
+    /// single `Polygon`, or a `Collection` of several) into `out`.
+    fn collect_faces_2d(geom: Geometry, out: &mut Vec<Polygon2D>) {
+        match geom {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) => out.push(*p),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(coll)) => {
+                for m in coll.members() {
+                    if let Euclidean2DGeometry::Polygon(p) = m {
+                        out.push((**p).clone());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// As [`collect_faces_2d`], for the 3D leaf.
+    fn collect_faces_3d(geom: Geometry, out: &mut Vec<Polygon3D>) {
+        match geom {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => out.push(*p),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(coll)) => {
+                for m in coll.members() {
+                    if let Euclidean3DGeometry::Polygon(p) = m {
+                        out.push((**p).clone());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Divide every face against `grid`, bucketing the pieces by the cell
+    /// they land in (row-major, via the `(row, col)` key order). A face whose
+    /// own `divide_by_grid` reports [`GridDivideError::Empty`] (a degenerate
+    /// face with no area) is skipped rather than failing the whole mesh;
+    /// any other error propagates.
+    fn bucket<P>(
+        faces: &[impl DivideByGrid],
+        grid: &GridSpec,
+        collect_one: impl Fn(Geometry, &mut Vec<P>),
+    ) -> Result<BTreeMap<(i64, i64), Vec<P>>, GridDivideError> {
+        let mut buckets: BTreeMap<(i64, i64), Vec<P>> = BTreeMap::new();
+        for face in faces {
+            let result = face.divide_by_grid(grid, &mut |cell, _coverage, geom| {
+                collect_one(geom, buckets.entry((cell.row, cell.col)).or_default());
+            });
+            match result {
+                Ok(()) | Err(GridDivideError::Empty) => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(buckets)
+    }
+
+    impl DivideByGrid for PolygonMesh2D {
+        fn divide_by_grid(
+            &self,
+            grid: &GridSpec,
+            emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+        ) -> Result<(), GridDivideError> {
+            if self.num_faces() == 0 {
+                return Err(GridDivideError::Empty);
+            }
+            let faces = faces_2d(self);
+            let buckets = bucket(&faces, grid, collect_faces_2d)?;
+
+            let cell_area = grid.cell_size() * grid.cell_size();
+            for ((row, col), pieces) in buckets {
+                if pieces.is_empty() {
+                    continue;
+                }
+                let area: f64 = pieces.iter().map(Polygon2D::area_xy).sum();
+                let coverage = CellCoverage::from_area(area, cell_area);
+
+                // Weld through the 3D constructor (`PolygonMesh2D` has none
+                // of its own): elevation plays no part in a grid clip (it
+                // only cuts in XY), so the pieces' own elevation is
+                // discarded and the *mesh's* single scalar elevation is
+                // reattached directly below, verbatim.
+                let pieces_3d: Vec<Polygon3D> =
+                    pieces.into_iter().map(Polygon2D::into_3d).collect();
+                let welded = PolygonMesh3D::from_polygons(self.frame().clone(), pieces_3d.iter())
+                    .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
+                let PolygonMesh3DData {
+                    vertices,
+                    face_indices,
+                    face_offsets,
+                    interior_offsets,
+                    appearance,
+                } = welded.into_data();
+                let mesh = PolygonMesh2D {
+                    frame: self.frame().clone(),
+                    vertices: vertices.into_iter().map(|[x, y, _]| [x, y]).collect(),
+                    z: self.elevation(),
+                    face_indices,
+                    face_offsets,
+                    interior_offsets,
+                    appearance,
+                };
+                emit(
+                    GridCell { row, col },
+                    coverage,
+                    Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh))),
+                );
+            }
+            Ok(())
+        }
+    }
+
+    impl DivideByGrid for PolygonMesh3D {
+        fn divide_by_grid(
+            &self,
+            grid: &GridSpec,
+            emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+        ) -> Result<(), GridDivideError> {
+            if self.num_faces() == 0 {
+                return Err(GridDivideError::Empty);
+            }
+            let faces = faces_3d(self.data(), self.frame());
+            let buckets = bucket(&faces, grid, collect_faces_3d)?;
+
+            let cell_area = grid.cell_size() * grid.cell_size();
+            for ((row, col), pieces) in buckets {
+                if pieces.is_empty() {
+                    continue;
+                }
+                let area: f64 = pieces.iter().map(Polygon3D::area_xy).sum();
+                let coverage = CellCoverage::from_area(area, cell_area);
+                let mesh = PolygonMesh3D::from_polygons(self.frame().clone(), pieces.iter())
+                    .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
+                emit(
+                    GridCell { row, col },
+                    coverage,
+                    Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
+                );
+            }
+            Ok(())
+        }
+    }
+}
 
 #[cfg(feature = "new-geometry")]
 impl PolygonMesh3DData {

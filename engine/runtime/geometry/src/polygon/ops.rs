@@ -503,6 +503,43 @@ impl Area for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Polygon2D {
+    /// The unsigned XY area of the face: the exterior ring's area minus its
+    /// holes'. For a 2D face this is exactly [`Polygon2D::area`] -- there is no
+    /// elevation to project away -- kept under this name too so a caller
+    /// working across both dimensionalities (e.g. a mesh's grid-divide, which
+    /// judges [`CellCoverage`](crate::ops::grid::CellCoverage) in the XY plane
+    /// for both 2D and 3D faces) can call the same method regardless.
+    pub(crate) fn area_xy(&self) -> f64 {
+        self.area()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Polygon3D {
+    /// The unsigned area of the face's XY *projection*: the exterior ring's
+    /// projected area minus its holes', ignoring slope. Unlike
+    /// [`Area::surface_area`], which measures the true (sloped) 3D surface,
+    /// this is the quantity a grid cell's own area is measured in, so it is
+    /// what [`CellCoverage::from_area`](crate::ops::grid::CellCoverage::from_area)
+    /// needs to judge how much of a cell a divided face covers. Reuses
+    /// [`ops::grid::signed_area_xy`](crate::ops::grid::signed_area_xy) rather
+    /// than a third shoelace implementation.
+    pub(crate) fn area_xy(&self) -> f64 {
+        let ring_area = |ring: &[[f64; 3]]| -> f64 {
+            let corners: Vec<crate::ops::grid::Corner<3>> = ring
+                .iter()
+                .map(|&pos| crate::ops::grid::Corner { pos, uv: None })
+                .collect();
+            crate::ops::grid::signed_area_xy(&corners).abs()
+        };
+        let exterior = ring_area(self.exterior());
+        let holes: f64 = self.interiors().map(ring_area).sum();
+        (exterior - holes).max(0.0)
+    }
+}
+
 use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
 
 // A face is bounded by its own rings, exterior first, each kept verbatim. A face

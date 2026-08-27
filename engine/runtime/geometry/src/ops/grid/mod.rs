@@ -21,10 +21,6 @@ mod window;
 mod tests;
 
 pub(crate) use halfplane::Corner;
-// `signed_area_xy` has no caller yet outside this module's own tests: it is
-// re-exported here for the mesh leaves a later task adds. Drop the `allow`
-// once that caller exists.
-#[allow(unused_imports)]
 pub(crate) use window::{clip_to_window, faces_area_xy, signed_area_xy, Face, Window};
 
 use crate::ops::UnsupportedOperation;

@@ -592,3 +592,139 @@ fn world_to_texture_theme_survives_a_sibling_default_theme_drop() {
     .expect("divides");
     assert_eq!(checked, 4, "one piece per quadrant");
 }
+
+use crate::polygon_mesh::PolygonMesh3D;
+
+/// Two faces meeting along x = 0.5, together covering the unit cell exactly.
+/// Neither face alone fills it.
+fn split_cover_mesh() -> PolygonMesh3D {
+    let left = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            [0.0, 0.0, 0.0],
+            [0.5, 0.0, 0.0],
+            [0.5, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    let right = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            [0.5, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.5, 1.0, 0.0],
+            [0.5, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    PolygonMesh3D::from_polygons(CoordinateFrame::default(), [&left, &right]).expect("valid mesh")
+}
+
+#[test]
+fn mesh_whose_faces_together_fill_a_cell_reports_full() {
+    // The behaviour change recorded as B1 in the spec: the old per-polygon check
+    // called this Partial and, with completeCellsOnly, dropped the cell.
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(
+        split_cover_mesh(),
+    )));
+    let out = collect(&geom, &unit_grid()).expect("divides");
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].1, CellCoverage::Full, "faces together fill the cell");
+}
+
+#[test]
+fn clipped_mesh_stays_a_mesh() {
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(
+        split_cover_mesh(),
+    )));
+    let mut kinds = Vec::new();
+    geom.divide_by_grid(&unit_grid(), &mut |_c, _v, piece| {
+        kinds.push(matches!(
+            piece,
+            Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(_))
+        ));
+    })
+    .expect("divides");
+    assert!(!kinds.is_empty());
+    assert!(kinds.iter().all(|k| *k), "leaf kind must be preserved");
+}
+
+#[test]
+fn triangular_mesh_clipped_to_a_pentagon_stays_a_triangular_mesh() {
+    use crate::triangular_mesh::TriangularMesh3D;
+
+    // One triangle overhanging the cell's top-right corner. Clipping it against
+    // the cell yields a pentagon, which must be fan-triangulated back.
+    let mesh = TriangularMesh3D::from_parts(
+        CoordinateFrame::default(),
+        vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+        [0u32, 1, 2],
+    )
+    .expect("valid mesh");
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+    let mut seen = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_c, _v, piece| {
+        assert!(
+            matches!(
+                piece,
+                Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(_))
+            ),
+            "a clipped triangular mesh must stay a triangular mesh"
+        );
+        seen += 1;
+    })
+    .expect("divides");
+    assert!(seen > 0);
+}
+
+#[test]
+fn mesh_explicit_uv_interpolates_at_a_cut_and_stays_position_parallel() {
+    use crate::appearance::UvSource;
+    use crate::test_support::explicit_uv_appearance;
+    use crate::triangular_mesh::TriangularMesh3D;
+
+    // One triangle spanning two cells (x in 0..2), with UV running 0..1 across
+    // x on its three corners. After dividing at x = 1 of a 1-unit grid, every
+    // new cut corner (on the hypotenuse and the base) must carry u = 0.5.
+    let mut mesh = TriangularMesh3D::from_parts(
+        CoordinateFrame::default(),
+        vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+        [0u32, 1, 2],
+    )
+    .expect("valid mesh");
+    *mesh.appearance_mut() = Some(explicit_uv_appearance(&[
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.0, 1.0],
+    ]));
+
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+    let mut saw_cut = false;
+    geom.divide_by_grid(&unit_grid(), &mut |_c, _v, piece| {
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(m)) = piece else {
+            panic!("expected a triangular mesh piece");
+        };
+        let app = m.appearance().as_ref().expect("uv must survive the cut");
+        let UvSource::Explicit(uv) = &app.themes()[0].uv_sets[0].uv else {
+            panic!("expected an explicit uv set");
+        };
+        let verts = m.vertices();
+        for (tri, [a, b, c]) in m.triangles().enumerate() {
+            for (corner, &vi) in [a, b, c].iter().enumerate() {
+                let pos = verts[vi as usize];
+                let u = uv[3 * tri + corner][0];
+                if pos[0] == 1.0 {
+                    assert!((u - 0.5).abs() < 1e-12, "u at the cut was {u}");
+                    saw_cut = true;
+                }
+            }
+        }
+    })
+    .expect("divides");
+    assert!(saw_cut, "the division must actually cut the triangle");
+}
