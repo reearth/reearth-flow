@@ -171,6 +171,8 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 			}
 		}()
 
+		i.markCloudRunJobRunning(ctx, j.ID())
+
 		status, err := i.cloudRunWorker.RunJob(ctx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
@@ -195,6 +197,8 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			}
 		}()
 
+		i.markCloudRunJobRunning(ctx, j.ID())
+
 		status, err := i.cloudRunWorker.PreviewSchema(ctx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: preview-schema cloud run worker %s run error: %v", j.ID(), err)
@@ -204,6 +208,31 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
+}
+
+// markCloudRunJobRunning flips a dispatched job to RUNNING: Cloud Run jobs are
+// never polled (no GCPJobID) and the worker only ever publishes a terminal
+// event, so without this they sit in PENDING for their entire run.
+func (i *Job) markCloudRunJobRunning(ctx context.Context, jobID id.JobID) {
+	lock := i.getJobLock(jobID.String())
+	lock.Lock()
+	defer lock.Unlock()
+
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
+		return
+	}
+	if j.Status() != job.StatusPending {
+		return
+	}
+
+	j.SetStatus(job.StatusRunning)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
+		return
+	}
+	i.subscriptions.Notify(jobID.String(), job.StatusRunning)
 }
 
 // failCloudRunJob marks a debug job failed when the worker call fails. A
