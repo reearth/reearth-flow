@@ -482,8 +482,8 @@ mod grid_impl {
         Appearance, ChannelId, FaceBinding, Side, ThemeBinding, UvSet, UvSource,
     };
     use crate::ops::grid::{
-        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, GridCell,
-        GridDivideError, GridSpec,
+        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, ExteriorWinding,
+        GridCell, GridDivideError, GridSpec,
     };
     use crate::ops::{Aabb, BoundingBox};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -694,6 +694,16 @@ mod grid_impl {
 
                     let (lo, hi) = grid.cell_range(min, max);
 
+                    // A triangle is a ring like any other, and which stored
+                    // winding marks it an exterior is the frame's business,
+                    // not the coordinates'. In a reflected frame (EPSG:6677
+                    // and the rest of Japan's Plane Rectangular system, so
+                    // every PLATEAU mesh) a valid triangle is stored
+                    // clockwise; judged on its raw sign it would land in
+                    // `clip_to_window`'s hole bucket with no exterior to
+                    // belong to, and the whole mesh would silently vanish.
+                    let exterior = ExteriorWinding::of(self.frame());
+
                     let mut results: Vec<CellResult> = Vec::new();
 
                     for row in lo.row..=hi.row {
@@ -727,7 +737,7 @@ mod grid_impl {
                                         uv: src_uv.map(|uv| uv[3 * ti + corner]),
                                     })
                                     .collect();
-                                let clipped = clip_to_window(vec![ring], &window);
+                                let clipped = clip_to_window(vec![ring], &window, exterior);
                                 if clipped.is_empty() {
                                     continue;
                                 }

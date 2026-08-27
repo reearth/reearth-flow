@@ -21,7 +21,9 @@ mod window;
 mod tests;
 
 pub(crate) use halfplane::Corner;
-pub(crate) use window::{clip_to_window, faces_area_xy, signed_area_xy, Face, Window};
+pub(crate) use window::{
+    clip_to_window, faces_area_xy, signed_area_xy, ExteriorWinding, Face, Window,
+};
 
 use crate::ops::area::triangle_area_2d;
 use crate::ops::UnsupportedOperation;

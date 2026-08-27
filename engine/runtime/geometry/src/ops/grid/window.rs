@@ -2,6 +2,47 @@
 //! faces.
 
 use super::halfplane::{clip_rings_halfplane, Corner, Edge};
+use crate::coordinate::CoordinateFrame;
+
+/// The stored winding an *exterior* ring has in one coordinate frame.
+///
+/// A ring's raw signed area does not by itself say whether it is an exterior
+/// or a hole. This crate defines canonical orientation as
+/// `right_hand_rule(ring) * CoordinateFrame::orientation_sign(frame)` (see
+/// [`crate::coordinate`]), and `orientation_sign` is `-1` for every frame
+/// whose stored axis basis is a reflection of a right-handed one -- EPSG
+/// 4326, 6668, 6669, 6677 and 6697 among them, which covers Japan's Plane
+/// Rectangular Coordinate System and so every PLATEAU dataset this op
+/// actually runs on. In such a frame a correctly-wound exterior is stored
+/// *clockwise* and its holes counter-clockwise, exactly inverted from a
+/// Euclidean or EPSG:3857 frame.
+///
+/// Judging rings by their raw sign in a reflected frame puts every exterior
+/// in the hole bucket, so no exterior is left for a hole to belong to, every
+/// ring is dropped, and the geometry vanishes with neither error nor
+/// warning. Judging with the sign folded in is what the rest of the crate
+/// already does -- `overlay::output_direction`, `overlay::shapes::frame_sign`
+/// and every leaf's `validation.rs`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct ExteriorWinding(f64);
+
+impl ExteriorWinding {
+    /// The winding `frame` stores its exterior rings with.
+    ///
+    /// A frame whose sign cannot be resolved (an unknown CRS, or one whose
+    /// axes are not axis-aligned) falls back to `+1`, counter-clockwise,
+    /// matching how `overlay::output_direction` handles the same question.
+    pub(crate) fn of(frame: &CoordinateFrame) -> Self {
+        Self(f64::from(frame.orientation_sign().unwrap_or(1)))
+    }
+
+    /// Whether a ring whose *raw* stored signed area is `area` is an exterior
+    /// in this frame. Zero-area rings are neither, and fall to the hole side
+    /// the same way the raw-sign test used to put them there.
+    pub(crate) fn is_exterior(self, area: f64) -> bool {
+        area * self.0 > 0.0
+    }
+}
 
 /// One grid cell, as an axis-aligned box in the geometry's own frame.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,7 +64,8 @@ pub(crate) struct Face<const N: usize> {
 }
 
 /// Twice the signed area of a ring projected on XY, halved. Positive is
-/// counter-clockwise, which is Flow's exterior convention.
+/// counter-clockwise *as stored*; whether that makes the ring an exterior
+/// depends on its frame, which [`ExteriorWinding`] answers.
 ///
 /// The shoelace is accumulated over each vertex's offset from the ring's
 /// first vertex, not over its absolute coordinate. The two are algebraically
@@ -135,6 +177,10 @@ fn ring_probe<const N: usize>(ring: &[Corner<N>]) -> Option<[f64; 2]> {
     if n < 3 {
         return None;
     }
+    // The ring's own *stored* winding, deliberately raw: an ear is a property
+    // of the coordinates as laid out, so the frame's orientation sign has no
+    // part in it. (Contrast the exterior/hole partition in `clip_to_window`,
+    // which is a question about convention and does consult the frame.)
     let ccw = signed_area_xy(ring) > 0.0;
 
     for i in 0..n {
@@ -198,13 +244,16 @@ fn bbox_area(bbox: &([f64; 2], [f64; 2])) -> f64 {
 /// Clip a face's rings to `window`, returning the surviving faces.
 ///
 /// Rings arrive exterior-first; winding is preserved through the four half-plane
-/// passes, so exteriors come out counter-clockwise and holes clockwise, and the
-/// two are told apart by the sign of their area rather than by their input
-/// position. A hole that ran off the cell edge has already merged into the
-/// exterior boundary during clipping and does not reappear here.
+/// passes, so an exterior comes out wound the way it went in and a hole
+/// opposite to it, and the two are told apart by the sign of their area rather
+/// than by their input position. Which sign that is depends on the frame, not
+/// on the coordinates alone: `exterior` carries that in (see
+/// [`ExteriorWinding`]). A hole that ran off the cell edge has already merged
+/// into the exterior boundary during clipping and does not reappear here.
 pub(crate) fn clip_to_window<const N: usize>(
     rings: Vec<Vec<Corner<N>>>,
     window: &Window,
+    exterior: ExteriorWinding,
 ) -> Vec<Face<N>> {
     let mut current = rings;
     for edge in [
@@ -222,7 +271,7 @@ pub(crate) fn clip_to_window<const N: usize>(
     let (exteriors, holes): (Vec<_>, Vec<_>) = current
         .into_iter()
         .filter(|r| r.len() >= 3)
-        .partition(|r| signed_area_xy(r) > 0.0);
+        .partition(|r| exterior.is_exterior(signed_area_xy(r)));
 
     let mut faces: Vec<Face<N>> = exteriors
         .into_iter()
@@ -287,7 +336,33 @@ pub(crate) fn clip_to_window<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::coordinate::EpsgCode;
     use crate::ops::grid::halfplane::Corner;
+
+    /// A sign `+1` frame: raw counter-clockwise is the exterior direction.
+    fn ccw_frame() -> ExteriorWinding {
+        ExteriorWinding::of(&CoordinateFrame::Euclidean)
+    }
+
+    /// A sign `-1` frame: raw *clockwise* is the exterior direction. EPSG:6677
+    /// is zone IX of Japan's Plane Rectangular Coordinate System, the frame
+    /// the one production workflow that uses this op reprojects into.
+    fn cw_frame() -> ExteriorWinding {
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6677));
+        assert_eq!(
+            frame.orientation_sign().expect("a known CRS"),
+            -1,
+            "fixture frame must actually be reflected"
+        );
+        ExteriorWinding::of(&frame)
+    }
+
+    /// The same ring wound the other way, for restating a fixture in a
+    /// reflected frame without re-typing its coordinates.
+    fn reversed(mut ring: Vec<Corner<2>>) -> Vec<Corner<2>> {
+        ring.reverse();
+        ring
+    }
 
     fn ring2(pts: &[(f64, f64)]) -> Vec<Corner<2>> {
         pts.iter()
@@ -308,7 +383,7 @@ mod tests {
     #[test]
     fn face_covering_the_window_yields_exactly_the_window() {
         let big = ring2(&[(-5.0, -5.0), (5.0, -5.0), (5.0, 5.0), (-5.0, 5.0)]);
-        let faces = clip_to_window(vec![big], &unit_window());
+        let faces = clip_to_window(vec![big], &unit_window(), ccw_frame());
         assert_eq!(faces.len(), 1);
         assert_eq!(faces[0].rings.len(), 1);
         assert!((faces_area_xy(&faces) - 1.0).abs() < 1e-12);
@@ -317,13 +392,13 @@ mod tests {
     #[test]
     fn face_outside_the_window_yields_nothing() {
         let away = ring2(&[(10.0, 10.0), (11.0, 10.0), (11.0, 11.0), (10.0, 11.0)]);
-        assert!(clip_to_window(vec![away], &unit_window()).is_empty());
+        assert!(clip_to_window(vec![away], &unit_window(), ccw_frame()).is_empty());
     }
 
     #[test]
     fn half_covering_face_yields_half_the_area() {
         let half = ring2(&[(0.0, 0.0), (0.5, 0.0), (0.5, 1.0), (0.0, 1.0)]);
-        let faces = clip_to_window(vec![half], &unit_window());
+        let faces = clip_to_window(vec![half], &unit_window(), ccw_frame());
         assert!((faces_area_xy(&faces) - 0.5).abs() < 1e-12);
     }
 
@@ -332,7 +407,7 @@ mod tests {
         // Exterior CCW, hole CW, both inside the window.
         let exterior = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
         let hole = ring2(&[(0.25, 0.25), (0.25, 0.75), (0.75, 0.75), (0.75, 0.25)]);
-        let faces = clip_to_window(vec![exterior, hole], &unit_window());
+        let faces = clip_to_window(vec![exterior, hole], &unit_window(), ccw_frame());
         assert_eq!(faces.len(), 1);
         assert_eq!(faces[0].rings.len(), 2, "exterior plus one hole");
         // 1.0 total minus a 0.5 x 0.5 hole.
@@ -345,7 +420,7 @@ mod tests {
         // exterior boundary rather than surviving as a free-floating ring.
         let exterior = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
         let hole = ring2(&[(-0.5, 0.25), (-0.5, 0.75), (0.5, 0.75), (0.5, 0.25)]);
-        let faces = clip_to_window(vec![exterior, hole], &unit_window());
+        let faces = clip_to_window(vec![exterior, hole], &unit_window(), ccw_frame());
         // Area is the unit square minus the part of the hole inside it (0.5 x 0.5).
         assert!(
             (faces_area_xy(&faces) - 0.75).abs() < 1e-9,
@@ -400,7 +475,7 @@ mod tests {
     fn concave_hole_nested_in_one_exterior_is_attributed_to_it() {
         let exterior = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
         let hole = concave_c_hole();
-        let faces = clip_to_window(vec![exterior, hole], &unit_window());
+        let faces = clip_to_window(vec![exterior, hole], &unit_window(), ccw_frame());
         assert_eq!(faces.len(), 1);
         assert_eq!(faces[0].rings.len(), 2, "exterior plus the concave hole");
         // 1.0 total minus the 0.28 hole.
@@ -423,7 +498,7 @@ mod tests {
             min: [-1.0, -1.0],
             max: [4.0, 2.0],
         };
-        let faces = clip_to_window(vec![exterior_a, hole, exterior_b], &window);
+        let faces = clip_to_window(vec![exterior_a, hole, exterior_b], &window, ccw_frame());
         assert_eq!(faces.len(), 2);
 
         let with_hole = faces
@@ -471,7 +546,7 @@ mod tests {
             max: [0.5, 1.0],
         };
         assert_eq!(
-            clip_to_window(vec![u.clone()], &joined).len(),
+            clip_to_window(vec![u.clone()], &joined, ccw_frame()).len(),
             1,
             "the spine still joins the arms"
         );
@@ -481,7 +556,7 @@ mod tests {
             min: [0.5, 0.0],
             max: [1.0, 1.0],
         };
-        let faces = clip_to_window(vec![u], &severed);
+        let faces = clip_to_window(vec![u], &severed, ccw_frame());
         assert_eq!(faces.len(), 2, "severed arms must be two faces");
         // Each arm is 0.5 wide by 0.2 tall.
         assert!((faces_area_xy(&faces) - 0.2).abs() < 1e-12);
@@ -533,7 +608,7 @@ mod tests {
             "fixture must actually defeat ring_probe"
         );
 
-        let faces = clip_to_window(vec![exterior, hole], &unit_window());
+        let faces = clip_to_window(vec![exterior, hole], &unit_window(), ccw_frame());
         assert_eq!(faces.len(), 1);
         assert_eq!(
             faces[0].rings.len(),
@@ -552,6 +627,86 @@ mod tests {
         // degenerate hole to; it must be dropped rather than surface as a
         // face on its own (it has zero area and is not an exterior ring).
         let hole = collinear_hole();
-        assert!(clip_to_window(vec![hole], &unit_window()).is_empty());
+        assert!(clip_to_window(vec![hole], &unit_window(), ccw_frame()).is_empty());
+    }
+
+    #[test]
+    fn exterior_in_a_reflected_frame_is_stored_clockwise_and_still_clips() {
+        // Raw-clockwise, which is the *valid* exterior winding in EPSG:6677.
+        // Judged on its raw sign it lands in the hole bucket with no exterior
+        // to belong to, is dropped, and the whole clip comes back empty.
+        let exterior = reversed(ring2(&[(-5.0, -5.0), (5.0, -5.0), (5.0, 5.0), (-5.0, 5.0)]));
+        assert!(
+            signed_area_xy(&exterior) < 0.0,
+            "fixture exterior must be raw-clockwise"
+        );
+
+        let faces = clip_to_window(vec![exterior], &unit_window(), cw_frame());
+        assert_eq!(faces.len(), 1, "the exterior must survive the partition");
+        assert_eq!(faces[0].rings.len(), 1);
+        assert!((faces_area_xy(&faces) - 1.0).abs() < 1e-12);
+        assert!(
+            signed_area_xy(&faces[0].rings[0]) < 0.0,
+            "the clip must preserve the source's winding, not rewind it"
+        );
+    }
+
+    #[test]
+    fn hole_in_a_reflected_frame_stays_a_hole_rather_than_becoming_an_exterior() {
+        // Both rings are the sign `+1` fixtures reversed: exterior raw-CW,
+        // hole raw-CCW, which is how EPSG:6677 stores them. On the raw-sign
+        // test the roles invert -- the hole is promoted to a second exterior
+        // and its area is *added* rather than subtracted, so the face reports
+        // 1.25 instead of 0.75.
+        let exterior = reversed(ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]));
+        let hole = reversed(ring2(&[
+            (0.25, 0.25),
+            (0.25, 0.75),
+            (0.75, 0.75),
+            (0.75, 0.25),
+        ]));
+        assert!(signed_area_xy(&exterior) < 0.0, "exterior must be raw-CW");
+        assert!(signed_area_xy(&hole) > 0.0, "hole must be raw-CCW");
+
+        let faces = clip_to_window(vec![exterior, hole], &unit_window(), cw_frame());
+        assert_eq!(faces.len(), 1, "one face, not two exteriors");
+        assert_eq!(faces[0].rings.len(), 2, "exterior plus one hole");
+        // Which ring took the exterior slot, not merely how many rings landed
+        // on the face: on the raw-sign test the two swap places and the 0.25
+        // hole becomes the face's exterior, yet `faces_area_xy` -- an
+        // absolute value over the sum -- still reads 0.75, so the net area
+        // alone cannot tell the two apart.
+        assert!(
+            (signed_area_xy(&faces[0].rings[0]).abs() - 1.0).abs() < 1e-12,
+            "the outer ring must be the exterior, got area {}",
+            signed_area_xy(&faces[0].rings[0])
+        );
+        // 1.0 total minus a 0.5 x 0.5 hole -- subtracted, not added.
+        assert!(
+            (faces_area_xy(&faces) - 0.75).abs() < 1e-12,
+            "area was {}",
+            faces_area_xy(&faces)
+        );
+    }
+
+    #[test]
+    fn a_ring_wound_for_one_frame_is_dropped_in_the_other() {
+        // The two frames are genuinely each other's mirror, so this pins the
+        // partition as frame-dependent rather than merely permissive: the
+        // raw-CCW ring is an exterior only under `ccw_frame`, and the raw-CW
+        // one only under `cw_frame`.
+        let ccw = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let cw = reversed(ccw.clone());
+
+        assert_eq!(
+            clip_to_window(vec![ccw.clone()], &unit_window(), ccw_frame()).len(),
+            1
+        );
+        assert!(clip_to_window(vec![ccw], &unit_window(), cw_frame()).is_empty());
+        assert_eq!(
+            clip_to_window(vec![cw.clone()], &unit_window(), cw_frame()).len(),
+            1
+        );
+        assert!(clip_to_window(vec![cw], &unit_window(), ccw_frame()).is_empty());
     }
 }

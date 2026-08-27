@@ -2140,3 +2140,190 @@ fn a_ring_left_open_by_the_source_stays_open_in_the_piece() {
     .expect("divides");
     assert_eq!(checked, 1, "exactly one piece must have been checked");
 }
+
+// --- reflected coordinate frames ------------------------------------------
+
+/// EPSG:6677 is zone IX of Japan's Plane Rectangular Coordinate System, the
+/// frame `solar-radiation/workflow.yml` reprojects into before it runs
+/// `Grid Divider`. Its `orientation_sign` is `-1`, so a correctly-wound
+/// exterior ring is stored *clockwise* -- the inverse of `Euclidean` and
+/// EPSG:3857, which every other geometric test in this file uses, and which
+/// is why classifying rings by their raw signed area went unnoticed for so
+/// long.
+fn reflected_frame() -> CoordinateFrame {
+    use crate::coordinate::EpsgCode;
+    let frame = CoordinateFrame::Crs(EpsgCode::from(6677));
+    assert_eq!(
+        frame.orientation_sign().expect("a known CRS"),
+        -1,
+        "fixture frame must actually be reflected"
+    );
+    frame
+}
+
+/// A square stored the way EPSG:6677 wants it: raw-clockwise, so its raw
+/// signed area is *negative*.
+fn cw_square_2d(frame: &CoordinateFrame, min: f64, max: f64) -> Polygon2D {
+    Polygon2D::from_rings(
+        frame.clone(),
+        [[min, min], [min, max], [max, max], [max, min], [min, min]],
+        std::iter::empty::<Vec<[f64; 2]>>(),
+    )
+}
+
+/// The raw shoelace of a stored ring, used only to pin a fixture's winding.
+fn raw_signed_area(ring: &[[f64; 2]]) -> f64 {
+    // `from_rings` stores rings closed; drop the closing duplicate.
+    let open = if ring.len() >= 2 && ring.first() == ring.last() {
+        &ring[..ring.len() - 1]
+    } else {
+        ring
+    };
+    let n = open.len();
+    (0..n)
+        .map(|i| {
+            let a = open[i];
+            let b = open[(i + 1) % n];
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum::<f64>()
+        / 2.0
+}
+
+#[test]
+fn clockwise_polygon_in_a_reflected_frame_divides_into_its_cells() {
+    let frame = reflected_frame();
+    let poly = cw_square_2d(&frame, 0.0, 2.0);
+    assert!(
+        raw_signed_area(poly.exterior()) < 0.0,
+        "fixture must be raw-clockwise, as EPSG:6677 stores an exterior"
+    );
+
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+    let out = collect(&geom, &unit_grid()).expect("divides");
+    assert_eq!(
+        out.len(),
+        4,
+        "a 2 x 2 m square on a 1 m grid covers four cells; \
+         classifying rings by their raw sign drops all four silently"
+    );
+    assert!(out.iter().all(|(_, c)| *c == CellCoverage::Full));
+}
+
+#[test]
+fn clockwise_polygon_pieces_in_a_reflected_frame_keep_their_winding() {
+    // The classification consults the frame; the clip itself is still
+    // winding-preserving, so every piece comes back stored the way EPSG:6677
+    // wants it rather than quietly rewound to raw-counter-clockwise.
+    let frame = reflected_frame();
+    let poly = cw_square_2d(&frame, 0.0, 2.0);
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("a face divides into faces");
+        };
+        let area = raw_signed_area(p.exterior());
+        assert!(area < 0.0, "piece must stay raw-clockwise, area was {area}");
+        assert!((area.abs() - 1.0).abs() < 1e-12, "each piece is one cell");
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 4);
+}
+
+#[test]
+fn clockwise_triangular_mesh_in_a_reflected_frame_divides_into_its_cells() {
+    use crate::triangular_mesh::TriangularMesh2D;
+
+    // The right triangle (0,0) -> (0,2) -> (2,0), raw-clockwise, which is the
+    // winding `triangular_mesh::validation` calls *valid* in this frame. It
+    // covers cells (0,0), (0,1) and (1,0); cell (1,1) it meets only at the
+    // corner (1,1), a degenerate touch that emits nothing.
+    let frame = reflected_frame();
+    let mesh = TriangularMesh2D::from_parts(
+        frame,
+        vec![[0.0, 0.0], [0.0, 2.0], [2.0, 0.0]],
+        [0u32, 1, 2],
+    )
+    .expect("valid mesh");
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::TriangularMesh(Box::new(mesh)));
+
+    let out = collect(&geom, &unit_grid()).expect("divides");
+    let cells: Vec<GridCell> = out.iter().map(|(c, _)| *c).collect();
+    assert_eq!(
+        cells,
+        vec![
+            GridCell { row: 0, col: 0 },
+            GridCell { row: 0, col: 1 },
+            GridCell { row: 1, col: 0 },
+        ],
+        "classifying triangles by their raw sign drops every one of them silently"
+    );
+}
+
+#[test]
+fn clockwise_polygon_mesh_in_a_reflected_frame_divides_into_its_cells() {
+    use crate::polygon_mesh::PolygonMesh2D;
+
+    // A polygon mesh divides per face through `Polygon::divide_by_grid`, so
+    // it inherits the frame-aware classification -- and inherited the bug.
+    // Vertices raw-clockwise, as EPSG:6677 stores an exterior.
+    let frame = reflected_frame();
+    let mesh = PolygonMesh2D::from_parts(
+        frame,
+        vec![[0.0, 0.0], [0.0, 2.0], [2.0, 2.0], [2.0, 0.0]],
+        [[0u32, 1, 2, 3]],
+    )
+    .expect("valid mesh");
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::PolygonMesh(Box::new(mesh)));
+
+    let out = collect(&geom, &unit_grid()).expect("divides");
+    assert_eq!(
+        out.len(),
+        4,
+        "a 2 x 2 m face on a 1 m grid covers four cells"
+    );
+    assert!(out.iter().all(|(_, c)| *c == CellCoverage::Full));
+}
+
+#[test]
+fn hole_in_a_reflected_frame_stays_a_hole_rather_than_inflating_the_area() {
+    // Exterior raw-clockwise, hole raw-counter-clockwise: EPSG:6677's
+    // convention, and the exact mirror of `Euclidean`'s. On the raw-sign test
+    // the two swap roles, the hole is promoted to a second exterior, and its
+    // area is added instead of subtracted.
+    let frame = reflected_frame();
+    let exterior = [[0.0, 0.0], [0.0, 4.0], [4.0, 4.0], [4.0, 0.0], [0.0, 0.0]];
+    let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+    assert!(raw_signed_area(&exterior) < 0.0, "exterior must be raw-CW");
+    assert!(raw_signed_area(&hole) > 0.0, "hole must be raw-CCW");
+
+    let poly = Polygon2D::from_rings(frame, exterior, [hole]);
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    // One cell wide enough to hold the whole face, so the hole is judged on
+    // classification alone rather than on any clipping of it.
+    let grid = GridSpec::new([0.0, 0.0], 10.0).expect("valid spec");
+    let mut checked = 0;
+    geom.divide_by_grid(&grid, &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("a face divides into faces");
+        };
+        assert_eq!(
+            p.interiors().count(),
+            1,
+            "the hole must stay a hole, not become a second exterior face"
+        );
+        // 4 x 4 outer minus the 2 x 2 hole: 12, never 20.
+        assert!(
+            (p.area_xy() - 12.0).abs() < 1e-12,
+            "net area was {}, expected the hole subtracted",
+            p.area_xy()
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 1, "exactly one piece must have been checked");
+}

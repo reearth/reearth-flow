@@ -915,8 +915,8 @@ mod grid_impl {
     use super::{Polygon2D, Polygon3D};
     use crate::appearance::{Appearance, ChannelId, Side, ThemeBinding, UvSet, UvSource};
     use crate::ops::grid::{
-        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, Face, GridCell,
-        GridDivideError, GridSpec,
+        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, ExteriorWinding, Face,
+        GridCell, GridDivideError, GridSpec,
     };
     use crate::ops::{Aabb, BoundingBox};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -1209,12 +1209,17 @@ mod grid_impl {
 
                         let (lo, hi) = grid.cell_range(min, max);
 
+                        // Which stored winding marks an exterior ring here is
+                        // a property of the frame, not of the coordinates:
+                        // resolved once, off `self`, and handed to every clip.
+                        let exterior = ExteriorWinding::of(self.frame());
+
                         // Row-major, so output order is defined and reproducible.
                         for row in lo.row..=hi.row {
                             for col in lo.col..=hi.col {
                                 let cell = GridCell { row, col };
                                 let window = grid.window(cell);
-                                let faces = clip_to_window(rings.clone(), &window);
+                                let faces = clip_to_window(rings.clone(), &window, exterior);
                                 if faces.is_empty() {
                                     continue;
                                 }
