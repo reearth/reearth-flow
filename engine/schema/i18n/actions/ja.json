@@ -336,7 +336,7 @@
       "parameterI18n": {
         "": {
           "title": "Attribute Range Mapper パラメータ",
-          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
+          "description": "分類する属性、照合する範囲の表、および一致した値の格納先を定義する"
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -363,7 +363,7 @@
           },
           "outputValue": {
             "title": "出力値",
-            "description": "入力がこの範囲に収まる場合に割り当てる値（文字列・数値・真偽値など）"
+            "description": "入力がこの範囲に収まる場合に出力属性へ書き込む値"
           },
           "to": {
             "title": "終了値（最大値）",
@@ -2655,7 +2655,7 @@
         },
         "defaultReplacement": {
           "title": "デフォルト置換値",
-          "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される"
+          "description": "マッピングに登録されていない null 相当の属性に書き込む内容。範囲がすべての属性を検査する場合にのみ適用される。省略した場合、それらの属性は変更されない"
         },
         "mappings": {
           "title": "属性マッピング",
@@ -2686,7 +2686,7 @@
           },
           "replacement": {
             "title": "置換値",
-            "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
+            "description": "属性が null に相当する場合に書き込む内容。必須項目とすることで、属性の削除は省略による暗黙の動作ではなく明示的な指定になる"
           }
         }
       },

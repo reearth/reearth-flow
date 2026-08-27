@@ -363,7 +363,7 @@
           },
           "outputValue": {
             "title": "Output Value",
-            "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+            "description": "Value written to the output attribute when the input falls in this range."
           },
           "to": {
             "title": "To (Maximum)",
@@ -2655,7 +2655,7 @@
         },
         "defaultReplacement": {
           "title": "Default Replacement",
-          "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes."
+          "description": "What to write for null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes. When omitted, those attributes are left unchanged."
         },
         "mappings": {
           "title": "Attribute Mappings",
@@ -2686,7 +2686,7 @@
           },
           "replacement": {
             "title": "Replacement",
-            "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+            "description": "What to write when the attribute is null-like. Required, so that removing an attribute is stated rather than implied by leaving this out."
           }
         }
       },

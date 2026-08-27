@@ -900,7 +900,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Range Mapper パラメータ",
-        "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
+        "description": "分類する属性、照合する範囲の表、および一致した値の格納先を定義する",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -928,7 +928,15 @@
           },
           "defaultValue": {
             "title": "デフォルト値",
-            "description": "入力がどの範囲にも一致しない場合に使用する値（文字列・数値・真偽値など）"
+            "description": "入力がどの範囲にも一致しない場合に使用する値（文字列・数値・真偽値など）",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MappedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
@@ -955,9 +963,35 @@
               },
               "outputValue": {
                 "title": "出力値",
-                "description": "入力がこの範囲に収まる場合に割り当てる値（文字列・数値・真偽値など）"
+                "description": "入力がこの範囲に収まる場合に出力属性へ書き込む値",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/MappedValue"
+                  }
+                ]
               }
             }
+          },
+          "MappedValue": {
+            "title": "Mapped Value",
+            "description": "A value written to an attribute. Accepts text, a number, or true/false, written as the type given — `\"3\"` stays text and `3` stays a number.",
+            "anyOf": [
+              {
+                "title": "Text",
+                "description": "Written as text.",
+                "type": "string"
+              },
+              {
+                "title": "Number",
+                "description": "Written as a number.",
+                "type": "number"
+              },
+              {
+                "title": "True or False",
+                "description": "Written as a true/false value.",
+                "type": "boolean"
+              }
+            ]
           }
         }
       },
@@ -8963,8 +8997,16 @@
           },
           "defaultReplacement": {
             "title": "デフォルト置換値",
-            "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される",
-            "default": null
+            "description": "マッピングに登録されていない null 相当の属性に書き込む内容。範囲がすべての属性を検査する場合にのみ適用される。省略した場合、それらの属性は変更されない",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/NullReplacement"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "nullDefinition": {
             "title": "null の定義",
@@ -9012,7 +9054,8 @@
             "description": "Per-attribute replacement mapping",
             "type": "object",
             "required": [
-              "attribute"
+              "attribute",
+              "replacement"
             ],
             "properties": {
               "attribute": {
@@ -9022,7 +9065,12 @@
               },
               "replacement": {
                 "title": "置換値",
-                "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
+                "description": "属性が null に相当する場合に書き込む内容。必須項目とすることで、属性の削除は省略による暗黙の動作ではなく明示的な指定になる",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/NullReplacement"
+                  }
+                ]
               },
               "onMissing": {
                 "title": "欠落時の動作",
@@ -9035,6 +9083,94 @@
                 ]
               }
             }
+          },
+          "NullReplacement": {
+            "title": "Null Replacement",
+            "description": "What to write in place of a null-like attribute, and the type to write it as.",
+            "oneOf": [
+              {
+                "title": "Text",
+                "description": "Written as text.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The text to write.",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Number",
+                "description": "Written as a number.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "number"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The number to write.",
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "title": "True or False",
+                "description": "Written as a true/false value.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "boolean"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The value to write.",
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "title": "Remove",
+                "description": "Removes the attribute from the feature instead of writing a value.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "remove"
+                    ]
+                  }
+                }
+              }
+            ]
           },
           "OnMissing": {
             "title": "On Missing",
