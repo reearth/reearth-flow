@@ -19,17 +19,18 @@ import (
 
 func TestProjectAccess_Fetch(t *testing.T) {
 	// The shared-link fetch is anonymous and token-authorized: no user in the
-	// context, and a deny-all checker must not be consulted.
+	// context, and consulting the permission checker at all fails the test.
 	ctx := context.Background()
 
 	mem := memory.New()
-	mockPermissionCheckerFalse := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+	forbiddenPermissionChecker := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+		t.Errorf("permission checker consulted on the token-authorized fetch path (resource=%s action=%s)", resource, action)
 		return false, nil
 	})
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
-		permissionChecker: mockPermissionCheckerFalse,
+		permissionChecker: forbiddenPermissionChecker,
 	}
 
 	// Set up a workspace, project, and shared project access
