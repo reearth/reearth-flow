@@ -695,8 +695,70 @@ impl DivideByGrid for GeometryCollection {
     }
 }
 
+/// Collect the frame of every leaf reachable from `g` that exposes one,
+/// recursing into `GeometryCollection`. See [`Geometry::frame`] for why
+/// `PointCloud`/`Csg` are absent.
+#[cfg(feature = "new-geometry")]
+fn collect_leaf_frames<'a>(g: &'a Geometry, out: &mut Vec<&'a CoordinateFrame>) {
+    match g {
+        Geometry::None => {}
+        Geometry::Euclidean2D(g) => collect_leaf_frames_2d(g, out),
+        Geometry::Euclidean3D(g) => collect_leaf_frames_3d(g, out),
+        Geometry::GeometryCollection(c) => {
+            c.members().iter().for_each(|m| collect_leaf_frames(m, out))
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+fn collect_leaf_frames_2d<'a>(g: &'a Euclidean2DGeometry, out: &mut Vec<&'a CoordinateFrame>) {
+    match g {
+        Euclidean2DGeometry::Point(p) => out.push(p.frame()),
+        Euclidean2DGeometry::LineString(l) => out.push(l.frame()),
+        Euclidean2DGeometry::Polygon(p) => out.push(p.frame()),
+        Euclidean2DGeometry::PolygonMesh(m) => out.push(m.frame()),
+        Euclidean2DGeometry::TriangularMesh(m) => out.push(m.frame()),
+        Euclidean2DGeometry::Collection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_leaf_frames_2d(m, out)),
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+fn collect_leaf_frames_3d<'a>(g: &'a Euclidean3DGeometry, out: &mut Vec<&'a CoordinateFrame>) {
+    match g {
+        Euclidean3DGeometry::Point(p) => out.push(p.frame()),
+        Euclidean3DGeometry::LineString(l) => out.push(l.frame()),
+        Euclidean3DGeometry::Polygon(p) => out.push(p.frame()),
+        Euclidean3DGeometry::PolygonMesh(m) => out.push(m.frame()),
+        Euclidean3DGeometry::TriangularMesh(m) => out.push(m.frame()),
+        Euclidean3DGeometry::Solid(s) => out.push(s.frame()),
+        Euclidean3DGeometry::PointCloud(_) | Euclidean3DGeometry::Csg(_) => {}
+        Euclidean3DGeometry::Collection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_leaf_frames_3d(m, out)),
+    }
+}
+
 #[cfg(feature = "new-geometry")]
 impl Geometry {
+    /// The coordinate frame shared by every leaf this geometry carries, or
+    /// `None` when leaves disagree or none exposes a frame at all.
+    ///
+    /// `PointCloud` and `Csg` are not represented here: neither carries a frame
+    /// this can read directly (`Csg`'s frame lives on its operand `Solid`s), so
+    /// they are skipped rather than manufacturing a mismatch. A caller that
+    /// wants to warn about an angular frame (e.g. before dividing on a grid)
+    /// reads this rather than assuming a unit.
+    pub fn frame(&self) -> Option<&CoordinateFrame> {
+        let mut frames = Vec::new();
+        collect_leaf_frames(self, &mut frames);
+        let (first, rest) = frames.split_first()?;
+        rest.iter().all(|f| *f == *first).then_some(*first)
+    }
+
     /// The footprint of this geometry on `plane`: every face projected and
     /// dissolved into its union, curves and points projected as they are, as 2D
     /// geometry in the plane's frame. See [`Footprint`] and

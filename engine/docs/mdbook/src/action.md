@@ -6127,6 +6127,20 @@ Divides polygon geometries into a regular grid of equal-sized cells.
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "origin": {
+      "title": "Grid Origin",
+      "description": "The point the grid is anchored at, as `[x, y]` in the same coordinate system as the geometry. When set, cells line up with this point, so separate Grid Dividers can share a lattice and repeat runs place features in the same cells. When left out, each group's grid starts at the corner of that group's own extent, which shifts if the input changes.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 2,
+      "minItems": 2
     }
   },
   "definitions": {
