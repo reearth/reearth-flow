@@ -1,8 +1,12 @@
 package interactor
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"os"
 	"testing"
 	"time"
 
@@ -11,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -126,7 +131,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
 		assert.NoError(t, err)
 		require.Len(t, got, 2)
@@ -170,7 +175,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{terminalRow}}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetNodeDiagnostics(ctx, jobID, nodeID)
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -184,7 +189,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byNode: mongoRows}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -197,7 +202,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byNode: mongoRows}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -209,7 +214,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
 		assert.NoError(t, err)
 		assert.Empty(t, got)
@@ -223,7 +228,7 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 			return false, nil
 		})
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, denyChecker)
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, denyChecker)
 		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
 		assert.Error(t, err)
 		assert.Nil(t, got)
@@ -240,7 +245,7 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
 		assert.NoError(t, err)
 		require.Len(t, got, 2)
@@ -254,7 +259,7 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byJob: mongoRows}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -266,7 +271,7 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 		redisMock := &mockDiagnosticsRedis{jobDiagnostics: redisRows}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(nil, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(nil, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -274,7 +279,7 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 
 	t.Run("both nil gateways: empty, not error", func(t *testing.T) {
 		jobRepo := &mockJobRepo{}
-		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(nil, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
@@ -285,7 +290,7 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{}
 		jobRepo := &mockJobRepo{err: errors.New("job lookup failed")}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
@@ -318,7 +323,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{fatalRow, nonFatalRow}}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -358,7 +363,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{liveRow, terminalRow}}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
@@ -369,7 +374,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.NoError(t, err)
 		assert.Empty(t, got)
@@ -379,7 +384,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		// Must be non-nil empty, not nil, so GraphQL renders [].
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(nil, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.NoError(t, err)
 		assert.NotNil(t, got)
@@ -390,7 +395,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{byJobErr: errors.New("mongo down")}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
@@ -403,7 +408,7 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 			return false, nil
 		})
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, denyChecker)
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, denyChecker)
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
@@ -496,7 +501,7 @@ func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{summary: &dropped}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetDroppedEventCount(ctx, jobID)
 		assert.NoError(t, err)
 		require.NotNil(t, got)
@@ -507,7 +512,7 @@ func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetDroppedEventCount(ctx, jobID)
 		assert.NoError(t, err)
 		assert.Nil(t, got)
@@ -516,7 +521,7 @@ func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
 	t.Run("nil repo: nil, not error", func(t *testing.T) {
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(nil, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetDroppedEventCount(ctx, jobID)
 		assert.NoError(t, err)
 		assert.Nil(t, got)
@@ -526,7 +531,7 @@ func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{summaryErr: errors.New("mongo down")}
 		jobRepo := &mockJobRepo{}
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetDroppedEventCount(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
@@ -539,9 +544,96 @@ func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
 			return false, nil
 		})
 
-		i := NewNodeDiagnostics(repoMock, jobRepo, nil, denyChecker)
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, denyChecker)
 		got, err := i.GetDroppedEventCount(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
+	})
+}
+
+type artifactFileMock struct {
+	mockCheckStatusFile
+	lastName  string
+	payload   []byte
+	readCalls int
+}
+
+func (m *artifactFileMock) ReadArtifact(ctx context.Context, name string) (io.ReadCloser, error) {
+	m.readCalls++
+	m.lastName = name
+	if m.payload == nil {
+		return nil, rerror.ErrNotFound
+	}
+	return io.NopCloser(bytes.NewReader(m.payload)), nil
+}
+
+func TestNodeDiagnostics_ArtifactFallback(t *testing.T) {
+	ctx := context.Background()
+	raw, err := os.ReadFile(jobCompleteDiagnosticsFixturePath)
+	require.NoError(t, err)
+	var event gateway.JobCompleteEvent
+	require.NoError(t, json.Unmarshal(raw, &event))
+	jobID := id.MustJobID(event.JobID)
+	jobRepo := &mockJobRepo{}
+
+	t.Run("failed nodes come from the artifact when the repo has no rows", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "internal.invariant_violation", got[0].Code())
+		assert.Equal(t, "internal.unclassified", got[1].Code())
+		assert.Equal(t, jobID.String()+"/diagnostics.json", file.lastName)
+	})
+
+	t.Run("job diagnostics include artifact rows when the repo has no rows", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(&mockDiagnosticsRepo{}, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 3)
+	})
+
+	t.Run("node diagnostics filter artifact rows by node", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "subgraph-a.sink-writer-2")
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "internal.unclassified", got[0].Code())
+	})
+
+	t.Run("dropped event count falls back to the artifact", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, uint64(2), *got)
+	})
+
+	t.Run("repo rows suppress the artifact read", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, 0, file.readCalls)
+	})
+
+	t.Run("missing artifact yields empty results, not an error", func(t *testing.T) {
+		file := &artifactFileMock{}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
 	})
 }

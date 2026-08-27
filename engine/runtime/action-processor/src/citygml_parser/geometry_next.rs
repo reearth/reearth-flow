@@ -21,29 +21,41 @@ use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresol
 use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 
 /// A geometry carved from a feature, tagged with the LOD of the property it came
-/// from (`None` for `tin`) and the `gml:id`s of its enclosing elements (nearest
-/// first), used to attach it to the right feature when `flatten` hoists children.
+/// from (`None` for `tin`) and its enclosing `gml:id`-bearing elements (nearest
+/// first), used to attach it to the right feature when `flatten` hoists children
+/// and to name the object a surface belongs to.
 pub(super) struct PendingGeom {
     pub(super) lod: Option<u8>,
     pub(super) node: GeomNode,
-    pub(super) owner_ids: Vec<String>,
+    pub(super) owners: Vec<GeomOwner>,
 }
 
-/// A `gml:id`-bearing ancestor, chained on the stack so the enclosing-id list is
-/// materialized only where a geometry is actually found.
+/// An element that encloses a geometry and carries a `gml:id`.
+pub(super) struct GeomOwner {
+    pub(super) gml_id: String,
+    /// The qualified element name, e.g. `tran:AuxiliaryTrafficArea`.
+    pub(super) feature_type: String,
+}
+
+/// A `gml:id`-bearing ancestor, chained on the stack so the enclosing-owner list
+/// is materialized only where a geometry is actually found.
 struct Owner<'a> {
     id: &'a str,
+    name: &'a str,
     parent: Option<&'a Owner<'a>>,
 }
 
-/// The enclosing `gml:id`s, nearest first.
-fn owner_chain(mut owner: Option<&Owner>) -> Vec<String> {
-    let mut ids = Vec::new();
+/// The enclosing `gml:id`-bearing elements, nearest first.
+fn owner_chain(mut owner: Option<&Owner>) -> Vec<GeomOwner> {
+    let mut owners = Vec::new();
     while let Some(o) = owner {
-        ids.push(o.id.to_string());
+        owners.push(GeomOwner {
+            gml_id: o.id.to_string(),
+            feature_type: o.name.to_string(),
+        });
         owner = o.parent;
     }
-    ids
+    owners
 }
 
 impl Parser {
@@ -61,14 +73,18 @@ impl Parser {
 
     /// Recursively rebuild `node` without its geometry-property children, collecting
     /// the parsed geometries into `geoms`. `owner` is the chain of enclosing
-    /// `gml:id`s above `node`.
+    /// `gml:id`-bearing elements above `node`.
     fn strip(
         &mut self,
         node: &Arc<RawNode>,
         owner: Option<&Owner>,
         geoms: &mut Vec<PendingGeom>,
     ) -> Arc<RawNode> {
-        let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
+        let here = gml_id_ref(node).map(|id| Owner {
+            id,
+            name: node.name.0.as_str(),
+            parent: owner,
+        });
         let owner = here.as_ref().or(owner);
         let mut new_children: Option<Vec<RawChild>> = None;
 
@@ -93,7 +109,7 @@ impl Parser {
 
             if let Some(lod) = lod {
                 if let Some(gnode) = self.property_geometry(e) {
-                    let owner_ids = if self.track_owners {
+                    let owners = if self.track_owners {
                         owner_chain(owner)
                     } else {
                         Vec::new()
@@ -101,7 +117,7 @@ impl Parser {
                     geoms.push(PendingGeom {
                         lod,
                         node: gnode,
-                        owner_ids,
+                        owners,
                     });
                 }
                 if new_children.is_none() {
@@ -646,7 +662,7 @@ mod tests {
     }
 
     #[test]
-    fn geometry_tagged_with_enclosing_gml_ids() {
+    fn geometry_tagged_with_enclosing_owners() {
         // The wrapping feature is `b1`; a nested WallSurface `wall1` owns the geometry.
         let (geoms, _) = parse_one(&format!(
             r#"<core:boundary><con:WallSurface gml:id="wall1">
@@ -654,9 +670,14 @@ mod tests {
                </con:WallSurface></core:boundary>"#
         ));
         assert_eq!(geoms.len(), 1);
+        let owners: Vec<(&str, &str)> = geoms[0]
+            .owners
+            .iter()
+            .map(|o| (o.gml_id.as_str(), o.feature_type.as_str()))
+            .collect();
         assert_eq!(
-            geoms[0].owner_ids,
-            vec!["wall1".to_string(), "b1".to_string()]
+            owners,
+            vec![("wall1", "con:WallSurface"), ("b1", "bldg:Building")]
         );
     }
 

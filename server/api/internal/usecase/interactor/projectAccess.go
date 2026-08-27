@@ -60,9 +60,6 @@ func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *proje
 	if prj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, prj.Workspace()); err != nil {
-		return nil, err
-	}
 
 	return prj, nil
 }
