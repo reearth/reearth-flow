@@ -52,8 +52,10 @@ impl ProcessorFactory for CSGBuilderFactory {
     }
 
     fn description(&self) -> &str {
-        "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). \
-        It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSG Evaluator."
+        "Pairs each left solid with the right solid that shares its pair value and emits the \
+         union, the intersection and the difference of the pair as unevaluated Constructive \
+         Solid Geometry trees. The trees describe the boolean without computing it, so a \
+         CSG Evaluator downstream turns the branch you keep into a solid."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -62,6 +64,10 @@ impl ProcessorFactory for CSGBuilderFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Geometry"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -101,55 +107,49 @@ impl ProcessorFactory for CSGBuilderFactory {
             .into());
         };
 
-        let pair_id_attribute = param
-            .pair_id_attribute
-            .map(|expr| {
-                expr.compile().map_err(|e| {
-                    GeometryProcessorError::CSGBuilderFactory(format!(
-                        "Failed to compile pair_id_attribute expression: {e:?}"
-                    ))
-                })
-            })
-            .transpose()?;
+        let pair_id = param.pair_id.compile().map_err(|e| {
+            GeometryProcessorError::CSGBuilderFactory(format!(
+                "Failed to compile pairId expression: {e:?}"
+            ))
+        })?;
 
         let processor = CSGBuilder {
-            pair_id_attribute,
+            pair_id,
             left_buffer: HashMap::new(),
             right_buffer: HashMap::new(),
-            create_list: param.create_list,
-            list_attribute_name: param.list_attribute_name,
+            list_attribute: param.list_attribute,
         };
         Ok(Box::new(processor))
     }
 }
 
 /// # CSG Builder Parameters
-/// Configure how the CSG builder pairs features from left and right ports
+/// Sets how the two input streams are paired up and what the resulting trees
+/// record about the solids they were built from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct CSGBuilderParam {
-    /// # Pair ID Attribute
-    /// Expression to evaluate the pair ID used to match features from left and right ports
-    pair_id_attribute: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    /// # Pair ID
+    /// Expression evaluated on every feature to produce the value that pairs
+    /// it up: a left feature and a right feature that evaluate to the same
+    /// value are combined. A feature whose partner never arrives is rejected.
+    pair_id: Code<{ CodeType::FlowExpr as u32 }>,
 
-    /// # Create List
-    /// When enabled, creates a list of attribute values from both children (left and right)
-    create_list: Option<bool>,
-
-    /// # List Attribute Name
-    /// Name of the attribute to create the list from (required when create_list is true)
-    list_attribute_name: Option<String>,
+    /// # List Attribute
+    /// Attribute that receives one entry for the left solid and one for the
+    /// right, each holding that feature's own attributes. When omitted, no
+    /// list is written and the resulting trees carry no attributes at all.
+    list_attribute: Option<String>,
 }
 
 /// # CSG Builder
-/// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSG Evaluator.
+/// Builds the boolean trees of a paired left and right solid.
 #[derive(Debug, Clone)]
 pub struct CSGBuilder {
-    pair_id_attribute: Option<CompiledCode>,
+    pair_id: CompiledCode,
     left_buffer: HashMap<AttributeValue, Feature>,
     right_buffer: HashMap<AttributeValue, Feature>,
-    create_list: Option<bool>,
-    list_attribute_name: Option<String>,
+    list_attribute: Option<String>,
 }
 
 impl Processor for CSGBuilder {
@@ -169,16 +169,8 @@ impl Processor for CSGBuilder {
         let feature = ctx.feature.clone();
         let port = ctx.port.clone();
 
-        // Get the pair ID from the feature by evaluating the expression
-        let pair_id = if let Some(expr) = &self.pair_id_attribute {
-            match expr.eval(&feature, ctx.variables.clone()) {
-                Ok(attr_value) => attr_value,
-                Err(_) => {
-                    fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
-                    return Ok(());
-                }
-            }
-        } else {
+        // The value that pairs this feature with one from the other side.
+        let Ok(pair_id) = self.pair_id.eval(&feature, ctx.variables.clone()) else {
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -437,16 +429,13 @@ impl CSGBuilder {
 
 impl CSGBuilder {
     /// The list attribute holding both source features' attribute maps, when
-    /// enabled and named.
+    /// one was named.
     fn build_list_attribute(
         &self,
         left: &Feature,
         right: &Feature,
     ) -> Option<(Attribute, AttributeValue)> {
-        if !self.create_list.unwrap_or(false) {
-            return None;
-        }
-        let attr_name = self.list_attribute_name.as_ref()?;
+        let attr_name = self.list_attribute.as_ref()?;
         let attribute_objects = [left, right]
             .into_iter()
             .map(|feature| {

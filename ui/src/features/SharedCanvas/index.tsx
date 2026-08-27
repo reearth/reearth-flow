@@ -56,6 +56,7 @@ const SharedCanvas: React.FC<Props> = ({
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked: true,
+      isReaderRestricted: false,
       canViewIntermediateData: false,
       onNodeSettings: handleNodeSettings,
     }),

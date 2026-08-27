@@ -1,0 +1,82 @@
+[[codes]]
+code = "geometry.footprint_unavailable"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose horizontal footprint could not be computed"
+help = "Planar tests compare 3D geometry by its footprint; check that the geometry is a supported, non-degenerate solid or surface."
+
+[[codes]]
+code = "geometry.non_linear_frame"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped 3D feature in a coordinate frame without linear units"
+help = "Reproject 3D input to a coordinate system in linear units upstream."
+
+[[codes]]
+code = "geometry.mixed_dimensions"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature mixing 2D and 3D parts"
+help = "Split the geometry, or force it to a single dimension upstream."
+
+[[codes]]
+code = "geometry.mixed_coordinate_frames"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose parts are in different coordinate frames"
+help = "Reproject the geometry to one coordinate frame upstream."
+
+[[codes]]
+code = "geometry.coordinate_frame_mismatch"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature in a different coordinate frame than the node's other inputs"
+help = "Reproject every input of the node to one coordinate frame upstream."
+
+[[codes]]
+code = "geometry.spatial_test_failed"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose spatial relationship test failed"
+help = "Check that the geometry is valid and in a frame the predicate can test."
+
+# The five `geometry.area_*` codes below are raised only through `ctx.warn()`
+# (`runtime/action-processor/src/geometry/area_calculator.rs`), which ignores
+# `default_disposition` entirely — only `report()` branches on it, and this
+# action never calls `report()`. `warn_drop` is simply the least-severe value
+# the enum offers, not a request to drop the feature; it is inert here, the
+# same as it is for `raster.toml`/`gltf.toml`.
+[[codes]]
+code = "geometry.area_not_measurable"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "area not measurable, wrote 0"
+help = "Area Calculator could not measure this geometry; check that it is a supported, non-degenerate type."
+
+[[codes]]
+code = "geometry.area_angular_crs"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "area is in square degrees, not a real-world area"
+help = "Check your input geometry's coordinate system and reproject it to a projected CRS; a geographic CRS measures area in degrees, not a real-world unit."
+
+[[codes]]
+code = "geometry.area_unknown_unit"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "cannot establish the coordinate system's unit, so the area's unit is unknown"
+help = "Check your input geometry's coordinate system; Area Calculator could not determine whether it measures in a linear or an angular unit."
+
+[[codes]]
+code = "geometry.area_mixed_frames"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "geometry parts sit in different coordinate frames, so the summed area mixes units"
+help = "Reproject all parts of the geometry to a single coordinate system before measuring area."
+
+[[codes]]
+code = "geometry.area_skipped_parts"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped geometry part(s) that cannot be measured; their area is not in the total"
+help = "One or more members of this geometry could not be measured and were excluded from the total; check them individually."

@@ -12,25 +12,25 @@ import (
 var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
-	Asset         Asset
-	AssetUpload   AssetUpload
-	AuthRequest   authserver.RequestRepo
-	Config        Config
-	WorkerConfig  WorkerConfig
-	Deployment    Deployment
-	Job           Job
-	Lock          Lock
-	NodeExecution NodeExecution
-	Parameter     Parameter
-	Permittable   accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
-	Project       Project
-	ProjectAccess ProjectAccess
-	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
-	Transaction   usecasex.Transactor
-	Trigger       Trigger
-	User          accountrepo.User // TODO: Remove this once the replace user management is complete.
-	Workflow      Workflow
-	Workspace     accountrepo.Workspace // TODO: Remove this once the replace user management is complete.
+	Asset           Asset
+	AssetUpload     AssetUpload
+	AuthRequest     authserver.RequestRepo
+	Config          Config
+	WorkerConfig    WorkerConfig
+	Deployment      Deployment
+	Job             Job
+	Lock            Lock
+	NodeDiagnostics NodeDiagnostics
+	Parameter       Parameter
+	Permittable     accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
+	Project         Project
+	ProjectAccess   ProjectAccess
+	Role            accountrepo.Role // TODO: Delete this once the permission check migration is complete.
+	Transaction     usecasex.Transactor
+	Trigger         Trigger
+	User            accountrepo.User // TODO: Remove this once the replace user management is complete.
+	Workflow        Workflow
+	Workspace       accountrepo.Workspace // TODO: Remove this once the replace user management is complete.
 }
 
 // TODO: Remove this once the replace user management is complete.
@@ -52,23 +52,23 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		return c
 	}
 	return &Container{
-		Asset:         c.Asset.Filtered(workspace),
-		AssetUpload:   c.AssetUpload.Filtered(workspace),
-		AuthRequest:   c.AuthRequest,
-		Config:        c.Config,
-		WorkerConfig:  c.WorkerConfig,
-		Deployment:    c.Deployment.Filtered(workspace),
-		Job:           c.Job.Filtered(workspace),
-		Lock:          c.Lock,
-		NodeExecution: c.NodeExecution,
-		Parameter:     c.Parameter,
-		Project:       c.Project.Filtered(workspace),
-		ProjectAccess: c.ProjectAccess,
-		Transaction:   c.Transaction,
-		Trigger:       c.Trigger,
-		User:          c.User,
-		Workflow:      c.Workflow,
-		Workspace:     c.Workspace,
+		Asset:           c.Asset.Filtered(workspace),
+		AssetUpload:     c.AssetUpload.Filtered(workspace),
+		AuthRequest:     c.AuthRequest,
+		Config:          c.Config,
+		WorkerConfig:    c.WorkerConfig,
+		Deployment:      c.Deployment.Filtered(workspace),
+		Job:             c.Job.Filtered(workspace),
+		Lock:            c.Lock,
+		NodeDiagnostics: c.NodeDiagnostics,
+		Parameter:       c.Parameter,
+		Project:         c.Project.Filtered(workspace),
+		ProjectAccess:   c.ProjectAccess,
+		Transaction:     c.Transaction,
+		Trigger:         c.Trigger,
+		User:            c.User,
+		Workflow:        c.Workflow,
+		Workspace:       c.Workspace,
 	}
 }
 

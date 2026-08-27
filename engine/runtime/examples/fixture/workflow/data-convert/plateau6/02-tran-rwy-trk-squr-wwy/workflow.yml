@@ -52,6 +52,7 @@ graphs:
             type: flowExpr
             value: attributes["path"]
           keepAttributes: false
+          inheritInputAttributes: false
           cityGmlAttributesKey: cityGmlAttributes
           extractTags:
             - tran:AuxiliaryTrafficArea

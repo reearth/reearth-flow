@@ -4,7 +4,8 @@ import * as Y from "yjs";
 
 import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { Project } from "@flow/types";
+import { useCurrentUserRole } from "@flow/stores";
+import { Role, type Project } from "@flow/types";
 
 import {
   RecoveryVersionHistoryList,
@@ -41,7 +42,12 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
   // errorComponent, which replaces the whole route subtree, so it is mounted
   // OUTSIDE any EditorProvider and the hook would throw on open. isLocked is
   // meaningless in this flow anyway, since a project that will not open cannot
-  // be usefully edit-locked.
+  // be usefully edit-locked -- and gating on it would strand a locked, corrupt
+  // project, because the lock toggle lives in an editor that will not load.
+  // The reader role does still apply: a reader must never write, and unlike the
+  // lock it is read from the store, which the route wrapper has already filled.
+  const [currentUserRole] = useCurrentUserRole();
+  const isReaderRestricted = currentUserRole === Role.Reader;
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
@@ -167,7 +173,8 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
                 disabled={
                   !selectedProjectSnapshotVersion ||
                   isLoadingPreview ||
-                  isCorruptedVersion
+                  isCorruptedVersion ||
+                  isReaderRestricted
                 }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>

@@ -43,6 +43,7 @@ var baseActions = map[string]bool{
 	"Cesium 3D Tiles Writer": true,
 	"CSV Writer":             true,
 	"Echo Sink":              true,
+	"Excel Writer":           true,
 	"GeoJSON Writer":         true,
 	"JSON Writer":            true,
 	"MVT Writer":             true,
@@ -52,9 +53,12 @@ var baseActions = map[string]bool{
 	"Zip File Writer":        true,
 	// Geometry
 	"Appearance Remover":           true,
+	"Area On Area Overlayer":       true,
 	"Boundary Extractor":           true,
 	"Bounds Extractor":             true,
 	"Coordinate Frame Reprojector": true,
+	"CSG Builder":                  true,
+	"CSG Evaluator":                true,
 	"Dissolver":                    true,
 	"Elevation Extractor":          true,
 	"Footprint Replacer":           true,
@@ -66,6 +70,7 @@ var baseActions = map[string]bool{
 	"Geometry Validator":           true,
 	"Hole Counter":                 true,
 	"Hole Extractor":               true,
+	"Line On Line Overlayer":       true,
 	"Offsetter":                    true,
 	"Two Dimension Forcer":         true,
 	// Attribute

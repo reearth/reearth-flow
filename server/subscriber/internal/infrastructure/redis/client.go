@@ -18,7 +18,6 @@ type RedisClient interface {
 	LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd
 	Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd
 	XAdd(ctx context.Context, a *redis.XAddArgs) *redis.StringCmd
-	HSet(ctx context.Context, key string, values ...interface{}) *redis.IntCmd
 }
 
 type RedisStorage struct {
@@ -45,6 +44,27 @@ func (r *RedisStorage) tracedSet(ctx context.Context, key string, value interfac
 	defer span.End()
 
 	if err := r.client.Set(ctx, key, value, expiration).Err(); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		return err
+	}
+	span.SetStatus(codes.Ok, "")
+	return nil
+}
+
+func (r *RedisStorage) tracedLPush(ctx context.Context, key string, values ...interface{}) error {
+	ctx, span := r.tracer.Start(ctx, "redis.LPUSH",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("db.system", "redis"),
+			attribute.String("db.operation", "LPUSH"),
+			attribute.String("db.redis.key", key),
+			attribute.Int("db.redis.values_count", len(values)),
+		),
+	)
+	defer span.End()
+
+	if err := r.client.LPush(ctx, key, values...).Err(); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
 		return err
@@ -86,26 +106,6 @@ func (r *RedisStorage) tracedXAdd(ctx context.Context, a *redis.XAddArgs) error 
 	defer span.End()
 
 	if err := r.client.XAdd(ctx, a).Err(); err != nil {
-		span.SetStatus(codes.Error, err.Error())
-		span.RecordError(err)
-		return err
-	}
-	span.SetStatus(codes.Ok, "")
-	return nil
-}
-
-func (r *RedisStorage) tracedHSet(ctx context.Context, key string, values ...interface{}) error {
-	ctx, span := r.tracer.Start(ctx, "redis.HSET",
-		trace.WithSpanKind(trace.SpanKindClient),
-		trace.WithAttributes(
-			attribute.String("db.system", "redis"),
-			attribute.String("db.operation", "HSET"),
-			attribute.String("db.redis.key", key),
-		),
-	)
-	defer span.End()
-
-	if err := r.client.HSet(ctx, key, values...).Err(); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
 		return err

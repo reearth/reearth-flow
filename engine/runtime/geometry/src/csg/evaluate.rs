@@ -39,14 +39,25 @@ type EdgeId = (VertexId, VertexId);
 /// The edge a crossing subdivides, and its parameter along that edge.
 type OnEdge = (EdgeId, f64);
 
+/// The vertex tolerance [`Csg::evaluate`] falls back to when it is given a
+/// non-positive one: small enough that only near-identical vertices merge.
+///
+/// Public so a caller that wants the fallback can name it rather than pass zero
+/// and hope — a caller advertising its own default needs the real value.
+pub const DEFAULT_TOLERANCE: f64 = 1e-9;
+
 impl Csg {
     /// The solid the tree denotes, or `None` when it encloses no volume.
     ///
     /// `tolerance` is the distance within which a vertex counts as lying on a
     /// cutting plane and two vertices count as one; at or below zero it falls
-    /// back to a small default.
+    /// back to [`DEFAULT_TOLERANCE`].
     pub fn evaluate(&self, tolerance: f64) -> Result<Option<Solid>, Error> {
-        let eps = if tolerance > 0.0 { tolerance } else { 1e-9 };
+        let eps = if tolerance > 0.0 {
+            tolerance
+        } else {
+            DEFAULT_TOLERANCE
+        };
         let mut cache = Cache::default();
         let mut arena = Arena::default();
         let (mut polygons, frame) = evaluate_tree(self, eps, &mut cache, &mut arena)?;

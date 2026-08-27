@@ -1848,9 +1848,7 @@ graphs:
     type: action
     action: Area Calculator
     with:
-      areaType: slopedArea
       outputAttribute: cellArea
-      multiplier: 1.0
   - id: 00000001-0000-0000-0000-000000000031
     name: GeometryRemover
     type: action
@@ -2443,9 +2441,7 @@ graphs:
     type: action
     action: Area Calculator
     with:
-      areaType: slopedArea
       outputAttribute: surfaceArea
-      multiplier: 1.0
   - id: 00000001-0000-0000-0000-0000000000d1
     name: SurfaceAreaAggregator
     type: action
