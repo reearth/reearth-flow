@@ -171,8 +171,8 @@
     "code": "grid.unsupported_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
-    "message": "skipped feature with no area to divide",
-    "help": "Grid Divider divides surfaces: polygons, polygon meshes and triangular meshes. Points, curves, solids and point clouds have no area to cut into cells."
+    "message": "skipped feature that could not be divided",
+    "help": "Grid Divider divides surfaces: polygons, polygon meshes and triangular meshes. A feature is skipped when it has no area to cut into cells, when the grid itself is unusable, or when a divided piece could not be rebuilt. Read the `_grid_error` attribute on the skipped feature for the specific cause."
   },
   {
     "code": "internal.diagnostics_overflow",

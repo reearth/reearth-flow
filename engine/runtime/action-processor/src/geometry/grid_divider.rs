@@ -2207,6 +2207,44 @@ mod new_geometry_tests {
             );
         }
 
+        /// `grid.unsupported_geometry` is the catch-all: `reject_with` raises
+        /// it for *every* `GridDivideError` except `MixedFrames`, not only for
+        /// a leaf kind with no area. A mesh with no faces reports
+        /// `GridDivideError::Empty` rather than `Unsupported`, and still leaves
+        /// under this code -- which is why the code's registered help text has
+        /// to cover more than "this shape has no area", and points the reader
+        /// at `_grid_error` for the cause that actually applied.
+        #[test]
+        fn a_non_unsupported_failure_also_leaves_under_the_unsupported_code() {
+            // A vertex pool with no triangles indexing it: a bounding box to
+            // reach the division by, and nothing in it to divide.
+            let mesh = reearth_flow_geometry::triangular_mesh::TriangularMesh3D::from_parts(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0, 0.0]],
+                std::iter::empty::<u32>(),
+            )
+            .expect("a mesh with no triangles is well-formed, just empty");
+            let empty = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+            let (features, warnings) =
+                process_many(json!({"cellSize": 1.0, "origin": [0.0, 0.0]}), vec![empty]);
+
+            assert_eq!(features.len(), 1);
+            assert_eq!(
+                grid_error(&features[0]),
+                Some("geometry has no area to divide"),
+                "the specific cause must still reach `_grid_error`"
+            );
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridUnsupportedGeometry)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
         /// A feature whose parts sit in different coordinate frames cannot be
         /// covered by one grid. It is rejected with the mixed-frames code, not
         /// the generic unsupported one.
