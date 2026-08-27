@@ -12179,7 +12179,7 @@ Validates the Solid Boundary Geometry
 ### Type
 * processor
 ### Description
-Filters candidate features based on their spatial relationship to filter geometry.
+Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units.
 ### Parameters
 ```json
 {
@@ -12190,7 +12190,7 @@ Filters candidate features based on their spatial relationship to filter geometr
   "properties": {
     "predicate": {
       "title": "Spatial Predicate",
-      "description": "The spatial relationship to test between filter and candidate geometries.",
+      "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
       "default": "intersects",
       "allOf": [
         {
@@ -12198,15 +12198,19 @@ Filters candidate features based on their spatial relationship to filter geometr
         }
       ]
     },
-    "passOnMultipleMatches": {
-      "title": "Pass on Multiple Matches",
-      "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
-      "default": true,
-      "type": "boolean"
+    "matchMode": {
+      "title": "Match Mode",
+      "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature.",
+      "default": "any",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MatchMode"
+        }
+      ]
     },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
+      "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
       "default": false,
       "type": "boolean"
     },
@@ -12221,7 +12225,7 @@ Filters candidate features based on their spatial relationship to filter geometr
     },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of matching filters.",
+      "description": "Optional attribute name to store the number of filter features the candidate matched.",
       "default": null,
       "anyOf": [
         {
@@ -12237,7 +12241,7 @@ Filters candidate features based on their spatial relationship to filter geometr
     "SpatialPredicate": {
       "oneOf": [
         {
-          "description": "Filter geometry completely contains candidate",
+          "description": "Candidate completely contains the filter geometry",
           "type": "string",
           "enum": [
             "contains"
@@ -12293,10 +12297,32 @@ Filters candidate features based on their spatial relationship to filter geometr
           ]
         },
         {
-          "description": "Filter geometry covers candidate",
+          "description": "Candidate covers the filter geometry",
           "type": "string",
           "enum": [
             "covers"
+          ]
+        }
+      ]
+    },
+    "MatchMode": {
+      "title": "Match Mode",
+      "description": "How the tests against the individual filter features combine into pass or fail.",
+      "oneOf": [
+        {
+          "title": "Any",
+          "description": "Passes a candidate that matches at least one filter feature.",
+          "type": "string",
+          "enum": [
+            "any"
+          ]
+        },
+        {
+          "title": "All",
+          "description": "Passes a candidate only when every filter feature matches it.",
+          "type": "string",
+          "enum": [
+            "all"
           ]
         }
       ]
