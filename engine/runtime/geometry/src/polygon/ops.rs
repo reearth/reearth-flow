@@ -506,13 +506,36 @@ impl Area for Polygon3D {
 #[cfg(feature = "new-geometry")]
 impl Polygon2D {
     /// The unsigned XY area of the face: the exterior ring's area minus its
-    /// holes'. For a 2D face this is exactly [`Polygon2D::area`] -- there is no
-    /// elevation to project away -- kept under this name too so a caller
-    /// working across both dimensionalities (e.g. a mesh's grid-divide, which
-    /// judges [`CellCoverage`](crate::ops::grid::CellCoverage) in the XY plane
-    /// for both 2D and 3D faces) can call the same method regardless.
+    /// holes'. For a 2D face this is the same quantity as
+    /// [`Polygon2D::area`] -- there is no elevation to project away -- kept
+    /// under this name too so a caller working across both dimensionalities
+    /// (e.g. a mesh's grid-divide, which judges
+    /// [`CellCoverage`](crate::ops::grid::CellCoverage) in the XY plane for
+    /// both 2D and 3D faces) can call the same method regardless.
+    ///
+    /// Measured with
+    /// [`ops::grid::signed_area_xy`](crate::ops::grid::signed_area_xy), the
+    /// same routine [`Polygon3D::area_xy`] uses and the same one the clip
+    /// itself measures a piece with, rather than delegating to
+    /// [`Polygon2D::area`]'s own shoelace. The two agree mathematically, but
+    /// `signed_area_xy` translates to the ring's first vertex before
+    /// accumulating and `Polygon2D::area` does not, which at a projected CRS
+    /// is the difference between a full cell reading `Full` and reading
+    /// `Partial` -- and a coverage verdict has to be answered by the same
+    /// arithmetic on both sides of the comparison. `Polygon2D::area` is a
+    /// public, general-purpose measure with callers of its own and is left
+    /// alone.
     pub(crate) fn area_xy(&self) -> f64 {
-        self.area()
+        let ring_area = |ring: &[[f64; 2]]| -> f64 {
+            let corners: Vec<crate::ops::grid::Corner<2>> = ring
+                .iter()
+                .map(|&pos| crate::ops::grid::Corner { pos, uv: None })
+                .collect();
+            crate::ops::grid::signed_area_xy(&corners).abs()
+        };
+        let exterior = ring_area(self.exterior());
+        let holes: f64 = self.interiors().map(ring_area).sum();
+        (exterior - holes).max(0.0)
     }
 }
 

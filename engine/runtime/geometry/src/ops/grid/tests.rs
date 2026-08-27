@@ -1525,21 +1525,45 @@ fn every_leaf_judges_coverage_against_the_same_cell_area() {
     // Guards the five call sites that used to compute the cell's area as
     // `cell_size * cell_size` while `polygon/ops.rs` used `window.area()`:
     // the polygon, polygon-mesh, triangular-mesh and collection leaves must
-    // all agree about the same cell, on a grid whose origin is not the
-    // coordinate origin.
+    // all agree about the same cell.
     //
-    // This pins the leaves against each other; the *reason* the comparand has
-    // to be the cell's own window is pinned separately by
-    // `coverage_is_judged_against_the_cell_s_own_window_not_the_square_of_its_side`.
-    // The two cannot be one test: separating the comparands needs an origin
-    // several million times the cell size, and at that magnitude the shoelace
-    // every leaf measures area with (`signed_area_xy`, on absolute
-    // coordinates) loses far more precision than the gap being measured, so
-    // every leaf reports `Partial` either way.
+    // The fixture has to be one where the two comparands actually differ,
+    // otherwise the test passes whichever one the code uses and pins
+    // nothing. `cell_bounds` rounds `origin + n * cell_size`, so a cell's
+    // true width is not the nominal side; this origin and cell size put the
+    // gap past `COVERAGE_TOLERANCE`, in the direction that makes an
+    // exactly-full piece read `Partial` against `cell_size^2`. It is the same
+    // fixture
+    // `coverage_is_judged_against_the_cell_s_own_window_not_the_square_of_its_side`
+    // uses to pin the arithmetic directly -- asserted below rather than
+    // assumed, so the fixture cannot quietly stop discriminating.
+    //
+    // Driving every leaf at an origin this far from zero is only possible
+    // because `signed_area_xy` translates its shoelace to the ring's first
+    // vertex; on absolute coordinates the cancellation at 3.9e6 dwarfed the
+    // gap being measured and every leaf reported `Partial` either way (see
+    // `a_full_region_at_projected_crs_coordinates_reports_every_cell_full`).
+    use crate::ops::grid::COVERAGE_TOLERANCE;
     use crate::triangular_mesh::TriangularMesh3D;
 
-    let grid = GridSpec::new([10.5, 20.25], 1.0).expect("valid spec");
+    let cell_size = 0.3;
+    let grid = GridSpec::new([3_900_000.0, 3_900_000.0], cell_size).expect("valid spec");
     let (mn, mx) = grid.cell_bounds(GridCell { row: 0, col: 0 });
+
+    let window_area = grid.window(GridCell { row: 0, col: 0 }).area();
+    let nominal = cell_size * cell_size;
+    assert!(
+        ((window_area - nominal) / nominal).abs() > COVERAGE_TOLERANCE,
+        "fixture must separate the cell's own area from the square of its side, \
+         gap was {:e}",
+        (window_area - nominal) / nominal
+    );
+    assert_eq!(
+        CellCoverage::from_area(window_area, nominal),
+        CellCoverage::Partial,
+        "fixture must be one where judging against `cell_size * cell_size` \
+         actually changes the verdict"
+    );
 
     let face = |x0: f64, x1: f64| {
         Polygon3D::from_rings(
@@ -1688,4 +1712,174 @@ fn a_solid_sharing_the_collection_s_frame_does_not_block_the_division() {
     let out = collect(&geom, &unit_grid()).expect("the face still divides");
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].1, CellCoverage::Full);
+}
+
+/// Grid origins the size of a real projected CRS: Japan's Plane Rectangular
+/// Coordinate System, which `GridDivider`'s one production workflow
+/// reprojects to, runs to roughly +-1.5e5 metres and is not integral, and a
+/// UTM northing is an order of magnitude larger again. These are the
+/// coordinates the op actually divides at, so an area routine that only
+/// holds up near the coordinate origin is no use to it.
+const PROJECTED_ORIGINS: [[f64; 2]; 3] = [
+    [-140_222.7, 129_333.3],
+    [78_901.234, 45_678.9],
+    [387_654.321, 3_912_345.678],
+];
+
+#[test]
+fn a_full_region_at_projected_crs_coordinates_reports_every_cell_full() {
+    // A shoelace summed over *absolute* coordinates cancels catastrophically
+    // once the coordinates dwarf the area being measured: at a projected-CRS
+    // origin each cross product is ~1e10 (or ~1e12) while the sum of them is
+    // 1.0, so what rounding leaves behind is far past `COVERAGE_TOLERANCE`
+    // and an exactly-full cell measures short of its own window.
+    // `completeCellsOnly` then drops it -- silent data loss on the only
+    // workflow this op exists for, and a regression against the old-world
+    // path, which judged fullness by matching corners against the cell's own
+    // coordinates and so kept every one of these cells.
+    //
+    // Each of these origins puts the region's six columns and six rows on
+    // exact cell boundaries and gives every cell a window area of exactly
+    // 1.0, so nothing but the area routine can make a cell come out short.
+    //
+    // Every areal leaf is driven, in both dimensionalities, because they do
+    // not all measure a piece the same way: the face leaves and the
+    // triangular-mesh leaves go through `faces_area_xy`, while the
+    // polygon-mesh leaves re-measure each rebuilt face with
+    // `Polygon2D`/`Polygon3D::area_xy` and the collection leaf sums
+    // `geometry_area_xy`. One routine holding up at these coordinates says
+    // nothing about the others.
+    use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
+    use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
+
+    let mut wrong: Vec<(&str, [f64; 2], usize)> = Vec::new();
+
+    for origin in PROJECTED_ORIGINS {
+        let grid = GridSpec::new(origin, 1.0).expect("valid spec");
+        let (mn, _) = grid.cell_bounds(GridCell { row: 0, col: 0 });
+        let (_, mx) = grid.cell_bounds(GridCell { row: 5, col: 5 });
+
+        let corners_2d = [
+            [mn[0], mn[1]],
+            [mx[0], mn[1]],
+            [mx[0], mx[1]],
+            [mn[0], mx[1]],
+        ];
+        let corners_3d = [
+            [mn[0], mn[1], 0.0],
+            [mx[0], mn[1], 0.0],
+            [mx[0], mx[1], 0.0],
+            [mn[0], mx[1], 0.0],
+        ];
+        let ring_2d = [
+            corners_2d[0],
+            corners_2d[1],
+            corners_2d[2],
+            corners_2d[3],
+            corners_2d[0],
+        ];
+        let ring_3d = [
+            corners_3d[0],
+            corners_3d[1],
+            corners_3d[2],
+            corners_3d[3],
+            corners_3d[0],
+        ];
+
+        let face_2d = Polygon2D::from_rings(
+            CoordinateFrame::default(),
+            ring_2d,
+            std::iter::empty::<Vec<[f64; 2]>>(),
+        );
+        let face_3d = Polygon3D::from_rings(
+            CoordinateFrame::default(),
+            ring_3d,
+            std::iter::empty::<Vec<[f64; 3]>>(),
+        );
+
+        let leaves = [
+            (
+                "polygon 2d",
+                Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(
+                    face_2d.clone(),
+                ))),
+            ),
+            (
+                "polygon 3d",
+                Geometry::Euclidean3D(crate::Euclidean3DGeometry::Polygon(Box::new(
+                    face_3d.clone(),
+                ))),
+            ),
+            (
+                "polygon mesh 2d",
+                Geometry::Euclidean2D(crate::Euclidean2DGeometry::PolygonMesh(Box::new(
+                    PolygonMesh2D::from_parts(
+                        CoordinateFrame::default(),
+                        corners_2d.to_vec(),
+                        [[0u32, 1, 2, 3]],
+                    )
+                    .expect("valid mesh"),
+                ))),
+            ),
+            (
+                "polygon mesh 3d",
+                Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(
+                    PolygonMesh3D::from_polygons(CoordinateFrame::default(), [&face_3d])
+                        .expect("valid mesh"),
+                ))),
+            ),
+            (
+                "triangular mesh 2d",
+                Geometry::Euclidean2D(crate::Euclidean2DGeometry::TriangularMesh(Box::new(
+                    TriangularMesh2D::from_parts(
+                        CoordinateFrame::default(),
+                        corners_2d.to_vec(),
+                        [0u32, 1, 2, 0, 2, 3],
+                    )
+                    .expect("valid mesh"),
+                ))),
+            ),
+            (
+                "triangular mesh 3d",
+                Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(Box::new(
+                    TriangularMesh3D::from_parts(
+                        CoordinateFrame::default(),
+                        corners_3d.to_vec(),
+                        [0u32, 1, 2, 0, 2, 3],
+                    )
+                    .expect("valid mesh"),
+                ))),
+            ),
+            (
+                "collection 3d",
+                Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(
+                    crate::collection::Collection3D::new([crate::Euclidean3DGeometry::Polygon(
+                        Box::new(face_3d.clone()),
+                    )]),
+                )),
+            ),
+        ];
+
+        for (name, geom) in leaves {
+            let out = collect(&geom, &grid).expect("divides");
+            assert_eq!(
+                out.len(),
+                36,
+                "{name} at origin {origin:?} must land in 6 x 6 cells"
+            );
+
+            let partial = out
+                .iter()
+                .filter(|(_, c)| *c == CellCoverage::Partial)
+                .count();
+            if partial > 0 {
+                wrong.push((name, origin, partial));
+            }
+        }
+    }
+
+    assert!(
+        wrong.is_empty(),
+        "exactly-full cells wrongly judged Partial (leaf, origin, count out of 36): {wrong:?}"
+    );
 }

@@ -24,12 +24,29 @@ pub(crate) struct Face<const N: usize> {
 
 /// Twice the signed area of a ring projected on XY, halved. Positive is
 /// counter-clockwise, which is Flow's exterior convention.
+///
+/// The shoelace is accumulated over each vertex's offset from the ring's
+/// first vertex, not over its absolute coordinate. The two are algebraically
+/// identical -- a translation does not change an area -- but numerically they
+/// are not, and the difference decides whether this op works on real data.
+/// On absolute coordinates each cross product scales with the *coordinates*
+/// while their sum scales with the *area*, so at a projected CRS (Japan's
+/// Plane Rectangular system runs to ~1.5e5 m; a UTM northing to ~4e6) a unit
+/// cell's terms are ~1e10 to ~1e13 apart from the 1.0 they sum to, and the
+/// rounding left over swamps `COVERAGE_TOLERANCE`. Cells that exactly fill
+/// their window then measure short of it, come back `Partial`, and are
+/// dropped under `completeCellsOnly`. Translating first makes every term the
+/// size of the ring itself, so the precision follows the ring's extent rather
+/// than its distance from the coordinate origin.
 pub(crate) fn signed_area_xy<const N: usize>(ring: &[Corner<N>]) -> f64 {
+    let Some(origin) = ring.first().map(|c| c.pos) else {
+        return 0.0;
+    };
     let mut acc = 0.0;
     for i in 0..ring.len() {
         let a = ring[i].pos;
         let b = ring[(i + 1) % ring.len()].pos;
-        acc += a[0] * b[1] - b[0] * a[1];
+        acc += (a[0] - origin[0]) * (b[1] - origin[1]) - (b[0] - origin[0]) * (a[1] - origin[1]);
     }
     acc / 2.0
 }
