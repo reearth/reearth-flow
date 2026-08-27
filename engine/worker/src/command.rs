@@ -15,7 +15,7 @@ use reearth_flow_types::Workflow;
 use uuid::Uuid;
 
 use crate::{
-    artifact::upload_artifact,
+    artifact::{upload_artifact, write_diagnostics_artifact},
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
@@ -282,6 +282,19 @@ impl RunWorkerCommand {
             }
             Err(_) => derive_job_result(None, false),
         };
+        // Written before cleanup so the artifact sweep uploads it; uncapped,
+        // unlike the size-capped complete event. Never fails the run.
+        if let Some(summary) = &run_summary {
+            let artifact_event = JobCompleteEvent::with_full_summary(
+                workflow_id,
+                meta.job_id,
+                job_result.clone(),
+                summary,
+            );
+            if let Err(e) = write_diagnostics_artifact(meta.job_id, &artifact_event) {
+                tracing::warn!("Failed to write diagnostics artifact: {e:?}");
+            }
+        }
         self.cleanup(&meta, &storage_resolver).await?;
         let complete_event = match &run_summary {
             // Pass the uncapped summary — with_summary caps internally; capping twice would double-cap the overflow marker.
