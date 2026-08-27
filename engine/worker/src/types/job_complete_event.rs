@@ -69,22 +69,41 @@ impl JobCompleteEvent {
         summary: &RunSummary,
     ) -> Self {
         let capped = summary.capped(JOB_COMPLETE_TOP_K);
+        Self::from_summary_rows(workflow_id, job_id, result, &capped)
+    }
+
+    /// Uncapped variant for the diagnostics artifact file — GCS has no message-size cap.
+    pub fn with_full_summary(
+        workflow_id: Uuid,
+        job_id: Uuid,
+        result: JobResult,
+        summary: &RunSummary,
+    ) -> Self {
+        Self::from_summary_rows(workflow_id, job_id, result, summary)
+    }
+
+    fn from_summary_rows(
+        workflow_id: Uuid,
+        job_id: Uuid,
+        result: JobResult,
+        summary: &RunSummary,
+    ) -> Self {
         Self {
             failed_nodes: Some(
-                capped
+                summary
                     .failed_nodes
                     .iter()
                     .map(WireDiagnostic::from)
                     .collect(),
             ),
             aggregated_diagnostics: Some(
-                capped
+                summary
                     .aggregated_diagnostics
                     .iter()
                     .map(WireDiagnostic::from)
                     .collect(),
             ),
-            dropped_event_count: Some(capped.dropped_event_count),
+            dropped_event_count: Some(summary.dropped_event_count),
             ..Self::new(workflow_id, job_id, result)
         }
     }
@@ -201,6 +220,42 @@ mod tests {
             obj["aggregatedDiagnostics"][0]["code"],
             "gltf.zero_face_solid"
         );
+    }
+
+    /// The diagnostics artifact is uncapped: every recorded row survives and the
+    /// dropped count stays the raw runtime figure.
+    #[test]
+    fn full_summary_keeps_all_rows_beyond_the_wire_cap() {
+        let base = sample_summary();
+        let summary = RunSummary {
+            failed_nodes: vec![base.failed_nodes[0].clone(); JOB_COMPLETE_TOP_K + 3],
+            aggregated_diagnostics: base.aggregated_diagnostics.clone(),
+            dropped_event_count: 2,
+        };
+
+        let capped = JobCompleteEvent::with_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Failed,
+            &summary,
+        );
+        // capped keeps TOP_K rows plus one synthetic overflow marker.
+        assert_eq!(
+            capped.failed_nodes.as_ref().unwrap().len(),
+            JOB_COMPLETE_TOP_K + 1
+        );
+
+        let full = JobCompleteEvent::with_full_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Failed,
+            &summary,
+        );
+        assert_eq!(
+            full.failed_nodes.as_ref().unwrap().len(),
+            JOB_COMPLETE_TOP_K + 3
+        );
+        assert_eq!(full.dropped_event_count, Some(2));
     }
 
     #[test]
