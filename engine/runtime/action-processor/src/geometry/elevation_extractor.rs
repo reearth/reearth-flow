@@ -29,7 +29,8 @@ impl ProcessorFactory for ElevationExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts the elevation of a feature's geometry and stores it in an attribute."
+        "Extracts the elevation of a geometry's first vertex into an attribute. A geometry \
+         carrying no elevation passes through without it."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -82,12 +83,13 @@ impl ProcessorFactory for ElevationExtractorFactory {
 }
 
 /// # Elevation Extractor Parameters
-/// Configure where the extracted elevation is stored.
+/// Sets where the extracted elevation is stored.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ElevationExtractorParam {
     /// # Output Attribute
-    /// Attribute to store the elevation in.
+    /// Attribute the elevation is written to. It is left unwritten when the geometry carries no
+    /// elevation.
     output_attribute: Attribute,
 }
 

@@ -1273,8 +1273,7 @@
         "type": "object",
         "required": [
           "bufferType",
-          "distance",
-          "interpolationAngle"
+          "distance"
         ],
         "properties": {
           "bufferType": {
@@ -1294,8 +1293,11 @@
           },
           "interpolationAngle": {
             "title": "Interpolation Angle",
-            "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it.",
-            "type": "number",
+            "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it. Defaults to 11.25 degrees when omitted.",
+            "type": [
+              "number",
+              "null"
+            ],
             "format": "double"
           }
         },
@@ -3427,11 +3429,11 @@
     {
       "name": "Elevation Extractor",
       "type": "processor",
-      "description": "Extracts the elevation of a feature's geometry and stores it in an attribute.",
+      "description": "Extrait l'altitude du premier sommet d'une géométrie dans un attribut. Une géométrie sans altitude passe sans celui-ci.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Elevation Extractor Parameters",
-        "description": "Configure where the extracted elevation is stored.",
+        "description": "Sets where the extracted elevation is stored.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -3439,7 +3441,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Attribute to store the elevation in.",
+            "description": "Attribute the elevation is written to. It is left unwritten when the geometry carries no elevation.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -12383,11 +12385,11 @@
     {
       "name": "Shapefile Reader",
       "type": "source",
-      "description": "Lit des entités géographiques depuis des archives Shapefile (.zip contenant .shp, .dbf, .shx)",
+      "description": "Lit des entités depuis un shapefile empaqueté dans une archive ZIP. L'archive est censée contenir les fichiers .shp, .shx et .dbf définis par le format, bien qu'un .shx manquant soit toléré.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileReader Parameters",
-        "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+        "title": "Shapefile Reader Parameters",
+        "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one.",
         "type": "object",
         "properties": {
           "encoding": {
@@ -12400,13 +12402,13 @@
           },
           "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+            "description": "If true, drops elevations and reads every geometry as 2D. The read fails on a multipatch, which describes a surface in space and has no 2D form.",
             "default": false,
             "type": "boolean"
           },
           "allowEmptyPath": {
-            "title": "Allow Null Path",
-            "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
+            "title": "Allow Empty Path",
+            "description": "If true, a dataset path that is empty or null yields no features instead of failing, allowing an optional shapefile input.",
             "default": false,
             "type": "boolean"
           },
@@ -12478,11 +12480,11 @@
     {
       "name": "Shapefile Writer",
       "type": "sink",
-      "description": "Writes geographic features to ESRI Shapefile format with optional grouping",
+      "description": "Écrit des entités sous forme de shapefiles, en les groupant éventuellement en un jeu de fichiers par groupe.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileWriter Parameters",
-        "description": "Configuration for writing features to ESRI Shapefile format.",
+        "title": "Shapefile Writer Parameters",
+        "description": "Sets where the shapefiles are written, whether each is archived, and how features are grouped into separate file sets.",
         "type": "object",
         "required": [
           "output"
@@ -12490,7 +12492,7 @@
         "properties": {
           "output": {
             "title": "Output Directory",
-            "description": "Output directory path or expression where the generated Shapefile files are written.",
+            "description": "Directory the shapefiles are written to, as a path or an expression. Each file set inside it is named after its group value, or \"null\" when no grouping is configured.",
             "type": "object",
             "format": "code",
             "required": [
@@ -12537,7 +12539,7 @@
           },
           "groupBy": {
             "title": "Group By",
-            "description": "Optional attributes to group features by, creating separate files for each group",
+            "description": "Attributes to group features by, writing one file set per distinct group and naming it after the group's value. When unset, every feature goes to a single file set.",
             "type": [
               "array",
               "null"
