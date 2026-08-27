@@ -296,14 +296,13 @@ const StartButton: React.FC<{
 };
 
 const StopButton: React.FC<{
-  isReaderRestricted: boolean;
   jobStatus: string | undefined;
   showPopover: string | undefined;
+  isReaderRestricted: boolean;
   onShowDebugStopPopover: () => void;
   onDebugRunStop: () => Promise<void>;
   onPopoverClose: () => void;
 }> = ({
-  isReaderRestricted,
   jobStatus,
   showPopover,
   onDebugRunStop,
@@ -323,9 +322,7 @@ const StopButton: React.FC<{
           <IconButton
             className="shrink-0"
             disabled={
-              isReaderRestricted ||
-              !jobStatus ||
-              (jobStatus !== "running" && jobStatus !== "queued")
+              !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
             }
             tooltipText={t("Stop debug run of workflow")}
             tooltipOffset={tooltipOffset}
@@ -362,7 +359,6 @@ const DebugRunDropDownMenu: React.FC<{
 
   onShowDebugStartPopover: () => void;
 }> = ({
-  isReaderRestricted,
   debugRunStarted,
   selectedNodeIds,
   edges,
@@ -411,7 +407,7 @@ const DebugRunDropDownMenu: React.FC<{
         alignOffset={-42}>
         <DropdownMenuItem
           className="flex items-center justify-between"
-          disabled={debugRunStarted || isSaving || isReaderRestricted}
+          disabled={debugRunStarted || isSaving}
           onClick={() => {
             setTimeout(() => {
               onShowDebugStartPopover();
@@ -426,7 +422,6 @@ const DebugRunDropDownMenu: React.FC<{
           className="flex items-center justify-between"
           disabled={
             isSaving ||
-            isReaderRestricted ||
             !selectedNode ||
             selectedNode.type === "batch" ||
             selectedNode.type === "note" ||
