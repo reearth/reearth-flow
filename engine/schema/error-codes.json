@@ -147,6 +147,27 @@
     "help": "The solid has no renderable faces; check upstream geometry processing."
   },
   {
+    "code": "grid.angular_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "dividing on a grid measured in degrees",
+    "help": "Cell size is in the units of the data's coordinate system. In a geographic system that means degrees, so a cell size of 1.0 is roughly 111 km. Reproject to a projected coordinate system first if you meant metres."
+  },
+  {
+    "code": "grid.mixed_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose parts are in different coordinate systems",
+    "help": "Grid Divider lays one grid over a whole feature, so every part of it must share a coordinate system. Reproject the parts to a single system before dividing."
+  },
+  {
+    "code": "grid.unsupported_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no area to divide",
+    "help": "Grid Divider divides surfaces: polygons, polygon meshes and triangular meshes. Points, curves, solids and point clouds have no area to cut into cells."
+  },
+  {
     "code": "internal.diagnostics_overflow",
     "category": "internal",
     "defaultDisposition": "warn_drop",
