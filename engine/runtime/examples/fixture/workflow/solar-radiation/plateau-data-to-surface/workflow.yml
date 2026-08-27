@@ -72,9 +72,7 @@ nodes:
     type: action
     action: Area Calculator
     with:
-      areaType: "slopedArea"
       outputAttribute: "calculated_area"
-      multiplier: 1.0
 
   # Step 6: Compute Polygon normal
   - id: 20d0c4fe-dbd2-11f0-81e8-7c70db10a7e3
