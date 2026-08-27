@@ -18,8 +18,8 @@ with:
     - squr
     - wwy
 graphs:
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include surface_checks.yml
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
@@ -119,26 +119,29 @@ graphs:
               value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
             outputPort: features
 
+      # `extractTags` stays empty: one feature per top-level city object, with each
+      # geometry naming the object it belongs to. Hoisting the traffic areas out
+      # would break the per-road grouping the overlap check depends on.
       - id: 242e339a-c7df-4be4-82f7-3223a6ed2145
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["path"]
+
+      # Reprojected before any check: planarity and the absolute winding of a face
+      # are only defined in a linear-unit frame.
       - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        name: HorizontalReprojector
+        name: CoordinateFrameReprojector
         type: action
-        action: Horizontal Reprojector
+        action: Coordinate Frame Reprojector
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          destinationFrame:
+            crs:
+              type: flowExpr
+              value: variables["prcs"]
 
       # Unreferenced XLink detection for L-TRAN-03
       - id: 6f556405-1fdb-4807-8e3b-f18da79fbe1a
@@ -198,21 +201,29 @@ graphs:
             value: 03_交通_xlink参照エラー.csv
 
       - id: 51431704-ac14-41cd-988b-88141dc6e326
-        name: PLATEAU3.LodSplitterWithDM
+        name: LodSplitter
         type: subGraph
-        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+        subGraphId: b1000000-0000-4000-8000-000000000000
 
-      # Surface validator 2D for LOD1 and LOD2
-      - id: e28b5f31-4826-4775-a343-a12ecb7f90f9
-        name: PLATEAU3.SurfaceValidator2D
-        type: subGraph
-        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
-
-      # Surface validator 3D for LOD3
+      # Surface errors and incorrect orientation, for every LOD
       - id: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
-        name: PLATEAU3.SurfaceValidator3D
+        name: SurfaceChecks
         type: subGraph
-        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+        subGraphId: c3000000-0000-4000-8000-000000000000
+
+      # A city object the reprojection could not convert takes part in no check at
+      # all, so it is reported as a surface error rather than dropped.
+      - id: c3100000-0000-4000-8000-000000000001
+        name: AttributeManagerReprojectionRejected
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: issue
+              method: create
+              value:
+                type: string
+                value: GeometryRejected
 
       # Attribute Mapper for surface validation errors
       - id: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
@@ -233,10 +244,12 @@ graphs:
               expr:
                 type: flowExpr
                 value: attributes.get("name", "")
+            # A face belongs to the innermost city object that encloses it, which
+            # is not the feature the reader emitted it on.
             - attribute: FeatureType
               expr:
                 type: flowExpr
-                value: attributes.get("featureType", "")
+                value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
             - attribute: LOD
               expr:
                 type: flowExpr
@@ -244,39 +257,11 @@ graphs:
             - attribute: "gml:id"
               expr:
                 type: flowExpr
-                value: attributes.get("featureId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
             - attribute: issue
               expr:
                 type: flowExpr
-                value: |
-                  vr = attributes.get("validationResult");
-                  if vr != null and "details" in vr {
-                    vr["details"][0][0]
-                  } else if "issue" in attributes {
-                    attributes["issue"]
-                  } else {
-                    "UnknownError"
-                  }
-
-      # Extract surface orientation
-      - id: d60f93c1-c55e-49ee-9332-657f4408ba05
-        name: OrientationExtractor
-        type: action
-        action: Orientation Extractor
-        with:
-          outputAttribute: orientation
-
-      # Filter for incorrect orientation (clockwise/right_hand_rule)
-      - id: 1c385359-698d-40df-aed8-e8b9b0eaac67
-        name: FilterIncorrectOrientation
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["orientation"] == "clockwise"
-              outputPort: incorrectOrientation
+                value: attributes.get("issue", "UnknownError")
 
       # Map attributes for CSV output
       - id: 0740c8ce-3c27-416f-9a13-5b2086090426
@@ -300,7 +285,7 @@ graphs:
             - attribute: FeatureType
               expr:
                 type: flowExpr
-                value: attributes.get("featureType", "")
+                value: attributes.get("__citygml_geometry_feature_type", "")
             - attribute: LOD
               expr:
                 type: flowExpr
@@ -308,7 +293,7 @@ graphs:
             - attribute: "gml:id"
               expr:
                 type: flowExpr
-                value: attributes.get("featureId", "")
+                value: attributes.get("__citygml_geometry_gml_id", "")
 
             # The error count is always 1
             - attribute: "エラー数"
@@ -364,7 +349,7 @@ graphs:
           groupBy:
             - lod
             - fileIndex
-            - gmlId
+            - __citygml_gml_id
             - package
           tolerance: 0.01
 
@@ -402,11 +387,11 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == "1"
+                value: attributes.get("lod") == 1
               outputPort: lod1
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == "2" or attributes["lod"] == "3"
+                value: attributes.get("lod") == 2 or attributes.get("lod") == 3
               outputPort: lod23
 
       # Detect overlaps between different Road instances for LOD1
@@ -462,13 +447,13 @@ graphs:
         with:
           sourceAttribute: overlaidLists
 
-      # DuplicateFilter to remove duplicates based on gmlId
+      # DuplicateFilter to remove duplicates based on the road's gml:id
       - id: f94ccdb2-2133-4b0d-886d-9c933c0d645f
         name: DuplicateFilterLineOverlaps
         type: action
         action: Attribute Duplicate Filter
         with:
-          filterBy: ["gmlId"]
+          filterBy: ["__citygml_gml_id"]
 
       # Replace geometry from attribute
       - id: 2261a5c9-46a4-45ce-a292-d277a3dc0ebc
@@ -512,14 +497,14 @@ graphs:
           countStart: 0
           outputAttribute: areaOverlapIndex
 
-      # Concatenate gmlId from each element in areaOverlapList
+      # Concatenate the road gml:id of each element in areaOverlapList
       - id: 8d7f5e2a-1b3c-4f9e-a7d8-3e9b6c4a2f1d
         name: ListConcatenator
         type: action
         action: List Concatenator
         with:
           list: areaOverlapList
-          elementAttribute: gmlId
+          elementAttribute: __citygml_gml_id
           separator: ","
           outputAttribute: concatenatedGmlIds
 
@@ -561,7 +546,7 @@ graphs:
             - attribute: FeatureType
               expr:
                 type: flowExpr
-                value: attributes.get("featureType", "")
+                value: attributes.get("__citygml_feature_type", "")
             - attribute: LOD
               expr:
                 type: flowExpr
@@ -569,7 +554,7 @@ graphs:
             - attribute: "gml:id"
               expr:
                 type: flowExpr
-                value: attributes.get("gmlId", "")
+                value: attributes.get("__citygml_gml_id", "")
             - attribute: 隣接ID
               expr:
                 type: flowExpr
@@ -585,6 +570,16 @@ graphs:
           output:
             type: string
             value: 03_交通_隣接面重複.csv
+
+      # Geometry that cannot take part in overlap detection — not an area, or not
+      # in the group's coordinate frame. It is not a surface error: the surface
+      # checks see the same geometry on their own branch, so counting it here
+      # would double-report. Collected rather than left unwired so it is not
+      # dropped silently.
+      - id: c3100000-0000-4000-8000-000000000002
+        name: UnusableForOverlapSink
+        type: action
+        action: Noop Sink
 
       # Write surface validation errors to CSV
       - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
@@ -893,66 +888,47 @@ graphs:
         fromPort: features
         toPort: features
 
-      # Connect LOD splitter to surface validators
-      # LOD1 and LOD2 go to SurfaceValidator2D
+      # Reprojection rejects are reported as surface errors
+      - id: c3100000-0000-4000-8000-000000000101
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        to: c3100000-0000-4000-8000-000000000001
+        fromPort: rejected
+        toPort: features
+      - id: c3100000-0000-4000-8000-000000000102
+        from: c3100000-0000-4000-8000-000000000001
+        to: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
+        fromPort: features
+        toPort: features
+
+      # Connect LOD splitter to the surface checks
       - id: e23edb68-8299-4a9f-a722-f82b73c82d88
         from: 51431704-ac14-41cd-988b-88141dc6e326
-        to: e28b5f31-4826-4775-a343-a12ecb7f90f9
+        to: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         fromPort: lod1
         toPort: features
       - id: 53ce90b4-72b4-4473-89ff-da0d0388ba85
         from: 51431704-ac14-41cd-988b-88141dc6e326
-        to: e28b5f31-4826-4775-a343-a12ecb7f90f9
+        to: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         fromPort: lod2
         toPort: features
-
-      # LOD3 goes to SurfaceValidator3D
       - id: e44eff90-4ce0-4dc2-8c66-78e553ef4560
         from: 51431704-ac14-41cd-988b-88141dc6e326
         to: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         fromPort: lod3
         toPort: features
 
-      # Connect SurfaceValidator2D invalidSurface to SurfaceValidationAttributeMapper
-      - id: bf52a96b-2a23-4866-9646-1a8a7e17ade3
-        from: e28b5f31-4826-4775-a343-a12ecb7f90f9
-        to: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
-        fromPort: invalidSurface
-        toPort: features
-
-      # Connect SurfaceValidator3D invalidSurface to SurfaceValidationAttributeMapper
+      # Connect SurfaceChecks invalidSurface to SurfaceValidationAttributeMapper
       - id: 06d601c8-0bf2-4be0-b4ef-c942e2336373
         from: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         to: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
         fromPort: invalidSurface
         toPort: features
 
-      # Connect SurfaceValidator2D incorrectOrientation to AttributeMapper (for LOD1/2)
+      # Connect SurfaceChecks inCorrectOrientation to AttributeMapper
       - id: f57856b7-7b32-4a0d-88a4-2bfadaf2f9a3
-        from: e28b5f31-4826-4775-a343-a12ecb7f90f9
-        to: 0740c8ce-3c27-416f-9a13-5b2086090426
-        fromPort: inCorrectOrientation
-        toPort: features
-
-      # Connect SurfaceValidator3D to OrientationExtractor (for LOD3)
-      - id: cf5b54cd-a548-4694-a7db-35a4d682852c
         from: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
-        to: d60f93c1-c55e-49ee-9332-657f4408ba05
-        fromPort: inCorrectOrientation
-        toPort: features
-
-      # OrientationExtractor to Filter
-      - id: 05a6d315-61a1-4021-acaa-606cb1a7435a
-        from: d60f93c1-c55e-49ee-9332-657f4408ba05
-        to: 1c385359-698d-40df-aed8-e8b9b0eaac67
-        fromPort: features
-        toPort: features
-
-      # Filter to AttributeMapper
-      - id: bbd0c116-cf6c-4f5f-b7c1-3c6011c013d3
-        from: 1c385359-698d-40df-aed8-e8b9b0eaac67
         to: 0740c8ce-3c27-416f-9a13-5b2086090426
-        fromPort: incorrectOrientation
+        fromPort: inCorrectOrientation
         toPort: features
 
       # AttributeMapper to FeatureWriter
@@ -1117,6 +1093,33 @@ graphs:
         from: 2ccf00f0-202b-4bf5-b2a1-0c27a0e82a37
         to: 787f4304-c435-4d76-bd66-1fe3fb4ffc80
         fromPort: features
+        toPort: features
+
+      # Everything the overlap pipeline could not use
+      - id: c3100000-0000-4000-8000-000000000201
+        from: b4d2d577-28a0-43a3-8a23-0ae562be1d04  # TwoDimensionForcer
+        to: c3100000-0000-4000-8000-000000000002    # UnusableForOverlapSink
+        fromPort: rejected
+        toPort: features
+      - id: c3100000-0000-4000-8000-000000000202
+        from: c93837eb-e050-46f3-9c97-66d7273fe1e5  # Dissolver
+        to: c3100000-0000-4000-8000-000000000002
+        fromPort: rejected
+        toPort: features
+      - id: c3100000-0000-4000-8000-000000000203
+        from: b684d916-5efe-4dfa-be20-fed9b101239d  # LineOnLineOverlayerLOD1
+        to: c3100000-0000-4000-8000-000000000002
+        fromPort: rejected
+        toPort: features
+      - id: c3100000-0000-4000-8000-000000000204
+        from: 5dab814a-c4c6-47e0-8688-1c5667c775fb  # LineOnLineOverlayerLOD23
+        to: c3100000-0000-4000-8000-000000000002
+        fromPort: rejected
+        toPort: features
+      - id: c3100000-0000-4000-8000-000000000205
+        from: e85ef1d5-a8fb-49e8-895a-b0a055c7b4c0  # AreaOnAreaOverlayer
+        to: c3100000-0000-4000-8000-000000000002
+        fromPort: rejected
         toPort: features
 
       # OverlapAttributeMapper to OverlapCsvWriter

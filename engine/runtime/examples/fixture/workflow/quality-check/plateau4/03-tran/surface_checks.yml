@@ -1,0 +1,217 @@
+id: c3000000-0000-4000-8000-000000000000
+name: TranSurfaceChecks
+# Validates every face of the incoming geometry. Emits one feature per failed
+# check per face on `invalidSurface` with the check name in `issue`, and every
+# face whose 2D outline is wound against the coordinate frame on
+# `inCorrectOrientation`. Geometry no step could handle also leaves via
+# `invalidSurface`, so nothing is dropped silently.
+nodes:
+  - id: c3000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: c3000000-0000-4000-8000-000000000002
+    name: GeometryCoercerFaces
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: c3000000-0000-4000-8000-000000000003
+    name: GeometrySplitterMembers
+    type: action
+    action: Geometry Splitter
+
+  # A welded CompositeSurface coerces into a collection nested inside its
+  # MultiSurface, so reaching the faces takes a second split. A face that is
+  # already alone passes through unchanged.
+  - id: c3000000-0000-4000-8000-000000000004
+    name: GeometrySplitterFaces
+    type: action
+    action: Geometry Splitter
+
+  # No `duplicateTolerance`: the tolerant path indexes a k-d tree that overflows
+  # on the many axis-aligned vertices of a reprojected road surface.
+  - id: c3000000-0000-4000-8000-000000000005
+    name: GeometryValidatorFace
+    type: action
+    action: Geometry Validator
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
+
+  - id: c3000000-0000-4000-8000-000000000006
+    name: AttributeManagerIssues
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _issues
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {
+                "DuplicatePoints": "DuplicateConsecutivePoints",
+                "InteriorRingContainment": "InteriorRingNotContainedInExteriorRing",
+                "Planarity": "NonPlanarSurface",
+                "Orientation": "IncorrectInteriorOrientation",
+                "UnclosedRing": "RingNotClosed",
+                "Degenerate": "DegenerateSurface",
+                "Finite": "NonFiniteCoordinate",
+              };
+              checks = attributes["validationResult"]["checks"];
+              itertools.map(itertools.sorted(checks.keys()), fn(k) { {"issue": names.get(k, k)} })
+
+  - id: c3000000-0000-4000-8000-000000000007
+    name: ListExploderIssues
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: _issues
+
+  - id: c3000000-0000-4000-8000-000000000008
+    name: InvalidSurfaceRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: invalidSurface
+
+  # The absolute winding of a face's outline is a 2D property, so the face is
+  # flattened before the orientation check reads it.
+  - id: c3000000-0000-4000-8000-000000000009
+    name: TwoDimensionForcer
+    type: action
+    action: Two Dimension Forcer
+
+  # Only its `Orientation` result is read; the 3D pass above owns every other
+  # check, so this one needs no thresholds of its own.
+  - id: c3000000-0000-4000-8000-00000000000a
+    name: GeometryValidatorOutline
+    type: action
+    action: Geometry Validator
+
+  - id: c3000000-0000-4000-8000-00000000000b
+    name: FeatureFilterByOrientation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0
+          outputPort: inCorrectOrientation
+
+  - id: c3000000-0000-4000-8000-00000000000c
+    name: InCorrectOrientationRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: inCorrectOrientation
+
+  - id: c3000000-0000-4000-8000-00000000000d
+    name: AttributeManagerRejected
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: GeometryRejected
+
+edges:
+  - id: c3000000-0000-4000-8000-000000000101
+    from: c3000000-0000-4000-8000-000000000001
+    to: c3000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: c3000000-0000-4000-8000-000000000102
+    from: c3000000-0000-4000-8000-000000000002
+    to: c3000000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: c3000000-0000-4000-8000-000000000103
+    from: c3000000-0000-4000-8000-000000000003
+    to: c3000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+
+  ## Surface errors
+  - id: c3000000-0000-4000-8000-000000000104
+    from: c3000000-0000-4000-8000-000000000004
+    to: c3000000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+  - id: c3000000-0000-4000-8000-000000000105
+    from: c3000000-0000-4000-8000-000000000005
+    to: c3000000-0000-4000-8000-000000000006
+    fromPort: failed
+    toPort: features
+  - id: c3000000-0000-4000-8000-000000000106
+    from: c3000000-0000-4000-8000-000000000006
+    to: c3000000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: c3000000-0000-4000-8000-000000000107
+    from: c3000000-0000-4000-8000-000000000007
+    to: c3000000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+
+  ## Incorrect orientation
+  - id: c3000000-0000-4000-8000-000000000108
+    from: c3000000-0000-4000-8000-000000000004
+    to: c3000000-0000-4000-8000-000000000009
+    fromPort: features
+    toPort: features
+  - id: c3000000-0000-4000-8000-000000000109
+    from: c3000000-0000-4000-8000-000000000009
+    to: c3000000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+  - id: c3000000-0000-4000-8000-00000000010a
+    from: c3000000-0000-4000-8000-00000000000a
+    to: c3000000-0000-4000-8000-00000000000b
+    fromPort: failed
+    toPort: features
+  - id: c3000000-0000-4000-8000-00000000010b
+    from: c3000000-0000-4000-8000-00000000000b
+    to: c3000000-0000-4000-8000-00000000000c
+    fromPort: inCorrectOrientation
+    toPort: features
+
+  ## Geometry no step could handle is reported rather than dropped
+  - id: c3000000-0000-4000-8000-00000000010c
+    from: c3000000-0000-4000-8000-000000000005
+    to: c3000000-0000-4000-8000-00000000000d
+    fromPort: rejected
+    toPort: features
+  - id: c3000000-0000-4000-8000-00000000010d
+    from: c3000000-0000-4000-8000-000000000009
+    to: c3000000-0000-4000-8000-00000000000d
+    fromPort: rejected
+    toPort: features
+  - id: c3000000-0000-4000-8000-00000000010e
+    from: c3000000-0000-4000-8000-00000000000a
+    to: c3000000-0000-4000-8000-00000000000d
+    fromPort: rejected
+    toPort: features
+  - id: c3000000-0000-4000-8000-00000000010f
+    from: c3000000-0000-4000-8000-00000000000d
+    to: c3000000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+
+ports:
+  outputs:
+    - id: invalidSurface
+      nodeId: c3000000-0000-4000-8000-000000000008
+      port: features
+    - id: inCorrectOrientation
+      nodeId: c3000000-0000-4000-8000-00000000000c
+      port: features
