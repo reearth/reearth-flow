@@ -56,6 +56,7 @@ var baseActions = map[string]bool{
 	"Area On Area Overlayer":       true,
 	"Boundary Extractor":           true,
 	"Bounds Extractor":             true,
+	"Bufferer":                     true,
 	"Coordinate Frame Reprojector": true,
 	"CSG Builder":                  true,
 	"CSG Evaluator":                true,
