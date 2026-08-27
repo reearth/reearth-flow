@@ -1,14 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { Diagnostic, NodeExecution } from "@flow/types";
+import type { Diagnostic } from "@flow/types";
 
 import DiagnosticsConsole from ".";
 
-const useGetNodeExecutions = vi.hoisted(() => vi.fn());
+const useGetJobDiagnostics = vi.hoisted(() => vi.fn());
+const useGetJob = vi.hoisted(() => vi.fn());
 
 vi.mock("@flow/lib/gql/job", () => ({
-  useJob: () => ({ useGetNodeExecutions }),
+  useJob: () => ({ useGetJob, useGetJobDiagnostics }),
 }));
 
 const diagnostic = (overrides: Partial<Diagnostic>): Diagnostic => ({
@@ -19,63 +20,96 @@ const diagnostic = (overrides: Partial<Diagnostic>): Diagnostic => ({
   ...overrides,
 });
 
-const nodeExecution = (overrides: Partial<NodeExecution>): NodeExecution => ({
-  id: "exec-1",
-  jobId: "job-1",
-  nodeId: "node-1",
-  status: "completed",
-  ...overrides,
-});
-
 describe("DiagnosticsConsole", () => {
   beforeEach(() => {
-    useGetNodeExecutions.mockReset();
+    useGetJobDiagnostics.mockReset();
+    useGetJob.mockReset();
+    useGetJob.mockReturnValue({ job: undefined });
+    useGetJobDiagnostics.mockReturnValue({
+      diagnostics: [],
+      isFetching: false,
+    });
   });
 
-  const mockNodeExecutions = (nodeExecutions: NodeExecution[]) =>
-    useGetNodeExecutions.mockReturnValue({
-      nodeExecutions,
+  test("shows failedNodes alongside the job-level bucket", () => {
+    // The two come from different sources — failedNodes is persisted on the job
+    // at completion, the bucket is read live — and a console that rendered only
+    // one of them would hide the other entirely.
+    useGetJob.mockReturnValue({
+      job: {
+        failedNodes: [diagnostic({ message: "the node that failed" })],
+      },
+    });
+    useGetJobDiagnostics.mockReturnValue({
+      diagnostics: [diagnostic({ message: "a job-level warning" })],
       isFetching: false,
     });
 
-  test("flattens diagnostics across every node execution", () => {
-    // Diagnostics hang off individual node executions, so a console that only
-    // read the first row would silently hide every later node's failures.
-    mockNodeExecutions([
-      nodeExecution({
-        nodeId: "reader",
-        diagnostics: [diagnostic({ message: "reader could not open source" })],
-      }),
-      nodeExecution({
-        id: "exec-2",
-        nodeId: "writer",
-        diagnostics: [diagnostic({ message: "writer skipped a feature" })],
-      }),
-    ]);
+    render(<DiagnosticsConsole jobId="job-1" />);
+
+    expect(screen.getByText("the node that failed")).toBeInTheDocument();
+    expect(screen.getByText("a job-level warning")).toBeInTheDocument();
+  });
+
+  test("renders a fatal row with no nodeId once, not twice", () => {
+    // The two sources really do overlap: failedNodes selects on disposition
+    // alone and ignores nodeId, so a fatal row carrying no nodeId is returned
+    // by both it and the job-level bucket. Rendering the concatenation without
+    // filtering showed every such row twice — which is what a failed run
+    // actually produces, so this is the common case, not an edge case.
+    const terminal = diagnostic({
+      severity: "fatal",
+      effectiveDisposition: "fatal",
+      nodeId: undefined,
+      message: "ExecutionError(Source(...))",
+    });
+    useGetJob.mockReturnValue({ job: { failedNodes: [terminal] } });
+    useGetJobDiagnostics.mockReturnValue({
+      diagnostics: [terminal],
+      isFetching: false,
+    });
 
     render(<DiagnosticsConsole jobId="job-1" />);
 
-    expect(
-      screen.getByText("reader could not open source"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("writer skipped a feature")).toBeInTheDocument();
+    expect(screen.getAllByText("ExecutionError(Source(...))")).toHaveLength(1);
   });
 
-  test("orders diagnostics worst-first", () => {
-    // The row a user needs is the fatal one. Engine order is arrival order, so
-    // without the sort a fatal row can land below a pile of warnings.
-    mockNodeExecutions([
-      nodeExecution({
-        diagnostics: [
-          diagnostic({ severity: "warn", message: "just a warning" }),
+  test("keeps a non-fatal job-level row that failedNodes does not carry", () => {
+    // The filter drops fatal rows from the bucket, so it must not also swallow
+    // the warn/error rows that only the bucket has.
+    useGetJob.mockReturnValue({ job: { failedNodes: [] } });
+    useGetJobDiagnostics.mockReturnValue({
+      diagnostics: [
+        diagnostic({ severity: "warn", message: "a job-level warning" }),
+      ],
+      isFetching: false,
+    });
+
+    render(<DiagnosticsConsole jobId="job-1" />);
+
+    expect(screen.getByText("a job-level warning")).toBeInTheDocument();
+  });
+
+  test("orders diagnostics worst-first across both sources", () => {
+    // The row a user needs is the fatal one. The two sources are concatenated,
+    // so without the sort a fatal row can land below a pile of warnings.
+    useGetJob.mockReturnValue({
+      job: {
+        failedNodes: [
           diagnostic({
             severity: "fatal",
             effectiveDisposition: "fatal",
             message: "the actual failure",
           }),
         ],
-      }),
-    ]);
+      },
+    });
+    useGetJobDiagnostics.mockReturnValue({
+      diagnostics: [
+        diagnostic({ severity: "warn", message: "just a warning" }),
+      ],
+      isFetching: false,
+    });
 
     render(<DiagnosticsConsole jobId="job-1" />);
 
@@ -87,27 +121,43 @@ describe("DiagnosticsConsole", () => {
   });
 
   test("polls only while the job is active", () => {
-    // Neither the jobStatus nor the nodeStatus subscription carries diagnostics,
-    // so polling is the only way to see them accumulate during a run — and the
-    // only reason to poll a run that has already finished is to waste requests.
-    mockNodeExecutions([]);
-
+    // Diagnostics never arrive over the jobStatus subscription, so polling is
+    // the only way to watch them accumulate during a run — and polling a run
+    // that has already finished only wastes requests.
     const { unmount } = render(
       <DiagnosticsConsole jobId="job-1" isJobActive />,
     );
-    expect(useGetNodeExecutions).toHaveBeenLastCalledWith("job-1", true);
+    expect(useGetJobDiagnostics).toHaveBeenLastCalledWith(
+      "job-1",
+      true,
+      undefined,
+    );
     unmount();
 
     render(<DiagnosticsConsole jobId="job-1" isJobActive={false} />);
-    expect(useGetNodeExecutions).toHaveBeenLastCalledWith("job-1", false);
+    expect(useGetJobDiagnostics).toHaveBeenLastCalledWith(
+      "job-1",
+      false,
+      undefined,
+    );
+  });
+
+  test("asks for a node's own bucket when given a nodeId", () => {
+    // nodeDiagnostics filters on an exact nodeId match, so the id has to reach
+    // the query verbatim — the default empty bucket is not a superset of it.
+    render(<DiagnosticsConsole jobId="job-1" nodeId="node-7" />);
+
+    expect(useGetJobDiagnostics).toHaveBeenLastCalledWith(
+      "job-1",
+      undefined,
+      "node-7",
+    );
   });
 
   test("reports an empty result as empty rather than as a failure", () => {
     // Live rows come from a TTL-bound cache that is only merged with the
     // persisted rows at completion, so there is a window right after a run
     // starts where the correct answer is genuinely "nothing yet".
-    mockNodeExecutions([]);
-
     render(<DiagnosticsConsole jobId="job-1" isJobActive />);
 
     expect(
@@ -120,17 +170,16 @@ describe("DiagnosticsConsole", () => {
   test("surfaces an aggregated row's own count, not a parsed message", () => {
     // aggregatedCount is the structural source for "N features dropped"; the
     // message text is prose and must never be parsed for the number.
-    mockNodeExecutions([
-      nodeExecution({
-        diagnostics: [
-          diagnostic({
-            message: "features dropped",
-            aggregatedCount: 1204,
-            sampleFeatureIds: ["f1", "f2"],
-          }),
-        ],
-      }),
-    ]);
+    useGetJobDiagnostics.mockReturnValue({
+      diagnostics: [
+        diagnostic({
+          message: "features dropped",
+          aggregatedCount: 1204,
+          sampleFeatureIds: ["f1", "f2"],
+        }),
+      ],
+      isFetching: false,
+    });
 
     render(<DiagnosticsConsole jobId="job-1" />);
 

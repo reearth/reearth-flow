@@ -3,9 +3,8 @@ import { describe, expect, test } from "vitest";
 import type {
   DiagnosticFragment,
   JobFragment,
-  NodeExecutionFragment,
 } from "./__gen__/plugins/graphql-request";
-import { toDiagnostic, toJob, toNodeExecution } from "./convert";
+import { toDiagnostic, toJob } from "./convert";
 
 const diagnosticFragment = (
   overrides: Partial<DiagnosticFragment> = {},
@@ -21,23 +20,6 @@ const diagnosticFragment = (
   help: null,
   aggregatedCount: null,
   sampleFeatureIds: null,
-  ...overrides,
-});
-
-const nodeExecutionFragment = (
-  overrides: Partial<NodeExecutionFragment> = {},
-): NodeExecutionFragment => ({
-  id: "exec-1",
-  jobId: "job-1",
-  nodeId: "node-1",
-  status: "COMPLETED",
-  createdAt: "2024-01-25T09:15:00Z",
-  startedAt: "2024-01-25T09:15:02Z",
-  completedAt: "2024-01-25T09:16:00Z",
-  featuresProcessed: null,
-  featuresWritten: null,
-  finishFeatureCount: null,
-  diagnostics: null,
   ...overrides,
 });
 
@@ -86,47 +68,6 @@ describe("toDiagnostic", () => {
     expect(
       toDiagnostic(diagnosticFragment({ aggregatedCount: 0 })).aggregatedCount,
     ).toBe(0);
-  });
-});
-
-describe("toNodeExecution", () => {
-  test("keeps a feature count of zero distinct from 'not applicable'", () => {
-    const converted = toNodeExecution(
-      nodeExecutionFragment({ featuresProcessed: 0 }),
-    );
-
-    expect(converted.featuresProcessed).toBe(0);
-    expect(converted.featuresWritten).toBeUndefined();
-    expect(converted.finishFeatureCount).toBeUndefined();
-  });
-
-  test("maps the status enum to its client form", () => {
-    expect(
-      toNodeExecution(nodeExecutionFragment({ status: "PROCESSING" })).status,
-    ).toBe("processing");
-    expect(
-      toNodeExecution(nodeExecutionFragment({ status: "STARTING" })).status,
-    ).toBe("starting");
-    expect(
-      toNodeExecution(nodeExecutionFragment({ status: "FAILED" })).status,
-    ).toBe("failed");
-  });
-
-  test("converts nested diagnostics", () => {
-    const converted = toNodeExecution(
-      nodeExecutionFragment({
-        diagnostics: [diagnosticFragment({ code: "expression_eval_failed" })],
-      }),
-    );
-
-    expect(converted.diagnostics).toHaveLength(1);
-    expect(converted.diagnostics?.[0].code).toBe("expression_eval_failed");
-  });
-
-  test("leaves diagnostics undefined when the field is null", () => {
-    expect(
-      toNodeExecution(nodeExecutionFragment()).diagnostics,
-    ).toBeUndefined();
   });
 });
 

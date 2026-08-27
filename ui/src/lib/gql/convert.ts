@@ -22,8 +22,6 @@ import {
   type ParameterType,
   type ProjectSnapshotFragment,
   type DiagnosticFragment,
-  type NodeExecutionFragment,
-  type NodeStatus as GraphqlNodeStatus,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
@@ -51,8 +49,6 @@ import type {
   UserFacingLog,
   WorkerConfig,
   Diagnostic,
-  NodeExecution,
-  NodeExecutionStatus,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
@@ -134,24 +130,6 @@ export const toDiagnostic = (diagnostic: DiagnosticFragment): Diagnostic => ({
   help: diagnostic.help ?? undefined,
   aggregatedCount: diagnostic.aggregatedCount ?? undefined,
   sampleFeatureIds: diagnostic.sampleFeatureIds ?? undefined,
-});
-
-export const toNodeExecution = (
-  nodeExecution: NodeExecutionFragment,
-): NodeExecution => ({
-  id: nodeExecution.id,
-  jobId: nodeExecution.jobId,
-  nodeId: nodeExecution.nodeId,
-  status: toNodeExecutionStatus(nodeExecution.status),
-  createdAt: nodeExecution.createdAt ?? undefined,
-  startedAt: nodeExecution.startedAt ?? undefined,
-  completedAt: nodeExecution.completedAt ?? undefined,
-  // `undefined` here means "not applicable or not finished", never zero, so
-  // these have to stay nullish rather than defaulting to 0.
-  featuresProcessed: nodeExecution.featuresProcessed ?? undefined,
-  featuresWritten: nodeExecution.featuresWritten ?? undefined,
-  finishFeatureCount: nodeExecution.finishFeatureCount ?? undefined,
-  diagnostics: nodeExecution.diagnostics?.map(toDiagnostic),
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -309,26 +287,6 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
-  }
-};
-
-// PENDING is retained for API compatibility and never emitted by the runtime;
-// it is mapped anyway so an unexpected value can't fall through as `undefined`.
-export const toNodeExecutionStatus = (
-  status: GraphqlNodeStatus,
-): NodeExecutionStatus => {
-  switch (status) {
-    case "STARTING":
-      return "starting";
-    case "PROCESSING":
-      return "processing";
-    case "COMPLETED":
-      return "completed";
-    case "FAILED":
-      return "failed";
-    case "PENDING":
-    default:
-      return "pending";
   }
 };
 

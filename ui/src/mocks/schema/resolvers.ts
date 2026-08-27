@@ -22,7 +22,7 @@ import {
   mockCmsItems,
 } from "../data/cmsIntegration";
 import { mockDeployments } from "../data/deployments";
-import { mockJobs, mockLogs } from "../data/jobs";
+import { mockJobDiagnostics, mockJobs, mockLogs } from "../data/jobs";
 import { mockProjects } from "../data/projects";
 import {
   mockUsers,
@@ -42,6 +42,7 @@ let projects = [...mockProjects];
 const jobs = [...mockJobs];
 let deployments = [...mockDeployments];
 const logs = [...mockLogs];
+const jobDiagnostics = { ...mockJobDiagnostics };
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
 const cmsItems = [...mockCmsItems];
@@ -270,6 +271,12 @@ export const resolvers = {
     droppedEventCount: (job: JobFragment) => job.droppedEventCount,
     // Persisted at job completion, so it stays null while a job is running.
     failedNodes: (job: JobFragment) => job.failedNodes,
+    // Exact nodeId match, as the server does it: an empty id is the job-level
+    // bucket (rows with no nodeId), not "every node".
+    nodeDiagnostics: (job: JobFragment, args: { nodeId: string }) =>
+      (jobDiagnostics[job.id] ?? []).filter(
+        (diagnostic) => (diagnostic.nodeId ?? "") === args.nodeId,
+      ),
     deployment: (job: JobFragment) =>
       deployments.find((d) => d.id === job.deployment?.id),
     workspace: (job: JobFragment) =>

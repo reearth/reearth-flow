@@ -1,91 +1,79 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import {
-  DiagnosticsTable,
-  NodeExecutionsTable,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@flow/components";
+import { DiagnosticsTable } from "@flow/components";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
-import { type Diagnostic, compareDiagnosticSeverity } from "@flow/types";
+import { compareDiagnosticSeverity, isFatalDiagnostic } from "@flow/types";
 
 type Props = {
   jobId: string;
   /**
-   * Whether the job is still running. Diagnostics and feature counts are absent
-   * from the status subscription payloads, so they can only be kept current by
+   * Whether the job is still running. Diagnostics are absent from the
+   * jobStatus subscription payload, so they can only be kept current by
    * polling while the run is live.
    */
   isJobActive?: boolean;
+  /**
+   * Read the diagnostics attributed to one node instead of the job-level
+   * bucket. Omit for the job-level view.
+   */
+  nodeId?: string;
 };
 
 /**
- * Structured engine diagnostics for one job, read from its node executions.
+ * Structured engine diagnostics for one job.
  *
- * Deliberately sourced from `nodeExecutions[].diagnostics` rather than
- * `job.failedNodes`: the former is served live (from a TTL-bound cache while
- * the job runs, merged with the persisted rows once it finishes), whereas
- * `failedNodes` is persisted at completion and so is empty for the whole of a
- * run. A console that has to be useful mid-run cannot be built on it.
+ * Shows what the API can express: `Job.failedNodes` — every fatal row for the
+ * job — together with one bucket of `nodeDiagnostics`.
+ *
+ * The two sources genuinely overlap, so the bucket is filtered before being
+ * merged. `failedNodes` selects on disposition alone and ignores nodeId, so a
+ * fatal row that carries no nodeId appears in both it and the job-level bucket.
+ * Dropping fatal rows from the bucket is exact rather than a dedupe heuristic:
+ * `failedNodes` already holds every fatal row, so nothing is lost.
+ *
+ * The schema has no job-wide diagnostics query: `nodeDiagnostics` filters by an
+ * exact nodeId match, so diagnostics attributed to a specific node are only
+ * reachable by naming that node. A run that only produced per-node warnings
+ * therefore shows nothing here until a `nodeId` is passed.
  */
-const DiagnosticsConsole: React.FC<Props> = ({ jobId, isJobActive }) => {
+const DiagnosticsConsole: React.FC<Props> = ({
+  jobId,
+  isJobActive,
+  nodeId,
+}) => {
   const t = useT();
-  const [tabValue, setTabValue] = useState("diagnostics");
 
-  const { useGetNodeExecutions } = useJob();
+  const { useGetJob, useGetJobDiagnostics } = useJob();
 
-  const { nodeExecutions, isFetching } = useGetNodeExecutions(
+  const { job } = useGetJob(jobId);
+  const { diagnostics, isFetching } = useGetJobDiagnostics(
     jobId,
     isJobActive,
+    nodeId,
   );
 
-  const diagnostics: Diagnostic[] = useMemo(
+  const sorted = useMemo(
     () =>
-      (nodeExecutions ?? [])
-        .flatMap((nodeExecution) => nodeExecution.diagnostics ?? [])
-        .sort(compareDiagnosticSeverity),
-    [nodeExecutions],
+      [
+        ...(job?.failedNodes ?? []),
+        ...(diagnostics ?? []).filter(
+          (diagnostic) => !isFatalDiagnostic(diagnostic),
+        ),
+      ].sort(compareDiagnosticSeverity),
+    [job?.failedNodes, diagnostics],
   );
 
   return (
-    <Tabs
-      className="flex h-full min-h-0 flex-col gap-2"
-      value={tabValue}
-      defaultValue="diagnostics"
-      onValueChange={setTabValue}>
-      <TabsList className="gap-2 self-start">
-        <TabsTrigger value="diagnostics">
-          {t("Diagnostics")}
-          {diagnostics.length ? ` (${diagnostics.length})` : ""}
-        </TabsTrigger>
-        <TabsTrigger value="actions">{t("Actions")}</TabsTrigger>
-      </TabsList>
-      <TabsContent
-        value="diagnostics"
-        className="flex min-h-0 flex-1 flex-col overflow-auto">
-        <DiagnosticsTable
-          diagnostics={diagnostics}
-          isFetching={isFetching && !diagnostics.length}
-          noResultsMessage={t(
-            "No diagnostics reported for this run yet. Diagnostics appear while a run is in progress and are persisted once it finishes.",
-          )}
-        />
-      </TabsContent>
-      <TabsContent
-        value="actions"
-        className="flex min-h-0 flex-1 flex-col overflow-auto">
-        <NodeExecutionsTable
-          nodeExecutions={nodeExecutions ?? []}
-          isFetching={isFetching && !nodeExecutions?.length}
-          noResultsMessage={t(
-            "No action executions reported for this run yet.",
-          )}
-        />
-      </TabsContent>
-    </Tabs>
+    <div className="flex h-full min-h-0 flex-col overflow-auto">
+      <DiagnosticsTable
+        diagnostics={sorted}
+        isFetching={isFetching && !sorted.length}
+        noResultsMessage={t(
+          "No diagnostics reported for this run yet. Diagnostics appear while a run is in progress and are persisted once it finishes.",
+        )}
+      />
+    </div>
   );
 };
 

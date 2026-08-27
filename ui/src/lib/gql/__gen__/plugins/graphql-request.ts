@@ -551,7 +551,9 @@ export type VariableFragment = { key: string, type: ParameterType, value: any };
 
 export type TriggerFragment = { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null }, variables: Array<{ key: string, type: ParameterType, value: any }> };
 
-export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null };
+export type DiagnosticFragment = { code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null };
+
+export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null };
 
 export type AssetFragment = { id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus: ArchiveExtractionStatus | null };
 
@@ -589,6 +591,14 @@ export type GetJobQueryVariables = Exact<{
 
 export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null };
 
+export type GetJobDiagnosticsQueryVariables = Exact<{
+  jobId: string;
+  nodeId: string;
+}>;
+
+
+export type GetJobDiagnosticsQuery = { job: { id: string, nodeDiagnostics: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null } | null };
+
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
@@ -621,7 +631,6 @@ export type GetProjectByIdQuery = { node:
     | { __typename: 'Asset' }
     | { __typename: 'Deployment' }
     | { __typename: 'Job' }
-    | { __typename: 'NodeExecution' }
     | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null }
     | { __typename: 'ProjectDocument' }
     | { __typename: 'Trigger' }
@@ -851,7 +860,6 @@ export type GetWorkspaceByIdQuery = { node:
     | { __typename: 'Asset' }
     | { __typename: 'Deployment' }
     | { __typename: 'Job' }
-    | { __typename: 'NodeExecution' }
     | { __typename: 'Project' }
     | { __typename: 'ProjectDocument' }
     | { __typename: 'Trigger' }
@@ -984,6 +992,21 @@ export const TriggerFragmentDoc = gql`
 }
     ${DeploymentFragmentDoc}
 ${VariableFragmentDoc}`;
+export const DiagnosticFragmentDoc = gql`
+    fragment Diagnostic on Diagnostic {
+  code
+  category
+  severity
+  effectiveDisposition
+  nodeId
+  actionType
+  featureId
+  message
+  help
+  aggregatedCount
+  sampleFeatureIds
+}
+    `;
 export const JobFragmentDoc = gql`
     fragment Job on Job {
   id
@@ -1405,6 +1428,16 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const GetJobDiagnosticsDocument = gql`
+    query GetJobDiagnostics($jobId: ID!, $nodeId: String!) {
+  job(id: $jobId) {
+    id
+    nodeDiagnostics(nodeId: $nodeId) {
+      ...Diagnostic
+    }
+  }
+}
+    ${DiagnosticFragmentDoc}`;
 export const CancelJobDocument = gql`
     mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
@@ -1841,6 +1874,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>({ document: GetJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJob', 'query', variables);
+    },
+    GetJobDiagnostics(variables: GetJobDiagnosticsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobDiagnosticsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetJobDiagnosticsQuery>({ document: GetJobDiagnosticsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJobDiagnostics', 'query', variables);
     },
     CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CancelJobMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>({ document: CancelJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CancelJob', 'mutation', variables);

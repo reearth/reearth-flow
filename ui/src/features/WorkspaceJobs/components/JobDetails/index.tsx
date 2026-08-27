@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Button,
   DiagnosticsTable,
-  NodeExecutionsTable,
   Tabs,
   TabsContent,
   TabsList,
@@ -33,8 +32,7 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
     details,
     jobStatus,
     diagnostics,
-    nodeExecutions,
-    isFetchingNodeExecutions,
+    isFetchingDiagnostics,
     handleBack,
     handleCancelJob,
   } = useHooks({
@@ -72,7 +70,6 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
               {t("Diagnostics")}
               {diagnostics.length ? ` (${diagnostics.length})` : ""}
             </TabsTrigger>
-            <TabsTrigger value="actions">{t("Actions")}</TabsTrigger>
           </TabsList>
           <TabsContent
             value="log"
@@ -92,20 +89,9 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
             ) : null}
             <DiagnosticsTable
               diagnostics={diagnostics}
-              isFetching={isFetchingNodeExecutions && !diagnostics.length}
+              isFetching={isFetchingDiagnostics && !diagnostics.length}
               noResultsMessage={t(
                 "No diagnostics reported for this job yet. Diagnostics appear while a job runs and are persisted once it finishes.",
-              )}
-            />
-          </TabsContent>
-          <TabsContent
-            value="actions"
-            className="flex min-h-0 flex-1 flex-col overflow-auto">
-            <NodeExecutionsTable
-              nodeExecutions={nodeExecutions ?? []}
-              isFetching={isFetchingNodeExecutions && !nodeExecutions?.length}
-              noResultsMessage={t(
-                "No action executions reported for this job yet.",
               )}
             />
           </TabsContent>

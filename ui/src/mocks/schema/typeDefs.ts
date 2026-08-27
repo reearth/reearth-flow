@@ -226,6 +226,7 @@ export const typeDefs = `
     logs(since: DateTime!): [Log]
     failedNodes: [Diagnostic!]
     droppedEventCount: Int
+    nodeDiagnostics(nodeId: String!): [Diagnostic!]
   }
 
   enum JobStatus {

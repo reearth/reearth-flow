@@ -9,7 +9,7 @@ export const useJob = () => {
   const {
     useGetJobsQuery,
     useGetJobQuery,
-    useGetNodeExecutionsQuery,
+    useGetJobDiagnosticsQuery,
     cancelJobMutation,
   } = useQueries();
   const { toast } = useToast();
@@ -39,14 +39,21 @@ export const useJob = () => {
   };
 
   /**
-   * `poll` should track whether the job is still running: node executions carry
-   * diagnostics and feature counts that never arrive over a subscription, so a
-   * live job has to be re-read on an interval to keep them current.
+   * `poll` should track whether the job is still running: diagnostics never
+   * arrive over a subscription, so a live job has to be re-read on an interval
+   * to keep them current.
+   *
+   * `nodeId` defaults to the job-level bucket; pass a node's id to read the
+   * diagnostics attributed to that node instead.
    */
-  const useGetNodeExecutions = (jobId?: string, poll?: boolean) => {
-    const { data, ...rest } = useGetNodeExecutionsQuery(jobId, poll);
+  const useGetJobDiagnostics = (
+    jobId?: string,
+    poll?: boolean,
+    nodeId?: string,
+  ) => {
+    const { data, ...rest } = useGetJobDiagnosticsQuery(jobId, poll, nodeId);
     return {
-      nodeExecutions: data,
+      diagnostics: data,
       ...rest,
     };
   };
@@ -75,7 +82,7 @@ export const useJob = () => {
   return {
     useGetJob,
     useGetJobs,
-    useGetNodeExecutions,
+    useGetJobDiagnostics,
     useJobCancel,
   };
 };

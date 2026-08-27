@@ -5,14 +5,18 @@ import { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
-import { type Diagnostic, compareDiagnosticSeverity } from "@flow/types";
+import {
+  type Diagnostic,
+  compareDiagnosticSeverity,
+  isFatalDiagnostic,
+} from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 
 export default ({ jobId }: { jobId: string }) => {
   const t = useT();
   const { navigate } = useRouter();
 
-  const { useGetJob, useGetNodeExecutions, useJobCancel } = useJob();
+  const { useGetJob, useGetJobDiagnostics, useJobCancel } = useJob();
 
   const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 
@@ -22,27 +26,34 @@ export default ({ jobId }: { jobId: string }) => {
   const isJobActive = currentStatus === "running" || currentStatus === "queued";
 
   const {
-    nodeExecutions,
-    isFetching: isFetchingNodeExecutions,
-    refetch: refetchNodeExecutions,
-  } = useGetNodeExecutions(jobId, isJobActive);
+    diagnostics: jobLevelDiagnostics,
+    isFetching: isFetchingDiagnostics,
+    refetch: refetchDiagnostics,
+  } = useGetJobDiagnostics(jobId, isJobActive);
 
-  // The status subscriptions carry the status enum and nothing else, so a
+  // The status subscription carries the status enum and nothing else, so a
   // status change is only a cue to go re-read the rows that actually hold the
-  // diagnostics and feature counts. `failedNodes` in particular is persisted at
-  // completion, so the job itself has to be re-read too.
+  // diagnostics. `failedNodes` in particular is persisted at completion, so the
+  // job itself has to be re-read too.
   useEffect(() => {
     if (!jobStatus) return;
     refetch();
-    refetchNodeExecutions();
-  }, [jobStatus, refetch, refetchNodeExecutions]);
+    refetchDiagnostics();
+  }, [jobStatus, refetch, refetchDiagnostics]);
 
+  // The job-level bucket, minus the fatal rows that `failedNodes` already
+  // renders in its own callout: `failedNodes` selects on disposition alone and
+  // ignores nodeId, so a fatal row with no nodeId is in both. Filtering here is
+  // exact, not a dedupe heuristic — failedNodes holds every fatal row.
+  //
+  // The schema exposes no job-wide query, so per-node non-fatal rows remain
+  // unreachable from this page.
   const diagnostics: Diagnostic[] = useMemo(
     () =>
-      (nodeExecutions ?? [])
-        .flatMap((nodeExecution) => nodeExecution.diagnostics ?? [])
+      (jobLevelDiagnostics ?? [])
+        .filter((diagnostic) => !isFatalDiagnostic(diagnostic))
         .sort(compareDiagnosticSeverity),
-    [nodeExecutions],
+    [jobLevelDiagnostics],
   );
 
   // Poll for outputURLs after job completes (they are generated asynchronously),
@@ -146,8 +157,7 @@ export default ({ jobId }: { jobId: string }) => {
     details,
     jobStatus,
     diagnostics,
-    nodeExecutions,
-    isFetchingNodeExecutions,
+    isFetchingDiagnostics,
     handleCancelJob,
     handleBack,
   };

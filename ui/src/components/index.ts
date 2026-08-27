@@ -20,7 +20,6 @@ export * from "./Label";
 export * from "./Loading";
 export * from "./LogsTable";
 export * from "./NavigationMenu";
-export * from "./NodeExecutionsTable";
 export * from "./Resizable";
 export * from "./ScrollArea";
 export * from "./Select";

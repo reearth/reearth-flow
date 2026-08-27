@@ -50,19 +50,6 @@ export default () => {
     [t],
   );
 
-  const statusLabels: Record<string, string> = useMemo(
-    () => ({
-      // `pending` is retained by the API but never emitted by the runtime; it
-      // is labelled only so an unexpected value still reads sensibly.
-      pending: t("Pending"),
-      starting: t("Starting"),
-      processing: t("Processing"),
-      completed: t("Completed"),
-      failed: t("Failed"),
-    }),
-    [t],
-  );
-
   const severityLabel = useCallback(
     (severity: string) => severityLabels[severity] ?? severity,
     [severityLabels],
@@ -79,10 +66,5 @@ export default () => {
     [categoryLabels],
   );
 
-  const statusLabel = useCallback(
-    (status: string) => statusLabels[status] ?? status,
-    [statusLabels],
-  );
-
-  return { severityLabel, dispositionLabel, categoryLabel, statusLabel };
+  return { severityLabel, dispositionLabel, categoryLabel };
 };
