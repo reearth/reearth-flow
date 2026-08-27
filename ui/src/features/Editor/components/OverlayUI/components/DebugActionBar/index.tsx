@@ -220,7 +220,6 @@ const StartButton: React.FC<{
                 }`}
                 disabled={
                   isSaving ||
-                  isReaderRestricted ||
                   debugRunStarted ||
                   jobStatus === "running" ||
                   jobStatus === "queued"
