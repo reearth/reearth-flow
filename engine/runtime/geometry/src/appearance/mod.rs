@@ -309,7 +309,15 @@ impl Appearance {
     /// Remove palette entries unreferenced by any binding and reindex the
     /// survivors. Kept materials retain their relative order, so the compacted
     /// palette is a stable subsequence of the original.
-    fn compact_materials(&mut self) {
+    ///
+    /// `pub(crate)` (rather than private, like the rest of this `impl` block)
+    /// because a caller that builds an `Appearance` through [`from_parts`]
+    /// directly -- rather than the validated setters, which call this
+    /// themselves -- and then drops a binding of its own (e.g. a geometric op
+    /// that can no longer supply UV for a channel a material references, and
+    /// removes that binding to avoid an orphan reference) needs the same
+    /// cleanup those setters get for free.
+    pub(crate) fn compact_materials(&mut self) {
         // A palette this large (only via `appearance_mut`) can't be reindexed
         // without truncating `kept.len() as u32`; leave the valid indices as-is.
         if self.materials.len() > u32::MAX as usize {

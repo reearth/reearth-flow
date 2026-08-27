@@ -813,12 +813,15 @@ mod grid_impl {
     //! (`ops/hole.rs`) treats algorithmically split rings elsewhere in this
     //! crate.
     //!
-    //! Appearance is rebuilt per piece rather than cloned, because a piece's
-    //! corner count generally differs from its source's. `Corner` (from
+    //! Appearance is rebuilt per piece rather than blindly cloned, because a
+    //! piece's corner count generally differs from its source's -- except
+    //! when it doesn't: a piece the clip never actually touched (see
+    //! [`corner_layout_unchanged`]) keeps its source's appearance verbatim,
+    //! every theme and UV set included. Otherwise, `Corner` (from
     //! `ops::grid`) carries exactly one UV channel through the clip, so only
     //! the default theme's front, default-channel `Explicit` UV can be
-    //! threaded this way; see [`rebuild_appearance`] for what happens to any
-    //! other UV set the source appearance carries.
+    //! threaded that way; see [`rebuild_appearance`] for what happens to
+    //! every other UV set the source appearance might carry, and why.
 
     use super::{Polygon2D, Polygon3D};
     use crate::appearance::{Appearance, ChannelId, Side, ThemeBinding, UvSet, UvSource};
@@ -842,68 +845,149 @@ mod grid_impl {
         }
     }
 
-    /// Rebuild an appearance for one clipped piece, whose corner count
-    /// generally differs from its source's.
+    /// Whether a clipped piece's rings are bit-for-bit identical to the
+    /// source's -- same ring count, each ring the same length, each corner
+    /// the same position, all in the same order.
     ///
-    /// The default theme's front, default-channel `Explicit` UV -- the one
-    /// [`explicit_uv`] threaded through the clip as each [`Corner`]'s `uv` --
-    /// is replaced by `gathered_uv`, already parallel to the piece's own
-    /// corner buffer (or dropped, if the clip did not yield a UV for every
-    /// corner). Every *other* `Explicit` UV set the source might carry -- a
-    /// distinct theme, a back side, a non-default channel -- cannot be
-    /// re-derived this way, since `Corner` only carries one UV channel
-    /// through the clip; rather than leave it at its stale, now-mismatched
-    /// length (an invariant violation that could panic a later consumer,
-    /// e.g. `Triangulate`'s UV re-gather), it is dropped. `WorldToTexture`
-    /// needs no adjustment -- it is positional, not per-corner -- and carries
-    /// over as-is regardless of theme.
+    /// True exactly when the clip touched nothing: `clip_rings_halfplane`'s
+    /// untouched path (`all_in`) pushes a ring through *by value*, so an
+    /// untouched ring's positions are bit-identical to its source, not
+    /// merely equal in area or shape.
+    ///
+    /// `CellCoverage` is not a substitute for this check, in either
+    /// direction: a small face lying strictly inside one cell is untouched
+    /// yet reports `Partial` (its area is less than the cell's), while a
+    /// face cut exactly along a cell boundary can report `Full` yet still be
+    /// a rewritten ring (new corners introduced right at the boundary).
+    fn corner_layout_unchanged<const N: usize>(
+        piece_rings: &[Vec<Corner<N>>],
+        source_rings: &[Vec<Corner<N>>],
+    ) -> bool {
+        piece_rings.len() == source_rings.len()
+            && piece_rings.iter().zip(source_rings).all(|(piece, source)| {
+                piece.len() == source.len() && piece.iter().zip(source).all(|(a, b)| a.pos == b.pos)
+            })
+    }
+
+    /// Rebuild an appearance for one clipped piece.
+    ///
+    /// **`layout_unchanged`** (see [`corner_layout_unchanged`]): the clip
+    /// touched nothing, so the piece's corner buffer is identical to the
+    /// source's and the *whole* appearance -- every theme, every UV set,
+    /// default or not, `Explicit` or `WorldToTexture` -- is still exactly
+    /// valid. Cloned verbatim, no rebuilding needed.
+    ///
+    /// **Otherwise**, only one UV channel survives the clip in general: the
+    /// default theme's front, default-channel `Explicit` UV, which
+    /// [`explicit_uv`] threaded through as each [`Corner`]'s `uv` and which
+    /// `gathered_uv` now carries back out, already parallel to the piece's
+    /// own corner buffer. Every *other* `Explicit` UV set the source might
+    /// carry -- a distinct theme, a back side, a non-default channel -- has
+    /// no per-corner data to recover it from (`Corner` carries exactly one
+    /// UV channel through a single clip pass), so it is dropped rather than
+    /// left at its stale, pre-clip length -- which would violate the
+    /// corner-count invariant `Appearance` depends on, and could panic a
+    /// later consumer (e.g. `Triangulate`'s UV re-gather indexes a UV array
+    /// by corner position, unchecked). `WorldToTexture` needs no threading
+    /// anywhere -- it is positional, not per-corner -- and always carries
+    /// over untouched, on any theme or side.
+    ///
+    /// Dropping a UV set also drops whatever binding depended on it, so the
+    /// result never leaves a material referencing a channel with nothing to
+    /// sample -- the orphan reference `validate_uv_coupling` forbids at
+    /// construction: a back-side set takes just that theme's back binding
+    /// down with it (the theme becomes front-only, the same shape
+    /// `Appearance`'s own `make_front_only` leaves); a non-default theme's
+    /// front-side set takes the *whole* theme down, since `front` is not
+    /// optional and a theme cannot exist back-only. The default theme's own
+    /// front binding is never removed this way: if its own default-slot UV
+    /// cannot be recovered either (`gathered_uv` is `None`), there is
+    /// nothing left to paint *any* side of this piece with, so the whole
+    /// appearance is dropped rather than emitted half-wired.
+    ///
+    /// Either way, the result is something the crate's own validated
+    /// setters would have accepted -- this op never hands a piece an
+    /// appearance they would have refused to build. What is silently lost
+    /// stays silent: this runs once per emitted piece over a division that
+    /// can emit many, so logging a drop here would put a per-piece side
+    /// effect on a hot path for what should be a rare shape of input.
     fn rebuild_appearance(
         src: &Option<Appearance>,
         gathered_uv: Option<&[[f64; 2]]>,
+        layout_unchanged: bool,
     ) -> Option<Appearance> {
         let app = src.as_ref()?;
+        if layout_unchanged {
+            return Some(app.clone());
+        }
+
         let default_theme = app.default_theme().clone();
         let (materials, themes, _) = app.clone().into_parts();
 
-        let themes = themes
-            .into_iter()
-            .map(|theme| {
-                let ThemeBinding {
-                    theme: theme_id,
-                    front,
-                    back,
-                    uv_sets,
-                } = theme;
-                let is_default_theme = theme_id == default_theme;
-                let uv_sets = uv_sets
-                    .into_iter()
-                    .filter_map(|uv_set| {
-                        let is_default_slot = is_default_theme
-                            && uv_set.side == Side::Front
-                            && uv_set.channel == ChannelId::default();
-                        match &uv_set.uv {
-                            UvSource::WorldToTexture(_) => Some(uv_set),
-                            UvSource::Explicit(_) if is_default_slot => {
-                                let coords: Box<[[f64; 2]]> = gathered_uv?.into();
-                                Some(UvSet {
-                                    uv: UvSource::Explicit(coords),
-                                    ..uv_set
-                                })
-                            }
-                            UvSource::Explicit(_) => None,
-                        }
-                    })
-                    .collect();
-                ThemeBinding {
-                    theme: theme_id,
-                    front,
-                    back,
-                    uv_sets,
-                }
-            })
-            .collect();
+        let mut new_themes = Vec::with_capacity(themes.len());
+        for theme in themes {
+            let ThemeBinding {
+                theme: theme_id,
+                front,
+                mut back,
+                uv_sets,
+            } = theme;
+            let is_default_theme = theme_id == default_theme;
+            let mut drop_front = false;
+            let mut drop_back = false;
 
-        Some(Appearance::from_parts(materials, themes, default_theme))
+            let mut kept_uv_sets = Vec::with_capacity(uv_sets.len());
+            for uv_set in uv_sets {
+                let is_default_slot = is_default_theme
+                    && uv_set.side == Side::Front
+                    && uv_set.channel == ChannelId::default();
+                match &uv_set.uv {
+                    UvSource::WorldToTexture(_) => kept_uv_sets.push(uv_set),
+                    UvSource::Explicit(_) if is_default_slot => match gathered_uv {
+                        Some(coords) => kept_uv_sets.push(UvSet {
+                            uv: UvSource::Explicit(coords.into()),
+                            ..uv_set
+                        }),
+                        None => match uv_set.side {
+                            Side::Front => drop_front = true,
+                            Side::Back => drop_back = true,
+                        },
+                    },
+                    // Some other channel/side/theme's `Explicit` UV: no
+                    // per-corner data survived the clip for it.
+                    UvSource::Explicit(_) => match uv_set.side {
+                        Side::Front => drop_front = true,
+                        Side::Back => drop_back = true,
+                    },
+                }
+            }
+
+            if drop_back {
+                // Mirrors `make_front_only`: the binding goes, and so does
+                // every back-side UV set in this theme's pool, referenced or
+                // not, so nothing pointless lingers.
+                back = None;
+                kept_uv_sets.retain(|uv| uv.side != Side::Back);
+            }
+
+            if drop_front {
+                if is_default_theme {
+                    return None;
+                }
+                continue;
+            }
+
+            new_themes.push(ThemeBinding {
+                theme: theme_id,
+                front,
+                back,
+                uv_sets: kept_uv_sets,
+            });
+        }
+
+        let mut result = Appearance::from_parts(materials, new_themes, default_theme);
+        result.compact_materials();
+        Some(result)
     }
 
     macro_rules! divide_polygon {
@@ -941,7 +1025,7 @@ mod grid_impl {
                                 }
                                 let coverage =
                                     CellCoverage::from_area(faces_area_xy(&faces), window.area());
-                                let geom = rebuild(self, faces);
+                                let geom = rebuild(self, faces, &rings);
                                 emit(cell, coverage, geom);
                             }
                         }
@@ -981,11 +1065,21 @@ mod grid_impl {
                     out
                 }
 
-                /// Rebuild one clipped face as a polygon in the source's frame.
-                fn build_one(src: &$ty, face: Face<$dim>) -> $ty {
-                    let mut rings = face.rings.into_iter();
-                    let exterior_corners = rings.next().unwrap_or_default();
-                    let interior_corners: Vec<Vec<Corner<$dim>>> = rings.collect();
+                /// Rebuild one clipped face as a polygon in the source's
+                /// frame. `source_rings` is the whole source's own rings
+                /// (as fed into the clip, exterior first) -- compared
+                /// against this face's rings to tell whether the clip
+                /// touched anything at all.
+                fn build_one(
+                    src: &$ty,
+                    face: Face<$dim>,
+                    source_rings: &[Vec<Corner<$dim>>],
+                ) -> $ty {
+                    let unchanged = corner_layout_unchanged(&face.rings, source_rings);
+
+                    let mut ring_iter = face.rings.into_iter();
+                    let exterior_corners = ring_iter.next().unwrap_or_default();
+                    let interior_corners: Vec<Vec<Corner<$dim>>> = ring_iter.collect();
 
                     // Every corner must carry a UV for the gather to be
                     // meaningful; `Option<Vec<_>>: FromIterator<Option<_>>`
@@ -1005,15 +1099,24 @@ mod grid_impl {
 
                     let mut poly = $ty::from_rings(src.frame().clone(), exterior, interiors);
                     *poly.appearance_mut() =
-                        rebuild_appearance(src.appearance(), gathered_uv.as_deref());
+                        rebuild_appearance(src.appearance(), gathered_uv.as_deref(), unchanged);
                     poly
                 }
 
                 /// Rebuild the clipped faces as geometry. Several faces
                 /// become a collection; one stays a face, so the common case
                 /// does not gain a wrapper.
-                fn rebuild(src: &$ty, faces: Vec<Face<$dim>>) -> Geometry {
-                    $wrap(faces.into_iter().map(|face| build_one(src, face)).collect())
+                fn rebuild(
+                    src: &$ty,
+                    faces: Vec<Face<$dim>>,
+                    source_rings: &[Vec<Corner<$dim>>],
+                ) -> Geometry {
+                    $wrap(
+                        faces
+                            .into_iter()
+                            .map(|face| build_one(src, face, source_rings))
+                            .collect(),
+                    )
                 }
             }
         };
