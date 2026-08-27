@@ -73,12 +73,10 @@ impl ProcessorChannelForwarder {
         }
     }
 
-    pub fn wait_until_downstream_empty(&self, max_wait: std::time::Duration) -> bool {
+    pub fn wait_until_downstream_empty(&self) {
         match self {
-            ProcessorChannelForwarder::ChannelManager(cm) => {
-                cm.wait_until_downstream_empty(max_wait)
-            }
-            ProcessorChannelForwarder::Noop(_) => true,
+            ProcessorChannelForwarder::ChannelManager(cm) => cm.wait_until_downstream_empty(),
+            ProcessorChannelForwarder::Noop(_) => {}
         }
     }
 

@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -95,6 +95,9 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             global_params: with,
             buffer: HashMap::new(),
             schema: Default::default(),
+            current_group: None,
+            group_keys: HashMap::new(),
+            pending_flush: Vec::new(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
                 min_zoom: params.min_zoom,
@@ -103,6 +106,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 compress_output,
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
+                group_by_attribute: params.group_by_attribute,
             },
         };
         Ok(Box::new(sink))
@@ -116,6 +120,11 @@ pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     pub(super) schema: Schema,
+    // last seen udxDirs; a change means the previous group is complete and can be flushed
+    pub(super) current_group: Option<String>,
+    pub(super) group_keys: HashMap<String, std::collections::HashSet<BufferKey>>,
+    // groups whose data closed before every feature_type they need has a schema entry
+    pub(super) pending_flush: Vec<String>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
@@ -144,6 +153,13 @@ pub struct Cesium3DTilesWriterParam {
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Group By Attribute
+    /// Opt-in: an attribute name (e.g. "udxDirs") to incrementally flush completed
+    /// groups instead of buffering everything until the run ends. Requires the
+    /// attribute's output-path partitioning to match 1:1 (otherwise a later group
+    /// sharing the same output path would overwrite an earlier flush). Leave unset
+    /// for unchanged, original behavior (single flush at the end of the run).
+    pub(super) group_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +171,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
+    pub(super) group_by_attribute: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -204,6 +221,21 @@ impl Cesium3DTilesWriter {
             ));
         }
 
+        let group = self.params.group_by_attribute.as_ref().and_then(|attr| {
+            match ctx.feature.attributes.get(&Attribute::new(attr.clone())) {
+                Some(AttributeValue::String(s)) => Some(s.clone()),
+                _ => None,
+            }
+        });
+        if let Some(group) = &group {
+            if self.current_group.as_deref() != Some(group.as_str()) {
+                if let Some(prev) = self.current_group.take() {
+                    self.maybe_flush_group(ctx.as_context(), &prev)?;
+                }
+                self.current_group = Some(group.clone());
+            }
+        }
+
         let output = self.params.output.clone();
         let scope = ctx
             .feature
@@ -232,11 +264,73 @@ impl Cesium3DTilesWriter {
             feature
         };
 
-        let buffer = self
-            .buffer
-            .entry((output, feature_type.clone(), compress_output.clone()))
-            .or_default();
-        buffer.push(feature);
+        let key = (output, feature_type.clone(), compress_output);
+        if let Some(group) = &group {
+            self.group_keys
+                .entry(group.clone())
+                .or_default()
+                .insert(key.clone());
+        }
+        self.buffer.entry(key).or_default().push(feature);
+        Ok(())
+    }
+
+    fn group_ready(&self, group: &str) -> bool {
+        if self.schema.types.is_empty() {
+            // schema port never wired for this workflow (or hasn't sent anything yet) —
+            // don't block flushing on it, otherwise nothing would ever flush incrementally
+            return true;
+        }
+        self.group_keys
+            .get(group)
+            .map(|keys| {
+                keys.iter()
+                    .all(|(_, feature_type, _)| self.schema.types.contains_key(feature_type))
+            })
+            .unwrap_or(true)
+    }
+
+    fn maybe_flush_group(&mut self, ctx: Context, group: &str) -> crate::errors::Result<()> {
+        if self.group_ready(group) {
+            self.flush_group(ctx, group)
+        } else {
+            self.pending_flush.push(group.to_string());
+            Ok(())
+        }
+    }
+
+    fn retry_pending_flush(&mut self, ctx: Context) -> crate::errors::Result<()> {
+        let ready: Vec<String> = self
+            .pending_flush
+            .iter()
+            .filter(|g| self.group_ready(g))
+            .cloned()
+            .collect();
+        for g in ready {
+            self.pending_flush.retain(|x| x != &g);
+            self.flush_group(ctx.clone(), &g)?;
+        }
+        Ok(())
+    }
+
+    fn flush_group(&mut self, ctx: Context, group: &str) -> crate::errors::Result<()> {
+        let Some(keys) = self.group_keys.remove(group) else {
+            return Ok(());
+        };
+        let mut grouped: HashMap<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>> = HashMap::new();
+        for key in keys {
+            let Some(buffer) = self.buffer.remove(&key) else {
+                continue;
+            };
+            let (output, feature_type, compress_output) = key;
+            grouped
+                .entry((output, compress_output))
+                .or_default()
+                .push((feature_type, buffer));
+        }
+        for ((output, compress_output), upstream) in &grouped {
+            self.write(ctx.clone(), upstream, output, compress_output)?;
+        }
         Ok(())
     }
 
@@ -262,6 +356,9 @@ impl Cesium3DTilesWriter {
 
         let typedef: TypeDef = (&sanitized_feature).into();
         self.schema.types.insert(feature_type.clone(), typedef);
+        if !self.pending_flush.is_empty() {
+            self.retry_pending_flush(ctx.as_context())?;
+        }
         Ok(())
     }
 

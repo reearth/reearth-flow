@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Expr;
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,6 +89,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             original_dataset: params.dataset.clone(),
             flatten: params.flatten,
             codelists_path,
+            group_by_attribute: params.group_by_attribute,
         };
         let process = FeatureCityGmlReader {
             global_params: with,
@@ -97,6 +98,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
+            pending: Vec::new(),
             cache_dir: None,
         };
         Ok(Box::new(process))
@@ -106,15 +108,13 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureCityGmlReaderParam,
-    /// Pass 1 registry: polygon URL → owning GeometryStore (needed for cross-file ref resolution)
+    // used when group_by_attribute is None (default: parse in process(), one emit in finish())
     geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
-    /// Pass 1 registry: polygon URL → owning AppearanceStore
     app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>>,
-    /// One entry per top-level city object parsed; indexed by store_id in the JSONL cache.
     store_pool: StorePool,
-    /// Per-file JSONL cache paths written during pass 1.
     cache_paths: Vec<PathBuf>,
-    /// Root of the executor-specific cache directory, set on first process() call.
+    // used when group_by_attribute is Some (parse+emit per group, dropped between groups)
+    pending: Vec<(String, Feature, Option<Url>)>,
     cache_dir: Option<PathBuf>,
 }
 
@@ -123,6 +123,7 @@ impl std::fmt::Debug for FeatureCityGmlReader {
         f.debug_struct("FeatureCityGmlReader")
             .field("cache_paths", &self.cache_paths.len())
             .field("store_pool", &self.store_pool.len())
+            .field("pending", &self.pending.len())
             .finish_non_exhaustive()
     }
 }
@@ -136,6 +137,7 @@ impl Clone for FeatureCityGmlReader {
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
+            pending: Vec::new(),
             cache_dir: None,
         }
     }
@@ -164,6 +166,13 @@ pub struct FeatureCityGmlReaderParam {
     /// # Codelists Path
     /// Optional path to the codelists directory for resolving codelist values
     codelists_path: Option<Expr>,
+    /// # Group By Attribute
+    /// Opt-in: an attribute name (e.g. "udxDirs") to group files by. When set, each
+    /// group is parsed and emitted independently so its memory is freed before the
+    /// next group starts, instead of holding the whole dataset for the entire run.
+    /// Requires files of the same group to be delivered contiguously by upstream.
+    /// Leave unset for unchanged, original streaming behavior.
+    group_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -172,6 +181,7 @@ struct CompiledFeatureCityGmlReaderParam {
     original_dataset: Expr,
     flatten: Option<bool>,
     codelists_path: Option<rhai::AST>,
+    group_by_attribute: Option<String>,
 }
 
 impl Processor for FeatureCityGmlReader {
@@ -187,9 +197,6 @@ impl Processor for FeatureCityGmlReader {
         let feature = ctx.feature.clone();
         let ctx = ctx.as_context();
         let global_params = self.global_params.clone();
-        let dataset = self.params.dataset.clone();
-        let original_dataset = self.params.original_dataset.clone();
-        let flatten = self.params.flatten;
         let codelists_url = self.params.codelists_path.clone().and_then(|ast| {
             let expr_engine = Arc::clone(&ctx.expr_engine);
             let scope = feature.new_scope(expr_engine.clone(), &global_params);
@@ -211,22 +218,30 @@ impl Processor for FeatureCityGmlReader {
                 .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
             self.cache_dir = Some(dir);
         }
-        // Pass 1: parse file, populate registries, write entities to per-file JSONL cache
-        let cache_path = parse_and_register(
-            ctx,
-            feature,
-            dataset,
-            original_dataset,
-            flatten,
-            global_params,
-            codelists_url,
-            &mut self.geom_registry,
-            &mut self.app_registry,
-            &mut self.store_pool,
-            self.cache_dir.as_deref().unwrap(),
-        )
-        .map_err(|e| -> BoxedError { e.into() })?;
-        self.cache_paths.push(cache_path);
+        let Some(group_attr) = self.params.group_by_attribute.clone() else {
+            // default: unchanged original behavior — parse immediately
+            let cache_path = parse_and_register(
+                ctx,
+                feature,
+                self.params.dataset.clone(),
+                self.params.original_dataset.clone(),
+                self.params.flatten,
+                global_params,
+                codelists_url,
+                &mut self.geom_registry,
+                &mut self.app_registry,
+                &mut self.store_pool,
+                self.cache_dir.as_deref().unwrap(),
+            )
+            .map_err(|e| -> BoxedError { e.into() })?;
+            self.cache_paths.push(cache_path);
+            return Ok(());
+        };
+        let group = match feature.attributes.get(&Attribute::new(group_attr)) {
+            Some(AttributeValue::String(s)) => s.clone(),
+            _ => String::new(),
+        };
+        self.pending.push((group, feature, codelists_url));
         Ok(())
     }
 
@@ -235,19 +250,84 @@ impl Processor for FeatureCityGmlReader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let Some(cache_dir) = self.cache_dir.as_deref() else {
+        let Some(cache_dir) = self.cache_dir.clone() else {
             return Ok(());
         };
-        // Pass 2: stream per-file, resolve cross-file refs, emit
-        emit_buffered(
-            ctx.as_context(),
-            fw,
-            cache_dir,
-            &self.cache_paths,
-            &self.store_pool,
-            &self.geom_registry,
-            &self.app_registry,
-        )
+        if self.params.group_by_attribute.is_none() {
+            // default: unchanged original behavior — single emit over everything
+            return emit_buffered(
+                ctx.as_context(),
+                fw,
+                &cache_dir,
+                &self.cache_paths,
+                &self.store_pool,
+                &self.geom_registry,
+                &self.app_registry,
+            );
+        }
+        // group-contiguous so each group's parse (pass1) + emit (pass2) can run and then
+        // fully drop its store_pool/registries before the next group starts
+        self.pending.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let dataset = self.params.dataset.clone();
+        let original_dataset = self.params.original_dataset.clone();
+        let flatten = self.params.flatten;
+        let global_params = self.global_params.clone();
+
+        let mut i = 0;
+        while i < self.pending.len() {
+            let group_key = self.pending[i].0.clone();
+            let mut j = i;
+            while j < self.pending.len() && self.pending[j].0 == group_key {
+                j += 1;
+            }
+
+            let mut geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>> = HashMap::new();
+            let mut app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>> = HashMap::new();
+            let mut store_pool: StorePool = Vec::new();
+            let mut cache_paths: Vec<PathBuf> = Vec::new();
+
+            for (_, feature, codelists_url) in &self.pending[i..j] {
+                let cache_path = parse_and_register(
+                    ctx.as_context(),
+                    feature.clone(),
+                    dataset.clone(),
+                    original_dataset.clone(),
+                    flatten,
+                    global_params.clone(),
+                    codelists_url.clone(),
+                    &mut geom_registry,
+                    &mut app_registry,
+                    &mut store_pool,
+                    &cache_dir,
+                )
+                .map_err(|e| -> BoxedError { e.into() })?;
+                cache_paths.push(cache_path);
+            }
+
+            eprintln!(
+                "[MEASURE citygml_reader] group={group_key:?} files={} store_pool_len={}",
+                cache_paths.len(),
+                store_pool.len()
+            );
+
+            emit_buffered(
+                ctx.as_context(),
+                fw,
+                &cache_dir,
+                &cache_paths,
+                &store_pool,
+                &geom_registry,
+                &app_registry,
+            )?;
+
+            for p in &cache_paths {
+                let _ = std::fs::remove_file(p);
+            }
+
+            i = j;
+        }
+        Ok(())
     }
 
     fn name(&self) -> &str {
