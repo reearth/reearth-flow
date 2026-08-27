@@ -75,6 +75,24 @@ fn group_key(attributes: &Attributes, group_by: &Option<Vec<Attribute>>) -> Attr
     }
 }
 
+/// Widen a group's running extent to include one more feature's.
+#[cfg(feature = "new-geometry")]
+fn merge_bounds(
+    bounds: &mut HashMap<AttributeValue, ([f64; 2], [f64; 2])>,
+    key: AttributeValue,
+    incoming: ([f64; 2], [f64; 2]),
+) {
+    bounds
+        .entry(key)
+        .and_modify(|(min, max)| {
+            for i in 0..2 {
+                min[i] = min[i].min(incoming.0[i]);
+                max[i] = max[i].max(incoming.1[i]);
+            }
+        })
+        .or_insert(incoming);
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct GridDividerFactory;
 
@@ -149,6 +167,7 @@ impl ProcessorFactory for GridDividerFactory {
             origin: param.origin,
             angular_warned: false,
             bounds_per_group: HashMap::new(),
+            bounds_2d: HashMap::new(),
             group_map: HashMap::new(),
             group_keys: Vec::new(),
             group_count: 0,
@@ -201,6 +220,11 @@ pub struct GridDivider {
 
     // Disk-backed state
     bounds_per_group: HashMap<AttributeValue, Rect2D<f64>>,
+    // The new-geometry equivalent of `bounds_per_group`: a group's running 2D
+    // extent as `(min, max)`, widened by `merge_bounds` as features are
+    // spooled. Read only on the accumulating (no-`origin`) new-geometry path.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    bounds_2d: HashMap<AttributeValue, ([f64; 2], [f64; 2])>,
     group_map: HashMap<AttributeValue, usize>,
     group_keys: Vec<AttributeValue>,
     group_count: usize,
@@ -231,6 +255,7 @@ impl Clone for GridDivider {
             origin: self.origin,
             angular_warned: false,
             bounds_per_group: HashMap::new(),
+            bounds_2d: HashMap::new(),
             group_map: HashMap::new(),
             group_keys: Vec::new(),
             group_count: 0,
@@ -259,6 +284,7 @@ impl GridDivider {
             origin: None,
             angular_warned: false,
             bounds_per_group: HashMap::new(),
+            bounds_2d: HashMap::new(),
             group_map: HashMap::new(),
             group_keys: Vec::new(),
             group_count: 0,
@@ -639,14 +665,77 @@ impl Processor for GridDivider {
     }
 
     /// The streaming path (explicit origin) divides and emits everything in
-    /// `process`, so there is nothing left to do at end of stream. The
-    /// accumulating path (Task 8) will do its work here instead.
+    /// `process`, so there is nothing left to do at end of stream.
+    ///
+    /// The accumulating path (no `origin`) derives each group's grid from
+    /// that group's own extent, which was not known until the whole stream
+    /// had been spooled to disk, so the actual dividing happens here.
     #[cfg(feature = "new-geometry")]
     fn finish(
         &mut self,
-        _ctx: NodeContext,
-        _fw: &ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        if self.origin.is_some() {
+            // Streaming: everything was already sent from `process`.
+            return Ok(());
+        }
+
+        self.flush_buffer()?;
+        self.buffer = HashMap::new();
+
+        let Some(dir) = self.temp_dir.clone() else {
+            // Nothing arrived.
+            return Ok(());
+        };
+
+        let group_keys = std::mem::take(&mut self.group_keys);
+        let group_map = std::mem::take(&mut self.group_map);
+        let bounds = std::mem::take(&mut self.bounds_2d);
+
+        let output_path = dir.join("output.jsonl.zst");
+        let mut writer = BufWriter::new(zstd::Encoder::new(File::create(&output_path)?, 1)?);
+        let mut total = 0usize;
+
+        for key in &group_keys {
+            let (Some(&group_idx), Some(&(min, max))) = (group_map.get(key), bounds.get(key))
+            else {
+                continue;
+            };
+            let group_path = dir.join(format!("group_{group_idx:06}.jsonl.zst"));
+            if !group_path.exists() {
+                continue;
+            }
+
+            let grid = GridSpec::new(min, self.cell_size)
+                .map_err(|e| GeometryProcessorError::GridDivider(e.to_string()))?;
+
+            // Bound the group's own extent against the same cell-count limit
+            // the streaming path checks per feature. The message says "group
+            // extent" (not "extent") so a user can tell this fired on a
+            // group's combined bounds, not on one feature's.
+            let count = grid.cell_count(min, max);
+            if count > MAX_CELLS_PER_GRID {
+                return Err(GeometryProcessorError::GridDivider(format!(
+                    "cell size {} over a group extent of {:.1} x {:.1} implies {} \
+                     cells, more than the limit of {}. Check the cell size is in \
+                     the units of the data's coordinate system.",
+                    self.cell_size,
+                    max[0] - min[0],
+                    max[1] - min[1],
+                    count,
+                    MAX_CELLS_PER_GRID,
+                ))
+                .into());
+            }
+
+            total += self.divide_group(&group_path, &grid, &mut writer, &ctx, fw)?;
+        }
+
+        writer.into_inner().map_err(|e| e.into_error())?.finish()?;
+        if total > 0 {
+            fw.send_file(output_path, FEATURES_PORT.clone(), ctx.as_context());
+        }
         Ok(())
     }
 
@@ -655,25 +744,198 @@ impl Processor for GridDivider {
     }
 }
 
+/// How one spooled feature's division came out, on the way to being either
+/// written to the output file or routed to `rejected`.
+///
+/// Kept separate from sending/writing themselves so `divide_group`'s rayon
+/// step can stay a pure `map`, with the (non-`Sync`) writer and forwarder
+/// only touched afterward, sequentially.
+#[cfg(feature = "new-geometry")]
+enum DivideOutcome {
+    /// Divided into one or more pieces, each already tagged with its cell.
+    Divided(Vec<Feature>),
+    /// `divide_by_grid` succeeded but produced nothing worth keeping — either
+    /// the geometry touched no cells, or `completeCellsOnly` filtered every
+    /// piece it did touch.
+    Empty(Feature),
+    /// `divide_by_grid` itself failed.
+    Failed(Feature, GridDivideError),
+}
+
 #[cfg(feature = "new-geometry")]
 impl GridDivider {
     /// Accumulate features until every group's extent has been seen, so a grid
     /// can be derived per group without an explicit origin.
     ///
-    /// Stub: the accumulating path is Task 8's to build. Until then, a Grid
-    /// Divider run with no `origin` on the new-geometry path fails loudly here
-    /// rather than silently passing features through unchanged or hanging.
+    /// Records the feature's extent against its group (so `finish` can derive
+    /// that group's grid), assigns the feature a group index, and appends it
+    /// to that group's spool file. A feature with no extent to place on a
+    /// grid is routed to `rejected` immediately, rather than silently
+    /// dropped or spooled where it could never be divided.
     fn spool(
         &mut self,
-        _ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        Err(GeometryProcessorError::GridDivider(
-            "Grid Divider without an explicit `origin` is not yet implemented on the new \
-             geometry path"
-                .to_string(),
-        )
-        .into())
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
+        let Ok(aabb) = ctx.feature.geometry.bounding_box() else {
+            self.reject(&ctx, fw, "geometry has no extent to place on a grid");
+            return Ok(());
+        };
+        let (min, max) = match aabb {
+            Aabb::D2 { min, max } => (min, max),
+            Aabb::D3 { min, max } => ([min[0], min[1]], [max[0], max[1]]),
+        };
+
+        let key = group_key(&ctx.feature.attributes, &self.group_by);
+        merge_bounds(&mut self.bounds_2d, key.clone(), (min, max));
+
+        let group_idx = match self.group_map.get(&key) {
+            Some(&idx) => idx,
+            None => {
+                let idx = self.group_count;
+                self.group_map.insert(key.clone(), idx);
+                self.group_keys.push(key);
+                self.group_count += 1;
+                idx
+            }
+        };
+
+        let json = serde_json::to_string(&ctx.feature).map_err(|e| {
+            GeometryProcessorError::GridDivider(format!("Failed to serialize feature: {e}"))
+        })?;
+        self.buffer_bytes += json.len();
+        let mut src = json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.buffer.entry(group_idx).or_default().extend(frame);
+
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            self.flush_buffer()?;
+        }
+        Ok(())
+    }
+
+    /// Divide one group's spooled features, writing successful divisions to
+    /// `writer` and routing anything that fails to divide to `rejected` via
+    /// `node_ctx` (built per-feature into an [`ExecutorContext`], mirroring
+    /// the streaming path's `reject`/`reject_with`) — a feature is not
+    /// silently dropped here just because it went through the disk-backed
+    /// path rather than the streaming one.
+    ///
+    /// Reads and divides in chunks bounded by
+    /// `ACCUMULATOR_BUFFER_BYTE_THRESHOLD`, dividing each chunk in parallel:
+    /// a group can be far larger than memory.
+    fn divide_group(
+        &self,
+        group_path: &PathBuf,
+        grid: &GridSpec,
+        writer: &mut BufWriter<zstd::Encoder<'static, File>>,
+        node_ctx: &NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<usize, BoxedError> {
+        let reader = BufReader::new(zstd::Decoder::new(File::open(group_path)?)?);
+        let mut lines = reader.lines();
+        let mut total = 0usize;
+
+        loop {
+            let mut chunk: Vec<Feature> = Vec::new();
+            let mut chunk_bytes = 0usize;
+            let mut eof = false;
+
+            while chunk_bytes < ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                match lines.next() {
+                    Some(Ok(line)) if line.is_empty() => continue,
+                    Some(Ok(line)) => {
+                        chunk_bytes += line.len();
+                        chunk.push(serde_json::from_str(&line)?);
+                    }
+                    Some(Err(e)) => return Err(e.into()),
+                    None => {
+                        eof = true;
+                        break;
+                    }
+                }
+            }
+            if chunk.is_empty() {
+                break;
+            }
+
+            let complete_only = self.complete_cells_only;
+            let outcomes: Vec<DivideOutcome> = chunk
+                .par_iter()
+                .map(|feature| {
+                    let mut pieces = Vec::new();
+                    let result =
+                        feature
+                            .geometry
+                            .divide_by_grid(grid, &mut |cell, coverage, piece| {
+                                if complete_only && coverage != CellCoverage::Full {
+                                    return;
+                                }
+                                let mut f = feature.clone();
+                                f.set_geometry(piece);
+                                f.insert(
+                                    "_grid_row",
+                                    AttributeValue::Number(serde_json::Number::from(cell.row)),
+                                );
+                                f.insert(
+                                    "_grid_col",
+                                    AttributeValue::Number(serde_json::Number::from(cell.col)),
+                                );
+                                pieces.push(f);
+                            });
+                    match result {
+                        Ok(()) if !pieces.is_empty() => DivideOutcome::Divided(pieces),
+                        // Divided into nothing, or had nothing to divide: as
+                        // on the streaming path, the feature is rejected with
+                        // a reason rather than vanishing.
+                        Ok(()) => DivideOutcome::Empty(feature.clone()),
+                        Err(e) => DivideOutcome::Failed(feature.clone(), e),
+                    }
+                })
+                .collect();
+
+            // Writing and rejecting both happen sequentially, after the
+            // parallel step, since `writer` and `fw` are shared per-group
+            // state rather than something each rayon thread could touch
+            // independently.
+            for outcome in outcomes {
+                match outcome {
+                    DivideOutcome::Divided(pieces) => {
+                        for f in &pieces {
+                            writer.write_all(serde_json::to_string(f)?.as_bytes())?;
+                            writer.write_all(b"\n")?;
+                        }
+                        total += pieces.len();
+                    }
+                    DivideOutcome::Empty(feature) => {
+                        let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+                            node_ctx,
+                            feature,
+                            FEATURES_PORT.clone(),
+                        );
+                        self.reject(&exec_ctx, fw, "geometry produced no cells");
+                    }
+                    DivideOutcome::Failed(feature, e) => {
+                        let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+                            node_ctx,
+                            feature,
+                            FEATURES_PORT.clone(),
+                        );
+                        self.reject_with(&exec_ctx, fw, e);
+                    }
+                }
+            }
+
+            if eof {
+                break;
+            }
+        }
+        Ok(total)
     }
 
     /// Stop the run when a cell size implies more cells than could be meant.
@@ -1714,6 +1976,38 @@ mod new_geometry_tests {
         );
     }
 
+    #[test]
+    fn derived_origin_is_the_group_extent_corner() {
+        // Two features 10 units apart in one group: the grid starts at the
+        // lower-left of their combined extent, not at either one's own.
+        let mut bounds: HashMap<AttributeValue, ([f64; 2], [f64; 2])> = HashMap::new();
+        merge_bounds(&mut bounds, AttributeValue::Null, ([3.0, 4.0], [5.0, 6.0]));
+        merge_bounds(
+            &mut bounds,
+            AttributeValue::Null,
+            ([13.0, 14.0], [15.0, 16.0]),
+        );
+
+        let (min, max) = bounds[&AttributeValue::Null];
+        assert_eq!(min, [3.0, 4.0]);
+        assert_eq!(max, [15.0, 16.0]);
+
+        let grid = GridSpec::new(min, 1.0).expect("valid spec");
+        assert_eq!(grid.origin(), [3.0, 4.0]);
+    }
+
+    #[test]
+    fn separate_groups_get_separate_origins() {
+        let mut bounds: HashMap<AttributeValue, ([f64; 2], [f64; 2])> = HashMap::new();
+        let north = AttributeValue::String("north".to_string());
+        let south = AttributeValue::String("south".to_string());
+        merge_bounds(&mut bounds, north.clone(), ([0.0, 0.0], [1.0, 1.0]));
+        merge_bounds(&mut bounds, south.clone(), ([100.0, 100.0], [101.0, 101.0]));
+
+        assert_eq!(bounds[&north].0, [0.0, 0.0]);
+        assert_eq!(bounds[&south].0, [100.0, 100.0]);
+    }
+
     // End-to-end coverage of `process` itself: the tests above pin the pieces
     // (the guard's math, the streaming/accumulating switch, the group key),
     // but none of them actually runs a feature through the processor. These
@@ -1978,6 +2272,113 @@ mod new_geometry_tests {
                     .count(),
                 1,
                 "a non-angular first feature must not permanently silence the check: {warnings:?}"
+            );
+        }
+
+        /// As [`process_many`], but for the accumulating (no-`origin`) path:
+        /// runs every `geometry` through `process` (which spools them, since
+        /// there is no origin to divide by immediately) and then calls
+        /// `finish`, returning every feature sent afterward alongside its
+        /// port and the diagnostic code of every warning raised.
+        fn spool_and_finish(
+            with: Value,
+            geometries: Vec<Geometry>,
+        ) -> (Vec<Feature>, Vec<Port>, Vec<ErrorCode>) {
+            let hub = EventHub::new(64);
+            let mut rx = hub.receiver.resubscribe();
+            let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+            let mut processor = build(with);
+
+            let node_ctx = NodeContext {
+                variables: Arc::new(serde_json::Map::new()),
+                storage_resolver: Arc::new(StorageResolver::new()),
+                kv_store: Arc::new(kvs::create_kv_store()),
+                event_hub: hub.clone(),
+                sandbox_root: Uri::for_test("file:///"),
+                diagnostics: None,
+            };
+
+            for geometry in geometries {
+                let ctx = ExecutorContext::new(
+                    Feature::from(geometry),
+                    FEATURES_PORT.clone(),
+                    Arc::new(serde_json::Map::new()),
+                    Arc::new(StorageResolver::new()),
+                    Arc::new(kvs::create_kv_store()),
+                    hub.clone(),
+                    Uri::for_test("file:///"),
+                );
+                processor.process(ctx, &fw).unwrap();
+            }
+            processor.finish(node_ctx, &fw).unwrap();
+
+            let ProcessorChannelForwarder::Noop(noop) = &fw else {
+                unreachable!("built as a noop forwarder");
+            };
+            let features = noop.send_features.lock().unwrap().clone();
+            let ports = noop.send_ports.lock().unwrap().clone();
+
+            let mut warnings = Vec::new();
+            while let Ok(event) = rx.try_recv() {
+                if let Event::Diagnostic(diagnostic) = event {
+                    warnings.push(diagnostic.code);
+                }
+            }
+            (features, ports, warnings)
+        }
+
+        /// With no `origin`, two features spool to disk in `process` and are
+        /// only divided in `finish`, once the grid can be derived from their
+        /// combined extent. The grid's origin sits at the group's own
+        /// minimum corner (here `[10, 10]`), so the first feature lands in
+        /// cell `(0, 0)` and the second — three units over — in `(0, 3)`.
+        #[test]
+        fn no_origin_derives_the_grid_from_the_group_and_finish_emits_it() {
+            let (features, ports, _) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![
+                    rect([10.0, 10.0], [11.0, 11.0]),
+                    rect([13.0, 10.0], [14.0, 11.0]),
+                ],
+            );
+
+            assert!(
+                ports.iter().all(|p| *p == FEATURES_PORT.clone()),
+                "{ports:?}"
+            );
+            let mut cells: Vec<(i64, i64)> = features.iter().map(row_col).collect();
+            cells.sort();
+            assert_eq!(cells, vec![(0, 0), (0, 3)]);
+        }
+
+        /// A feature that fails to divide is rejected from `finish` just as
+        /// it would be from the streaming `process`: routed to `rejected`
+        /// with `_grid_error` set and the matching diagnostic code raised,
+        /// not silently dropped for having gone through the disk-backed path.
+        #[test]
+        fn no_origin_rejects_a_feature_that_fails_to_divide_from_finish() {
+            let point = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                [5.0, 5.0, 0.0],
+            )));
+
+            let (features, ports, warnings) =
+                spool_and_finish(json!({"cellSize": 1.0}), vec![point]);
+
+            assert_eq!(features.len(), 1);
+            assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+            assert!(
+                grid_error(&features[0]).is_some(),
+                "expected `_grid_error` on {:?}",
+                features[0]
+            );
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridUnsupportedGeometry)
+                    .count(),
+                1,
+                "{warnings:?}"
             );
         }
     }
