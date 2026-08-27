@@ -30,6 +30,7 @@ type BatchConfig struct {
 	ImageURI                        string
 	MachineType                     string
 	NodeStatusPropagationDelayMS    string
+	PubSubDiagnosticTopic           string
 	PubSubEdgePassThroughEventTopic string
 	PubSubLogStreamTopic            string
 	PubSubJobCompleteTopic          string
@@ -48,6 +49,7 @@ type BatchConfig struct {
 	MaxRetryCount                   int
 	TaskCount                       int
 	CompressIntermediateData        bool
+	EnableDiagnostics               bool
 	FeatureWriterDisable            bool
 	UseSpotVMs                      bool
 }
@@ -263,6 +265,7 @@ func (b *BatchRepo) submitCommand(
 				}
 				vars := map[string]string{
 					"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
+					"FLOW_WORKER_DIAGNOSTIC_TOPIC":              b.config.PubSubDiagnosticTopic,
 					"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
 					"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
 					"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
@@ -290,6 +293,9 @@ func (b *BatchRepo) submitCommand(
 				}
 				if b.config.FeatureWriterDisable {
 					vars["FLOW_RUNTIME_FEATURE_WRITER_DISABLE"] = strconv.FormatBool(b.config.FeatureWriterDisable)
+				}
+				if b.config.EnableDiagnostics {
+					vars["FLOW_WORKER_ENABLE_DIAGNOSTICS"] = "true"
 				}
 
 				return vars
