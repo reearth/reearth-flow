@@ -290,6 +290,22 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+// A structured diagnostic from the engine. Enum-like fields are Strings so new engine values do not break clients.
+type Diagnostic struct {
+	Code     string `json:"code"`
+	Category string `json:"category"`
+	Severity string `json:"severity"`
+	// The authoritative fatality signal; severity is display-only.
+	EffectiveDisposition *string `json:"effectiveDisposition,omitempty"`
+	NodeID               *string `json:"nodeId,omitempty"`
+	ActionType           *string `json:"actionType,omitempty"`
+	FeatureID            *ID     `json:"featureId,omitempty"`
+	Message              string  `json:"message"`
+	Help                 *string `json:"help,omitempty"`
+	AggregatedCount      *int    `json:"aggregatedCount,omitempty"`
+	SampleFeatureIds     []ID    `json:"sampleFeatureIds,omitempty"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -306,21 +322,25 @@ type GetHeadInput struct {
 }
 
 type Job struct {
-	CompletedAt       *time.Time  `json:"completedAt,omitempty"`
-	Deployment        *Deployment `json:"deployment,omitempty"`
-	DeploymentID      *ID         `json:"deploymentId,omitempty"`
-	Debug             *bool       `json:"debug,omitempty"`
-	ID                ID          `json:"id"`
-	LogsURL           *string     `json:"logsURL,omitempty"`
-	WorkerLogsURL     *string     `json:"workerLogsURL,omitempty"`
-	UserFacingLogsURL *string     `json:"userFacingLogsURL,omitempty"`
-	OutputURLs        []string    `json:"outputURLs,omitempty"`
-	StartedAt         time.Time   `json:"startedAt"`
-	Status            JobStatus   `json:"status"`
-	Workspace         *Workspace  `json:"workspace,omitempty"`
-	WorkspaceID       ID          `json:"workspaceId"`
-	Logs              []*Log      `json:"logs,omitempty"`
-	Variables         []*Variable `json:"variables"`
+	CompletedAt       *time.Time    `json:"completedAt,omitempty"`
+	Deployment        *Deployment   `json:"deployment,omitempty"`
+	DeploymentID      *ID           `json:"deploymentId,omitempty"`
+	Debug             *bool         `json:"debug,omitempty"`
+	ID                ID            `json:"id"`
+	LogsURL           *string       `json:"logsURL,omitempty"`
+	WorkerLogsURL     *string       `json:"workerLogsURL,omitempty"`
+	UserFacingLogsURL *string       `json:"userFacingLogsURL,omitempty"`
+	OutputURLs        []string      `json:"outputURLs,omitempty"`
+	StartedAt         time.Time     `json:"startedAt"`
+	Status            JobStatus     `json:"status"`
+	Workspace         *Workspace    `json:"workspace,omitempty"`
+	WorkspaceID       ID            `json:"workspaceId"`
+	Logs              []*Log        `json:"logs,omitempty"`
+	Variables         []*Variable   `json:"variables"`
+	FailedNodes       []*Diagnostic `json:"failedNodes,omitempty"`
+	DroppedEventCount *int          `json:"droppedEventCount,omitempty"`
+	// Diagnostics for one node. Pass an empty nodeId for the job-level bucket.
+	NodeDiagnostics []*Diagnostic `json:"nodeDiagnostics,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -1270,8 +1290,9 @@ const (
 	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	// Never emitted by the runtime; retained for API compatibility.
+	JobStatusPending JobStatus = "PENDING"
+	JobStatusRunning JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{

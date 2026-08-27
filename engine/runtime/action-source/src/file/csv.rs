@@ -161,4 +161,24 @@ impl Source for CsvReader {
         .await
         .map_err(Into::<BoxedError>::into)
     }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+        csv::read_csv(
+            self.params.format.delimiter(),
+            &content,
+            &self.params.property,
+            self.params.encoding.as_deref(),
+            sender,
+            &ctx,
+        )
+        .await
+        .map_err(Into::<BoxedError>::into)
+    }
 }

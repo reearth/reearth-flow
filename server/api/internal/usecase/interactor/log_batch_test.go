@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -45,6 +46,14 @@ func (m *countingRedisGateway) GetLogs(_ context.Context, _ time.Time, _ time.Ti
 	m.calls = append(m.calls, jobID)
 	m.mu.Unlock()
 	return []*log.Log{log.NewLog(jobID, nil, time.Now().UTC(), log.LevelInfo, "hi")}, nil
+}
+
+func (m *countingRedisGateway) GetNodeDiagnostics(_ context.Context, _ id.JobID, _ string) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
+}
+
+func (m *countingRedisGateway) GetJobDiagnostics(_ context.Context, _ id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
 }
 
 func (m *countingRedisGateway) GetUserFacingLogs(_ context.Context, _ time.Time, _ time.Time, _ id.JobID) ([]*userfacinglog.UserFacingLog, error) {

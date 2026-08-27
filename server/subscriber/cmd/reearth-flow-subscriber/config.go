@@ -17,9 +17,11 @@ func init() {
 }
 
 type Config struct {
-	AssetBaseURL                string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
-	DB                          string `default:"mongodb://localhost"`
-	Dev                         bool   `pp:",omitempty"`
+	AssetBaseURL string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
+	DB           string `default:"mongodb://localhost"`
+	Dev          bool   `pp:",omitempty"`
+	// No default: a defaulted value would crash-loop the whole subscriber.
+	DiagnosticSubscriptionID    string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`
 	JobCompleteSubscriptionID   string `envconfig:"JOB_COMPLETE_SUBSCRIPTION_ID" default:"flow-job-complete-main"`

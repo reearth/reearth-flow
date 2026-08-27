@@ -1204,8 +1204,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
   "type": "object",
   "required": [
     "bufferType",
-    "distance",
-    "interpolationAngle"
+    "distance"
   ],
   "properties": {
     "bufferType": {
@@ -1225,8 +1224,11 @@ Creates a buffer polygon around each input geometry at a specified distance.
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it.",
-      "type": "number",
+      "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it. Defaults to 11.25 degrees when omitted.",
+      "type": [
+        "number",
+        "null"
+      ],
       "format": "double"
     }
   },
