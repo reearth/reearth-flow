@@ -430,3 +430,165 @@ fn partial_coverage_clip_drops_unrecoverable_uv_without_orphaning_a_binding() {
     .expect("divides");
     assert_eq!(checked, 4, "one piece per quadrant");
 }
+
+#[test]
+fn multi_channel_default_theme_channel_loss_does_not_discard_the_whole_appearance() {
+    use crate::appearance::{ChannelId, TexMatrix, UvSource};
+    use crate::polygon::PolygonFace;
+    use crate::test_support::{bare, explicit_uv, theme, two_channel};
+    use std::collections::BTreeMap;
+
+    // Spans four cells, so every emitted piece is genuinely cut.
+    let mut poly = square_2d(0.0, 2.0);
+
+    // The default theme's front material needs TWO channels: channel 0 (the
+    // default slot -- recoverable, since it's exactly what gets threaded
+    // through the clip) and channel 1 (not the default slot, so it cannot
+    // be threaded). Losing channel 1's uv makes the whole `Uniform` binding
+    // unusable, even though channel 0's own uv is gathered successfully;
+    // this is the case that used to trip the unconditional `return None` at
+    // the old bug site -- a *partial* front failure, not the wholesale one
+    // `world_to_texture_theme_survives_a_sibling_default_theme_drop` covers.
+    let ring5 = |uv: [[f64; 2]; 4]| explicit_uv(&[uv[0], uv[1], uv[2], uv[3], uv[0]]);
+    let mut uv = BTreeMap::new();
+    uv.insert(
+        ChannelId(0),
+        ring5([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]),
+    );
+    uv.insert(
+        ChannelId(1),
+        ring5([[0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]]),
+    );
+    let front = PolygonFace {
+        material: two_channel(0, 1),
+        uv,
+    };
+    // A trivial, colour-only back so `set_two_sided_appearance` (the only
+    // public entry point that accepts a multi-channel `PolygonFace`) has
+    // something valid to pair `front` with; it carries no UV of its own, so
+    // it is never at risk in this test.
+    let back = PolygonFace::single(bare(), None);
+    poly.set_two_sided_appearance(theme("rgb"), front, back)
+        .unwrap();
+
+    // A second, unrelated theme whose only UV is `WorldToTexture`. Only the
+    // *default* theme's default slot is ever threaded through a clip, so an
+    // `Explicit` UV on any other theme is unrecoverable regardless of its
+    // channel; `WorldToTexture` is the one thing a non-default theme can
+    // carry that survives a real cut, which is exactly why it is the right
+    // fixture for "a theme that was never at risk".
+    let matrix = TexMatrix([
+        [0.25, 0.0, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+    poly.set_appearance(
+        theme("ir"),
+        crate::test_support::textured(),
+        Some(UvSource::WorldToTexture(matrix)),
+    )
+    .unwrap();
+
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        if let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece {
+            let app = p
+                .appearance()
+                .as_ref()
+                .expect("the appearance must not be wholly discarded");
+            assert_eq!(
+                app.themes().len(),
+                1,
+                "the multi-channel default theme is unusable and must be dropped whole, \
+                 but the unrelated second theme must not be swept away with it"
+            );
+            assert_eq!(
+                app.themes()[0].theme,
+                theme("ir"),
+                "the surviving theme is the one that was never at risk"
+            );
+            assert_eq!(
+                *app.default_theme(),
+                theme("ir"),
+                "default_theme must be re-pointed once the original default is gone"
+            );
+            assert_appearance_couples(app, p.exterior().len());
+            checked += 1;
+        }
+    })
+    .expect("divides");
+    assert_eq!(checked, 4, "one piece per quadrant");
+}
+
+#[test]
+fn world_to_texture_theme_survives_a_sibling_default_theme_drop() {
+    use crate::appearance::{ChannelId, TexMatrix, UvSource};
+    use crate::polygon::PolygonFace;
+    use crate::test_support::{bare, explicit_uv, theme, two_channel};
+    use std::collections::BTreeMap;
+
+    let mut poly = square_2d(0.0, 2.0);
+
+    // The default theme's front references only non-default channels, so
+    // neither of its uv sets is the default slot and both are unrecoverable
+    // once the layout changes; the whole theme must go.
+    let ring5 = |uv: [[f64; 2]; 4]| explicit_uv(&[uv[0], uv[1], uv[2], uv[3], uv[0]]);
+    let mut uv = BTreeMap::new();
+    uv.insert(
+        ChannelId(1),
+        ring5([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]),
+    );
+    uv.insert(
+        ChannelId(2),
+        ring5([[0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4]]),
+    );
+    let front = PolygonFace {
+        material: two_channel(1, 2),
+        uv,
+    };
+    let back = PolygonFace::single(bare(), None);
+    poly.set_two_sided_appearance(theme("rgb"), front, back)
+        .unwrap();
+
+    // A second theme whose only UV is `WorldToTexture`: positional, so it
+    // never needed threading in the first place and must survive untouched.
+    let matrix = TexMatrix([
+        [0.25, 0.0, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+    poly.set_appearance(
+        theme("ir"),
+        crate::test_support::textured(),
+        Some(UvSource::WorldToTexture(matrix)),
+    )
+    .unwrap();
+
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        if let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece {
+            let app = p
+                .appearance()
+                .as_ref()
+                .expect("the appearance must not be wholly discarded");
+            assert_eq!(
+                app.themes().len(),
+                1,
+                "only the broken default theme is dropped"
+            );
+            assert_eq!(app.themes()[0].theme, theme("ir"));
+            assert!(matches!(
+                app.themes()[0].uv_sets[0].uv,
+                UvSource::WorldToTexture(out) if out == matrix
+            ));
+            assert_appearance_couples(app, p.exterior().len());
+            checked += 1;
+        }
+    })
+    .expect("divides");
+    assert_eq!(checked, 4, "one piece per quadrant");
+}

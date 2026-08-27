@@ -895,15 +895,26 @@ mod grid_impl {
     /// Dropping a UV set also drops whatever binding depended on it, so the
     /// result never leaves a material referencing a channel with nothing to
     /// sample -- the orphan reference `validate_uv_coupling` forbids at
-    /// construction: a back-side set takes just that theme's back binding
-    /// down with it (the theme becomes front-only, the same shape
-    /// `Appearance`'s own `make_front_only` leaves); a non-default theme's
-    /// front-side set takes the *whole* theme down, since `front` is not
-    /// optional and a theme cannot exist back-only. The default theme's own
-    /// front binding is never removed this way: if its own default-slot UV
-    /// cannot be recovered either (`gathered_uv` is `None`), there is
-    /// nothing left to paint *any* side of this piece with, so the whole
-    /// appearance is dropped rather than emitted half-wired.
+    /// construction. That cost is scoped as narrowly as the data model
+    /// allows, and never spreads to a theme that was never at risk:
+    /// - A back-side set takes just that theme's back binding down with it
+    ///   (the theme becomes front-only, the same shape `Appearance`'s own
+    ///   `make_front_only` leaves).
+    /// - A front-side set takes the *whole theme* down, default theme
+    ///   included: `front` is not optional, and a `Uniform` front binding is
+    ///   one material for every channel it references, so losing UV for even
+    ///   one of those channels (a second, non-default channel alongside an
+    ///   otherwise-recoverable default slot, say) makes the whole binding
+    ///   unusable -- there is no coupling-valid way to keep it bound with
+    ///   one of its channels silently missing.
+    ///
+    /// Losing the default theme this way does not, by itself, cost any
+    /// *other* theme: every theme is judged solely on its own bindings, and
+    /// whether the appearance as a whole survives is decided only once,
+    /// after every theme has been judged -- if any theme remains, it is
+    /// returned (re-pointing `default_theme` at a surviving theme if the
+    /// original default did not make it); only when *no* theme survives does
+    /// the whole appearance come back `None`.
     ///
     /// Either way, the result is something the crate's own validated
     /// setters would have accepted -- this op never hands a piece an
@@ -971,9 +982,10 @@ mod grid_impl {
             }
 
             if drop_front {
-                if is_default_theme {
-                    return None;
-                }
+                // `front` is mandatory, so a theme that cannot keep it
+                // cannot be represented at all -- default theme or not. This
+                // costs only this one theme; it says nothing about whether
+                // any other theme, or the appearance as a whole, survives.
                 continue;
             }
 
@@ -985,7 +997,23 @@ mod grid_impl {
             });
         }
 
-        let mut result = Appearance::from_parts(materials, new_themes, default_theme);
+        // Whether the appearance survives at all is judged once, across
+        // every theme, not the moment any single theme (the default
+        // included) turns out unusable.
+        if new_themes.is_empty() {
+            return None;
+        }
+
+        // The original default theme may itself be among the casualties;
+        // fall back to the first surviving theme, mirroring `append_theme`'s
+        // own rule that the first theme added is the default.
+        let new_default = if new_themes.iter().any(|t| t.theme == default_theme) {
+            default_theme
+        } else {
+            new_themes[0].theme.clone()
+        };
+
+        let mut result = Appearance::from_parts(materials, new_themes, new_default);
         result.compact_materials();
         Some(result)
     }
