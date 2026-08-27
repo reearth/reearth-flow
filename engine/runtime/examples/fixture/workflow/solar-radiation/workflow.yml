@@ -396,9 +396,7 @@ graphs:
         type: action
         action: Area Calculator
         with:
-          areaType: slopedArea
           outputAttribute: cellArea
-          multiplier: 1.0
 
       - id: 00000001-0000-0000-0000-000000000031
         name: GeometryRemover
@@ -1092,9 +1090,7 @@ graphs:
         type: action
         action: Area Calculator
         with:
-          areaType: slopedArea
           outputAttribute: surfaceArea
-          multiplier: 1.0
 
       # Aggregate area per surface (sum across split polygons within a surface)
       - id: 00000001-0000-0000-0000-0000000000d1

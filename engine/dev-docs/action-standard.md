@@ -244,7 +244,7 @@ Tags exist to cut **across** categories. The category is where a user browses; a
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `excel`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
 Some vocabulary entries share a name with a category (`geometry`, `filter`, `file`, `debug`, `attribute`). Those are valid only *outside* the matching category, where they still cut across — `geometry` on `Dimension Filter` and `file` on `Zip File Writer` both earn their place; `file` on a `File` action does not.
 
@@ -275,6 +275,15 @@ This cuts both ways, and both have happened:
 - Leaving a listed action to rot means the palette advertises something that always fails.
 
 When an action cannot run, removing it from `base_actions.go` is the immediate mitigation — cheap, reversible, and independent of whatever fix is pending.
+
+**A geometry port changes an action's bucket, and the porting PR will not say so.** An action that could not run because its only implementation was under `#[cfg(not(feature = "new-geometry"))]` starts running the moment its port merges. It does not thereby become exposable — it now owes the engine-side review it never had. So a port PR silently moves its action out of "does not run" and into "pending audit", and porting PRs are written and reviewed as geometry work: they touch the action's `process`, not `base_actions.go` and not the audit's records.
+
+**So after any geometry-port PR merges, record the move — and check the action's review state to know where it moves to.** The two cases are not the same, and both have now occurred:
+
+- **Never reviewed** — it joins the pending-audit list and owes a full §8 pass. `Elevation Extractor`'s port merged in #2384 leaving the action running, unexposed, and absent from every list, found only because an unrelated branch merged `main` and re-counted the buckets.
+- **Already reviewed** — it owes a decision rather than an audit, and the decision is not automatic. `Bufferer`'s port merged in #2370; it was reviewed in #2317, but that review left an open `impl:` finding, and it predates this standard's rescoping, so the `impl:` trace has never been run against the new-geometry code that now ships. Both have to be settled before it is exposed.
+
+In neither case add it to `base_actions.go` as part of the same step — running is only half of §7.2, and promoting on "it runs now" alone is the first failure mode above. Nothing checks any of this, so it needs a person to do it.
 
 ### 7.3 Disabled behaviour must not stay documented
 
@@ -318,6 +327,14 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-24
+
+- **§7.2** — added the rule that a merged geometry-port PR moves its action out of "does not run", and that the porting PR will not do that bookkeeping itself. Amended the same day it was first written: the destination depends on whether the action has been reviewed. A never-reviewed one joins pending audit (`Elevation Extractor`); an already-reviewed one owes a decision instead (`Bufferer`), since a stale review plus open findings is not the same as no review. No past verdict changes.
+
+### 2026-08-21 (later)
+
+- **§6** — added `excel` to the established tag vocabulary. Every audited reader and writer carries its format as a tag (`csv`, `json`, `geojson`, `shapefile`, `geopackage`), and `Excel Writer` had no term to draw on. No past verdict changes.
 
 ### 2026-08-21
 

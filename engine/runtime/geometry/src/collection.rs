@@ -339,6 +339,34 @@ impl crate::ops::CountHoles for Collection3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection2D {
+    /// The measurable members' areas, summed. An unmeasurable member is skipped
+    /// rather than failing its siblings; [`area_report`](crate::ops::area::area_report)
+    /// counts the skips so a caller can say how many there were. An empty
+    /// collection measures zero.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection3D {
+    /// See [`Collection2D`]'s impl: measurable members summed, unmeasurable
+    /// ones skipped, empty is zero.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
 // Deaggregate: a member that is not area geometry is handed back as `Rejected`
 // rather than failing the whole collection, so one curve among the surfaces does
 // not discard the surfaces.

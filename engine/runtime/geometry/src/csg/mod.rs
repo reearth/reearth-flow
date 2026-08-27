@@ -11,6 +11,9 @@ use super::solid::Solid;
 
 mod constructor;
 mod evaluate;
+
+pub use evaluate::DEFAULT_TOLERANCE;
+
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -41,6 +44,11 @@ pub enum Csg {
 crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, ForceTwoDimension);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: Footprint);
+
+// The boolean tree is unevaluated, so it has no surface of its own yet; adding
+// up its operands' areas would describe a shape the tree does not have.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: Area);
 
 // An unevaluated boolean tree has no boundary of its own, so it has no first
 // vertex; its operands' vertices are not the tree's.
