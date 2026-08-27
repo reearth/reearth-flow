@@ -356,6 +356,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                     workflowVariables={workflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
+                    readonly={readonly}
                     variableFocusMap={variableFocusMap}
                     variableEditMap={variableEditMap}
                   />

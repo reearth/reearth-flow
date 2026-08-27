@@ -38,6 +38,7 @@ type Props = {
   workflowVariables: WorkflowVariable[];
   columns: ColumnDef<WorkflowVariable, unknown>[];
   onReorder?: (oldIndex: number, newIndex: number) => void;
+  readonly?: boolean;
   variableFocusMap?: Record<string, AwarenessUser[]>;
   variableEditMap?: Record<string, AwarenessUser[]>;
 };
@@ -47,7 +48,8 @@ const SortableRow: React.FC<{
   variable: WorkflowVariable;
   focusedUsers: AwarenessUser[];
   editingUsers: AwarenessUser[];
-}> = ({ row, variable, focusedUsers, editingUsers }) => {
+  readonly?: boolean;
+}> = ({ row, variable, focusedUsers, editingUsers, readonly }) => {
   const {
     attributes,
     listeners,
@@ -75,7 +77,7 @@ const SortableRow: React.FC<{
       ref={setNodeRef}
       style={style}
       className="hover:bg-primary/50"
-      {...attributes}>
+      {...(readonly ? {} : attributes)}>
       <TableCell className="w-10 p-0">
         <div className="flex items-center">
           {indicatorUser && (
@@ -84,11 +86,16 @@ const SortableRow: React.FC<{
               style={{ backgroundColor: indicatorUser.color }}
             />
           )}
-          <div
-            className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"
-            {...listeners}>
-            <DotsSixIcon size={16} className="text-muted-foreground" />
-          </div>
+          {readonly ? (
+            // Keep the cell so the columns still line up with the header.
+            <div className="p-1" />
+          ) : (
+            <div
+              className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"
+              {...listeners}>
+              <DotsSixIcon size={16} className="text-muted-foreground" />
+            </div>
+          )}
         </div>
       </TableCell>
       {row.getVisibleCells().map((cell: any) => (
@@ -105,6 +112,7 @@ const WorkflowVariablesTable: React.FC<Props> = ({
   workflowVariables,
   columns,
   onReorder,
+  readonly,
   variableFocusMap = {},
   variableEditMap = {},
 }) => {
@@ -118,6 +126,7 @@ const WorkflowVariablesTable: React.FC<Props> = ({
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (readonly) return;
     const { active, over } = event;
 
     if (active.id !== over?.id) {
@@ -235,6 +244,7 @@ const WorkflowVariablesTable: React.FC<Props> = ({
                       variable={variable}
                       focusedUsers={variableFocusMap[variable.id] ?? []}
                       editingUsers={variableEditMap[variable.id] ?? []}
+                      readonly={readonly}
                     />
                   );
                 })
