@@ -66,19 +66,13 @@ fn contains_point<const N: usize>(ring: &[Corner<N>], point: [f64; 2]) -> bool {
     inside
 }
 
-/// A point used to test which exterior a hole belongs to.
+/// The arithmetic mean of a ring's vertices.
 ///
-/// This is the centroid of the hole's own vertices, not any single vertex.
-/// A hole that survived clipping against the window has, in the common case,
-/// at least one vertex sitting exactly on the window boundary (a cut vertex
-/// from [`clip_rings_halfplane`]) -- often the very same boundary line an
-/// exterior face shares. A point-in-ring test against a boundary point is a
-/// degenerate case for the ray-cast rule in [`contains_point`]: it can go
-/// either way depending on exactly how the boundary is walked, so probing
-/// with a vertex is fragile in exactly the cases clipping produces most
-/// often. The centroid is not on the window boundary except by symmetric
-/// coincidence, and for the roughly rectilinear pieces this module deals in
-/// it lands inside the hole itself.
+/// This is confined to the ring's bounding box but, for a non-convex ring, is
+/// not confined to the ring's interior: a C- or L-shaped ring's centroid can
+/// fall in its own notch, outside the ring entirely. It is a candidate probe
+/// point, not a guaranteed-interior one -- see [`ring_probe`], which verifies
+/// it before use and falls back when it fails.
 fn ring_centroid<const N: usize>(ring: &[Corner<N>]) -> [f64; 2] {
     let mut sum = [0.0, 0.0];
     for c in ring {
@@ -87,6 +81,76 @@ fn ring_centroid<const N: usize>(ring: &[Corner<N>]) -> [f64; 2] {
     }
     let n = ring.len() as f64;
     [sum[0] / n, sum[1] / n]
+}
+
+/// A point just inside one edge of `ring`: that edge's midpoint, nudged along
+/// its inward normal by `shrink` times the edge's own length.
+///
+/// `ccw` must be the winding of `ring` (from [`signed_area_xy`]), since the
+/// inward side is the left of travel for a counter-clockwise ring and the
+/// right for a clockwise one. Returns `None` for a degenerate (zero-length)
+/// edge, which contributes no usable normal.
+fn edge_inward_offset<const N: usize>(
+    ring: &[Corner<N>],
+    edge_index: usize,
+    shrink: f64,
+    ccw: bool,
+) -> Option<[f64; 2]> {
+    let n = ring.len();
+    let a = ring[edge_index].pos;
+    let b = ring[(edge_index + 1) % n].pos;
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let len = (dx * dx + dy * dy).sqrt();
+    if len == 0.0 {
+        return None;
+    }
+    let (nx, ny) = if ccw {
+        (-dy / len, dx / len)
+    } else {
+        (dy / len, -dx / len)
+    };
+    let mid = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
+    let offset = len * shrink;
+    Some([mid[0] + nx * offset, mid[1] + ny * offset])
+}
+
+/// A point confirmed, by [`contains_point`] against `ring` itself, to lie
+/// strictly inside `ring`. Used as the probe in a point-in-ring test against
+/// a *different* ring (which exterior a hole belongs to).
+///
+/// The centroid ([`ring_centroid`]) is tried first: it is exact and cheap,
+/// and correct whenever `ring` is convex. It is wrong in general, so it is
+/// verified rather than trusted -- when it fails (a concave ring whose
+/// centroid lands in its own notch), this falls back to an inward offset from
+/// each edge in turn ([`edge_inward_offset`]), at shrinking fractions of that
+/// edge's length, until one verifies. Every candidate this function can
+/// return has passed the same [`contains_point`] check the caller will apply
+/// it with, so "this point is inside `ring`" is not an assumption here, it is
+/// checked.
+fn ring_probe<const N: usize>(ring: &[Corner<N>]) -> [f64; 2] {
+    let centroid = ring_centroid(ring);
+    if contains_point(ring, centroid) {
+        return centroid;
+    }
+
+    let ccw = signed_area_xy(ring) > 0.0;
+    for i in 0..ring.len() {
+        for &shrink in &[0.25, 0.1, 0.01, 0.001] {
+            if let Some(candidate) = edge_inward_offset(ring, i, shrink, ccw) {
+                if contains_point(ring, candidate) {
+                    return candidate;
+                }
+            }
+        }
+    }
+
+    // Every well-formed simple ring this module produces has at least one
+    // edge whose inward-offset midpoint verifies as interior, so this is not
+    // expected to be reached. Falling back to the (unverified) centroid
+    // rather than panicking leaves ownership assignment no worse than it
+    // would be without this fallback chain, for whatever degenerate ring got
+    // this far.
+    centroid
 }
 
 /// Clip a face's rings to `window`, returning the surviving faces.
@@ -136,7 +200,7 @@ pub(crate) fn clip_to_window<const N: usize>(
         if hole.is_empty() {
             continue;
         }
-        let probe = ring_centroid(&hole);
+        let probe = ring_probe(&hole);
         let owner = faces
             .iter()
             .position(|f| contains_point(&f.rings[0], probe));
@@ -214,6 +278,91 @@ mod tests {
         // Area is the unit square minus the part of the hole inside it (0.5 x 0.5).
         assert!(
             (faces_area_xy(&faces) - 0.75).abs() < 1e-9,
+            "area was {}",
+            faces_area_xy(&faces)
+        );
+    }
+
+    /// A C-shaped hole (spine on the left, arms top and bottom, notch opening
+    /// right), wound clockwise as a hole must be. Its centroid is `(0.55, 0.5)`,
+    /// which sits in the notch -- outside the shape -- so this is the fixture
+    /// that defeats a plain-centroid probe and exercises the inward-offset
+    /// fallback in `ring_probe`.
+    ///
+    /// Bounding box area is 0.6 x 0.6 = 0.36; the notch removed is 0.4 x 0.2 =
+    /// 0.08; shape area is 0.36 - 0.08 = 0.28.
+    fn concave_c_hole() -> Vec<Corner<2>> {
+        ring2(&[
+            (0.8, 0.8),
+            (0.8, 0.6),
+            (0.4, 0.6),
+            (0.4, 0.4),
+            (0.8, 0.4),
+            (0.8, 0.2),
+            (0.2, 0.2),
+            (0.2, 0.8),
+        ])
+    }
+
+    #[test]
+    fn concave_c_hole_centroid_is_outside_the_hole() {
+        // Confirms the fixture actually exercises the fallback: a plain
+        // centroid probe would misjudge this hole's own shape, let alone which
+        // exterior it belongs to.
+        let hole = concave_c_hole();
+        assert!(signed_area_xy(&hole) < 0.0, "fixture hole must be CW");
+        assert!(!contains_point(&hole, ring_centroid(&hole)));
+    }
+
+    #[test]
+    fn concave_hole_nested_in_one_exterior_is_attributed_to_it() {
+        let exterior = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let hole = concave_c_hole();
+        let faces = clip_to_window(vec![exterior, hole], &unit_window());
+        assert_eq!(faces.len(), 1);
+        assert_eq!(faces[0].rings.len(), 2, "exterior plus the concave hole");
+        // 1.0 total minus the 0.28 hole.
+        assert!(
+            (faces_area_xy(&faces) - 0.72).abs() < 1e-12,
+            "area was {}",
+            faces_area_xy(&faces)
+        );
+    }
+
+    #[test]
+    fn concave_hole_is_not_attributed_to_an_unrelated_exterior() {
+        // Two disjoint exteriors in one batch: A holds the concave hole, B is
+        // a plain square far away. A robust probe must not attach the hole to
+        // B just because B also happens to be a surviving exterior.
+        let exterior_a = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let hole = concave_c_hole();
+        let exterior_b = ring2(&[(2.0, 0.0), (3.0, 0.0), (3.0, 1.0), (2.0, 1.0)]);
+        let window = Window {
+            min: [-1.0, -1.0],
+            max: [4.0, 2.0],
+        };
+        let faces = clip_to_window(vec![exterior_a, hole, exterior_b], &window);
+        assert_eq!(faces.len(), 2);
+
+        let with_hole = faces
+            .iter()
+            .find(|f| f.rings.len() == 2)
+            .expect("one face must carry the hole");
+        let without_hole = faces
+            .iter()
+            .find(|f| f.rings.len() == 1)
+            .expect("the other face must carry no hole");
+        assert!(
+            with_hole.rings[0]
+                .iter()
+                .all(|c| c.pos[0] >= 0.0 && c.pos[0] <= 1.0),
+            "the hole must land on exterior A, not B"
+        );
+        assert!((signed_area_xy(&without_hole.rings[0]) - 1.0).abs() < 1e-12);
+
+        // A's net area (1.0 - 0.28) plus B's full 1.0.
+        assert!(
+            (faces_area_xy(&faces) - 1.72).abs() < 1e-12,
             "area was {}",
             faces_area_xy(&faces)
         );
