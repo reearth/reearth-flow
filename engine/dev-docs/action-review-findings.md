@@ -1190,3 +1190,80 @@ is `cargo test -p workflow-tests -- --test-threads=4`, the legacy world, 185 cas
 and after. Leaving `snap_group` a no-op in the legacy build is what makes that run useful: the
 snapping is the one change those cases cannot see, so they stay a real regression check on the
 rewiring and the parameter renames, which they DO see, rather than a wall of expected diffs.
+
+---
+
+### Addendum — Elevation Extractor and the Shapefile reader/writer, audited and exposed
+
+All three verified **Migrated** in FLOW-DEV-182 before any audit work. `Elevation Extractor` was
+exposed; the two Shapefiles already were, so what changed for them is the metadata they had been
+exposed with. Every substantive defect was in the accuracy class and none was visible to a schema
+scan.
+
+**The batch's lesson: an action that was audited and then RE-IMPLEMENTED carries text describing
+code that no longer exists.** `Shapefile Reader`/`Writer` were audited in the old Input/Output
+batches, then rewritten from scratch as `shapefile_next` modules for the geometry port (#2361).
+The old text came along unchanged. This is a third case beyond Batch 5's "a recent port needs no
+metadata work" and Batch 6's "an old action means everything is suspect": **a re-port resets the
+audit, and nothing in the process notices.** The tell is a cfg-selected `*_next` sibling module
+declared in the parent `file.rs`.
+
+```
+Elevation Extractor — kept and newly exposed
+  impl:    One parameter, read and applied. Single port, every feature emitted. Clean.
+  desc:    Claimed "the elevation of a feature's geometry". `ops::Elevation` returns the z of the
+             first vertex in nesting order, which its own module doc says describes the geometry
+             as a whole only when the geometry lies at one elevation — on anything else it is one
+             arbitrary vertex's z. Rewritten to say first vertex, and to state the pass-through
+             for a geometry with no elevation, which had no user-facing mention anywhere.
+  i18n:    es AND zh both described different behaviour again ("extracts the first z coordinate
+             value of an *entity*"); fr was an English placeholder. Third batch running in which
+             the translations carried an error the English did not.
+
+Shapefile Reader — kept, spec-vs-implementation settled on the spec's side
+  impl:    All parameters read and applied. `inline` is the exception and is filed as
+             cross-cutting finding 8: it evaluates to UTF-8 text and this reader accepts only a
+             ZIP archive, so no value a user can write will read.
+  desc:    The original named .shp, .dbf and .shx as the archive's required members. The audit
+             first "corrected" this to .shp and .dbf, on the grounds that `archive.rs` warns and
+             reads shapes in order when the .shx is absent, and `NoCompleteShapefile` requires
+             only the two.
+  prior art: **That correction was wrong and was reverted in review.** The format defines three
+             files — main file, index file, dBASE table — and all three are mandatory, so an
+             archive without a .shx is not a valid shapefile even though we read it. Describing
+             the two-file case as the requirement presents a spec-invalid archive as normal
+             input. The shipped text now states the three the format defines and records the
+             missing-index tolerance as a tolerance. **The generalisable rule: where an
+             implementation is more permissive than the format it reads, the contract is the
+             format's and the leniency is the footnote — do not promote a tolerance to a
+             requirement.** Same shape as Batch 6's `tolerance` finding, in the other direction:
+             there the code was the defect, here the implementation is fine and only the wording
+             over-rotated toward it.
+  params:  `force2D` documented only that it drops Z. It also fails the read outright on a
+             multipatch, which describes a surface in space and has no 2D form — now stated.
+             `allowEmptyPath` was titled "Allow Null Path" and described only the null case while
+             `compile` treats an empty string as absent too; retitled and reworded. Its
+             `alias = "allowEmptyPath"` duplicated the name `rename_all` already generates and is
+             removed, leaving the wire name unchanged.
+  verified: `encoding`'s documented case-insensitivity holds — `from_name` upper-cases before
+             matching, and `for_label` is ASCII-case-insensitive by specification. Struck from
+             the "still to verify" list above.
+
+Shapefile Writer — kept, one defect documented and split out
+  impl:    `output` is a directory, and the file sets inside are named after the `groupBy` key —
+             the literal "null" when ungrouped. Full detail and the split decision are in
+             "Deferred: Shapefile Writer output naming" above. Documented here rather than fixed,
+             so the surface stops lying while the behaviour change waits for its own PR.
+  desc:    Named a vendor (§2); now matches the reader's wording.
+  tests:   No new-geometry workflow coverage at all — all eight 08-dem cases are
+             `skipNewGeometry`. Recorded with the deferred item, since a naming fix must land
+             coverage with it.
+  i18n:    es/fr/zh descriptions stale (fr an English placeholder, es mistranslating "features"
+             as "características"); `groupBy`'s description was the OLD English in all four
+             languages.
+```
+
+Both parameter blocks were titled in PascalCase (`ShapefileReader Parameters`), against the
+`<Action Name> Parameters` convention every other audited action follows. Checked before changing:
+that convention is universal across the audited set, so §3.3's objection to a block title
+restating the action name is a standing exception here, not something to fix per batch.
