@@ -3594,15 +3594,19 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "フィルタージオメトリとの空間的な関係に基づいて候補の地物をフィルタリングする",
+      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter パラメータ",
           "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する"
         },
+        "matchMode": {
+          "title": "マッチモード",
+          "description": "候補がいずれか 1 つのフィルター地物に一致すれば通過するか、すべてのフィルター地物に一致した場合のみ通過するか"
+        },
         "mergeFilterAttributes": {
           "title": "フィルター属性をマージ",
-          "description": "true の場合、一致したフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される"
+          "description": "true の場合、一致したすべてのフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後に一致したフィルターの値が優先される"
         },
         "mergedAttributesPrefix": {
           "title": "マージ属性プレフィックス",
@@ -3610,27 +3614,33 @@
         },
         "outputMatchCountAttribute": {
           "title": "マッチ数出力属性",
-          "description": "一致したフィルター数を格納する属性名（任意）"
-        },
-        "passOnMultipleMatches": {
-          "title": "複数マッチ時に通過",
-          "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）"
+          "description": "候補が一致したフィルター地物の数を格納する属性名（任意）"
         },
         "predicate": {
           "title": "空間述語",
-          "description": "フィルターと候補ジオメトリ間でテストする空間関係"
+          "description": "テストする空間関係。候補が主語となる: within は候補がフィルタージオメトリの内部にある場合に通過し、contains は候補がフィルタージオメトリを含む場合に通過する"
         }
       },
       "enumI18n": {
+        "MatchMode": {
+          "all": {
+            "title": "すべて",
+            "description": "すべてのフィルター地物に一致した場合のみ候補を通過させる"
+          },
+          "any": {
+            "title": "いずれか",
+            "description": "少なくとも 1 つのフィルター地物に一致した候補を通過させる"
+          }
+        },
         "SpatialPredicate": {
           "contains": {
-            "description": "フィルタージオメトリが候補を完全に含む"
+            "description": "候補がフィルタージオメトリを完全に含む"
           },
           "coveredBy": {
             "description": "候補がフィルタージオメトリに覆われている"
           },
           "covers": {
-            "description": "フィルタージオメトリが候補を覆う"
+            "description": "候補がフィルタージオメトリを覆う"
           },
           "crosses": {
             "description": "ジオメトリが互いに交差する"
