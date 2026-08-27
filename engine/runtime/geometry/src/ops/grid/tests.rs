@@ -1036,3 +1036,150 @@ fn polygon_mesh_per_face_material_binding_survives_division() {
         "column 2's face was unbound under this theme, so no appearance survives it"
     );
 }
+
+#[test]
+fn polygon_mesh_world_to_texture_survives_multi_cell_uncut_division() {
+    use crate::appearance::{
+        Appearance, ChannelId, FaceBinding, MaterialIndex, Side, TexMatrix, ThemeBinding, UvSet,
+        UvSource,
+    };
+    use crate::test_support::{textured, theme};
+
+    // Three faces, one per grid column, none cut by any grid line -- same
+    // layout as `polygon_mesh_per_face_material_binding_survives_division`,
+    // so the fast path cannot fire (`buckets.len() == 3`, not `1`) even
+    // though no individual piece is cut either. This is exactly the gap a
+    // prior round missed: `PolygonMesh3D::from_polygons` bakes
+    // `WorldToTexture` to `Explicit` at weld time regardless of whether any
+    // face was actually clipped, so routing genuinely-uncut per-cell pieces
+    // through that constructor (as every non-fast-path cell does) must not
+    // let that baking show through.
+    let mut mesh = PolygonMesh3D::from_parts(
+        CoordinateFrame::default(),
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+        ],
+        [[0u32, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
+    )
+    .expect("valid mesh");
+    let matrix = TexMatrix([
+        [0.25, 0.0, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+    let app = Appearance::from_parts(
+        vec![textured()],
+        vec![ThemeBinding {
+            theme: theme("ir"),
+            front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+            back: None,
+            uv_sets: vec![UvSet {
+                side: Side::Front,
+                channel: ChannelId::default(),
+                uv: UvSource::WorldToTexture(matrix),
+            }],
+        }],
+        theme("ir"),
+    );
+    *mesh.appearance_mut() = Some(app);
+
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(m)) = piece else {
+            panic!("expected a polygon mesh piece");
+        };
+        let app = m
+            .appearance()
+            .as_ref()
+            .expect("appearance carried through the weld");
+        assert!(
+            matches!(
+                app.themes()[0].uv_sets[0].uv,
+                UvSource::WorldToTexture(out) if out == matrix
+            ),
+            "WorldToTexture must not be baked to Explicit by a weld none of these faces needed"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 3, "one cell per face, none of them cut");
+}
+
+#[test]
+fn polygon_mesh_world_to_texture_survives_a_genuine_cut() {
+    use crate::appearance::{
+        Appearance, ChannelId, FaceBinding, MaterialIndex, Side, TexMatrix, ThemeBinding, UvSet,
+        UvSource,
+    };
+    use crate::test_support::{textured, theme};
+
+    // One face spanning two cells (x in 0..2), genuinely severed by the
+    // grid line at x = 1 -- the case the *unconditional* rule (survive
+    // regardless of cut status) actually needs to cover, since an
+    // uncut-only fix would miss it.
+    let mut mesh = PolygonMesh3D::from_parts(
+        CoordinateFrame::default(),
+        vec![
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ],
+        [[0u32, 1, 2, 3]],
+    )
+    .expect("valid mesh");
+    let matrix = TexMatrix([
+        [0.25, 0.0, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+    let app = Appearance::from_parts(
+        vec![textured()],
+        vec![ThemeBinding {
+            theme: theme("ir"),
+            front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+            back: None,
+            uv_sets: vec![UvSet {
+                side: Side::Front,
+                channel: ChannelId::default(),
+                uv: UvSource::WorldToTexture(matrix),
+            }],
+        }],
+        theme("ir"),
+    );
+    *mesh.appearance_mut() = Some(app);
+
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(m)) = piece else {
+            panic!("expected a polygon mesh piece");
+        };
+        let app = m
+            .appearance()
+            .as_ref()
+            .expect("appearance carried through a genuine cut");
+        assert!(
+            matches!(
+                app.themes()[0].uv_sets[0].uv,
+                UvSource::WorldToTexture(out) if out == matrix
+            ),
+            "WorldToTexture must survive the cut piece too, unbaked"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 2, "the face is genuinely severed across two cells");
+}

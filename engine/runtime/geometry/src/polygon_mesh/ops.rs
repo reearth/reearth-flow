@@ -948,6 +948,64 @@ mod grid_impl {
         unchanged.then_some(key)
     }
 
+    /// Restore any `WorldToTexture` uv that welding baked to `Explicit`.
+    ///
+    /// A `WorldToTexture` matrix maps a *world position* to a texture
+    /// coordinate; clipping only removes vertices and inserts new ones at
+    /// exact world positions along existing edges -- it never moves a
+    /// vertex to a different world position. So the matrix stays exactly as
+    /// valid on a clipped, welded mesh as on the source, whether that
+    /// particular piece was actually cut or not: there is nothing to
+    /// re-thread and nothing to bake. `triangular_mesh/ops.rs`'s
+    /// `rebuild_mesh_appearance` already applies this rule unconditionally;
+    /// this mirrors it for the polygon-mesh leaves rather than letting the
+    /// two drift apart.
+    ///
+    /// `PolygonMesh3D::from_polygons` (used to weld a cell's pieces back
+    /// into one mesh) always bakes a `WorldToTexture` uv to `Explicit` at
+    /// construction -- deliberately, since a welded mesh's *different*
+    /// faces can in general carry different matrices and cannot share one
+    /// array slot -- but every piece this op welds traces back to the same
+    /// source theme's same matrix (`face_appearance` copies it verbatim,
+    /// unsliced, onto every face), so re-installing that one matrix after
+    /// the fact is restoring what was already true, not reconstructing
+    /// anything. Only `from_polygons`'s general-purpose *baking* is out of
+    /// scope to change; this narrower, always-correct-here case is not.
+    ///
+    /// Matches each welded theme's uv sets against the *source* mesh's own
+    /// appearance by `(theme, side, channel)`, so a theme or slot the weld
+    /// dropped entirely (see `rebuild`/`face_appearance`) is simply not
+    /// touched, and a slot that was never `WorldToTexture` to begin with is
+    /// left as whatever the weld produced for it (its `Explicit` gather).
+    fn restore_world_to_texture(
+        welded: Option<Appearance>,
+        source: &Option<Appearance>,
+    ) -> Option<Appearance> {
+        let welded = welded?;
+        let Some(source) = source.as_ref() else {
+            return Some(welded);
+        };
+        let (materials, mut themes, default_theme) = welded.into_parts();
+        for theme in &mut themes {
+            let Some(src_theme) = source.themes().iter().find(|t| t.theme == theme.theme) else {
+                continue;
+            };
+            for uv in &mut theme.uv_sets {
+                let Some(src_uv) = src_theme
+                    .uv_sets
+                    .iter()
+                    .find(|u| u.side == uv.side && u.channel == uv.channel)
+                else {
+                    continue;
+                };
+                if let UvSource::WorldToTexture(matrix) = src_uv.uv {
+                    uv.uv = UvSource::WorldToTexture(matrix);
+                }
+            }
+        }
+        Some(Appearance::from_parts(materials, themes, default_theme))
+    }
+
     impl DivideByGrid for PolygonMesh2D {
         fn divide_by_grid(
             &self,
@@ -1004,7 +1062,7 @@ mod grid_impl {
                     face_indices,
                     face_offsets,
                     interior_offsets,
-                    appearance,
+                    appearance: restore_world_to_texture(appearance, self.appearance()),
                 };
                 emit(
                     GridCell { row, col },
@@ -1045,8 +1103,10 @@ mod grid_impl {
                 }
                 let area: f64 = pieces.iter().map(Polygon3D::area_xy).sum();
                 let coverage = CellCoverage::from_area(area, cell_area);
-                let mesh = PolygonMesh3D::from_polygons(self.frame().clone(), pieces.iter())
+                let mut mesh = PolygonMesh3D::from_polygons(self.frame().clone(), pieces.iter())
                     .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
+                *mesh.appearance_mut() =
+                    restore_world_to_texture(mesh.appearance().clone(), self.appearance());
                 emit(
                     GridCell { row, col },
                     coverage,
