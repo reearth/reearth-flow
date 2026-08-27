@@ -490,11 +490,12 @@ rewrite), so the decision needs an §8 re-check against the new-geometry code fi
 `base_actions.go`. Note the table has no bucket for "runs, reviewed, awaiting a decision" — that
 is why this is prose, and it is the slot Bufferer occupied until this PR.
 
-**`Area Calculator`'s port landed in #2385 (merged 2026-08-27) and it moves to pending audit.**
-Recorded here per §7.2 rather than left to expire: it now has a `#[cfg(feature = "new-geometry")]
-process` (`area_calculator.rs:165`) so it runs, it is not in `base_actions.go`, and it has had no
-§8 pass — only a spot-check of `areaType` in "Verified accurate" below. Same case as Elevation
-Extractor, not Bufferer's.
+**`Area Calculator`'s port landed in #2385 (merged 2026-08-27), it went to pending audit per
+§7.2, and it has now been audited and exposed** — outcome in the addendum at the bottom of this
+file. It was the Elevation Extractor case, not Bufferer's: the only prior note on it was a
+spot-check of `areaType`, a parameter #2385 deleted, and a spot-check is not a review. Its audit
+is also why §2 now covers diagnostic registry text, so it is the first action whose review had to
+read a surface outside `actions.json`.
 
 `Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
