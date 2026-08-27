@@ -10,6 +10,7 @@ import (
 	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -38,6 +39,14 @@ func (m *mockUserFacingLogGateway) GetJobCompleteEvent(ctx context.Context, jobI
 
 func (m *mockUserFacingLogGateway) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
 	return nil
+}
+
+func (m *mockUserFacingLogGateway) GetNodeDiagnostics(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
+}
+
+func (m *mockUserFacingLogGateway) GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
 }
 
 func TestNewUserFacingLogInteractor(t *testing.T) {

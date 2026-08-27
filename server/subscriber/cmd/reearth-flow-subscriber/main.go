@@ -14,13 +14,21 @@ import (
 
 	"cloud.google.com/go/pubsub/v2"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 
 	flow_pubsub "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
+	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/telemetry"
+	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
+	"github.com/reearth/reearthx/mongox"
 )
+
+const databaseName = "reearth-flow"
 
 func main() {
 
@@ -128,6 +136,32 @@ func main() {
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
 	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(redisStorage)
 
+	// Initialize the MongoDB client and diagnostic storage if needed
+	var mongoClient *mongo.Client
+	var diagnosticStorage gateway.DiagnosticStorage
+
+	if conf.DiagnosticSubscriptionID != "" {
+		mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
+		if err != nil {
+			log.Fatalf("Failed to connect to MongoDB: %v", err)
+		}
+		if err := mongoClient.Ping(ctx, nil); err != nil {
+			log.Fatalf("Failed to ping MongoDB: %v", err)
+		}
+
+		defer func() {
+			if merr := mongoClient.Disconnect(context.Background()); merr != nil {
+				log.Printf("failed to disconnet mongo client: %v", merr)
+			}
+		}()
+
+		mongoStorage := flow_mongo.NewMongoStorage(mongox.NewClient(databaseName, mongoClient))
+		if err := mongoStorage.Init(ctx); err != nil {
+			log.Printf("[subscriber] failed to ensure nodeDiagnostics indexes: %v", err)
+		}
+		diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(redisStorage, mongoStorage)
+	}
+
 	// Set up subscribers with respective subscriptions
 	var wg sync.WaitGroup
 
@@ -150,6 +184,28 @@ func main() {
 		}()
 	} else {
 		log.Println("Log subscription ID not provided, log subscriber will not be started")
+	}
+
+	if conf.DiagnosticSubscriptionID != "" && diagnosticStorage != nil {
+		diagnosticSub := pubsubClient.Subscriber(conf.DiagnosticSubscriptionID)
+		diagnosticSubAdapter := flow_pubsub.NewRealSubscription(diagnosticSub)
+		diagnosticSubscriberUC := interactor.NewDiagnosticSubscriberUseCase(diagnosticStorage)
+		diagnosticSubscriber := flow_pubsub.NewDiagnosticSubscriber(diagnosticSubAdapter, diagnosticSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting diagnostic subscriber...")
+			if err := diagnosticSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Diagnostic subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Diagnostic subscriber stopped")
+		}()
+	} else if conf.DiagnosticSubscriptionID != "" {
+		log.Println("Diagnostic storage not properly initialized, diagnostic subscriber will not be started")
+	} else {
+		log.Println("Diagnostic subscription ID not provided, diagnostic subscriber will not be started")
 	}
 
 	// Set up user-facing log subscriber if configured

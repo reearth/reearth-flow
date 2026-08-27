@@ -14,6 +14,7 @@ import (
 	infragql "github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -44,6 +45,14 @@ func (g *countingRedisGateway) GetJobCompleteEvent(_ context.Context, _ id.JobID
 
 func (g *countingRedisGateway) DeleteJobCompleteEvent(_ context.Context, _ id.JobID) error {
 	return nil
+}
+
+func (g *countingRedisGateway) GetNodeDiagnostics(_ context.Context, _ id.JobID, _ string) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
+}
+
+func (g *countingRedisGateway) GetJobDiagnostics(_ context.Context, _ id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
 }
 
 const logsSubscriptionQuery = `subscription($jobId: ID!) { logs(jobId: $jobId) { jobId message } }`
