@@ -1,0 +1,6 @@
+[[codes]]
+code = "csv.no_data_rows"
+category = "io"
+default_disposition = "warn_drop"
+message = "the file contained no data rows"
+help = "Check the file path, and check the header row settings if the file does have data."

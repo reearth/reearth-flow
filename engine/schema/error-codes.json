@@ -35,6 +35,13 @@
     "help": "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
   },
   {
+    "code": "csv.no_data_rows",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "the file contained no data rows",
+    "help": "Check the file path, and check the header row settings if the file does have data."
+  },
+  {
     "code": "czml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

@@ -18,24 +18,18 @@ import (
 )
 
 func TestProjectAccess_Fetch(t *testing.T) {
-	// prepare
-	mockAuthInfo := &appx.AuthInfo{
-		Token: "token",
-	}
-	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
-
+	// The shared-link fetch is anonymous and token-authorized: no user in the
+	// context, and a deny-all checker must not be consulted.
 	ctx := context.Background()
-	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
 
 	mem := memory.New()
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
-		return true, nil
+	mockPermissionCheckerFalse := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+		return false, nil
 	})
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
-		permissionChecker: mockPermissionCheckerTrue,
+		permissionChecker: mockPermissionCheckerFalse,
 	}
 
 	// Set up a workspace, project, and shared project access
