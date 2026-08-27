@@ -906,7 +906,15 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
     },
     "defaultValue": {
       "title": "Default Value",
-      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected."
+      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MappedValue"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
@@ -933,9 +941,35 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
         },
         "outputValue": {
           "title": "Output Value",
-          "description": "Value written to the output attribute when the input falls in this range. Any JSON type is accepted."
+          "description": "Value written to the output attribute when the input falls in this range.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MappedValue"
+            }
+          ]
         }
       }
+    },
+    "MappedValue": {
+      "title": "Mapped Value",
+      "description": "A value written to an attribute. Accepts text, a number, or true/false, written as the type given — `\"3\"` stays text and `3` stays a number.",
+      "anyOf": [
+        {
+          "title": "Text",
+          "description": "Written as text.",
+          "type": "string"
+        },
+        {
+          "title": "Number",
+          "description": "Written as a number.",
+          "type": "number"
+        },
+        {
+          "title": "True or False",
+          "description": "Written as a true/false value.",
+          "type": "boolean"
+        }
+      ]
     }
   }
 }
@@ -8727,8 +8761,16 @@ Replaces null-like attribute values with configured replacement values, optional
     },
     "defaultReplacement": {
       "title": "Default Replacement",
-      "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
-      "default": null
+      "description": "What to write for null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes. When omitted, those attributes are left unchanged.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NullReplacement"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "nullDefinition": {
       "title": "Null Definition",
@@ -8776,7 +8818,8 @@ Replaces null-like attribute values with configured replacement values, optional
       "description": "Per-attribute replacement mapping",
       "type": "object",
       "required": [
-        "attribute"
+        "attribute",
+        "replacement"
       ],
       "properties": {
         "attribute": {
@@ -8786,7 +8829,12 @@ Replaces null-like attribute values with configured replacement values, optional
         },
         "replacement": {
           "title": "Replacement",
-          "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+          "description": "What to write when the attribute is null-like. Required, so that removing an attribute is stated rather than implied by leaving this out.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NullReplacement"
+            }
+          ]
         },
         "onMissing": {
           "title": "On Missing",
@@ -8799,6 +8847,94 @@ Replaces null-like attribute values with configured replacement values, optional
           ]
         }
       }
+    },
+    "NullReplacement": {
+      "title": "Null Replacement",
+      "description": "What to write in place of a null-like attribute, and the type to write it as.",
+      "oneOf": [
+        {
+          "title": "Text",
+          "description": "Written as text.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The text to write.",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "title": "Number",
+          "description": "Written as a number.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "number"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The number to write.",
+              "type": "number"
+            }
+          }
+        },
+        {
+          "title": "True or False",
+          "description": "Written as a true/false value.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "boolean"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The value to write.",
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the attribute from the feature instead of writing a value.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "remove"
+              ]
+            }
+          }
+        }
+      ]
     },
     "OnMissing": {
       "title": "On Missing",

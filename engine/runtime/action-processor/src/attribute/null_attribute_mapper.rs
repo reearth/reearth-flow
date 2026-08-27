@@ -62,6 +62,53 @@ pub enum OnMissing {
     Create,
 }
 
+/// # Null Replacement
+///
+/// What to write in place of a null-like attribute, and the type to write it as.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum NullReplacement {
+    /// # Text
+    /// Written as text.
+    #[serde(rename_all = "camelCase")]
+    Text {
+        /// # Value
+        /// The text to write.
+        value: String,
+    },
+    /// # Number
+    /// Written as a number.
+    #[serde(rename_all = "camelCase")]
+    Number {
+        /// # Value
+        /// The number to write.
+        value: serde_json::Number,
+    },
+    /// # True or False
+    /// Written as a true/false value.
+    #[serde(rename_all = "camelCase")]
+    Boolean {
+        /// # Value
+        /// The value to write.
+        value: bool,
+    },
+    /// # Remove
+    /// Removes the attribute from the feature instead of writing a value.
+    Remove,
+}
+
+impl NullReplacement {
+    /// The attribute value to write, or `None` when the attribute is to be removed.
+    fn to_attribute_value(&self) -> Option<AttributeValue> {
+        match self {
+            NullReplacement::Text { value } => Some(AttributeValue::String(value.clone())),
+            NullReplacement::Number { value } => Some(AttributeValue::Number(value.clone())),
+            NullReplacement::Boolean { value } => Some(AttributeValue::Bool(*value)),
+            NullReplacement::Remove => None,
+        }
+    }
+}
+
 /// Per-attribute replacement mapping
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -70,8 +117,9 @@ pub struct AttributeMapping {
     /// Name of the attribute to inspect.
     pub attribute: String,
     /// # Replacement
-    /// Value written when the attribute is null-like. A null value removes the attribute instead.
-    pub replacement: Option<Value>,
+    /// What to write when the attribute is null-like. Required, so that removing an attribute
+    /// is stated rather than implied by leaving this out.
+    pub replacement: NullReplacement,
     /// # On Missing
     /// Behavior when the attribute is absent and not treated as null-like by the null definition.
     #[serde(default)]
@@ -92,9 +140,10 @@ pub struct NullAttributeMapperParams {
     #[serde(default)]
     pub mappings: Vec<AttributeMapping>,
     /// # Default Replacement
-    /// Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.
+    /// What to write for null-like attributes that have no entry in the mappings. Applies only
+    /// when the scope inspects all attributes. When omitted, those attributes are left unchanged.
     #[serde(default)]
-    pub default_replacement: Option<Value>,
+    pub default_replacement: Option<NullReplacement>,
     /// # Null Definition
     /// States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes.
     #[serde(default = "default_null_definition")]
@@ -257,26 +306,21 @@ impl Processor for NullAttributeMapper {
                 // Find replacement value (per-attribute mapping takes precedence)
                 let mapping = self.params.mappings.iter().find(|m| m.attribute == key_str);
 
-                // Distinguish between:
-                // - mapping present with replacement Some(Value)
-                // - mapping present with replacement None (explicit removal)
-                // - mapping absent, in which case default_replacement (if any) applies
+                // A mapping states what to do; without one the default applies, and with
+                // neither the attribute is left as it is.
                 let replacement = match mapping {
-                    Some(m) => m.replacement.clone(),
-                    None => self.params.default_replacement.clone(),
+                    Some(m) => Some(&m.replacement),
+                    None => self.params.default_replacement.as_ref(),
                 };
 
-                match (replacement, mapping.is_some()) {
-                    (Some(value), _) => {
-                        let attr_value = AttributeValue::from(value);
-                        attributes.insert(attr_key, attr_value);
-                    }
-                    (None, true) => {
-                        // Explicit removal requested by mapping (replacement: null)
-                        attributes.swap_remove(&attr_key);
-                    }
-                    (None, false) => {
-                        // No mapping and no default replacement: leave attribute unchanged
+                if let Some(replacement) = replacement {
+                    match replacement.to_attribute_value() {
+                        Some(value) => {
+                            attributes.insert(attr_key, value);
+                        }
+                        None => {
+                            attributes.swap_remove(&attr_key);
+                        }
                     }
                 }
             } else if matches!(state, AttributeState::Missing) {
@@ -284,9 +328,9 @@ impl Processor for NullAttributeMapper {
                 if let Some(mapping) = self.params.mappings.iter().find(|m| m.attribute == key_str)
                 {
                     if matches!(mapping.on_missing, OnMissing::Create) {
-                        if let Some(ref replacement) = mapping.replacement {
-                            let attr_value = AttributeValue::from(replacement.clone());
-                            attributes.insert(attr_key, attr_value);
+                        // Nothing to create when the mapping asks for removal.
+                        if let Some(value) = mapping.replacement.to_attribute_value() {
+                            attributes.insert(attr_key, value);
                         }
                     }
                 }
@@ -416,7 +460,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: Some(Value::Number(Number::from(0))),
+                replacement: NullReplacement::Number {
+                    value: Number::from(0),
+                },
                 on_missing: OnMissing::Skip,
             }],
             null_definition: vec![NullKind::Null],
@@ -448,7 +494,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: Some(Value::Number(Number::from(42))),
+                replacement: NullReplacement::Number {
+                    value: Number::from(42),
+                },
                 on_missing: OnMissing::Create,
             }],
             null_definition: vec![NullKind::Missing],
@@ -475,7 +523,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "name".to_string(),
-                replacement: Some(Value::String("default".to_string())),
+                replacement: NullReplacement::Text {
+                    value: "default".to_string(),
+                },
                 on_missing: OnMissing::Skip,
             }],
             null_definition: vec![NullKind::EmptyString],
@@ -504,7 +554,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "name".to_string(),
-                replacement: Some(Value::String("default".to_string())),
+                replacement: NullReplacement::Text {
+                    value: "default".to_string(),
+                },
                 on_missing: OnMissing::Skip,
             }],
             // EmptyString NOT in null_definition
@@ -533,7 +585,7 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: None, // null means remove
+                replacement: NullReplacement::Remove,
                 on_missing: OnMissing::Skip,
             }],
             null_definition: vec![NullKind::Null],
@@ -562,7 +614,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: Some(Value::Number(Number::from(0))),
+                replacement: NullReplacement::Number {
+                    value: Number::from(0),
+                },
                 on_missing: OnMissing::Skip,
             }],
             null_definition: vec![NullKind::Null],
@@ -597,7 +651,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: Some(Value::Number(Number::from(0))),
+                replacement: NullReplacement::Number {
+                    value: Number::from(0),
+                },
                 on_missing: OnMissing::Skip,
             }],
             null_definition: vec![NullKind::Null],
@@ -623,7 +679,9 @@ mod tests {
 
         let params = NullAttributeMapperParams {
             mappings: vec![], // No per-attribute mappings
-            default_replacement: Some(Value::String("replaced".to_string())),
+            default_replacement: Some(NullReplacement::Text {
+                value: "replaced".to_string(),
+            }),
             null_definition: vec![NullKind::Null],
             scope: Scope::All,
             ..Default::default()
@@ -657,10 +715,14 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "a".to_string(),
-                replacement: Some(Value::String("special".to_string())),
+                replacement: NullReplacement::Text {
+                    value: "special".to_string(),
+                },
                 on_missing: OnMissing::Skip,
             }],
-            default_replacement: Some(Value::String("default".to_string())),
+            default_replacement: Some(NullReplacement::Text {
+                value: "default".to_string(),
+            }),
             null_definition: vec![NullKind::Null],
             scope: Scope::All,
             ..Default::default()
@@ -692,7 +754,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: Some(Value::Number(Number::from(0))),
+                replacement: NullReplacement::Number {
+                    value: Number::from(0),
+                },
                 on_missing: OnMissing::Skip,
             }],
             null_definition: vec![NullKind::Null],
@@ -724,7 +788,9 @@ mod tests {
         let params = NullAttributeMapperParams {
             mappings: vec![AttributeMapping {
                 attribute: "value".to_string(),
-                replacement: Some(Value::Number(Number::from(42))),
+                replacement: NullReplacement::Number {
+                    value: Number::from(42),
+                },
                 on_missing: OnMissing::Skip, // Should NOT create
             }],
             null_definition: vec![NullKind::Null], // Missing is NOT null
