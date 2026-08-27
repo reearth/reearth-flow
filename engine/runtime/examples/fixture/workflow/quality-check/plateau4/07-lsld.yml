@@ -401,7 +401,7 @@ graphs:
     with:
       groupBy:
       - surfaceId
-      accumulationMode: useAttributesFromOneFeature
+      attributeAccumulation: useOneFeature
       outputAttribute: overlap
       tolerance: 0.1
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
@@ -642,7 +642,7 @@ graphs:
   - id: 6e5b8a2f-1c4d-4e6e-b9f4-5b6e8a2f1c4d
     from: 2c7f4a9e-8b1d-4f6c-a3e8-7f2c4a9e1b8d
     to: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: 8a3f6c9d-4e7b-4a8a-f2c5-3f8a6c9d4e7b
     from: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d

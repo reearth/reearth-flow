@@ -36,7 +36,6 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		WorkerConfig:  NewWorkerConfig(client),
 		Deployment:    NewDeployment(client),
 		Job:           NewJob(client),
-		NodeExecution: NewNodeExecution(client),
 		Parameter:     NewParameter(client),
 		Permittable:   accountmongo.NewPermittable(client), // TODO: Delete this once the permission check migration is complete.
 		Project:       NewProject(client),
@@ -72,7 +71,6 @@ func Init(r *repo.Container) error {
 		func() error { return r.AuthRequest.(*authserver.Mongo).Init(ctx) },
 		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
-		func() error { return r.NodeExecution.(*NodeExecution).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Permittable.(*accountmongo.Permittable).Init() }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Project.(*Project).Init(ctx) },

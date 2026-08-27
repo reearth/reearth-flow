@@ -24,27 +24,39 @@
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer Parameters",
-          "description": "Configure how area overlay analysis is performed"
+          "description": "Sets which features are overlaid together, how small a piece of geometry has to be before it counts as noise, and what the resulting pieces record about the features they came from."
         },
-        "accumulationMode": {
-          "title": "Accumulation Mode",
-          "description": "Controls how attributes from input features are handled in output features"
-        },
-        "generateList": {
-          "title": "Generate List",
-          "description": "Name of the list attribute to store source feature attributes"
+        "attributeAccumulation": {
+          "title": "Attribute Accumulation",
+          "description": "Which attributes the resulting pieces keep."
         },
         "groupBy": {
           "title": "Group By Attributes",
-          "description": "Optional attributes to group features by during overlay analysis"
+          "description": "Attributes whose values decide which features are overlaid against each other — only features matching on all of them are compared. When omitted, every feature is overlaid against every other."
+        },
+        "listAttribute": {
+          "title": "List Attribute",
+          "description": "Attribute that receives one entry per covering feature, each holding that feature's own attributes. When omitted, no list is written."
         },
         "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Name of the attribute to store overlap count"
+          "title": "Overlap Count Attribute",
+          "description": "Attribute that receives the number of input features covering the piece — two or more on `overlaps`, always one on `remnants`. Defaults to `overlayCount`."
         },
         "tolerance": {
           "title": "Tolerance",
-          "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation."
+          "description": "The size below which geometry is treated as noise rather than shape, in the unit of the input's coordinate frame: vertices closer together than this are merged before the overlay, so boundaries meant to coincide do, and an overlap covering less than its square is then discarded. Detail finer than the tolerance may therefore not survive the overlay intact. Defaults to zero, which merges and discards nothing."
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "Keeps no incoming attribute, so a piece carries only its overlap count and list attribute. The grouping attributes are dropped too."
+          },
+          "useOneFeature": {
+            "title": "Use Attributes From One Feature",
+            "description": "Keeps the attributes of a single covering feature and discards the rest."
+          }
         }
       }
     },
@@ -544,37 +556,33 @@
     },
     {
       "name": "CSG Builder",
-      "description": "Construit une représentation de Géométrie Solide Constructive (CSG) à partir d'une paire (Gauche, Droite) de géométries solides. Détecte l'union, l'intersection et la différence (Gauche - Droite), mais ne calcule pas la géométrie résultante. Utilisez CSG Evaluator pour évaluer l'arbre CSG.",
+      "description": "Associe chaque solide de gauche au solide de droite qui partage sa valeur d'appariement et émet l'union, l'intersection et la différence de la paire sous forme d'arbres de géométrie solide constructive non évalués. Les arbres décrivent l'opération booléenne sans la calculer : un CSG Evaluator en aval transforme en solide la branche retenue.",
       "parameterI18n": {
         "": {
           "title": "CSG Builder Parameters",
-          "description": "Configure how the CSG builder pairs features from left and right ports"
+          "description": "Sets how the two input streams are paired up and what the resulting trees record about the solids they were built from."
         },
-        "createList": {
-          "title": "Create List",
-          "description": "When enabled, creates a list of attribute values from both children (left and right)"
+        "listAttribute": {
+          "title": "List Attribute",
+          "description": "Attribute that receives one entry for the left solid and one for the right, each holding that feature's own attributes. When omitted, no list is written and the resulting trees carry no attributes at all."
         },
-        "listAttributeName": {
-          "title": "List Attribute Name",
-          "description": "Name of the attribute to create the list from (required when create_list is true)"
-        },
-        "pairIdAttribute": {
-          "title": "Pair ID Attribute",
-          "description": "Expression to evaluate the pair ID used to match features from left and right ports"
+        "pairId": {
+          "title": "Pair ID",
+          "description": "Expression evaluated on every feature to produce the value that pairs it up: a left feature and a right feature that evaluate to the same value are combined. A feature whose partner never arrives is rejected."
         }
       }
     },
     {
       "name": "CSG Evaluator",
-      "description": "Évalue un arbre de Géométrie Solide Constructive (CSG) pour produire une géométrie solide. Prend une représentation CSG et calcule le maillage résultant des opérations booléennes.",
+      "description": "Calcule le solide décrit par un arbre de géométrie solide constructive et remplace l'arbre par le résultat. Les opérandes doivent être des solides fermés et orientés vers l'extérieur dans un référentiel de coordonnées projeté, la tolérance de sommet étant une distance ; un arbre dont le résultat n'enferme aucun volume sort par le port empty.",
       "parameterI18n": {
         "": {
           "title": "CSG Evaluator Parameters",
-          "description": "Configure evaluation parameters for CSG operations"
+          "description": "Sets how closely the operands' vertices must line up for the boolean to treat them as one point."
         },
         "tolerance": {
           "title": "Tolerance",
-          "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations."
+          "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. Defaults to a distance small enough that only near-identical vertices merge."
         }
       }
     },
@@ -981,7 +989,15 @@
         },
         "destinationFrame": {
           "title": "Destination Frame",
-          "description": "Coordinate frame to convert geometry into."
+          "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
         }
       }
     },
@@ -1141,17 +1157,19 @@
     },
     {
       "name": "Excel Writer",
-      "description": "Écrit des entités au format Microsoft Excel (.xlsx)",
+      "description": "Écrit chaque entité comme une ligne d'une feuille .xlsx, avec une colonne par attribut. Un attribut portant le nom d'un autre suivi du suffixe `.formula` ou `.hyperlink` remplit la cellule de cette colonne avec une formule ou un lien au lieu d'une valeur.",
       "parameterI18n": {
         "": {
           "title": "Excel Writer Parameters",
-          "description": "Configuration for writing features to Microsoft Excel format."
+          "description": "Sets where the workbook is written and what its worksheet is called."
         },
         "output": {
-          "description": "Output path or expression for the Excel file to create"
+          "title": "Output Path",
+          "description": "Path the .xlsx file is written to. An expression is evaluated per feature, so features that resolve to different paths are written to separate workbooks."
         },
         "sheetName": {
-          "description": "Sheet name (defaults to \"Sheet1\")"
+          "title": "Sheet Name",
+          "description": "Name of the worksheet the rows are written to. Defaults to `Sheet1`."
         }
       }
     },
@@ -1196,6 +1214,10 @@
           "title": "Aplatir les Nœuds Objet à Enfant Unique",
           "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
         },
+        "inheritInputAttributes": {
+          "title": "Hériter des Attributs d'Entrée",
+          "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
+        },
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
@@ -1229,6 +1251,10 @@
         "flattenSingleChildObjects": {
           "title": "Aplatir les Nœuds Objet à Enfant Unique",
           "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
+        },
+        "inheritInputAttributes": {
+          "title": "Hériter des Attributs d'Entrée",
+          "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
         },
         "keepAttributes": {
           "title": "Conserver les Attributs",
@@ -2409,17 +2435,28 @@
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "Découpe les lignes à leurs intersections et transforme chaque intersection en une entité ponctuelle portant les attributs fusionnés des lignes qui s'y rencontrent. Les entrées doivent être des géométries 2D planes, sans altitude, partageant un même référentiel de coordonnées ; placez un Two Dimension Forcer ou un Coordinate Frame Reprojector en amont pour les aplatir ou les unifier.",
+      "description": "Découpe les lignes à leurs croisements, enregistre sur chaque segment obtenu le nombre de lignes d'entrée qui le parcourent et émet chaque croisement comme une entité ponctuelle. Les entrées doivent être des géométries 2D planes, sans altitude, partageant un même référentiel de coordonnées ; placez un Two Dimension Forcer ou un Coordinate Frame Reprojector en amont pour les aplatir ou les unifier.",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer Parameters",
-          "description": "Configuration for finding intersection points between line features."
+          "description": "Sets which lines are crossed against each other, how far apart two vertices may be and still count as one, and what the resulting segments record about the lines they came from."
         },
-        "groupBy": {},
-        "overlaidListsAttrName": {
-          "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\"."
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes whose values decide which lines are crossed against each other — only lines matching on all of them are compared. When omitted, every line is crossed against every other."
         },
-        "tolerance": {}
+        "listAttribute": {
+          "title": "List Attribute",
+          "description": "Attribute that receives one entry per line running along the resulting segment, each holding that line's own attributes. When omitted, no list is written."
+        },
+        "outputAttribute": {
+          "title": "Overlap Count Attribute",
+          "description": "Attribute that receives the number of input lines running along the resulting segment. Defaults to `overlayCount`."
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. It decides which crossings split a line, which crossings are the same crossing, and which segments coincide; segments shorter than it are dropped. Must be greater than zero, or no line is ever split."
+        }
       }
     },
     {
@@ -3553,15 +3590,19 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "Filtre les entités par relation spatiale",
+      "description": "Filtre les entités candidates selon leur relation spatiale avec des géométries de filtre, évaluée dans le plan horizontal : une géométrie 3D est comparée par son emprise et doit être dans un référentiel de coordonnées en unités linéaires.",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
         },
+        "matchMode": {
+          "title": "Match Mode",
+          "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature."
+        },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins."
+          "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
@@ -3569,27 +3610,33 @@
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of matching filters."
-        },
-        "passOnMultipleMatches": {
-          "title": "Pass on Multiple Matches",
-          "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic)."
+          "description": "Optional attribute name to store the number of filter features the candidate matched."
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test between filter and candidate geometries."
+          "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one."
         }
       },
       "enumI18n": {
+        "MatchMode": {
+          "all": {
+            "title": "All",
+            "description": "Passes a candidate only when every filter feature matches it."
+          },
+          "any": {
+            "title": "Any",
+            "description": "Passes a candidate that matches at least one filter feature."
+          }
+        },
         "SpatialPredicate": {
           "contains": {
-            "description": "Filter geometry completely contains candidate"
+            "description": "Candidate completely contains the filter geometry"
           },
           "coveredBy": {
             "description": "Candidate is covered by filter geometry"
           },
           "covers": {
-            "description": "Filter geometry covers candidate"
+            "description": "Candidate covers the filter geometry"
           },
           "crosses": {
             "description": "Geometries cross each other"

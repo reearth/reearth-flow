@@ -61,8 +61,11 @@ pub enum ValidationType {
     /// A 3D mesh or solid means coherent winding across shared edges (each shared
     /// edge traversed in opposite directions by its two faces).
     Orientation,
-    /// Whether a solid's boundary is not a closed 2-manifold (watertight). Solid only.
+    /// Whether a solid's shell is a closed 2-manifold (watertight: every edge shared
+    /// by exactly two faces). Solid only.
     ShellManifold,
+    /// Whether a solid's shell is a single connected component. Solid only.
+    ShellConnected,
     /// Whether a solid's shell normals face the correct way: the exterior shell must enclose
     /// positive volume (outward normals) and each void shell negative volume
     /// (normals into the void). Defined on a closed, consistently-oriented solid.
@@ -78,7 +81,7 @@ impl ValidationType {
     pub fn dependencies(&self) -> &'static [ValidationType] {
         use ValidationType::*;
         match self {
-            Finite | TooFewPoints | Orientable | ShellManifold => &[],
+            Finite | TooFewPoints | Orientable | ShellManifold | ShellConnected => &[],
             UnclosedRing | DuplicatePoints | Degenerate | Planarity => &[Finite],
             SelfIntersection => &[Finite, TooFewPoints, UnclosedRing],
             InteriorRingContainment => &[Finite, SelfIntersection],
@@ -483,6 +486,8 @@ validation_checks! {
     check_orientation => Orientation,
     /// [`ShellManifold`](ValidationType::ShellManifold).
     check_shell_manifold => ShellManifold,
+    /// [`ShellConnected`](ValidationType::ShellConnected).
+    check_shell_connected => ShellConnected,
     /// [`ShellOrientation`](ValidationType::ShellOrientation).
     check_shell_orientation => ShellOrientation,
 }
@@ -518,6 +523,7 @@ validation_checks! {
 /// | Orientation             |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellManifold           |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | ShellConnected          |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellOrientation        |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 ///
 /// # Check dependencies
@@ -541,6 +547,7 @@ validation_checks! {
 /// | `Orientable`                 | (none) |
 /// | `Orientation`                | `Finite`, `Orientable` |
 /// | `ShellManifold`              | (none) |
+/// | `ShellConnected`             | (none) |
 /// | `ShellOrientation`           | `Orientation`, `ShellManifold` |
 pub fn validate(geometry: &Geometry) -> ValidationResults {
     validate_with(geometry, &ValidationParams::default())
@@ -1206,8 +1213,16 @@ impl FaceTopology {
     /// wraps to the first). Self-loop edges (`a == b`) are skipped. Lets faces be
     /// fed one at a time (e.g. streamed from a decoder into a reused buffer).
     pub(crate) fn add_face(&mut self, ring: &[u32]) {
-        let f = self.n_faces;
-        self.n_faces += 1;
+        self.add_ring(self.n_faces, ring);
+    }
+
+    /// Add one ring of face `face` (closure optional; the last vertex wraps to the
+    /// first). A face with holes feeds its exterior and every hole ring under the
+    /// same `face`, so they count as one face for connectivity and orientability.
+    /// Self-loop edges (`a == b`) are skipped.
+    pub(crate) fn add_ring(&mut self, face: usize, ring: &[u32]) {
+        let f = face;
+        self.n_faces = self.n_faces.max(face + 1);
         let n = ring.len();
         if n < 2 {
             return;
@@ -1576,6 +1591,7 @@ mod tests {
             ValidationType::InteriorRingContainment,
             ValidationType::Degenerate,
             ValidationType::ShellManifold,
+            ValidationType::ShellConnected,
         ] {
             assert!(!core.is_optional(), "{core:?} should be core");
         }
@@ -1583,7 +1599,7 @@ mod tests {
 
     /// Every `ValidationType` variant, so the dependency graph can be walked in
     /// full.
-    const ALL_TYPES: [ValidationType; 12] = [
+    const ALL_TYPES: [ValidationType; 13] = [
         ValidationType::Finite,
         ValidationType::TooFewPoints,
         ValidationType::DuplicatePoints,
@@ -1595,6 +1611,7 @@ mod tests {
         ValidationType::Orientable,
         ValidationType::Orientation,
         ValidationType::ShellManifold,
+        ValidationType::ShellConnected,
         ValidationType::ShellOrientation,
     ];
 

@@ -11,6 +11,9 @@ use super::solid::Solid;
 
 mod constructor;
 mod evaluate;
+
+pub use evaluate::DEFAULT_TOLERANCE;
+
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;

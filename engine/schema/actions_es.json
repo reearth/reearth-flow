@@ -66,12 +66,12 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
-        "description": "Configure how area overlay analysis is performed",
+        "description": "Sets which features are overlaid together, how small a piece of geometry has to be before it counts as noise, and what the resulting pieces record about the features they came from.",
         "type": "object",
         "properties": {
           "groupBy": {
             "title": "Group By Attributes",
-            "description": "Optional attributes to group features by during overlay analysis",
+            "description": "Attributes whose values decide which features are overlaid against each other — only features matching on all of them are compared. When omitted, every feature is overlaid against every other.",
             "type": [
               "array",
               "null"
@@ -80,51 +80,62 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "accumulationMode": {
-            "title": "Accumulation Mode",
-            "description": "Controls how attributes from input features are handled in output features",
-            "default": "useAttributesFromOneFeature",
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "The size below which geometry is treated as noise rather than shape, in the unit of the input's coordinate frame: vertices closer together than this are merged before the overlay, so boundaries meant to coincide do, and an overlap covering less than its square is then discarded. Detail finer than the tolerance may therefore not survive the overlay intact. Defaults to zero, which merges and discards nothing.",
+            "default": 0.0,
+            "type": "number",
+            "format": "double"
+          },
+          "attributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes the resulting pieces keep.",
+            "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AccumulationMode"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           },
-          "generateList": {
-            "title": "Generate List",
-            "description": "Name of the list attribute to store source feature attributes",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute to store overlap count",
+            "title": "Overlap Count Attribute",
+            "description": "Attribute that receives the number of input features covering the piece — two or more on `overlaps`, always one on `remnants`. Defaults to `overlayCount`.",
+            "default": "overlayCount",
+            "type": "string"
+          },
+          "listAttribute": {
+            "title": "List Attribute",
+            "description": "Attribute that receives one entry per covering feature, each holding that feature's own attributes. When omitted, no list is written.",
             "type": [
               "string",
               "null"
             ]
-          },
-          "tolerance": {
-            "title": "Tolerance",
-            "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.",
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double"
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
           },
-          "AccumulationMode": {
-            "type": "string",
-            "enum": [
-              "useAttributesFromOneFeature",
-              "dropIncomingAttributes"
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a resulting piece keeps.",
+            "oneOf": [
+              {
+                "title": "Use Attributes From One Feature",
+                "description": "Keeps the attributes of a single covering feature and discards the rest.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              },
+              {
+                "title": "Drop Incoming Attributes",
+                "description": "Keeps no incoming attribute, so a piece carries only its overlap count and list attribute. The grouping attributes are dropped too.",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              }
             ]
           }
         }
@@ -134,14 +145,17 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "overlaps",
         "remnants",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Attribute Aggregator",
@@ -1421,20 +1435,20 @@
     {
       "name": "CSG Builder",
       "type": "processor",
-      "description": "Construye una representación de Geometría Sólida Constructiva (CSG) a partir de un par (Izquierda, Derecha) de geometrías sólidas. Detecta unión, intersección y diferencia (Izq - Der), pero no calcula la geometría resultante. Use CSG Evaluator para evaluar el árbol CSG.",
+      "description": "Empareja cada sólido de la izquierda con el sólido de la derecha que comparte su valor de emparejamiento y emite la unión, la intersección y la diferencia del par como árboles de Geometría Sólida Constructiva sin evaluar. Los árboles describen la operación booleana sin calcularla, de modo que un CSG Evaluator posterior convierte en sólido la rama que se conserve.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder Parameters",
-        "description": "Configure how the CSG builder pairs features from left and right ports",
+        "description": "Sets how the two input streams are paired up and what the resulting trees record about the solids they were built from.",
         "type": "object",
+        "required": [
+          "pairId"
+        ],
         "properties": {
-          "pairIdAttribute": {
-            "title": "Pair ID Attribute",
-            "description": "Expression to evaluate the pair ID used to match features from left and right ports",
-            "type": [
-              "object",
-              "null"
-            ],
+          "pairId": {
+            "title": "Pair ID",
+            "description": "Expression evaluated on every feature to produce the value that pairs it up: a left feature and a right feature that evaluate to the same value are combined. A feature whose partner never arrives is rejected.",
+            "type": "object",
             "format": "code",
             "required": [
               "type",
@@ -1452,17 +1466,9 @@
               }
             }
           },
-          "createList": {
-            "title": "Create List",
-            "description": "When enabled, creates a list of attribute values from both children (left and right)",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "listAttributeName": {
-            "title": "List Attribute Name",
-            "description": "Name of the attribute to create the list from (required when create_list is true)",
+          "listAttribute": {
+            "title": "List Attribute",
+            "description": "Attribute that receives one entry for the left solid and one for the right, each holding that feature's own attributes. When omitted, no list is written and the resulting trees carry no attributes at all.",
             "type": [
               "string",
               "null"
@@ -1484,41 +1490,27 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "3d"
+      ]
     },
     {
       "name": "CSG Evaluator",
       "type": "processor",
-      "description": "Evalúa un árbol de Geometría Sólida Constructiva (CSG) para producir una geometría sólida. Toma una representación CSG y calcula la malla resultante de las operaciones booleanas.",
+      "description": "Calcula el sólido que describe un árbol de Geometría Sólida Constructiva y reemplaza el árbol por el resultado. Los operandos deben ser sólidos cerrados y orientados hacia el exterior en una referencia de coordenadas proyectada, ya que la tolerancia de vértices es una distancia; un árbol cuyo resultado no encierra volumen sale por el puerto empty.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Evaluator Parameters",
-        "description": "Configure evaluation parameters for CSG operations",
+        "description": "Sets how closely the operands' vertices must line up for the boolean to treat them as one point.",
         "type": "object",
-        "required": [
-          "tolerance"
-        ],
         "properties": {
           "tolerance": {
             "title": "Tolerance",
-            "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. Defaults to a distance small enough that only near-identical vertices merge.",
+            "default": 1e-9,
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -1528,13 +1520,16 @@
       ],
       "outputPorts": [
         "features",
-        "nullport",
+        "empty",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "3d"
+      ]
     },
     {
       "name": "CSV Reader",
@@ -2831,7 +2826,7 @@
         "properties": {
           "destinationFrame": {
             "title": "Destination Frame",
-            "description": "Coordinate frame to convert geometry into.",
+            "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code.",
             "allOf": [
               {
                 "$ref": "#/definitions/DestinationFrame"
@@ -2860,40 +2855,38 @@
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
                 "type": "object",
                 "required": [
-                  "epsgCode",
-                  "type"
+                  "crs"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "crs"
-                    ]
-                  },
-                  "epsgCode": {
-                    "title": "EPSG Code",
-                    "description": "EPSG code of the destination coordinate reference system.",
-                    "type": "integer",
-                    "format": "uint16",
-                    "minimum": 0.0
+                  "crs": {
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               {
                 "title": "Euclidean",
                 "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "euclidean"
-                    ]
-                  }
-                }
+                "type": "string",
+                "enum": [
+                  "euclidean"
+                ]
               }
             ]
           },
@@ -3443,18 +3436,19 @@
     {
       "name": "Excel Writer",
       "type": "sink",
-      "description": "Escribe entidades en formato Microsoft Excel (.xlsx)",
+      "description": "Escribe cada entidad como una fila de una hoja .xlsx, con una columna por atributo. Un atributo con el nombre de otro seguido del sufijo `.formula` o `.hyperlink` rellena la celda de esa columna con una fórmula o un enlace en lugar de un valor.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Excel Writer Parameters",
-        "description": "Configuration for writing features to Microsoft Excel format.",
+        "description": "Sets where the workbook is written and what its worksheet is called.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "Output path or expression for the Excel file to create",
+            "title": "Output Path",
+            "description": "Path the .xlsx file is written to. An expression is evaluated per feature, so features that resolve to different paths are written to separate workbooks.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3475,11 +3469,10 @@
             }
           },
           "sheetName": {
-            "description": "Sheet name (defaults to \"Sheet1\")",
-            "type": [
-              "string",
-              "null"
-            ]
+            "title": "Sheet Name",
+            "description": "Name of the worksheet the rows are written to. Defaults to `Sheet1`.",
+            "default": "Sheet1",
+            "type": "string"
           }
         }
       },
@@ -3489,9 +3482,11 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
       ],
-      "tags": []
+      "tags": [
+        "excel"
+      ]
     },
     {
       "name": "Extruder",
@@ -3613,6 +3608,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Heredar Atributos de Entrada",
+            "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3704,6 +3705,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "Heredar Atributos de Entrada",
+            "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -8333,17 +8340,25 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "Divide las líneas en sus intersecciones y convierte cada intersección en una entidad de punto que lleva los atributos combinados de las líneas que se cruzan allí. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
+      "description": "Divide las líneas donde se cruzan, registra en cada segmento resultante cuántas líneas de entrada lo recorren y emite cada cruce como una entidad de punto. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",
-        "description": "Configuration for finding intersection points between line features.",
+        "description": "Sets which lines are crossed against each other, how far apart two vertices may be and still count as one, and what the resulting segments record about the lines they came from.",
         "type": "object",
         "required": [
           "tolerance"
         ],
         "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. It decides which crossings split a line, which crossings are the same crossing, and which segments coincide; segments shorter than it are dropped. Must be greater than zero, or no line is ever split.",
+            "type": "number",
+            "format": "double"
+          },
           "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes whose values decide which lines are crossed against each other — only lines matching on all of them are compared. When omitted, every line is crossed against every other.",
             "type": [
               "array",
               "null"
@@ -8352,12 +8367,15 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "tolerance": {
-            "type": "number",
-            "format": "double"
+          "outputAttribute": {
+            "title": "Overlap Count Attribute",
+            "description": "Attribute that receives the number of input lines running along the resulting segment. Defaults to `overlayCount`.",
+            "default": "overlayCount",
+            "type": "string"
           },
-          "overlaidListsAttrName": {
-            "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\".",
+          "listAttribute": {
+            "title": "List Attribute",
+            "description": "Attribute that receives one entry per line running along the resulting segment, each holding that line's own attributes. When omitted, no list is written.",
             "type": [
               "string",
               "null"
@@ -8382,7 +8400,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "List Concatenator",
@@ -12462,16 +12483,16 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "Filtra entidades por relación espacial",
+      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SpatialFilter Parameters",
+        "title": "Spatial Filter Parameters",
         "description": "Configure spatial relationship testing between filter and candidate geometries",
         "type": "object",
         "properties": {
           "predicate": {
             "title": "Spatial Predicate",
-            "description": "The spatial relationship to test between filter and candidate geometries",
+            "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
             "default": "intersects",
             "allOf": [
               {
@@ -12479,15 +12500,19 @@
               }
             ]
           },
-          "passOnMultipleMatches": {
-            "title": "Pass on Multiple Matches",
-            "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
-            "default": true,
-            "type": "boolean"
+          "matchMode": {
+            "title": "Match Mode",
+            "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature.",
+            "default": "any",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MatchMode"
+              }
+            ]
           },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
-            "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+            "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
             "default": false,
             "type": "boolean"
           },
@@ -12502,7 +12527,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of matching filters",
+            "description": "Optional attribute name to store the number of filter features the candidate matched.",
             "default": null,
             "anyOf": [
               {
@@ -12518,7 +12543,7 @@
           "SpatialPredicate": {
             "oneOf": [
               {
-                "description": "Filter geometry completely contains candidate",
+                "description": "Candidate completely contains the filter geometry",
                 "type": "string",
                 "enum": [
                   "contains"
@@ -12574,10 +12599,32 @@
                 ]
               },
               {
-                "description": "Filter geometry covers candidate",
+                "description": "Candidate covers the filter geometry",
                 "type": "string",
                 "enum": [
                   "covers"
+                ]
+              }
+            ]
+          },
+          "MatchMode": {
+            "title": "Match Mode",
+            "description": "How the tests against the individual filter features combine into pass or fail.",
+            "oneOf": [
+              {
+                "title": "Any",
+                "description": "Passes a candidate that matches at least one filter feature.",
+                "type": "string",
+                "enum": [
+                  "any"
+                ]
+              },
+              {
+                "title": "All",
+                "description": "Passes a candidate only when every filter feature matches it.",
+                "type": "string",
+                "enum": [
+                  "all"
                 ]
               }
             ]

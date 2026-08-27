@@ -47,7 +47,17 @@ func (c *checker) CheckPermission(ctx context.Context, resource string, action s
 	if err != nil {
 		return false, err
 	}
-	return result.Allowed, nil
+	if !result.Allowed {
+		return false, nil
+	}
+
+	if len(workspaceID) > 0 {
+		wsID := workspaceID[0]
+		if !wsID.IsNil() && !c.workspaceRoleAllows(ctx, resource, action, wsID) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // resolveAlias returns the workspace alias for wsID. The accounts client returns a
