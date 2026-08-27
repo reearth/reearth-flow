@@ -102,13 +102,24 @@ struct Chain<const N: usize> {
 /// counter-clockwise, negative is clockwise; the sign is all
 /// [`travel_ascending`] uses, but callers reach for the magnitude too (tests
 /// use it to check a clipped ring's area matches expectations).
+///
+/// Accumulated over each vertex's offset from the ring's first vertex rather
+/// than over its absolute coordinate, for the same reason
+/// [`super::window::signed_area_xy`] is -- at a projected CRS's absolute
+/// coordinates the individual cross products dwarf the area they sum to, and
+/// the rounding left over follows the coordinates instead of the ring. The
+/// two forms are algebraically identical; a translation does not change an
+/// area.
 fn signed_area<const N: usize>(ring: &[Corner<N>]) -> f64 {
     let n = ring.len();
+    let Some(origin) = ring.first().map(|c| c.pos) else {
+        return 0.0;
+    };
     let mut sum = 0.0;
     for i in 0..n {
         let a = ring[i].pos;
         let b = ring[(i + 1) % n].pos;
-        sum += a[0] * b[1] - b[0] * a[1];
+        sum += (a[0] - origin[0]) * (b[1] - origin[1]) - (b[0] - origin[0]) * (a[1] - origin[1]);
     }
     sum * 0.5
 }
@@ -534,6 +545,36 @@ mod tests {
             (areas[1] - 50.0).abs() < 1e-9,
             "exterior area was {}",
             areas[1]
+        );
+    }
+
+    #[test]
+    fn signed_area_keeps_its_sign_on_a_tiny_ring_at_projected_coordinates() {
+        // A counter-clockwise right triangle with 2e-5 m legs, sitting at
+        // EPSG:6677-scale coordinates. Its true area is 2e-10 m^2, while the
+        // individual absolute-coordinate cross products run to ~3e8, so a
+        // shoelace over absolute coordinates rounds the answer to
+        // -2.98e-8 -- the wrong sign -- and `is_ccw` calls the ring
+        // clockwise. Accumulating over offsets from the ring's first vertex
+        // keeps every term the size of the ring itself, which is the same
+        // treatment `window::signed_area_xy` already had and this one was
+        // missing.
+        let ring = vec![
+            c2(-17250.0, -17250.0),
+            c2(-17250.0 + 2e-5, -17250.0),
+            c2(-17250.0, -17250.0 + 2e-5),
+        ];
+        let area = signed_area(&ring);
+        assert!(
+            area > 0.0,
+            "a counter-clockwise ring must measure positive, got {area}"
+        );
+        assert!(is_ccw(&ring), "and must be judged counter-clockwise");
+        // Relative, not absolute: the legs are 2e-5 apart on coordinates near
+        // 1.7e4, so representing the offsets at all costs a few parts in 1e8.
+        assert!(
+            (area / 2e-10 - 1.0).abs() < 1e-6,
+            "and must land on its true 2e-10 area, got {area}"
         );
     }
 }
