@@ -1973,19 +1973,15 @@
     },
     {
       "name": "HTTP Caller",
-      "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
+      "description": "地物ごとにHTTPまたはHTTPSエンドポイントを呼び出し、レスポンスを地物の属性に格納する",
       "parameterI18n": {
         "": {
           "title": "HTTP Caller パラメータ",
-          "description": "レスポンスデータでフィーチャーを拡充する HTTP/HTTPS リクエストを設定する"
+          "description": "地物ごとに実行する HTTP リクエストとレスポンスの格納方法を設定する"
         },
         "authentication": {
           "title": "認証",
           "description": "リクエストの認証方法と認証情報"
-        },
-        "contentType": {
-          "title": "コンテンツタイプ",
-          "description": "リクエストの Content-Type ヘッダーを上書きする"
         },
         "customHeaders": {
           "title": "カスタムヘッダー",
@@ -1993,15 +1989,11 @@
         },
         "httpOptions": {
           "title": "HTTP オプション",
-          "description": "HTTP クライアントの動作設定（SSL、リダイレクト、ユーザーエージェント）"
+          "description": "HTTP クライアントの動作設定（SSL 検証、リダイレクト、ユーザーエージェント）"
         },
         "method": {
           "title": "HTTP メソッド",
-          "description": "リクエストで使用する HTTP メソッド"
-        },
-        "observability": {
-          "title": "オブザーバビリティ",
-          "description": "追加メトリクスと診断情報を記録する"
+          "description": "リクエストで使用する HTTP メソッド（デフォルト: GET）"
         },
         "queryParameters": {
           "title": "クエリパラメータ",
@@ -2017,7 +2009,7 @@
         },
         "response": {
           "title": "レスポンス設定",
-          "description": "レスポンスデータの格納・処理方法を設定する"
+          "description": "レスポンスを地物に格納する方法を設定する"
         },
         "retry": {
           "title": "リトライ設定",
@@ -2029,7 +2021,7 @@
         },
         "url": {
           "title": "URL",
-          "description": "HTTP リクエストの対象 URL（式に対応）"
+          "description": "リクエスト先の URL。地物ごとに評価される（式に対応）。http と https のみ使用でき、プライベートネットワークや内部ネットワークのアドレスへのリクエストはブロックされる"
         }
       },
       "definitionI18n": {
@@ -2064,45 +2056,11 @@
           },
           "userAgent": {
             "title": "ユーザーエージェント",
-            "description": "カスタム User-Agent ヘッダー値"
+            "description": "各リクエストに送信するカスタム User-Agent ヘッダー値"
           },
           "verifySsl": {
             "title": "SSL を検証",
-            "description": "SSL/TLS 証明書を検証するか（デフォルト: true）"
-          }
-        },
-        "ObservabilityConfig": {
-          "bytesAttribute": {
-            "title": "バイト数属性",
-            "description": "レスポンスボディサイズを格納するフィーチャー属性名"
-          },
-          "durationAttribute": {
-            "title": "処理時間属性",
-            "description": "リクエスト処理時間（ミリ秒）を格納するフィーチャー属性名"
-          },
-          "finalUrlAttribute": {
-            "title": "最終 URL 属性",
-            "description": "リダイレクト後の最終 URL を格納するフィーチャー属性名"
-          },
-          "retryCountAttribute": {
-            "title": "リトライ回数属性",
-            "description": "リトライ試行回数を格納するフィーチャー属性名"
-          },
-          "trackBytes": {
-            "title": "バイト数を記録",
-            "description": "レスポンスボディサイズをバイト単位で記録するか（デフォルト: false）"
-          },
-          "trackDuration": {
-            "title": "処理時間を記録",
-            "description": "リクエストの合計処理時間を記録するか（デフォルト: true）"
-          },
-          "trackFinalUrl": {
-            "title": "最終 URL を記録",
-            "description": "リダイレクト後の最終 URL を記録するか（デフォルト: false）"
-          },
-          "trackRetryCount": {
-            "title": "リトライ回数を記録",
-            "description": "リトライ試行回数を記録するか（デフォルト: true）"
+            "description": "SSL/TLS 証明書を検証するか。自己署名証明書を使うサーバーに対してのみ無効化する（デフォルト: true）"
           }
         },
         "QueryParam": {
@@ -2118,7 +2076,7 @@
         "RateLimitConfig": {
           "intervalMs": {
             "title": "インターバル",
-            "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000ms）"
+            "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000）"
           },
           "requests": {
             "title": "リクエスト数",
@@ -2126,41 +2084,29 @@
           },
           "timing": {
             "title": "タイミング戦略",
-            "description": "インターバル内でリクエストを分配する方法（デフォルト: Burst）"
+            "description": "インターバル内でリクエストを分配する方法（デフォルト: burst）"
           }
         },
         "ResponseConfig": {
           "autoDetectEncoding": {
             "title": "エンコーディング自動検出",
-            "description": "レスポンスヘッダーから文字エンコーディングを自動検出する"
-          },
-          "errorAttribute": {
-            "title": "エラー属性",
-            "description": "エラーメッセージを格納するフィーチャー属性名（デフォルト: \"_http_error\"）"
-          },
-          "headersAttribute": {
-            "title": "ヘッダー属性",
-            "description": "レスポンスヘッダーを格納するフィーチャー属性名（デフォルト: \"_headers\"）"
+            "description": "レスポンスエンコーディング未設定時に、レスポンスの Content-Type ヘッダーからテキストか base64 かを選択する（デフォルト: true）"
           },
           "maxResponseSize": {
             "title": "最大レスポンスサイズ",
-            "description": "レスポンスボディの最大サイズ（バイト）（未設定の場合は無制限）"
+            "description": "レスポンスボディの最大サイズ（バイト）。超過した場合はダウンロードを中止し、地物をリジェクトする（未設定の場合は無制限）"
           },
           "responseBodyAttribute": {
             "title": "レスポンスボディ属性",
-            "description": "レスポンスボディを格納するフィーチャー属性名（デフォルト: \"_response_body\"）"
+            "description": "レスポンスボディを格納する地物属性名（デフォルト: `_response_body`）"
           },
           "responseEncoding": {
             "title": "レスポンスエンコーディング",
-            "description": "レスポンスボディのエンコード方法（テキスト、base64、またはバイナリ）"
+            "description": "レスポンスボディの格納方法（UTF-8 テキストまたは base64 文字列）。省略時はレスポンスの Content-Type ヘッダーから選択される"
           },
           "responseHandling": {
             "title": "レスポンス処理",
-            "description": "レスポンスデータの処理方法（属性またはファイル）"
-          },
-          "statusCodeAttribute": {
-            "title": "ステータスコード属性",
-            "description": "HTTP ステータスコードを格納するフィーチャー属性名（デフォルト: \"_http_status_code\"）"
+            "description": "レスポンスボディを地物属性に格納するかファイルに保存するか（デフォルト: attribute）"
           }
         },
         "RetryConfig": {
@@ -2170,23 +2116,23 @@
           },
           "honorRetryAfter": {
             "title": "Retry-After ヘッダーを尊重",
-            "description": "サーバーレスポンスの Retry-After ヘッダーを尊重するか（デフォルト: true）"
+            "description": "リトライ間隔の決定時に Retry-After レスポンスヘッダー（秒数または HTTP 日付形式）を尊重するか（デフォルト: true）"
           },
           "initialDelayMs": {
             "title": "初回遅延",
-            "description": "最初のリトライまでの初回遅延（ミリ秒）（デフォルト: 100ms）"
+            "description": "最初のリトライまでの初期遅延（ミリ秒）（デフォルト: 100）"
           },
           "maxAttempts": {
             "title": "最大試行回数",
-            "description": "リトライの最大試行回数（デフォルト: 3）"
+            "description": "初回リクエストを含む最大試行回数。1 でリトライは無効（デフォルト: 3）"
           },
           "maxDelayMs": {
             "title": "最大遅延",
-            "description": "リトライ間の最大遅延（ミリ秒）（デフォルト: 10000ms）"
+            "description": "リトライ間の最大遅延（ミリ秒）。Retry-After ヘッダーが要求する遅延もこの値が上限となる（デフォルト: 10000）"
           },
           "retryOnStatus": {
             "title": "リトライするステータスコード",
-            "description": "リトライのトリガーとなる HTTP ステータスコードのリスト（例: [429, 503]）"
+            "description": "リトライのトリガーとなる HTTP ステータスコード（例: [429, 503]）。省略時はすべての 5xx ステータスコードでリトライする"
           }
         },
         "TimeoutConfig": {
@@ -2212,10 +2158,6 @@
           }
         },
         "HttpMethod": {
-          "COPY": {
-            "title": "COPY",
-            "description": "WebDAV: リソースをコピーする"
-          },
           "DELETE": {
             "title": "DELETE",
             "description": "リソースを削除する"
@@ -2227,18 +2169,6 @@
           "HEAD": {
             "title": "HEAD",
             "description": "ヘッダーのみを取得する（ボディなし）"
-          },
-          "LOCK": {
-            "title": "LOCK",
-            "description": "WebDAV: リソースをロックする"
-          },
-          "MKCOL": {
-            "title": "MKCOL",
-            "description": "WebDAV: コレクションを作成する"
-          },
-          "MOVE": {
-            "title": "MOVE",
-            "description": "WebDAV: リソースを移動する"
           },
           "OPTIONS": {
             "title": "OPTIONS",
@@ -2252,35 +2182,19 @@
             "title": "POST",
             "description": "サーバーにデータを送信する"
           },
-          "PROPFIND": {
-            "title": "PROPFIND",
-            "description": "WebDAV: プロパティを取得する"
-          },
-          "PROPPATCH": {
-            "title": "PROPPATCH",
-            "description": "WebDAV: プロパティを更新する"
-          },
           "PUT": {
             "title": "PUT",
             "description": "リソースを更新または作成する"
-          },
-          "UNLOCK": {
-            "title": "UNLOCK",
-            "description": "WebDAV: リソースのロックを解除する"
           }
         },
         "ResponseEncoding": {
           "base64": {
             "title": "Base64",
-            "description": "レスポンスを Base64 文字列としてエンコードする"
-          },
-          "binary": {
-            "title": "バイナリ",
-            "description": "レスポンスを生バイナリデータとして格納する"
+            "description": "レスポンスボディを base64 エンコードの文字列として格納する（バイナリデータ向け）"
           },
           "text": {
             "title": "テキスト",
-            "description": "レスポンスを UTF-8 テキストとしてデコードする"
+            "description": "レスポンスボディを UTF-8 テキストとして格納する"
           }
         },
         "TimingStrategy": {

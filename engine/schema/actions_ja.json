@@ -6345,11 +6345,11 @@
     {
       "name": "HTTP Caller",
       "type": "processor",
-      "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
+      "description": "地物ごとにHTTPまたはHTTPSエンドポイントを呼び出し、レスポンスを地物の属性に格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HTTP Caller パラメータ",
-        "description": "レスポンスデータでフィーチャーを拡充する HTTP/HTTPS リクエストを設定する",
+        "description": "地物ごとに実行する HTTP リクエストとレスポンスの格納方法を設定する",
         "type": "object",
         "required": [
           "url"
@@ -6357,7 +6357,7 @@
         "properties": {
           "url": {
             "title": "URL",
-            "description": "HTTP リクエストの対象 URL（式に対応）",
+            "description": "リクエスト先の URL。地物ごとに評価される（式に対応）。http と https のみ使用でき、プライベートネットワークや内部ネットワークのアドレスへのリクエストはブロックされる",
             "type": "object",
             "format": "code",
             "required": [
@@ -6379,7 +6379,7 @@
           },
           "method": {
             "title": "HTTP メソッド",
-            "description": "リクエストで使用する HTTP メソッド",
+            "description": "リクエストで使用する HTTP メソッド（デフォルト: GET）",
             "default": "GET",
             "allOf": [
               {
@@ -6433,41 +6433,9 @@
               }
             ]
           },
-          "contentType": {
-            "title": "コンテンツタイプ",
-            "description": "リクエストの Content-Type ヘッダーを上書きする",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "timeouts": {
-            "title": "タイムアウト",
-            "description": "接続・転送タイムアウトの設定",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/TimeoutConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "httpOptions": {
-            "title": "HTTP オプション",
-            "description": "HTTP クライアントの動作設定（SSL、リダイレクト、ユーザーエージェント）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/HttpOptions"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "response": {
             "title": "レスポンス設定",
-            "description": "レスポンスデータの格納・処理方法を設定する",
+            "description": "レスポンスを地物に格納する方法を設定する",
             "anyOf": [
               {
                 "$ref": "#/definitions/ResponseConfig"
@@ -6501,12 +6469,24 @@
               }
             ]
           },
-          "observability": {
-            "title": "オブザーバビリティ",
-            "description": "追加メトリクスと診断情報を記録する",
+          "timeouts": {
+            "title": "タイムアウト",
+            "description": "接続・転送タイムアウトの設定",
             "anyOf": [
               {
-                "$ref": "#/definitions/ObservabilityConfig"
+                "$ref": "#/definitions/TimeoutConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "httpOptions": {
+            "title": "HTTP オプション",
+            "description": "HTTP クライアントの動作設定（SSL 検証、リダイレクト、ユーザーエージェント）",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/HttpOptions"
               },
               {
                 "type": "null"
@@ -6573,62 +6553,6 @@
                 "type": "string",
                 "enum": [
                   "OPTIONS"
-                ]
-              },
-              {
-                "title": "COPY",
-                "description": "WebDAV: リソースをコピーする",
-                "type": "string",
-                "enum": [
-                  "COPY"
-                ]
-              },
-              {
-                "title": "LOCK",
-                "description": "WebDAV: リソースをロックする",
-                "type": "string",
-                "enum": [
-                  "LOCK"
-                ]
-              },
-              {
-                "title": "MKCOL",
-                "description": "WebDAV: コレクションを作成する",
-                "type": "string",
-                "enum": [
-                  "MKCOL"
-                ]
-              },
-              {
-                "title": "MOVE",
-                "description": "WebDAV: リソースを移動する",
-                "type": "string",
-                "enum": [
-                  "MOVE"
-                ]
-              },
-              {
-                "title": "PROPFIND",
-                "description": "WebDAV: プロパティを取得する",
-                "type": "string",
-                "enum": [
-                  "PROPFIND"
-                ]
-              },
-              {
-                "title": "PROPPATCH",
-                "description": "WebDAV: プロパティを更新する",
-                "type": "string",
-                "enum": [
-                  "PROPPATCH"
-                ]
-              },
-              {
-                "title": "UNLOCK",
-                "description": "WebDAV: リソースのロックを解除する",
-                "type": "string",
-                "enum": [
-                  "UNLOCK"
                 ]
               }
             ]
@@ -6936,7 +6860,7 @@
                   },
                   "contentType": {
                     "title": "Content Type",
-                    "description": "Override Content-Type header (e.g., application/json, text/plain)",
+                    "description": "Content-Type header for the body, such as application/json or text/plain",
                     "type": [
                       "string",
                       "null"
@@ -6970,7 +6894,7 @@
                   },
                   "contentType": {
                     "title": "Content Type",
-                    "description": "Content-Type header (e.g., application/octet-stream, image/png)",
+                    "description": "Content-Type header for the body (default: application/octet-stream)",
                     "type": [
                       "string",
                       "null"
@@ -7005,7 +6929,7 @@
               },
               {
                 "title": "Multipart Form Data",
-                "description": "Send multipart/form-data (for file uploads)",
+                "description": "Send multipart/form-data (for file uploads); cannot be combined with retry",
                 "type": "object",
                 "required": [
                   "parts",
@@ -7251,6 +7175,258 @@
               }
             ]
           },
+          "ResponseConfig": {
+            "title": "Response Configuration",
+            "description": "Configure how the response is stored. The status code, response headers, and any error message are always stored in the `_http_status_code`, `_headers`, and `_http_error` attributes.",
+            "type": "object",
+            "properties": {
+              "responseBodyAttribute": {
+                "title": "レスポンスボディ属性",
+                "description": "レスポンスボディを格納する地物属性名（デフォルト: `_response_body`）",
+                "default": "_response_body",
+                "type": "string"
+              },
+              "responseHandling": {
+                "title": "レスポンス処理",
+                "description": "レスポンスボディを地物属性に格納するかファイルに保存するか（デフォルト: attribute）",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ResponseHandling"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "responseEncoding": {
+                "title": "レスポンスエンコーディング",
+                "description": "レスポンスボディの格納方法（UTF-8 テキストまたは base64 文字列）。省略時はレスポンスの Content-Type ヘッダーから選択される",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ResponseEncoding"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "autoDetectEncoding": {
+                "title": "エンコーディング自動検出",
+                "description": "レスポンスエンコーディング未設定時に、レスポンスの Content-Type ヘッダーからテキストか base64 かを選択する（デフォルト: true）",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "maxResponseSize": {
+                "title": "最大レスポンスサイズ",
+                "description": "レスポンスボディの最大サイズ（バイト）。超過した場合はダウンロードを中止し、地物をリジェクトする（未設定の場合は無制限）",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          },
+          "ResponseHandling": {
+            "title": "Response Handling",
+            "description": "How to handle the HTTP response data",
+            "oneOf": [
+              {
+                "title": "Store in Attribute",
+                "description": "Store the response body in a feature attribute",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "attribute"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Save to File",
+                "description": "Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute",
+                "type": "object",
+                "required": [
+                  "path",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "path": {
+                    "title": "File Path",
+                    "description": "Relative path under the job's output directory where the response is saved (supports expressions)",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "ResponseEncoding": {
+            "title": "Response Encoding",
+            "description": "How to store the response body",
+            "oneOf": [
+              {
+                "title": "テキスト",
+                "description": "レスポンスボディを UTF-8 テキストとして格納する",
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              {
+                "title": "Base64",
+                "description": "レスポンスボディを base64 エンコードの文字列として格納する（バイナリデータ向け）",
+                "type": "string",
+                "enum": [
+                  "base64"
+                ]
+              }
+            ]
+          },
+          "RetryConfig": {
+            "title": "Retry Configuration",
+            "description": "Configure automatic retry behavior for failed requests",
+            "type": "object",
+            "properties": {
+              "maxAttempts": {
+                "title": "最大試行回数",
+                "description": "初回リクエストを含む最大試行回数。1 でリトライは無効（デフォルト: 3）",
+                "default": 3,
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "initialDelayMs": {
+                "title": "初回遅延",
+                "description": "最初のリトライまでの初期遅延（ミリ秒）（デフォルト: 100）",
+                "default": 100,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "backoffMultiplier": {
+                "title": "バックオフ乗数",
+                "description": "リトライ間の指数バックオフの乗数（デフォルト: 2.0）",
+                "default": 2.0,
+                "type": "number",
+                "format": "double"
+              },
+              "maxDelayMs": {
+                "title": "最大遅延",
+                "description": "リトライ間の最大遅延（ミリ秒）。Retry-After ヘッダーが要求する遅延もこの値が上限となる（デフォルト: 10000）",
+                "default": 10000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "retryOnStatus": {
+                "title": "リトライするステータスコード",
+                "description": "リトライのトリガーとなる HTTP ステータスコード（例: [429, 503]）。省略時はすべての 5xx ステータスコードでリトライする",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "format": "uint16",
+                  "minimum": 0.0
+                }
+              },
+              "honorRetryAfter": {
+                "title": "Retry-After ヘッダーを尊重",
+                "description": "リトライ間隔の決定時に Retry-After レスポンスヘッダー（秒数または HTTP 日付形式）を尊重するか（デフォルト: true）",
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          },
+          "RateLimitConfig": {
+            "title": "Rate Limit Configuration",
+            "description": "Control the rate of HTTP requests to avoid overwhelming the server",
+            "type": "object",
+            "required": [
+              "requests"
+            ],
+            "properties": {
+              "requests": {
+                "title": "リクエスト数",
+                "description": "インターバル内に許容されるリクエストの最大数",
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "intervalMs": {
+                "title": "インターバル",
+                "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000）",
+                "default": 1000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "timing": {
+                "title": "タイミング戦略",
+                "description": "インターバル内でリクエストを分配する方法（デフォルト: burst）",
+                "default": "burst",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/TimingStrategy"
+                  }
+                ]
+              }
+            }
+          },
+          "TimingStrategy": {
+            "title": "Timing Strategy",
+            "description": "How to distribute requests within the rate limit interval",
+            "oneOf": [
+              {
+                "title": "バースト",
+                "description": "すべてのリクエストを即時に許可し、次のインターバルまで一時停止する",
+                "type": "string",
+                "enum": [
+                  "burst"
+                ]
+              },
+              {
+                "title": "分散",
+                "description": "インターバル全体にリクエストを均等に分散する",
+                "type": "string",
+                "enum": [
+                  "distributed"
+                ]
+              }
+            ]
+          },
           "TimeoutConfig": {
             "title": "Timeout Configuration",
             "description": "Configure connection and transfer timeouts for HTTP requests",
@@ -7285,7 +7461,7 @@
             "properties": {
               "userAgent": {
                 "title": "ユーザーエージェント",
-                "description": "カスタム User-Agent ヘッダー値",
+                "description": "各リクエストに送信するカスタム User-Agent ヘッダー値",
                 "type": [
                   "string",
                   "null"
@@ -7293,7 +7469,7 @@
               },
               "verifySsl": {
                 "title": "SSL を検証",
-                "description": "SSL/TLS 証明書を検証するか（デフォルト: true）",
+                "description": "SSL/TLS 証明書を検証するか。自己署名証明書を使うサーバーに対してのみ無効化する（デフォルト: true）",
                 "type": [
                   "boolean",
                   "null"
@@ -7316,363 +7492,6 @@
                 ],
                 "format": "uint8",
                 "minimum": 0.0
-              }
-            }
-          },
-          "ResponseConfig": {
-            "title": "Response Configuration",
-            "description": "Configure how HTTP response data is stored and processed",
-            "type": "object",
-            "properties": {
-              "responseBodyAttribute": {
-                "title": "レスポンスボディ属性",
-                "description": "レスポンスボディを格納するフィーチャー属性名（デフォルト: \"_response_body\"）",
-                "default": "_response_body",
-                "type": "string"
-              },
-              "statusCodeAttribute": {
-                "title": "ステータスコード属性",
-                "description": "HTTP ステータスコードを格納するフィーチャー属性名（デフォルト: \"_http_status_code\"）",
-                "default": "_http_status_code",
-                "type": "string"
-              },
-              "headersAttribute": {
-                "title": "ヘッダー属性",
-                "description": "レスポンスヘッダーを格納するフィーチャー属性名（デフォルト: \"_headers\"）",
-                "default": "_headers",
-                "type": "string"
-              },
-              "errorAttribute": {
-                "title": "エラー属性",
-                "description": "エラーメッセージを格納するフィーチャー属性名（デフォルト: \"_http_error\"）",
-                "default": "_http_error",
-                "type": "string"
-              },
-              "responseHandling": {
-                "title": "レスポンス処理",
-                "description": "レスポンスデータの処理方法（属性またはファイル）",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ResponseHandling"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "maxResponseSize": {
-                "title": "最大レスポンスサイズ",
-                "description": "レスポンスボディの最大サイズ（バイト）（未設定の場合は無制限）",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "responseEncoding": {
-                "title": "レスポンスエンコーディング",
-                "description": "レスポンスボディのエンコード方法（テキスト、base64、またはバイナリ）",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ResponseEncoding"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "autoDetectEncoding": {
-                "title": "エンコーディング自動検出",
-                "description": "レスポンスヘッダーから文字エンコーディングを自動検出する",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              }
-            }
-          },
-          "ResponseHandling": {
-            "title": "Response Handling",
-            "description": "How to handle the HTTP response data",
-            "oneOf": [
-              {
-                "title": "Store in Attribute",
-                "description": "Store response body in a feature attribute",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "attribute"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Save to File",
-                "description": "Save response body to a file",
-                "type": "object",
-                "required": [
-                  "path",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "file"
-                    ]
-                  },
-                  "path": {
-                    "title": "File Path",
-                    "description": "Path where the response should be saved",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr",
-                          "string"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "storePathInAttribute": {
-                    "title": "Store Path in Attribute",
-                    "description": "Whether to store the file path in a feature attribute",
-                    "type": [
-                      "boolean",
-                      "null"
-                    ]
-                  },
-                  "pathAttribute": {
-                    "title": "Path Attribute Name",
-                    "description": "Attribute name for storing the file path",
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          "ResponseEncoding": {
-            "title": "Response Encoding",
-            "description": "How to encode the response body data",
-            "oneOf": [
-              {
-                "title": "テキスト",
-                "description": "レスポンスを UTF-8 テキストとしてデコードする",
-                "type": "string",
-                "enum": [
-                  "text"
-                ]
-              },
-              {
-                "title": "Base64",
-                "description": "レスポンスを Base64 文字列としてエンコードする",
-                "type": "string",
-                "enum": [
-                  "base64"
-                ]
-              },
-              {
-                "title": "バイナリ",
-                "description": "レスポンスを生バイナリデータとして格納する",
-                "type": "string",
-                "enum": [
-                  "binary"
-                ]
-              }
-            ]
-          },
-          "RetryConfig": {
-            "title": "Retry Configuration",
-            "description": "Configure automatic retry behavior for failed requests",
-            "type": "object",
-            "properties": {
-              "maxAttempts": {
-                "title": "最大試行回数",
-                "description": "リトライの最大試行回数（デフォルト: 3）",
-                "default": 3,
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "initialDelayMs": {
-                "title": "初回遅延",
-                "description": "最初のリトライまでの初回遅延（ミリ秒）（デフォルト: 100ms）",
-                "default": 100,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "backoffMultiplier": {
-                "title": "バックオフ乗数",
-                "description": "リトライ間の指数バックオフの乗数（デフォルト: 2.0）",
-                "default": 2.0,
-                "type": "number",
-                "format": "double"
-              },
-              "maxDelayMs": {
-                "title": "最大遅延",
-                "description": "リトライ間の最大遅延（ミリ秒）（デフォルト: 10000ms）",
-                "default": 10000,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "retryOnStatus": {
-                "title": "リトライするステータスコード",
-                "description": "リトライのトリガーとなる HTTP ステータスコードのリスト（例: [429, 503]）",
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "integer",
-                  "format": "uint16",
-                  "minimum": 0.0
-                }
-              },
-              "honorRetryAfter": {
-                "title": "Retry-After ヘッダーを尊重",
-                "description": "サーバーレスポンスの Retry-After ヘッダーを尊重するか（デフォルト: true）",
-                "default": true,
-                "type": "boolean"
-              }
-            }
-          },
-          "RateLimitConfig": {
-            "title": "Rate Limit Configuration",
-            "description": "Control the rate of HTTP requests to avoid overwhelming the server",
-            "type": "object",
-            "required": [
-              "requests"
-            ],
-            "properties": {
-              "requests": {
-                "title": "リクエスト数",
-                "description": "インターバル内に許容されるリクエストの最大数",
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "intervalMs": {
-                "title": "インターバル",
-                "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000ms）",
-                "default": 1000,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "timing": {
-                "title": "タイミング戦略",
-                "description": "インターバル内でリクエストを分配する方法（デフォルト: Burst）",
-                "default": "burst",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/TimingStrategy"
-                  }
-                ]
-              }
-            }
-          },
-          "TimingStrategy": {
-            "title": "Timing Strategy",
-            "description": "How to distribute requests within the rate limit interval",
-            "oneOf": [
-              {
-                "title": "バースト",
-                "description": "すべてのリクエストを即時に許可し、次のインターバルまで一時停止する",
-                "type": "string",
-                "enum": [
-                  "burst"
-                ]
-              },
-              {
-                "title": "分散",
-                "description": "インターバル全体にリクエストを均等に分散する",
-                "type": "string",
-                "enum": [
-                  "distributed"
-                ]
-              }
-            ]
-          },
-          "ObservabilityConfig": {
-            "title": "Observability Configuration",
-            "description": "Track additional metrics and diagnostics about HTTP requests",
-            "type": "object",
-            "properties": {
-              "trackDuration": {
-                "title": "処理時間を記録",
-                "description": "リクエストの合計処理時間を記録するか（デフォルト: true）",
-                "default": true,
-                "type": "boolean"
-              },
-              "durationAttribute": {
-                "title": "処理時間属性",
-                "description": "リクエスト処理時間（ミリ秒）を格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackFinalUrl": {
-                "title": "最終 URL を記録",
-                "description": "リダイレクト後の最終 URL を記録するか（デフォルト: false）",
-                "default": false,
-                "type": "boolean"
-              },
-              "finalUrlAttribute": {
-                "title": "最終 URL 属性",
-                "description": "リダイレクト後の最終 URL を格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackRetryCount": {
-                "title": "リトライ回数を記録",
-                "description": "リトライ試行回数を記録するか（デフォルト: true）",
-                "default": true,
-                "type": "boolean"
-              },
-              "retryCountAttribute": {
-                "title": "リトライ回数属性",
-                "description": "リトライ試行回数を格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackBytes": {
-                "title": "バイト数を記録",
-                "description": "レスポンスボディサイズをバイト単位で記録するか（デフォルト: false）",
-                "default": false,
-                "type": "boolean"
-              },
-              "bytesAttribute": {
-                "title": "バイト数属性",
-                "description": "レスポンスボディサイズを格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
               }
             }
           }

@@ -1973,19 +1973,15 @@
     },
     {
       "name": "HTTP Caller",
-      "description": "发起HTTP/HTTPS请求并使用响应数据丰富要素",
+      "description": "为每个要素调用HTTP或HTTPS端点，并将响应存储在要素属性中",
       "parameterI18n": {
         "": {
           "title": "HTTP Caller Parameters",
-          "description": "Configure HTTP/HTTPS requests to enrich features with response data"
+          "description": "Configure the HTTP request made for each feature and how the response is stored"
         },
         "authentication": {
           "title": "Authentication",
           "description": "Authentication method and credentials for the request"
-        },
-        "contentType": {
-          "title": "Content Type",
-          "description": "Override the Content-Type header for the request"
         },
         "customHeaders": {
           "title": "Custom Headers",
@@ -1993,15 +1989,11 @@
         },
         "httpOptions": {
           "title": "HTTP Options",
-          "description": "HTTP client behavior settings (SSL, redirects, user agent)"
+          "description": "HTTP client behavior settings (SSL verification, redirects, user agent)"
         },
         "method": {
           "title": "HTTP Method",
-          "description": "The HTTP method to use for the request"
-        },
-        "observability": {
-          "title": "Observability",
-          "description": "Track additional metrics and diagnostics"
+          "description": "The HTTP method to use for the request (default: GET)"
         },
         "queryParameters": {
           "title": "Query Parameters",
@@ -2017,7 +2009,7 @@
         },
         "response": {
           "title": "Response Configuration",
-          "description": "Configure how response data is stored and processed"
+          "description": "Configure how the response is stored on the feature"
         },
         "retry": {
           "title": "Retry Configuration",
@@ -2029,7 +2021,7 @@
         },
         "url": {
           "title": "URL",
-          "description": "The target URL for the HTTP request (supports expressions)"
+          "description": "The URL to request, evaluated for each feature (supports expressions). Only http and https URLs are allowed, and requests to private or internal network addresses are blocked."
         }
       },
       "definitionI18n": {
@@ -2064,45 +2056,11 @@
           },
           "userAgent": {
             "title": "User Agent",
-            "description": "Custom User-Agent header value"
+            "description": "Custom User-Agent header value sent with each request"
           },
           "verifySsl": {
             "title": "Verify SSL",
-            "description": "Whether to verify SSL/TLS certificates (default: true)"
-          }
-        },
-        "ObservabilityConfig": {
-          "bytesAttribute": {
-            "title": "Bytes Attribute",
-            "description": "Feature attribute name to store the response body size"
-          },
-          "durationAttribute": {
-            "title": "Duration Attribute",
-            "description": "Feature attribute name to store request duration in milliseconds"
-          },
-          "finalUrlAttribute": {
-            "title": "Final URL Attribute",
-            "description": "Feature attribute name to store the final URL after redirects"
-          },
-          "retryCountAttribute": {
-            "title": "Retry Count Attribute",
-            "description": "Feature attribute name to store the number of retry attempts"
-          },
-          "trackBytes": {
-            "title": "Track Bytes",
-            "description": "Whether to track the response body size in bytes (default: false)"
-          },
-          "trackDuration": {
-            "title": "Track Duration",
-            "description": "Whether to track the total request duration (default: true)"
-          },
-          "trackFinalUrl": {
-            "title": "Track Final URL",
-            "description": "Whether to track the final URL after redirects (default: false)"
-          },
-          "trackRetryCount": {
-            "title": "Track Retry Count",
-            "description": "Whether to track the number of retry attempts (default: true)"
+            "description": "Whether to verify SSL/TLS certificates; disable only for servers with self-signed certificates (default: true)"
           }
         },
         "QueryParam": {
@@ -2118,7 +2076,7 @@
         "RateLimitConfig": {
           "intervalMs": {
             "title": "Interval",
-            "description": "Time interval in milliseconds for the rate limit (default: 1000ms)"
+            "description": "Time interval in milliseconds for the rate limit (default: 1000)"
           },
           "requests": {
             "title": "Requests",
@@ -2126,41 +2084,29 @@
           },
           "timing": {
             "title": "Timing Strategy",
-            "description": "How to distribute requests within the interval (default: Burst)"
+            "description": "How to distribute requests within the interval (default: burst)"
           }
         },
         "ResponseConfig": {
           "autoDetectEncoding": {
             "title": "Auto Detect Encoding",
-            "description": "Automatically detect character encoding from response headers"
-          },
-          "errorAttribute": {
-            "title": "Error Attribute",
-            "description": "Feature attribute name to store any error messages (default: \"_http_error\")"
-          },
-          "headersAttribute": {
-            "title": "Headers Attribute",
-            "description": "Feature attribute name to store the response headers (default: \"_headers\")"
+            "description": "Choose text or base64 storage from the response's Content-Type header when Response Encoding is not set (default: true)"
           },
           "maxResponseSize": {
             "title": "Max Response Size",
-            "description": "Maximum response body size in bytes (unlimited if not set)"
+            "description": "Maximum response body size in bytes; the download is stopped and the feature rejected when a response exceeds it (unlimited if not set)"
           },
           "responseBodyAttribute": {
             "title": "Response Body Attribute",
-            "description": "Feature attribute name to store the response body (default: \"_response_body\")"
+            "description": "Feature attribute name to store the response body (default: `_response_body`)"
           },
           "responseEncoding": {
             "title": "Response Encoding",
-            "description": "How to encode the response body (text, base64, or binary)"
+            "description": "How to store the response body: as UTF-8 text or as a base64-encoded string. When omitted, the encoding is chosen from the response's Content-Type header."
           },
           "responseHandling": {
             "title": "Response Handling",
-            "description": "How to handle the response data (attribute or file)"
-          },
-          "statusCodeAttribute": {
-            "title": "Status Code Attribute",
-            "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")"
+            "description": "Whether to store the response body in a feature attribute or save it to a file (default: attribute)"
           }
         },
         "RetryConfig": {
@@ -2170,23 +2116,23 @@
           },
           "honorRetryAfter": {
             "title": "Honor Retry-After Header",
-            "description": "Whether to respect the Retry-After header from server responses (default: true)"
+            "description": "Whether to respect the Retry-After response header, in seconds or HTTP-date form, when scheduling a retry (default: true)"
           },
           "initialDelayMs": {
             "title": "Initial Delay",
-            "description": "Initial delay in milliseconds before first retry (default: 100ms)"
+            "description": "Initial delay in milliseconds before the first retry (default: 100)"
           },
           "maxAttempts": {
             "title": "Max Attempts",
-            "description": "Maximum number of retry attempts (default: 3)"
+            "description": "Maximum total number of attempts including the initial request; 1 disables retries (default: 3)"
           },
           "maxDelayMs": {
             "title": "Max Delay",
-            "description": "Maximum delay in milliseconds between retries (default: 10000ms)"
+            "description": "Maximum delay in milliseconds between retries, also capping delays requested by the Retry-After header (default: 10000)"
           },
           "retryOnStatus": {
             "title": "Retry on Status Codes",
-            "description": "List of HTTP status codes that should trigger a retry (e.g., [429, 503])"
+            "description": "HTTP status codes that trigger a retry, such as [429, 503]. When omitted, all 5xx status codes are retried."
           }
         },
         "TimeoutConfig": {
@@ -2212,10 +2158,6 @@
           }
         },
         "HttpMethod": {
-          "COPY": {
-            "title": "COPY",
-            "description": "WebDAV: Copy a resource"
-          },
           "DELETE": {
             "title": "DELETE",
             "description": "Delete a resource"
@@ -2227,18 +2169,6 @@
           "HEAD": {
             "title": "HEAD",
             "description": "Retrieve headers only (no body)"
-          },
-          "LOCK": {
-            "title": "LOCK",
-            "description": "WebDAV: Lock a resource"
-          },
-          "MKCOL": {
-            "title": "MKCOL",
-            "description": "WebDAV: Create a collection"
-          },
-          "MOVE": {
-            "title": "MOVE",
-            "description": "WebDAV: Move a resource"
           },
           "OPTIONS": {
             "title": "OPTIONS",
@@ -2252,35 +2182,19 @@
             "title": "POST",
             "description": "Submit data to the server"
           },
-          "PROPFIND": {
-            "title": "PROPFIND",
-            "description": "WebDAV: Retrieve properties"
-          },
-          "PROPPATCH": {
-            "title": "PROPPATCH",
-            "description": "WebDAV: Update properties"
-          },
           "PUT": {
             "title": "PUT",
             "description": "Update or create a resource"
-          },
-          "UNLOCK": {
-            "title": "UNLOCK",
-            "description": "WebDAV: Unlock a resource"
           }
         },
         "ResponseEncoding": {
           "base64": {
             "title": "Base64",
-            "description": "Encode response as base64 string"
-          },
-          "binary": {
-            "title": "Binary",
-            "description": "Store response as raw binary data"
+            "description": "Store the response body as a base64-encoded string (for binary data)"
           },
           "text": {
             "title": "Text",
-            "description": "Decode response as UTF-8 text"
+            "description": "Store the response body as UTF-8 text"
           }
         },
         "TimingStrategy": {
