@@ -538,12 +538,17 @@ mod grid_impl {
         }
     }
 
-    /// Rebuild the appearance for one cell's output mesh.
+    /// Rebuild the appearance for one cell's output mesh, called only once
+    /// the caller (`divide_by_grid`, below) has confirmed the mesh was
+    /// actually cut -- see its own single-cell "was anything cut at all"
+    /// check, which bypasses this function entirely and clones the source
+    /// mesh (appearance included) verbatim when nothing was.
     ///
-    /// Every theme is judged as a genuine cut (there is no mesh-wide
-    /// "untouched" fast path, since different source triangles in the same
+    /// That split matters, not just as an optimization: every theme here is
+    /// judged as a genuine cut (there is no mesh-wide "untouched" fast path
+    /// *inside* this function, since different source triangles in the same
     /// output mesh can each be touched differently, and the mesh needs one
-    /// consistent `Appearance`): a `FaceBinding` is expanded by repeating
+    /// consistent `Appearance`) -- a `FaceBinding` is expanded by repeating
     /// each source triangle's material once per fan-triangle it contributed
     /// to this cell (`face_tri_counts`); an `Explicit` UV set survives only
     /// at the default theme's default slot, rebuilt from `gathered_uv`
@@ -552,6 +557,13 @@ mod grid_impl {
     /// drops the whole theme (`front` is mandatory); dropping a back-side set
     /// drops just the back binding. See `polygon/ops.rs`'s
     /// `rebuild_appearance` for the same rule applied per piece.
+    ///
+    /// Calling this on an untouched mesh would silently drop every
+    /// non-default theme and every back-side-only `Explicit` uv set for no
+    /// reason: `Corner` only ever threads the default theme's default-slot
+    /// uv through the clip in the first place, so that is all this function
+    /// could ever recover, cut or not -- the caller's verbatim-clone bypass
+    /// is what keeps a wholly-untouched mesh from paying that cost.
     fn rebuild_mesh_appearance(
         src: &Option<Appearance>,
         gathered_uv: Option<&[[f64; 2]]>,
@@ -649,6 +661,24 @@ mod grid_impl {
                     grid: &GridSpec,
                     emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
                 ) -> Result<(), GridDivideError> {
+                    /// One cell's clipped-and-fan-triangulated output,
+                    /// buffered rather than emitted immediately: whether the
+                    /// division touched anything at all can only be judged
+                    /// once every cell has been visited (see the
+                    /// single-cell, mesh-unchanged check below), so nothing
+                    /// is built into a `$ty` -- or handed to
+                    /// `rebuild_mesh_appearance`, which is not a safe no-op
+                    /// on unchanged input, see its doc comment -- until that
+                    /// is decided.
+                    struct CellResult {
+                        cell: GridCell,
+                        area: f64,
+                        out_verts: Vec<[f64; $dim]>,
+                        out_tris: Vec<[u32; 3]>,
+                        face_tri_counts: Vec<u32>,
+                        out_uv: Option<Vec<[f64; 2]>>,
+                    }
+
                     let (min, max) = match self.bounding_box()? {
                         Aabb::D2 { min, max } => (min, max),
                         Aabb::D3 { min, max } => ([min[0], min[1]], [max[0], max[1]]),
@@ -664,6 +694,8 @@ mod grid_impl {
 
                     let (lo, hi) = grid.cell_range(min, max);
                     let cell_area = grid.cell_size() * grid.cell_size();
+
+                    let mut results: Vec<CellResult> = Vec::new();
 
                     for row in lo.row..=hi.row {
                         for col in lo.col..=hi.col {
@@ -732,21 +764,65 @@ mod grid_impl {
                                     .map(|&i| vert_uv[i as usize])
                                     .collect::<Option<Vec<_>>>()
                             });
-                            let appearance = rebuild_mesh_appearance(
-                                self.appearance(),
-                                out_uv.as_deref(),
-                                &face_tri_counts,
-                            );
-                            let mut mesh = $ty::from_parts(
-                                self.frame().clone(),
+                            results.push(CellResult {
+                                cell,
+                                area,
                                 out_verts,
-                                out_tris.into_iter().flatten(),
-                            )
-                            .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
-                            *mesh.appearance_mut() = appearance;
-                            mesh.set_elevation_for_grid(elevation);
-                            emit(cell, CellCoverage::from_area(area, cell_area), $wrap(mesh));
+                                out_tris,
+                                face_tri_counts,
+                                out_uv,
+                            });
                         }
+                    }
+
+                    // Nothing was cut: every source triangle contributed
+                    // exactly one output triangle, to the same single cell,
+                    // at the same positions -- so hand back the source mesh
+                    // verbatim (appearance included, byte for byte) instead
+                    // of rebuilding one. This matters even though the
+                    // geometry `rebuild_mesh_appearance` would produce is
+                    // correct: an untouched mesh's *appearance* is not a
+                    // no-op to rebuild, because `Corner` only ever threads
+                    // the default theme's default-slot uv through the clip,
+                    // so any other theme or back-side uv would be dropped by
+                    // the general path even though the clip never touched
+                    // it. See `rebuild_mesh_appearance`'s doc comment.
+                    if let [only] = results.as_slice() {
+                        let unchanged = only.face_tri_counts.iter().all(|&c| c == 1)
+                            && only.out_tris.len() == tris.len()
+                            && only.out_tris.iter().zip(tris.iter()).all(|(o, s)| {
+                                (0..3)
+                                    .all(|k| only.out_verts[o[k] as usize] == verts[s[k] as usize])
+                            });
+                        if unchanged {
+                            emit(
+                                only.cell,
+                                CellCoverage::from_area(only.area, cell_area),
+                                $wrap(self.clone()),
+                            );
+                            return Ok(());
+                        }
+                    }
+
+                    for r in results {
+                        let appearance = rebuild_mesh_appearance(
+                            self.appearance(),
+                            r.out_uv.as_deref(),
+                            &r.face_tri_counts,
+                        );
+                        let mut mesh = $ty::from_parts(
+                            self.frame().clone(),
+                            r.out_verts,
+                            r.out_tris.into_iter().flatten(),
+                        )
+                        .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
+                        *mesh.appearance_mut() = appearance;
+                        mesh.set_elevation_for_grid(elevation);
+                        emit(
+                            r.cell,
+                            CellCoverage::from_area(r.area, cell_area),
+                            $wrap(mesh),
+                        );
                     }
                     Ok(())
                 }

@@ -903,6 +903,51 @@ mod grid_impl {
         Ok(buckets)
     }
 
+    /// Whether every ring of `a` and `b` (exterior then holes, in order) is
+    /// positionally identical.
+    fn rings_eq_2d(a: &Polygon2D, b: &Polygon2D) -> bool {
+        a.exterior() == b.exterior() && a.interiors().eq(b.interiors())
+    }
+
+    /// As [`rings_eq_2d`], for the 3D leaf.
+    fn rings_eq_3d(a: &Polygon3D, b: &Polygon3D) -> bool {
+        a.exterior() == b.exterior() && a.interiors().eq(b.interiors())
+    }
+
+    /// Whether `buckets` shows the division touched nothing: every face
+    /// landed in the *same* single cell, contributing exactly one piece each
+    /// (no split, no drop), each positionally identical to its source face.
+    ///
+    /// This is the mesh-level analogue of `polygon/ops.rs`'s
+    /// `corner_layout_unchanged`, needed for the same reason: re-welding
+    /// through [`PolygonMesh3D::from_polygons`] is not a lossless round trip
+    /// even when every piece is individually untouched -- the weld rebuilds
+    /// the material palette from scratch (no dedup against the original) and
+    /// *bakes* any `WorldToTexture` UV into `Explicit` (a welded mesh's faces
+    /// cannot share one matrix). A mesh this check confirms unchanged must
+    /// bypass the weld entirely and hand back the source verbatim, or a
+    /// "genuine cut" reduction gets applied to a mesh nothing ever cut.
+    ///
+    /// Bucket completeness (one piece per face, not fewer) rules out a face
+    /// silently dropped as degenerate; a face actually split by any grid line
+    /// would necessarily also land a piece in a neighbouring cell, so a
+    /// single surviving bucket already rules out a split -- the per-piece
+    /// position check is kept anyway as a direct, observable confirmation
+    /// rather than relying on that argument alone.
+    fn mesh_unchanged<P>(
+        buckets: &BTreeMap<(i64, i64), Vec<P>>,
+        faces: &[P],
+        eq: impl Fn(&P, &P) -> bool,
+    ) -> Option<(i64, i64)> {
+        if buckets.len() != 1 {
+            return None;
+        }
+        let (&key, pieces) = buckets.iter().next().expect("checked len == 1");
+        let unchanged =
+            pieces.len() == faces.len() && faces.iter().zip(pieces.iter()).all(|(f, p)| eq(f, p));
+        unchanged.then_some(key)
+    }
+
     impl DivideByGrid for PolygonMesh2D {
         fn divide_by_grid(
             &self,
@@ -914,8 +959,21 @@ mod grid_impl {
             }
             let faces = faces_2d(self);
             let buckets = bucket(&faces, grid, collect_faces_2d)?;
-
             let cell_area = grid.cell_size() * grid.cell_size();
+
+            if let Some((row, col)) = mesh_unchanged(&buckets, &faces, rings_eq_2d) {
+                // Nothing was cut: hand back the source mesh verbatim rather
+                // than re-welding it (see `mesh_unchanged`'s doc comment for
+                // why the weld is not a no-op here even when every piece is).
+                let area: f64 = buckets[&(row, col)].iter().map(Polygon2D::area_xy).sum();
+                emit(
+                    GridCell { row, col },
+                    CellCoverage::from_area(area, cell_area),
+                    Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.clone()))),
+                );
+                return Ok(());
+            }
+
             for ((row, col), pieces) in buckets {
                 if pieces.is_empty() {
                     continue;
@@ -969,8 +1027,18 @@ mod grid_impl {
             }
             let faces = faces_3d(self.data(), self.frame());
             let buckets = bucket(&faces, grid, collect_faces_3d)?;
-
             let cell_area = grid.cell_size() * grid.cell_size();
+
+            if let Some((row, col)) = mesh_unchanged(&buckets, &faces, rings_eq_3d) {
+                let area: f64 = buckets[&(row, col)].iter().map(Polygon3D::area_xy).sum();
+                emit(
+                    GridCell { row, col },
+                    CellCoverage::from_area(area, cell_area),
+                    Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.clone()))),
+                );
+                return Ok(());
+            }
+
             for ((row, col), pieces) in buckets {
                 if pieces.is_empty() {
                     continue;

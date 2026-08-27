@@ -728,3 +728,311 @@ fn mesh_explicit_uv_interpolates_at_a_cut_and_stays_position_parallel() {
     .expect("divides");
     assert!(saw_cut, "the division must actually cut the triangle");
 }
+
+#[test]
+fn polygon_mesh_whole_mesh_inside_one_cell_preserves_a_second_theme_verbatim() {
+    use crate::appearance::{
+        Appearance, ChannelId, FaceBinding, MaterialIndex, Side, TexMatrix, ThemeBinding, UvSet,
+        UvSource,
+    };
+    use crate::test_support::{textured, theme};
+
+    // A single quad face exactly matching the unit cell (boundary-inclusive,
+    // so the clip never touches it), built via the bare `from_parts`
+    // constructor rather than `PolygonMesh3D::from_polygons`: welding a
+    // `WorldToTexture` theme through `from_polygons` bakes it to `Explicit`
+    // *at construction time* (a welded mesh's faces cannot share one
+    // matrix), which would make this fixture unable to carry a
+    // `WorldToTexture` theme at all, regardless of how it later divides. The
+    // appearance is attached afterwards through the raw `appearance_mut`
+    // escape hatch instead, the same pattern `test_support::
+    // explicit_uv_appearance` uses, so it genuinely starts out
+    // `WorldToTexture` and this test is actually exercising what happens to
+    // it across a division.
+    let mut mesh = PolygonMesh3D::from_parts(
+        CoordinateFrame::default(),
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ],
+        [[0u32, 1, 2, 3]],
+    )
+    .expect("valid mesh");
+    let matrix = TexMatrix([
+        [0.25, 0.0, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+    let app = Appearance::from_parts(
+        vec![textured(), textured()],
+        vec![
+            ThemeBinding {
+                theme: theme("rgb"),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: None,
+                uv_sets: vec![UvSet {
+                    side: Side::Front,
+                    channel: ChannelId::default(),
+                    uv: UvSource::Explicit(Box::new([
+                        [0.0, 0.0],
+                        [1.0, 0.0],
+                        [1.0, 1.0],
+                        [0.0, 1.0],
+                    ])),
+                }],
+            },
+            ThemeBinding {
+                theme: theme("ir"),
+                front: FaceBinding::Uniform(MaterialIndex::new(1).unwrap()),
+                back: None,
+                uv_sets: vec![UvSet {
+                    side: Side::Front,
+                    channel: ChannelId::default(),
+                    uv: UvSource::WorldToTexture(matrix),
+                }],
+            },
+        ],
+        theme("rgb"),
+    );
+    *mesh.appearance_mut() = Some(app);
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, coverage, piece| {
+        assert_eq!(coverage, CellCoverage::Full);
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(m)) = piece else {
+            panic!("expected a polygon mesh piece");
+        };
+        let app = m
+            .appearance()
+            .as_ref()
+            .expect("appearance carried through untouched");
+        assert_eq!(
+            app.themes().len(),
+            2,
+            "both themes must survive a division that cuts nothing, not just the default"
+        );
+        let ir = app
+            .themes()
+            .iter()
+            .find(|t| t.theme == theme("ir"))
+            .expect("second theme present");
+        assert!(
+            matches!(
+                ir.uv_sets[0].uv,
+                UvSource::WorldToTexture(out) if out == matrix
+            ),
+            "WorldToTexture must not be baked to Explicit by a weld the mesh never needed"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 1, "the whole mesh fits in one cell");
+}
+
+#[test]
+fn triangular_mesh_whole_mesh_inside_one_cell_preserves_a_second_theme_verbatim() {
+    use crate::appearance::{
+        Appearance, ChannelId, FaceBinding, MaterialIndex, Side, TexMatrix, ThemeBinding, UvSet,
+        UvSource,
+    };
+    use crate::test_support::{textured, theme};
+    use crate::triangular_mesh::TriangularMesh3D;
+
+    // One triangle wholly inside the unit cell, with two themes built
+    // straight through `Appearance::from_parts` (the same raw escape hatch
+    // `test_support::explicit_uv_appearance` uses) so this test does not
+    // depend on `TriangularMesh::set_appearance`'s own validation to get a
+    // second theme attached.
+    let mut mesh = TriangularMesh3D::from_parts(
+        CoordinateFrame::default(),
+        vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        [0u32, 1, 2],
+    )
+    .expect("valid mesh");
+
+    let matrix = TexMatrix([
+        [0.25, 0.0, 0.0, 0.0],
+        [0.0, 0.25, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+    let app = Appearance::from_parts(
+        vec![textured(), textured()],
+        vec![
+            ThemeBinding {
+                theme: theme("rgb"),
+                front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
+                back: None,
+                uv_sets: vec![UvSet {
+                    side: Side::Front,
+                    channel: ChannelId::default(),
+                    uv: UvSource::Explicit(Box::new([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])),
+                }],
+            },
+            ThemeBinding {
+                theme: theme("ir"),
+                front: FaceBinding::Uniform(MaterialIndex::new(1).unwrap()),
+                back: None,
+                uv_sets: vec![UvSet {
+                    side: Side::Front,
+                    channel: ChannelId::default(),
+                    uv: UvSource::WorldToTexture(matrix),
+                }],
+            },
+        ],
+        theme("rgb"),
+    );
+    *mesh.appearance_mut() = Some(app);
+
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_c, _v, piece| {
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(m)) = piece else {
+            panic!("expected a triangular mesh piece");
+        };
+        let app = m
+            .appearance()
+            .as_ref()
+            .expect("appearance carried through untouched");
+        assert_eq!(
+            app.themes().len(),
+            2,
+            "both themes must survive a division that cuts nothing"
+        );
+        let ir = app
+            .themes()
+            .iter()
+            .find(|t| t.theme == theme("ir"))
+            .expect("second theme present");
+        assert!(
+            matches!(
+                ir.uv_sets[0].uv,
+                UvSource::WorldToTexture(out) if out == matrix
+            ),
+            "WorldToTexture must not be baked to Explicit by a rebuild the mesh never needed"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 1, "the whole mesh fits in one cell");
+}
+
+#[test]
+fn polygon_mesh_per_face_material_binding_survives_division() {
+    use crate::appearance::{FaceBinding, Material, PhongMaterial};
+    use crate::test_support::theme;
+
+    fn colored(diffuse: [f32; 3]) -> Material {
+        Material::Phong(PhongMaterial {
+            diffuse,
+            specular: [0.0; 3],
+            emissive: [0.0; 3],
+            ambient_intensity: 0.0,
+            shininess: 0.0,
+            transparency: 0.0,
+            diffuse_map: None,
+            emissive_map: None,
+            normal_map: None,
+        })
+    }
+
+    // Three faces, one per grid column, so the division lands each in its
+    // own cell without cutting any of them: this exercises `face_appearance`
+    // slicing a per-face `FaceBinding::PerFace` entry back out through a
+    // genuine (multi-cell) division, not the whole-mesh-unchanged fast path.
+    let mut face0 = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    face0
+        .set_appearance(theme("rgb"), colored([1.0, 0.0, 0.0]), None)
+        .unwrap();
+
+    let mut face1 = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    face1
+        .set_appearance(theme("rgb"), colored([0.0, 1.0, 0.0]), None)
+        .unwrap();
+
+    // Bare: no appearance at all, so this face is unbound under "rgb" once
+    // welded -- `face_appearance` must drop the theme for this face alone,
+    // not for its neighbours.
+    let face2 = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [2.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+
+    let mesh = PolygonMesh3D::from_polygons(CoordinateFrame::default(), [&face0, &face1, &face2])
+        .expect("valid mesh");
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+
+    let mut seen: std::collections::BTreeMap<i64, Option<[f32; 3]>> =
+        std::collections::BTreeMap::new();
+    geom.divide_by_grid(&unit_grid(), &mut |cell, _coverage, piece| {
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(m)) = piece else {
+            panic!("expected a polygon mesh piece");
+        };
+        let diffuse = m.appearance().as_ref().map(|app| {
+            let binding = app
+                .themes()
+                .iter()
+                .find(|t| t.theme == theme("rgb"))
+                .expect("rgb theme present");
+            let idx = match &binding.front {
+                FaceBinding::Uniform(idx) => *idx,
+                FaceBinding::PerFace(v) => v
+                    .first()
+                    .copied()
+                    .flatten()
+                    .expect("this cell's one face is bound"),
+            };
+            let Material::Phong(p) = &app.materials()[idx.get() as usize] else {
+                panic!("expected a phong material");
+            };
+            p.diffuse
+        });
+        seen.insert(cell.col, diffuse);
+    })
+    .expect("divides");
+
+    assert_eq!(seen.len(), 3, "one cell per face");
+    assert_eq!(
+        seen[&0],
+        Some([1.0, 0.0, 0.0]),
+        "column 0 keeps face0's own material"
+    );
+    assert_eq!(
+        seen[&1],
+        Some([0.0, 1.0, 0.0]),
+        "column 1 keeps face1's own material"
+    );
+    assert_eq!(
+        seen[&2], None,
+        "column 2's face was unbound under this theme, so no appearance survives it"
+    );
+}
