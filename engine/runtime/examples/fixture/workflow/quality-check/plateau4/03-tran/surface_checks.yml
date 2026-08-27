@@ -33,13 +33,14 @@ nodes:
     type: action
     action: Geometry Splitter
 
-  # No `duplicateTolerance`: the tolerant path indexes a k-d tree that overflows
-  # on the many axis-aligned vertices of a reprojected road surface.
+  # Vertices within `duplicateTolerance` of each other count as one point: a
+  # reprojected surface does not preserve exact coordinate equality.
   - id: c3000000-0000-4000-8000-000000000005
     name: GeometryValidatorFace
     type: action
     action: Geometry Validator
     with:
+      duplicateTolerance: 0.01
       planarityThreshold:
         maxHeight: 0.03
 

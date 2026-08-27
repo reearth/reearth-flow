@@ -161,6 +161,7 @@ graphs:
     type: action
     action: Geometry Validator
     with:
+      duplicateTolerance: 0.01
       planarityThreshold:
         maxHeight: 0.03
   - id: c3000000-0000-4000-8000-000000000006
