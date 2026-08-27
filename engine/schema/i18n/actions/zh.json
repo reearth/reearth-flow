@@ -6,15 +6,15 @@
     },
     {
       "name": "Area Calculator",
-      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
+      "description": "计算要素几何的真实表面积，并将结果存储到属性中。实体的面积是其所有边界面的总和，因此空腔的面与外壳的面同样计入总和。",
       "parameterI18n": {
         "": {
-          "title": "Area Calculator Parameters",
-          "description": "Configure how the area of each feature's geometry is measured and stored."
+          "title": "Area Calculator 参数",
+          "description": "每个要素上所测表面积的存储位置。"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one."
+          "title": "输出属性",
+          "description": "用于存储所测表面积的属性名。该属性始终会被写入，几何没有面积或无法测量时记录 `0`，因此下游处理无需应对缺失值。"
         }
       }
     },

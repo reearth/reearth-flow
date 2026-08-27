@@ -6,15 +6,15 @@
     },
     {
       "name": "Area Calculator",
-      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
+      "description": "地物のジオメトリの真の表面積を計算し、属性に格納する。ソリッドの面積は境界となるすべての面の合計であり、中空部分の面も外殻の面と同じように合計に含まれる",
       "parameterI18n": {
         "": {
           "title": "Area Calculator パラメータ",
-          "description": "各地物のジオメトリの面積を計算し格納する方法を設定する"
+          "description": "各地物における計測した表面積の格納先を指定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one."
+          "description": "計測した表面積を格納する属性名。すべての地物に設定され、面積を持たないジオメトリや計測できないジオメトリは 0 が記録されるため、下流の処理で値の欠落を扱う必要はない"
         }
       }
     },
