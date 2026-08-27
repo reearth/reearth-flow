@@ -461,16 +461,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **74** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **75** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 74 | — |
+| Exposed and audited | 75 | — |
 | Does not run in the shipped build | 19 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **8** | An engine-side §8 pass — the list below |
+| **Pending audit** | **7** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -505,7 +505,7 @@ correctness defect.
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
 new-geometry support and were assumed to be near-compliant. That held for the reprojector, which
 postdates the standard, and did not for Dissolver, whose action long predates it — only its
-geometry port is recent. Worth remembering when guessing which of the remaining 8 are cheap.
+geometry port is recent. Worth remembering when guessing which of the remaining 7 are cheap.
 
 ### What "audited" now means — read §"How to use" and §8 first
 
@@ -521,7 +521,7 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 8 actions, with preliminary findings
+### Pending audit — 7 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
@@ -580,18 +580,16 @@ XML Fragmenter  — ALREADY AUDITED, still non-compliant
 
 This group is schema-breaking by nature and wants its own PR.
 
-#### Group F — Known-heavy (2)
+#### Group F — Known-heavy (1)
+
+`HTTP Caller` was audited and **exposed** on its own PR track (2026-08-27): egress control
+added (scheme restriction; private, loopback and link-local blocking at the URL, DNS and
+redirect level; `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK` opt-out for self-hosters), surface
+trimmed under the amended §3.5 (observability and WebDAV verbs removed, fixed response
+attribute names), response file writes sandboxed, and the correctness defects from the
+scoping pass fixed.
 
 ```
-HTTP Caller
-  params:  13 parameters including `timeouts`, `retry`, `rateLimit`, `httpOptions` and
-             `observability`. §3.5 "No implementation leakage" names `timeout` and
-             `retryCount` as its canonical examples of what must NOT be exposed, and §3.5's
-             volume guideline is 8. Applying the rule as written would delete roughly half
-             this action's surface — that is a product decision, not an audit call.
-  cat:     Was `Web` (off-taxonomy, would have landed in a phantom palette group);
-             recategorised to `Feature` in #2373. Done.
-
 Attribute Duplicate Filter
   desc:    "Remove Duplicate Features Based on Attribute Values" — Title Case, no period.
              Param block has no root description.

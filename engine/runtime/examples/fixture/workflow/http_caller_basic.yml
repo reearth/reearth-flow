@@ -1,9 +1,9 @@
-# HTTPCaller Basic Example
-# This workflow demonstrates basic HTTP GET requests using HTTPCaller
+# HTTP Caller Basic Example
+# This workflow demonstrates basic HTTP GET requests using HTTP Caller
 # It fetches user data from a public API and stores the results
 
 id: 550e8400-e29b-41d4-a716-446655440000
-name: "HTTPCaller Basic Example"
+name: "HTTP Caller Basic Example"
 entryGraphId: 550e8400-e29b-41d4-a716-446655440001
 
 graphs:
@@ -38,22 +38,16 @@ graphs:
 
           method: GET
 
-          # Response will be stored in these attributes
-          responseBodyAttribute: "_user_data"
-          statusCodeAttribute: "_http_status"
-          headersAttribute: "_http_headers"
-          errorAttribute: "_http_error"
+          # The response body lands in this attribute; the status code,
+          # headers and any error use the fixed attributes _http_status_code,
+          # _headers and _http_error.
+          response:
+            responseBodyAttribute: "_user_data"
 
           # Timeout configuration
-          connectionTimeout: 30
-          transferTimeout: 60
-
-          # Track request metrics
-          observability:
-            trackDuration: true
-            durationAttribute: "_request_duration_ms"
-            trackRetryCount: true
-            retryCountAttribute: "_retry_count"
+          timeouts:
+            connectionTimeout: 30
+            transferTimeout: 60
 
       # Write results to JSON file
       - id: 550e8400-e29b-41d4-a716-446655440030

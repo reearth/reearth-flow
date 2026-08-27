@@ -1,13 +1,12 @@
-# HTTPCaller File Upload Example
+# HTTP Caller File Upload Example
 # This workflow demonstrates file uploads and form data handling:
 # - Multipart form data
-# - File uploads from storage
-# - Base64 encoded data
+# - File uploads from base64 data
 # - Form URL-encoded data
-# - Response file storage
+# - Saving a response to a file
 
 id: 550e8400-e29b-41d4-a716-446655440020
-name: "HTTPCaller File Upload Example"
+name: "HTTP Caller File Upload Example"
 entryGraphId: 550e8400-e29b-41d4-a716-446655440021
 
 graphs:
@@ -72,8 +71,6 @@ graphs:
 
           response:
             responseBodyAttribute: "_upload_response"
-            statusCodeAttribute: "_status"
-            errorAttribute: "_error"
 
           timeouts:
             connectionTimeout: 30
@@ -105,9 +102,10 @@ graphs:
 
           response:
             responseBodyAttribute: "_form_response"
-            statusCodeAttribute: "_form_status"
 
-      # Example 3: Download response as file instead of attribute
+      # Example 3: Save the response to a file instead of an attribute.
+      # The path is relative to the job's output directory; the saved
+      # location lands in the _response_file_path attribute.
       - id: 550e8400-e29b-41d4-a716-446655440060
         name: Download-To-File
         type: action
@@ -120,14 +118,11 @@ graphs:
           method: GET
 
           response:
-            statusCodeAttribute: "_download_status"
             responseHandling:
               type: file
               path:
                 type: flowExpr
-                value: '"/tmp/downloaded_" + attributes["file_name"]'
-              storePathInAttribute: true
-              pathAttribute: "_file_path"
+                value: '"downloads/" + attributes["file_name"]'
 
       # Write results
       - id: 550e8400-e29b-41d4-a716-446655440070

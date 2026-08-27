@@ -2,7 +2,7 @@
 
 ## Overview
 
-The HTTP Caller action makes HTTP/HTTPS requests and enriches features with response data. It supports a wide range of HTTP features including various authentication methods, retry logic, rate limiting, and flexible response handling.
+The HTTP Caller action calls an HTTP or HTTPS endpoint for each feature and stores the response in feature attributes. It supports several authentication methods, request bodies including file uploads, retry with exponential backoff, rate limiting, and saving responses to files.
 
 ## When to Use
 
@@ -11,17 +11,43 @@ The HTTP Caller action makes HTTP/HTTPS requests and enriches features with resp
 - **Validation**: Validate data against external services
 - **File Downloads**: Download files referenced in feature attributes
 - **Webhooks**: Send feature data to external systems
-- **Data Enrichment**: Augment features with data from external sources
+
+## Network Egress Control
+
+Because workflows run server-side, outbound requests are restricted:
+
+- Only `http` and `https` URLs are allowed.
+- Requests to private, loopback, link-local (including cloud metadata), and
+  other internal network addresses are blocked — whether the URL names the
+  address directly, a hostname resolves to one, or a redirect points at one.
+- Self-hosted deployments that need to reach services on private addresses can
+  opt out by setting the environment variable
+  `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK=true` where the engine runs.
+  The scheme restriction always applies.
+
+A blocked request routes the feature to the `rejected` port with the reason in
+the `_http_error` attribute.
+
+## Parameter Syntax
+
+String-valued parameters marked "supports expressions" take a code object with
+`type` (`string` for a literal, `flowExpr` for an expression) and `value`. An
+expression is evaluated per feature and can use `attributes[...]` and
+`variables[...]`.
 
 ## Basic Usage
 
 ### Simple GET Request
 
 ```yaml
-- id: fetch_weather
-  type: HTTP Caller
+- id: 550e8400-e29b-41d4-a716-446655440020
+  name: Fetch-Weather
+  type: action
+  action: HTTP Caller
   with:
-    url: "https://api.weather.com/current?lat=${feature.latitude}&lon=${feature.longitude}"
+    url:
+      type: flowExpr
+      value: '"https://api.weather.example/current?lat=" + attributes["latitude"] + "&lon=" + attributes["longitude"]'
     method: GET
     response:
       responseBodyAttribute: _weather_data
@@ -30,18 +56,24 @@ The HTTP Caller action makes HTTP/HTTPS requests and enriches features with resp
 ### POST with JSON Body
 
 ```yaml
-- id: geocode_address
-  type: HTTP Caller
+- id: 550e8400-e29b-41d4-a716-446655440021
+  name: Geocode-Address
+  type: action
+  action: HTTP Caller
   with:
-    url: "https://geocoding.api.com/geocode"
+    url:
+      type: string
+      value: https://geocoding.example.com/geocode
     method: POST
     requestBody:
       type: text
-      content: |
-        {
-          "address": "${feature.address}",
-          "city": "${feature.city}"
-        }
+      content:
+        type: flowExpr
+        value: |
+          json.dumps({
+            "address": attributes["address"],
+            "city": attributes["city"]
+          })
       contentType: "application/json"
     response:
       responseBodyAttribute: _geocoded_result
@@ -49,13 +81,20 @@ The HTTP Caller action makes HTTP/HTTPS requests and enriches features with resp
 
 ## Authentication Methods
 
+Credential values support expressions, so secrets can come from workflow
+variables instead of being hardcoded in the workflow file.
+
 ### Basic Authentication
 
 ```yaml
 authentication:
   type: basic
-  username: "my_username"
-  password: "my_password"
+  username:
+    type: string
+    value: my_username
+  password:
+    type: flowExpr
+    value: variables["API_PASSWORD"]
 ```
 
 ### Bearer Token (OAuth 2.0)
@@ -63,27 +102,21 @@ authentication:
 ```yaml
 authentication:
   type: bearer
-  token: "${env.API_TOKEN}"
+  token:
+    type: flowExpr
+    value: variables["API_TOKEN"]
 ```
 
-### API Key in Header
+### API Key in Header or Query Parameter
 
 ```yaml
 authentication:
   type: apiKey
   keyName: "X-API-Key"
-  keyValue: "${env.API_KEY}"
-  location: header
-```
-
-### API Key in Query Parameter
-
-```yaml
-authentication:
-  type: apiKey
-  keyName: "api_key"
-  keyValue: "${env.API_KEY}"
-  location: query
+  keyValue:
+    type: flowExpr
+    value: variables["API_KEY"]
+  location: header # or: query
 ```
 
 ## Request Configuration
@@ -93,9 +126,13 @@ authentication:
 ```yaml
 customHeaders:
   - name: "Accept"
-    value: "application/json"
+    value:
+      type: string
+      value: "application/json"
   - name: "X-Custom-Header"
-    value: "${feature.custom_value}"
+    value:
+      type: flowExpr
+      value: attributes["custom_value"]
 ```
 
 ### Query Parameters
@@ -103,9 +140,13 @@ customHeaders:
 ```yaml
 queryParameters:
   - name: "format"
-    value: "json"
+    value:
+      type: string
+      value: "json"
   - name: "limit"
-    value: "10"
+    value:
+      type: string
+      value: "10"
 ```
 
 ### Request Bodies
@@ -117,12 +158,15 @@ requestBody:
   type: formUrlEncoded
   fields:
     - name: "username"
-      value: "${feature.username}"
-    - name: "email"
-      value: "${feature.email}"
+      value:
+        type: flowExpr
+        value: attributes["username"]
 ```
 
 #### Multipart Form Data (File Upload)
+
+Multipart bodies cannot be combined with retry — the combination is rejected
+when the workflow is built.
 
 ```yaml
 requestBody:
@@ -130,12 +174,16 @@ requestBody:
   parts:
     - type: text
       name: "description"
-      value: "Upload from workflow"
+      value:
+        type: string
+        value: "Upload from workflow"
     - type: file
       name: "document"
       source:
         type: file
-        path: "${feature.file_path}"
+        path:
+          type: flowExpr
+          value: attributes["file_path"]
       filename: "document.pdf"
       contentType: "application/pdf"
 ```
@@ -147,401 +195,133 @@ requestBody:
   type: binary
   source:
     type: base64
-    data: "${feature.image_base64}"
+    data:
+      type: flowExpr
+      value: attributes["image_base64"]
   contentType: "image/png"
 ```
 
 ## Response Handling
 
+Every successful response stores the status code, response headers, and — on
+the `rejected` port — any error message, in fixed attributes:
+
+| Attribute | Content |
+| --- | --- |
+| `_http_status_code` | HTTP status code (e.g. 200, 404) |
+| `_headers` | Response headers as a map |
+| `_http_error` | Error message, on rejected features only |
+
+The response body destination is configurable.
+
 ### Store in Attribute (Default)
 
 ```yaml
 response:
-  responseHandling:
-    type: attribute
   responseBodyAttribute: _response_body
-  statusCodeAttribute: _http_status_code
-  headersAttribute: _headers
-  errorAttribute: _http_error
 ```
 
 ### Save to File
+
+The path is relative to the job's output directory; absolute paths and path
+traversal are rejected. The saved location is stored in the
+`_response_file_path` attribute.
 
 ```yaml
 response:
   responseHandling:
     type: file
-    path: "/tmp/downloads/${feature.id}.json"
-    storePathInAttribute: true
-    pathAttribute: _downloaded_file_path
+    path:
+      type: flowExpr
+      value: '"downloads/" + attributes["id"] + ".json"'
 ```
 
 ### Response Encoding
 
+When `responseEncoding` is not set, text or base64 storage is chosen from the
+response's `Content-Type` header (disable with `autoDetectEncoding: false`;
+the fallback is text). An explicit `responseEncoding` always wins.
+
 ```yaml
 response:
-  responseEncoding: text        # UTF-8 text (default)
-  # responseEncoding: base64    # Base64-encoded string
-  # responseEncoding: binary    # Raw binary data
+  responseEncoding: text # UTF-8 text
+  # responseEncoding: base64 # base64-encoded string, for binary data
+```
+
+### Limit Response Size
+
+The download is stopped and the feature rejected as soon as the limit is
+exceeded.
+
+```yaml
+response:
+  maxResponseSize: 10485760 # 10MB
 ```
 
 ## Retry Configuration
 
-Automatically retry failed requests with exponential backoff:
-
-```yaml
-retry:
-  maxAttempts: 3                    # Maximum number of retry attempts
-  initialDelayMs: 100               # Initial delay before first retry
-  backoffMultiplier: 2.0            # Exponential backoff multiplier
-  maxDelayMs: 10000                 # Maximum delay between retries
-  retryOnStatus: [429, 503, 504]    # HTTP status codes to retry
-  honorRetryAfter: true             # Respect Retry-After header
-```
-
-### Example: Robust API Integration
-
-```yaml
-- id: fetch_with_retry
-  type: HTTP Caller
-  with:
-    url: "https://api.example.com/data"
-    retry:
-      maxAttempts: 5
-      initialDelayMs: 200
-      backoffMultiplier: 2.0
-      maxDelayMs: 30000
-      retryOnStatus: [429, 500, 502, 503, 504]
-```
-
-## Rate Limiting
-
-Control request frequency to avoid overwhelming APIs:
-
-```yaml
-rateLimit:
-  requests: 10          # Maximum requests
-  intervalMs: 1000      # Within this interval (1 second)
-  timing: burst         # or "distributed"
-```
-
-### Timing Strategies
-
-- **burst**: Send all requests immediately, then pause until next interval
-- **distributed**: Evenly distribute requests throughout the interval
-
-### Example: Rate-Limited API Access
-
-```yaml
-- id: fetch_with_rate_limit
-  type: HTTP Caller
-  with:
-    url: "https://api.example.com/data/${feature.id}"
-    rateLimit:
-      requests: 100
-      intervalMs: 60000  # 100 requests per minute
-      timing: distributed
-```
-
-## Timeouts
-
-Configure connection and transfer timeouts:
-
-```yaml
-timeouts:
-  connectionTimeout: 30     # Seconds to establish connection
-  transferTimeout: 60       # Seconds to complete entire request
-```
-
-## HTTP Options
-
-Configure HTTP client behavior:
-
-```yaml
-httpOptions:
-  verifySsl: true           # Verify SSL certificates (default: true)
-                            # Set to false for self-signed certificates (not recommended for production)
-  followRedirects: true     # Automatically follow redirects (default)
-  maxRedirects: 10          # Maximum number of redirects to follow
-  userAgent: "MyApp/1.0"    # Custom User-Agent header
-```
-
-## Observability
-
-Track additional metrics about HTTP requests:
-
-```yaml
-observability:
-  trackDuration: true                    # Track request duration
-  durationAttribute: "_request_duration_ms"
-
-  trackFinalUrl: true                    # Track final URL after redirects
-  finalUrlAttribute: "_final_url"
-
-  trackRetryCount: true                  # Track number of retries
-  retryCountAttribute: "_retry_count"
-
-  trackBytes: true                       # Track response size
-  bytesAttribute: "_response_bytes"
-```
-
-## Complete Examples
-
-### Geocoding API with Retry and Rate Limiting
-
-```yaml
-- id: geocode_addresses
-  type: HTTP Caller
-  with:
-    url: "https://geocoding.api.com/geocode"
-    method: POST
-
-    authentication:
-      type: apiKey
-      keyName: "X-API-Key"
-      keyValue: "${env.GEOCODING_API_KEY}"
-      location: header
-
-    requestBody:
-      type: text
-      content: |
-        {
-          "address": "${feature.street_address}",
-          "city": "${feature.city}",
-          "country": "${feature.country}"
-        }
-      contentType: "application/json"
-
-    retry:
-      maxAttempts: 3
-      initialDelayMs: 100
-      backoffMultiplier: 2.0
-      retryOnStatus: [429, 503]
-
-    rateLimit:
-      requests: 50
-      intervalMs: 1000
-      timing: distributed
-
-    response:
-      responseBodyAttribute: _geocoded_data
-      statusCodeAttribute: _geocode_status
-```
-
-### File Download
-
-```yaml
-- id: download_image
-  type: HTTP Caller
-  with:
-    url: "${feature.image_url}"
-    method: GET
-
-    response:
-      responseHandling:
-        type: file
-        path: "/tmp/images/${feature.id}.jpg"
-        storePathInAttribute: true
-        pathAttribute: _image_file_path
-
-    timeouts:
-      connectionTimeout: 30
-      transferTimeout: 300
-
-    observability:
-      trackDuration: true
-      trackBytes: true
-```
-
-### REST API Integration with OAuth
-
-```yaml
-- id: fetch_user_data
-  type: HTTP Caller
-  with:
-    url: "https://api.example.com/v1/users/${feature.user_id}"
-    method: GET
-
-    authentication:
-      type: bearer
-      token: "${env.OAUTH_ACCESS_TOKEN}"
-
-    customHeaders:
-      - name: "Accept"
-        value: "application/json"
-      - name: "X-Request-ID"
-        value: "${feature.request_id}"
-
-    retry:
-      maxAttempts: 3
-      honorRetryAfter: true
-
-    response:
-      maxResponseSize: 1048576  # 1MB limit
-      responseBodyAttribute: _user_data
-```
-
-### Webhook Notification
-
-```yaml
-- id: send_webhook
-  type: HTTP Caller
-  with:
-    url: "https://webhooks.example.com/notify"
-    method: POST
-
-    customHeaders:
-      - name: "Content-Type"
-        value: "application/json"
-      - name: "X-Webhook-Secret"
-        value: "${env.WEBHOOK_SECRET}"
-
-    requestBody:
-      type: text
-      content: |
-        {
-          "event": "feature_processed",
-          "feature_id": "${feature.id}",
-          "timestamp": "${datetime::now()}",
-          "data": ${feature.data}
-        }
-
-    retry:
-      maxAttempts: 5
-      initialDelayMs: 1000
-```
-
-## Best Practices
-
-### Use Environment Variables for Secrets
-
-Store API keys and tokens in environment variables, not in workflow files:
-
-```yaml
-authentication:
-  type: bearer
-  token: "${env.API_TOKEN}"  # Good
-  # token: "sk-abc123..."     # Bad - hardcoded secret
-```
-
-### Set Appropriate Timeouts
-
-```yaml
-timeouts:
-  connectionTimeout: 5      # Fast APIs
-  transferTimeout: 10
-
-timeouts:
-  connectionTimeout: 30     # Slow APIs or file downloads
-  transferTimeout: 120      # Use 300 for large file downloads
-```
-
-### Use Retry for Resilience
-
-Always configure retry for production workflows:
+Automatically retry failed requests with exponential backoff. `maxAttempts`
+counts all attempts including the first, so `3` means one request plus up to
+two retries; `1` disables retries. When `retryOnStatus` is omitted, all 5xx
+status codes are retried. `Retry-After` response headers (seconds or HTTP-date
+form) are honored by default, capped at `maxDelayMs`.
 
 ```yaml
 retry:
   maxAttempts: 3
-  retryOnStatus: [429, 500, 502, 503, 504]
+  initialDelayMs: 100
+  backoffMultiplier: 2.0
+  maxDelayMs: 10000
+  retryOnStatus: [429, 503, 504]
   honorRetryAfter: true
 ```
 
-### Rate Limit to Avoid Throttling
+## Rate Limiting
 
-Check your API's rate limits and configure accordingly:
+The action makes one request per feature, so a large feature stream without a
+rate limit hammers the target API. The limiter is shared across worker
+threads.
 
 ```yaml
 rateLimit:
   requests: 100
-  intervalMs: 60000  # Match your API's limits
-  timing: distributed
+  intervalMs: 60000 # 100 requests per minute
+  timing: distributed # or: burst
 ```
 
-### Monitor with Observability
+- **burst**: send requests immediately until the limit, then pause until the next interval
+- **distributed**: space requests evenly throughout the interval
 
-Enable observability to track performance and debug issues:
+## Timeouts
 
 ```yaml
-observability:
-  trackDuration: true
-  trackRetryCount: true
-  trackBytes: true
+timeouts:
+  connectionTimeout: 30 # seconds to establish a connection (default: 60)
+  transferTimeout: 300 # seconds for the entire request (default: 90); raise for large downloads
 ```
 
-### Limit Response Sizes
-
-Protect your workflow from large responses:
+## HTTP Options
 
 ```yaml
-response:
-  maxResponseSize: 10485760  # 10MB limit
+httpOptions:
+  verifySsl: true # default; disable only for self-signed certificates
+  followRedirects: true # default
+  maxRedirects: 10 # default
+  userAgent: "MyApp/1.0"
 ```
-
-## Troubleshooting
-
-### Request Timeouts
-
-- Increase timeouts with `timeouts: { connectionTimeout: 60, transferTimeout: 120 }`
-- Check network connectivity
-- Verify the remote server is responsive
-
-### Authentication Failures (401/403)
-
-- Verify credentials are correct
-- Check if token/key has expired
-- Ensure API key location (header vs. query) is correct
-
-### Rate Limiting (429)
-
-- Configure retry with `honorRetryAfter: true`
-- Reduce request frequency with `rateLimit`
-- Contact API provider for higher limits
-
-### SSL Certificate Errors
-
-- Ensure `httpOptions: { verifySsl: true }` (default)
-- For self-signed certificates (development only): `httpOptions: { verifySsl: false }`
-- Check if certificates are valid and not expired
-
-### Large Response Bodies
-
-- Set `response: { maxResponseSize: 10485760 }` to limit memory usage
-- Use `response: { responseHandling: { type: file, path: ... } }` for large files
-- Consider streaming APIs if available
-
-## Expression Support
-
-Most string parameters support expressions:
-
-```yaml
-url: "https://api.example.com/v1/users/${feature.id}"
-queryParameters:
-  - name: "timestamp"
-    value: "${datetime::now()}"
-  - name: "hash"
-    value: "${str::sha256(feature.data)}"
-```
-
-See the [Expression Documentation](../../../../docs/expression-math-functions.md) for available functions.
 
 ## Output Ports
 
-- **default**: Features with successful HTTP responses
-- **rejected**: Features where HTTP requests failed
+- **features**: features whose request completed (any status code, including 4xx/5xx)
+- **rejected**: features whose request could not be completed (invalid or blocked URL, network failure after retries, oversized response, file save failure)
 
-## Default Attribute Names
+## Architecture Notes
 
-- `_response_body`: The response body content
-- `_http_status_code`: The HTTP status code (e.g., 200, 404)
-- `_headers`: Response headers as a JSON object
-- `_http_error`: Error message (if request failed)
-
-You can customize these with:
-```yaml
-response:
-  responseBodyAttribute: custom_response
-  statusCodeAttribute: custom_status
-  headersAttribute: custom_headers
-  errorAttribute: custom_error
-```
+- The reqwest client is lazy-initialized once and shared across processor
+  clones for connection pooling (`Arc<OnceCell>`).
+- All expressions are compiled at build time, not per feature.
+- Egress control is layered: URL validation per feature, a filtering DNS
+  resolver on the client (which also covers redirects and DNS rebinding), and
+  a per-hop redirect policy for literal-IP targets. See `egress.rs`.
+- Response file writes are restricted to the job's sandbox root, mirroring the
+  sink-output chokepoint.
