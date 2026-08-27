@@ -672,7 +672,10 @@ emits an output attribute named `fme_rejection_code`, referenced by 3 tests — 
 schema-visible rename. Both actions are currently hidden (neither runs), so this is not live
 user-facing text today, but it must be fixed before either is re-exposed.
 
-**6. Proposed CI ratchets, neither implemented.** Both are cheap and deterministic:
+**6. Proposed CI ratchets, none implemented.** All are cheap and deterministic:
+- Fail when a parameter leaf in `actions.json` declares neither `type` nor `enum` nor `const`.
+  Such a leaf has no widget for the UI to render. Would have caught the two `serde_json::Value`
+  parameters described in the addendum below, which shipped past two separate audit passes.
 - Fail when a `baseActions` key does not exist in `actions.json`, or names a `builtin: false`
   action. Nothing guards this today; the 105 names were verified by hand.
 - Fail when a parameter in `actions.json` lacks a `description`. Would have caught all four
@@ -731,6 +734,78 @@ Audited and **kept exposed**:
   should say so and probably be named for it. Zero usage anywhere.
 
 ---
+
+### Addendum — the untyped value parameters, a re-check finding
+
+Reported by Kyle 2026-08-27 against `Attribute Range Mapper`, which **this audit had already
+passed** (Batch 1, #2394, recorded as "changes were documentation only"). A schema sweep of all
+166 actions found the defect in exactly two, both exposed, both previously audited:
+
+```
+Attribute Range Mapper · Null Attribute Mapper
+  schema:  Four parameters were `serde_json::Value`, whose honest schema is "any JSON value" —
+             so schemars emitted a leaf with a title and description and NO type, and the UI has
+             no widget to render it. `rangeTable[].outputValue` and `mappings[].replacement` are
+             REQUIRED, so those were unfillable required fields.
+  why it was missed:  §8's `impl:` line makes you trace the code, and the code was fine — the
+             field really did accept any JSON type and the conversion really worked. The text was
+             accurate too. The defect existed only in the SHAPE OF THE GENERATED SCHEMA as a UI
+             consumes it, which no checklist line looks at. Careful descriptions were written
+             over a field that could not be filled in. Hence the new CI ratchet above.
+  fix:     Closed types, but a DIFFERENT shape per action, because their choice spaces differ.
+             `MappedValue` (Attribute Range Mapper) is an **untagged** enum, so it generates
+             `anyOf` of three typed, titled scalar branches — the UI gets a labelled selector and
+             real widgets, and the YAML stays terse: `outputValue: "#f7f5a9"` is unchanged, so the
+             existing fixture needed no migration. `NullReplacement` (Null Attribute Mapper) is a
+             **tagged** enum, because it must offer `Remove` alongside the three value types.
+  fix:     An untagged `NullReplacement` with a unit `Remove` variant — which serde represents as
+             `null` — was considered and REJECTED: the UI's `simplifyAnyOf`
+             (`patchSchemaTypes.ts`) strips `type: "null"` branches out of an `anyOf`, so the
+             Remove option would be unreachable in the editor. Worth remembering before reaching
+             for null-as-a-value anywhere in a parameter schema.
+  impl:    `Option<Value>` carried OPPOSITE meanings for `None` in Null Attribute Mapper —
+             on a mapping it REMOVED the attribute, on `defaultReplacement` it left the attribute
+             UNCHANGED. Same type, inverted semantics, both invisible in the schema. `replacement`
+             is now required, so deleting an attribute is stated (`{type: remove}`) rather than
+             implied by omitting a field. `defaultReplacement` stays optional, where omitting it
+             means "leave unchanged" as before.
+  impl:    Closing the type deleted three near-identical `serde_json::from_value` blocks whose
+             `warn!` fallbacks silently dropped the output attribute. Those runtime failure paths
+             existed only because the type was open.
+  tests:   Range Mapper's tests called a helper that REIMPLEMENTED the classification rather
+             than the processor's own code, and the copy had already DRIFTED — it omitted the
+             boolean coercion that `process` performs, so the documented "booleans count as 1 and
+             0" behaviour was never exercised. The logic is now one `mapped_value` method that
+             both `process` and the tests call, and the boolean case has a test.
+  prior art: Checked the 26 PLATEAU workspaces. `NullAttributeMapper` is used 6 times (5 in QC02
+             Building, 1 in Viz01 Building), so the operation is real; `AttributeRangeMapper`
+             is used nowhere, even there. Neither is used in any of our workflows, so the
+             renames carry no migration cost. FME's own parameter widget design could not be
+             extracted — the workspace JSON truncates the transformer's Tcl payload and the
+             help-text tools only read custom transformers.
+  ⚠️ method: The first "zero usage" sweep was WRONG. It covered `runtime/examples` and `testing/`
+             and missed `runtime/tests/fixture/`, where `attribute/range_mapper.yaml` drives a
+             depth-to-colour ramp with seven bare-string values. A tagged enum broke it, which is
+             what surfaced the untagged option and produced a better design. **Sweep
+             `runtime/tests/fixture/` too — three fixture roots, not two.**
+```
+
+**⚠️ Systemic i18n gap found while doing this, NOT introduced by it.** A tagged enum with OBJECT
+variants — the idiom §3.4 recommends — **cannot be translated at all**. `apply_parameter_i18n`
+(`cli/src/utils.rs:157-173`) matches an enum variant by a top-level `enum` key on the variant, but
+a tagged object variant nests its tag inside `properties.type`; and its `def_i18n` path only walks
+`definitions[X].properties`, which a `oneOf` definition does not have. So both paths skip it and
+the variant labels ship English-only, permanently. Confirmed empirically: `Coordinate Frame
+Reprojector`'s `BasePoint`, `Coordinate Extractor`'s `CoordinateExtractionMode`, and **five of
+HTTP Caller's** (`Authentication`, `RequestBody`, `BinarySource`, `MultipartPart`,
+`ResponseHandling`) have no i18n entry of any kind.
+
+This is the same class as §3.4's root-`oneOf` prohibition, one level down, and §3.4 does not
+mention it. It is fixable rather than inherent — match the variant on `properties.type.enum[0]`
+and walk `definitions[X].oneOf[i].properties` — and wants its own PR, because it changes the i18n
+skeleton for every action using the idiom. **Flagged to the HTTP Caller work, whose design leans
+on it in five places.** Until it lands, choosing this idiom trades "unrenderable" for
+"renderable but English-only", which is the better trade but not a free one.
 
 ### Addendum — Coordinate Frame Reprojector and Dissolver, audited and exposed
 
