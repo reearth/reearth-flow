@@ -1,0 +1,41 @@
+[[codes]]
+code = "geometry.footprint_unavailable"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose horizontal footprint could not be computed"
+help = "Planar tests compare 3D geometry by its footprint; check that the geometry is a supported, non-degenerate solid or surface."
+
+[[codes]]
+code = "geometry.non_linear_frame"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped 3D feature in a coordinate frame without linear units"
+help = "Reproject 3D input to a coordinate system in linear units upstream."
+
+[[codes]]
+code = "geometry.mixed_dimensions"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature mixing 2D and 3D parts"
+help = "Split the geometry, or force it to a single dimension upstream."
+
+[[codes]]
+code = "geometry.mixed_coordinate_frames"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose parts are in different coordinate frames"
+help = "Reproject the geometry to one coordinate frame upstream."
+
+[[codes]]
+code = "geometry.coordinate_frame_mismatch"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature in a different coordinate frame than the node's other inputs"
+help = "Reproject every input of the node to one coordinate frame upstream."
+
+[[codes]]
+code = "geometry.spatial_test_failed"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose spatial relationship test failed"
+help = "Check that the geometry is valid and in a frame the predicate can test."

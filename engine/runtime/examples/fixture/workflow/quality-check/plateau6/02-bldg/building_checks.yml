@@ -183,9 +183,9 @@ nodes:
     type: action
     action: Area On Area Overlayer
     with:
-      accumulationMode: dropIncomingAttributes
+      attributeAccumulation: dropAttributes
       outputAttribute: overlap
-      generateList: list
+      listAttribute: list
       tolerance: 0.01
 
   - id: 2550e8a3-04e0-446d-b592-886edcc3d351
@@ -587,9 +587,9 @@ nodes:
     type: action
     action: Area On Area Overlayer
     with:
-      accumulationMode: dropIncomingAttributes
+      attributeAccumulation: dropAttributes
       outputAttribute: overlap
-      generateList: list
+      listAttribute: list
       groupBy:
         - lod
       tolerance: 0.01
@@ -633,21 +633,17 @@ nodes:
     type: action
     action: CSG Builder
     with:
-      pairIdAttribute:
+      pairId:
         type: flowExpr
         value: attributes["pair_id"]
-      createList: true
-      listAttributeName: attrList
+      listAttribute: attrList
 
   - id: 8c37d786-50f7-4aba-8737-5422da3ba79b
     name: CSGEvaluatorLod1
     type: action
     action: CSG Evaluator
     with:
-      operation: intersection
-      tolerance:
-        type: flowExpr
-        value: "0.01"
+      tolerance: 0.01
 
   - id: a08a7333-b223-41d2-aea1-24966c6349b1
     name: AttributeMapperLod1SolidIntersection
@@ -1497,9 +1493,9 @@ nodes:
     type: action
     action: Area On Area Overlayer
     with:
-      accumulationMode: dropIncomingAttributes
+      attributeAccumulation: dropAttributes
       outputAttribute: overlap
-      generateList: list
+      listAttribute: list
       groupBy:
         - lod
       tolerance: 0.01
@@ -1543,21 +1539,17 @@ nodes:
     type: action
     action: CSG Builder
     with:
-      pairIdAttribute:
+      pairId:
         type: flowExpr
         value: attributes["pair_id"]
-      createList: true
-      listAttributeName: attrList
+      listAttribute: attrList
 
   - id: 5cd3ac4e-a574-4b98-a321-dcc8a7fe12e0
     name: CSGEvaluatorLod2
     type: action
     action: CSG Evaluator
     with:
-      operation: intersection
-      tolerance:
-        type: flowExpr
-        value: "0.01"
+      tolerance: 0.01
 
   - id: 06d5d818-0ecc-4fd7-bf89-a4177210c9ce
     name: AttributeMapperLod2SolidIntersection
@@ -1647,9 +1639,9 @@ nodes:
     type: action
     action: Area On Area Overlayer
     with:
-      accumulationMode: dropIncomingAttributes
+      attributeAccumulation: dropAttributes
       outputAttribute: overlap
-      generateList: list
+      listAttribute: list
       groupBy:
         - lod
       tolerance: 0.01
@@ -1693,21 +1685,17 @@ nodes:
     type: action
     action: CSG Builder
     with:
-      pairIdAttribute:
+      pairId:
         type: flowExpr
         value: attributes["pair_id"]
-      createList: true
-      listAttributeName: attrList
+      listAttribute: attrList
 
   - id: 646133fe-0c98-4a73-8d6a-f21011005e19
     name: CSGEvaluatorLod3
     type: action
     action: CSG Evaluator
     with:
-      operation: intersection
-      tolerance:
-        type: flowExpr
-        value: "0.01"
+      tolerance: 0.01
 
   - id: 9bd16218-2091-4ec3-9755-f0145602141b
     name: AttributeMapperLod3SolidIntersection
@@ -2761,7 +2749,7 @@ edges:
   - id: 4465b7f4-22fc-4cc5-b28f-e2277b823454
     from: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
     to: 2550e8a3-04e0-446d-b592-886edcc3d351
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: be0511b9-7638-419a-b09c-2deaee3e484c
     from: 2550e8a3-04e0-446d-b592-886edcc3d351
@@ -3108,7 +3096,7 @@ edges:
   - id: 1cf489a3-ff25-44d0-aad5-1069e3b730ad
     from: 3f676870-4b7c-46f0-925e-073c20429200
     to: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: 5aa9651c-7805-4b3f-a516-897159f1e164
     from: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
@@ -3491,7 +3479,7 @@ edges:
   - id: fea1fc5c-b2e9-437f-a774-1e39289de137
     from: 2fcd2ca5-e9fd-444a-b989-c2318bb1f141
     to: 00073c0d-4d99-4dfd-aab7-93576c344072
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: 4d94b0c6-e3b6-48e0-adb0-8fa1de81aae6
     from: 00073c0d-4d99-4dfd-aab7-93576c344072
@@ -3568,7 +3556,7 @@ edges:
   - id: c1dfa859-6646-4e3f-b56f-2ecb0e545a37
     from: daecf1b8-ac79-475f-b956-93d50667bda5
     to: 4ccbd075-561f-4540-aaa6-7f82a21056b2
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: e065f071-9114-46eb-8952-fefcc56b64a0
     from: 4ccbd075-561f-4540-aaa6-7f82a21056b2

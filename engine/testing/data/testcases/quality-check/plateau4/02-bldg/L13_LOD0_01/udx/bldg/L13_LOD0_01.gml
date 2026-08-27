@@ -25,8 +25,7 @@
                                         0.0 0.0 0.0
                                         1.0 0.0 0.0
                                         1.0 1.0 0.0
-                                        0.0 1.0 0.0
-                                    </gml:posList>
+                                        0.0 1.0 0.0 0.0 0.0 0.0</gml:posList>
                                 </gml:LinearRing>
                             </gml:exterior>
                             <gml:interior>
@@ -35,8 +34,7 @@
                                         0.1 0.1 0.0
                                         1.1 1.1 0.0
                                         1.1 0.1 0.0
-                                        0.1 1.1 0.0
-                                    </gml:posList>
+                                        0.1 1.1 0.0 0.1 0.1 0.0</gml:posList>
                                 </gml:LinearRing>
                             </gml:interior>
                         </gml:Polygon>

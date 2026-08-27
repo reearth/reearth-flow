@@ -53,14 +53,6 @@ func (m *mockRedisClient) XAdd(ctx context.Context, a *redis.XAddArgs) *redis.St
 	return cmd
 }
 
-func (m *mockRedisClient) HSet(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
-	m.calls = append(m.calls, "HSet")
-	args := m.Called(ctx, key, values)
-	cmd := redis.NewIntCmd(ctx)
-	cmd.SetErr(args.Error(0))
-	return cmd
-}
-
 // orderingRedisClient simulates real Redis' rejection of an explicit XADD ID
 // that is equal to or smaller than a stream's current top entry. Auto IDs
 // ("" or "*") are always accepted, matching real Redis behavior, so this only
@@ -83,10 +75,6 @@ func (m *orderingRedisClient) Expire(ctx context.Context, key string, expiration
 
 func (m *orderingRedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	return redis.NewStatusCmd(ctx)
-}
-
-func (m *orderingRedisClient) HSet(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
-	return redis.NewIntCmd(ctx)
 }
 
 func (m *orderingRedisClient) XAdd(ctx context.Context, a *redis.XAddArgs) *redis.StringCmd {
