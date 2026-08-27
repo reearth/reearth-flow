@@ -20,6 +20,13 @@ use super::{
 /// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
 pub const MEMBER_LOD_KEY: &str = "lod";
 
+/// Per-member attribute keys naming the innermost enclosing element that carries a
+/// `gml:id` — the object the geometry belongs to. One feature can hold the geometry
+/// of several nested objects, so the feature's own `gml:id` and type do not identify
+/// a single member's owner.
+pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
+pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
+
 /// Resolves the parsed document (xlink + codespace) and returns one feature per top-level city
 /// object, or — when `extract_tags` is non-empty — one feature per matching flattened node.
 /// `base_attributes` maps a source file URL to the input feature's attributes (e.g. `package`),
@@ -167,7 +174,7 @@ mod build_next {
         CITYGML_ROOT_GML_ID_KEY,
     };
 
-    use super::MEMBER_LOD_KEY;
+    use super::{MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_LOD_KEY};
 
     use crate::citygml_parser::{
         appearance::{self, AppearanceIndex},
@@ -272,11 +279,11 @@ mod build_next {
                 let mut by_owner: HashMap<&str, Vec<&geometry::PendingGeom>> = HashMap::new();
                 for g in &geoms {
                     if let Some(target) = g
-                        .owner_ids
+                        .owners
                         .iter()
-                        .find(|id| emitted_ids.contains(id.as_str()))
+                        .find(|o| emitted_ids.contains(o.gml_id.as_str()))
                     {
-                        by_owner.entry(target.as_str()).or_default().push(g);
+                        by_owner.entry(target.gml_id.as_str()).or_default().push(g);
                     }
                 }
                 for (node, parent_id) in &extracted {
@@ -326,7 +333,8 @@ mod build_next {
         srs_by_file: &HashMap<String, EpsgCode>,
     ) {
         // Each member records its source LOD (a `tin` has none) so downstream
-        // sinks can select a single LOD; gml:id is still TODO.
+        // sinks can select a single LOD, and the object it belongs to so a
+        // per-surface report can name it.
         let mut members: Vec<Geometry> = Vec::new();
         let mut attrs: Vec<Attributes> = Vec::new();
         for pending in geoms {
@@ -341,6 +349,16 @@ mod build_next {
                 member_attrs.insert(
                     Attribute::new(MEMBER_LOD_KEY),
                     AttributeValue::Number(lod.into()),
+                );
+            }
+            if let Some(owner) = pending.owners.first() {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY),
+                    AttributeValue::String(owner.gml_id.clone()),
+                );
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
+                    AttributeValue::String(owner.feature_type.clone()),
                 );
             }
             members.push(member);
@@ -372,6 +390,7 @@ mod build_next {
                      xmlns:core="http://www.opengis.net/citygml/3.0"
                      xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
                      xmlns:con="http://www.opengis.net/citygml/construction/3.0"
+                     xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
                      xmlns:gml="http://www.opengis.net/gml/3.2"
                      xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
             );
@@ -513,6 +532,59 @@ mod build_next {
             }
             assert_single_polygon_surface(by_type(&features, "con:WallSurface"));
             assert_single_polygon_surface(by_type(&features, "con:RoofSurface"));
+        }
+
+        #[test]
+        fn case13_each_member_names_the_object_it_belongs_to() {
+            // Without `extract_tags` the nested TrafficArea stays inside the Road
+            // feature, so only the per-member attributes tell the two apart.
+            let members = format!(
+                "<core:cityObjectMember><tran:Road gml:id=\"road1\">\
+                   <core:lod1MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod1MultiSurface>\
+                   <tran:trafficArea><tran:TrafficArea gml:id=\"ta1\">\
+                     <core:lod3MultiSurface><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></core:lod3MultiSurface>\
+                   </tran:TrafficArea></tran:trafficArea>\
+                 </tran:Road></core:cityObjectMember>"
+            );
+            let features = run(&members, &[]);
+            assert_eq!(features.len(), 1);
+            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
+                panic!(
+                    "expected GeometryCollection, got {:?}",
+                    features[0].geometry
+                );
+            };
+            let owners: Vec<(
+                Option<&AttributeValue>,
+                Option<&AttributeValue>,
+                Option<&AttributeValue>,
+            )> = gc
+                .member_attributes()
+                .iter()
+                .map(|a| {
+                    (
+                        a.get(&Attribute::new(MEMBER_LOD_KEY)),
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY)),
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY)),
+                    )
+                })
+                .collect();
+            let expected = |lod: u64, id: &str, ty: &str| {
+                (
+                    AttributeValue::Number(lod.into()),
+                    AttributeValue::String(id.to_string()),
+                    AttributeValue::String(ty.to_string()),
+                )
+            };
+            let lod1 = expected(1, "road1", "tran:Road");
+            let lod3 = expected(3, "ta1", "tran:TrafficArea");
+            assert_eq!(
+                owners,
+                vec![
+                    (Some(&lod1.0), Some(&lod1.1), Some(&lod1.2)),
+                    (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
+                ]
+            );
         }
     }
 }
