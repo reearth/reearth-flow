@@ -6,7 +6,7 @@ use reearth_flow_common::{
     dir::setup_job_directory,
     uri::{Protocol, Uri},
 };
-use reearth_flow_diagnostics::RunSummary;
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -15,7 +15,7 @@ use reearth_flow_types::Workflow;
 use uuid::Uuid;
 
 use crate::{
-    artifact::upload_artifact,
+    artifact::{upload_artifact, write_diagnostics_artifact},
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
@@ -259,7 +259,13 @@ impl RunWorkerCommand {
             artifact_uri,
         )
         .await;
-        let run_summary: Option<RunSummary> = result.as_ref().ok().cloned();
+        // The runner returns Err without a RunSummary, which would leave exactly
+        // the runs that failed with no failedNodes and no diagnostics artifact;
+        // rebuild the terminal view from the failure handler instead.
+        let run_summary: RunSummary = match &result {
+            Ok(summary) => summary.clone(),
+            Err(e) => failure_summary(format!("{e:?}"), &node_failure_handler),
+        };
         let job_result = match &result {
             Ok(summary) => {
                 let handler_success = node_failure_handler.all_success();
@@ -282,18 +288,25 @@ impl RunWorkerCommand {
             }
             Err(_) => derive_job_result(None, false),
         };
+        // Written before cleanup so the artifact sweep uploads it; uncapped,
+        // unlike the size-capped complete event. Never fails the run.
+        let artifact_event = JobCompleteEvent::with_full_summary(
+            workflow_id,
+            meta.job_id,
+            job_result.clone(),
+            &run_summary,
+        );
+        if let Err(e) = write_diagnostics_artifact(meta.job_id, &artifact_event) {
+            tracing::warn!("Failed to write diagnostics artifact: {e:?}");
+        }
         self.cleanup(&meta, &storage_resolver).await?;
-        let complete_event = match &run_summary {
-            // Pass the uncapped summary — with_summary caps internally; capping twice would double-cap the overflow marker.
-            Some(summary) => JobCompleteEvent::with_summary(
-                workflow_id,
-                meta.job_id,
-                job_result.clone(),
-                summary,
-            ),
-            // Known gap: Err path (incl. onFatal:Terminate per-feature errors) omits aggregatedDiagnostics/droppedEventCount even though the run produced them.
-            None => JobCompleteEvent::new(workflow_id, meta.job_id, job_result.clone()),
-        };
+        // Pass the uncapped summary — with_summary caps internally; capping twice would double-cap the overflow marker.
+        let complete_event = JobCompleteEvent::with_summary(
+            workflow_id,
+            meta.job_id,
+            job_result.clone(),
+            &run_summary,
+        );
         match &pubsub {
             PubSubBackend::Google(p) => p.publish(complete_event).await.map_err(Error::run),
             PubSubBackend::Noop(p) => p
@@ -574,9 +587,76 @@ fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -
     }
 }
 
+/// Rebuilds the terminal failed-nodes view for a run whose runner errored out
+/// before producing a RunSummary: one fatal row per failed node the handler
+/// captured, or a single workflow-level row when it captured none.
+fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSummary {
+    let fatal = |node_id: Option<String>| {
+        let mut d = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalUnclassified)
+                .with_message(error_detail.clone()),
+            node_id,
+            None,
+            None,
+        );
+        d.effective_disposition = Some(Disposition::Fatal);
+        d
+    };
+
+    let mut node_ids = handler.failed_nodes();
+    node_ids.sort();
+    node_ids.dedup();
+
+    let mut failed_nodes: Vec<Diagnostic> = node_ids
+        .into_iter()
+        .map(|node_id| fatal(Some(node_id)))
+        .collect();
+    if failed_nodes.is_empty() {
+        failed_nodes.push(fatal(None));
+    }
+
+    RunSummary {
+        failed_nodes,
+        aggregated_diagnostics: Vec::new(),
+        dropped_event_count: 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn failure_summary_builds_a_fatal_row_per_failed_node_deduped() {
+        let handler = NodeFailureHandler::new();
+        handler.failed_sinks.lock().push("node-a".to_string());
+        handler.failed_sinks.lock().push("node-a".to_string());
+        handler.failed_sinks.lock().push("node-b".to_string());
+
+        let summary = failure_summary("ExecutionError(Source(..))".to_string(), &handler);
+
+        assert_eq!(summary.failed_nodes.len(), 2);
+        for row in &summary.failed_nodes {
+            assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
+            assert_eq!(row.message, "ExecutionError(Source(..))");
+        }
+        assert!(summary.aggregated_diagnostics.is_empty());
+        assert_eq!(summary.dropped_event_count, 0);
+    }
+
+    #[test]
+    fn failure_summary_falls_back_to_a_workflow_level_row() {
+        let handler = NodeFailureHandler::new();
+
+        let summary = failure_summary("boom".to_string(), &handler);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(summary.failed_nodes[0].node_id, None);
+        assert_eq!(
+            summary.failed_nodes[0].effective_disposition,
+            Some(Disposition::Fatal)
+        );
+    }
 
     #[test]
     fn derive_job_result_success_when_both_signals_agree_on_success() {

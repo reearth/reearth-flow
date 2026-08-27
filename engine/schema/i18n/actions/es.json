@@ -462,7 +462,7 @@
     },
     {
       "name": "Bufferer",
-      "description": "Crea un búfer alrededor de una geometría",
+      "description": "Crea un polígono de búfer alrededor de cada geometría de entrada a una distancia especificada.",
       "parameterI18n": {
         "": {
           "title": "Bufferer Parameters",
@@ -478,7 +478,7 @@
         },
         "interpolationAngle": {
           "title": "Interpolation Angle",
-          "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it."
+          "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it. Defaults to 11.25 degrees when omitted."
         }
       },
       "enumI18n": {
@@ -1143,15 +1143,15 @@
     },
     {
       "name": "Elevation Extractor",
-      "description": "Extrae el primer valor de la coordenada z de una entidad y lo almacena en un atributo.",
+      "description": "Extrae la elevación del primer vértice de una geometría a un atributo. Una geometría sin elevación pasa sin él.",
       "parameterI18n": {
         "": {
           "title": "Elevation Extractor Parameters",
-          "description": "Configure where the extracted elevation is stored."
+          "description": "Sets where the extracted elevation is stored."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Attribute to store the elevation in."
+          "description": "Attribute the elevation is written to. It is left unwritten when the geometry carries no elevation."
         }
       }
     },
@@ -3528,15 +3528,15 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "Lee entidades geográficas desde archivos Shapefile (.zip que contiene .shp, .dbf, .shx)",
+      "description": "Lee entidades desde un shapefile empaquetado en un archivo ZIP. Se espera que el archivo contenga los ficheros .shp, .shx y .dbf que define el formato, aunque se tolera la ausencia del .shx.",
       "parameterI18n": {
         "": {
-          "title": "ShapefileReader Parameters",
-          "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx)."
+          "title": "Shapefile Reader Parameters",
+          "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one."
         },
         "allowEmptyPath": {
-          "title": "Allow Null Path",
-          "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs."
+          "title": "Allow Empty Path",
+          "description": "If true, a dataset path that is empty or null yields no features instead of failing, allowing an optional shapefile input."
         },
         "dataset": {
           "title": "File Path",
@@ -3548,7 +3548,7 @@
         },
         "force2D": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)."
+          "description": "If true, drops elevations and reads every geometry as 2D. The read fails on a multipatch, which describes a surface in space and has no 2D form."
         },
         "inline": {
           "title": "Inline Content",
@@ -3558,11 +3558,11 @@
     },
     {
       "name": "Shapefile Writer",
-      "description": "Escribe características a un Shapefile",
+      "description": "Escribe entidades como shapefiles, opcionalmente agrupándolas en un conjunto de archivos por grupo.",
       "parameterI18n": {
         "": {
-          "title": "ShapefileWriter Parameters",
-          "description": "Configuration for writing features to ESRI Shapefile format."
+          "title": "Shapefile Writer Parameters",
+          "description": "Sets where the shapefiles are written, whether each is archived, and how features are grouped into separate file sets."
         },
         "compressOutput": {
           "title": "Compressed Output Directory",
@@ -3570,11 +3570,11 @@
         },
         "groupBy": {
           "title": "Group By",
-          "description": "Optional attributes to group features by, creating separate files for each group"
+          "description": "Attributes to group features by, writing one file set per distinct group and naming it after the group's value. When unset, every feature goes to a single file set."
         },
         "output": {
           "title": "Output Directory",
-          "description": "Output directory path or expression where the generated Shapefile files are written."
+          "description": "Directory the shapefiles are written to, as a path or an expression. Each file set inside it is named after its group value, or \"null\" when no grouping is configured."
         }
       }
     },

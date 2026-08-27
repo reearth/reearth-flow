@@ -1231,7 +1231,7 @@
     {
       "name": "Bufferer",
       "type": "processor",
-      "description": "Crea un búfer alrededor de una geometría",
+      "description": "Crea un polígono de búfer alrededor de cada geometría de entrada a una distancia especificada.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Bufferer Parameters",
@@ -1239,8 +1239,7 @@
         "type": "object",
         "required": [
           "bufferType",
-          "distance",
-          "interpolationAngle"
+          "distance"
         ],
         "properties": {
           "bufferType": {
@@ -1260,8 +1259,11 @@
           },
           "interpolationAngle": {
             "title": "Interpolation Angle",
-            "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it.",
-            "type": "number",
+            "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it. Defaults to 11.25 degrees when omitted.",
+            "type": [
+              "number",
+              "null"
+            ],
             "format": "double"
           }
         },
@@ -3393,11 +3395,11 @@
     {
       "name": "Elevation Extractor",
       "type": "processor",
-      "description": "Extrae el primer valor de la coordenada z de una entidad y lo almacena en un atributo.",
+      "description": "Extrae la elevación del primer vértice de una geometría a un atributo. Una geometría sin elevación pasa sin él.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Elevation Extractor Parameters",
-        "description": "Configure where the extracted elevation is stored.",
+        "description": "Sets where the extracted elevation is stored.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -3405,7 +3407,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Attribute to store the elevation in.",
+            "description": "Attribute the elevation is written to. It is left unwritten when the geometry carries no elevation.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -12261,11 +12263,11 @@
     {
       "name": "Shapefile Reader",
       "type": "source",
-      "description": "Lee entidades geográficas desde archivos Shapefile (.zip que contiene .shp, .dbf, .shx)",
+      "description": "Lee entidades desde un shapefile empaquetado en un archivo ZIP. Se espera que el archivo contenga los ficheros .shp, .shx y .dbf que define el formato, aunque se tolera la ausencia del .shx.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileReader Parameters",
-        "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+        "title": "Shapefile Reader Parameters",
+        "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one.",
         "type": "object",
         "properties": {
           "encoding": {
@@ -12278,13 +12280,13 @@
           },
           "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+            "description": "If true, drops elevations and reads every geometry as 2D. The read fails on a multipatch, which describes a surface in space and has no 2D form.",
             "default": false,
             "type": "boolean"
           },
           "allowEmptyPath": {
-            "title": "Allow Null Path",
-            "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
+            "title": "Allow Empty Path",
+            "description": "If true, a dataset path that is empty or null yields no features instead of failing, allowing an optional shapefile input.",
             "default": false,
             "type": "boolean"
           },
@@ -12356,11 +12358,11 @@
     {
       "name": "Shapefile Writer",
       "type": "sink",
-      "description": "Escribe características a un Shapefile",
+      "description": "Escribe entidades como shapefiles, opcionalmente agrupándolas en un conjunto de archivos por grupo.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileWriter Parameters",
-        "description": "Configuration for writing features to ESRI Shapefile format.",
+        "title": "Shapefile Writer Parameters",
+        "description": "Sets where the shapefiles are written, whether each is archived, and how features are grouped into separate file sets.",
         "type": "object",
         "required": [
           "output"
@@ -12368,7 +12370,7 @@
         "properties": {
           "output": {
             "title": "Output Directory",
-            "description": "Output directory path or expression where the generated Shapefile files are written.",
+            "description": "Directory the shapefiles are written to, as a path or an expression. Each file set inside it is named after its group value, or \"null\" when no grouping is configured.",
             "type": "object",
             "format": "code",
             "required": [
@@ -12415,7 +12417,7 @@
           },
           "groupBy": {
             "title": "Group By",
-            "description": "Optional attributes to group features by, creating separate files for each group",
+            "description": "Attributes to group features by, writing one file set per distinct group and naming it after the group's value. When unset, every feature goes to a single file set.",
             "type": [
               "array",
               "null"
