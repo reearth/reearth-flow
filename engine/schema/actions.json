@@ -12249,11 +12249,11 @@
     {
       "name": "Shapefile Reader",
       "type": "source",
-      "description": "Reads features from a shapefile packaged in a ZIP archive. The archive must hold a .shp and a .dbf sharing one name.",
+      "description": "Reads features from a shapefile packaged in a ZIP archive. The archive is expected to hold the .shp, .shx and .dbf files the format defines, though a missing .shx is tolerated.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Shapefile Reader Parameters",
-        "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept.",
+        "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one.",
         "type": "object",
         "properties": {
           "encoding": {

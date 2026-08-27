@@ -3524,11 +3524,11 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "Lee entidades desde un shapefile empaquetado en un archivo ZIP. El archivo debe contener un .shp y un .dbf con el mismo nombre.",
+      "description": "Lee entidades desde un shapefile empaquetado en un archivo ZIP. Se espera que el archivo contenga los ficheros .shp, .shx y .dbf que define el formato, aunque se tolera la ausencia del .shx.",
       "parameterI18n": {
         "": {
           "title": "Shapefile Reader Parameters",
-          "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept."
+          "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one."
         },
         "allowEmptyPath": {
           "title": "Allow Empty Path",

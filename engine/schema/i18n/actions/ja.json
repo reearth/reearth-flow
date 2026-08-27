@@ -3529,11 +3529,11 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "ZIP アーカイブに格納された Shapefile から地物を読み取る。アーカイブには同じ名前の .shp と .dbf が必要",
+      "description": "ZIP アーカイブに格納された Shapefile から地物を読み取る。アーカイブには形式が定める .shp、.shx、.dbf が含まれることを想定するが、.shx がなくても読み取れる",
       "parameterI18n": {
         "": {
           "title": "Shapefile Reader パラメータ",
-          "description": "読み取るアーカイブ、属性テーブルのエンコーディング、標高を保持するかどうかを設定する"
+          "description": "読み取るアーカイブ、属性テーブルのエンコーディング、標高を保持するかどうかを設定する。構成ファイルは名前で対応付けられ、アーカイブに複数の Shapefile がある場合は最初のものを読み取る"
         },
         "allowEmptyPath": {
           "title": "空のパスを許可",

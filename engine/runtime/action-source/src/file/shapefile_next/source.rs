@@ -33,8 +33,9 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from a shapefile packaged in a ZIP archive. The archive must hold a \
-         .shp and a .dbf sharing one name."
+        "Reads features from a shapefile packaged in a ZIP archive. The archive is expected \
+         to hold the .shp, .shx and .dbf files the format defines, though a missing .shx is \
+         tolerated."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -115,7 +116,8 @@ pub(super) struct ShapefileReader {
 /// # Shapefile Reader Parameters
 ///
 /// Sets which archive is read, the encoding of its attribute table, and whether elevations are
-/// kept.
+/// kept. Components are paired by name, and the first shapefile is read when the archive holds
+/// more than one.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ShapefileReaderParam {

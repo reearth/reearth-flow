@@ -3524,11 +3524,11 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "从打包在 ZIP 存档中的 shapefile 读取要素。存档必须包含同名的 .shp 和 .dbf。",
+      "description": "从打包在 ZIP 存档中的 shapefile 读取要素。存档应包含该格式定义的 .shp、.shx 和 .dbf 文件，但允许缺少 .shx。",
       "parameterI18n": {
         "": {
           "title": "Shapefile Reader Parameters",
-          "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept."
+          "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one."
         },
         "allowEmptyPath": {
           "title": "Allow Empty Path",
