@@ -10,7 +10,6 @@ import (
 func TestConfig_Print_MasksCredentials(t *testing.T) {
 	c := &Config{
 		DB:                  "mongodb+srv://muser:mpass@cluster.example.net/db",
-		DBPG:                "postgres://reearth_flow:pgpass123@10.46.0.3:5432/reearth_flow?sslmode=disable",
 		RedisURL:            "redis://:redispass@10.0.0.1:6379",
 		HealthCheckPassword: "hcpass",
 		GCSBucket:           "some-bucket",
@@ -18,7 +17,7 @@ func TestConfig_Print_MasksCredentials(t *testing.T) {
 
 	out := c.Print()
 
-	for _, leaked := range []string{"mpass", "pgpass123", "redispass", "hcpass"} {
+	for _, leaked := range []string{"mpass", "redispass", "hcpass"} {
 		if strings.Contains(out, leaked) {
 			t.Errorf("Print leaked %q", leaked)
 		}

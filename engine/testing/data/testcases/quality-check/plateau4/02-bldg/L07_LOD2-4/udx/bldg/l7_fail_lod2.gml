@@ -14,7 +14,7 @@
             <bldg:measuredHeight uom="m">9.7</bldg:measuredHeight>
             <bldg:storeysAboveGround>1</bldg:storeysAboveGround>
             <bldg:boundedBy>
-                <bldg:GroundSurface>
+                <bldg:GroundSurface gml:id="bldg_145717e9-2260-4205-aed7-4df9fa8cc296_gs1">
                     <bldg:lod2MultiSurface>
                         <gml:MultiSurface>
 							<gml:surfaceMember>

@@ -92,6 +92,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
+            inherit_input_attributes: params.inherit_input_attributes,
             parser: Parser::new(CityGmlVersion::V3),
             base_attributes: HashMap::new(),
         }))
@@ -136,9 +137,18 @@ pub struct FeatureCityGml3ReaderParam {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     city_gml_attributes_key: Option<String>,
+    /// # Inherit Input Attributes
+    /// When true, the input feature's attributes are merged into every feature parsed from its
+    /// file. Defaults to true.
+    #[serde(default = "default_inherit_input_attributes")]
+    inherit_input_attributes: bool,
 }
 
 fn default_keep_attributes() -> bool {
+    true
+}
+
+fn default_inherit_input_attributes() -> bool {
     true
 }
 
@@ -149,8 +159,10 @@ pub struct FeatureCityGml3Reader {
     flatten_single_child_objects: bool,
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
+    inherit_input_attributes: bool,
     parser: Parser,
-    /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
+    /// Input feature attributes keyed by resolved source file URL, merged into parsed features
+    /// when `inherit_input_attributes` is set.
     base_attributes: HashMap<String, Attributes>,
 }
 
@@ -171,6 +183,7 @@ impl Clone for FeatureCityGml3Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
+            inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::new(CityGmlVersion::V3),
             base_attributes: HashMap::new(),
         }
@@ -198,10 +211,12 @@ impl Processor for FeatureCityGml3Reader {
             FeatureProcessorError::FileCityGml3Reader(format!("Invalid URI `{path}`: {e}"))
         })?;
         let source_url: Url = uri.clone().into();
-        self.base_attributes.insert(
-            source_url.as_str().to_string(),
-            (*ctx.feature.attributes).clone(),
-        );
+        if self.inherit_input_attributes {
+            self.base_attributes.insert(
+                source_url.as_str().to_string(),
+                (*ctx.feature.attributes).clone(),
+            );
+        }
 
         let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
             FeatureProcessorError::FileCityGml3Reader(format!("Storage resolve error: {e}"))

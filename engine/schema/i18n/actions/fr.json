@@ -1001,7 +1001,15 @@
         },
         "destinationFrame": {
           "title": "Destination Frame",
-          "description": "Coordinate frame to convert geometry into."
+          "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
         }
       }
     },
@@ -1216,6 +1224,10 @@
           "title": "Aplatir les Nœuds Objet à Enfant Unique",
           "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
         },
+        "inheritInputAttributes": {
+          "title": "Hériter des Attributs d'Entrée",
+          "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
+        },
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
@@ -1249,6 +1261,10 @@
         "flattenSingleChildObjects": {
           "title": "Aplatir les Nœuds Objet à Enfant Unique",
           "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
+        },
+        "inheritInputAttributes": {
+          "title": "Hériter des Attributs d'Entrée",
+          "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
         },
         "keepAttributes": {
           "title": "Conserver les Attributs",
