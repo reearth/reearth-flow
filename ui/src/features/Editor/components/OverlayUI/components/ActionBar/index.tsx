@@ -22,7 +22,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import {
+  useEditorContext,
+  useIsReadOnly,
+} from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 
 import { DialogOptions } from "../../types";
@@ -62,7 +65,8 @@ const ActionBar: React.FC<Props> = ({
   onProjectLockChange,
 }) => {
   const t = useT();
-  const { isLocked } = useEditorContext();
+  const { isLocked, isReaderRestricted } = useEditorContext();
+  const readonly = useIsReadOnly();
 
   return (
     <div className="flex gap-2 align-middle">
@@ -76,6 +80,7 @@ const ActionBar: React.FC<Props> = ({
             <IconButton
               tooltipText={t("Deploy project's workflow")}
               tooltipOffset={tooltipOffset}
+              disabled={isReaderRestricted}
               icon={<RocketIcon weight="thin" size={18} />}
               onClick={() => onDialogOpen("deploy")}
             />
@@ -115,6 +120,7 @@ const ActionBar: React.FC<Props> = ({
           className="bg-primary/50 backdrop-blur">
           {showDialog === "share" && (
             <SharePopover
+              readonly={isReaderRestricted}
               sharingUrl={sharingUrl}
               onProjectShare={onProjectShare}
             />
@@ -140,7 +146,7 @@ const ActionBar: React.FC<Props> = ({
           <DropdownMenuItem
             className="flex items-center justify-between"
             closeOnClick={false}
-            disabled={isSaving || isLocked}
+            disabled={isSaving || readonly}
             onClick={onProjectSnapshotSave}>
             <div className="flex items-center gap-1">
               <FloppyDiskIcon weight="light" />
@@ -155,6 +161,7 @@ const ActionBar: React.FC<Props> = ({
           <DropdownMenuItem
             className="flex items-center justify-between"
             closeOnClick={false}
+            disabled={isReaderRestricted}
             onClick={onProjectLockChange?.bind(null, !isLocked)}>
             <div className="flex items-center gap-1">
               {isLocked ? (

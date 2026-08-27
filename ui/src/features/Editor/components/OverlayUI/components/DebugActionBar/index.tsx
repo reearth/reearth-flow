@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -71,6 +72,7 @@ const DebugActionBar: React.FC<Props> = ({
   refetchWorkflowVariables,
 }) => {
   const t = useT();
+  const { isReaderRestricted } = useEditorContext();
   const {
     showOverlayElement,
     debugRunStarted,
@@ -95,6 +97,7 @@ const DebugActionBar: React.FC<Props> = ({
   return (
     <div className="flex items-center gap-2 align-middle">
       <StartButton
+        isReaderRestricted={isReaderRestricted}
         debugRunStarted={debugRunStarted}
         selectedNodeIds={selectedNodeIds}
         edges={edges}
@@ -109,6 +112,7 @@ const DebugActionBar: React.FC<Props> = ({
         onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
       />
       <StopButton
+        isReaderRestricted={isReaderRestricted}
         jobStatus={jobStatus}
         onShowDebugStopPopover={handleShowDebugStopPopover}
         showPopover={showOverlayElement}
@@ -151,6 +155,7 @@ const DebugActionBar: React.FC<Props> = ({
 export default memo(DebugActionBar);
 
 const StartButton: React.FC<{
+  isReaderRestricted: boolean;
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   edges?: Edge[];
@@ -165,6 +170,7 @@ const StartButton: React.FC<{
   ) => Promise<void>;
   onPopoverClose: () => void;
 }> = ({
+  isReaderRestricted,
   debugRunStarted,
   selectedNodeIds,
   edges,
@@ -258,6 +264,7 @@ const StartButton: React.FC<{
                 onClick={onShowDebugStartPopover}
               />
               <DebugRunDropDownMenu
+                isReaderRestricted={isReaderRestricted}
                 debugRunStarted={debugRunStarted}
                 selectedNodeIds={selectedNodeIds}
                 edges={edges}
@@ -290,6 +297,7 @@ const StartButton: React.FC<{
 const StopButton: React.FC<{
   jobStatus: string | undefined;
   showPopover: string | undefined;
+  isReaderRestricted: boolean;
   onShowDebugStopPopover: () => void;
   onDebugRunStop: () => Promise<void>;
   onPopoverClose: () => void;
@@ -335,6 +343,7 @@ const StopButton: React.FC<{
 };
 
 const DebugRunDropDownMenu: React.FC<{
+  isReaderRestricted: boolean;
   debugRunStarted: boolean;
   selectedNodeIds: string[];
   edges?: Edge[];

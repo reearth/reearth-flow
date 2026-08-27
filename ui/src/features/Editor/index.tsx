@@ -94,6 +94,7 @@ export default function Editor({
     handlePaste,
     handleProjectSnapshotSave,
     isLocked,
+    isReaderRestricted,
     handleProjectLockChange,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
@@ -123,6 +124,7 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
+      isReaderRestricted,
       canViewIntermediateData: true,
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
@@ -140,6 +142,7 @@ export default function Editor({
     }),
     [
       isLocked,
+      isReaderRestricted,
       handleNodesChange,
       handleNodeSettings,
       currentYWorkflow,

@@ -2,7 +2,10 @@ import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
 import { memo, useCallback } from "react";
 import { Doc } from "yjs";
 
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import {
+  useEditorContext,
+  useIsReadOnly,
+} from "@flow/features/Editor/editorContext";
 import type {
   ActionNodeType,
   Algorithm,
@@ -158,7 +161,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onShowSearchPanel,
   onUserFocusedElement,
 }) => {
-  const { isLocked } = useEditorContext();
+  const { isReaderRestricted } = useEditorContext();
+  const isReadOnly = useIsReadOnly();
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks({
     onUserFocusedElement,
   });
@@ -196,7 +200,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
                 onUndo={onWorkflowUndo}
               />
             </div>
-            {showDialog === "layout" && !isLocked && (
+            {showDialog === "layout" && !isReadOnly && (
               <div className="pointer-events-auto z-10">
                 <LayoutSubToolbar
                   Ydoc={yDoc}
@@ -205,9 +209,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
                 />
               </div>
             )}
-            {isLocked && (
+            {isReadOnly && (
               <div className="pointer-events-auto z-10">
-                <LockedBadge onUnlock={() => onProjectLockChange(false)} />
+                <LockedBadge
+                  reason={isReaderRestricted ? "reader" : "locked"}
+                  onUnlock={() => onProjectLockChange(false)}
+                />
               </div>
             )}
           </div>

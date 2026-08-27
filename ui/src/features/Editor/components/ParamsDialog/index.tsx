@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@flow/components";
 import { applySchemaDefaults } from "@flow/components/SchemaForm/patchSchemaTypes";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, Node } from "@flow/types";
 import { normalizeParams } from "@flow/utils";
@@ -64,7 +64,7 @@ const ParamsDialog: React.FC<Props> = ({
   onParamFieldFocus,
 }) => {
   const t = useT();
-  const { isLocked } = useEditorContext();
+  const readonly = useIsReadOnly();
   const clientId = String(yDoc?.clientID ?? "local");
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
@@ -395,7 +395,7 @@ const ParamsDialog: React.FC<Props> = ({
           </DialogHeader>
           {openNode && (
             <ParamEditor
-              readonly={isLocked}
+              readonly={readonly}
               nodeId={openNode.id}
               nodeMeta={openNode.data}
               nodeType={openNode.type}

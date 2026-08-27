@@ -3,6 +3,7 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { Button, LoadingSkeleton, LoadingSplashscreen } from "@flow/components";
+import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 
@@ -24,6 +25,9 @@ type Props = {
 // raw update log: ./RecoveryDialog.tsx.
 const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   const t = useT();
+  // Browsing history stays available to everyone; restoring is a write to the
+  // live document, so it follows the same gate as the rest of the editor.
+  const readonly = useIsReadOnly();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
@@ -133,7 +137,11 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
             </div>
             <div className="absolute bottom-0 left-0 flex w-full justify-end border-t border-accent bg-secondary p-2">
               <Button
-                disabled={selectedSnapshotNumber === null || isLoadingPreview}
+                disabled={
+                  selectedSnapshotNumber === null ||
+                  isLoadingPreview ||
+                  readonly
+                }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>
                 {t("Restore")}
