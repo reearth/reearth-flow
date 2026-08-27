@@ -22,19 +22,19 @@ var (
 )
 
 type Container struct {
-	Asset         Asset
-	CMS           CMS
-	Deployment    Deployment
-	Job           Job
-	Log           Log
-	NodeExecution NodeExecution
-	Parameter     Parameter
-	Project       Project
-	ProjectAccess ProjectAccess
-	Trigger       Trigger
-	UserFacingLog UserFacingLog
-	User          User
-	Workspace     Workspace
-	Websocket     WebsocketClient
-	WorkerConfig  WorkerConfig
+	Asset           Asset
+	CMS             CMS
+	Deployment      Deployment
+	Job             Job
+	Log             Log
+	NodeDiagnostics NodeDiagnostics
+	Parameter       Parameter
+	Project         Project
+	ProjectAccess   ProjectAccess
+	Trigger         Trigger
+	UserFacingLog   UserFacingLog
+	User            User
+	Workspace       Workspace
+	Websocket       WebsocketClient
+	WorkerConfig    WorkerConfig
 }

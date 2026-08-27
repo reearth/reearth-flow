@@ -80,36 +80,6 @@ fragment Trigger on Trigger {
   enabled
 }
 
-fragment Diagnostic on Diagnostic {
-  code
-  category
-  severity
-  effectiveDisposition
-  nodeId
-  actionType
-  featureId
-  message
-  help
-  aggregatedCount
-  sampleFeatureIds
-}
-
-fragment NodeExecution on NodeExecution {
-  id
-  nodeId
-  jobId
-  status
-  createdAt
-  startedAt
-  completedAt
-  featuresProcessed
-  featuresWritten
-  finishFeatureCount
-  diagnostics {
-    ...Diagnostic
-  }
-}
-
 fragment Job on Job {
   id
   workspaceId

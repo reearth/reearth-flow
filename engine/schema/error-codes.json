@@ -63,6 +63,83 @@
     "help": "Check the operation's expression for the attribute it reads or produces."
   },
   {
+    "code": "geometry.area_angular_crs",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "area is in square degrees, not a real-world area",
+    "help": "Check your input geometry's coordinate system and reproject it to a projected CRS; a geographic CRS measures area in degrees, not a real-world unit."
+  },
+  {
+    "code": "geometry.area_mixed_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "geometry parts sit in different coordinate frames, so the summed area mixes units",
+    "help": "Reproject all parts of the geometry to a single coordinate system before measuring area."
+  },
+  {
+    "code": "geometry.area_not_measurable",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "area not measurable, wrote 0",
+    "help": "Area Calculator could not measure this geometry; check that it is a supported, non-degenerate type."
+  },
+  {
+    "code": "geometry.area_skipped_parts",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped geometry part(s) that cannot be measured; their area is not in the total",
+    "help": "One or more members of this geometry could not be measured and were excluded from the total; check them individually."
+  },
+  {
+    "code": "geometry.area_unknown_unit",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "cannot establish the coordinate system's unit, so the area's unit is unknown",
+    "help": "Check your input geometry's coordinate system; Area Calculator could not determine whether it measures in a linear or an angular unit."
+  },
+  {
+    "code": "geometry.coordinate_frame_mismatch",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature in a different coordinate frame than the node's other inputs",
+    "help": "Reproject every input of the node to one coordinate frame upstream."
+  },
+  {
+    "code": "geometry.footprint_unavailable",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose horizontal footprint could not be computed",
+    "help": "Planar tests compare 3D geometry by its footprint; check that the geometry is a supported, non-degenerate solid or surface."
+  },
+  {
+    "code": "geometry.mixed_coordinate_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose parts are in different coordinate frames",
+    "help": "Reproject the geometry to one coordinate frame upstream."
+  },
+  {
+    "code": "geometry.mixed_dimensions",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature mixing 2D and 3D parts",
+    "help": "Split the geometry, or force it to a single dimension upstream."
+  },
+  {
+    "code": "geometry.non_linear_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped 3D feature in a coordinate frame without linear units",
+    "help": "Reproject 3D input to a coordinate system in linear units upstream."
+  },
+  {
+    "code": "geometry.spatial_test_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose spatial relationship test failed",
+    "help": "Check that the geometry is valid and in a frame the predicate can test."
+  },
+  {
     "code": "gltf.zero_face_solid",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

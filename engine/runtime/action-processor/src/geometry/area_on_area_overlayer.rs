@@ -39,7 +39,7 @@ use reearth_flow_geometry::{
     coordinate::CoordinateFrame,
     line_string::LineString2D,
     ops::{Aabb, BoundingBox},
-    overlay::{overlay_2d, OverlayOp},
+    overlay::{overlay_2d, snap_areal_operands_2d, OverlayOp},
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
     Euclidean2DGeometry, Geometry,
@@ -48,8 +48,15 @@ use reearth_flow_geometry::{
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
-static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
+static OVERLAPS_PORT: Lazy<Port> = Lazy::new(|| Port::new("overlaps"));
 static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
+
+/// The attribute the overlap count lands in when the parameter is omitted.
+const DEFAULT_OVERLAP_COUNT_ATTRIBUTE: &str = "overlayCount";
+
+fn default_overlap_count_attribute() -> String {
+    DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()
+}
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AreaOnAreaOverlayerFactory;
@@ -74,13 +81,17 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "aggregation"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            AREA_PORT.clone(),
+            OVERLAPS_PORT.clone(),
             REMNANTS_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
@@ -113,9 +124,9 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         let process = AreaOnAreaOverlayer {
             group_by: param.group_by,
             output_attribute: param.output_attribute,
-            generate_list: param.generate_list,
-            accumulation_mode: param.accumulation_mode,
-            tolerance: param.tolerance.unwrap_or(0.0),
+            list_attribute: param.list_attribute,
+            attribute_accumulation: param.attribute_accumulation,
+            tolerance: param.tolerance,
             group_map: HashMap::new(),
             group_crs: HashMap::new(),
             group_count: 0,
@@ -130,30 +141,44 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 }
 
 /// # Area On Area Overlayer Parameters
-/// Configure how area overlay analysis is performed
+/// Sets which features are overlaid together, how small a piece of geometry has
+/// to be before it counts as noise, and what the resulting pieces record about
+/// the features they came from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaOnAreaOverlayerParam {
     /// # Group By Attributes
-    /// Optional attributes to group features by during overlay analysis
+    /// Attributes whose values decide which features are overlaid against each
+    /// other — only features matching on all of them are compared. When
+    /// omitted, every feature is overlaid against every other.
     group_by: Option<Vec<Attribute>>,
 
-    /// # Accumulation Mode
-    /// Controls how attributes from input features are handled in output features
-    #[serde(default)]
-    accumulation_mode: AccumulationMode,
-
-    /// # Generate List
-    /// Name of the list attribute to store source feature attributes
-    generate_list: Option<String>,
-
-    /// # Output Attribute
-    /// Name of the attribute to store overlap count
-    output_attribute: Option<String>,
-
     /// # Tolerance
-    /// Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.
-    tolerance: Option<f64>,
+    /// The size below which geometry is treated as noise rather than shape, in
+    /// the unit of the input's coordinate frame: vertices closer together than
+    /// this are merged before the overlay, so boundaries meant to coincide do,
+    /// and an overlap covering less than its square is then discarded. Detail
+    /// finer than the tolerance may therefore not survive the overlay intact.
+    /// Defaults to zero, which merges and discards nothing.
+    #[serde(default)]
+    tolerance: f64,
+
+    /// # Attribute Accumulation
+    /// Which attributes the resulting pieces keep.
+    #[serde(default)]
+    attribute_accumulation: AttributeAccumulation,
+
+    /// # Overlap Count Attribute
+    /// Attribute that receives the number of input features covering the
+    /// piece — two or more on `overlaps`, always one on `remnants`.
+    /// Defaults to `overlayCount`.
+    #[serde(default = "default_overlap_count_attribute")]
+    output_attribute: String,
+
+    /// # List Attribute
+    /// Attribute that receives one entry per covering feature, each holding
+    /// that feature's own attributes. When omitted, no list is written.
+    list_attribute: Option<String>,
 }
 
 /// Per-group CRS bookkeeping: the EPSG folded across the group's inputs and
@@ -168,9 +193,9 @@ type GroupCrs = CoordinateFrame;
 
 struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
-    output_attribute: Option<String>,
-    generate_list: Option<String>,
-    accumulation_mode: AccumulationMode,
+    output_attribute: String,
+    list_attribute: Option<String>,
+    attribute_accumulation: AttributeAccumulation,
     tolerance: f64,
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
@@ -232,8 +257,8 @@ impl Clone for AreaOnAreaOverlayer {
         Self {
             group_by: self.group_by.clone(),
             output_attribute: self.output_attribute.clone(),
-            generate_list: self.generate_list.clone(),
-            accumulation_mode: self.accumulation_mode.clone(),
+            list_attribute: self.list_attribute.clone(),
+            attribute_accumulation: self.attribute_accumulation.clone(),
             tolerance: self.tolerance,
             group_map: HashMap::new(),
             group_crs: HashMap::new(),
@@ -246,12 +271,19 @@ impl Clone for AreaOnAreaOverlayer {
     }
 }
 
+/// # Attribute Accumulation
+/// Which attributes a resulting piece keeps.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
-pub enum AccumulationMode {
+pub enum AttributeAccumulation {
+    /// # Use Attributes From One Feature
+    /// Keeps the attributes of a single covering feature and discards the rest.
     #[default]
-    UseAttributesFromOneFeature,
-    DropIncomingAttributes,
+    UseOneFeature,
+    /// # Drop Incoming Attributes
+    /// Keeps no incoming attribute, so a piece carries only its overlap count
+    /// and list attribute. The grouping attributes are dropped too.
+    DropAttributes,
 }
 
 /// Executor-specific engine cache folder for accumulating processors
@@ -438,12 +470,13 @@ impl Processor for AreaOnAreaOverlayer {
         // Output files are placed in temp_dir. send_file() will move them to the
         // channel buffer directory before this processor's Drop cleans up temp_dir.
         let output_id = uuid::Uuid::new_v4();
-        let area_path = temp_dir.join(format!("aoa-area-{output_id}.jsonl.zst"));
+        let overlaps_path = temp_dir.join(format!("aoa-overlaps-{output_id}.jsonl.zst"));
         let remnants_path = temp_dir.join(format!("aoa-remnants-{output_id}.jsonl.zst"));
-        let mut area_writer = BufWriter::new(zstd::Encoder::new(File::create(&area_path)?, 1)?);
+        let mut overlaps_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&overlaps_path)?, 1)?);
         let mut remnants_writer =
             BufWriter::new(zstd::Encoder::new(File::create(&remnants_path)?, 1)?);
-        let mut area_count: usize = 0;
+        let mut overlaps_count: usize = 0;
         let mut remnants_count: usize = 0;
 
         for group_idx in 0..self.group_count {
@@ -484,21 +517,21 @@ impl Processor for AreaOnAreaOverlayer {
             };
             #[cfg(feature = "new-geometry")]
             let shaper = OutputShaper;
-            let (ac, rc) = from_midpolygons_disk(
+            let (oc, rc) = from_midpolygons_disk(
                 &midpolygons_path,
                 &disk_feats,
                 &self.output_attribute,
-                &self.generate_list,
-                &self.accumulation_mode,
+                &self.list_attribute,
+                &self.attribute_accumulation,
                 shaper,
-                &mut area_writer,
+                &mut overlaps_writer,
                 &mut remnants_writer,
             )?;
-            area_count += ac;
+            overlaps_count += oc;
             remnants_count += rc;
         }
 
-        area_writer
+        overlaps_writer
             .into_inner()
             .map_err(|e| e.into_error())?
             .finish()?;
@@ -509,8 +542,8 @@ impl Processor for AreaOnAreaOverlayer {
 
         let context = ctx.as_context();
 
-        if area_count > 0 {
-            fw.send_file(area_path, AREA_PORT.clone(), context.clone());
+        if overlaps_count > 0 {
+            fw.send_file(overlaps_path, OVERLAPS_PORT.clone(), context.clone());
         }
         if remnants_count > 0 {
             fw.send_file(remnants_path, REMNANTS_PORT.clone(), context);
@@ -583,7 +616,7 @@ struct MiddlePolygon {
 /// Type of the subpolygon and its parents.
 enum MiddlePolygonType {
     None,
-    Area(Vec<usize>),
+    Overlap(Vec<usize>),
     Remnant(usize),
 }
 
@@ -592,7 +625,7 @@ impl MiddlePolygon {
         match self.parents.len() {
             0 => MiddlePolygonType::None,
             1 => MiddlePolygonType::Remnant(self.parents[0]),
-            _ => MiddlePolygonType::Area(self.parents.clone()),
+            _ => MiddlePolygonType::Overlap(self.parents.clone()),
         }
     }
 }
@@ -749,6 +782,59 @@ fn wrap_polygons(mut polygons: Vec<Polygon2D>) -> WorkingArea {
                 .map(|p| Euclidean2DGeometry::Polygon(Box::new(p))),
         ))
     }
+}
+
+/// The group's working areas with near-coincident vertices pulled onto shared
+/// positions, so a boundary that two features were meant to share is shared
+/// before the subdivision cuts along it. The whole group is snapped in one
+/// pass: snapping each pair as it is compared would anchor the shared boundary
+/// of three neighbours in three places, and the pieces cut from either side
+/// would no longer meet.
+#[cfg(feature = "new-geometry")]
+fn snap_group(
+    areas: Vec<Option<WorkingArea>>,
+    tolerance: f64,
+) -> Result<Vec<Option<WorkingArea>>, BoxedError> {
+    if tolerance <= 0.0 {
+        return Ok(areas);
+    }
+    let operands: Vec<&Euclidean2DGeometry> = areas.iter().flatten().collect();
+    if operands.is_empty() {
+        return Ok(areas);
+    }
+    let snapped = snap_areal_operands_2d(&operands, tolerance).map_err(|e| {
+        GeometryProcessorError::AreaOnAreaOverlayer(format!("vertex snapping failed: {e}"))
+    })?;
+    let mut snapped = snapped.into_iter();
+    Ok(areas
+        .into_iter()
+        .map(|area| {
+            area.map(|area| {
+                let snapped = snapped
+                    .next()
+                    .expect("snapping returns one result per operand");
+                // An operand nothing was close enough to move is left exactly as
+                // it was read, so a feature the overlay never touches still
+                // comes out with the geometry it arrived with rather than the
+                // polygons it dissolves to.
+                if snapped.moved {
+                    wrap_polygons(snapped.polygons)
+                } else {
+                    area
+                }
+            })
+        })
+        .collect())
+}
+
+/// Legacy geometry's overlay has no vertex snapping to drive, so the group is
+/// subdivided as it was read.
+#[cfg(not(feature = "new-geometry"))]
+fn snap_group(
+    areas: Vec<Option<WorkingArea>>,
+    _tolerance: f64,
+) -> Result<Vec<Option<WorkingArea>>, BoxedError> {
+    Ok(areas)
 }
 
 /// The points of `a` not in `b`.
@@ -933,6 +1019,7 @@ fn overlay_2d_disk(
     // Load all working areas upfront to avoid disk I/O inside parallel iteration
     let areas: Vec<Option<WorkingArea>> =
         (0..num).map(|i| read_working_area(disk_feats, i)).collect();
+    let areas = snap_group(areas, tolerance)?;
 
     let results: Vec<Vec<MiddlePolygon>> = (0..num)
         .into_par_iter()
@@ -969,6 +1056,12 @@ fn overlay_2d_disk(
                     for subpolygon in queue {
                         let intersection = area_intersection(&subpolygon.polygon, area_j)?;
 
+                        // The tolerance's second role, and the same idea as its
+                        // first: an overlap this small is noise rather than
+                        // shape. Snapping removes the near-coincident
+                        // boundaries that produce most slivers; this catches
+                        // what the backend still constructs near zero area,
+                        // where its own grid snapping is least trustworthy.
                         let min_area = tolerance * tolerance;
                         let is_significant_intersection = area_measure(&intersection) > min_area;
 
@@ -1008,17 +1101,17 @@ fn overlay_2d_disk(
 }
 
 /// Stream MiddlePolygons from a JSONL file, convert to Features, and write
-/// directly to area/remnants output files without collecting in memory.
-/// Returns (area_count, remnants_count).
+/// directly to the overlaps/remnants output files without collecting in memory.
+/// Returns (overlaps_count, remnants_count).
 #[allow(clippy::too_many_arguments)]
 fn from_midpolygons_disk<W: Write>(
     midpolygons_path: &Path,
     disk_feats: &DiskBackedFeatures,
-    output_attribute: &Option<String>,
-    generate_list: &Option<String>,
-    accumulation_mode: &AccumulationMode,
+    output_attribute: &str,
+    list_attribute: &Option<String>,
+    attribute_accumulation: &AttributeAccumulation,
     mut shaper: OutputShaper,
-    area_writer: &mut W,
+    overlaps_writer: &mut W,
     remnants_writer: &mut W,
 ) -> Result<(usize, usize), BoxedError> {
     let file = File::open(midpolygons_path)?;
@@ -1028,7 +1121,7 @@ fn from_midpolygons_disk<W: Write>(
     let mut attributes_cache: HashMap<usize, Arc<IndexMap<Attribute, AttributeValue>>> =
         HashMap::new();
 
-    let mut area_count = 0usize;
+    let mut overlaps_count = 0usize;
     let mut remnants_count = 0usize;
 
     for line in reader.lines() {
@@ -1040,7 +1133,7 @@ fn from_midpolygons_disk<W: Write>(
 
         match subpolygon.get_type() {
             MiddlePolygonType::None => {}
-            MiddlePolygonType::Area(parents) => {
+            MiddlePolygonType::Overlap(parents) => {
                 // Ensure all parent attributes are cached
                 for &p in &parents {
                     attributes_cache.entry(p).or_insert_with(|| {
@@ -1049,24 +1142,21 @@ fn from_midpolygons_disk<W: Write>(
                     });
                 }
 
-                let attrs = match accumulation_mode {
-                    AccumulationMode::DropIncomingAttributes => IndexMap::new(),
-                    AccumulationMode::UseAttributesFromOneFeature => {
+                let attrs = match attribute_accumulation {
+                    AttributeAccumulation::DropAttributes => IndexMap::new(),
+                    AttributeAccumulation::UseOneFeature => {
                         let first_feature = &attributes_cache[&parents[0]];
                         (**first_feature).clone()
                     }
                 };
                 let mut feature = Feature::new_with_attributes(attrs);
 
-                if let Some(attr_name) = output_attribute {
-                    let overlap_count = parents.len();
-                    feature.attributes_mut().insert(
-                        Attribute::new(attr_name.clone()),
-                        AttributeValue::Number(overlap_count.into()),
-                    );
-                }
+                feature.attributes_mut().insert(
+                    Attribute::new(output_attribute),
+                    AttributeValue::Number(parents.len().into()),
+                );
 
-                if let Some(list_name) = generate_list {
+                if let Some(list_name) = list_attribute {
                     let list_items: Vec<AttributeValue> = parents
                         .iter()
                         .map(|&parent_index| {
@@ -1085,9 +1175,9 @@ fn from_midpolygons_disk<W: Write>(
                 }
 
                 shaper.apply(&mut feature, subpolygon.polygon);
-                serde_json::to_writer(&mut *area_writer, &feature)?;
-                area_writer.write_all(b"\n")?;
-                area_count += 1;
+                serde_json::to_writer(&mut *overlaps_writer, &feature)?;
+                overlaps_writer.write_all(b"\n")?;
+                overlaps_count += 1;
             }
             MiddlePolygonType::Remnant(parent) => {
                 attributes_cache.entry(parent).or_insert_with(|| {
@@ -1095,22 +1185,18 @@ fn from_midpolygons_disk<W: Write>(
                     feature.attributes
                 });
 
-                let attrs = match accumulation_mode {
-                    AccumulationMode::DropIncomingAttributes => IndexMap::new(),
-                    AccumulationMode::UseAttributesFromOneFeature => {
-                        (*attributes_cache[&parent]).clone()
-                    }
+                let attrs = match attribute_accumulation {
+                    AttributeAccumulation::DropAttributes => IndexMap::new(),
+                    AttributeAccumulation::UseOneFeature => (*attributes_cache[&parent]).clone(),
                 };
                 let mut feature = Feature::new_with_attributes(attrs);
 
-                if let Some(attr_name) = output_attribute {
-                    feature.attributes_mut().insert(
-                        Attribute::new(attr_name.clone()),
-                        AttributeValue::Number(1.into()),
-                    );
-                }
+                feature.attributes_mut().insert(
+                    Attribute::new(output_attribute),
+                    AttributeValue::Number(1.into()),
+                );
 
-                if let Some(list_name) = generate_list {
+                if let Some(list_name) = list_attribute {
                     let mut map = HashMap::new();
                     for (attr, value) in &*attributes_cache[&parent] {
                         map.insert(attr.as_ref().to_string(), value.clone());
@@ -1131,7 +1217,7 @@ fn from_midpolygons_disk<W: Write>(
         }
     }
 
-    Ok((area_count, remnants_count))
+    Ok((overlaps_count, remnants_count))
 }
 
 #[cfg(all(test, not(feature = "new-geometry")))]
@@ -1438,6 +1524,30 @@ mod tests {
     }
 
     #[test]
+    fn the_tolerance_pulls_boundaries_that_nearly_coincide_together() {
+        // Two squares meant to share the edge at x = 2, overlapping past it by
+        // 0.001. The strip they share has area 0.002, which clears the
+        // sub-tolerance area filter (0.01^2 = 0.0001), so without snapping it
+        // survives as a spurious overlap piece alongside the two remnants.
+        let inputs = vec![
+            square([0.0, 0.0], [2.0, 2.0]),
+            square([1.999, 0.0], [4.0, 2.0]),
+        ];
+
+        let (dir, pieces) = run_overlay(inputs.clone(), 0.0);
+        assert_eq!(pieces.len(), 3);
+        assert_eq!(pieces.iter().filter(|p| p.parents.len() == 2).count(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        // Snapping shares the boundary before the subdivision runs, so there is
+        // no overlap left to find and each square is simply its own remnant.
+        let (dir, pieces) = run_overlay(inputs, 0.01);
+        assert_eq!(pieces.len(), 2);
+        assert!(pieces.iter().all(|p| p.parents.len() == 1));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn a_thin_overlap_below_the_tolerance_is_dropped() {
         let (dir, pieces) = run_overlay(
             vec![
@@ -1507,9 +1617,9 @@ mod tests {
     fn a_group_admits_only_the_frame_its_first_feature_fixes() {
         let mut overlayer = AreaOnAreaOverlayer {
             group_by: None,
-            output_attribute: None,
-            generate_list: None,
-            accumulation_mode: AccumulationMode::default(),
+            output_attribute: DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string(),
+            list_attribute: None,
+            attribute_accumulation: AttributeAccumulation::default(),
             tolerance: 0.0,
             group_map: HashMap::new(),
             group_crs: HashMap::new(),

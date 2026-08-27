@@ -14,7 +14,7 @@ import (
 	infragql "github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
-	"github.com/reearth/reearth-flow/api/pkg/graph"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
@@ -39,20 +39,20 @@ func (g *countingRedisGateway) GetUserFacingLogs(_ context.Context, _, _ time.Ti
 	return nil, nil
 }
 
-func (g *countingRedisGateway) GetNodeExecutions(_ context.Context, _ id.JobID) ([]*graph.NodeExecution, error) {
-	return nil, nil
-}
-
-func (g *countingRedisGateway) GetNodeExecution(_ context.Context, _ id.JobID, _ string) (*graph.NodeExecution, error) {
-	return nil, nil
-}
-
 func (g *countingRedisGateway) GetJobCompleteEvent(_ context.Context, _ id.JobID) (*gateway.JobCompleteEvent, error) {
 	return nil, nil
 }
 
 func (g *countingRedisGateway) DeleteJobCompleteEvent(_ context.Context, _ id.JobID) error {
 	return nil
+}
+
+func (g *countingRedisGateway) GetNodeDiagnostics(_ context.Context, _ id.JobID, _ string) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
+}
+
+func (g *countingRedisGateway) GetJobDiagnostics(_ context.Context, _ id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return nil, nil
 }
 
 const logsSubscriptionQuery = `subscription($jobId: ID!) { logs(jobId: $jobId) { jobId message } }`

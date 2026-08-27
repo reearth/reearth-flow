@@ -91,3 +91,7 @@ crate::unsupported!(LineString3D: CountHoles);
 // A curve bounds no area, so there is nothing to take apart.
 crate::unsupported!(LineString2D: ExtractHoles);
 crate::unsupported!(LineString3D: ExtractHoles);
+
+// A curve encloses nothing, open or closed: it has length, not area.
+#[cfg(feature = "new-geometry")]
+crate::no_area!(LineString2D, LineString3D);

@@ -1,6 +1,5 @@
 {
   "description": "Test quality check L07 extension (LinearRing with fewer than 4 points) for LOD0 on plateau4. A 3-point LOD0 exterior LinearRing is expected to be reported as a TooFewPoints error.",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

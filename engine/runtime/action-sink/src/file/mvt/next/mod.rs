@@ -108,6 +108,7 @@ fn write_tileset(
     let max_zoom = params.max_zoom;
     let extent = params.extent;
     let max_tile_bytes = params.max_tile_bytes;
+    let array_map_separator = params.array_map_separator.as_deref();
 
     let accum = upstream
         .par_iter()
@@ -126,7 +127,15 @@ fn write_tileset(
         .reduce(SliceAccum::default, SliceAccum::merge);
 
     accum.by_tile.par_iter().try_for_each(|(&key, feats)| {
-        write_tile(ctx, output, key, feats, extent, max_tile_bytes)
+        write_tile(
+            ctx,
+            output,
+            key,
+            feats,
+            extent,
+            max_tile_bytes,
+            array_map_separator,
+        )
     })?;
 
     write_tilejson(
@@ -164,8 +173,9 @@ fn write_tile(
     feats: &[SlicedFeature],
     extent: i32,
     max_tile_bytes: u64,
+    array_map_separator: Option<&str>,
 ) -> crate::errors::Result<()> {
-    let bytes = make_tile(extent, feats, max_tile_bytes)?;
+    let bytes = make_tile(extent, feats, max_tile_bytes, array_map_separator)?;
     let tile_rel = format!("{output_rel}/{zoom}/{x}/{y}.mvt");
     crate::SinkOutput::new(&ctx.sandbox_root, &tile_rel, &ctx.storage_resolver)
         .and_then(|out| out.write(bytes::Bytes::from(bytes)))

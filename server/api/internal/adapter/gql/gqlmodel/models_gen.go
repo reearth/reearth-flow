@@ -290,6 +290,22 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+// A structured diagnostic from the engine. Enum-like fields are Strings so new engine values do not break clients.
+type Diagnostic struct {
+	Code     string `json:"code"`
+	Category string `json:"category"`
+	Severity string `json:"severity"`
+	// The authoritative fatality signal; severity is display-only.
+	EffectiveDisposition *string `json:"effectiveDisposition,omitempty"`
+	NodeID               *string `json:"nodeId,omitempty"`
+	ActionType           *string `json:"actionType,omitempty"`
+	FeatureID            *ID     `json:"featureId,omitempty"`
+	Message              string  `json:"message"`
+	Help                 *string `json:"help,omitempty"`
+	AggregatedCount      *int    `json:"aggregatedCount,omitempty"`
+	SampleFeatureIds     []ID    `json:"sampleFeatureIds,omitempty"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -306,21 +322,25 @@ type GetHeadInput struct {
 }
 
 type Job struct {
-	CompletedAt       *time.Time  `json:"completedAt,omitempty"`
-	Deployment        *Deployment `json:"deployment,omitempty"`
-	DeploymentID      *ID         `json:"deploymentId,omitempty"`
-	Debug             *bool       `json:"debug,omitempty"`
-	ID                ID          `json:"id"`
-	LogsURL           *string     `json:"logsURL,omitempty"`
-	WorkerLogsURL     *string     `json:"workerLogsURL,omitempty"`
-	UserFacingLogsURL *string     `json:"userFacingLogsURL,omitempty"`
-	OutputURLs        []string    `json:"outputURLs,omitempty"`
-	StartedAt         time.Time   `json:"startedAt"`
-	Status            JobStatus   `json:"status"`
-	Workspace         *Workspace  `json:"workspace,omitempty"`
-	WorkspaceID       ID          `json:"workspaceId"`
-	Logs              []*Log      `json:"logs,omitempty"`
-	Variables         []*Variable `json:"variables"`
+	CompletedAt       *time.Time    `json:"completedAt,omitempty"`
+	Deployment        *Deployment   `json:"deployment,omitempty"`
+	DeploymentID      *ID           `json:"deploymentId,omitempty"`
+	Debug             *bool         `json:"debug,omitempty"`
+	ID                ID            `json:"id"`
+	LogsURL           *string       `json:"logsURL,omitempty"`
+	WorkerLogsURL     *string       `json:"workerLogsURL,omitempty"`
+	UserFacingLogsURL *string       `json:"userFacingLogsURL,omitempty"`
+	OutputURLs        []string      `json:"outputURLs,omitempty"`
+	StartedAt         time.Time     `json:"startedAt"`
+	Status            JobStatus     `json:"status"`
+	Workspace         *Workspace    `json:"workspace,omitempty"`
+	WorkspaceID       ID            `json:"workspaceId"`
+	Logs              []*Log        `json:"logs,omitempty"`
+	Variables         []*Variable   `json:"variables"`
+	FailedNodes       []*Diagnostic `json:"failedNodes,omitempty"`
+	DroppedEventCount *int          `json:"droppedEventCount,omitempty"`
+	// Diagnostics for one node. Pass an empty nodeId for the job-level bucket.
+	NodeDiagnostics []*Diagnostic `json:"nodeDiagnostics,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -364,19 +384,6 @@ type NamedSnapshot struct {
 	Timestamp      time.Time `json:"timestamp"`
 	Size           int64     `json:"size"`
 }
-
-type NodeExecution struct {
-	ID          ID         `json:"id"`
-	JobID       ID         `json:"jobId"`
-	NodeID      ID         `json:"nodeId"`
-	Status      NodeStatus `json:"status"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	StartedAt   *time.Time `json:"startedAt,omitempty"`
-	CompletedAt *time.Time `json:"completedAt,omitempty"`
-}
-
-func (NodeExecution) IsNode()        {}
-func (this NodeExecution) GetID() ID { return this.ID }
 
 type PageBasedPagination struct {
 	Page     int             `json:"page"`
@@ -1283,8 +1290,9 @@ const (
 	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	// Never emitted by the runtime; retained for API compatibility.
+	JobStatusPending JobStatus = "PENDING"
+	JobStatusRunning JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{
@@ -1394,67 +1402,6 @@ func (e *LogLevel) UnmarshalJSON(b []byte) error {
 }
 
 func (e LogLevel) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-type NodeStatus string
-
-const (
-	NodeStatusPending    NodeStatus = "PENDING"
-	NodeStatusStarting   NodeStatus = "STARTING"
-	NodeStatusProcessing NodeStatus = "PROCESSING"
-	NodeStatusCompleted  NodeStatus = "COMPLETED"
-	NodeStatusFailed     NodeStatus = "FAILED"
-)
-
-var AllNodeStatus = []NodeStatus{
-	NodeStatusPending,
-	NodeStatusStarting,
-	NodeStatusProcessing,
-	NodeStatusCompleted,
-	NodeStatusFailed,
-}
-
-func (e NodeStatus) IsValid() bool {
-	switch e {
-	case NodeStatusPending, NodeStatusStarting, NodeStatusProcessing, NodeStatusCompleted, NodeStatusFailed:
-		return true
-	}
-	return false
-}
-
-func (e NodeStatus) String() string {
-	return string(e)
-}
-
-func (e *NodeStatus) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = NodeStatus(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid NodeStatus", str)
-	}
-	return nil
-}
-
-func (e NodeStatus) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *NodeStatus) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e NodeStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

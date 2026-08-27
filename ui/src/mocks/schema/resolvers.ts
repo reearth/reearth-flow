@@ -22,7 +22,7 @@ import {
   mockCmsItems,
 } from "../data/cmsIntegration";
 import { mockDeployments } from "../data/deployments";
-import { mockJobs, mockLogs, mockNodeExecutions } from "../data/jobs";
+import { mockJobs, mockLogs } from "../data/jobs";
 import { mockProjects } from "../data/projects";
 import {
   mockUsers,
@@ -492,36 +492,6 @@ export const resolvers = {
     },
 
     job: (_: any, args: { id: string }) => jobs.find((j) => j.id === args.id),
-
-    nodeExecution: (_: any, args: { jobId: string; nodeId: string }) => {
-      const known = mockNodeExecutions.find(
-        (n) => n.jobId === args.jobId && n.nodeId === args.nodeId,
-      );
-
-      // Mock node execution data
-      return {
-        id: `exec-${args.jobId}-${args.nodeId}`,
-        nodeId: args.nodeId,
-        jobId: args.jobId,
-        status: "COMPLETED",
-        startedAt: "2024-01-28T10:00:00Z",
-        completedAt: "2024-01-28T10:05:00Z",
-        ...known,
-        logs: logs.filter(
-          (l) => l.jobId === args.jobId && l.nodeId === args.nodeId,
-        ),
-      };
-    },
-
-    nodeExecutions: (_: any, args: { jobId: string }) =>
-      mockNodeExecutions
-        .filter((n) => n.jobId === args.jobId)
-        .map((n) => ({
-          ...n,
-          logs: logs.filter(
-            (l) => l.jobId === n.jobId && l.nodeId === n.nodeId,
-          ),
-        })),
 
     latestProjectSnapshot: (_: any, args: { projectId: string }) => {
       // Mock project document

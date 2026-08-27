@@ -482,6 +482,27 @@ impl Footprint for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for Polygon2D {
+    /// A 2D face has no elevation to slope, so its area is simply its planar
+    /// area.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self.area())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for Polygon3D {
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(polygon_3d_surface_area(self))
+    }
+}
+
 use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
 
 // A face is bounded by its own rings, exterior first, each kept verbatim. A face

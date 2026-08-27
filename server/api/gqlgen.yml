@@ -47,6 +47,12 @@ models:
         resolver: true
       logs:
         resolver: true
+      failedNodes:
+        resolver: true
+      droppedEventCount:
+        resolver: true
+      nodeDiagnostics:
+        resolver: true
   Parameter:
     fields:
       project:
