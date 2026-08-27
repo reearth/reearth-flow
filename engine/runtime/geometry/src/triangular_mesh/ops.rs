@@ -452,6 +452,12 @@ impl Footprint for TriangularMesh3D {
     }
 }
 
+// Temporary: implemented in Task 4.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(TriangularMesh2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(TriangularMesh3D: DivideByGrid);
+
 #[cfg(feature = "new-geometry")]
 impl TriangularMesh3DData {
     /// Push every triangle into an entered `sink`.

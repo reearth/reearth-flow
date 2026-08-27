@@ -268,6 +268,12 @@ impl Footprint for LineString3D {
     }
 }
 
+// A chain has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString3D: DivideByGrid);
+
 use crate::collection::{Collection2D, Collection3D};
 use crate::ops::boundary::{endpoints, Boundary, ExtractBoundary};
 use crate::point::{Point2D, Point3D};

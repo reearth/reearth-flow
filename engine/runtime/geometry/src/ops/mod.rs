@@ -37,6 +37,10 @@ pub use coerce::{Coerce, CoercionTarget};
 pub use elevation::Elevation;
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+#[cfg(feature = "new-geometry")]
+pub use grid::{
+    CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec, COVERAGE_TOLERANCE,
+};
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use reproject::{

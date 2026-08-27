@@ -688,6 +688,12 @@ impl Footprint for PolygonMesh3D {
     }
 }
 
+// Temporary: implemented in Task 4.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh3D: DivideByGrid);
+
 #[cfg(feature = "new-geometry")]
 impl PolygonMesh3DData {
     /// Push every face into an entered `sink`.

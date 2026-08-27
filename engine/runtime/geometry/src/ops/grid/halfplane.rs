@@ -6,11 +6,6 @@
 //! general planar arrangement. That is what lets this split a concave ring into
 //! several rings, which Sutherland-Hodgman cannot do.
 
-// Nothing outside this module's own tests calls these yet: the rectangle clip
-// that wires `Edge::MaxX` / `MinY` / `MaxY` and `clip_rings_halfplane` into the
-// grid-division op lands in a later task. Drop this once that caller exists.
-#![allow(dead_code)]
-
 /// One polygon corner: its position, and the per-corner UV it carries when the
 /// host geometry has `Explicit` texture coordinates.
 #[derive(Clone, Copy, Debug, PartialEq)]

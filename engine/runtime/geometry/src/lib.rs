@@ -70,6 +70,8 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{Area, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
+use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
+#[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::{CoordinateFrame, EpsgCode};
@@ -211,6 +213,7 @@ impl GeometryCollection {
         ExtractHoles,
         ExtractBoundary,
         Footprint,
+        DivideByGrid,
         Elevation,
         Area
     )
@@ -272,6 +275,7 @@ pub enum Euclidean2DGeometry {
         ExtractHoles,
         ExtractBoundary,
         Footprint,
+        DivideByGrid,
         Elevation,
         Area
     )
@@ -661,6 +665,28 @@ impl Footprint for Geometry {
 impl Footprint for GeometryCollection {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl DivideByGrid for Geometry {
+    fn divide_by_grid(
+        &self,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        match self {
+            Geometry::None => Err(GridDivideError::Empty),
+            Geometry::Euclidean2D(g) => g.divide_by_grid(grid, emit),
+            Geometry::Euclidean3D(g) => g.divide_by_grid(grid, emit),
+            // Filled in by Task 5.
+            Geometry::GeometryCollection(_) => {
+                Err(GridDivideError::Unsupported(ops::UnsupportedOperation {
+                    geometry: "GeometryCollection",
+                    operation: "divide_by_grid",
+                }))
+            }
+        }
     }
 }
 

@@ -1,11 +1,6 @@
 //! Clipping to one grid cell: four half-planes, then rings sorted back into
 //! faces.
 
-// Nothing outside this module's own tests calls these yet: the grid-division
-// op that wires `Window` and `clip_to_window` into cell iteration lands in a
-// later task. Drop this once that caller exists.
-#![allow(dead_code)]
-
 use super::halfplane::{clip_rings_halfplane, Corner, Edge};
 
 /// One grid cell, as an axis-aligned box in the geometry's own frame.

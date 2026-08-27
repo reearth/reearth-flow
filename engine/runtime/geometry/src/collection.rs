@@ -470,6 +470,12 @@ impl Footprint for Collection3D {
     }
 }
 
+// Temporary: implemented in Task 5.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection3D: DivideByGrid);
+
 // A collection reports the first member that has an elevation, rather than only
 // its head: a member with none (an absent geometry, a 2D point, an empty leaf) is
 // ordinary and must not hide the ones behind it.
