@@ -1522,10 +1522,19 @@ fn coverage_is_judged_against_the_cell_s_own_window_not_the_square_of_its_side()
 
 #[test]
 fn every_leaf_judges_coverage_against_the_same_cell_area() {
-    // Guards the five call sites that used to compute the cell's area as
+    // Guards the call sites that used to compute the cell's area as
     // `cell_size * cell_size` while `polygon/ops.rs` used `window.area()`:
     // the polygon, polygon-mesh, triangular-mesh and collection leaves must
     // all agree about the same cell.
+    //
+    // Every fixture here fills its single cell exactly and is never cut, so
+    // the mesh leaves take their untouched fast path. That reaches only the
+    // fast-path comparands; the cut-path ones are separate call sites, pinned
+    // by `a_cut_piece_is_judged_against_the_cell_it_landed_in`. The 2D
+    // polygon-mesh leaf is driven alongside the 3D one because
+    // `polygon_mesh/ops.rs` implements the two separately, one comparand
+    // each, rather than through a shared macro the way
+    // `triangular_mesh/ops.rs` does.
     //
     // The fixture has to be one where the two comparands actually differ,
     // otherwise the test passes whichever one the code uses and pins
@@ -1544,6 +1553,7 @@ fn every_leaf_judges_coverage_against_the_same_cell_area() {
     // gap being measured and every leaf reported `Partial` either way (see
     // `a_full_region_at_projected_crs_coordinates_reports_every_cell_full`).
     use crate::ops::grid::COVERAGE_TOLERANCE;
+    use crate::polygon_mesh::PolygonMesh2D;
     use crate::triangular_mesh::TriangularMesh3D;
 
     let cell_size = 0.3;
@@ -1603,6 +1613,24 @@ fn every_leaf_judges_coverage_against_the_same_cell_area() {
         )
         .expect("valid mesh"),
     )));
+    // The same two faces as `mesh`, in 2D: one shared vertex pool, two quads
+    // meeting at `mid`. Both lie wholly inside the cell, so this takes the
+    // 2D leaf's own untouched fast path.
+    let mesh_2d = Geometry::Euclidean2D(crate::Euclidean2DGeometry::PolygonMesh(Box::new(
+        PolygonMesh2D::from_parts(
+            CoordinateFrame::default(),
+            vec![
+                [mn[0], mn[1]],
+                [mid, mn[1]],
+                [mx[0], mn[1]],
+                [mx[0], mx[1]],
+                [mid, mx[1]],
+                [mn[0], mx[1]],
+            ],
+            [[0u32, 1, 4, 5], [1, 2, 3, 4]],
+        )
+        .expect("valid mesh"),
+    )));
     let collection = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(
         crate::collection::Collection3D::new([
             crate::Euclidean3DGeometry::Polygon(Box::new(face(mn[0], mid))),
@@ -1612,7 +1640,8 @@ fn every_leaf_judges_coverage_against_the_same_cell_area() {
 
     for (name, geom) in [
         ("polygon", polygon),
-        ("polygon mesh", mesh),
+        ("polygon mesh 3d", mesh),
+        ("polygon mesh 2d", mesh_2d),
         ("triangular mesh", tri),
         ("collection", collection),
     ] {
@@ -1623,6 +1652,166 @@ fn every_leaf_judges_coverage_against_the_same_cell_area() {
             CellCoverage::Full,
             "{name} exactly fills the cell and must report Full"
         );
+    }
+}
+
+#[test]
+fn a_cut_piece_is_judged_against_the_cell_it_landed_in() {
+    // The sibling of `every_leaf_judges_coverage_against_the_same_cell_area`,
+    // for the comparands that test structurally cannot reach.
+    //
+    // Every fixture there fills its one cell exactly and is never cut, so the
+    // mesh leaves short-circuit through `mesh_unchanged` (polygon mesh) or
+    // the single-result `unchanged` arm (triangular mesh) and emit from their
+    // *fast-path* comparand. The cut path has a comparand of its own -- a
+    // different call site, revertable on its own -- and stays unpinned unless
+    // a fixture actually reaches it.
+    //
+    // This geometry spans two cells, so it buckets into two, no fast path
+    // matches, and every leaf emits through its cut path. Both cells are
+    // still filled exactly: the clip snaps each cut vertex to the cell's own
+    // coordinate, so each piece's area is precisely that cell's window and
+    // both must report `Full`.
+    //
+    // Fixture rationale (origin far from zero, `window.area()` genuinely
+    // apart from `cell_size * cell_size`, and apart in the direction that
+    // flips the verdict) is the same as the sibling's, and asserted here for
+    // both cells rather than assumed.
+    use crate::ops::grid::COVERAGE_TOLERANCE;
+    use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
+    use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
+
+    let cell_size = 0.3;
+    let grid = GridSpec::new([3_900_000.0, 3_900_000.0], cell_size).expect("valid spec");
+    let (mn, _) = grid.cell_bounds(GridCell { row: 0, col: 0 });
+    // Column 1, so the region covers exactly two cells across and one down.
+    let (_, mx) = grid.cell_bounds(GridCell { row: 0, col: 1 });
+
+    let nominal = cell_size * cell_size;
+    for col in 0..2 {
+        let window_area = grid.window(GridCell { row: 0, col }).area();
+        assert!(
+            ((window_area - nominal) / nominal).abs() > COVERAGE_TOLERANCE,
+            "cell {col} must separate the cell's own area from the square of \
+             its side, gap was {:e}",
+            (window_area - nominal) / nominal
+        );
+        assert_eq!(
+            CellCoverage::from_area(window_area, nominal),
+            CellCoverage::Partial,
+            "cell {col} must be one where judging against `cell_size * \
+             cell_size` actually changes the verdict"
+        );
+    }
+
+    let corners_2d = [
+        [mn[0], mn[1]],
+        [mx[0], mn[1]],
+        [mx[0], mx[1]],
+        [mn[0], mx[1]],
+    ];
+    let corners_3d = [
+        [mn[0], mn[1], 0.0],
+        [mx[0], mn[1], 0.0],
+        [mx[0], mx[1], 0.0],
+        [mn[0], mx[1], 0.0],
+    ];
+    let face_2d = Polygon2D::from_rings(
+        CoordinateFrame::default(),
+        [
+            corners_2d[0],
+            corners_2d[1],
+            corners_2d[2],
+            corners_2d[3],
+            corners_2d[0],
+        ],
+        std::iter::empty::<Vec<[f64; 2]>>(),
+    );
+    let face_3d = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        [
+            corners_3d[0],
+            corners_3d[1],
+            corners_3d[2],
+            corners_3d[3],
+            corners_3d[0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+
+    let leaves = [
+        (
+            "polygon 2d",
+            Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(
+                face_2d.clone(),
+            ))),
+        ),
+        (
+            "polygon 3d",
+            Geometry::Euclidean3D(crate::Euclidean3DGeometry::Polygon(Box::new(
+                face_3d.clone(),
+            ))),
+        ),
+        (
+            "polygon mesh 2d",
+            Geometry::Euclidean2D(crate::Euclidean2DGeometry::PolygonMesh(Box::new(
+                PolygonMesh2D::from_parts(
+                    CoordinateFrame::default(),
+                    corners_2d.to_vec(),
+                    [[0u32, 1, 2, 3]],
+                )
+                .expect("valid mesh"),
+            ))),
+        ),
+        (
+            "polygon mesh 3d",
+            Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(
+                PolygonMesh3D::from_polygons(CoordinateFrame::default(), [&face_3d])
+                    .expect("valid mesh"),
+            ))),
+        ),
+        (
+            "triangular mesh 2d",
+            Geometry::Euclidean2D(crate::Euclidean2DGeometry::TriangularMesh(Box::new(
+                TriangularMesh2D::from_parts(
+                    CoordinateFrame::default(),
+                    corners_2d.to_vec(),
+                    [0u32, 1, 2, 0, 2, 3],
+                )
+                .expect("valid mesh"),
+            ))),
+        ),
+        (
+            "triangular mesh 3d",
+            Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(Box::new(
+                TriangularMesh3D::from_parts(
+                    CoordinateFrame::default(),
+                    corners_3d.to_vec(),
+                    [0u32, 1, 2, 0, 2, 3],
+                )
+                .expect("valid mesh"),
+            ))),
+        ),
+        (
+            "collection 3d",
+            Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(
+                crate::collection::Collection3D::new([crate::Euclidean3DGeometry::Polygon(
+                    Box::new(face_3d.clone()),
+                )]),
+            )),
+        ),
+    ];
+
+    for (name, geom) in leaves {
+        let out = collect(&geom, &grid).expect("divides");
+        assert_eq!(out.len(), 2, "{name} must be cut across exactly two cells");
+        for (cell, coverage) in &out {
+            assert_eq!(
+                *coverage,
+                CellCoverage::Full,
+                "{name} exactly fills {cell:?} after the cut and must report Full"
+            );
+        }
     }
 }
 
