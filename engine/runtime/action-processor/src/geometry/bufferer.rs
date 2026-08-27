@@ -117,9 +117,20 @@ struct Bufferer {
     /// Angular step in degrees used to approximate the rounded caps, joins,
     /// and discs of the buffer outline. A smaller angle produces a smoother
     /// outline. Values outside the range of 1.8 to 45 degrees are clamped to
-    /// it.
-    interpolation_angle: f64,
+    /// it. Defaults to 11.25 degrees when omitted.
+    interpolation_angle: Option<f64>,
 }
+
+/// The angle handed to the legacy `to_polygon` when `interpolationAngle` is
+/// omitted. Deliberately not 11.25: that helper takes `ceil(90 / angle)`
+/// segments and then steps a full turn by `360 / segments`, so it needs a
+/// quarter of the nominal angle to draw the same 32-segment circle as
+/// `BufferStyle`'s default arc step of PI / 16. Passing 11.25 here would step
+/// by 45 degrees and contradict the documented default. The new-geometry
+/// build takes that default from `BufferStyle` itself rather than restating
+/// it, so this constant exists only for the legacy path.
+#[cfg(not(feature = "new-geometry"))]
+const LEGACY_DEFAULT_INTERPOLATION_ANGLE: f64 = 2.8125;
 
 impl Processor for Bufferer {
     /// A geometry that cannot be buffered leaves via `rejected`; one that
@@ -130,7 +141,10 @@ impl Processor for Bufferer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let style = BufferStyle::new(self.distance).arc_step(self.interpolation_angle.to_radians());
+        let mut style = BufferStyle::new(self.distance);
+        if let Some(angle) = self.interpolation_angle {
+            style = style.arc_step(angle.to_radians());
+        }
         match buffer(&ctx.feature.geometry, &style) {
             Ok(buffered) => {
                 let mut feature = ctx.feature.clone();
@@ -207,7 +221,11 @@ impl Bufferer {
                     let mut geometry = geometry.clone();
                     let coord = point.0;
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        coord.to_polygon(self.distance, self.interpolation_angle),
+                        coord.to_polygon(
+                            self.distance,
+                            self.interpolation_angle
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
+                        ),
                     ));
                     feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
@@ -216,7 +234,11 @@ impl Bufferer {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        line_string.to_polygon(self.distance, self.interpolation_angle),
+                        line_string.to_polygon(
+                            self.distance,
+                            self.interpolation_angle
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
+                        ),
                     ));
                     feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
@@ -289,7 +311,11 @@ impl Bufferer {
                         z: reearth_flow_geometry::types::no_value::NoValue,
                     };
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        coord_2d.to_polygon(self.distance, self.interpolation_angle),
+                        coord_2d.to_polygon(
+                            self.distance,
+                            self.interpolation_angle
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
+                        ),
                     ));
                     feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
@@ -299,7 +325,11 @@ impl Bufferer {
                     let mut geometry = geometry.clone();
                     let line_string: LineString2D<f64> = line_string.clone().into();
                     geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-                        line_string.to_polygon(self.distance, self.interpolation_angle),
+                        line_string.to_polygon(
+                            self.distance,
+                            self.interpolation_angle
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
+                        ),
                     ));
                     feature.geometry = Arc::new(geometry);
                     fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));

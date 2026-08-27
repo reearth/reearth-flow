@@ -112,42 +112,32 @@ Geometry Part Extractor
              action did not modify. No change needed.
 
 Bufferer
-  params:  BufferType has a single `area2d` variant. The reference implementation
-             this action was ported from offers both a 2D-area and a solid buffer
-             type, and the PLATEAU 品質検査02 建築物 workspace our surface_validator
-             graph is based on carries both branches, so a second variant is
-             genuinely missing rather than hypothetical. Adding it needs a
-             solid-buffering algorithm and an edge-resolution control that
-             reearth-flow-geometry does not have, so the oneOf is kept with a TODO
-             in bufferer.rs (standard §3.4, "variants planned but not
-             implemented"). Own PR when the algorithm lands.
-           interpolationAngle is applied when buffering a point or a curve but
-             not a polygon — buffer_polygon() takes only a distance. The
-             description now says so. Honouring it for polygons is an algorithm
-             change, not a metadata one.
-  impl:    SUPERSEDED by #2370 for the shipped build — see the Bufferer note under the bucket
-             table. What follows describes the legacy implementation, which #2370 replaced
-             rather than ported; it is kept because the legacy build still behaves this way.
-           only points, curves and single polygons are buffered. Every other
-             type — multi-polygons above all, but also multi-points,
-             multi-curves, solids, triangles and collections — is emitted on
-             `features` unbuffered (the 3D arm projects it to 2D first). This
-             deviates from every standard implementation: JTS defines `buffer()`
-             on the base Geometry type and "the buffer operation always returns a
-             polygonal result", so no type is un-bufferable. The projection
-             itself is correct and should stay — PostGIS: "This function ignores
-             the Z dimension. It always gives a 2D result even when used on a 3D
-             geometry."
-             CONSEQUENCE: a distance tolerance is silently not applied to those
-             features. The PLATEAU surface_validator graph buffers by 0.005 as a
-             near-touching tolerance, so any feature reaching that path is
-             checked without it.
-             Fixing it means buffering the full type space (union of the members'
-             buffers) and would move quality-check results — passing the geometry
-             through unchanged instead already fails 4 plateau6 02-bldg tests, so
-             the truth data needs review by someone who can adjudicate PLATEAU
-             conformance. Own PR: "Bufferer: buffer all geometry types per
-             OGC/JTS semantics".
+  outcome: RE-CHECKED against the new-geometry build and EXPOSED (2026-08-27). The §8 pass
+             found no correctness defect. `distance` sign semantics match; `interpolationAngle`
+             reaches the areal joins as well as the caps and discs, and its clamp to
+             [1.8, 45] degrees is exactly what the text claims; `features` and `rejected` are
+             both emitted and every feature is accounted for; a geometry that buffers to
+             nothing leaves on `features` with no geometry, which is the §4.3 no-op. ja is
+             fully translated against the current English and no language asserted behaviour
+             the action never had. Two items were fixed in the same PR: `interpolationAngle`
+             was required and is now optional (§3.2 — it has a working default, and PostGIS
+             `ST_Buffer` and JTS `Geometry.buffer` both default their arc resolution;
+             plateau6/02-bldg passes `interpolationAngle: 0`, an author writing "don't care"),
+             and the dead `GeometryProcessorError::Bufferer` variant was removed.
+           The two earlier findings here are RESOLVED, both by #2370 rather than by this pass:
+             the type-coverage `impl:` finding (see the warning under the bucket table) and
+             "interpolationAngle is applied to points and curves but not polygons", which the
+             new `offset_shapes` contradicts. Neither text is kept — the legacy build they
+             describe is on its way out with the migration.
+  params:  DEFERRED. BufferType keeps its single `area2d` variant, per §3.4's "variants
+             planned but not yet implemented", with a TODO in bufferer.rs. A `solid` type
+             needs a solid-buffering algorithm and an edge-resolution control that
+             reearth-flow-geometry does not have. Confirmed still the right call on the
+             re-check. Trigger: revisit when solid buffering lands in the geometry crate.
+           Note for whoever picks that up: the shipped build never reads `buffer_type` at all
+             — the new-geometry `process` branches on nothing, since there is one variant.
+             That is a migration artifact and §"How to use" says to leave it, but a second
+             variant has to add the branch, not just the enum case.
 
 Image Rasterizer
   ports:   the `features` output carries two unrelated things: the features that
@@ -465,65 +455,55 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **75** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **76** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 75 | — |
-| Does not run in the shipped build | 16 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **7** | An engine-side §8 pass — the list below |
-| Runs and already audited, awaiting a re-exposure decision | 3 | A decision, not work — see below |
+| Exposed and audited | 76 | — |
+| Does not run in the shipped build | 17 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **8** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
-**Three actions run, are already audited, and are still hidden — they need a decision, not
-work.** Each was reviewed in an earlier batch, then sat in the does-not-run bucket until its port
-landed. Nothing re-exposes them automatically, which is the §7.2 drift that left Elevation
-Extractor running and unlisted for four days. Verified 2026-08-27 by reading each factory: all
-three have a `#[cfg(feature = "new-geometry")]` `process`/`start`, and none appears in
-`base_actions.go`.
+**`Bufferer` was re-checked and is now exposed.** It was the one action sitting between buckets:
+its new-geometry port landed in #2370, and it had been reviewed in the Geometry A batch (#2317),
+so §7.2 handed it a decision rather than an audit. The §8 re-check was run against the
+new-geometry build and found no correctness defect; its outcome is in the Geometry A section
+below, along with the one item that stays deferred.
 
-| Action | Port | Reviewed in |
-|---|---|---|
-| `Bufferer` | #2370 | Geometry A (#2317) |
-| `Area Calculator` | #2385 | Geometry batch; `areaType` re-verified above |
-| `CSV Reader` | #2405 | Input (#2280); `offset`/`headerRows`/`geometry` re-verified above |
+⚠️ **`CSV Reader` runs but is still counted in the does-not-run bucket.** Its port merged as
+#2405 and `file/csv.rs` now has a `#[cfg(feature = "new-geometry")] async fn start`, so it
+executes in the shipped build; it is not in `base_actions.go`, and it is not in the pending-audit
+list either, so no bucket currently describes it. It was reviewed in the Input batch (#2280) —
+`offset`/`headerRows`/`geometry` were re-verified in the pass below — which by the rule above
+makes it Bufferer's case: **a re-exposure decision, not an audit.** Verified 2026-08-27.
+Its Notion row still reads "In progress" while its merged code runs, so the tracker is not the
+thing to check here. **Trigger:** none pending; this is ready to decide.
 
-⚠️ **The does-not-run count is carried forward arithmetically, not re-swept.** It was 19 before
-these three left it. Ports land continuously — `CSV Reader`'s tracker row still reads
-"In progress" while its merged code runs — so treat 16 as a floor and re-sweep before relying on
-it. The exposed count (75) and the pending-audit count (7) are both derived from the code and the
-list below respectively, and are exact.
+**The `impl:` finding that appeared to block it never described the shipped build**, and this is
+worth keeping as a warning rather than deleting. That finding — only points, curves and single
+polygons buffered, every other type emitted **unbuffered** — was written against the legacy
+implementation, and #2370 did not port that implementation, it replaced it. The trap is that the
+finding's text survived the port, so it reads as live. Anyone re-reading a finding written
+before an action's geometry port should confirm which implementation it describes before
+treating it as a blocker.
 
-**`Bufferer` is a re-exposure candidate.** Its new-geometry port landed in #2370 (2026-08-25),
-so it has left the does-not-run bucket, and it was reviewed in the Geometry A batch (#2317).
+**`CSV Reader`'s port landed in #2405 (merged 2026-08-27) and it is the same case as Bufferer.**
+It now has a `#[cfg(feature = "new-geometry")] start` (`file/csv.rs:166`) so it runs, and it was
+reviewed in the Input batch (#2280) — so §7.2 hands it a decision rather than an audit. Like
+Bufferer's, that review predates the 2026-08-20/21 rescoping (§7, the §8 `impl:` line, the §6 tag
+rewrite), so the decision needs an §8 re-check against the new-geometry code first. It is not in
+`base_actions.go`. Note the table has no bucket for "runs, reviewed, awaiting a decision" — that
+is why this is prose, and it is the slot Bufferer occupied until this PR.
 
-**Its blocking `impl:` finding does not apply to the shipped build.** That finding — only
-points, curves and single polygons buffered, every other type emitted **unbuffered** — was
-written against the legacy implementation, and #2370 did not port that implementation, it
-replaced it. The new `process` calls `overlay::buffer` and either buffers or rejects; there is
-no passthrough arm. `buffer_leaves` partitions the leaves into areal, line and point and buffers
-all three, and `flatten_2d` unnests collections first, so multi-geometries are covered. Both
-"buffer these types too" TODOs still in `bufferer.rs` sit inside
-`#[cfg(not(feature = "new-geometry"))]` helpers. Verified 2026-08-27; the finding above is
-retained only as the legacy record.
-
-What is genuinely still open is smaller:
-
-- `bufferType` remains a single-variant `oneOf` (§3.4 design smell), deliberately, with a TODO:
-  a `solid` type needs a solid-buffering algorithm the geometry crate does not have.
-- The review predates the standard's 2026-08-20/21 rescoping (§7, the §8 `impl:` line, the §6
-  tag rewrite), and #2370 changed user-visible behaviour — `interpolationAngle` is now the arc
-  step directly, clamped to [1.8, 45], where legacy multiplied it by four; 3D points and line
-  strings are now rejected rather than flattened; polygons are validated for planarity and hole
-  winding. #2370 updated the parameter text to match, so this is a re-check rather than a
-  rewrite.
-
-Trigger: an §8 re-check against the new-geometry build, then expose. It is not held up by a
-correctness defect.
+**`Area Calculator`'s port landed in #2385 (merged 2026-08-27) and it moves to pending audit.**
+Recorded here per §7.2 rather than left to expire: it now has a `#[cfg(feature = "new-geometry")]
+process` (`area_calculator.rs:165`) so it runs, it is not in `base_actions.go`, and it has had no
+§8 pass — only a spot-check of `areaType` in "Verified accurate" below. Same case as Elevation
+Extractor, not Bufferer's.
 
 `Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
@@ -551,13 +531,16 @@ Findings below came from a schema scan plus partial code reading. **They are lea
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Newly eligible — its port landed (1)
+#### Newly eligible — its port landed (2)
 
-**A port landing does not by itself mean "needs an audit"** — check the review state first, since
-that is what §7.2's rule turns on. An action that was never reviewed lands in this list; one that
-was already reviewed lands in the re-exposure-decision bucket instead. `Bufferer` (#2370),
-`Area Calculator` (#2385) and `CSV Reader` (#2405) are all the second kind; see the note under
-the bucket table.
+**`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
+two cases differ and the difference is the whole point of §7.2's rule. An action never reviewed
+lands in this list; Bufferer *was* reviewed, in the Geometry A batch (#2317), so its port landing
+handed it to a decision instead — taken in #2422, and recorded under the bucket table. Do not
+assume a port landing means "needs an audit"; check the review state first.
+
+Note which way that test cuts: a spot-check is not a review. `Area Calculator` had one line
+verified in the re-verification pass below and still belongs in this list, not in Bufferer's.
 
 `Elevation Extractor` was in this list and is now audited and exposed — see the addendum below.
 
@@ -568,6 +551,13 @@ Spatial Filter
              appears nowhere in this file, so it has never been reviewed and the port landing
              hands it here rather than to a decision.
   scan:    NOT scanned, for the same reason. Budget a full §8 pass.
+
+Area Calculator
+  runs:    Ported in #2385 (2026-08-27), so it now runs in the shipped build and has left the
+             does-not-run bucket. Same case as Elevation Extractor and Spatial Filter: it has
+             had no §8 pass, so the port landing hands it here rather than to a decision.
+  scan:    Only `areaType` has been looked at, as a spot-check recorded under "Verified
+             accurate" below — that is not a review. Budget a full §8 pass.
 ```
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
