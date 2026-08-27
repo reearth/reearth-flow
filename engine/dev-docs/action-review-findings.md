@@ -459,7 +459,7 @@ workflow that names it, so no existing workflow broke.
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
 | Exposed and audited | 75 | — |
-| Does not run in the shipped build | 18 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| Does not run in the shipped build | 17 | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **9** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
@@ -477,6 +477,14 @@ implementation, and #2370 did not port that implementation, it replaced it. The 
 finding's text survived the port, so it reads as live. Anyone re-reading a finding written
 before an action's geometry port should confirm which implementation it describes before
 treating it as a blocker.
+
+**`CSV Reader`'s port landed in #2405 (merged 2026-08-27) and it is the same case as Bufferer.**
+It now has a `#[cfg(feature = "new-geometry")] start` (`file/csv.rs:166`) so it runs, and it was
+reviewed in the Input batch (#2280) — so §7.2 hands it a decision rather than an audit. Like
+Bufferer's, that review predates the 2026-08-20/21 rescoping (§7, the §8 `impl:` line, the §6 tag
+rewrite), so the decision needs an §8 re-check against the new-geometry code first. It is not in
+`base_actions.go`. Note the table has no bucket for "runs, reviewed, awaiting a decision" — that
+is why this is prose, and it is the slot Bufferer occupied until this PR.
 
 **`Area Calculator`'s port landed in #2385 (merged 2026-08-27) and it moves to pending audit.**
 Recorded here per §7.2 rather than left to expire: it now has a `#[cfg(feature = "new-geometry")]
