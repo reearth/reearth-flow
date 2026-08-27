@@ -772,6 +772,14 @@ impl GridDivider {
     /// to that group's spool file. A feature with no extent to place on a
     /// grid is routed to `rejected` immediately, rather than silently
     /// dropped or spooled where it could never be divided.
+    ///
+    /// This is also where the accumulating path runs the angular-frame check.
+    /// `finish` and `divide_group` have no `ExecutorContext` and see features
+    /// only after they have been round-tripped through the spool, so the frame
+    /// is read here, on the way in, exactly as the streaming `process` does --
+    /// the warning is about the grid's units, which is not a per-path
+    /// question. `warn_if_angular` is itself once-per-run, so spooling many
+    /// features still yields at most one warning.
     fn spool(
         &mut self,
         ctx: ExecutorContext,
@@ -780,6 +788,8 @@ impl GridDivider {
         if self.executor_id.is_none() {
             self.executor_id = Some(fw.executor_id());
         }
+
+        self.warn_if_angular(&ctx);
 
         let Ok(aabb) = ctx.feature.geometry.bounding_box() else {
             self.reject(&ctx, fw, "geometry has no extent to place on a grid");
@@ -965,6 +975,13 @@ impl GridDivider {
     }
 
     /// Say so once when the grid is measured in degrees rather than metres.
+    ///
+    /// Called on both paths, once per feature on the way in: from `process`
+    /// on the streaming (explicit-origin) path and from `spool` on the
+    /// accumulating one. The units of a grid do not depend on how the grid's
+    /// origin was arrived at, and every workflow written before this port
+    /// omits `origin` -- so a check wired only to the streaming path would
+    /// never fire in practice.
     ///
     /// A feature whose frame is not angular, or whose frame cannot be
     /// determined at all (`Geometry::frame()` returns `None` on disagreement
@@ -2379,6 +2396,88 @@ mod new_geometry_tests {
                     .count(),
                 1,
                 "{warnings:?}"
+            );
+        }
+
+        /// The angular-frame warning is not a property of the streaming path.
+        /// Every workflow written before this port omits `origin` and so runs
+        /// the accumulating path — including both solar-radiation nodes — so a
+        /// check wired only to `process`'s explicit-origin half would never
+        /// fire in practice, which is the opposite of what D9 asks for.
+        #[test]
+        fn the_angular_frame_warning_also_fires_on_the_accumulating_path() {
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, _, warnings) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![Geometry::Euclidean3D(rect_leaf(
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                    angular,
+                ))],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "no `origin` must not mean no warning: {warnings:?}"
+            );
+        }
+
+        /// The accumulating path keeps the same once-per-run semantics the
+        /// streaming path has: one grid is one cell size for the whole
+        /// stream, so a second angular feature tells the run nothing new.
+        #[test]
+        fn the_accumulating_path_warns_once_per_run_not_once_per_feature() {
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, _, warnings) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], angular.clone())),
+                    Geometry::Euclidean3D(rect_leaf([2.0, 2.0], [3.0, 3.0], angular)),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// And the same arming rule: only a feature actually found angular may
+        /// burn the one shot, so a non-angular first feature must not silence
+        /// a genuinely angular one behind it.
+        #[test]
+        fn a_non_angular_first_feature_does_not_suppress_a_later_angular_one_when_spooling() {
+            let (_, _, warnings) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf(
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                        CoordinateFrame::Euclidean,
+                    )),
+                    Geometry::Euclidean3D(rect_leaf(
+                        [2.0, 2.0],
+                        [3.0, 3.0],
+                        CoordinateFrame::Crs(EpsgCode::from(4269)),
+                    )),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "a non-angular first feature must not permanently silence the check: {warnings:?}"
             );
         }
     }
