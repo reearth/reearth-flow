@@ -777,12 +777,13 @@ Attribute Range Mapper · Null Attribute Mapper
              boolean coercion that `process` performs, so the documented "booleans count as 1 and
              0" behaviour was never exercised. The logic is now one `mapped_value` method that
              both `process` and the tests call, and the boolean case has a test.
-  prior art: Checked the 26 PLATEAU workspaces. `NullAttributeMapper` is used 6 times (5 in QC02
-             Building, 1 in Viz01 Building), so the operation is real; `AttributeRangeMapper`
-             is used nowhere, even there. Neither is used in any of our workflows, so the
-             renames carry no migration cost. FME's own parameter widget design could not be
-             extracted — the workspace JSON truncates the transformer's Tcl payload and the
-             help-text tools only read custom transformers.
+  prior art: Checked the 26 reference workspaces behind the PLATEAU conversions. The equivalent
+             null-mapping component is used 6 times (5 in QC02 Building, 1 in Viz01 Building), so
+             that operation is real; the range-mapping equivalent is used nowhere, even there.
+             Neither of ours is used in any of our workflows, so the renames carry no migration
+             cost. The reference product's own parameter widget design could not be read: the
+             extracted workspace JSON truncates each component's embedded parameter payload, and
+             the help-text tooling covers only user-defined components.
   ⚠️ method: The first "zero usage" sweep was WRONG. It covered `runtime/examples` and `testing/`
              and missed `runtime/tests/fixture/`, where `attribute/range_mapper.yaml` drives a
              depth-to-colour ramp with seven bare-string values. A tagged enum broke it, which is
@@ -843,11 +844,12 @@ Dissolver — kept, documentation was materially wrong
              a MIXTURE of frames that is refused. The substantive finding of the batch: a user
              could wire this up correctly and lose every feature with no indication why. The
              sibling overlayers already carry the guidance sentence; it is now here too.
-  prior art: The planar computation is universal — FME's equivalent, and GEOS/JTS via PostGIS
-             ST_Union ("the result is computed using XY only"), all overlay in XY. Refusing 3D
-             input is NOT typical: both accept it and resolve Z by a stated policy (FME exposes
-             a five-option Connect Z Mode; PostGIS copies, averages or interpolates). Rejecting
-             areal-only input matches FME exactly. The mixed-frame check is stricter than either
+  prior art: The planar computation is universal — the reference product's equivalent, and
+             GEOS/JTS via PostGIS ST_Union ("the result is computed using XY only"), all overlay
+             in XY. Refusing 3D input is NOT typical: both accept it and resolve Z by a stated
+             policy (the reference product exposes a five-option Z-connection mode; PostGIS
+             copies, averages or interpolates). Rejecting areal-only input matches the reference
+             product exactly. The mixed-frame check is stricter than either
              and is the one place we are better — both will silently run planar math across
              mismatched coordinate systems. A Z-policy parameter is the natural enhancement here,
              not a defect to fix. The only production user (PLATEAU4 tran) already chains
