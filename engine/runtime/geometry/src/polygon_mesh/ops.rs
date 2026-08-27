@@ -1017,16 +1017,20 @@ mod grid_impl {
             }
             let faces = faces_2d(self);
             let buckets = bucket(&faces, grid, collect_faces_2d)?;
-            let cell_area = grid.cell_size() * grid.cell_size();
 
             if let Some((row, col)) = mesh_unchanged(&buckets, &faces, rings_eq_2d) {
                 // Nothing was cut: hand back the source mesh verbatim rather
                 // than re-welding it (see `mesh_unchanged`'s doc comment for
                 // why the weld is not a no-op here even when every piece is).
+                let cell = GridCell { row, col };
                 let area: f64 = buckets[&(row, col)].iter().map(Polygon2D::area_xy).sum();
                 emit(
-                    GridCell { row, col },
-                    CellCoverage::from_area(area, cell_area),
+                    cell,
+                    // The cell's *own* window area, never `cell_size^2`: the
+                    // clip pins a full piece's area to `window.area()`, which
+                    // differs from the square of the side by more than
+                    // `COVERAGE_TOLERANCE` at a large origin.
+                    CellCoverage::from_area(area, grid.window(cell).area()),
                     Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.clone()))),
                 );
                 return Ok(());
@@ -1036,8 +1040,9 @@ mod grid_impl {
                 if pieces.is_empty() {
                     continue;
                 }
+                let cell = GridCell { row, col };
                 let area: f64 = pieces.iter().map(Polygon2D::area_xy).sum();
-                let coverage = CellCoverage::from_area(area, cell_area);
+                let coverage = CellCoverage::from_area(area, grid.window(cell).area());
 
                 // Weld through the 3D constructor (`PolygonMesh2D` has none
                 // of its own): elevation plays no part in a grid clip (it
@@ -1065,7 +1070,7 @@ mod grid_impl {
                     appearance: restore_world_to_texture(appearance, self.appearance()),
                 };
                 emit(
-                    GridCell { row, col },
+                    cell,
                     coverage,
                     Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh))),
                 );
@@ -1085,13 +1090,15 @@ mod grid_impl {
             }
             let faces = faces_3d(self.data(), self.frame());
             let buckets = bucket(&faces, grid, collect_faces_3d)?;
-            let cell_area = grid.cell_size() * grid.cell_size();
 
             if let Some((row, col)) = mesh_unchanged(&buckets, &faces, rings_eq_3d) {
+                let cell = GridCell { row, col };
                 let area: f64 = buckets[&(row, col)].iter().map(Polygon3D::area_xy).sum();
                 emit(
-                    GridCell { row, col },
-                    CellCoverage::from_area(area, cell_area),
+                    cell,
+                    // See the 2D leaf above: the cell's own window area, not
+                    // `cell_size^2`.
+                    CellCoverage::from_area(area, grid.window(cell).area()),
                     Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.clone()))),
                 );
                 return Ok(());
@@ -1101,14 +1108,15 @@ mod grid_impl {
                 if pieces.is_empty() {
                     continue;
                 }
+                let cell = GridCell { row, col };
                 let area: f64 = pieces.iter().map(Polygon3D::area_xy).sum();
-                let coverage = CellCoverage::from_area(area, cell_area);
+                let coverage = CellCoverage::from_area(area, grid.window(cell).area());
                 let mut mesh = PolygonMesh3D::from_polygons(self.frame().clone(), pieces.iter())
                     .map_err(|e| GridDivideError::InvalidSpec(e.to_string()))?;
                 *mesh.appearance_mut() =
                     restore_world_to_texture(mesh.appearance().clone(), self.appearance());
                 emit(
-                    GridCell { row, col },
+                    cell,
                     coverage,
                     Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
                 );

@@ -693,7 +693,6 @@ mod grid_impl {
                     let elevation = self.elevation_for_grid();
 
                     let (lo, hi) = grid.cell_range(min, max);
-                    let cell_area = grid.cell_size() * grid.cell_size();
 
                     let mut results: Vec<CellResult> = Vec::new();
 
@@ -797,7 +796,12 @@ mod grid_impl {
                         if unchanged {
                             emit(
                                 only.cell,
-                                CellCoverage::from_area(only.area, cell_area),
+                                // The cell's *own* window area, never
+                                // `cell_size^2`: the clip pins a full piece's
+                                // area to `window.area()`, which differs from
+                                // the square of the side by more than
+                                // `COVERAGE_TOLERANCE` at a large origin.
+                                CellCoverage::from_area(only.area, grid.window(only.cell).area()),
                                 $wrap(self.clone()),
                             );
                             return Ok(());
@@ -820,7 +824,7 @@ mod grid_impl {
                         mesh.set_elevation_for_grid(elevation);
                         emit(
                             r.cell,
-                            CellCoverage::from_area(r.area, cell_area),
+                            CellCoverage::from_area(r.area, grid.window(r.cell).area()),
                             $wrap(mesh),
                         );
                     }

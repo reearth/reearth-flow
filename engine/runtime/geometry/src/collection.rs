@@ -496,16 +496,20 @@ mod grid_impl {
     //! `Collection2D`/`Collection3D` members each carry their own frame (see
     //! the module doc above), and this op lays one grid over all of them, so
     //! they must agree or the grid would be silently misapplied to whichever
-    //! member does not share it -- checked by [`frames_agree`]. Only frames
-    //! belonging to a member this op could actually divide are considered:
-    //! `PointCloud`/`Solid`/`Csg` carry no frame this module can read, but
-    //! `DivideByGrid` is `Unsupported` for all three regardless (see their
-    //! `unsupported!` stamps), so they are skipped by the division loop below
-    //! either way and a frame this op will never apply a grid to cannot
-    //! disagree with one it does. `GeometryCollection` members are `Geometry`,
-    //! which carry no single frame to compare at all, so
-    //! [`grid_divide_members`] skips this check entirely rather than
-    //! fabricating one.
+    //! member does not share it -- checked by [`frames_agree`]. Every leaf
+    //! that exposes a frame is considered, divisible or not (a bare `Point`
+    //! is `Unsupported` here yet still contributes its frame), so this stays
+    //! the same question `Geometry::frame()` answers: `PointCloud` and `Csg`
+    //! are the only leaves left out, and only because neither exposes a frame
+    //! to read (`Csg`'s lives on its operand `Solid`s) -- exactly the pair
+    //! `Geometry::frame` omits, and for the same reason. `Solid` *does*
+    //! expose one (`Solid::frame`) and is collected, even though
+    //! `DivideByGrid` is `Unsupported` for it: were it skipped here, this
+    //! check and `Geometry::frame()` -- which the grid-divider action reads
+    //! to warn about angular units -- would disagree about the very same
+    //! geometry. `GeometryCollection` members are `Geometry`, which carry no
+    //! single frame to compare at all, so [`grid_divide_members`] skips this
+    //! check entirely rather than fabricating one.
 
     use std::collections::BTreeMap;
 
@@ -516,9 +520,11 @@ mod grid_impl {
     };
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-    /// Collect the frame of every member this op could actually divide,
-    /// recursing into a nested `Collection`. See the module doc for why
-    /// `PointCloud`/`Solid`/`Csg` (3D-only) are not represented here.
+    /// Collect the frame of every member that exposes one, recursing into a
+    /// nested `Collection`. Deliberately the same set of leaves
+    /// `lib.rs`'s `collect_leaf_frames_2d`/`collect_leaf_frames_3d` gather,
+    /// so this check and `Geometry::frame()` never disagree; see the module
+    /// doc for why `PointCloud`/`Csg` (3D-only) are the only omissions.
     fn collect_frames_2d(m: &Euclidean2DGeometry, out: &mut Vec<CoordinateFrame>) {
         match m {
             Euclidean2DGeometry::Point(g) => out.push(g.frame().clone()),
@@ -540,12 +546,17 @@ mod grid_impl {
             Euclidean3DGeometry::Polygon(g) => out.push(g.frame().clone()),
             Euclidean3DGeometry::PolygonMesh(g) => out.push(g.frame().clone()),
             Euclidean3DGeometry::TriangularMesh(g) => out.push(g.frame().clone()),
+            // Collected even though `DivideByGrid` is `Unsupported` for it:
+            // it exposes a frame, and `collect_leaf_frames_3d` counts it, so
+            // leaving it out would make this check and `Geometry::frame()`
+            // disagree about the same geometry.
+            Euclidean3DGeometry::Solid(g) => out.push(g.frame().clone()),
             Euclidean3DGeometry::Collection(c) => {
                 c.members().iter().for_each(|m| collect_frames_3d(m, out));
             }
-            Euclidean3DGeometry::PointCloud(_)
-            | Euclidean3DGeometry::Solid(_)
-            | Euclidean3DGeometry::Csg(_) => {}
+            // The only leaves with no frame to read: `PointCloud` has none,
+            // and `Csg`'s lives on its operand `Solid`s.
+            Euclidean3DGeometry::PointCloud(_) | Euclidean3DGeometry::Csg(_) => {}
         }
     }
 
@@ -592,14 +603,19 @@ mod grid_impl {
             return Err(GridDivideError::Empty);
         }
 
-        let cell_area = grid.cell_size() * grid.cell_size();
         for ((row, col), pieces) in by_cell {
             let cell = GridCell { row, col };
             let area: f64 = pieces.iter().map(geometry_area_xy).sum();
             let geom = crate::GeometryCollection::new(pieces);
             emit(
                 cell,
-                CellCoverage::from_area(area, cell_area),
+                // The cell's *own* window area, never `cell_size^2`: the clip
+                // pins a full piece's area to `window.area()`, which differs
+                // from the square of the side by more than
+                // `COVERAGE_TOLERANCE` at a large origin. Judging against the
+                // nominal square would then call an exactly-filled cell
+                // `Partial` and drop it under `completeCellsOnly`.
+                CellCoverage::from_area(area, grid.window(cell).area()),
                 Geometry::GeometryCollection(geom),
             );
         }
