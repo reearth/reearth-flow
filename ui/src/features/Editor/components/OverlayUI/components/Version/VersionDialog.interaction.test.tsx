@@ -2,6 +2,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import * as Y from "yjs";
 
+import {
+  EditorProvider,
+  type EditorContextType,
+} from "@flow/features/Editor/editorContext";
+
 // vi.mock calls below are hoisted by vitest, so this import still gets the mocks.
 import VersionDialog from "./index";
 
@@ -74,13 +79,23 @@ describe("VersionDialog interactivity", () => {
     api.saveNamedSnapshot.mockResolvedValue({ snapshotNumber: 9 });
   });
 
-  const renderDialog = () =>
+  const renderDialog = (editorContext: Partial<EditorContextType> = {}) =>
     render(
-      <VersionDialog
-        project={{ id: "p1" } as never}
-        yDoc={new Y.Doc()}
-        onDialogClose={() => {}}
-      />,
+      <EditorProvider
+        value={
+          {
+            isLocked: false,
+            isReaderRestricted: false,
+            canViewIntermediateData: false,
+            ...editorContext,
+          } as EditorContextType
+        }>
+        <VersionDialog
+          project={{ id: "p1" } as never}
+          yDoc={new Y.Doc()}
+          onDialogClose={() => {}}
+        />
+      </EditorProvider>,
     );
 
   test("the panel is interactive, not a read-only list", async () => {
@@ -119,6 +134,28 @@ describe("VersionDialog interactivity", () => {
     );
 
     // Nothing destructive has happened at any point.
+    expect(api.rollbackProject).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["the project is locked", { isLocked: true }],
+    ["the user is a reader", { isReaderRestricted: true }],
+  ])("restore stays unavailable when %s", async (_label, editorContext) => {
+    renderDialog(editorContext);
+
+    // Selecting still works — browsing history is a read.
+    screen.getByText("before migration").click();
+    await waitFor(() =>
+      expect(screen.getByTestId("preview-surface")).toHaveTextContent(
+        "previewing-snapshot",
+      ),
+    );
+
+    // But the write is not reachable, so no confirmation can be opened.
+    const restore = screen.getByRole("button", { name: "Restore" });
+    expect(restore).toBeDisabled();
+    restore.click();
+    expect(screen.queryByText(/Are you sure/i)).not.toBeInTheDocument();
     expect(api.rollbackProject).not.toHaveBeenCalled();
   });
 
