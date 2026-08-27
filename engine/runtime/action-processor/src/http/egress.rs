@@ -17,10 +17,11 @@
 //!    hop is checked here as well.
 //!
 //! Self-hosted deployments that legitimately call services on private
-//! addresses can opt out with `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK=true`
-//! (the scheme restriction always applies).
+//! addresses can opt out with `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK=true`.
+//! The scheme restriction and the block on never-routable addresses
+//! (unspecified, broadcast, multicast) always apply.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 
 use once_cell::sync::Lazy;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
@@ -60,16 +61,13 @@ fn validate_parsed_url(url: &url::Url, allow_private: bool) -> Result<()> {
             "URL '{url}' has no host"
         )));
     };
-    if allow_private {
-        return Ok(());
-    }
     let literal_ip = match host {
         url::Host::Ipv4(ip) => Some(IpAddr::V4(ip)),
         url::Host::Ipv6(ip) => Some(IpAddr::V6(ip)),
         url::Host::Domain(_) => None,
     };
     if let Some(ip) = literal_ip {
-        if is_blocked_ip(ip) {
+        if is_blocked_ip(ip, allow_private) {
             return Err(HttpProcessorError::Request(blocked_message(
                 &ip.to_string(),
             )));
@@ -85,39 +83,53 @@ fn blocked_message(host: &str) -> String {
     )
 }
 
-/// True when the address must not be reached from a workflow.
-pub(crate) fn is_blocked_ip(ip: IpAddr) -> bool {
+/// True when the address must not be reached from a workflow. Addresses that
+/// are never valid HTTP targets (unspecified, broadcast, multicast) stay
+/// blocked even when private networking is allowed; the opt-out only covers
+/// private, loopback and other internal ranges.
+pub(crate) fn is_blocked_ip(ip: IpAddr, allow_private: bool) -> bool {
+    let ip = match ip {
+        IpAddr::V6(v6) => match v6.to_ipv4_mapped() {
+            Some(mapped) => IpAddr::V4(mapped),
+            None => IpAddr::V6(v6),
+        },
+        v4 => v4,
+    };
+    is_never_routable(ip) || (!allow_private && is_private_or_internal(ip))
+}
+
+/// Never a valid HTTP destination, regardless of deployment.
+fn is_never_routable(ip: IpAddr) -> bool {
     match ip {
-        IpAddr::V4(v4) => is_blocked_ipv4(v4),
-        IpAddr::V6(v6) => {
-            if let Some(mapped) = v6.to_ipv4_mapped() {
-                return is_blocked_ipv4(mapped);
-            }
-            is_blocked_ipv6(v6)
+        IpAddr::V4(v4) => {
+            v4.is_unspecified()
+                || v4.is_broadcast()
+                || v4.is_multicast()
+                || v4.octets()[0] == 0 // 0.0.0.0/8 "this network"
         }
+        IpAddr::V6(v6) => v6.is_unspecified() || v6.is_multicast(),
     }
 }
 
-fn is_blocked_ipv4(ip: Ipv4Addr) -> bool {
-    let o = ip.octets();
-    ip.is_loopback()
-        || ip.is_private()
-        || ip.is_link_local() // includes 169.254.169.254 cloud metadata
-        || ip.is_unspecified()
-        || ip.is_broadcast()
-        || ip.is_multicast()
-        || o[0] == 0 // 0.0.0.0/8 "this network"
-        || (o[0] == 100 && (o[1] & 0xc0) == 64) // 100.64.0.0/10 carrier-grade NAT
-        || (o[0] == 192 && o[1] == 0 && o[2] == 0) // 192.0.0.0/24 IETF protocol assignments
-}
-
-fn is_blocked_ipv6(ip: Ipv6Addr) -> bool {
-    let s = ip.segments();
-    ip.is_loopback()
-        || ip.is_unspecified()
-        || ip.is_multicast()
-        || (s[0] & 0xfe00) == 0xfc00 // fc00::/7 unique-local
-        || (s[0] & 0xffc0) == 0xfe80 // fe80::/10 link-local
+/// Private, loopback and internal ranges — blocked by default, reachable when
+/// `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK` is set.
+fn is_private_or_internal(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            let o = v4.octets();
+            v4.is_loopback()
+                || v4.is_private()
+                || v4.is_link_local() // includes 169.254.169.254 cloud metadata
+                || (o[0] == 100 && (o[1] & 0xc0) == 64) // 100.64.0.0/10 carrier-grade NAT
+                || (o[0] == 192 && o[1] == 0 && o[2] == 0) // 192.0.0.0/24 IETF protocol assignments
+        }
+        IpAddr::V6(v6) => {
+            let s = v6.segments();
+            v6.is_loopback()
+                || (s[0] & 0xfe00) == 0xfc00 // fc00::/7 unique-local
+                || (s[0] & 0xffc0) == 0xfe80 // fe80::/10 link-local
+        }
+    }
 }
 
 /// DNS resolver that drops blocked addresses from every resolution, so a
@@ -141,7 +153,7 @@ impl Resolve for EgressGuardedDnsResolver {
             let allow = allow_private_network();
             let allowed: Vec<SocketAddr> = addrs
                 .into_iter()
-                .filter(|addr| allow || !is_blocked_ip(addr.ip()))
+                .filter(|addr| !is_blocked_ip(addr.ip(), allow))
                 .collect();
 
             if allowed.is_empty() {
@@ -238,6 +250,24 @@ mod tests {
     }
 
     #[test]
+    fn test_allow_private_still_blocks_never_routable_addresses() {
+        // The opt-out covers private/internal ranges only; addresses that are
+        // never valid HTTP targets stay blocked in both modes.
+        for url in [
+            "http://0.0.0.0/",
+            "http://255.255.255.255/",
+            "http://224.0.0.1/",
+            "http://[::]/",
+            "http://[ff02::1]/",
+        ] {
+            assert!(
+                validate_parsed_url(&parse(url), true).is_err(),
+                "should be blocked even with private networking allowed: {url}"
+            );
+        }
+    }
+
+    #[test]
     fn test_blocked_ip_ranges() {
         let blocked = [
             "127.0.0.1",
@@ -260,7 +290,7 @@ mod tests {
         ];
         for ip in blocked {
             assert!(
-                is_blocked_ip(ip.parse().unwrap()),
+                is_blocked_ip(ip.parse().unwrap(), false),
                 "should be blocked: {ip}"
             );
         }
@@ -274,8 +304,26 @@ mod tests {
         ];
         for ip in allowed {
             assert!(
-                !is_blocked_ip(ip.parse().unwrap()),
+                !is_blocked_ip(ip.parse().unwrap(), false),
                 "should be allowed: {ip}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_blocked_ip_split_with_allow_private() {
+        // Private/internal: reachable with the opt-out.
+        for ip in ["127.0.0.1", "10.1.2.3", "169.254.169.254", "::1", "fe80::1"] {
+            assert!(
+                !is_blocked_ip(ip.parse().unwrap(), true),
+                "should be allowed with opt-out: {ip}"
+            );
+        }
+        // Never routable: blocked in both modes.
+        for ip in ["0.0.0.0", "255.255.255.255", "224.0.0.1", "::", "ff02::1"] {
+            assert!(
+                is_blocked_ip(ip.parse().unwrap(), true),
+                "should be blocked with opt-out: {ip}"
             );
         }
     }

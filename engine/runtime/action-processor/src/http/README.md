@@ -23,7 +23,8 @@ Because workflows run server-side, outbound requests are restricted:
 - Self-hosted deployments that need to reach services on private addresses can
   opt out by setting the environment variable
   `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK=true` where the engine runs.
-  The scheme restriction always applies.
+  The scheme restriction and the block on addresses that are never valid HTTP
+  targets (unspecified, broadcast, multicast) always apply.
 
 A blocked request routes the feature to the `rejected` port with the reason in
 the `_http_error` attribute.

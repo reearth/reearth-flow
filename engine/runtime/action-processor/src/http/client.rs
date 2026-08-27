@@ -161,7 +161,7 @@ fn read_body_capped(
 
     let mut body = Vec::new();
     reader
-        .take(max_size + 1)
+        .take(max_size.saturating_add(1))
         .read_to_end(&mut body)
         .map_err(|e| HttpProcessorError::Response(format!("Failed to read response body: {e}")))?;
 
@@ -290,6 +290,13 @@ mod tests {
     fn test_read_body_within_cap() {
         let data = vec![b'a'; 400];
         let body = read_body_capped(data.as_slice(), Some(400), Some(500)).unwrap();
+        assert_eq!(body.len(), 400);
+    }
+
+    #[test]
+    fn test_read_body_max_cap_does_not_overflow() {
+        let data = vec![b'a'; 400];
+        let body = read_body_capped(data.as_slice(), None, Some(u64::MAX)).unwrap();
         assert_eq!(body.len(), 400);
     }
 }
