@@ -121,11 +121,16 @@ struct Bufferer {
     interpolation_angle: Option<f64>,
 }
 
-/// The angular step applied when `interpolationAngle` is omitted, in degrees.
-/// The new-geometry build takes this from `BufferStyle`'s own default instead
-/// of restating it, so this constant exists only for the legacy path.
+/// The angle handed to the legacy `to_polygon` when `interpolationAngle` is
+/// omitted. Deliberately not 11.25: that helper takes `ceil(90 / angle)`
+/// segments and then steps a full turn by `360 / segments`, so it needs a
+/// quarter of the nominal angle to draw the same 32-segment circle as
+/// `BufferStyle`'s default arc step of PI / 16. Passing 11.25 here would step
+/// by 45 degrees and contradict the documented default. The new-geometry
+/// build takes that default from `BufferStyle` itself rather than restating
+/// it, so this constant exists only for the legacy path.
 #[cfg(not(feature = "new-geometry"))]
-const DEFAULT_INTERPOLATION_ANGLE: f64 = 11.25;
+const LEGACY_DEFAULT_INTERPOLATION_ANGLE: f64 = 2.8125;
 
 impl Processor for Bufferer {
     /// A geometry that cannot be buffered leaves via `rejected`; one that
@@ -219,7 +224,7 @@ impl Bufferer {
                         coord.to_polygon(
                             self.distance,
                             self.interpolation_angle
-                                .unwrap_or(DEFAULT_INTERPOLATION_ANGLE),
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
                         ),
                     ));
                     feature.geometry = Arc::new(geometry);
@@ -232,7 +237,7 @@ impl Bufferer {
                         line_string.to_polygon(
                             self.distance,
                             self.interpolation_angle
-                                .unwrap_or(DEFAULT_INTERPOLATION_ANGLE),
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
                         ),
                     ));
                     feature.geometry = Arc::new(geometry);
@@ -309,7 +314,7 @@ impl Bufferer {
                         coord_2d.to_polygon(
                             self.distance,
                             self.interpolation_angle
-                                .unwrap_or(DEFAULT_INTERPOLATION_ANGLE),
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
                         ),
                     ));
                     feature.geometry = Arc::new(geometry);
@@ -323,7 +328,7 @@ impl Bufferer {
                         line_string.to_polygon(
                             self.distance,
                             self.interpolation_angle
-                                .unwrap_or(DEFAULT_INTERPOLATION_ANGLE),
+                                .unwrap_or(LEGACY_DEFAULT_INTERPOLATION_ANGLE),
                         ),
                     ));
                     feature.geometry = Arc::new(geometry);
