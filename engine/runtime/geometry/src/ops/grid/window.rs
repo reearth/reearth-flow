@@ -50,6 +50,16 @@ pub(crate) fn faces_area_xy<const N: usize>(faces: &[Face<N>]) -> f64 {
 }
 
 /// Whether `point` lies inside `ring`, by the even-odd ray rule on XY.
+///
+/// This is only sound for a `point` strictly inside or strictly outside
+/// `ring`. For a `point` exactly on one of `ring`'s edges the result is not
+/// well-defined: this is a known property of the even-odd ray-cast rule
+/// (PNPOLY), whose answer for an on-boundary point depends on which edges
+/// happen to register a crossing, not on any principled inside/outside call.
+/// Every caller in this module is responsible for only ever probing with a
+/// point already confirmed strictly interior to *some* ring -- see
+/// [`ring_probe`], which exists specifically to avoid ever handing this an
+/// on-edge point.
 fn contains_point<const N: usize>(ring: &[Corner<N>], point: [f64; 2]) -> bool {
     let mut inside = false;
     for i in 0..ring.len() {
@@ -66,91 +76,111 @@ fn contains_point<const N: usize>(ring: &[Corner<N>], point: [f64; 2]) -> bool {
     inside
 }
 
-/// The arithmetic mean of a ring's vertices.
-///
-/// This is confined to the ring's bounding box but, for a non-convex ring, is
-/// not confined to the ring's interior: a C- or L-shaped ring's centroid can
-/// fall in its own notch, outside the ring entirely. It is a candidate probe
-/// point, not a guaranteed-interior one -- see [`ring_probe`], which verifies
-/// it before use and falls back when it fails.
-fn ring_centroid<const N: usize>(ring: &[Corner<N>]) -> [f64; 2] {
-    let mut sum = [0.0, 0.0];
-    for c in ring {
-        sum[0] += c.pos[0];
-        sum[1] += c.pos[1];
-    }
-    let n = ring.len() as f64;
-    [sum[0] / n, sum[1] / n]
+/// Twice the signed area of the 2D triangle `a, b, c`, matching the sign
+/// convention of [`signed_area_xy`]: positive when `a -> b -> c` turns
+/// counter-clockwise, negative when clockwise, zero when collinear.
+fn tri_cross(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> f64 {
+    (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
 }
 
-/// A point just inside one edge of `ring`: that edge's midpoint, nudged along
-/// its inward normal by `shrink` times the edge's own length.
+/// Whether `p` lies inside or on the boundary of triangle `a, b, c` (either
+/// winding). Used only to test whether some *other* ring vertex intrudes on a
+/// candidate ear triangle, so a boundary touch (a degenerate, e.g. duplicate,
+/// vertex) is treated as intrusion -- conservative, since rejecting a
+/// borderline ear just means trying the next vertex, not losing correctness.
+fn point_in_or_on_triangle(p: [f64; 2], a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> bool {
+    let d1 = tri_cross(a, b, p);
+    let d2 = tri_cross(b, c, p);
+    let d3 = tri_cross(c, a, p);
+    let has_neg = d1 < 0.0 || d2 < 0.0 || d3 < 0.0;
+    let has_pos = d1 > 0.0 || d2 > 0.0 || d3 > 0.0;
+    !(has_neg && has_pos)
+}
+
+/// A point strictly inside `ring`, found as the centroid of one of its ears.
 ///
-/// `ccw` must be the winding of `ring` (from [`signed_area_xy`]), since the
-/// inward side is the left of travel for a counter-clockwise ring and the
-/// right for a clockwise one. Returns `None` for a degenerate (zero-length)
-/// edge, which contributes no usable normal.
-fn edge_inward_offset<const N: usize>(
-    ring: &[Corner<N>],
-    edge_index: usize,
-    shrink: f64,
-    ccw: bool,
-) -> Option<[f64; 2]> {
+/// An "ear" is a vertex whose triangle with its two ring neighbours (a) turns
+/// the same way the ring itself winds, and (b) contains no other vertex of
+/// the ring. For a simple (non-self-intersecting) polygon this guarantees the
+/// whole triangle -- not just its three corners -- lies inside the polygon,
+/// which is the standard fact ear-clipping triangulation relies on: no other
+/// edge can cross into the triangle without a vertex of that edge first
+/// landing inside it, which condition (b) already rules out. The triangle's
+/// centroid then sits strictly inside the ring, away from every edge -- unlike
+/// a probe placed on the ring's own boundary, which is not a case
+/// [`contains_point`]'s ray cast handles consistently (see the doc comment on
+/// [`contains_point`]'s call sites in `clip_to_window`).
+///
+/// The two-ears theorem guarantees at least one such vertex exists for every
+/// simple polygon with three or more corners, so this returns `Some` for
+/// every well-formed ring this module's clipping produces. It returns `None`
+/// only for a degenerate ring: fewer than three corners, or one where no
+/// vertex's turn is a strict convex turn (e.g. all corners collinear, so
+/// every triangle has zero area and no "ear" exists to speak of) --
+/// exhaustively checked, not assumed.
+fn ring_probe<const N: usize>(ring: &[Corner<N>]) -> Option<[f64; 2]> {
     let n = ring.len();
-    let a = ring[edge_index].pos;
-    let b = ring[(edge_index + 1) % n].pos;
-    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
-    let len = (dx * dx + dy * dy).sqrt();
-    if len == 0.0 {
+    if n < 3 {
         return None;
     }
-    let (nx, ny) = if ccw {
-        (-dy / len, dx / len)
-    } else {
-        (dy / len, -dx / len)
-    };
-    let mid = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
-    let offset = len * shrink;
-    Some([mid[0] + nx * offset, mid[1] + ny * offset])
+    let ccw = signed_area_xy(ring) > 0.0;
+
+    for i in 0..n {
+        let prev = ring[(i + n - 1) % n].pos;
+        let cur = ring[i].pos;
+        let next = ring[(i + 1) % n].pos;
+        let (prev2, cur2, next2) = ([prev[0], prev[1]], [cur[0], cur[1]], [next[0], next[1]]);
+
+        let turn = tri_cross(prev2, cur2, next2);
+        let convex = if ccw { turn > 0.0 } else { turn < 0.0 };
+        if !convex {
+            continue;
+        }
+
+        let blocked = ring.iter().enumerate().any(|(j, corner)| {
+            let is_triangle_vertex = j == i || j == (i + n - 1) % n || j == (i + 1) % n;
+            !is_triangle_vertex
+                && point_in_or_on_triangle([corner.pos[0], corner.pos[1]], prev2, cur2, next2)
+        });
+        if blocked {
+            continue;
+        }
+
+        return Some([
+            (prev2[0] + cur2[0] + next2[0]) / 3.0,
+            (prev2[1] + cur2[1] + next2[1]) / 3.0,
+        ]);
+    }
+
+    None
 }
 
-/// A point confirmed, by [`contains_point`] against `ring` itself, to lie
-/// strictly inside `ring`. Used as the probe in a point-in-ring test against
-/// a *different* ring (which exterior a hole belongs to).
-///
-/// The centroid ([`ring_centroid`]) is tried first: it is exact and cheap,
-/// and correct whenever `ring` is convex. It is wrong in general, so it is
-/// verified rather than trusted -- when it fails (a concave ring whose
-/// centroid lands in its own notch), this falls back to an inward offset from
-/// each edge in turn ([`edge_inward_offset`]), at shrinking fractions of that
-/// edge's length, until one verifies. Every candidate this function can
-/// return has passed the same [`contains_point`] check the caller will apply
-/// it with, so "this point is inside `ring`" is not an assumption here, it is
-/// checked.
-fn ring_probe<const N: usize>(ring: &[Corner<N>]) -> [f64; 2] {
-    let centroid = ring_centroid(ring);
-    if contains_point(ring, centroid) {
-        return centroid;
+/// The axis-aligned bounding box, `(min, max)`, of a ring's XY-projected
+/// vertices.
+fn ring_bbox<const N: usize>(ring: &[Corner<N>]) -> ([f64; 2], [f64; 2]) {
+    let mut min = [f64::INFINITY, f64::INFINITY];
+    let mut max = [f64::NEG_INFINITY, f64::NEG_INFINITY];
+    for c in ring {
+        min[0] = min[0].min(c.pos[0]);
+        min[1] = min[1].min(c.pos[1]);
+        max[0] = max[0].max(c.pos[0]);
+        max[1] = max[1].max(c.pos[1]);
     }
+    (min, max)
+}
 
-    let ccw = signed_area_xy(ring) > 0.0;
-    for i in 0..ring.len() {
-        for &shrink in &[0.25, 0.1, 0.01, 0.001] {
-            if let Some(candidate) = edge_inward_offset(ring, i, shrink, ccw) {
-                if contains_point(ring, candidate) {
-                    return candidate;
-                }
-            }
-        }
-    }
+/// Whether bounding box `outer` contains bounding box `inner` (inclusive of
+/// touching edges).
+fn bbox_contains(outer: &([f64; 2], [f64; 2]), inner: &([f64; 2], [f64; 2])) -> bool {
+    outer.0[0] <= inner.0[0]
+        && outer.0[1] <= inner.0[1]
+        && outer.1[0] >= inner.1[0]
+        && outer.1[1] >= inner.1[1]
+}
 
-    // Every well-formed simple ring this module produces has at least one
-    // edge whose inward-offset midpoint verifies as interior, so this is not
-    // expected to be reached. Falling back to the (unverified) centroid
-    // rather than panicking leaves ownership assignment no worse than it
-    // would be without this fallback chain, for whatever degenerate ring got
-    // this far.
-    centroid
+/// A bounding box's area, for breaking ties between candidate containers.
+fn bbox_area(bbox: &([f64; 2], [f64; 2])) -> f64 {
+    (bbox.1[0] - bbox.0[0]) * (bbox.1[1] - bbox.0[1])
 }
 
 /// Clip a face's rings to `window`, returning the surviving faces.
@@ -194,16 +224,45 @@ pub(crate) fn clip_to_window<const N: usize>(
     // while the hole's own exterior was filtered out above (e.g. clipped to a
     // degenerate sliver under 3 corners). Always testing containment, rather
     // than short-circuiting on a single surviving exterior, keeps a hole from
-    // being attached to the wrong face. A hole matching no exterior in this
-    // batch contributes nothing and is dropped.
+    // being attached to the wrong face.
     for hole in holes {
         if hole.is_empty() {
             continue;
         }
-        let probe = ring_probe(&hole);
-        let owner = faces
-            .iter()
-            .position(|f| contains_point(&f.rings[0], probe));
+        let owner = match ring_probe(&hole) {
+            Some(probe) => faces
+                .iter()
+                .position(|f| contains_point(&f.rings[0], probe)),
+            None => {
+                // `hole` is degenerate (see `ring_probe`'s doc comment) and has
+                // no point that is safely, verifiably interior to it, so a
+                // point-in-ring test against it cannot be trusted either way.
+                // Fall back to bounding-box containment instead: a hole's box
+                // is always inside its own exterior's box, so this can never
+                // produce a false "inside" for the correct owner. It can be
+                // ambiguous when candidate exterior boxes overlap, so among
+                // every candidate whose box contains the hole's, deterministically
+                // pick the one with the smallest box -- the tightest fit, and
+                // so the most likely correct one.
+                let hole_bbox = ring_bbox(&hole);
+                faces
+                    .iter()
+                    .map(|f| ring_bbox(&f.rings[0]))
+                    .enumerate()
+                    .filter(|(_, bbox)| bbox_contains(bbox, &hole_bbox))
+                    .min_by(|(_, a), (_, b)| {
+                        bbox_area(a)
+                            .partial_cmp(&bbox_area(b))
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .map(|(i, _)| i)
+            }
+        };
+        // No exterior -- by point-in-ring test, or by bounding-box fallback --
+        // claims this hole. There is nothing to subtract it from, so it is
+        // dropped rather than attached to an arbitrary face: the affected
+        // face's area is then a knowable overstatement by this hole's own
+        // area, rather than a silent, unrelated corruption.
         if let Some(i) = owner {
             faces[i].rings.push(hole);
         }
@@ -305,13 +364,24 @@ mod tests {
     }
 
     #[test]
-    fn concave_c_hole_centroid_is_outside_the_hole() {
-        // Confirms the fixture actually exercises the fallback: a plain
-        // centroid probe would misjudge this hole's own shape, let alone which
-        // exterior it belongs to.
+    fn concave_c_hole_defeats_a_naive_centroid_probe() {
+        // Confirms the fixture is a genuine test of concavity, not an
+        // accidentally-convex shape: the plain arithmetic-mean-of-vertices
+        // approach `ring_probe` deliberately does not use would misjudge even
+        // this hole's own shape, let alone which exterior it belongs to.
         let hole = concave_c_hole();
         assert!(signed_area_xy(&hole) < 0.0, "fixture hole must be CW");
-        assert!(!contains_point(&hole, ring_centroid(&hole)));
+        let mut sum = [0.0, 0.0];
+        for c in &hole {
+            sum[0] += c.pos[0];
+            sum[1] += c.pos[1];
+        }
+        let n = hole.len() as f64;
+        let centroid = [sum[0] / n, sum[1] / n];
+        assert!(
+            !contains_point(&hole, centroid),
+            "centroid was {centroid:?}, expected it outside the hole's own notch"
+        );
     }
 
     #[test]
@@ -411,5 +481,65 @@ mod tests {
         let cw = ring2(&[(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)]);
         assert!(signed_area_xy(&ccw) > 0.0);
         assert!(signed_area_xy(&cw) < 0.0);
+    }
+
+    /// A degenerate "ring": four collinear points, so every triangle any
+    /// vertex could form with its neighbours has zero area, and no ear
+    /// exists. Every coordinate here is an exact binary fraction (an
+    /// integer), so the collinearity is exact in `f64`, not an artifact of
+    /// rounding.
+    fn collinear_points() -> Vec<Corner<2>> {
+        ring2(&[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (3.0, 0.0)])
+    }
+
+    #[test]
+    fn ring_probe_returns_none_for_a_degenerate_collinear_ring() {
+        // `clip_rings_halfplane` is not expected to ever hand `clip_to_window`
+        // a ring this degenerate, so this exercises `ring_probe`'s `None`
+        // branch directly rather than trying to force the clip to produce
+        // one.
+        assert_eq!(ring_probe(&collinear_points()), None);
+    }
+
+    /// A degenerate "hole": three collinear points, all exact binary
+    /// fractions (multiples of 0.25) so the zero signed area is exact, not
+    /// an artifact of rounding. `clip_to_window`'s exterior/hole partition
+    /// sorts anything with signed area not `> 0.0` into `holes`, so this
+    /// lands there despite not really being a hole in any meaningful sense
+    /// -- which is exactly the case this fixture is for.
+    fn collinear_hole() -> Vec<Corner<2>> {
+        ring2(&[(0.25, 0.5), (0.5, 0.5), (0.75, 0.5)])
+    }
+
+    #[test]
+    fn degenerate_hole_with_no_verified_probe_falls_back_to_bounding_box_containment() {
+        let exterior = ring2(&[(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]);
+        let hole = collinear_hole();
+        assert_eq!(
+            ring_probe(&hole),
+            None,
+            "fixture must actually defeat ring_probe"
+        );
+
+        let faces = clip_to_window(vec![exterior, hole], &unit_window());
+        assert_eq!(faces.len(), 1);
+        assert_eq!(
+            faces[0].rings.len(),
+            2,
+            "the degenerate ring's bounding box sits inside the exterior's, \
+             so the bounding-box fallback must still attribute it"
+        );
+        // A zero-area ring changes nothing: still the full unit square.
+        assert!((faces_area_xy(&faces) - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn degenerate_hole_with_no_containing_exterior_is_dropped() {
+        // No exterior at all in this batch, so neither the point-in-ring test
+        // nor the bounding-box fallback has anything to attribute the
+        // degenerate hole to; it must be dropped rather than surface as a
+        // face on its own (it has zero area and is not an exterior ring).
+        let hole = collinear_hole();
+        assert!(clip_to_window(vec![hole], &unit_window()).is_empty());
     }
 }
