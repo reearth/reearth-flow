@@ -117,11 +117,11 @@ pub fn parse_geometry(
 }
 
 /// A WKT cell can hold a several-thousand-vertex polygon, and the error text
-/// this caps lands in a CSV cell of the rejected output alongside it. 120
-/// characters is enough to recognize which value is at fault (its geometry
-/// type, its first few coordinates) without the error cell dwarfing the row
-/// it describes; the untruncated original always survives in the row's own
-/// geometry column (see `csv.rs`), so nothing here is actually lost.
+/// this caps is what a failed read prints. 120 characters is enough to
+/// recognize which value is at fault (its geometry type, its first few
+/// coordinates) without burying the rest of the message; the error carries
+/// the row number too (see `csv.rs`), so the untruncated original is always
+/// one lookup away in the file itself.
 const WKT_ERROR_VALUE_MAX_CHARS: usize = 120;
 
 /// Caps `value` to `WKT_ERROR_VALUE_MAX_CHARS`, appending `...` when cut.
@@ -617,8 +617,8 @@ mod tests {
         );
     }
 
-    /// The error names the column and the value, because that text is what
-    /// reaches the user in the rejected row's error attribute.
+    /// The error names the column and the value, because that text is the
+    /// whole of what the user gets when this fails the read.
     #[test]
     fn a_non_numeric_cell_errors_naming_the_column_and_value() {
         let err = parse_geometry(
