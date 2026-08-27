@@ -18,6 +18,8 @@ pub mod coerce;
 pub mod elevation;
 #[cfg(feature = "new-geometry")]
 pub mod footprint;
+#[cfg(feature = "new-geometry")]
+pub mod grid;
 pub mod hole;
 pub mod reproject;
 pub mod split;
