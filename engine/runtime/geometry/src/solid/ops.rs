@@ -269,6 +269,23 @@ impl Footprint for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for Solid {
+    /// The true surface of every shell, voids included: a void's faces are real
+    /// surfaces, so a hollow body has *more* surface than a solid one. That is
+    /// deliberately unlike a polygon's holes, which subtract.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_boundary_face(|face| total += polygon_3d_surface_area(&face));
+        Ok(total)
+    }
+}
+
 use crate::ops::boundary::{Boundary, ExtractBoundary};
 use crate::polygon_mesh::PolygonMesh3D;
 use crate::triangular_mesh::TriangularMesh3D;

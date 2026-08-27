@@ -6,35 +6,15 @@
     },
     {
       "name": "Area Calculator",
-      "description": "Calcule la surface plane ou inclinée des géométries de polygone et ajoute les résultats en tant qu'attributs",
+      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
       "parameterI18n": {
         "": {
           "title": "Area Calculator Parameters",
           "description": "Configure how the area of each feature's geometry is measured and stored."
         },
-        "areaType": {
-          "title": "Area Type",
-          "description": "Whether to measure the flat projected area or the true sloped surface area. Has no effect on a geometry with no elevation, which is always flat."
-        },
-        "multiplier": {
-          "title": "Multiplier",
-          "description": "Factor applied to the calculated area, for converting to another unit. Defaults to 1.0."
-        },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Attribute to store the calculated area in. Defaults to `area`."
-        }
-      },
-      "enumI18n": {
-        "AreaType": {
-          "planeArea": {
-            "title": "Planar Area",
-            "description": "Calculates the flat area of the geometry projected onto the XY plane."
-          },
-          "slopedArea": {
-            "title": "Sloped Area",
-            "description": "Calculates the true surface area, accounting for the slope of each face."
-          }
+          "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one."
         }
       }
     },
