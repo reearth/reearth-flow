@@ -102,10 +102,8 @@ pub(crate) fn is_blocked_ip(ip: IpAddr, allow_private: bool) -> bool {
 fn is_never_routable(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {
-            v4.is_unspecified()
-                || v4.is_broadcast()
-                || v4.is_multicast()
-                || v4.octets()[0] == 0 // 0.0.0.0/8 "this network"
+            v4.is_unspecified() || v4.is_broadcast() || v4.is_multicast() || v4.octets()[0] == 0
+            // 0.0.0.0/8 "this network"
         }
         IpAddr::V6(v6) => v6.is_unspecified() || v6.is_multicast(),
     }
