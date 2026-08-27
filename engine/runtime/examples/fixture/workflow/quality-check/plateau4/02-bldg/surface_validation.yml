@@ -156,9 +156,9 @@ nodes:
     type: action
     action: Area On Area Overlayer
     with:
-      accumulationMode: dropIncomingAttributes
+      attributeAccumulation: dropAttributes
       outputAttribute: overlap
-      generateList: list
+      listAttribute: list
       tolerance: 0.01
 
   - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
@@ -632,9 +632,9 @@ nodes:
     type: action
     action: Area On Area Overlayer
     with:
-      accumulationMode: dropIncomingAttributes
+      attributeAccumulation: dropAttributes
       outputAttribute: overlap
-      generateList: list
+      listAttribute: list
       groupBy:
         - lod
       tolerance: 0.01
@@ -678,20 +678,17 @@ nodes:
     type: action
     action: CSG Builder
     with:
-      pairIdAttribute:
+      pairId:
         type: flowExpr
         value: attributes["pair_id"]
-      createList: true
-      listAttributeName: attrList
+      listAttribute: attrList
 
   - id: 155cb125-9e89-4825-b505-4b2f2b6dbe0d
     name: CSGEvaluator
     type: action
     action: CSG Evaluator
     with:
-      tolerance:
-        type: flowExpr
-        value: "0.01"
+      tolerance: 0.01
 
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperSolidIntersection
@@ -914,7 +911,7 @@ edges:
   - id: ee5ff6aa-7bb8-4cc9-9dd0-3ee1ff2aa3bb
     from: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
     to: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: bb8cc9dd-0ee1-4ff2-9aa3-6bb4cc5dd6ee
     from: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
@@ -1177,7 +1174,7 @@ edges:
   - id: f8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
     from: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
     to: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
-    fromPort: area
+    fromPort: overlaps
     toPort: features
   - id: f9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f
     from: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
