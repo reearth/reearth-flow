@@ -125,7 +125,10 @@ Bufferer
              not a polygon — buffer_polygon() takes only a distance. The
              description now says so. Honouring it for polygons is an algorithm
              change, not a metadata one.
-  impl:    only points, curves and single polygons are buffered. Every other
+  impl:    SUPERSEDED by #2370 for the shipped build — see the Bufferer note under the bucket
+             table. What follows describes the legacy implementation, which #2370 replaced
+             rather than ported; it is kept because the legacy build still behaves this way.
+           only points, curves and single polygons are buffered. Every other
              type — multi-polygons above all, but also multi-points,
              multi-curves, solids, triangles and collections — is emitted on
              `features` unbuffered (the 3D arm projects it to 2D first). This
@@ -471,21 +474,32 @@ workflow that names it, so no existing workflow broke.
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
-**`Bufferer` needs a decision, not a bucket.** Its new-geometry port landed in #2370
-(2026-08-25), so it has left the does-not-run bucket, and it was already reviewed in the
-Geometry A batch (#2317) — which would ordinarily make it exposable. It is deliberately still
-absent from `base_actions.go` for two reasons, and neither is mine to settle:
+**`Bufferer` is a re-exposure candidate.** Its new-geometry port landed in #2370 (2026-08-25),
+so it has left the does-not-run bucket, and it was reviewed in the Geometry A batch (#2317).
 
-- Its review left an open `impl:` finding (recorded above): only points, curves and single
-  polygons are buffered, and every other type — multi-polygons above all — is emitted on
-  `features` **unbuffered**, so the distance is silently not applied to them. Exposing an action
-  that quietly ignores its own main parameter for most inputs is a product call.
-- It was reviewed on 2026-07-30, before the standard was rescoped on 2026-08-20/21 (§7, the §8
-  `impl:` line, the §6 tag rewrite), and its new-geometry implementation did not exist then. So
-  the `impl:` trace has never been run against the code that now ships, whatever the old review
-  concluded about the legacy one.
+**Its blocking `impl:` finding does not apply to the shipped build.** That finding — only
+points, curves and single polygons buffered, every other type emitted **unbuffered** — was
+written against the legacy implementation, and #2370 did not port that implementation, it
+replaced it. The new `process` calls `overlay::buffer` and either buffers or rejects; there is
+no passthrough arm. `buffer_leaves` partitions the leaves into areal, line and point and buffers
+all three, and `flatten_2d` unnests collections first, so multi-geometries are covered. Both
+"buffer these types too" TODOs still in `bufferer.rs` sit inside
+`#[cfg(not(feature = "new-geometry"))]` helpers. Verified 2026-08-27; the finding above is
+retained only as the legacy record.
 
-Trigger: a decision on the first point, plus an `impl:` re-check against the new-geometry build.
+What is genuinely still open is smaller:
+
+- `bufferType` remains a single-variant `oneOf` (§3.4 design smell), deliberately, with a TODO:
+  a `solid` type needs a solid-buffering algorithm the geometry crate does not have.
+- The review predates the standard's 2026-08-20/21 rescoping (§7, the §8 `impl:` line, the §6
+  tag rewrite), and #2370 changed user-visible behaviour — `interpolationAngle` is now the arc
+  step directly, clamped to [1.8, 45], where legacy multiplied it by four; 3D points and line
+  strings are now rejected rather than flattened; polygons are validated for planarity and hole
+  winding. #2370 updated the parameter text to match, so this is a re-check rather than a
+  rewrite.
+
+Trigger: an §8 re-check against the new-geometry build, then expose. It is not held up by a
+correctness defect.
 
 `Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
