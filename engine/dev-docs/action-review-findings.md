@@ -466,8 +466,8 @@ workflow that names it, so no existing workflow broke.
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
 | Exposed and audited | 74 | — |
-| Does not run in the shipped build | 20 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **7** | An engine-side §8 pass — the list below |
+| Does not run in the shipped build | 19 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **8** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -491,7 +491,7 @@ Trigger: a decision on the first point, plus an `impl:` re-check against the new
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
 new-geometry support and were assumed to be near-compliant. That held for the reprojector, which
 postdates the standard, and did not for Dissolver, whose action long predates it — only its
-geometry port is recent. Worth remembering when guessing which of the remaining 7 are cheap.
+geometry port is recent. Worth remembering when guessing which of the remaining 8 are cheap.
 
 ### What "audited" now means — read §"How to use" and §8 first
 
@@ -507,13 +507,13 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 7 actions, with preliminary findings
+### Pending audit — 8 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Newly eligible — its port landed (1)
+#### Newly eligible — its port landed (2)
 
 **`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
 two cases differ and the difference is the whole point of §7.2's rule. Elevation Extractor had
@@ -530,6 +530,13 @@ Elevation Extractor
   scan:    NOT scanned. Everything else in this list carries preliminary findings from an
              earlier schema pass; this one was in the unported bucket then, so it has had no
              review of any kind. Budget a full §8 pass, not a re-check.
+
+Spatial Filter
+  runs:    Ported in #2410 (2026-08-27), so it now runs in the shipped build and has left the
+             does-not-run bucket. Same case as Elevation Extractor and not Bufferer's: it
+             appears nowhere in this file, so it has never been reviewed and the port landing
+             hands it here rather than to a decision.
+  scan:    NOT scanned, for the same reason. Budget a full §8 pass.
 ```
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)

@@ -27,7 +27,6 @@ type Container struct {
 	Deployment    Deployment
 	Job           Job
 	Log           Log
-	NodeExecution NodeExecution
 	Parameter     Parameter
 	Project       Project
 	ProjectAccess ProjectAccess

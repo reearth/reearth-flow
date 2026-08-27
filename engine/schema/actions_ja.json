@@ -2863,7 +2863,7 @@
         "properties": {
           "destinationFrame": {
             "title": "Destination Frame",
-            "description": "Coordinate frame to convert geometry into.",
+            "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code.",
             "allOf": [
               {
                 "$ref": "#/definitions/DestinationFrame"
@@ -2892,40 +2892,38 @@
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
                 "type": "object",
                 "required": [
-                  "epsgCode",
-                  "type"
+                  "crs"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "crs"
-                    ]
-                  },
-                  "epsgCode": {
-                    "title": "EPSG Code",
-                    "description": "EPSG code of the destination coordinate reference system.",
-                    "type": "integer",
-                    "format": "uint16",
-                    "minimum": 0.0
+                  "crs": {
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
                   }
-                }
+                },
+                "additionalProperties": false
               },
               {
                 "title": "Euclidean",
                 "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "euclidean"
-                    ]
-                  }
-                }
+                "type": "string",
+                "enum": [
+                  "euclidean"
+                ]
               }
             ]
           },
@@ -3647,6 +3645,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "入力属性の継承",
+            "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3738,6 +3742,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "入力属性の継承",
+            "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -12510,7 +12520,7 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "フィルタージオメトリとの空間的な関係に基づいて候補の地物をフィルタリングする",
+      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Spatial Filter パラメータ",
@@ -12519,7 +12529,7 @@
         "properties": {
           "predicate": {
             "title": "空間述語",
-            "description": "フィルターと候補ジオメトリ間でテストする空間関係",
+            "description": "テストする空間関係。候補が主語となる: within は候補がフィルタージオメトリの内部にある場合に通過し、contains は候補がフィルタージオメトリを含む場合に通過する",
             "default": "intersects",
             "allOf": [
               {
@@ -12527,15 +12537,19 @@
               }
             ]
           },
-          "passOnMultipleMatches": {
-            "title": "複数マッチ時に通過",
-            "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）",
-            "default": true,
-            "type": "boolean"
+          "matchMode": {
+            "title": "マッチモード",
+            "description": "候補がいずれか 1 つのフィルター地物に一致すれば通過するか、すべてのフィルター地物に一致した場合のみ通過するか",
+            "default": "any",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MatchMode"
+              }
+            ]
           },
           "mergeFilterAttributes": {
             "title": "フィルター属性をマージ",
-            "description": "true の場合、一致したフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される",
+            "description": "true の場合、一致したすべてのフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後に一致したフィルターの値が優先される",
             "default": false,
             "type": "boolean"
           },
@@ -12550,7 +12564,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "マッチ数出力属性",
-            "description": "一致したフィルター数を格納する属性名（任意）",
+            "description": "候補が一致したフィルター地物の数を格納する属性名（任意）",
             "default": null,
             "anyOf": [
               {
@@ -12566,7 +12580,7 @@
           "SpatialPredicate": {
             "oneOf": [
               {
-                "description": "フィルタージオメトリが候補を完全に含む",
+                "description": "候補がフィルタージオメトリを完全に含む",
                 "type": "string",
                 "enum": [
                   "contains"
@@ -12622,10 +12636,32 @@
                 ]
               },
               {
-                "description": "フィルタージオメトリが候補を覆う",
+                "description": "候補がフィルタージオメトリを覆う",
                 "type": "string",
                 "enum": [
                   "covers"
+                ]
+              }
+            ]
+          },
+          "MatchMode": {
+            "title": "Match Mode",
+            "description": "How the tests against the individual filter features combine into pass or fail.",
+            "oneOf": [
+              {
+                "title": "いずれか",
+                "description": "少なくとも 1 つのフィルター地物に一致した候補を通過させる",
+                "type": "string",
+                "enum": [
+                  "any"
+                ]
+              },
+              {
+                "title": "すべて",
+                "description": "すべてのフィルター地物に一致した場合のみ候補を通過させる",
+                "type": "string",
+                "enum": [
+                  "all"
                 ]
               }
             ]

@@ -1009,7 +1009,15 @@
         },
         "destinationFrame": {
           "title": "Destination Frame",
-          "description": "Coordinate frame to convert geometry into."
+          "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
         }
       }
     },
@@ -1226,6 +1234,10 @@
           "title": "Aplanar Nodos de Objeto con Hijo Único",
           "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
         },
+        "inheritInputAttributes": {
+          "title": "Heredar Atributos de Entrada",
+          "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
+        },
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
@@ -1259,6 +1271,10 @@
         "flattenSingleChildObjects": {
           "title": "Aplanar Nodos de Objeto con Hijo Único",
           "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "inheritInputAttributes": {
+          "title": "Heredar Atributos de Entrada",
+          "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
         },
         "keepAttributes": {
           "title": "Conservar Atributos",
@@ -3594,15 +3610,19 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "Filtra entidades por relación espacial",
+      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales.",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter Parameters",
+          "title": "Spatial Filter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
+        },
+        "matchMode": {
+          "title": "Match Mode",
+          "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature."
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
+          "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
@@ -3610,27 +3630,33 @@
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of matching filters"
-        },
-        "passOnMultipleMatches": {
-          "title": "Pass on Multiple Matches",
-          "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic)."
+          "description": "Optional attribute name to store the number of filter features the candidate matched."
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test between filter and candidate geometries"
+          "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one."
         }
       },
       "enumI18n": {
+        "MatchMode": {
+          "all": {
+            "title": "All",
+            "description": "Passes a candidate only when every filter feature matches it."
+          },
+          "any": {
+            "title": "Any",
+            "description": "Passes a candidate that matches at least one filter feature."
+          }
+        },
         "SpatialPredicate": {
           "contains": {
-            "description": "Filter geometry completely contains candidate"
+            "description": "Candidate completely contains the filter geometry"
           },
           "coveredBy": {
             "description": "Candidate is covered by filter geometry"
           },
           "covers": {
-            "description": "Filter geometry covers candidate"
+            "description": "Candidate covers the filter geometry"
           },
           "crosses": {
             "description": "Geometries cross each other"

@@ -2821,40 +2821,38 @@ Reprojects geometry between coordinate reference systems and converts between a 
           "description": "Reproject to a coordinate reference system identified by an EPSG code.",
           "type": "object",
           "required": [
-            "epsgCode",
-            "type"
+            "crs"
           ],
           "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "crs"
-              ]
-            },
-            "epsgCode": {
-              "title": "EPSG Code",
-              "description": "EPSG code of the destination coordinate reference system.",
-              "type": "integer",
-              "format": "uint16",
-              "minimum": 0.0
+            "crs": {
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
-          }
+          },
+          "additionalProperties": false
         },
         {
           "title": "Euclidean",
           "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "euclidean"
-              ]
-            }
-          }
+          "type": "string",
+          "enum": [
+            "euclidean"
+          ]
         }
       ]
     },
@@ -3540,6 +3538,12 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
         "string",
         "null"
       ]
+    },
+    "inheritInputAttributes": {
+      "title": "Inherit Input Attributes",
+      "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
@@ -3627,6 +3631,12 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
         "string",
         "null"
       ]
+    },
+    "inheritInputAttributes": {
+      "title": "Inherit Input Attributes",
+      "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
@@ -12166,7 +12176,7 @@ Validates the Solid Boundary Geometry
 ### Type
 * processor
 ### Description
-Filters candidate features based on their spatial relationship to filter geometry.
+Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units.
 ### Parameters
 ```json
 {
@@ -12177,7 +12187,7 @@ Filters candidate features based on their spatial relationship to filter geometr
   "properties": {
     "predicate": {
       "title": "Spatial Predicate",
-      "description": "The spatial relationship to test between filter and candidate geometries.",
+      "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
       "default": "intersects",
       "allOf": [
         {
@@ -12185,15 +12195,19 @@ Filters candidate features based on their spatial relationship to filter geometr
         }
       ]
     },
-    "passOnMultipleMatches": {
-      "title": "Pass on Multiple Matches",
-      "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
-      "default": true,
-      "type": "boolean"
+    "matchMode": {
+      "title": "Match Mode",
+      "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature.",
+      "default": "any",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MatchMode"
+        }
+      ]
     },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
+      "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
       "default": false,
       "type": "boolean"
     },
@@ -12208,7 +12222,7 @@ Filters candidate features based on their spatial relationship to filter geometr
     },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of matching filters.",
+      "description": "Optional attribute name to store the number of filter features the candidate matched.",
       "default": null,
       "anyOf": [
         {
@@ -12224,7 +12238,7 @@ Filters candidate features based on their spatial relationship to filter geometr
     "SpatialPredicate": {
       "oneOf": [
         {
-          "description": "Filter geometry completely contains candidate",
+          "description": "Candidate completely contains the filter geometry",
           "type": "string",
           "enum": [
             "contains"
@@ -12280,10 +12294,32 @@ Filters candidate features based on their spatial relationship to filter geometr
           ]
         },
         {
-          "description": "Filter geometry covers candidate",
+          "description": "Candidate covers the filter geometry",
           "type": "string",
           "enum": [
             "covers"
+          ]
+        }
+      ]
+    },
+    "MatchMode": {
+      "title": "Match Mode",
+      "description": "How the tests against the individual filter features combine into pass or fail.",
+      "oneOf": [
+        {
+          "title": "Any",
+          "description": "Passes a candidate that matches at least one filter feature.",
+          "type": "string",
+          "enum": [
+            "any"
+          ]
+        },
+        {
+          "title": "All",
+          "description": "Passes a candidate only when every filter feature matches it.",
+          "type": "string",
+          "enum": [
+            "all"
           ]
         }
       ]
