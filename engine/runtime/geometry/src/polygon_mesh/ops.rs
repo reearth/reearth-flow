@@ -703,6 +703,30 @@ impl PolygonMesh3DData {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for PolygonMesh2D {
+    /// Each face's planar area, summed. A 2D mesh has no elevation to slope.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_face_polygon(|face| total += face.area());
+        Ok(total)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for PolygonMesh3D {
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_face_polygon(|face| total += polygon_3d_surface_area(&face));
+        Ok(total)
+    }
+}
+
 use crate::ops::boundary::{Boundary, ExtractBoundary};
 use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
 

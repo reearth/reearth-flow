@@ -23,62 +23,25 @@
     {
       "name": "Area Calculator",
       "type": "processor",
-      "description": "地物のジオメトリの平面または傾斜面積を計算し、属性として格納する",
+      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area Calculator パラメータ",
         "description": "各地物のジオメトリの面積を計算し格納する方法を設定する",
         "type": "object",
         "properties": {
-          "areaType": {
-            "title": "面積タイプ",
-            "description": "平面投影面積と実際の傾斜表面積のどちらを計算するか。標高を持たないジオメトリは常に平面のため影響しない",
-            "default": "planeArea",
-            "allOf": [
-              {
-                "$ref": "#/definitions/AreaType"
-              }
-            ]
-          },
           "outputAttribute": {
             "title": "出力属性",
-            "description": "計算された面積を格納する属性。デフォルトは `area`",
+            "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one.",
             "default": "area",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
-          },
-          "multiplier": {
-            "title": "乗数",
-            "description": "計算された面積に適用する係数。単位を変換する場合に使用する。デフォルトは 1.0",
-            "default": 1.0,
-            "type": "number",
-            "format": "double"
           }
         },
         "definitions": {
-          "AreaType": {
-            "oneOf": [
-              {
-                "title": "平面面積",
-                "description": "ジオメトリを XY 平面に投影した平坦な面積を計算する",
-                "type": "string",
-                "enum": [
-                  "planeArea"
-                ]
-              },
-              {
-                "title": "傾斜面積",
-                "description": "各面の傾斜を考慮した実際の表面積を計算する",
-                "type": "string",
-                "enum": [
-                  "slopedArea"
-                ]
-              }
-            ]
-          },
           "Attribute": {
             "type": "string"
           }
@@ -103,12 +66,12 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer パラメータ",
-        "description": "エリアオーバーレイ解析の実行方法を設定する",
+        "description": "どの地物同士を重ね合わせるか、どのサイズ未満をノイズとみなすか、分割後の断片が元の地物について記録する内容を設定する",
         "type": "object",
         "properties": {
           "groupBy": {
             "title": "グループ化属性",
-            "description": "オーバーレイ解析時にフィーチャーをグループ化する属性（任意）",
+            "description": "どの地物同士を重ね合わせるかを決める属性。すべての値が一致する地物のみが比較される。省略時はすべての地物を互いに重ね合わせる",
             "type": [
               "array",
               "null"
@@ -117,51 +80,62 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "accumulationMode": {
-            "title": "累積モード",
-            "description": "入力フィーチャーの属性を出力フィーチャーに反映する方法を制御する",
-            "default": "useAttributesFromOneFeature",
+          "tolerance": {
+            "title": "許容誤差",
+            "description": "ジオメトリを形状ではなくノイズとみなすサイズ。入力の座標フレームの単位で指定する。この距離より近い頂点はオーバーレイ前にマージされ、本来一致すべき境界が一致するようになる。さらに、この値の2乗より小さい面積の重なりは破棄される。したがって許容誤差より細かい形状はオーバーレイをそのまま通過しない場合がある。デフォルトは 0 で、マージも破棄も行わない",
+            "default": 0.0,
+            "type": "number",
+            "format": "double"
+          },
+          "attributeAccumulation": {
+            "title": "属性の引き継ぎ",
+            "description": "分割後の断片が保持する属性",
+            "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AccumulationMode"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           },
-          "generateList": {
-            "title": "リストを生成",
-            "description": "ソースフィーチャーの属性を格納するリスト属性名",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "outputAttribute": {
-            "title": "出力属性",
-            "description": "重複数を格納する属性名",
+            "title": "重複数属性",
+            "description": "その断片を覆う入力地物の数を格納する属性。`overlaps` では2以上、`remnants` では常に1になる。デフォルトは `overlayCount`",
+            "default": "overlayCount",
+            "type": "string"
+          },
+          "listAttribute": {
+            "title": "リスト属性",
+            "description": "その断片を覆う地物ごとに1件のエントリを格納する属性。各エントリはその地物自身の属性を保持する。省略時はリストを作成しない",
             "type": [
               "string",
               "null"
             ]
-          },
-          "tolerance": {
-            "title": "許容誤差",
-            "description": "ジオメトリの許容誤差。この距離より近い頂点はオーバーレイ処理中に同一とみなされる。",
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double"
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
           },
-          "AccumulationMode": {
-            "type": "string",
-            "enum": [
-              "useAttributesFromOneFeature",
-              "dropIncomingAttributes"
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a resulting piece keeps.",
+            "oneOf": [
+              {
+                "title": "1つの地物の属性を使用",
+                "description": "その断片を覆う地物のうち1つの属性だけを保持し、残りを破棄する",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              },
+              {
+                "title": "入力属性を破棄",
+                "description": "入力属性を一切保持せず、断片は重複数とリスト属性のみを持つ。グループ化属性も破棄される",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              }
             ]
           }
         }
@@ -171,14 +145,17 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "overlaps",
         "remnants",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Attribute Aggregator",
@@ -1458,20 +1435,20 @@
     {
       "name": "CSG Builder",
       "type": "processor",
-      "description": "一対のソリッドジオメトリ（左・右）からCSG（構成的立体幾何学）表現を構築する。和・積・差（左－右）を検出するが、結果ジオメトリは計算しない。ツリーを評価するにはCSGEvaluatorを使用してください。",
+      "description": "ペア値が一致する左右のソリッドを組み合わせ、和・積・差を未評価の CSG（構成的立体幾何）ツリーとして出力する。ツリーはブール演算を計算せずに記述するだけなので、後段の CSG Evaluator で必要な分岐をソリッドに変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder パラメータ",
-        "description": "左右のポートからフィーチャーをペアリングする方法を設定する",
+        "description": "2つの入力ストリームをどう対応付けるか、生成されるツリーが元のソリッドについて記録する内容を設定する",
         "type": "object",
+        "required": [
+          "pairId"
+        ],
         "properties": {
-          "pairIdAttribute": {
-            "title": "ペア ID 属性",
-            "description": "左右のポートのフィーチャーを照合するペア ID を評価する式",
-            "type": [
-              "object",
-              "null"
-            ],
+          "pairId": {
+            "title": "ペア ID",
+            "description": "各地物で評価して対応付けに使う値を求める式。同じ値になった left の地物と right の地物が組み合わされる。相手が現れなかった地物は rejected に送られる",
+            "type": "object",
             "format": "code",
             "required": [
               "type",
@@ -1489,17 +1466,9 @@
               }
             }
           },
-          "createList": {
-            "title": "リストを作成",
-            "description": "有効にすると、左右の子要素から属性値のリストを作成する",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "listAttributeName": {
-            "title": "リスト属性名",
-            "description": "リストを作成する属性名（create_list が true の場合に必須）",
+          "listAttribute": {
+            "title": "リスト属性",
+            "description": "左のソリッドと右のソリッドそれぞれについて1件のエントリを格納する属性。各エントリはその地物自身の属性を保持する。省略時はリストを作成せず、生成されるツリーは属性を一切持たない",
             "type": [
               "string",
               "null"
@@ -1521,41 +1490,27 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "3d"
+      ]
     },
     {
       "name": "CSG Evaluator",
       "type": "processor",
-      "description": "CSG（構成的立体幾何学）ツリーを評価してソリッドジオメトリを生成する。CSG表現を受け取り、ブール演算から得られるメッシュを計算する。",
+      "description": "CSG（構成的立体幾何）ツリーが記述するソリッドを計算し、ツリーを結果で置き換える。頂点の許容誤差は距離なので、オペランドは閉じていて外向きに巻かれたソリッドであり、かつ投影座標系である必要がある。体積を持たない結果になったツリーは empty ポートに送られる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Evaluator パラメータ",
-        "description": "CSG 演算の評価パラメータを設定する",
+        "description": "ブール演算がオペランドの頂点を同一の点として扱う距離を設定する",
         "type": "object",
-        "required": [
-          "tolerance"
-        ],
         "properties": {
           "tolerance": {
             "title": "許容誤差",
-            "description": "ジオメトリ演算の許容誤差値（f64 に評価される式）。頂点のマージおよびメッシュ処理に使用される。",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "頂点が切断面上にあるとみなす距離、および2つの頂点を同一とみなす距離。オペランドの座標系の単位で指定する。デフォルトは、ほぼ一致する頂点のみがマージされる十分に小さい距離",
+            "default": 1e-9,
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -1565,13 +1520,16 @@
       ],
       "outputPorts": [
         "features",
-        "nullport",
+        "empty",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "3d"
+      ]
     },
     {
       "name": "CSV Reader",
@@ -3478,18 +3436,19 @@
     {
       "name": "Excel Writer",
       "type": "sink",
-      "description": "地物をMicrosoft Excel形式（.xlsx）に書き出す",
+      "description": "各地物を .xlsx ワークシートの1行として書き出し、属性ごとに1列を割り当てる。ある属性名に `.formula` または `.hyperlink` を付けた属性は、その列のセルを値ではなく数式やリンクで埋める",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Excel Writer パラメータ",
-        "description": "フィーチャーを Microsoft Excel 形式に書き出す設定",
+        "description": "ワークブックの書き出し先とワークシート名を設定する",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する Excel ファイルの出力パスまたは式",
+            "title": "出力パス",
+            "description": ".xlsx ファイルを書き出すパス。式は地物ごとに評価されるため、異なるパスになる地物は別のワークブックに書き出される",
             "type": "object",
             "format": "code",
             "required": [
@@ -3510,11 +3469,10 @@
             }
           },
           "sheetName": {
-            "description": "シート名（デフォルト: \"Sheet1\"）",
-            "type": [
-              "string",
-              "null"
-            ]
+            "title": "シート名",
+            "description": "行を書き出すワークシートの名前。デフォルトは `Sheet1`",
+            "default": "Sheet1",
+            "type": "string"
           }
         }
       },
@@ -3524,9 +3482,11 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
       ],
-      "tags": []
+      "tags": [
+        "excel"
+      ]
     },
     {
       "name": "Extruder",
@@ -8380,17 +8340,25 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "交差する位置でラインを分割し、各交点を、そこで交わるラインの属性を結合して持つ点地物に変換する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
+      "description": "ラインが交差する位置で分割し、分割後の各セグメントに沿って走る入力ラインの数を記録し、交点ごとに点地物を出力する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer パラメータ",
-        "description": "ラインフィーチャー間の交点を検出する設定",
+        "description": "どのライン同士を交差判定するか、2つの頂点をどこまで同一とみなすか、分割後のセグメントが元のラインについて記録する内容を設定する",
         "type": "object",
         "required": [
           "tolerance"
         ],
         "properties": {
+          "tolerance": {
+            "title": "許容誤差",
+            "description": "2つの頂点を同一の点として扱う距離。入力の座標フレームの単位で指定する。どの交点でラインを分割するか、どの交点を同一の交点とみなすか、どのセグメントが重なるかを決め、この値より短いセグメントは破棄される。0 より大きい値を指定しないとラインは分割されない",
+            "type": "number",
+            "format": "double"
+          },
           "groupBy": {
+            "title": "グループ化属性",
+            "description": "どのライン同士を交差判定するかを決める属性。すべての値が一致するラインのみが比較される。省略時はすべてのラインを互いに交差判定する",
             "type": [
               "array",
               "null"
@@ -8399,12 +8367,15 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "tolerance": {
-            "type": "number",
-            "format": "double"
+          "outputAttribute": {
+            "title": "重複数属性",
+            "description": "分割後のセグメントに沿って走る入力ラインの数を格納する属性。デフォルトは `overlayCount`",
+            "default": "overlayCount",
+            "type": "string"
           },
-          "overlaidListsAttrName": {
-            "description": "オーバーレイされたリストを格納する属性名。デフォルトは \"overlaidLists\"。",
+          "listAttribute": {
+            "title": "リスト属性",
+            "description": "分割後のセグメントに沿って走るラインごとに1件のエントリを格納する属性。各エントリはそのライン自身の属性を保持する。省略時はリストを作成しない",
             "type": [
               "string",
               "null"
@@ -8429,7 +8400,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "List Concatenator",
