@@ -158,5 +158,6 @@ graphs:
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run \
 #   --workflow runtime/examples/fixture/workflow/http_caller_advanced.yml \
-#   --var outputFilePath=/tmp/http_success.json \
-#   --var errorFilePath=/tmp/http_errors.json
+#   --var outputFilePath=http_success.json \
+#   --var errorFilePath=http_errors.json
+# Both files land in the job's artifact directory, printed in the CLI startup logs.

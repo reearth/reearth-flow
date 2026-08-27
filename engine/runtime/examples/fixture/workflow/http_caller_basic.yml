@@ -73,4 +73,5 @@ graphs:
         toPort: features
 
 # To run this workflow:
-# cargo run --package reearth-flow-cli -- run --workflow runtime/examples/fixture/workflow/http_caller_basic.yml --var outputFilePath=/tmp/http_output.json
+# cargo run --package reearth-flow-cli -- run --workflow runtime/examples/fixture/workflow/http_caller_basic.yml --var outputFilePath=http_output.json
+# The file lands in the job's artifact directory, printed in the CLI startup logs.

@@ -162,7 +162,9 @@ graphs:
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run \
 #   --workflow runtime/examples/fixture/workflow/http_caller_file_upload.yml \
-#   --var outputFilePath=/tmp/upload_results.json
+#   --var outputFilePath=upload_results.json
+# Outputs (including the downloads/ file) land in the job's artifact directory,
+# printed in the CLI startup logs.
 
 # Note: For file uploads from actual files, use:
 # requestBody:
