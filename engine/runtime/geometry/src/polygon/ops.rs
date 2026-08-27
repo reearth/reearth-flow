@@ -869,7 +869,9 @@ mod grid_impl {
     //! closing duplicate is stripped on the way in, the same way
     //! `open_ring_positions` (above, in this file) strips it for
     //! triangulation. On the way out, [`ring_as_stored`] puts the closing
-    //! duplicate back, so a piece is stored exactly the way its source was.
+    //! duplicate back, so a piece's ring is stored exactly the way the source
+    //! ring it came from was -- decided per ring, because `from_rings`
+    //! normalizes nothing and a source's rings need not agree with each other.
     //! For a well-formed (closed) source that means every divided piece is
     //! closed too, and the crate's closed-ring invariant holds for it:
     //! `validation_next`'s `check_unclosed_ring` accepts it, and
@@ -960,16 +962,24 @@ mod grid_impl {
         fn set_elevation_for_grid(&mut self, _elevation: Option<f64>) {}
     }
 
-    /// Whether the source polygon's rings are stored **closed** (first ==
-    /// last), judged on the exterior -- the ring `from_rings` stores verbatim
-    /// and every other ring of the same polygon follows.
+    /// Whether *this* ring is stored **closed** (first == last).
+    ///
+    /// Asked of every source ring, not once of the exterior. `from_rings`
+    /// normalizes nothing, so a polygon whose exterior is closed and whose
+    /// interior is not is constructible -- and answering for the interior
+    /// with the exterior's verdict would close a ring `rings_of` never
+    /// stripped, leaving the piece one stored coord longer than the
+    /// appearance the untouched fast path clones straight off the source.
+    /// That is exactly the corner-count / UV-length mismatch carrying the
+    /// source's storage shape through exists to prevent, so the shape is
+    /// carried per ring.
     ///
     /// A well-formed polygon is closed; the bare polygons
     /// `polygon_mesh/ops.rs` rebuilds from a mesh's CSR face buffers are not,
     /// because a mesh leaves the closing edge implied. See the module doc for
     /// why the difference has to be carried through rather than normalized.
-    fn stored_closed<const N: usize>(exterior: &[[f64; N]]) -> bool {
-        exterior.len() >= 2 && exterior.first() == exterior.last()
+    fn stored_closed<const N: usize>(ring: &[[f64; N]]) -> bool {
+        ring.len() >= 2 && ring.first() == ring.last()
     }
 
     /// One clipped ring's corners in *storage* order: the open ring the clip
@@ -1192,7 +1202,7 @@ mod grid_impl {
                         };
 
                         let uv = explicit_uv(self.appearance());
-                        let rings = rings_of(self, uv.as_deref());
+                        let (rings, ring_closed) = rings_of(self, uv.as_deref());
                         if rings.is_empty() {
                             return Err(GridDivideError::Empty);
                         }
@@ -1210,7 +1220,7 @@ mod grid_impl {
                                 }
                                 let coverage =
                                     CellCoverage::from_area(faces_area_xy(&faces), window.area());
-                                let geom = rebuild(self, faces, &rings);
+                                let geom = rebuild(self, faces, &rings, &ring_closed);
                                 emit(cell, coverage, geom);
                             }
                         }
@@ -1218,18 +1228,30 @@ mod grid_impl {
                     }
                 }
 
-                /// Every ring (exterior, then holes) as open `Corner` rings.
+                /// Every ring (exterior, then holes) as open `Corner` rings,
+                /// alongside a parallel flag per ring saying whether the
+                /// source stored *that* ring closed.
                 ///
                 /// A well-formed ring is stored closed (first == last); the
-                /// closing duplicate is stripped here. The cursor still
-                /// advances by each ring's full *stored* length (closing
-                /// duplicate included), so a later ring's UV indices stay
-                /// aligned with `coords` -- `uv`'s own layout.
-                fn rings_of(p: &$ty, uv: Option<&[[f64; 2]]>) -> Vec<Vec<Corner<$dim>>> {
+                /// closing duplicate is stripped here, and its flag is what
+                /// [`ring_as_stored`] later restores it by. The flags are
+                /// per ring rather than one verdict from the exterior
+                /// because `from_rings` normalizes nothing, so the rings of
+                /// one polygon need not agree -- see [`stored_closed`].
+                ///
+                /// The cursor still advances by each ring's full *stored*
+                /// length (closing duplicate included), so a later ring's UV
+                /// indices stay aligned with `coords` -- `uv`'s own layout.
+                fn rings_of(
+                    p: &$ty,
+                    uv: Option<&[[f64; 2]]>,
+                ) -> (Vec<Vec<Corner<$dim>>>, Vec<bool>) {
                     let mut out = Vec::new();
+                    let mut closed = Vec::new();
                     let mut cursor = 0usize;
                     for ring in std::iter::once(p.exterior()).chain(p.interiors()) {
-                        let open_len = if ring.len() >= 2 && ring[0] == ring[ring.len() - 1] {
+                        let is_closed = stored_closed(ring);
+                        let open_len = if is_closed {
                             ring.len() - 1
                         } else {
                             ring.len()
@@ -1244,27 +1266,52 @@ mod grid_impl {
                                 })
                                 .collect::<Vec<_>>();
                             out.push(corners);
+                            closed.push(is_closed);
                         }
                         cursor += ring.len();
                     }
-                    out
+                    (out, closed)
                 }
 
                 /// Rebuild one clipped face as a polygon in the source's
                 /// frame. `source_rings` is the whole source's own rings
                 /// (as fed into the clip, exterior first) -- compared
                 /// against this face's rings to tell whether the clip
-                /// touched anything at all.
+                /// touched anything at all -- and `source_closed` is
+                /// `rings_of`'s parallel record of how each of those rings
+                /// was stored.
                 fn build_one(
                     src: &$ty,
                     face: Face<$dim>,
                     source_rings: &[Vec<Corner<$dim>>],
+                    source_closed: &[bool],
                 ) -> $ty {
                     let unchanged = corner_layout_unchanged(&face.rings, source_rings);
-                    // Store the piece's rings the way the source's are: for a
-                    // well-formed polygon that means closed, which is what
-                    // `rings_of` stripped on the way in.
-                    let close = stored_closed(src.exterior());
+
+                    // Store each of the piece's rings the way its *own*
+                    // source ring was: for a well-formed polygon that means
+                    // closed, which is what `rings_of` stripped on the way
+                    // in, but a polygon's rings need not agree with each
+                    // other (see `stored_closed`).
+                    //
+                    // Rings are matched to their source by position:
+                    // exterior first, then holes in order, which is the
+                    // order the clip preserves. On the untouched fast path
+                    // -- the one where getting this wrong desynchronizes the
+                    // cloned appearance from the corner buffer -- the match
+                    // is exact by definition, since `unchanged` means ring
+                    // for ring, corner for corner. A cut piece can have more
+                    // rings than the source (a face severed in two), and
+                    // those fall back to the exterior's shape; its UV is
+                    // regathered over these same calls either way, so the UV
+                    // stays parallel to the stored coords regardless.
+                    let close_of = |i: usize| -> bool {
+                        source_closed
+                            .get(i)
+                            .or_else(|| source_closed.first())
+                            .copied()
+                            .unwrap_or(false)
+                    };
 
                     let mut ring_iter = face.rings.into_iter();
                     let exterior_corners = ring_iter.next().unwrap_or_default();
@@ -1283,16 +1330,18 @@ mod grid_impl {
                     // short-circuits to `None` the moment one is missing.
                     let gathered_uv: Option<Vec<[f64; 2]>> = std::iter::once(&exterior_corners)
                         .chain(interior_corners.iter())
-                        .flat_map(|ring| ring_as_stored(ring, close))
+                        .enumerate()
+                        .flat_map(|(i, ring)| ring_as_stored(ring, close_of(i)))
                         .map(|c| c.uv)
                         .collect();
 
-                    let exterior: Vec<[f64; $dim]> = ring_as_stored(&exterior_corners, close)
+                    let exterior: Vec<[f64; $dim]> = ring_as_stored(&exterior_corners, close_of(0))
                         .map(|c| c.pos)
                         .collect();
                     let interiors: Vec<Vec<[f64; $dim]>> = interior_corners
                         .iter()
-                        .map(|r| ring_as_stored(r, close).map(|c| c.pos).collect())
+                        .enumerate()
+                        .map(|(i, r)| ring_as_stored(r, close_of(i + 1)).map(|c| c.pos).collect())
                         .collect();
 
                     let mut poly = $ty::from_rings(src.frame().clone(), exterior, interiors);
@@ -1312,11 +1361,12 @@ mod grid_impl {
                     src: &$ty,
                     faces: Vec<Face<$dim>>,
                     source_rings: &[Vec<Corner<$dim>>],
+                    source_closed: &[bool],
                 ) -> Geometry {
                     $wrap(
                         faces
                             .into_iter()
-                            .map(|face| build_one(src, face, source_rings))
+                            .map(|face| build_one(src, face, source_rings, source_closed))
                             .collect(),
                     )
                 }

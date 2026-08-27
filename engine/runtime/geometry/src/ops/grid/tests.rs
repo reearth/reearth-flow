@@ -1883,3 +1883,71 @@ fn a_full_region_at_projected_crs_coordinates_reports_every_cell_full() {
         "exactly-full cells wrongly judged Partial (leaf, origin, count out of 36): {wrong:?}"
     );
 }
+
+#[test]
+fn a_ring_left_open_by_the_source_stays_open_in_the_piece() {
+    use crate::appearance::UvSource;
+    use crate::test_support::{explicit_uv, textured, theme};
+
+    // `from_rings` normalizes nothing, so a polygon whose exterior is stored
+    // closed and whose interior is stored open is constructible. Storage
+    // shape has to be decided per ring: judging it once from the exterior
+    // would close the interior on the way out, even though `rings_of` never
+    // stripped a closing duplicate from it, leaving the piece one stored
+    // coord longer than its own corner buffer -- and the untouched fast path
+    // clones the source's appearance verbatim, so the UV array would be one
+    // entry short of the coords it is supposed to be parallel to.
+    let exterior = [[1.0, 1.0], [5.0, 1.0], [5.0, 5.0], [1.0, 5.0], [1.0, 1.0]];
+    let interior = vec![[2.0, 2.0], [2.0, 4.0], [4.0, 4.0], [4.0, 2.0]];
+    let mut poly = Polygon2D::from_rings(CoordinateFrame::default(), exterior, [interior]);
+    assert_eq!(poly.exterior().len(), 5, "source exterior is stored closed");
+    assert_eq!(
+        poly.interiors().next().expect("one hole").len(),
+        4,
+        "source interior is stored open"
+    );
+
+    // Parallel to the source's nine stored coords: five exterior, four
+    // interior.
+    let uv = explicit_uv(&[
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [0.0, 1.0],
+        [0.0, 0.0],
+        [0.25, 0.25],
+        [0.25, 0.75],
+        [0.75, 0.75],
+        [0.75, 0.25],
+    ]);
+    poly.set_appearance(theme("rgb"), textured(), Some(uv))
+        .unwrap();
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    // One cell far larger than the polygon, so the clip touches nothing and
+    // the piece takes the source's appearance verbatim.
+    let grid = GridSpec::new([0.0, 0.0], 10.0).expect("valid spec");
+    let mut checked = 0;
+    geom.divide_by_grid(&grid, &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("a face divides into faces");
+        };
+        assert_eq!(p.exterior().len(), 5, "closed source exterior stays closed");
+        let holes: Vec<usize> = p.interiors().map(|r| r.len()).collect();
+        assert_eq!(holes, vec![4], "open source interior stays open");
+
+        let app = p.appearance().as_ref().expect("appearance carried through");
+        let UvSource::Explicit(uv) = &app.themes()[0].uv_sets[0].uv else {
+            panic!("expected an explicit output UV set");
+        };
+        let stored = p.exterior().len() + holes.iter().sum::<usize>();
+        assert_eq!(
+            uv.len(),
+            stored,
+            "UV must stay parallel to the piece's own stored coords"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 1, "exactly one piece must have been checked");
+}
