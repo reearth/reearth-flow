@@ -845,10 +845,37 @@ mod grid_impl {
     //! last); `ops::grid`'s half-plane clip assumes **open** rings, so the
     //! closing duplicate is stripped on the way in, the same way
     //! `open_ring_positions` (above, in this file) strips it for
-    //! triangulation. On the way out, rings are carried through verbatim --
-    //! neither re-closed nor re-wound -- matching how `ExtractHoles`
-    //! (`ops/hole.rs`) treats algorithmically split rings elsewhere in this
-    //! crate.
+    //! triangulation. On the way out, [`ring_as_stored`] puts the closing
+    //! duplicate back, so a piece is stored exactly the way its source was.
+    //! For a well-formed (closed) source that means every divided piece is
+    //! closed too, and the crate's closed-ring invariant holds for it:
+    //! `validation_next`'s `check_unclosed_ring` accepts it, and
+    //! `ops::containment`'s `coord_pos_relative_to_ring` -- which walks
+    //! `windows(2)` and documents that rings are stored closed -- judges hole
+    //! containment on it correctly.
+    //!
+    //! Mirroring the source rather than closing unconditionally is what makes
+    //! this safe for the *mesh* leaves, which are this op's other caller:
+    //! `polygon_mesh/ops.rs` rebuilds each mesh face into a bare polygon whose
+    //! rings are open (a mesh's CSR face buffers leave the closing edge
+    //! implied), divides that, and welds the pieces back with
+    //! `PolygonMesh3D::from_polygons`, which re-closes each ring itself. A
+    //! piece closed on the way out of an open source would carry one more
+    //! stored coord than its appearance's UV, and would no longer compare
+    //! equal to its source face in `mesh_unchanged`'s per-ring check.
+    //!
+    //! Winding is left alone either way: the clip preserves each ring's
+    //! orientation, so there is nothing to re-wind.
+    //!
+    //! Storage shape and UV length are one question, not two -- the UV array
+    //! is parallel to the *stored* coords -- so a restored closing duplicate
+    //! takes a duplicate UV entry with it, on both the untouched and the cut
+    //! path (see `build_one`).
+    //!
+    //! A `Polygon2D`'s single scalar elevation is not derivable from the
+    //! divided rings, so it is carried across explicitly (see
+    //! [`CarryElevation`]); a grid clip only cuts in XY, so it transfers
+    //! verbatim.
     //!
     //! Appearance is rebuilt per piece rather than blindly cloned, because a
     //! piece's corner count generally differs from its source's -- except
@@ -882,9 +909,79 @@ mod grid_impl {
         }
     }
 
+    /// The single scalar elevation a `Polygon2D` face lies at (`None` for a
+    /// `Polygon3D`, whose height lives in every corner's own `z` and is
+    /// already carried through the clip by interpolation). A grid clip only
+    /// ever cuts in XY, so this is never recomputed from the divided output
+    /// -- it is reattached to each piece verbatim, the same way
+    /// `triangular_mesh/ops.rs`'s trait of the same name and
+    /// `polygon_mesh/ops.rs`'s `z: self.elevation()` carry theirs.
+    trait CarryElevation {
+        fn elevation_for_grid(&self) -> Option<f64>;
+        fn set_elevation_for_grid(&mut self, elevation: Option<f64>);
+    }
+
+    impl CarryElevation for Polygon2D {
+        fn elevation_for_grid(&self) -> Option<f64> {
+            self.elevation()
+        }
+        fn set_elevation_for_grid(&mut self, elevation: Option<f64>) {
+            self.z = elevation;
+        }
+    }
+
+    impl CarryElevation for Polygon3D {
+        fn elevation_for_grid(&self) -> Option<f64> {
+            None
+        }
+        fn set_elevation_for_grid(&mut self, _elevation: Option<f64>) {}
+    }
+
+    /// Whether the source polygon's rings are stored **closed** (first ==
+    /// last), judged on the exterior -- the ring `from_rings` stores verbatim
+    /// and every other ring of the same polygon follows.
+    ///
+    /// A well-formed polygon is closed; the bare polygons
+    /// `polygon_mesh/ops.rs` rebuilds from a mesh's CSR face buffers are not,
+    /// because a mesh leaves the closing edge implied. See the module doc for
+    /// why the difference has to be carried through rather than normalized.
+    fn stored_closed<const N: usize>(exterior: &[[f64; N]]) -> bool {
+        exterior.len() >= 2 && exterior.first() == exterior.last()
+    }
+
+    /// One clipped ring's corners in *storage* order: the open ring the clip
+    /// produced, plus the closing duplicate when `close` says the source was
+    /// stored closed.
+    ///
+    /// `rings_of` strips the closing duplicate on the way in because the
+    /// half-plane clip assumes open rings; this puts it back on the way out.
+    /// Iterating `Corner`s rather than bare positions is deliberate: the
+    /// duplicate corner carries the first corner's UV along with its
+    /// position, which is what keeps the gathered UV array parallel to the
+    /// stored coords.
+    ///
+    /// A ring already closed (or too short to have a closing edge) is yielded
+    /// unchanged, so this never doubles a duplicate.
+    fn ring_as_stored<const N: usize>(
+        ring: &[Corner<N>],
+        close: bool,
+    ) -> impl Iterator<Item = &Corner<N>> {
+        let needs_close = close
+            && match (ring.first(), ring.last()) {
+                (Some(first), Some(last)) => first.pos != last.pos,
+                _ => false,
+            };
+        ring.iter().chain(ring.first().filter(|_| needs_close))
+    }
+
     /// Whether a clipped piece's rings are bit-for-bit identical to the
     /// source's -- same ring count, each ring the same length, each corner
     /// the same position, all in the same order.
+    ///
+    /// Both sides are the *open* rings: `piece_rings` comes straight off the
+    /// clip and `source_rings` is `rings_of`'s output, so this is compared
+    /// before [`ring_as_stored`] restores any closing duplicate and re-closing
+    /// cannot perturb the verdict.
     ///
     /// True exactly when the clip touched nothing: `clip_rings_halfplane`'s
     /// untouched path (`all_in`) pushes a ring through *by value*, so an
@@ -1141,28 +1238,45 @@ mod grid_impl {
                     source_rings: &[Vec<Corner<$dim>>],
                 ) -> $ty {
                     let unchanged = corner_layout_unchanged(&face.rings, source_rings);
+                    // Store the piece's rings the way the source's are: for a
+                    // well-formed polygon that means closed, which is what
+                    // `rings_of` stripped on the way in.
+                    let close = stored_closed(src.exterior());
 
                     let mut ring_iter = face.rings.into_iter();
                     let exterior_corners = ring_iter.next().unwrap_or_default();
                     let interior_corners: Vec<Vec<Corner<$dim>>> = ring_iter.collect();
 
+                    // Both the positions and the UV are gathered over
+                    // `ring_as_stored`, so a restored closing duplicate is
+                    // matched by a duplicate UV entry in the same slot and the
+                    // UV array stays parallel to the stored coords -- the
+                    // length `validate_uv_coupling` checks against, and the
+                    // one the `layout_unchanged` clone of the source's own
+                    // appearance assumes.
+                    //
                     // Every corner must carry a UV for the gather to be
                     // meaningful; `Option<Vec<_>>: FromIterator<Option<_>>`
                     // short-circuits to `None` the moment one is missing.
                     let gathered_uv: Option<Vec<[f64; 2]>> = std::iter::once(&exterior_corners)
                         .chain(interior_corners.iter())
-                        .flat_map(|ring| ring.iter())
+                        .flat_map(|ring| ring_as_stored(ring, close))
                         .map(|c| c.uv)
                         .collect();
 
-                    let exterior: Vec<[f64; $dim]> =
-                        exterior_corners.iter().map(|c| c.pos).collect();
+                    let exterior: Vec<[f64; $dim]> = ring_as_stored(&exterior_corners, close)
+                        .map(|c| c.pos)
+                        .collect();
                     let interiors: Vec<Vec<[f64; $dim]>> = interior_corners
                         .iter()
-                        .map(|r| r.iter().map(|c| c.pos).collect())
+                        .map(|r| ring_as_stored(r, close).map(|c| c.pos).collect())
                         .collect();
 
                     let mut poly = $ty::from_rings(src.frame().clone(), exterior, interiors);
+                    // `from_rings` hardcodes `z: None`; a grid clip never
+                    // changes Z, so the source's own elevation transfers
+                    // verbatim.
+                    poly.set_elevation_for_grid(src.elevation_for_grid());
                     *poly.appearance_mut() =
                         rebuild_appearance(src.appearance(), gathered_uv.as_deref(), unchanged);
                     poly

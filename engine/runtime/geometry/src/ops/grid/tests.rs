@@ -236,9 +236,20 @@ fn world_to_texture_uv_carries_through_untouched() {
 /// at construction (`Appearance::set_appearance` etc.), re-checked here
 /// because a geometric op building an `Appearance` via `from_parts` bypasses
 /// that enforcement and must uphold the invariant by construction instead.
-fn assert_appearance_couples(app: &crate::appearance::Appearance, corner_count: usize) {
+///
+/// Takes the polygon rather than a caller-supplied corner count: an
+/// `Appearance`'s `Explicit` UV is parallel to the *whole* `coords` buffer
+/// (exterior, then every hole, each stored closed), so passing
+/// `exterior().len()` -- which is only the true total for a hole-free face --
+/// would let a piece whose UV is out of step with its rings slip through.
+fn assert_appearance_couples(p: &Polygon2D) {
     use crate::appearance::{validate_uv_coupling, FaceBinding, Side};
     use std::collections::{BTreeMap, BTreeSet};
+
+    let Some(app) = p.appearance().as_ref() else {
+        panic!("expected an appearance to check coupling on");
+    };
+    let corner_count = p.exterior().len() + p.interiors().map(|r| r.len()).sum::<usize>();
 
     for theme in app.themes() {
         for (side, binding) in [
@@ -316,6 +327,11 @@ fn full_coverage_untouched_cell_preserves_a_second_theme_verbatim() {
                 uv, expected,
                 "non-default theme's uv must survive byte for byte"
             );
+            // The `layout_unchanged` fast path clones the source appearance
+            // verbatim, so the piece's own rings must still be stored the way
+            // the source's were -- closed -- or the cloned 5-entry UV would
+            // sit on a 4-corner face.
+            assert_appearance_couples(&p);
             checked += 1;
         }
     })
@@ -357,6 +373,9 @@ fn full_coverage_untouched_cell_preserves_a_back_side_uv_set_verbatim() {
                 unreachable!("fixture is explicit");
             };
             assert_eq!(uv, expected, "back uv must survive byte for byte");
+            // As above: the fast path's verbatim clone is only valid because
+            // the piece's rings are stored closed like the source's.
+            assert_appearance_couples(&p);
             checked += 1;
         }
     })
@@ -423,7 +442,7 @@ fn partial_coverage_clip_drops_unrecoverable_uv_without_orphaning_a_binding() {
                     .all(|u| u.side == crate::appearance::Side::Front),
                 "no back-side uv set may linger once the back binding is gone"
             );
-            assert_appearance_couples(app, p.exterior().len());
+            assert_appearance_couples(&p);
             checked += 1;
         }
     })
@@ -514,7 +533,7 @@ fn multi_channel_default_theme_channel_loss_does_not_discard_the_whole_appearanc
                 theme("ir"),
                 "default_theme must be re-pointed once the original default is gone"
             );
-            assert_appearance_couples(app, p.exterior().len());
+            assert_appearance_couples(&p);
             checked += 1;
         }
     })
@@ -585,7 +604,7 @@ fn world_to_texture_theme_survives_a_sibling_default_theme_drop() {
                 app.themes()[0].uv_sets[0].uv,
                 UvSource::WorldToTexture(out) if out == matrix
             ));
-            assert_appearance_couples(app, p.exterior().len());
+            assert_appearance_couples(&p);
             checked += 1;
         }
     })
@@ -1247,4 +1266,426 @@ fn square_2d_at(x0: f64, y0: f64, x1: f64, y1: f64) -> Polygon2D {
         [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]],
         std::iter::empty::<Vec<[f64; 2]>>(),
     )
+}
+
+/// A 2x1 rectangle with one square hole, both rings stored closed. Used to
+/// check that *every* output ring is stored the way the source's were, not
+/// just the exterior.
+fn holed_rect_2d() -> Polygon2D {
+    Polygon2D::from_rings(
+        CoordinateFrame::default(),
+        [[0.0, 0.0], [2.0, 0.0], [2.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
+        [vec![
+            [0.2, 0.2],
+            [0.2, 0.8],
+            [0.8, 0.8],
+            [0.8, 0.2],
+            [0.2, 0.2],
+        ]],
+    )
+}
+
+#[test]
+fn a_2_5d_face_keeps_its_elevation_on_every_divided_piece() {
+    // `Polygon2D::from_rings` -- what the rebuild goes through -- hardcodes
+    // `z: None`, so without an explicit carry the elevation of a 2.5D face
+    // (the shape `polygon/feature_write.rs`, `ops/hole.rs`, `ops/elevation.rs`
+    // and mesh face decomposition all produce) is silently dropped by a
+    // division. A grid clip only cuts in XY, so it must come through
+    // unchanged.
+    let poly = Polygon2D::from_rings_at_elevation(
+        CoordinateFrame::default(),
+        [[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0], [0.0, 0.0]],
+        std::iter::empty::<Vec<[f64; 2]>>(),
+        42.5,
+    );
+    assert_eq!(poly.elevation(), Some(42.5), "fixture is 2.5D");
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("expected a polygon piece");
+        };
+        assert_eq!(
+            p.elevation(),
+            Some(42.5),
+            "a grid clip never changes Z, so the elevation must carry through"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 4, "one piece per quadrant");
+}
+
+#[test]
+fn a_pure_2d_face_stays_pure_2d_through_a_division() {
+    // The other half of the elevation carry: `None` must stay `None` rather
+    // than becoming some fabricated height.
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(square_2d(
+        0.0, 2.0,
+    ))));
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("expected a polygon piece");
+        };
+        assert_eq!(p.elevation(), None);
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 4);
+}
+
+/// Every ring of `p` is stored closed (first == last), the way a well-formed
+/// polygon is -- what `validation_next`'s `check_unclosed_ring` requires and
+/// what `ops::containment`'s `coord_pos_relative_to_ring` assumes.
+fn assert_rings_stored_closed(p: &Polygon2D) {
+    for (i, ring) in std::iter::once(p.exterior())
+        .chain(p.interiors())
+        .enumerate()
+    {
+        assert!(
+            ring.len() >= 4,
+            "ring {i} is too short to be closed: {ring:?}"
+        );
+        assert_eq!(
+            ring.first(),
+            ring.last(),
+            "ring {i} left the division open: {ring:?}"
+        );
+    }
+}
+
+#[test]
+fn a_cut_piece_leaves_with_closed_rings_and_a_uv_that_matches() {
+    use crate::appearance::UvSource;
+    use crate::test_support::{explicit_uv, textured, theme};
+
+    // Spans four cells with a hole in the lower-left one, so pieces come off
+    // both the cut path (rewritten rings) and with more than one ring to
+    // re-close. The UV is parallel to the stored, closed coords -- ten
+    // entries for 5 + 5 -- exactly as `Appearance` requires.
+    let mut poly = Polygon2D::from_rings(
+        CoordinateFrame::default(),
+        [[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0], [0.0, 0.0]],
+        [vec![
+            [0.2, 0.2],
+            [0.2, 0.8],
+            [0.8, 0.8],
+            [0.8, 0.2],
+            [0.2, 0.2],
+        ]],
+    );
+    let uv: Vec<[f64; 2]> = std::iter::once(poly.exterior())
+        .chain(poly.interiors())
+        .flat_map(|r| r.iter())
+        .map(|c| [c[0] / 2.0, c[1] / 2.0])
+        .collect();
+    poly.set_appearance(theme("rgb"), textured(), Some(explicit_uv(&uv)))
+        .unwrap();
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(poly)));
+
+    let mut checked = 0;
+    let mut saw_hole = false;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("expected a polygon piece");
+        };
+        assert_rings_stored_closed(&p);
+        saw_hole |= p.interiors().count() > 0;
+
+        // The UV must be parallel to the *stored* coords, closing duplicates
+        // included -- and hole corners counted, which is what
+        // `assert_appearance_couples` re-checks through `validate_uv_coupling`.
+        let app = p.appearance().as_ref().expect("uv survives the cut");
+        let UvSource::Explicit(out_uv) = &app.themes()[0].uv_sets[0].uv else {
+            panic!("expected an explicit uv set");
+        };
+        let corners = p.exterior().len() + p.interiors().map(|r| r.len()).sum::<usize>();
+        assert_eq!(out_uv.len(), corners, "uv must stay parallel to the coords");
+        assert_appearance_couples(&p);
+
+        // u == x/2, v == y/2 on the source, and the clip interpolates with the
+        // same parameter, so it holds on every output corner too -- including
+        // the restored closing duplicates.
+        for (corner, uv) in std::iter::once(p.exterior())
+            .chain(p.interiors())
+            .flat_map(|r| r.iter())
+            .zip(out_uv.iter())
+        {
+            assert!((uv[0] - corner[0] / 2.0).abs() < 1e-12);
+            assert!((uv[1] - corner[1] / 2.0).abs() < 1e-12);
+        }
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 4, "one piece per quadrant");
+    assert!(saw_hole, "the hole must survive into at least one piece");
+}
+
+#[test]
+fn an_untouched_piece_is_stored_exactly_like_its_source() {
+    // The `layout_unchanged` fast path clones the source appearance verbatim,
+    // which is only sound when the piece's stored corner buffer matches the
+    // source's. Exactly matching the cell means the clip touches nothing, so
+    // the piece must come back byte-identical to its source.
+    let source = holed_rect_2d();
+    let grid = GridSpec::new([0.0, 0.0], 2.0).expect("valid spec");
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(
+        source.clone(),
+    )));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&grid, &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("expected a polygon piece");
+        };
+        assert_rings_stored_closed(&p);
+        assert_eq!(p.exterior(), source.exterior());
+        assert!(p.interiors().eq(source.interiors()));
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 1);
+}
+
+#[test]
+fn a_source_stored_open_stays_open_so_the_mesh_leaves_can_reuse_this_op() {
+    // `polygon_mesh/ops.rs` rebuilds each mesh face as a bare polygon whose
+    // rings are open -- a mesh's CSR face buffers leave the closing edge
+    // implied -- divides that, and welds the pieces back with
+    // `PolygonMesh3D::from_polygons`, which re-closes each ring itself and
+    // compares pieces against their source faces ring-for-ring. Closing an
+    // open source's pieces here would give them one more stored coord than
+    // their appearance's UV. So the op mirrors the source's storage rather
+    // than normalising it.
+    let open = Polygon2D::from_rings(
+        CoordinateFrame::default(),
+        [[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]],
+        std::iter::empty::<Vec<[f64; 2]>>(),
+    );
+    let geom = Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(Box::new(open)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |_cell, _coverage, piece| {
+        let Geometry::Euclidean2D(crate::Euclidean2DGeometry::Polygon(p)) = piece else {
+            panic!("expected a polygon piece");
+        };
+        assert_ne!(
+            p.exterior().first(),
+            p.exterior().last(),
+            "an open source's pieces must stay open"
+        );
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 4);
+}
+
+#[test]
+fn coverage_is_judged_against_the_cell_s_own_window_not_the_square_of_its_side() {
+    use crate::ops::grid::COVERAGE_TOLERANCE;
+
+    // A cell's true area is `(max - min)^2` over its *own* corners, which is
+    // not `cell_size^2` in floating point: `cell_bounds` rounds `origin +
+    // n * cell_size`, so the width a clip actually snaps a full piece to
+    // differs from the nominal side. At a projected-CRS-sized origin the gap
+    // is past `COVERAGE_TOLERANCE`, so judging against `cell_size^2` calls an
+    // exactly-full piece `Partial` -- and `completeCellsOnly` then drops it.
+    let cell_size = 0.3;
+    let grid = GridSpec::new([3_900_000.0, 3_900_000.0], cell_size).expect("valid spec");
+    let cell = GridCell { row: 0, col: 0 };
+    let window_area = grid.window(cell).area();
+    let nominal = cell_size * cell_size;
+
+    let relative_gap = (window_area - nominal) / nominal;
+    assert!(
+        relative_gap.abs() > COVERAGE_TOLERANCE,
+        "fixture must actually separate the two comparands, gap was {relative_gap:e}"
+    );
+
+    // A piece whose area is exactly the cell's window -- the clip's own
+    // guarantee, since a cut vertex takes the cell's coordinate verbatim --
+    // is Full against the window and Partial against the nominal square.
+    assert_eq!(
+        CellCoverage::from_area(window_area, window_area),
+        CellCoverage::Full,
+        "an exactly-full piece must be Full against its own cell"
+    );
+    assert_eq!(
+        CellCoverage::from_area(window_area, nominal),
+        CellCoverage::Partial,
+        "this is the data loss `cell_size * cell_size` reintroduced"
+    );
+}
+
+#[test]
+fn every_leaf_judges_coverage_against_the_same_cell_area() {
+    // Guards the five call sites that used to compute the cell's area as
+    // `cell_size * cell_size` while `polygon/ops.rs` used `window.area()`:
+    // the polygon, polygon-mesh, triangular-mesh and collection leaves must
+    // all agree about the same cell, on a grid whose origin is not the
+    // coordinate origin.
+    //
+    // This pins the leaves against each other; the *reason* the comparand has
+    // to be the cell's own window is pinned separately by
+    // `coverage_is_judged_against_the_cell_s_own_window_not_the_square_of_its_side`.
+    // The two cannot be one test: separating the comparands needs an origin
+    // several million times the cell size, and at that magnitude the shoelace
+    // every leaf measures area with (`signed_area_xy`, on absolute
+    // coordinates) loses far more precision than the gap being measured, so
+    // every leaf reports `Partial` either way.
+    use crate::triangular_mesh::TriangularMesh3D;
+
+    let grid = GridSpec::new([10.5, 20.25], 1.0).expect("valid spec");
+    let (mn, mx) = grid.cell_bounds(GridCell { row: 0, col: 0 });
+
+    let face = |x0: f64, x1: f64| {
+        Polygon3D::from_rings(
+            CoordinateFrame::default(),
+            [
+                [x0, mn[1], 0.0],
+                [x1, mn[1], 0.0],
+                [x1, mx[1], 0.0],
+                [x0, mx[1], 0.0],
+                [x0, mn[1], 0.0],
+            ],
+            std::iter::empty::<Vec<[f64; 3]>>(),
+        )
+    };
+    let mid = mn[0] + (mx[0] - mn[0]) / 2.0;
+
+    let polygon = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Polygon(Box::new(face(
+        mn[0], mx[0],
+    ))));
+    let mesh = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(
+        PolygonMesh3D::from_polygons(
+            CoordinateFrame::default(),
+            [&face(mn[0], mid), &face(mid, mx[0])],
+        )
+        .expect("valid mesh"),
+    )));
+    let tri = Geometry::Euclidean3D(crate::Euclidean3DGeometry::TriangularMesh(Box::new(
+        TriangularMesh3D::from_parts(
+            CoordinateFrame::default(),
+            vec![
+                [mn[0], mn[1], 0.0],
+                [mx[0], mn[1], 0.0],
+                [mx[0], mx[1], 0.0],
+                [mn[0], mx[1], 0.0],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .expect("valid mesh"),
+    )));
+    let collection = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(
+        crate::collection::Collection3D::new([
+            crate::Euclidean3DGeometry::Polygon(Box::new(face(mn[0], mid))),
+            crate::Euclidean3DGeometry::Polygon(Box::new(face(mid, mx[0]))),
+        ]),
+    ));
+
+    for (name, geom) in [
+        ("polygon", polygon),
+        ("polygon mesh", mesh),
+        ("triangular mesh", tri),
+        ("collection", collection),
+    ] {
+        let out = collect(&geom, &grid).expect("divides");
+        assert_eq!(out.len(), 1, "{name} must land in exactly one cell");
+        assert_eq!(
+            out[0].1,
+            CellCoverage::Full,
+            "{name} exactly fills the cell and must report Full"
+        );
+    }
+}
+
+#[test]
+fn a_solid_in_a_foreign_frame_makes_a_collection_mixed_frames() {
+    use crate::coordinate::EpsgCode;
+    use crate::solid::Solid;
+    use crate::triangular_mesh::TriangularMesh3DData;
+
+    // `Solid::frame()` exists and `Geometry::frame()` reads it, so the
+    // collection's own frame check must read it too -- otherwise the
+    // `MixedFrames` verdict and `Geometry::frame()` disagree about the same
+    // geometry, and the grid-divider action's angular-frame warning is judged
+    // on a frame set the divider itself never considered.
+    let plane = CoordinateFrame::default();
+    let other = CoordinateFrame::Crs(EpsgCode::from(4326));
+
+    let face = Polygon3D::from_rings(
+        plane.clone(),
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    let shell = TriangularMesh3DData::from_parts(
+        vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        [0u32, 1, 2],
+    )
+    .expect("valid shell");
+    let solid = Solid::from_exterior(other, shell);
+
+    let mixed = crate::collection::Collection3D::new([
+        crate::Euclidean3DGeometry::Polygon(Box::new(face)),
+        crate::Euclidean3DGeometry::Solid(Box::new(solid)),
+    ]);
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(mixed));
+
+    assert_eq!(
+        geom.frame(),
+        None,
+        "the two leaves disagree, so there is no single frame"
+    );
+    assert!(
+        matches!(
+            collect(&geom, &unit_grid()),
+            Err(GridDivideError::MixedFrames)
+        ),
+        "the frame check must see the solid's frame, like `Geometry::frame` does"
+    );
+}
+
+#[test]
+fn a_solid_sharing_the_collection_s_frame_does_not_block_the_division() {
+    use crate::solid::Solid;
+    use crate::triangular_mesh::TriangularMesh3DData;
+
+    // The flip side: collecting the solid's frame must not turn an agreeing
+    // collection into a `MixedFrames` failure. The solid itself is still
+    // `Unsupported` for division and is simply skipped.
+    let frame = CoordinateFrame::default();
+    let face = Polygon3D::from_rings(
+        frame.clone(),
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    let shell = TriangularMesh3DData::from_parts(
+        vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        [0u32, 1, 2],
+    )
+    .expect("valid shell");
+    let agreeing = crate::collection::Collection3D::new([
+        crate::Euclidean3DGeometry::Polygon(Box::new(face)),
+        crate::Euclidean3DGeometry::Solid(Box::new(Solid::from_exterior(frame, shell))),
+    ]);
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::Collection(agreeing));
+
+    let out = collect(&geom, &unit_grid()).expect("the face still divides");
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].1, CellCoverage::Full);
 }
