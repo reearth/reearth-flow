@@ -2835,40 +2835,38 @@ Reprojects geometry between coordinate reference systems and converts between a 
           "description": "Reproject to a coordinate reference system identified by an EPSG code.",
           "type": "object",
           "required": [
-            "epsgCode",
-            "type"
+            "crs"
           ],
           "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "crs"
-              ]
-            },
-            "epsgCode": {
-              "title": "EPSG Code",
-              "description": "EPSG code of the destination coordinate reference system.",
-              "type": "integer",
-              "format": "uint16",
-              "minimum": 0.0
+            "crs": {
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
             }
-          }
+          },
+          "additionalProperties": false
         },
         {
           "title": "Euclidean",
           "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "euclidean"
-              ]
-            }
-          }
+          "type": "string",
+          "enum": [
+            "euclidean"
+          ]
         }
       ]
     },
@@ -3554,6 +3552,12 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
         "string",
         "null"
       ]
+    },
+    "inheritInputAttributes": {
+      "title": "Inherit Input Attributes",
+      "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }
@@ -3641,6 +3645,12 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
         "string",
         "null"
       ]
+    },
+    "inheritInputAttributes": {
+      "title": "Inherit Input Attributes",
+      "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
+      "default": true,
+      "type": "boolean"
     }
   }
 }

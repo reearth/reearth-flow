@@ -234,25 +234,6 @@ export const typeDefs = `
     message: String!
   }
 
-  # Node Execution Types
-  type NodeExecution {
-    id: ID!
-    nodeId: ID!
-    jobId: ID!
-    status: NodeExecutionStatus!
-    startedAt: DateTime
-    completedAt: DateTime
-    logs: [Log!]!
-  }
-
-  enum NodeExecutionStatus {
-    PENDING
-    RUNNING
-    COMPLETED
-    FAILED
-    CANCELLED
-  }
-
   # Document Types
   type ProjectDocument {
     id: ID!
@@ -721,7 +702,6 @@ export const typeDefs = `
     job(id: ID!): Job
 
     # Node execution queries
-    nodeExecution(jobId: ID!, nodeId: ID!): NodeExecution
 
     # Document queries
     latestProjectSnapshot(projectId: ID!): ProjectDocument
