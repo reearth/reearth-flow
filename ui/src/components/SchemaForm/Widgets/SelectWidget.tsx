@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 
+import { NULL_BRANCH_TITLE } from "../patchSchemaTypes";
 import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
 
 const SelectWidget = <
@@ -46,6 +47,22 @@ const SelectWidget = <
     return option ? option.label : placeholder;
   }, [enumOptions, value, placeholder]);
 
+  // A schema may carry its own "not set" branch — the trigger's empty state
+  // already says that, so it must not also appear as an item to pick.
+  const selectableOptions = enumOptions?.filter(
+    (opt: any) => opt.label !== NULL_BRANCH_TITLE,
+  );
+
+  // `0` is a real selection, not an empty one: RJSF identifies the branch of an
+  // xxxOf by its index, so the first variant arrives here as a falsy value and a
+  // plain truthiness test would grey it out as though nothing were chosen.
+  // Landing on the "not set" branch is the one case that really is empty.
+  const hasValue =
+    value !== undefined &&
+    value !== null &&
+    value !== "" &&
+    getCurrentLabel() !== NULL_BRANCH_TITLE;
+
   const handleSelect = useCallback(
     (selectedValue: any) => {
       onChange(selectedValue);
@@ -77,7 +94,7 @@ const SelectWidget = <
         aria-required={required}
         aria-invalid={rawErrors.length > 0}
         aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}>
-        <span className={`${value ? "" : "text-muted-foreground"}`}>
+        <span className={`${hasValue ? "" : "text-muted-foreground"}`}>
           {getCurrentLabel() || placeholder || "-"}
         </span>
         <CaretDownIcon className="size-4" />
@@ -90,18 +107,20 @@ const SelectWidget = <
             {placeholder || "-"}
           </DropdownMenuItem>
         )}
-        {enumOptions?.map(({ value: optionValue, label }: any, i: number) => {
-          const isDisabled = enumDisabled?.includes(optionValue);
-          return (
-            <DropdownMenuItem
-              key={i}
-              disabled={isDisabled}
-              onClick={() => handleSelect(optionValue)}
-              className={`${value === optionValue ? "bg-accent" : ""}`}>
-              {label}
-            </DropdownMenuItem>
-          );
-        })}
+        {selectableOptions?.map(
+          ({ value: optionValue, label }: any, i: number) => {
+            const isDisabled = enumDisabled?.includes(optionValue);
+            return (
+              <DropdownMenuItem
+                key={i}
+                disabled={isDisabled}
+                onClick={() => handleSelect(optionValue)}
+                className={`${value === optionValue ? "bg-accent" : ""}`}>
+                {label}
+              </DropdownMenuItem>
+            );
+          },
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

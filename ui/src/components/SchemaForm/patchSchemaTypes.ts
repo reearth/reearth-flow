@@ -10,22 +10,85 @@ import { JSONSchema7, JSONSchema7Definition } from "json-schema";
 const isJSONSchema = (schema: JSONSchema7Definition): schema is JSONSchema7 =>
   typeof schema !== "boolean";
 
+// The branch standing for "this optional parameter is not set". It is titled with
+// the same marker the select widget already uses for an empty value, and the
+// widget drops it from the list it renders: the schema keeps a way to say
+// "nothing" — without which RJSF invents a value — while the user still sees the
+// one "-" entry they always had, rather than a second, invented wording for it.
+export const NULL_BRANCH_TITLE = "-";
+const NULL_BRANCH: JSONSchema7 = { type: "null", title: NULL_BRANCH_TITLE };
+
+// A schema RJSF renders by choosing among sub-schemas rather than as one input.
+// Collapsing `anyOf: [X, null]` to X costs nothing when X is a plain scalar, but
+// for one of these it discards the only way the data can say "not set" — RJSF
+// then fills the parameter in from the first branch, so an optional block the
+// user never opened arrives populated and clearing it never survives a remount.
+const isBranchingSchema = (schema: JSONSchema7Definition): boolean =>
+  isJSONSchema(schema) &&
+  (!!schema.$ref ||
+    !!schema.oneOf ||
+    !!schema.anyOf ||
+    !!schema.allOf ||
+    schema.type === "object");
+
+// The branches of a union, if `schema` is one (directly or through a `$ref`).
+// Flattening these into the parent keeps "not set" and the variants on a single
+// selector rather than nesting one selector inside another.
+const unionBranches = (
+  schema: JSONSchema7Definition,
+  definitions?: Record<string, JSONSchema7Definition>,
+): JSONSchema7Definition[] | undefined => {
+  if (!isJSONSchema(schema)) return undefined;
+
+  const resolved = schema.$ref
+    ? definitions?.[schema.$ref.split("/").pop() as string]
+    : schema;
+  if (!resolved || !isJSONSchema(resolved)) return undefined;
+
+  const branches = resolved.oneOf ?? resolved.anyOf;
+  return branches && branches.length > 0 ? branches : undefined;
+};
+
 // Function to remove `anyOf` where `null` is present
 const simplifyAnyOf = (
   schema: JSONSchema7Definition,
+  definitions?: Record<string, JSONSchema7Definition>,
 ): JSONSchema7Definition => {
   if (!isJSONSchema(schema)) return schema;
 
   let newSchema: JSONSchema7 = { ...schema };
 
   if (newSchema.anyOf) {
+    const hasNullBranch = newSchema.anyOf.some(
+      (s) => isJSONSchema(s) && s.type === "null",
+    );
     // Remove `null` from `anyOf`
     const filteredSchemas = newSchema.anyOf.filter(
       (s) => !(isJSONSchema(s) && s.type === "null"),
     );
 
-    // If only one type remains, replace `anyOf` with that schema
-    if (filteredSchemas.length === 1) {
+    // Keep "not set" representable for anything RJSF renders as a choice. A union
+    // gets its branches flattened up so that "not set" and the variants share one
+    // selector; anything else keeps the plain `anyOf: [X, null]` pair.
+    const nullableBranching =
+      hasNullBranch &&
+      filteredSchemas.length === 1 &&
+      isBranchingSchema(filteredSchemas[0]);
+
+    if (nullableBranching) {
+      const branches = unionBranches(filteredSchemas[0], definitions);
+      const { anyOf: _anyOf, ...rest } = newSchema;
+      newSchema = {
+        ...rest,
+        oneOf: [
+          ...(branches ?? [filteredSchemas[0]]).map((branch) =>
+            simplifyAnyOf(branch, definitions),
+          ),
+          NULL_BRANCH,
+        ],
+      };
+    } else if (filteredSchemas.length === 1) {
+      // If only one type remains, replace `anyOf` with that schema
       if (isJSONSchema(filteredSchemas[0])) {
         const originalTitle = newSchema.title;
         newSchema = { ...filteredSchemas[0] };
@@ -37,11 +100,15 @@ const simplifyAnyOf = (
     }
   }
 
+  // Definitions found here take over for nested lookups: a $ref is always
+  // resolved against the root's definitions.
+  const defs = newSchema.definitions ?? definitions;
+
   if (newSchema.properties) {
     newSchema.properties = Object.fromEntries(
       Object.entries(newSchema.properties).map(([key, value]) => [
         key,
-        simplifyAnyOf(value),
+        simplifyAnyOf(value, defs),
       ]),
     );
   }
@@ -50,16 +117,18 @@ const simplifyAnyOf = (
     newSchema.definitions = Object.fromEntries(
       Object.entries(newSchema.definitions).map(([key, value]) => [
         key,
-        simplifyAnyOf(value),
+        simplifyAnyOf(value, defs),
       ]),
     );
   }
 
   if (newSchema.items) {
     if (Array.isArray(newSchema.items)) {
-      newSchema.items = newSchema.items.map(simplifyAnyOf);
+      newSchema.items = newSchema.items.map((item) =>
+        simplifyAnyOf(item, defs),
+      );
     } else {
-      newSchema.items = simplifyAnyOf(newSchema.items);
+      newSchema.items = simplifyAnyOf(newSchema.items, defs);
     }
   }
 
@@ -144,9 +213,93 @@ const consolidateOneOfToEnum = (
   return newSchema;
 };
 
+// schemars encodes the tag of an internally tagged Rust enum as a single-member
+// `enum` — an `Authentication::Basic` variant carries `type: { enum: ["basic"] }`.
+// RJSF reads that as a required select with exactly one option and leaves it
+// empty, so picking a variant in the union selector never fills the tag in and
+// the form stays invalid on a field the user has nothing to decide about. Giving
+// the tag its own value as a `default` is what RJSF populates from when the user
+// picks a branch. (`const` states the same constraint but does not survive that
+// path: the branch's keys arrive pre-seeded as undefined, which defeats it.)
+//
+// Only tags inside a union branch get this. A default anywhere else makes RJSF
+// materialize the object holding it, which would conjure optional parameters — a
+// `Code` field's `type`, say — into existence unasked.
+// A schema's place in a union, which is what decides whether a single-member
+// `enum` is a discriminator. A discriminator is always an immediate property of
+// its variant, so the role advances exactly one level and then stops — letting it
+// propagate deeper would treat the `type` inside a variant's nested `Code` field
+// as a tag and materialize that optional field.
+type UnionRole = "none" | "branch" | "branchProperty";
+
+const defaultUnionTags = (
+  schema: JSONSchema7Definition,
+  role: UnionRole = "none",
+): JSONSchema7Definition => {
+  if (!isJSONSchema(schema)) return schema;
+
+  const newSchema: JSONSchema7 = { ...schema };
+
+  if (
+    role === "branchProperty" &&
+    Array.isArray(newSchema.enum) &&
+    newSchema.enum.length === 1 &&
+    typeof newSchema.default === "undefined"
+  ) {
+    newSchema.default = newSchema.enum[0] as JSONSchema7["default"];
+  }
+
+  // Recursively handle nested schemas
+  if (newSchema.properties) {
+    const childRole: UnionRole = role === "branch" ? "branchProperty" : "none";
+    newSchema.properties = Object.fromEntries(
+      Object.entries(newSchema.properties).map(([key, value]) => [
+        key,
+        defaultUnionTags(value, childRole),
+      ]),
+    );
+  }
+
+  if (newSchema.definitions) {
+    newSchema.definitions = Object.fromEntries(
+      Object.entries(newSchema.definitions).map(([key, value]) => [
+        key,
+        defaultUnionTags(value),
+      ]),
+    );
+  }
+
+  if (newSchema.items) {
+    if (Array.isArray(newSchema.items)) {
+      newSchema.items = newSchema.items.map((item) => defaultUnionTags(item));
+    } else {
+      newSchema.items = defaultUnionTags(newSchema.items);
+    }
+  }
+
+  for (const keyword of ["allOf", "oneOf", "anyOf"] as const) {
+    const branches = newSchema[keyword];
+    if (branches) {
+      // An object branch of a union is where a tag lives; a branch that is a bare
+      // constant is an option of a plain enum select and owns no tag.
+      newSchema[keyword] = branches.map((branch) =>
+        defaultUnionTags(
+          branch,
+          keyword !== "allOf" && isJSONSchema(branch) && !!branch.properties
+            ? "branch"
+            : "none",
+        ),
+      );
+    }
+  }
+
+  return newSchema;
+};
+
 // Nested `anyOf` inside `oneOf` needs to be simplified as `oneOf` will override `anyOf`
 const simplifyAnyOfInsideOneOf = (
   schema: JSONSchema7Definition,
+  definitions?: Record<string, JSONSchema7Definition>,
 ): JSONSchema7Definition => {
   if (!isJSONSchema(schema)) return schema;
 
@@ -158,7 +311,7 @@ const simplifyAnyOfInsideOneOf = (
         const updatedProperties = Object.fromEntries(
           Object.entries(subSchema.properties).map(([key, value]) => [
             key,
-            simplifyAnyOf(value),
+            simplifyAnyOf(value, definitions),
           ]),
         );
         return { ...subSchema, properties: updatedProperties };
@@ -240,12 +393,19 @@ export const patchAnyOfAndOneOfType = (
   // Remove `anyOf` where `null` is present
   newSchema = simplifyAnyOf(newSchema) as JSONSchema7;
   // Ensure `oneOf` does not interfere with `anyOf` simplification
-  newSchema = simplifyAnyOfInsideOneOf(newSchema) as JSONSchema7;
+  newSchema = simplifyAnyOfInsideOneOf(
+    newSchema,
+    newSchema.definitions,
+  ) as JSONSchema7;
   // Simplify `allOf` with single `$ref` (handles Rust schemars enum defaults)
   newSchema = simplifyAllOf(newSchema, newSchema.definitions) as JSONSchema7;
 
   // Apply consolidateOneOfToEnum to the root schema and all nested properties
   newSchema = consolidateOneOfToEnum(newSchema) as JSONSchema7;
+
+  // Runs last so it only sees enums consolidateOneOfToEnum left alone: a lone
+  // remaining value is a fixed tag, not a choice.
+  newSchema = defaultUnionTags(newSchema) as JSONSchema7;
 
   return newSchema;
 };
