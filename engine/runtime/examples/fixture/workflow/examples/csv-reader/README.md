@@ -64,10 +64,12 @@ with:
 
 - `format`: `csv` or `tsv` (tab-separated values)
 - `dataset`: Path to CSV file (can use expressions)
-- `inline`: Inline CSV content (alternative to `dataset`)
+- `inline`: Inline CSV content, as an alternative to `dataset`
 - `offset`: Number of rows to skip before header (default: 0)
 - `headerRows`: Number of consecutive rows making up the header (default: 1). `0` auto-generates `column1`, `column2`, …; values above 1 join each row's values with `_`
 - `encoding`: Character encoding of the input file, such as `Shift-JIS` (default: UTF-8)
+
+Supply exactly one of `dataset` or `inline`. Omitting both fails at run time with "Missing required parameter `dataset` or `inline`"; supplying both uses `inline` and ignores `dataset`. The schema marks neither as required, so nothing catches this before the workflow runs.
 
 ### Geometry Configuration
 
