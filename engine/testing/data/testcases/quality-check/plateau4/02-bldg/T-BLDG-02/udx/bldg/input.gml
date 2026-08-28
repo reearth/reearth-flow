@@ -11,7 +11,7 @@
 		<bldg:Building gml:id="bldg_b39af966-aa43-4c24-b656-0165e8e041a1">
 			<!-- Should be ignored -->
 			<bldg:outerBuildingInstallation>
-				<bldg:BuildingInstallation gml:id="bldg_b39af966-aa43-4c24-b656-0165e8e041a1_BuildingInstallation_1061">
+				<bldg:BuildingInstallation gml:id="bldg_b39af966-aa43-4c24-b656-0165e8e041a1_BuildingInstallation_1060">
 					<bldg:boundedBy>
 					</bldg:boundedBy>
 				</bldg:BuildingInstallation>
@@ -44,9 +44,9 @@
 							<gml:exterior>
 								<gml:CompositeSurface>
 									<gml:surfaceMember>
-										<gml:Polygon gml:id="fme-gen-9f310459-4bee-4dea-a1e0-dd2fb14a4c5b">
+										<gml:Polygon gml:id="fme-gen-994d45c0-4c7c-436c-9024-ae7a63a5f560">
 											<gml:exterior>
-												<gml:LinearRing gml:id="fme-gen-9f310459-4bee-4dea-a1e0-dd2fb14a4c5b_0">
+												<gml:LinearRing gml:id="fme-gen-994d45c0-4c7c-436c-9024-ae7a63a5f560_0">
 													<gml:posList>35.61663291490302 139.72781608187077 135.77 35.6166244539514 139.72781952606968 135.77 35.616611260350794 139.72777106072488 135.77 35.616619712287225 139.72776761653327 135.77 35.61663291490302 139.72781608187077 135.77</gml:posList>
 												</gml:LinearRing>
 											</gml:exterior>
