@@ -38,7 +38,6 @@ graphs:
               line3d,"LINESTRING(0 0 0, 1 1 1)"
               polygon3d,"POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))"
           geometry:
-            geometryMode: wkt
             column: geometry
 
       - id: ab7621a5-3dc9-491b-a2bc-07035d30dc9c
@@ -51,7 +50,6 @@ graphs:
             type: string
             value: output.csv
           geometry:
-            geometryMode: wkt
             column: geometry
 
     edges:

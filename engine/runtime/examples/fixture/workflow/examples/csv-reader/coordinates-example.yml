@@ -18,7 +18,6 @@ graphs:
             type: flowExpr
             value: variables["csvFile"]
           geometry:
-            geometryMode: coordinates
             xColumn: longitude
             yColumn: latitude
             zColumn: elevation

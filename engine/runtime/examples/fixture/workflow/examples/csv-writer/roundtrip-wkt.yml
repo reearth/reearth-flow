@@ -18,7 +18,6 @@ graphs:
             type: flowExpr
             value: variables["inputCsv"]
           geometry:
-            geometryMode: wkt
             column: geometry
             epsg: 4326
 
@@ -32,7 +31,6 @@ graphs:
             type: string
             value: ./output-roundtrip-wkt.csv
           geometry:
-            geometryMode: wkt
             column: geometry
 
     edges:

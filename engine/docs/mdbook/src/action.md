@@ -1526,7 +1526,7 @@ Reads features from CSV and TSV files.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CsvReader Parameters",
+  "title": "CSV Reader Parameters",
   "description": "Configure how CSV and TSV files are processed and read",
   "type": "object",
   "required": [
@@ -1622,7 +1622,7 @@ Reads features from CSV and TSV files.
     },
     "geometry": {
       "title": "Geometry Configuration",
-      "description": "Optional configuration for parsing geometry from CSV columns",
+      "description": "Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted.",
       "anyOf": [
         {
           "$ref": "#/definitions/GeometryConfig"
@@ -1707,7 +1707,7 @@ Reads features from CSV and TSV files.
       "properties": {
         "epsg": {
           "title": "EPSG Code",
-          "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+          "description": "Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted.",
           "type": [
             "integer",
             "null"

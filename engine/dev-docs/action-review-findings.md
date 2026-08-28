@@ -459,15 +459,15 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **79** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **80** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 79 | — |
-| Does not run in the shipped build | 17 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| Exposed and audited | 80 | — |
+| Does not run in the shipped build | 16 | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **5** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
@@ -478,15 +478,6 @@ so §7.2 handed it a decision rather than an audit. The §8 re-check was run aga
 new-geometry build and found no correctness defect; its outcome is in the Geometry A section
 below, along with the one item that stays deferred.
 
-⚠️ **`CSV Reader` runs but is still counted in the does-not-run bucket.** Its port merged as
-#2405 and `file/csv.rs` now has a `#[cfg(feature = "new-geometry")] async fn start`, so it
-executes in the shipped build; it is not in `base_actions.go`, and it is not in the pending-audit
-list either, so no bucket currently describes it. It was reviewed in the Input batch (#2280) —
-`offset`/`headerRows`/`geometry` were re-verified in the pass below — which by the rule above
-makes it Bufferer's case: **a re-exposure decision, not an audit.** Verified 2026-08-27.
-Its Notion row still reads "In progress" while its merged code runs, so the tracker is not the
-thing to check here. **Trigger:** none pending; this is ready to decide.
-
 **The `impl:` finding that appeared to block it never described the shipped build**, and this is
 worth keeping as a warning rather than deleting. That finding — only points, curves and single
 polygons buffered, every other type emitted **unbuffered** — was written against the legacy
@@ -495,13 +486,15 @@ finding's text survived the port, so it reads as live. Anyone re-reading a findi
 before an action's geometry port should confirm which implementation it describes before
 treating it as a blocker.
 
-**`CSV Reader`'s port landed in #2405 (merged 2026-08-27) and it is the same case as Bufferer.**
-It now has a `#[cfg(feature = "new-geometry")] start` (`file/csv.rs:166`) so it runs, and it was
-reviewed in the Input batch (#2280) — so §7.2 hands it a decision rather than an audit. Like
-Bufferer's, that review predates the 2026-08-20/21 rescoping (§7, the §8 `impl:` line, the §6 tag
-rewrite), so the decision needs an §8 re-check against the new-geometry code first. It is not in
-`base_actions.go`. Note the table has no bucket for "runs, reviewed, awaiting a decision" — that
-is why this is prose, and it is the slot Bufferer occupied until this PR.
+**`CSV Reader`'s port landed in #2405, and it has now been audited and exposed** — outcome in
+the addendum at the bottom of this file. It was triaged as Bufferer's case (reviewed in the Input
+batch #2280, so a decision rather than an audit), and that triage was overturned before any work
+started: #2280 merged 2026-07-23, which is *earlier than every Changelog entry in the standard
+except its own*. §7 did not exist, §8 had no `impl:` line, and §4.3 and §6 have both been
+corrected since. A review that predates that much of the standard supplies almost no coverage, so
+it was audited in full. **The general rule: date the prior review against the Changelog before
+calling anything a re-check** — Bufferer's review (#2317, 2026-07-31) postdates most of those
+entries and CSV Reader's does not, which is what separates the two cases.
 
 **`Area Calculator`'s port landed in #2385 (merged 2026-08-27), it went to pending audit per
 §7.2, and it has now been audited and exposed** — outcome in the addendum at the bottom of this
@@ -1535,3 +1528,82 @@ nine of its actions are unexposed, including both reprojectors, which error on e
 **Trigger:** if the solar-radiation workflow is kept rather than removed, route its filter
 shapefiles through the existing reprojectors so both operands share one linear-unit frame. If it
 is removed, this item goes with it.
+
+---
+
+### Addendum — CSV Reader, audited and exposed
+
+Triaged as a re-check under §7.2's "already reviewed" case, then audited in full. The triage was
+overturned before any work started, and the reason generalises: **date the prior review against
+the standard's Changelog before calling anything a re-check.** #2280 merged 2026-07-23, earlier
+than every Changelog entry except the one it introduced itself. §7 did not exist, §8 had no
+`impl:` line, §4.3 and §6 have both been *corrected* since, and §"How to use" was rescoped so
+that text which merely reads well is no longer exempt. What survived from #2280 was §1, part of
+§3, and §5. Bufferer's review (#2317, 2026-07-31) postdates most of those entries; this one
+predates all of them, which is the whole difference between the two cases.
+
+```
+CSV Reader
+  runs:    OK — `#[cfg(feature = "new-geometry")] start`, file/csv.rs:166
+  impl:    `geometryMode` accepted by every fixture and README, applied by nothing
+  desc:    OK
+  params:  7, under the §3.5 guideline. Block title was `CsvReader Parameters` (pre-#2240)
+  ports:   `features` only — fail-the-read vs `rejected` settled by amending §4.3
+  cat/tags: Input / ["csv"] — both OK, tags match the sibling readers per §6
+  i18n:    es/zh descriptions dropped TSV; fr was an English placeholder; all four
+             carried the stale `CsvReader` block title
+```
+
+**`geometryMode` was removed deliberately, in two steps, and the leftovers outlived it.** History:
+#1615 introduced `#[serde(tag = "geometryMode")]` with a derived schema — tag in the schema, tag
+required by serde, consistent. #1641 replaced the derive with a hand-written `impl JsonSchema`
+"to hide the redundant geometryMode field from UI" **but kept the tag**, so for that window the
+schema omitted a key serde still required: a config built from the schema could not deserialize.
+#1655 then made the enum `untagged`, which restored consistency by deleting the discriminator.
+The end state is sound — the mode is inferable from which columns are supplied — but every
+workflow and both READMEs still passed the dead key: 9 fixture nodes across 6 files and 8 more
+occurrences in documentation. Removed. **The tell for this shape is a hand-written
+`impl JsonSchema`: it decouples the schema from the struct, so serde and the schema can disagree
+without anything failing.**
+
+**Not a translation argument, contrary to a first reading.** Restoring the tag was considered
+partly to make the two variant labels translatable. It would not have: `apply_parameter_i18n`
+reaches a `oneOf` variant only when it carries a literal `enum` key at its top level, which
+neither a tagged variant (its tag sits at `properties.type.enum[0]`) nor an untagged branch does.
+Both shapes are equally unreachable, so translation is an argument for neither. The fix is the
+queued i18n reach work, not a schema reshape.
+
+**§4.3 amended rather than followed.** #2405 removed a `rejected` port and made an unparseable
+geometry value fail the whole read; §4.3's table said malformed input routes to `rejected`. The
+code was right and the rule was incomplete: a source has no incoming feature for a rejection to
+attach to, and a reader that emits part of a file while dropping the rest hides corrupt input at
+the only point the user can still fix it. §4.3 now carves sources out explicitly, with the
+absence-versus-malformed line preserved. Note the old port was advertised and never emitted to,
+so the pre-#2405 state was its own §4.3 defect.
+
+**The example READMEs were non-functional, which no test could have caught.** Both used
+pre-#2240 PascalCase action names — `CsvReader`, `CsvWriter`, `GeoJsonWriter` — while the
+fixtures beside them use the current space-separated names, so every YAML snippet a user might
+copy would fail with "Action not found". Fixed, along with a parameter list missing `headerRows`
+and `encoding` entirely, and a vendor name that §2 now prohibits. **Worth a sweep: nothing links
+a README to the schema, so #2240's rename could not have reached them.**
+
+**A failing test that was not a defect.** `test_executor_csv_wkt_roundtrip_3d` is one of the 37
+`workflow-tests` failures on main. It fails **only in the legacy build** and passes with
+`--features new-geometry`: `parse_geometry` is cfg-swapped (`csv_geometry.rs:207-213`) and only
+the new-geometry arm tolerates the bare 3D WKT that our own CSV Writer emits. `workflow-tests`
+defaults to `default = []`, i.e. legacy. **Run any failure in that suite both ways before calling
+it a defect** — and note `cargo test … | tail` exited 0 on the failing run, so read the body for
+`test result:`, never the exit code.
+
+**Filed, not fixed:**
+
+- `CSV Reader` is already listed in the schemars-flatten ordering finding above (`dataset`/`inline`
+  render after `format` and `encoding`). Unchanged here; it wants the shared fix, not a local one.
+- **50 actions carry a parameter-block title that is an internal PascalCase struct name** —
+  `CsvReader Parameters`, `CenterPointReplacerParam`, `GeoJsonWriter Parameters`. CSV Reader's own
+  is fixed in all four i18n files as well as the schema, since `parameterI18n[""].title` overrides
+  it. **Trigger:** a batch willing to sweep all 50, or the next time each is audited.
+- `dataset` and `inline` are both schema-optional while omitting both fails at runtime, against
+  §3.2. Shared by all nine readers. **Trigger:** the same flatten fix above, which has to touch
+  every reader's param struct anyway.
