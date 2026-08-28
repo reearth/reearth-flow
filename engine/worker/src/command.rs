@@ -507,17 +507,18 @@ impl RunWorkerCommand {
             let prev_job_id = uuid::Uuid::parse_str(prev_job_str).map_err(Error::init)?;
             let start_node_id = uuid::Uuid::parse_str(start_node_str).map_err(Error::init)?;
 
-            let (previous_feature_state, available_edge_ids) = prepare_incremental_feature_store(
-                "workers",
-                workflow,
-                job_id,
-                storage_resolver.as_ref(),
-                meta,
-                prev_job_id,
-                start_node_id,
-                feature_state.as_ref(),
-            )
-            .await?;
+            let (previous_feature_state, available_port_file_ids) =
+                prepare_incremental_feature_store(
+                    "workers",
+                    workflow,
+                    job_id,
+                    storage_resolver.as_ref(),
+                    meta,
+                    prev_job_id,
+                    start_node_id,
+                    feature_state.as_ref(),
+                )
+                .await?;
 
             prepare_incremental_artifacts(
                 "workers",
@@ -542,7 +543,7 @@ impl RunWorkerCommand {
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
                 previous_feature_state,
-                available_edge_ids,
+                available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");

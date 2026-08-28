@@ -42,7 +42,7 @@ pub async fn prepare_incremental_feature_store(
     previous_job_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
     feature_state: &State,
-) -> errors::Result<(Arc<State>, HashSet<uuid::Uuid>)> {
+) -> errors::Result<(Arc<State>, HashSet<String>)> {
     tracing::info!(
         "Incremental run: previous_job_id={}, start_node_id={}",
         previous_job_id,
@@ -68,65 +68,9 @@ pub async fn prepare_incremental_feature_store(
         State::new(&reuse_feature_store_uri, storage_resolver).map_err(Error::init)?;
 
     let reusable_ids = collect_reusable_ids(workflow, start_node_id).map_err(Error::init)?;
-    let candidate_edge_ids = &reusable_ids.edge_ids;
-
-    // Filter candidate edges by checking which ones actually exist in the previous feature store
-    let mut actually_copied_edge_ids = Vec::new();
-
-    for edge_id in candidate_edge_ids {
-        let edge_id_str = edge_id.to_string();
-        match reuse_state
-            .copy_jsonl_from_state_async(&prev_feature_store_state, &edge_id_str)
-            .await
-        {
-            Ok(()) => {
-                tracing::info!(
-                    "Incremental run: copied edge {} into {}",
-                    edge_id_str,
-                    reuse_feature_store_uri.path().display()
-                );
-                actually_copied_edge_ids.push(*edge_id);
-            }
-            Err(e) => {
-                tracing::info!(
-                    "Incremental run: edge {} does not exist in previous feature-store, skipping: {:?}",
-                    edge_id_str,
-                    e
-                );
-                continue;
-            }
-        }
-
-        match feature_state
-            .copy_jsonl_from_state_async(&reuse_state, &edge_id_str)
-            .await
-        {
-            Ok(()) => {
-                tracing::info!("Copied edge {} into feature-store", edge_id_str);
-            }
-            Err(e) => {
-                return Err(Error::init(format!(
-                    "Failed to copy edge {} into feature-store: {:?}",
-                    edge_id_str, e
-                )));
-            }
-        }
-    }
-
-    let actually_copied_edges: HashSet<uuid::Uuid> = actually_copied_edge_ids.into_iter().collect();
-
-    tracing::info!(
-        "Incremental run: successfully copied {} out of {} candidate edges",
-        actually_copied_edges.len(),
-        candidate_edge_ids.len()
-    );
-    tracing::info!(
-        "Incremental run: actually copied edge IDs: {:?}",
-        actually_copied_edges
-    );
-
     // --- Port-based file copying ---
     let port_file_ids = &reusable_ids.port_file_ids;
+    let mut copied_port_file_ids: HashSet<String> = HashSet::new();
 
     tracing::info!(
         "Incremental run: {} port-based file IDs to copy",
@@ -161,6 +105,7 @@ pub async fn prepare_incremental_feature_store(
         {
             Ok(()) => {
                 tracing::info!("Copied port file {} into feature-store", file_id);
+                copied_port_file_ids.insert(file_id.clone());
             }
             Err(e) => {
                 return Err(Error::init(format!(
@@ -171,7 +116,12 @@ pub async fn prepare_incremental_feature_store(
         }
     }
 
-    Ok((Arc::new(reuse_state), actually_copied_edges))
+    tracing::info!(
+        "Incremental run: {} of {} reusable port files copied",
+        copied_port_file_ids.len(),
+        port_file_ids.len()
+    );
+    Ok((Arc::new(reuse_state), copied_port_file_ids))
 }
 
 /// Copy reusable outputs from the previous job into current job workspace.

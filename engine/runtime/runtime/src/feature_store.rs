@@ -53,20 +53,13 @@ pub trait FeatureWriter: Send + Sync + Debug + FeatureWriterClone {
     async fn flush(&self) -> Result<(), FeatureWriterError>;
 }
 
-/// Creates the writer for one output port.
-///
-/// `edge_ids` are the ids of the edges leaving this port whose contents must
-/// also be readable under `<edge_id>.jsonl`. The port file is written
-/// incrementally; the edge files are produced once from it at flush time.
 pub fn create_feature_writer(
-    port_file_id: EdgeId,
-    edge_ids: Vec<EdgeId>,
+    edge_id: EdgeId,
     state: Arc<State>,
     flush_threshold: usize,
 ) -> Box<dyn FeatureWriter> {
     Box::new(PrimaryKeyLookupFeatureWriter::new(
-        port_file_id,
-        edge_ids,
+        edge_id,
         state,
         flush_threshold,
     ))
@@ -75,7 +68,6 @@ pub fn create_feature_writer(
 #[derive(Debug, Clone)]
 pub(crate) struct PrimaryKeyLookupFeatureWriter {
     edge_id: EdgeId,
-    alias_edge_ids: Vec<EdgeId>,
     state: Arc<State>,
     buffer: Arc<RwLock<VecDeque<String>>>,
     thread_counter: Arc<AtomicU64>,
@@ -83,15 +75,9 @@ pub(crate) struct PrimaryKeyLookupFeatureWriter {
 }
 
 impl PrimaryKeyLookupFeatureWriter {
-    pub(crate) fn new(
-        edge_id: EdgeId,
-        alias_edge_ids: Vec<EdgeId>,
-        state: Arc<State>,
-        flush_threshold: usize,
-    ) -> Self {
+    pub(crate) fn new(edge_id: EdgeId, state: Arc<State>, flush_threshold: usize) -> Self {
         Self {
             edge_id,
-            alias_edge_ids,
             state,
             buffer: Arc::new(RwLock::new(VecDeque::new())),
             thread_counter: Arc::new(AtomicU64::new(0)),
@@ -153,33 +139,6 @@ impl FeatureWriter for PrimaryKeyLookupFeatureWriter {
             .append_strings(&items, self.edge_id.to_string().as_str())
             .await
             .map_err(|e| FeatureWriterError::Flush(e.to_string()))?;
-        drop(buffer);
-        self.publish_edge_files().await
-    }
-}
-
-impl PrimaryKeyLookupFeatureWriter {
-    /// Copies the finished port file to `<edge_id>.jsonl` for every aliased edge.
-    /// A port that never received a feature has no file, and then no edge file either.
-    async fn publish_edge_files(&self) -> Result<(), FeatureWriterError> {
-        if self.alias_edge_ids.is_empty() {
-            return Ok(());
-        }
-        let port_file_id = self.edge_id.to_string();
-        if !self
-            .state
-            .exists_jsonl(&port_file_id)
-            .await
-            .map_err(|e| FeatureWriterError::Flush(e.to_string()))?
-        {
-            return Ok(());
-        }
-        for alias in &self.alias_edge_ids {
-            self.state
-                .copy_jsonl(&port_file_id, alias.to_string().as_str())
-                .await
-                .map_err(|e| FeatureWriterError::Flush(e.to_string()))?;
-        }
         Ok(())
     }
 }

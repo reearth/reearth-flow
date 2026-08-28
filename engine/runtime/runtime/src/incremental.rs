@@ -9,12 +9,12 @@ use crate::node::{FEATURE_FILTER_ACTION, OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KE
 pub struct IncrementalRunConfig {
     pub start_node_id: uuid::Uuid,
     pub previous_feature_state: Arc<State>,
-    pub available_edge_ids: HashSet<uuid::Uuid>,
+    /// Port files of the previous run that can be replayed into this run.
+    pub available_port_file_ids: HashSet<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ReusableIds {
-    pub edge_ids: Vec<uuid::Uuid>,
     pub port_file_ids: Vec<String>,
 }
 
@@ -57,7 +57,6 @@ pub fn collect_reusable_ids(
 
     let prefix_chains = build_all_prefix_chains(workflow, &graphs);
 
-    let mut edge_ids = HashSet::<uuid::Uuid>::new();
     let mut port_file_ids = HashSet::<String>::new();
 
     // BFS traversal from start node up to parent graphs
@@ -72,7 +71,6 @@ pub fn collect_reusable_ids(
             &graphs,
             gid,
             sid,
-            &mut edge_ids,
             &mut port_file_ids,
             &prefix_chains,
         )?;
@@ -87,12 +85,9 @@ pub fn collect_reusable_ids(
         }
     }
 
-    let mut v: Vec<_> = edge_ids.into_iter().collect();
-    v.sort();
     let mut port_vec: Vec<_> = port_file_ids.into_iter().collect();
     port_vec.sort();
     Ok(ReusableIds {
-        edge_ids: v,
         port_file_ids: port_vec,
     })
 }
@@ -103,7 +98,6 @@ fn collect_reusable_in_graph_and_upstream_subworkflows(
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
     graph_id: uuid::Uuid,
     start_node_id: uuid::Uuid,
-    edge_ids: &mut HashSet<uuid::Uuid>,
     port_file_ids: &mut HashSet<String>,
     prefix_chains: &HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>>,
 ) -> Result<(), String> {
@@ -133,13 +127,6 @@ fn collect_reusable_in_graph_and_upstream_subworkflows(
                     q.push_back(nx);
                 }
             }
-        }
-    }
-
-    // Collect edges whose source is NOT downstream (i.e., upstream edges)
-    for edge in &graph.edges {
-        if !downstream.contains(&edge.from) {
-            edge_ids.insert(edge.id);
         }
     }
 
@@ -181,7 +168,6 @@ fn collect_reusable_in_graph_and_upstream_subworkflows(
             collect_all_in_graph(
                 graphs,
                 sub_graph_id,
-                edge_ids,
                 port_file_ids,
                 prefix_chains,
                 &mut visited_subgraphs,
@@ -192,13 +178,12 @@ fn collect_reusable_in_graph_and_upstream_subworkflows(
     Ok(())
 }
 
-/// Iteratively collect all edge ids and port file ids in a graph and its
+/// Iteratively collect all port file ids in a graph and its
 /// nested subgraphs (explicit-stack worklist; no recursion, so deep subgraph
 /// nesting cannot overflow the stack).
 fn collect_all_in_graph(
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
     entry_graph_id: uuid::Uuid,
-    edge_ids: &mut HashSet<uuid::Uuid>,
     port_file_ids: &mut HashSet<String>,
     prefix_chains: &HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>>,
     visited: &mut HashSet<uuid::Uuid>,
@@ -215,9 +200,6 @@ fn collect_all_in_graph(
         let graph = graphs
             .get(&graph_id)
             .ok_or_else(|| format!("graph {} not found", graph_id))?;
-        for edge in &graph.edges {
-            edge_ids.insert(edge.id);
-        }
         for node in &graph.nodes {
             if let Some(chains) = prefix_chains.get(&graph_id) {
                 for chain in chains {
@@ -439,26 +421,20 @@ mod tests {
             .into_iter()
             .collect();
         let prefix_chains: HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>> = HashMap::new();
-        let mut edge_ids: HashSet<uuid::Uuid> = HashSet::new();
         let mut port_file_ids: HashSet<String> = HashSet::new();
         let mut visited: HashSet<uuid::Uuid> = HashSet::new();
 
         let result = collect_all_in_graph(
             &graphs,
             g1_id,
-            &mut edge_ids,
             &mut port_file_ids,
             &prefix_chains,
             &mut visited,
         );
 
         assert_eq!(result, Ok(()));
-        // Edge ids from all three nested graphs must be present, proving the
-        // worklist descended through the full nesting chain.
-        assert!(edge_ids.contains(&g1_edge));
-        assert!(edge_ids.contains(&g2_edge));
-        assert!(edge_ids.contains(&g3_edge));
-        // All three graphs were visited.
+        // All three graphs were visited, proving the worklist descended
+        // through the full nesting chain.
         assert!(visited.contains(&g1_id));
         assert!(visited.contains(&g2_id));
         assert!(visited.contains(&g3_id));
@@ -499,7 +475,6 @@ mod tests {
             .into_iter()
             .collect();
         let prefix_chains: HashMap<uuid::Uuid, Vec<Vec<uuid::Uuid>>> = HashMap::new();
-        let mut edge_ids: HashSet<uuid::Uuid> = HashSet::new();
         let mut port_file_ids: HashSet<String> = HashSet::new();
         let mut visited: HashSet<uuid::Uuid> = HashSet::new();
 
@@ -507,7 +482,6 @@ mod tests {
         let result = collect_all_in_graph(
             &graphs,
             g1_id,
-            &mut edge_ids,
             &mut port_file_ids,
             &prefix_chains,
             &mut visited,
@@ -515,8 +489,8 @@ mod tests {
 
         assert_eq!(result, Ok(()));
         assert_eq!(visited.len(), 3);
-        assert!(edge_ids.contains(&g1_edge));
-        assert!(edge_ids.contains(&g2_edge));
-        assert!(edge_ids.contains(&g3_edge));
+        assert!(visited.contains(&g1_id));
+        assert!(visited.contains(&g2_id));
+        assert!(visited.contains(&g3_id));
     }
 }

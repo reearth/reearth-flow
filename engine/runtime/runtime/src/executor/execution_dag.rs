@@ -35,6 +35,15 @@ pub struct NodeType {
 
 impl NodeType {
     // Mirrors builder_dag::NodeType::composed_id exactly (duplicated, not shared) — keep the two formats in sync.
+    /// Id of the intermediate-data file written for one of this node's output ports.
+    pub fn port_file_id(&self, port: &Port) -> String {
+        match (&self.subgraph_prefix, self.is_subgraph_output) {
+            (Some(prefix), true) => format!("{}.{}", prefix, port),
+            (Some(prefix), false) => format!("{}.{}.{}", prefix, self.handle.id, port),
+            (None, _) => format!("{}.{}", self.handle.id, port),
+        }
+    }
+
     pub fn composed_id(&self) -> String {
         match &self.subgraph_prefix {
             Some(prefix) => format!("{prefix}.{}", self.handle.id),
@@ -133,25 +142,8 @@ impl ExecutionDag {
             let node = &graph[node_index];
             let mut node_port_writers = HashMap::new();
             for port in &node.output_ports {
-                let file_id = match (&node.subgraph_prefix, node.is_subgraph_output) {
-                    (Some(prefix), true) => format!("{}.{}", prefix, port),
-                    (Some(prefix), false) => format!("{}.{}.{}", prefix, node.handle.id, port),
-                    (None, _) => format!("{}.{}", node.handle.id, port),
-                };
-                // Features leaving a source are also exposed per edge, so that
-                // consumers addressing intermediate data by edge id can find them.
-                let edge_ids = if node.is_source {
-                    graph
-                        .edges(node_index)
-                        .filter(|e| e.weight().input_port == *port)
-                        .map(|e| e.weight().edge_id.clone())
-                        .collect()
-                } else {
-                    Vec::new()
-                };
                 let writer = create_feature_writer(
-                    EdgeId::new(file_id),
-                    edge_ids,
+                    EdgeId::new(node.port_file_id(port)),
                     Arc::clone(&feature_state),
                     feature_flush_threshold,
                 );
