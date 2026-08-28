@@ -8,7 +8,8 @@ use url::Url;
 use super::utils::{local_name, XmlChild, XmlNode, EMPTY_NS_ID};
 
 pub struct CodelistResolver {
-    cache: HashMap<Url, HashMap<String, String>>,
+    /// `None` marks a codelist that failed to load; the cause was already reported.
+    cache: HashMap<Url, Option<HashMap<String, String>>>,
 }
 
 impl CodelistResolver {
@@ -33,20 +34,12 @@ impl CodelistResolver {
                 return None;
             }
         };
-        if !self.cache.contains_key(&dict_url) {
-            let dict = match load_dictionary(&dict_url) {
-                Some(d) => d,
-                None => {
-                    tracing::error!(
-                        dict_url = dict_url.as_str(),
-                        "failed to load codelist dictionary"
-                    );
-                    HashMap::new()
-                }
-            };
-            self.cache.insert(dict_url.clone(), dict);
-        }
-        let dict = self.cache.get(&dict_url)?;
+        let dict = self
+            .cache
+            .entry(dict_url.clone())
+            .or_insert_with(|| load_dictionary(&dict_url));
+        // The codelist itself is unavailable; reporting a missing code on top would only duplicate.
+        let dict = dict.as_ref()?;
         if !dict.contains_key(code) {
             tracing::error!(
                 dict_url = dict_url.as_str(),
