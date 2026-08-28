@@ -459,16 +459,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **78** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **79** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 78 | — |
+| Exposed and audited | 79 | — |
 | Does not run in the shipped build | 17 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **6** | An engine-side §8 pass — the list below |
+| **Pending audit** | **5** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -530,13 +530,13 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 6 actions, with preliminary findings
+### Pending audit — 5 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Newly eligible — its port landed (1)
+#### Newly eligible — its port landed (0 remaining)
 
 **`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
 two cases differ and the difference is the whole point of §7.2's rule. An action never reviewed
@@ -548,17 +548,9 @@ Note which way that test cuts: a spot-check is not a review. `Area Calculator` h
 verified in the re-verification pass below, which is why its port landing put it in this list
 rather than in Bufferer's — the audit it then owed is the addendum at the bottom of this file.
 
-`Elevation Extractor` and `Area Calculator` were both in this list and are now audited and
-exposed; `HTTP Caller` left it on its own PR track. See their addenda below.
-
-```
-Spatial Filter
-  runs:    Ported in #2410 (2026-08-27), so it now runs in the shipped build and has left the
-             does-not-run bucket. Same case as Elevation Extractor and not Bufferer's: it
-             appears nowhere in this file, so it has never been reviewed and the port landing
-             hands it here rather than to a decision.
-  scan:    NOT scanned, for the same reason. Budget a full §8 pass.
-```
+`Elevation Extractor`, `Area Calculator` and `Spatial Filter` were all in this list and are now
+audited and exposed; `HTTP Caller` left it on its own PR track. See their addenda below. This
+sub-list is now empty — the next action to join it will be whichever geometry port merges next.
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
 
@@ -1466,3 +1458,78 @@ and the document disagreed with it, exactly as in Batches 6 and 7.
 
 **So the rule is not "predict the post-merge number", it is "recount at merge time".** A
 predicted figure is one more piece of text that merges cleanly and is wrong. Count the file.
+
+---
+
+## Addendum — Spatial Filter (audited and exposed)
+
+Its new-geometry port merged as #2410 and it had never been reviewed, so §7.2 put it in pending
+audit rather than handing it a decision. Full §8 pass run against the shipped (new-geometry)
+build; it is now in `base_actions.go`.
+
+**The port did the geometry well and the metadata not at all, and the split is instructive.**
+The `impl:` trace found no defect in the predicate logic — the footprint-then-relate strategy,
+the frame discipline and the exact `intersects`/`contains`/`covers` fast paths all behave as
+[[new_geometry_spatial_predicate_pattern]] settled. Every finding was in the surface *around*
+that logic, and the two that mattered were behaviours the code had but no text described.
+
+`impl:`
+
+- **`SpatialPredicate`'s nine variants had no `/// # Title`**, so schemars emitted `description`
+  with no `title` and the UI dropdown had no variant labels. `MatchMode`, twenty lines away in
+  the same file, had them. The tell was visible in `ja.json`: `MatchMode` had `title` keys and
+  `SpatialPredicate` had none. Fixed, with the enum gaining its own block title/description too.
+- **Three variant descriptions were wrong, and the wrongest read the best.** `disjoint` said
+  "Geometries have no spatial relationship" — disjoint *is* a relationship, and the code is
+  `!intersects`. `contains` said "completely contains", which describes `covers`; the exact
+  `contains` path excludes a filter lying wholly on the candidate's boundary, and that exclusion
+  is the *only* thing separating the two variants. `covers` restated its own name (§3.3). All
+  nine rewritten to state the boundary cases, and none had a terminating period (§2).
+- **Zero filters passed every candidate, undocumented** (`finish`, was `spatial_filter.rs:325`).
+- **A filter set emptied by rejection became indistinguishable from no filter set.** A filter
+  failing `prepare` routes to `rejected` and shrinks `filters`; if all of them failed — plausible
+  when they share one cause, e.g. every filter 3D in an angular frame — `filters.is_empty()` held
+  and the action passed *everything*. An upstream error inverted into pass-all, silently. Now
+  separated by a `filters_received` counter: nothing supplied still passes all, but supplied and
+  all-rejected fails the candidates and warns once under a new `geometry.no_usable_filter` code.
+  Covered by `candidates_fail_when_every_supplied_filter_was_rejected`.
+- **`mergeFilterAttributes` did not say it overwrites the candidate's own attributes** of the
+  same name (`insert`, line 581) — the common case when no prefix is set. It documented only
+  filter-vs-filter collisions.
+- `mergedAttributesPrefix` is inert when merging is off; now stated rather than changed.
+
+`desc:` action description gained the zero-filter sentence; the parameter block description was
+imperative and unterminated. `params:` 5, ordering fine. `ports:` clean — `filter`/`candidate`
+in, `passed`/`failed`/`rejected` out, all §4.2, and filter features are consumed join-style,
+which §4.3 permits. `cat:`/`tags:` clean (`Filter` + `spatial`, which genuinely cuts across).
+
+**Diagnostics (§2).** The six codes #2410 added trace correctly and follow the registry's
+conventions. They declared `default_disposition = "warn_drop"` with no note, which is doubly
+misleading here: `ctx.warn()` ignores disposition entirely (`executor_operation.rs:281-292`
+records `WarnContinue` unconditionally), *and* the feature is routed to `rejected`, not dropped.
+The `geometry.area_*` block below them carried that explanation already; a pointer now sits above
+the spatial codes so a reader hits it first.
+
+**Fixture `with:` sweep came back empty** — all 12 nodes across the three solar-radiation files
+pass only `predicate`, `mergeFilterAttributes` and `mergedAttributesPrefix`, all declared.
+
+### Deferred: the solar-radiation example workflow's Spatial Filter nodes
+
+Four nodes in `runtime/examples/fixture/workflow/solar-radiation/` almost certainly reject every
+feature under the new frame rules, and #2410 touched no fixtures. `adequate_place_judgement.yml`
+wires an EPSG:4612 snow shapefile into `filter` against EPSG:6697 buildings and says so in a
+comment; three more feed 3D buildings in EPSG:6697, an angular frame. Both are rejections proven
+by existing tests (`frames_other_than_the_first_accepted_one_are_rejected`,
+`three_dimensional_input_in_angular_frames_is_rejected`), so this is deduction from tested
+behaviour, not speculation.
+
+**Deliberately not fixed, for three reasons that are worth keeping together.** The workflow calls
+five `PLATEAU4.*` actions, so it belongs to PLATEAU Flow under the audit's settled scope. It
+cannot be executed here at all — every input path variable is empty and the repo bundles no
+dataset; `generate-examples-cms-workflow` only regenerates the file via `yaml-include` and
+nothing runs it. And it is already dead in the shipped build for reasons predating this action:
+nine of its actions are unexposed, including both reprojectors, which error on every feature.
+
+**Trigger:** if the solar-radiation workflow is kept rather than removed, route its filter
+shapefiles through the existing reprojectors so both operands share one linear-unit frame. If it
+is removed, this item goes with it.

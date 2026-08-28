@@ -74,6 +74,7 @@ var baseActions = map[string]bool{
 	"Hole Extractor":               true,
 	"Line On Line Overlayer":       true,
 	"Offsetter":                    true,
+	"Spatial Filter":               true,
 	"Two Dimension Forcer":         true,
 	// Attribute
 	"Attribute Aggregator":       true,

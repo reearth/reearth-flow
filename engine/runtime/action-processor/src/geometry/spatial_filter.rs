@@ -46,7 +46,7 @@ impl ProcessorFactory for SpatialFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units."
+        "Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units. Every candidate passes when no filter geometry is supplied at all."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -95,6 +95,8 @@ impl ProcessorFactory for SpatialFilterFactory {
             frame: None,
             #[cfg(feature = "new-geometry")]
             frame_mismatch_reported: false,
+            #[cfg(feature = "new-geometry")]
+            filters_received: 0,
         }))
     }
 }
@@ -103,11 +105,11 @@ impl ProcessorFactory for SpatialFilterFactory {
 #[serde(rename_all = "camelCase")]
 #[schemars(
     title = "Spatial Filter Parameters",
-    description = "Configure spatial relationship testing between filter and candidate geometries"
+    description = "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter."
 )]
 pub struct SpatialFilterParams {
     /// # Spatial Predicate
-    /// The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.
+    /// The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object.
     #[serde(default)]
     pub predicate: SpatialPredicate,
 
@@ -117,17 +119,17 @@ pub struct SpatialFilterParams {
     pub match_mode: MatchMode,
 
     /// # Merge Filter Attributes
-    /// If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.
+    /// Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins.
     #[serde(default)]
     pub merge_filter_attributes: bool,
 
     /// # Merged Attributes Prefix
-    /// Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of "filter_" turns a filter attribute "zone" into "filter_zone".
+    /// Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of "filter_" turns a filter attribute "zone" into "filter_zone". Ignored unless attributes are merged.
     #[serde(default)]
     pub merged_attributes_prefix: Option<String>,
 
     /// # Output Match Count Attribute
-    /// Optional attribute name to store the number of filter features the candidate matched.
+    /// Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike.
     #[serde(default)]
     pub output_match_count_attribute: Option<Attribute>,
 }
@@ -146,27 +148,47 @@ pub enum MatchMode {
     All,
 }
 
+/// # Spatial Predicate
+/// The relationship each candidate is tested for against a filter geometry.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum SpatialPredicate {
-    /// Candidate completely contains the filter geometry
+    /// # Contains
+    /// Passes a candidate that holds the filter geometry inside it, sharing
+    /// interior with it. A filter lying wholly on the candidate's boundary does
+    /// not count; use Covers for that.
     Contains,
-    /// Candidate completely within filter geometry
+    /// # Within
+    /// Passes a candidate that lies inside the filter geometry, sharing interior
+    /// with it. A candidate lying wholly on the filter's boundary does not count;
+    /// use Covered By for that.
     Within,
-    /// Geometries have any intersection
+    /// # Intersects
+    /// Passes a candidate that shares at least one point with the filter geometry.
     #[default]
     Intersects,
-    /// Geometries have no spatial relationship
+    /// # Disjoint
+    /// Passes a candidate that shares no point at all with the filter geometry.
     Disjoint,
-    /// Geometries touch at boundaries but don't overlap
+    /// # Touches
+    /// Passes a candidate that meets the filter geometry only along a boundary,
+    /// with no shared interior.
     Touches,
-    /// Geometries cross each other
+    /// # Crosses
+    /// Passes a candidate that cuts through the filter geometry, meeting its
+    /// interior in a lower-dimensional overlap such as a line across a polygon.
     Crosses,
-    /// Geometries overlap partially
+    /// # Overlaps
+    /// Passes a candidate of the same dimension as the filter geometry that
+    /// shares interior with it while each keeps points outside the other.
     Overlaps,
-    /// Candidate is covered by filter geometry
+    /// # Covered By
+    /// Passes a candidate whose every point lies in the filter geometry,
+    /// including one lying wholly on its boundary.
     CoveredBy,
-    /// Candidate covers the filter geometry
+    /// # Covers
+    /// Passes a candidate that holds every point of the filter geometry,
+    /// including a filter lying wholly on its boundary.
     Covers,
 }
 
@@ -190,6 +212,12 @@ struct SpatialFilter {
     /// upstream problem is logged once rather than once per feature.
     #[cfg(feature = "new-geometry")]
     frame_mismatch_reported: bool,
+    /// How many features arrived as filters, whether or not they survived
+    /// intake. It separates "no filter was supplied", which imposes no
+    /// restriction, from "every supplied filter was unusable", which must not
+    /// silently become the same thing.
+    #[cfg(feature = "new-geometry")]
+    filters_received: usize,
 }
 
 impl Processor for SpatialFilter {
@@ -296,6 +324,9 @@ impl Processor for SpatialFilter {
                 return Ok(());
             }
         };
+        if is_filter {
+            self.filters_received += 1;
+        }
         match self.prepare(&ctx) {
             Ok(prepared) => {
                 if is_filter {
@@ -323,13 +354,37 @@ impl Processor for SpatialFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         if self.filters.is_empty() {
-            // No filters provided, pass all candidates (no restrictions).
+            // No filter geometry to test against. Which of the two ways that
+            // happened decides the routing: no filter supplied is no
+            // restriction, but filters supplied and all rejected is a failed
+            // condition — passing those candidates would turn an upstream
+            // error into a silent pass-everything.
+            let unusable = self.filters_received > 0;
+            let port = if unusable {
+                FAILED_PORT.clone()
+            } else {
+                PASSED_PORT.clone()
+            };
+            let mut reported = false;
             for candidate in &self.candidates {
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                let out = ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     candidate.feature.clone(),
-                    PASSED_PORT.clone(),
-                ));
+                    port.clone(),
+                );
+                // Warn once: the cause is one upstream problem, not one per candidate.
+                if unusable && !reported {
+                    reported = true;
+                    out.warn(
+                        DiagnosticDraft::new(ErrorCode::GeometryNoUsableFilter).with_message(
+                            format!(
+                                "Spatial Filter failed every candidate: all {} filter features were rejected, leaving nothing to test against.",
+                                self.filters_received
+                            ),
+                        ),
+                    );
+                }
+                fw.send(out);
             }
             return Ok(());
         }
@@ -1070,6 +1125,8 @@ mod tests {
             frame: None,
             #[cfg(feature = "new-geometry")]
             frame_mismatch_reported: false,
+            #[cfg(feature = "new-geometry")]
+            filters_received: 0,
         };
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
         for feature in &filters {
@@ -1520,5 +1577,20 @@ mod tests {
         assert_eq!(rejected.len(), 1, "the off-frame candidate is rejected");
         assert_eq!(passed.len(), 1, "the same-frame candidate still passes");
         assert_eq!(failed.len(), 0);
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn candidates_fail_when_every_supplied_filter_was_rejected() {
+        // A filter set emptied by rejection is not the same as no filter set:
+        // treating it as one would turn an upstream error into a pass-everything.
+        let (passed, failed, rejected) = run(
+            params(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![Feature::new_with_attributes(Attributes::new())],
+            vec![square([0.0, 0.0], 10.0)],
+        );
+        assert_eq!(rejected.len(), 1, "the unusable filter is rejected");
+        assert_eq!(passed.len(), 0, "the candidate is not passed unrestricted");
+        assert_eq!(failed.len(), 1, "it fails the condition instead");
     }
 }
