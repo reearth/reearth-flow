@@ -355,8 +355,12 @@ Ray Intersector
 
 ### Verified accurate (spot-checked, no action needed)
 
-- `Area Calculator.areaType` — "Has no effect on a geometry with no elevation" is true;
-  the parameter is only consulted inside the 3D branch (`area_calculator.rs:148-161`).
+- ~~`Area Calculator.areaType`~~ — **deleted 2026-08-27. The parameter no longer exists**:
+  #2385 removed it from both builds, so the line described a knob the user cannot set, while
+  reading as coverage. It never was coverage — a spot-check is not a review — and the action's
+  own §8 pass is in its addendum at the bottom of this file. Kept as a stub rather than removed
+  silently, because "a note written before a port describes the implementation the port
+  replaced" is the trap §7.2 records, and this is its second instance.
 - `Feature Counter.countStart` — "Value assigned to the first feature" is true;
   `fetch_add` returns the pre-increment value seeded from `start`.
 - `XML Validator.{attribute,inputType,validationType}` — all three applied
@@ -455,16 +459,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **76** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **78** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 76 | — |
+| Exposed and audited | 78 | — |
 | Does not run in the shipped build | 17 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **8** | An engine-side §8 pass — the list below |
+| **Pending audit** | **6** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -499,11 +503,12 @@ rewrite), so the decision needs an §8 re-check against the new-geometry code fi
 `base_actions.go`. Note the table has no bucket for "runs, reviewed, awaiting a decision" — that
 is why this is prose, and it is the slot Bufferer occupied until this PR.
 
-**`Area Calculator`'s port landed in #2385 (merged 2026-08-27) and it moves to pending audit.**
-Recorded here per §7.2 rather than left to expire: it now has a `#[cfg(feature = "new-geometry")]
-process` (`area_calculator.rs:165`) so it runs, it is not in `base_actions.go`, and it has had no
-§8 pass — only a spot-check of `areaType` in "Verified accurate" below. Same case as Elevation
-Extractor, not Bufferer's.
+**`Area Calculator`'s port landed in #2385 (merged 2026-08-27), it went to pending audit per
+§7.2, and it has now been audited and exposed** — outcome in the addendum at the bottom of this
+file. It was the Elevation Extractor case, not Bufferer's: the only prior note on it was a
+spot-check of `areaType`, a parameter #2385 deleted, and a spot-check is not a review. Its audit
+is also why §2 now covers diagnostic registry text, so it is the first action whose review had to
+read a surface outside `actions.json`.
 
 `Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
@@ -525,13 +530,13 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 7 actions, with preliminary findings
+### Pending audit — 6 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Newly eligible — its port landed (2)
+#### Newly eligible — its port landed (1)
 
 **`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
 two cases differ and the difference is the whole point of §7.2's rule. An action never reviewed
@@ -540,9 +545,11 @@ handed it to a decision instead — taken in #2422, and recorded under the bucke
 assume a port landing means "needs an audit"; check the review state first.
 
 Note which way that test cuts: a spot-check is not a review. `Area Calculator` had one line
-verified in the re-verification pass below and still belongs in this list, not in Bufferer's.
+verified in the re-verification pass below, which is why its port landing put it in this list
+rather than in Bufferer's — the audit it then owed is the addendum at the bottom of this file.
 
-`Elevation Extractor` was in this list and is now audited and exposed — see the addendum below.
+`Elevation Extractor` and `Area Calculator` were both in this list and are now audited and
+exposed; `HTTP Caller` left it on its own PR track. See their addenda below.
 
 ```
 Spatial Filter
@@ -551,13 +558,6 @@ Spatial Filter
              appears nowhere in this file, so it has never been reviewed and the port landing
              hands it here rather than to a decision.
   scan:    NOT scanned, for the same reason. Budget a full §8 pass.
-
-Area Calculator
-  runs:    Ported in #2385 (2026-08-27), so it now runs in the shipped build and has left the
-             does-not-run bucket. Same case as Elevation Extractor and Spatial Filter: it has
-             had no §8 pass, so the port landing hands it here rather than to a decision.
-  scan:    Only `areaType` has been looked at, as a spot-check recorded under "Verified
-             accurate" below — that is not a review. Budget a full §8 pass.
 ```
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
@@ -1342,3 +1342,127 @@ Both parameter blocks were titled in PascalCase (`ShapefileReader Parameters`), 
 `<Action Name> Parameters` convention every other audited action follows. Checked before changing:
 that convention is universal across the audited set, so §3.3's objection to a block title
 restating the action name is a standing exception here, not something to fix per batch.
+
+---
+
+### Addendum — Area Calculator, audited and exposed
+
+Kept and exposed; no correctness defect. Its port (#2385) was written to the current standard
+and it shows — Batch 5's lesson holds a third time. The `impl:` trace was run anyway, because
+two batches have now found the substantive defect in the action a schema scan called cheapest,
+and it is what turned up the one real error here: **the defect was not in the action's schema at
+all, but in a user-facing surface the standard did not cover.** §2 was amended in this PR to
+cover it.
+
+```
+Area Calculator — kept and exposed
+  runs:    `#[cfg(feature = "new-geometry")] process` (`area_calculator.rs:165`). Runs.
+  impl:    Traced through `Area::surface_area` and clean. Per leaf: `Polygon3D`, `PolygonMesh3D`
+             and `TriangularMesh3D` measure half the magnitude of each ring's Newell vector,
+             holes subtracted and floored at zero; `Polygon2D` and the 2D meshes take their
+             planar area, which for a flat thing IS its surface area; `Solid` sums every
+             boundary face via `for_each_boundary_face` (`solid/ops.rs:282`), so a void's faces
+             add surface where a polygon's holes subtract it; points, curves and point clouds
+             answer `Ok(0.0)` through `no_area!` rather than refusing; collections
+             `filter_map(.ok()).sum()`. The one refusal in the model is an unevaluated `Csg`.
+             `area_report`'s `walk_2d`/`walk_3d` are exhaustive matches with no wildcard arm, so
+             a geometry variant added later is a compile error rather than a silent omission —
+             worth preserving.
+  params:  One optional parameter, correct default. But `outputAttribute`'s description spent
+             two of its three sentences restating the action description's void semantics
+             verbatim (§3.3: a parameter description says what the parameter controls), and
+             never mentioned the one behaviour that is genuinely the parameter's own: **the
+             attribute is always written, recording `0` when the geometry has no area or could
+             not be measured.** That promise is asserted in three tests and argued for in code
+             comments, and appeared nowhere a user could see it — so a user reading `area: 0`
+             could not tell a degenerate polygon from an unmeasurable geometry. Rewritten to
+             drop the duplication and state the promise.
+  ports:   `features` → `features`, and the single-port design is right rather than a §4.3 gap.
+             The action does not fail a feature it cannot measure; it writes zero. That is the
+             established model, not a local shortcut: PostGIS `ST_Area` returns 0 for non-areal
+             geometry and JTS `Geometry.getArea()` returns `0.0` for every non-areal type. §4.3
+             also warns that adding a port is a data-loss change, and there is nothing here to
+             route to one.
+  desc:    Clean and accurate, including the surprising half — a solid's voids adding surface.
+  cat:     `Geometry`. Correct.
+  tags:    Zero, and correct. `Vertex Counter`, `Hole Counter` and `Bounds Extractor` — the same
+             family of measure-and-attach actions — all carry none, and `3d` would be wrong for
+             an action that measures 2D geometry equally.
+  i18n:    Was the worst state seen in any batch. The **action description was the English
+             placeholder in all four languages**, and es/fr/zh were English throughout including
+             the parameter block's own title and description, which are usually the two that do
+             get translated. `ja` was in the state that is easiest to misread as finished: block
+             title and `outputAttribute.title` translated, action description and
+             `outputAttribute.description` English. All four rewritten.
+  fixtures: Five nodes, all in `runtime/examples/fixture/workflow/solar-radiation/`, and every
+             one passes `outputAttribute` alone — no undeclared `with:` key, so the Batch 6
+             signal is absent here. Confirmed by reading all five, not by a single grep.
+```
+
+**The action has no automated workflow coverage at all**, and this is recorded rather than filed
+(Kyle's call). Its only fixtures are the solar-radiation example workflows, and
+`testing/data/testcases/` contains no case that names it — so a green `test-qc` says nothing
+whatsoever about this action. Its unit tests are thorough by way of compensation, including the
+diagnostics paths, which is why this was judged acceptable.
+
+#### The finding that mattered: diagnostic registry text
+
+`Area Calculator` is the first audited action to emit structured diagnostics. #2385 wired it to
+`ctx.warn` with five codes, whose `message` and `help` strings live in
+`schema/error-codes/geometry.toml`. That text reaches users the same way a doc comment does —
+`DiagnosticEvent` → server ingestion (#2271) → GraphQL `Diagnostic.message` / `Diagnostic.help`
+— and **PR #2401 renders both raw in the UI**, in a table whose every other column is translated
+through the frontend's own i18n. So this is product copy, and the standard had never said so.
+§2 now does.
+
+Reading the five under the new rule found one genuine error, of exactly the kind the new clause
+predicts — a string copied from a neighbouring code:
+
+```
+geometry.area_not_measurable
+  help:    Said "check that it is a supported, non-degenerate type". Both halves name causes
+             that cannot occur. **Degeneracy is never the cause** — a degenerate ring measures
+             `0.0` through the `Ok` path, and a point or curve answers `Ok(0.0)` too — and every
+             type is supported bar one. The `Err` arm is reachable from exactly one thing: an
+             unevaluated `Csg` tree. The phrase was copied from `geometry.footprint_unavailable`,
+             where degeneracy genuinely IS a cause. Rewritten to name the real cause and point
+             at `CSG Evaluator`, which is what resolves it.
+
+geometry.area_skipped_parts
+  help:    Accurate but told the user to "check them individually" without saying what to look
+             for, when the cause is the same single one. Rewritten to name it.
+```
+
+The other three are accurate and were left alone. Also checked and **not** a defect: two of the
+five name `Area Calculator` inside their own `help`, which duplicates the diagnostic's
+`actionType` field — but `raster.texture_assignment_failed` already names `Image Rasterizer`, so
+this is the registry's established convention and §2 now records it as one rather than flagging
+it. Verifying before acting was the difference.
+
+**Still open, and not fixable inside an audit: this text has no i18n path.** `schema/i18n/`
+covers `actions` only, so all 27 codes ship English in every language. Revisit when error-code
+i18n exists, or when #2401 merges and makes the gap visible in the product — whichever comes
+first. The 22 codes outside `geometry.area_*` have never been read against any rule and owe a
+pass under the amended §2 (Changelog rule: a new rule does not retroactively change a verdict,
+but these had no verdict).
+
+**Verified, not trusted: `geometry.toml`'s comment claiming `default_disposition = "warn_drop"`
+is inert for these five is correct.** `ExecutorContext::warn` (`executor_operation.rs:281`)
+records `WarnContinue` unconditionally; only `report()` (`:239`) calls `handle.resolve` and
+branches on the result, and this action never calls `report()`. One consequence the comment does
+not draw out and which is worth knowing: a workflow-level `ErrorPolicy` override selecting these
+codes — or `category: geometry` — is therefore **silently ignored**. That is true of every
+`warn()` call site in the codebase, not of this action, so it is recorded here rather than fixed.
+
+**Bucket arithmetic — and the predicted hazard fired, twice over.** **78 exposed / 6 pending**,
+recomputed with `grep -c 'true,' base_actions.go` rather than by subtracting.
+
+This PR predicted a collision with #2413 and put the number at 77 / 7. That was wrong in the
+same direction it warned about, because **two** PRs landed while it was open, not one: #2413
+exposed `Elevation Extractor` and #2425 exposed `HTTP Caller`. On merging, `base_actions.go`
+auto-merged correctly to 78 while the bucket table's text auto-merged to **76 / 8** — this
+branch's own numbers, taken silently over main's, with no conflict reported. The code was right
+and the document disagreed with it, exactly as in Batches 6 and 7.
+
+**So the rule is not "predict the post-merge number", it is "recount at merge time".** A
+predicted figure is one more piece of text that merges cleanly and is wrong. Count the file.

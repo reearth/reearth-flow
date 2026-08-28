@@ -6,15 +6,15 @@
     },
     {
       "name": "Area Calculator",
-      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
+      "description": "Calcule la surface réelle de la géométrie d'une entité et la stocke dans un attribut. La surface d'un solide est la somme de toutes ses surfaces de délimitation ; les faces d'un vide comptent donc au même titre que celles de l'extérieur.",
       "parameterI18n": {
         "": {
-          "title": "Area Calculator Parameters",
-          "description": "Configure how the area of each feature's geometry is measured and stored."
+          "title": "Paramètres de Area Calculator",
+          "description": "Où la surface mesurée est stockée sur chaque entité."
         },
         "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one."
+          "title": "Attribut de sortie",
+          "description": "Attribut dans lequel la surface mesurée est stockée. L'attribut est toujours écrit et prend la valeur `0` lorsque la géométrie n'a pas de surface ou n'a pas pu être mesurée, afin qu'aucune étape en aval n'ait à gérer une valeur absente."
         }
       }
     },
