@@ -591,7 +591,7 @@
       "description": "CSV および TSV ファイルから地物を読み取る",
       "parameterI18n": {
         "": {
-          "title": "CsvReader パラメータ",
+          "title": "CSV Reader パラメータ",
           "description": "CSV / TSV ファイルの処理方法を設定する"
         },
         "dataset": {
@@ -608,7 +608,7 @@
         },
         "geometry": {
           "title": "ジオメトリ設定",
-          "description": "CSV 列からジオメトリを解析するための設定（任意）"
+          "description": "ジオメトリを保持する列を指定する。Well-Known Text の単一列か、座標を分けた複数の列を指定できる。指定した列は属性ではなく地物のジオメトリとして読み取られる。省略時は各行が属性のみの地物になる"
         },
         "headerRows": {
           "title": "ヘッダー行数",
@@ -627,7 +627,7 @@
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG コード",
-            "description": "座標参照系コード（例: WGS84 の場合は 4326）"
+            "description": "ファイル内の値が従う座標参照系。たとえば WGS 84 は 4326。参照先が緯度を先に定義する場合、水平方向の2つの座標値はその順序で格納され、標高の順序は変わらない。省略時は通常の座標として読み取る"
           }
         }
       },
