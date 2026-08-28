@@ -135,6 +135,23 @@ impl State {
             .map_err(Error::other)
     }
 
+    /// Returns whether the JSONL file written for `id` exists.
+    pub async fn exists_jsonl(&self, id: &str) -> Result<bool> {
+        let p = self.id_to_location(id, self.jsonl_ext());
+        self.storage.exists(p.as_path()).await.map_err(Error::other)
+    }
+
+    /// Copies the JSONL file written for `src_id` to the file for `dst_id` within this state.
+    pub async fn copy_jsonl(&self, src_id: &str, dst_id: &str) -> Result<()> {
+        let ext = self.jsonl_ext();
+        let from = self.id_to_location(src_id, ext);
+        let to = self.id_to_location(dst_id, ext);
+        self.storage
+            .copy(from.as_path(), to.as_path())
+            .await
+            .map_err(Error::other)
+    }
+
     pub fn id_to_location(&self, id: &str, ext: &str) -> PathBuf {
         PathBuf::new()
             .join(self.root.clone())

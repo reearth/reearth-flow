@@ -252,7 +252,6 @@ impl DagExecutor {
                         node_index,
                         shutdown.clone(),
                         runtime.clone(),
-                        incremental_run_config.is_some(),
                         warn_once.clone(),
                         disposition_policy.clone(),
                     )
@@ -273,7 +272,6 @@ impl DagExecutor {
                         node_index,
                         shutdown.clone(),
                         runtime.clone(),
-                        incremental_run_config.is_some(),
                         warn_once.clone(),
                         disposition_policy.clone(),
                     );

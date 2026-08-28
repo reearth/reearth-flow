@@ -138,8 +138,20 @@ impl ExecutionDag {
                     (Some(prefix), false) => format!("{}.{}.{}", prefix, node.handle.id, port),
                     (None, _) => format!("{}.{}", node.handle.id, port),
                 };
+                // Features leaving a source are also exposed per edge, so that
+                // consumers addressing intermediate data by edge id can find them.
+                let edge_ids = if node.is_source {
+                    graph
+                        .edges(node_index)
+                        .filter(|e| e.weight().input_port == *port)
+                        .map(|e| e.weight().edge_id.clone())
+                        .collect()
+                } else {
+                    Vec::new()
+                };
                 let writer = create_feature_writer(
                     EdgeId::new(file_id),
+                    edge_ids,
                     Arc::clone(&feature_state),
                     feature_flush_threshold,
                 );
