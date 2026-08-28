@@ -1,0 +1,105 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                -19459.173371379366,
+                -18728.520471858752,
+                3.25
+              ],
+              [
+                -19459.14895676083,
+                -18717.425969342454,
+                3.25
+              ],
+              [
+                -19472.700965027983,
+                -18717.396136302825,
+                3.25
+              ],
+              [
+                -19472.725396649894,
+                -18728.49063885447,
+                3.25
+              ],
+              [
+                -19459.173371379366,
+                -18728.520471858752,
+                3.25
+              ]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "隣接面重複",
+        "issue": "Adjacent Surface Overlap",
+        "filename": "53395499_tran_6697_op.gml",
+        "featureType": "tran:Road",
+        "gmlId": "tran_3a9f2d1b-4c7e-4f32-8d25-6b8c0e1f2a34",
+        "relatedGmlId": "tran_2f8e1c0a-3b6d-4e21-9c14-5a7b9d0e1f23,tran_3a9f2d1b-4c7e-4f32-8d25-6b8c0e1f2a34",
+        "rootGmlId": "tran_3a9f2d1b-4c7e-4f32-8d25-6b8c0e1f2a34",
+        "lod": 3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                -19468.208054886814,
+                -18728.500585496888,
+                5.5
+              ],
+              [
+                -19468.183628932693,
+                -18717.406082957255,
+                5.5
+              ],
+              [
+                -19481.735637228096,
+                -18717.37623607169,
+                5.5
+              ],
+              [
+                -19481.760080185595,
+                -18728.470738645246,
+                5.5
+              ],
+              [
+                -19468.208054886814,
+                -18728.500585496888,
+                5.5
+              ]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "隣接面重複",
+        "issue": "Adjacent Surface Overlap",
+        "filename": "53395499_tran_6697_op.gml",
+        "featureType": "tran:Road",
+        "gmlId": "tran_2f8e1c0a-3b6d-4e21-9c14-5a7b9d0e1f23",
+        "relatedGmlId": "tran_2f8e1c0a-3b6d-4e21-9c14-5a7b9d0e1f23,tran_3a9f2d1b-4c7e-4f32-8d25-6b8c0e1f2a34",
+        "rootGmlId": "tran_2f8e1c0a-3b6d-4e21-9c14-5a7b9d0e1f23",
+        "lod": 3
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

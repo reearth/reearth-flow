@@ -11,10 +11,12 @@ use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFa
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
 use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
+use crate::common::transportation_xlink_detector::TransportationXlinkDetectorFactory;
 use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 
 use super::building_usage_attribute_strategy::Plateau6BuildingUsageStrategy;
+use super::transportation_xlink_strategy::Plateau6TransportationXlinkStrategy;
 use super::unmatched_xlink_strategy::Plateau6XlinkStrategy;
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -33,6 +35,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::new(UnmatchedXlinkDetectorFactory::new(
             &PLATEAU6,
             &Plateau6XlinkStrategy,
+        )),
+        Box::new(TransportationXlinkDetectorFactory::new(
+            &PLATEAU6,
+            &Plateau6TransportationXlinkStrategy,
         )),
     ];
     factories

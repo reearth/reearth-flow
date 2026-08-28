@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_08a698e7-d86f-49a8-82b5-3b9fd6f8a6c7">
+<gml:name>Road_class</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Road_class_1">
+<gml:description>道路</gml:description>
+<gml:name>1040</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

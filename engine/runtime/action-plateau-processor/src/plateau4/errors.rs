@@ -49,10 +49,6 @@ pub(super) enum PlateauProcessorError {
     SolidIntersectionTestPairCreator(String),
     #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
     SolidIntersectionTestPairCreatorFactory(String),
-    #[error("TranXlinkDetector error: {0}")]
-    TranXlinkDetector(String),
-    #[error("TranXlinkDetector Factory error: {0}")]
-    TranXlinkDetectorFactory(String),
     #[error("CityGmlMeshBuilder error: {0}")]
     CityGmlMeshBuilder(String),
     #[error("CityGmlMeshBuilder Factory error: {0}")]
