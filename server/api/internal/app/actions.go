@@ -117,7 +117,7 @@ func loadActionsData(lang string) error {
 		return nil
 	}
 
-	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/plateau5/engine/schema/"
 	filename := "actions.json"
 	if lang != "" {
 		filename = fmt.Sprintf("actions_%s.json", lang)
