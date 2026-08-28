@@ -3504,11 +3504,11 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales.",
+      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales. Todas las candidatas pasan cuando no se suministra ninguna geometría de filtro.",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter Parameters",
-          "description": "Configure spatial relationship testing between filter and candidate geometries"
+          "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter."
         },
         "matchMode": {
           "title": "Match Mode",
@@ -3516,19 +3516,19 @@
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins."
+          "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
-          "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\"."
+          "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged."
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of filter features the candidate matched."
+          "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike."
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one."
+          "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object."
         }
       },
       "enumI18n": {
@@ -3544,31 +3544,40 @@
         },
         "SpatialPredicate": {
           "contains": {
-            "description": "Candidate completely contains the filter geometry"
+            "title": "Contains",
+            "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that."
           },
           "coveredBy": {
-            "description": "Candidate is covered by filter geometry"
+            "title": "Covered By",
+            "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary."
           },
           "covers": {
-            "description": "Candidate covers the filter geometry"
+            "title": "Covers",
+            "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary."
           },
           "crosses": {
-            "description": "Geometries cross each other"
+            "title": "Crosses",
+            "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon."
           },
           "disjoint": {
-            "description": "Geometries have no spatial relationship"
+            "title": "Disjoint",
+            "description": "Passes a candidate that shares no point at all with the filter geometry."
           },
           "intersects": {
-            "description": "Geometries have any intersection"
+            "title": "Intersects",
+            "description": "Passes a candidate that shares at least one point with the filter geometry."
           },
           "overlaps": {
-            "description": "Geometries overlap partially"
+            "title": "Overlaps",
+            "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other."
           },
           "touches": {
-            "description": "Geometries touch at boundaries but don't overlap"
+            "title": "Touches",
+            "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior."
           },
           "within": {
-            "description": "Candidate completely within filter geometry"
+            "title": "Within",
+            "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that."
           }
         }
       }

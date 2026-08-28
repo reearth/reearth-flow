@@ -12096,18 +12096,18 @@ Validates the Solid Boundary Geometry
 ### Type
 * processor
 ### Description
-Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units.
+Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units. Every candidate passes when no filter geometry is supplied at all.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Spatial Filter Parameters",
-  "description": "Configure spatial relationship testing between filter and candidate geometries",
+  "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter.",
   "type": "object",
   "properties": {
     "predicate": {
       "title": "Spatial Predicate",
-      "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
+      "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object.",
       "default": "intersects",
       "allOf": [
         {
@@ -12127,13 +12127,13 @@ Filters candidate features by their spatial relationship to filter geometries, t
     },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
+      "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins.",
       "default": false,
       "type": "boolean"
     },
     "mergedAttributesPrefix": {
       "title": "Merged Attributes Prefix",
-      "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\".",
+      "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged.",
       "default": null,
       "type": [
         "string",
@@ -12142,7 +12142,7 @@ Filters candidate features by their spatial relationship to filter geometries, t
     },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of filter features the candidate matched.",
+      "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike.",
       "default": null,
       "anyOf": [
         {
@@ -12156,65 +12156,76 @@ Filters candidate features by their spatial relationship to filter geometries, t
   },
   "definitions": {
     "SpatialPredicate": {
+      "title": "Spatial Predicate",
+      "description": "The relationship each candidate is tested for against a filter geometry.",
       "oneOf": [
         {
-          "description": "Candidate completely contains the filter geometry",
+          "title": "Contains",
+          "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that.",
           "type": "string",
           "enum": [
             "contains"
           ]
         },
         {
-          "description": "Candidate completely within filter geometry",
+          "title": "Within",
+          "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that.",
           "type": "string",
           "enum": [
             "within"
           ]
         },
         {
-          "description": "Geometries have any intersection",
+          "title": "Intersects",
+          "description": "Passes a candidate that shares at least one point with the filter geometry.",
           "type": "string",
           "enum": [
             "intersects"
           ]
         },
         {
-          "description": "Geometries have no spatial relationship",
+          "title": "Disjoint",
+          "description": "Passes a candidate that shares no point at all with the filter geometry.",
           "type": "string",
           "enum": [
             "disjoint"
           ]
         },
         {
-          "description": "Geometries touch at boundaries but don't overlap",
+          "title": "Touches",
+          "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior.",
           "type": "string",
           "enum": [
             "touches"
           ]
         },
         {
-          "description": "Geometries cross each other",
+          "title": "Crosses",
+          "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon.",
           "type": "string",
           "enum": [
             "crosses"
           ]
         },
         {
-          "description": "Geometries overlap partially",
+          "title": "Overlaps",
+          "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other.",
           "type": "string",
           "enum": [
             "overlaps"
           ]
         },
         {
-          "description": "Candidate is covered by filter geometry",
+          "title": "Covered By",
+          "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary.",
           "type": "string",
           "enum": [
             "coveredBy"
           ]
         },
         {
-          "description": "Candidate covers the filter geometry",
+          "title": "Covers",
+          "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary.",
           "type": "string",
           "enum": [
             "covers"

@@ -1,3 +1,9 @@
+# The codes from here down to `geometry.no_usable_filter` are raised only
+# through `ctx.warn()`, so their `default_disposition` is inert for exactly the
+# reason spelled out for the `geometry.area_*` codes further down. Read
+# `warn_drop` here as "the least-severe value the enum offers", not as a claim
+# about the feature: an action raising one of these routes the feature to its
+# own `rejected` or `failed` port rather than dropping it.
 [[codes]]
 code = "geometry.footprint_unavailable"
 category = "geometry"
@@ -39,6 +45,13 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature whose spatial relationship test failed"
 help = "Check that the geometry is valid and in a frame the predicate can test."
+
+[[codes]]
+code = "geometry.no_usable_filter"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "failed every candidate because no supplied filter geometry could be prepared"
+help = "Every feature supplied as a filter was rejected, so there was nothing left to test against; the preceding warnings name the cause. Reproject all inputs of the node to one coordinate frame in linear units upstream."
 
 # The five `geometry.area_*` codes below are raised only through `ctx.warn()`
 # (`runtime/action-processor/src/geometry/area_calculator.rs`), which ignores
