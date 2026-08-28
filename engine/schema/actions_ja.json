@@ -12440,16 +12440,16 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）",
+      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）。フィルタージオメトリが 1 つも渡されない場合はすべての候補が通過する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Spatial Filter パラメータ",
-        "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する",
+        "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する",
         "type": "object",
         "properties": {
           "predicate": {
             "title": "空間述語",
-            "description": "テストする空間関係。候補が主語となる: within は候補がフィルタージオメトリの内部にある場合に通過し、contains は候補がフィルタージオメトリを含む場合に通過する",
+            "description": "テストする空間関係。候補を主語、フィルタージオメトリを目的語として読む",
             "default": "intersects",
             "allOf": [
               {
@@ -12469,13 +12469,13 @@
           },
           "mergeFilterAttributes": {
             "title": "フィルター属性をマージ",
-            "description": "true の場合、一致したすべてのフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後に一致したフィルターの値が優先される",
+            "description": "一致したすべてのフィルター地物の属性を通過した候補にコピーする。候補が同名の属性を持つ場合は上書きされ、一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される",
             "default": false,
             "type": "boolean"
           },
           "mergedAttributesPrefix": {
             "title": "マージ属性プレフィックス",
-            "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる",
+            "description": "マージする属性名に付加するプレフィックス。候補自身の属性名との衝突を防ぐ。\"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。属性をマージしない場合は無視される",
             "default": null,
             "type": [
               "string",
@@ -12484,7 +12484,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "マッチ数出力属性",
-            "description": "候補が一致したフィルター地物の数を格納する属性名（任意）",
+            "description": "候補が一致したフィルター地物の数を格納する属性。通過した候補と失敗した候補の両方に書き込まれる",
             "default": null,
             "anyOf": [
               {
@@ -12498,65 +12498,76 @@
         },
         "definitions": {
           "SpatialPredicate": {
+            "title": "Spatial Predicate",
+            "description": "The relationship each candidate is tested for against a filter geometry.",
             "oneOf": [
               {
-                "description": "候補がフィルタージオメトリを完全に含む",
+                "title": "含む",
+                "description": "候補がフィルタージオメトリを内部に含み、内部を共有する。フィルターが候補の境界上のみにある場合は該当しない（その場合は Covers を使用）",
                 "type": "string",
                 "enum": [
                   "contains"
                 ]
               },
               {
-                "description": "候補がフィルタージオメトリの内部に完全に含まれる",
+                "title": "含まれる",
+                "description": "候補がフィルタージオメトリの内部にあり、内部を共有する。候補がフィルターの境界上のみにある場合は該当しない（その場合は Covered By を使用）",
                 "type": "string",
                 "enum": [
                   "within"
                 ]
               },
               {
-                "description": "ジオメトリが何らかの交差を持つ",
+                "title": "交差する",
+                "description": "候補がフィルタージオメトリと少なくとも 1 点を共有する",
                 "type": "string",
                 "enum": [
                   "intersects"
                 ]
               },
               {
-                "description": "ジオメトリに空間的な関係がない",
+                "title": "交差しない",
+                "description": "候補がフィルタージオメトリと 1 点も共有しない",
                 "type": "string",
                 "enum": [
                   "disjoint"
                 ]
               },
               {
-                "description": "ジオメトリが境界で接しているが重なっていない",
+                "title": "接する",
+                "description": "候補がフィルタージオメトリと境界のみで接し、内部を共有しない",
                 "type": "string",
                 "enum": [
                   "touches"
                 ]
               },
               {
-                "description": "ジオメトリが互いに交差する",
+                "title": "横断する",
+                "description": "候補がフィルタージオメトリを横切り、ポリゴンを横断する線のように次元の低い重なりで内部と交わる",
                 "type": "string",
                 "enum": [
                   "crosses"
                 ]
               },
               {
-                "description": "ジオメトリが部分的に重なる",
+                "title": "重なる",
+                "description": "候補がフィルタージオメトリと同じ次元を持ち、内部を共有しつつ互いに外側の点も持つ",
                 "type": "string",
                 "enum": [
                   "overlaps"
                 ]
               },
               {
-                "description": "候補がフィルタージオメトリに覆われている",
+                "title": "覆われる",
+                "description": "候補のすべての点がフィルタージオメトリ内にある。境界上のみにある場合も含む",
                 "type": "string",
                 "enum": [
                   "coveredBy"
                 ]
               },
               {
-                "description": "候補がフィルタージオメトリを覆う",
+                "title": "覆う",
+                "description": "候補がフィルタージオメトリのすべての点を含む。フィルターが境界上のみにある場合も含む",
                 "type": "string",
                 "enum": [
                   "covers"
