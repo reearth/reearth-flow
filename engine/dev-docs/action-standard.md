@@ -213,6 +213,8 @@ Ask: did the action *attempt* the transformation and fail, or was there simply *
 
 A missing attribute is **usually a no-op, not a failure.** Treating it as a failure is the most common way this rule gets broken, because "the attribute wasn't there" sounds like an error when it is normally just an absence.
 
+**Sources are outside this rule.** A source receives no features, so it has nothing to route — there is no incoming feature for a `rejected` outcome to attach to. When a reader meets input it cannot parse, the correct behaviour is to fail the read with an error naming the offending location, not to route somewhere: a reader that emits part of a file and quietly drops the rest hides corrupt input at the point where the user can still fix it. This does not license failing on absence. A blank cell where a value is optional is the no-op case above, and the feature is still emitted; reserve the failure for input that is present and malformed.
+
 **Check the paired producer.** Extractor/Replacer, Splitter/Merger and similar pairs only work if both halves agree. If the producer conditionally skips writing its attribute, the consumer *must* tolerate its absence — a `rejected` port on the consumer silently deletes the features the producer deliberately left alone.
 
 **Adding a port is a data-loss change.** A new port is unwired in every existing workflow, so features newly routed to it are dropped on the floor rather than reaching the destination they used to. Before adding one: grep the fixtures for the action name to size the blast radius, and run `cargo make test-qc` afterwards. Silent loss shows up as a downstream count that quietly drops, not as a test error at the changed node.
@@ -335,6 +337,10 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-28
+
+- **§4.3** — added the carve-out that sources sit outside the port-completeness rule: a reader has no incoming feature to reject, so input it cannot parse fails the read rather than routing to `rejected`. Settled while auditing `CSV Reader`, whose new-geometry read removed a `rejected` port that had been advertised but never emitted to. The table above continues to govern processors unchanged, so no past verdict changes.
 
 ### 2026-08-27
 
