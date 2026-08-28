@@ -587,18 +587,16 @@ XML Fragmenter  — ALREADY AUDITED, still non-compliant
 
 This group is schema-breaking by nature and wants its own PR.
 
-#### Group F — Known-heavy (2)
+#### Group F — Known-heavy (1)
+
+`HTTP Caller` was audited and **exposed** on its own PR track (2026-08-27): egress control
+added (scheme restriction; private, loopback and link-local blocking at the URL, DNS and
+redirect level; `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK` opt-out for self-hosters), surface
+trimmed under the amended §3.5 (observability and WebDAV verbs removed, fixed response
+attribute names), response file writes sandboxed, and the correctness defects from the
+scoping pass fixed.
 
 ```
-HTTP Caller
-  params:  13 parameters including `timeouts`, `retry`, `rateLimit`, `httpOptions` and
-             `observability`. §3.5 "No implementation leakage" names `timeout` and
-             `retryCount` as its canonical examples of what must NOT be exposed, and §3.5's
-             volume guideline is 8. Applying the rule as written would delete roughly half
-             this action's surface — that is a product decision, not an audit call.
-  cat:     Was `Web` (off-taxonomy, would have landed in a phantom palette group);
-             recategorised to `Feature` in #2373. Done.
-
 Attribute Duplicate Filter
   desc:    "Remove Duplicate Features Based on Attribute Values" — Title Case, no period.
              Param block has no root description.

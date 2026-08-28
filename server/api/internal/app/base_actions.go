@@ -101,6 +101,7 @@ var baseActions = map[string]bool{
 	"Feature Sorter":              true,
 	"Feature Transformer":         true,
 	"Feature Type Filter":         true,
+	"HTTP Caller":                 true,
 	"Input Router":                true,
 	"Output Router":               true,
 	// Utility
