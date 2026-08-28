@@ -62,6 +62,7 @@ var baseActions = map[string]bool{
 	"CSG Builder":                  true,
 	"CSG Evaluator":                true,
 	"Dissolver":                    true,
+	"Elevation Extractor":          true,
 	"Footprint Replacer":           true,
 	"Geometry Coercer":             true,
 	"Geometry Extractor":           true,
@@ -101,6 +102,7 @@ var baseActions = map[string]bool{
 	"Feature Sorter":              true,
 	"Feature Transformer":         true,
 	"Feature Type Filter":         true,
+	"HTTP Caller":                 true,
 	"Input Router":                true,
 	"Output Router":               true,
 	// Utility

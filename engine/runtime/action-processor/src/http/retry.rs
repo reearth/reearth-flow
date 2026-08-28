@@ -9,11 +9,6 @@ use super::client::{HttpClient, HttpResponse};
 use super::errors::{HttpProcessorError, Result};
 use super::params::RetryConfig;
 
-pub(crate) struct RetryContext {
-    pub attempt: u32,
-    pub total_attempts: u32,
-}
-
 pub(crate) fn execute_with_retry(
     client: &dyn HttpClient,
     method: Method,
@@ -22,18 +17,11 @@ pub(crate) fn execute_with_retry(
     query_params: Vec<(String, String)>,
     body: Option<BodyContent>,
     retry_config: &Option<RetryConfig>,
-) -> Result<(HttpResponse, RetryContext)> {
+) -> Result<HttpResponse> {
     let config = retry_config.as_ref();
     let max_attempts = config.map(|c| c.max_attempts).unwrap_or(1);
 
-    let mut retry_ctx = RetryContext {
-        attempt: 0,
-        total_attempts: 0,
-    };
-
     for attempt in 0..max_attempts {
-        retry_ctx.attempt = attempt;
-
         let method_clone = method.clone();
         let headers_clone = headers.clone();
         let query_clone = query_params.clone();
@@ -41,8 +29,6 @@ pub(crate) fn execute_with_retry(
 
         match client.send_request(method_clone, &url, headers_clone, query_clone, body_clone) {
             Ok(response) => {
-                retry_ctx.total_attempts = attempt + 1;
-
                 if let Some(cfg) = config {
                     if should_retry_status(response.status_code, cfg) && attempt + 1 < max_attempts
                     {
@@ -60,11 +46,9 @@ pub(crate) fn execute_with_retry(
                     }
                 }
 
-                return Ok((response, retry_ctx));
+                return Ok(response);
             }
             Err(e) => {
-                retry_ctx.total_attempts = attempt + 1;
-
                 if attempt + 1 >= max_attempts {
                     return Err(e);
                 }
@@ -107,10 +91,13 @@ fn should_retry_status(status: u16, config: &RetryConfig) -> bool {
 }
 
 fn calculate_backoff_delay(config: &RetryConfig, attempt: u32, headers: &HeaderMap) -> Duration {
-    // Check for Retry-After header
+    let max_delay = Duration::from_millis(config.max_delay_ms);
+
+    // Check for Retry-After header, capped at the configured maximum delay so
+    // a server cannot stall a worker thread indefinitely.
     if config.honor_retry_after {
         if let Some(retry_after) = parse_retry_after_header(headers) {
-            return retry_after;
+            return retry_after.min(max_delay);
         }
     }
 
@@ -120,11 +107,18 @@ fn calculate_backoff_delay(config: &RetryConfig, attempt: u32, headers: &HeaderM
     Duration::from_millis(delay_ms)
 }
 
+/// Parse a Retry-After value in either of its two standard forms:
+/// a delay in seconds, or an HTTP-date.
 fn parse_retry_after_header(headers: &HeaderMap) -> Option<Duration> {
     let retry_after = headers.get("retry-after")?.to_str().ok()?;
 
     if let Ok(seconds) = retry_after.parse::<u64>() {
         return Some(Duration::from_secs(seconds));
+    }
+
+    if let Ok(date) = chrono::DateTime::parse_from_rfc2822(retry_after) {
+        let delta = date.with_timezone(&chrono::Utc) - chrono::Utc::now();
+        return Some(delta.to_std().unwrap_or(Duration::ZERO));
     }
 
     None
@@ -174,5 +168,55 @@ mod tests {
         let multipart_body = Some(BodyContent::Multipart(Form::new()));
         let result = clone_body_content(&multipart_body);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_retry_after_seconds_form() {
+        let mut headers = HeaderMap::new();
+        headers.insert("retry-after", HeaderValue::from_static("7"));
+        assert_eq!(
+            parse_retry_after_header(&headers),
+            Some(Duration::from_secs(7))
+        );
+    }
+
+    #[test]
+    fn test_retry_after_http_date_form() {
+        let future = chrono::Utc::now() + chrono::Duration::seconds(30);
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "retry-after",
+            HeaderValue::from_str(&future.to_rfc2822()).unwrap(),
+        );
+        let parsed = parse_retry_after_header(&headers).expect("HTTP-date form must parse");
+        assert!(parsed > Duration::from_secs(20) && parsed <= Duration::from_secs(31));
+    }
+
+    #[test]
+    fn test_retry_after_past_http_date_is_zero() {
+        let past = chrono::Utc::now() - chrono::Duration::seconds(30);
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "retry-after",
+            HeaderValue::from_str(&past.to_rfc2822()).unwrap(),
+        );
+        assert_eq!(parse_retry_after_header(&headers), Some(Duration::ZERO));
+    }
+
+    #[test]
+    fn test_retry_after_capped_by_max_delay() {
+        let config = RetryConfig {
+            max_attempts: 3,
+            initial_delay_ms: 100,
+            backoff_multiplier: 2.0,
+            max_delay_ms: 2000,
+            retry_on_status: None,
+            honor_retry_after: true,
+        };
+
+        let mut headers = HeaderMap::new();
+        headers.insert("retry-after", HeaderValue::from_static("3600"));
+        let delay = calculate_backoff_delay(&config, 0, &headers);
+        assert_eq!(delay, Duration::from_millis(2000));
     }
 }

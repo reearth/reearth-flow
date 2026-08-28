@@ -16,7 +16,7 @@ pub(crate) use simplicity::{
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use kiddo::{KdTree, SquaredEuclidean};
+use kiddo::{ImmutableKdTree, SquaredEuclidean};
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::{CoordinateFrame, UnitKind};
@@ -899,16 +899,21 @@ impl DuplicateCoord for [f64; 3] {
 /// point. Exact bit-equality when `tolerance` is `None`; otherwise two coords are
 /// coincident when within `tolerance` distance.
 ///
+/// The tolerant path indexes the coordinates in a k-d tree; see
+/// [`duplicates_within`].
+///
+/// A tolerance that is not a positive finite number carries no usable radius and
+/// is treated as exact equality.
+///
 /// # Precondition
 ///
 /// Every coordinate must be finite. `DuplicatePoints` depends on
 /// [`Finite`](ValidationType::Finite) (see
 /// [`dependencies`](ValidationType::dependencies)), so the gated driver never
 /// reaches this check until finiteness has passed, and this routine relies on
-/// that rather than re-checking. A non-finite coordinate would corrupt
-/// detection: [`norm_bits`] collides distinct NaNs into a false duplicate, and a
-/// NaN poisons the k-d tree, so any caller outside the gated driver must uphold
-/// it.
+/// that rather than re-checking. A non-finite coordinate would corrupt detection:
+/// [`norm_bits`] collides distinct NaNs into a false duplicate, and a NaN poisons
+/// the k-d tree, so any caller outside the gated driver must uphold it.
 pub(crate) fn check_duplicate_points<const N: usize>(
     frame: &CoordinateFrame,
     coords: impl IntoIterator<Item = [f64; N]>,
@@ -918,7 +923,7 @@ pub(crate) fn check_duplicate_points<const N: usize>(
     [f64; N]: DuplicateCoord,
 {
     let mut push = |c: [f64; N]| report.push(c.into_point(frame));
-    match tolerance {
+    match tolerance.filter(|t| t.is_finite() && *t > 0.0) {
         None => {
             let mut seen = HashSet::new();
             for c in coords {
@@ -929,19 +934,48 @@ pub(crate) fn check_duplicate_points<const N: usize>(
             }
         }
         Some(t) => {
-            let radius = t * t;
-            let mut tree: KdTree<f64, N> = KdTree::new();
-            let mut n: u64 = 0;
-            for c in coords {
-                if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
-                    push(c);
-                } else {
-                    tree.add(&c, n);
-                    n += 1;
+            let coords: Vec<[f64; N]> = coords.into_iter().collect();
+            for (c, duplicate) in coords.iter().zip(duplicates_within(&coords, t)) {
+                if duplicate {
+                    push(*c);
                 }
             }
         }
     }
+}
+
+/// Which of `coords` coincide with an earlier coordinate, within `tolerance`.
+///
+/// Scanning in index order, a coordinate that is not already flagged claims every
+/// later coordinate within `tolerance` of it, so a cluster of coincident
+/// coordinates is reported against its first member alone.
+///
+/// # Precondition
+///
+/// Every coordinate must be finite; a NaN poisons the k-d tree.
+fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec<bool> {
+    let mut duplicate = vec![false; coords.len()];
+    if coords.len() < 2 {
+        return duplicate;
+    }
+    // The mutable KdTree panics on degenerate point distributions;
+    // ImmutableKdTree does not.
+    let tree: ImmutableKdTree<f64, N> = ImmutableKdTree::new_from_slice(coords);
+    // `within_unsorted` excludes the radius itself, so step it up to keep a pair
+    // exactly `tolerance` apart coincident.
+    let radius = (tolerance * tolerance).next_up();
+    for i in 0..coords.len() {
+        if duplicate[i] {
+            continue;
+        }
+        for neighbour in tree.within_unsorted::<SquaredEuclidean>(&coords[i], radius) {
+            let j = neighbour.item as usize;
+            if j > i {
+                duplicate[j] = true;
+            }
+        }
+    }
+    duplicate
 }
 
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
@@ -1469,6 +1503,52 @@ mod tests {
         let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
         assert_eq!(positions.len(), 1);
         assert_eq!(offending_point(&positions[0]), [0.001, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn duplicate_tolerance_handles_many_coordinates_on_one_axis_value() {
+        // Hundreds of vertices sharing an axis value, spaced wider than the
+        // tolerance: none coincide.
+        let coords: Vec<[f64; 3]> = (0..500).map(|i| [0.0, i as f64, 0.0]).collect();
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &lenient),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_many_coordinates_on_one_position() {
+        // All coordinates exactly coincident: every vertex past the first is a
+        // duplicate.
+        let coords: Vec<[f64; 3]> = vec![[1.0, 2.0, 3.0]; 500];
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 499);
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_a_non_adjacent_pair() {
+        // The coincident pair is 0.0002 apart but not adjacent in the list.
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.9999, 0.0, 0.0], [5.0, 0.0, 0.0], [1.0001, 0.0, 0.0]],
+        );
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.001),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 1);
+        assert_eq!(offending_point(&positions[0]), [1.0001, 0.0, 0.0]);
     }
 
     #[test]
