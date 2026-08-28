@@ -81,11 +81,7 @@ pub(crate) enum CompiledRequestBody {
 #[derive(Debug, Clone)]
 pub(crate) enum CompiledResponseHandling {
     Attribute,
-    File {
-        path_ast: CompiledCode,
-        store_path_in_attribute: Option<bool>,
-        path_attribute: Option<String>,
-    },
+    File { path_ast: CompiledCode },
 }
 
 pub(crate) struct ExpressionCompiler;
@@ -266,18 +262,12 @@ impl ExpressionCompiler {
     ) -> Result<CompiledResponseHandling> {
         match handling {
             ResponseHandling::Attribute => Ok(CompiledResponseHandling::Attribute),
-            ResponseHandling::File {
-                path,
-                store_path_in_attribute,
-                path_attribute,
-            } => Ok(CompiledResponseHandling::File {
+            ResponseHandling::File { path } => Ok(CompiledResponseHandling::File {
                 path_ast: path.compile().map_err(|e| {
                     HttpProcessorError::CallerFactory(format!(
                         "Failed to compile response path expression: {e:?}"
                     ))
                 })?,
-                store_path_in_attribute: *store_path_in_attribute,
-                path_attribute: path_attribute.clone(),
             }),
         }
     }

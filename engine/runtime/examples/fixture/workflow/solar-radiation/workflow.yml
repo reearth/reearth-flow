@@ -1084,7 +1084,7 @@ graphs:
       # Area Computation Branch (for CSV per-m2 values)
       # ========================================
 
-      # Compute sloped area of each roof surface polygon
+      # Compute the true surface area of each roof surface polygon
       - id: 00000001-0000-0000-0000-0000000000d0
         name: RoofAreaCalculator
         type: action

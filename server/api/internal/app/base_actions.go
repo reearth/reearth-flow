@@ -53,6 +53,7 @@ var baseActions = map[string]bool{
 	"Zip File Writer":        true,
 	// Geometry
 	"Appearance Remover":           true,
+	"Area Calculator":              true,
 	"Area On Area Overlayer":       true,
 	"Boundary Extractor":           true,
 	"Bounds Extractor":             true,
@@ -101,6 +102,7 @@ var baseActions = map[string]bool{
 	"Feature Sorter":              true,
 	"Feature Transformer":         true,
 	"Feature Type Filter":         true,
+	"HTTP Caller":                 true,
 	"Input Router":                true,
 	"Output Router":               true,
 	// Utility

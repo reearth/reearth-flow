@@ -591,28 +591,27 @@ fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -
 /// before producing a RunSummary: one fatal row per failed node the handler
 /// captured, or a single workflow-level row when it captured none.
 fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSummary {
-    let fatal = |node_id: Option<String>| {
+    let fatal = |node_id: Option<String>, name: Option<String>| {
         let mut d = Diagnostic::from_draft(
             DiagnosticDraft::new(ErrorCode::InternalUnclassified)
                 .with_message(error_detail.clone()),
             node_id,
-            None,
+            name,
             None,
         );
         d.effective_disposition = Some(Disposition::Fatal);
         d
     };
 
-    let mut node_ids = handler.failed_nodes();
-    node_ids.sort();
-    node_ids.dedup();
-
-    let mut failed_nodes: Vec<Diagnostic> = node_ids
+    let mut failed_nodes: Vec<Diagnostic> = handler
+        .failure_details()
         .into_iter()
-        .map(|node_id| fatal(Some(node_id)))
+        .map(|node| fatal(Some(node.id), node.name))
         .collect();
+    // A run that died before any node event (e.g. a graph-build error) still
+    // gets a workflow-level row carrying the execution error.
     if failed_nodes.is_empty() {
-        failed_nodes.push(fatal(None));
+        failed_nodes.push(fatal(None, None));
     }
 
     RunSummary {
@@ -628,10 +627,23 @@ mod tests {
 
     #[test]
     fn failure_summary_builds_a_fatal_row_per_failed_node_deduped() {
+        use crate::event_handler::FailedNode;
+
         let handler = NodeFailureHandler::new();
-        handler.failed_sinks.lock().push("node-a".to_string());
-        handler.failed_sinks.lock().push("node-a".to_string());
-        handler.failed_sinks.lock().push("node-b".to_string());
+        // A status-Failed capture (no name) followed by the processor event for
+        // the same node (named), plus a second node — 2 rows, name preserved.
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: None,
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: Some("CityGML Reader".to_string()),
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-b".to_string(),
+            name: None,
+        });
 
         let summary = failure_summary("ExecutionError(Source(..))".to_string(), &handler);
 
@@ -640,6 +652,13 @@ mod tests {
             assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
             assert_eq!(row.message, "ExecutionError(Source(..))");
         }
+        assert_eq!(summary.failed_nodes[0].node_id.as_deref(), Some("node-a"));
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("CityGML Reader")
+        );
+        assert_eq!(summary.failed_nodes[1].node_id.as_deref(), Some("node-b"));
+        assert_eq!(summary.failed_nodes[1].action_type, None);
         assert!(summary.aggregated_diagnostics.is_empty());
         assert_eq!(summary.dropped_event_count, 0);
     }

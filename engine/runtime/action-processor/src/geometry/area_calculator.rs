@@ -83,15 +83,15 @@ impl ProcessorFactory for AreaCalculatorFactory {
 
 /// # Area Calculator Parameters
 ///
-/// Configure how the area of each feature's geometry is measured and stored.
+/// Where the measured surface area is stored on each feature.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaCalculator {
     /// # Output Attribute
-    /// Attribute to store the calculated true surface area in. Defaults to
-    /// `area`. A solid's area sums the areas of all of its boundary
-    /// surfaces, so a void's faces count toward the total just like the
-    /// exterior's do — a hollow body measures *more* surface than a solid one.
+    /// Attribute to store the measured surface area in. The attribute is
+    /// always written, recording `0` when the geometry has no area or could
+    /// not be measured, so a downstream step never has to handle a missing
+    /// value.
     #[serde(default = "default_output_attribute")]
     output_attribute: Attribute,
 }

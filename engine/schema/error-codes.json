@@ -88,14 +88,14 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "area not measurable, wrote 0",
-    "help": "Area Calculator could not measure this geometry; check that it is a supported, non-degenerate type."
+    "help": "An unevaluated CSG tree is the one geometry Area Calculator cannot measure; run CSG Evaluator to compute the solid it describes, then measure the result."
   },
   {
     "code": "geometry.area_skipped_parts",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped geometry part(s) that cannot be measured; their area is not in the total",
-    "help": "One or more members of this geometry could not be measured and were excluded from the total; check them individually."
+    "help": "An unevaluated CSG tree is the one geometry part that cannot be measured; run CSG Evaluator on the geometry before measuring so that every part counts toward the total."
   },
   {
     "code": "geometry.area_unknown_unit",

@@ -75,6 +75,10 @@ Verb-first, present tense, third-person singular — start directly with the ver
 
 **Naming other software.** Doc comments on factories, parameters and enum variants are compiled into `actions.json` and shipped to users in the UI and the generated docs — they are product copy, not code comments. Where naming prior art genuinely helps a reader, cite an open specification or implementation (OGC Simple Features, PostGIS, JTS, GDAL/OGR). Do not name a commercial product: describing our behaviour as matching, differing from, or replacing a named vendor's tool reads as a comparative claim we do not want to make or maintain, and it dates badly. Research those tools freely (§"Prior art") — just do not put their names in text that ships. This applies to `///` comments in particular, since it is easy to forget they are user-facing.
 
+**Diagnostic registry text is product copy too.** The `message` and `help` strings in `schema/error-codes/*.toml` reach users the same way a doc comment does: they travel with the diagnostic through the engine, the server's ingestion and the GraphQL API, keyed by the code the action raises. So they are held to the accuracy rule in §"How to use" and to the prohibition on naming a commercial product above. Trace each string to the branch that raises its code and say what actually causes it — **a string copied from a neighbouring code is the failure to watch for**, because the neighbour's cause is not this code's.
+
+Their genre differs from an action description, so the style rules above do not transfer. Follow the registry's own conventions instead: a `message` is a lowercase clause with no closing period, naming what happened; `help` is one or two imperative sentences telling the user what to change, and naming the action that would fix it is normal and useful (`raster.texture_assignment_failed` names `Image Rasterizer`). Note this text has **no translation path** — `schema/i18n/` covers `actions` only — so it ships in English in every language.
+
 | ✗ | ✓ |
 |---|---|
 | "This processor calculates area" | "Calculates the planar or sloped area of polygon geometries." |
@@ -152,11 +156,15 @@ Give the action a normal parameter object with the enum as one property instead.
 
 **Volume guideline.** More than 8 parameters is a signal to review whether any can be combined, given sensible defaults, or split into a separate action. It is not a hard cap, but it requires justification.
 
+**Grouped configuration objects.** A nested object that groups related optional settings (a `retry` block, a `timeouts` block) counts as **one** parameter toward the volume guideline — the user sees one collapsible group, not its leaves. The grouping is not a loophole: every leaf inside the object must justify itself under the same rules as a top-level parameter, and a group is only legitimate when it is optional as a whole and the action behaves sensibly with the entire object absent. A group of two that would read fine as top-level parameters does not need to be a group.
+
 **Ordering.** In the schema's `properties` object, define required parameters first, followed by commonly adjusted optional parameters, followed by edge-case optional parameters last. This ordering is the foundation for future UI grouping (such as a collapsible advanced section) and makes the action easier to understand even before any grouping is added.
 
 For example: a reprojection action puts `targetEpsgCode` (required) before `horizontalDatumTransformation` (common optional) before `axisOrder` (edge-case optional).
 
 **No implementation leakage.** Infrastructure knobs like `timeout`, `retryCount`, `bufferSize`, or `connectionPoolSize` are internal concerns, not user controls. Omit them unless tuning them is necessary to make a workflow correct. The same applies to algorithm tuning parameters (`coordinateEpsilon`, `snapTolerance`, `maxIterations`) — expose them only when the user must adjust them for accuracy or correctness, not as a convenience for power users.
+
+The test is whether the knob tunes *our implementation* or *the interaction with an external system the action exists to talk to*. On an action whose core purpose is I/O against a service or resource the user chose — an HTTP endpoint, a database — timeouts, retry policy and rate limits are part of correctly using that system (its rate limits, its latency, its transient failures), and the user is the only party who knows the right values. Those belong in a grouped configuration object with working defaults. `bufferSize` on a file writer stays internal either way.
 
 ---
 
@@ -327,6 +335,11 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-27
+
+- **§2 — this widens what the standard covers.** Diagnostic registry text (`message`/`help` in `schema/error-codes/*.toml`) is now product copy, subject to the accuracy rule and to the ban on naming commercial products. Added while auditing `Area Calculator`, the first audited action to emit structured diagnostics. No past *verdict* changes, but **no past review read this text at all**: the codes outside `geometry.area_*` have never been checked against any rule, and are recorded in the findings file as owing a pass. The entry also records that this text has no i18n path, which the audit cannot fix on its own.
+- **§3.5 — this loosens the volume guideline and narrows "implementation leakage".** A nested config object of related optional settings now counts as one parameter toward the guideline (each leaf still owes its own justification), and timeout/retry/rate-limit knobs are legitimate on actions whose core purpose is I/O against an external system the user must tune against. Decided for HTTP Caller, whose grouped `retry`/`rateLimit`/`timeouts` the old wording — which names `timeout` and `retryCount` as canonical leakage — would have deleted. No past verdict changes: no previously-reviewed action was failed on these grounds.
 
 ### 2026-08-24
 

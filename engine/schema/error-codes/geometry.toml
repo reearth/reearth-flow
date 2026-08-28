@@ -45,13 +45,17 @@ help = "Check that the geometry is valid and in a frame the predicate can test."
 # `default_disposition` entirely — only `report()` branches on it, and this
 # action never calls `report()`. `warn_drop` is simply the least-severe value
 # the enum offers, not a request to drop the feature; it is inert here, the
-# same as it is for `raster.toml`/`gltf.toml`.
+# same as it is for `raster.toml`/`gltf.toml`. The consequence worth knowing:
+# a workflow-level `ErrorPolicy` override selecting one of these codes — or
+# `category = "geometry"` — is silently ignored too, because only `report()`
+# consults the resolved disposition. That holds for every `warn()` call site,
+# not just this action's.
 [[codes]]
 code = "geometry.area_not_measurable"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "area not measurable, wrote 0"
-help = "Area Calculator could not measure this geometry; check that it is a supported, non-degenerate type."
+help = "An unevaluated CSG tree is the one geometry Area Calculator cannot measure; run CSG Evaluator to compute the solid it describes, then measure the result."
 
 [[codes]]
 code = "geometry.area_angular_crs"
@@ -79,4 +83,4 @@ code = "geometry.area_skipped_parts"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped geometry part(s) that cannot be measured; their area is not in the total"
-help = "One or more members of this geometry could not be measured and were excluded from the total; check them individually."
+help = "An unevaluated CSG tree is the one geometry part that cannot be measured; run CSG Evaluator on the geometry before measuring so that every part counts toward the total."
