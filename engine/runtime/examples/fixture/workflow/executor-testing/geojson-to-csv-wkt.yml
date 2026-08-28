@@ -47,7 +47,6 @@ graphs:
             type: string
             value: output.csv
           geometry:
-            geometryMode: wkt
             column: geometry
 
     edges:

@@ -31,7 +31,7 @@ pub struct CsvReaderParam {
     /// Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as "column1", "column2", and so on; when greater than 1, names are formed by joining values from each header row with "_".
     pub(crate) header_rows: Option<usize>,
     /// # Geometry Configuration
-    /// Optional configuration for parsing geometry from CSV columns
+    /// Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) geometry: Option<GeometryConfig>,
 }

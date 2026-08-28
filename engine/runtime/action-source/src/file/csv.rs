@@ -94,7 +94,7 @@ pub(super) struct CsvReader {
     params: CsvReaderCompiledParam,
 }
 
-/// # CsvReader Parameters
+/// # CSV Reader Parameters
 /// Configure how CSV and TSV files are processed and read
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
