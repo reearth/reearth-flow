@@ -90,6 +90,8 @@ graphs:
         name: AttributeFlattener
         type: action
         action: PLATEAU4.AttributeFlattener
+        with:
+          groupByAttribute: udxDirs
 
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: AttributeManagerRename
@@ -173,6 +175,7 @@ graphs:
           maxZoom: 18
           attachTexture: false
           groupByAttribute: udxDirs
+          # dracoCompression: false
           output: |
             let udx_dirs = env.get("__value")["udxDirs"];
             udx_dirs.replace("/", "_");

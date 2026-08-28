@@ -425,7 +425,9 @@ pub(super) fn emit_buffered(
     store_pool: &StorePool,
     geom_registry: &HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: &HashMap<Url, Arc<RwLock<AppearanceStore>>>,
+    group_label: &str,
 ) -> Result<(), BoxedError> {
+    let mut emitted: usize = 0;
     let mut transformer = GeometricMergedownTransform::new();
     // Lazily-loaded flat maps for cross-file ref resolution: cache_path → (gml_id → (Entity, rnr))
     let mut cross_file_cache: HashMap<PathBuf, HashMap<String, (Entity, bool)>> = HashMap::new();
@@ -500,6 +502,7 @@ pub(super) fn emit_buffered(
                     geom_registry,
                     app_registry,
                 )?;
+                emitted += 1;
             }
 
             // Emit cross-file feature refs using the referencing entity's attributes/metadata
@@ -540,10 +543,12 @@ pub(super) fn emit_buffered(
                             geom_registry,
                             app_registry,
                         )?;
+                        emitted += 1;
                     }
                 }
             }
         }
     }
+    eprintln!("[MEASURE citygml_reader] emit group={group_label:?} features={emitted}");
     Ok(())
 }

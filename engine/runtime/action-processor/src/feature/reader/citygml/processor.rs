@@ -263,6 +263,7 @@ impl Processor for FeatureCityGmlReader {
                 &self.store_pool,
                 &self.geom_registry,
                 &self.app_registry,
+                "none",
             );
         }
         // group-contiguous so each group's parse (pass1) + emit (pass2) can run and then
@@ -319,6 +320,7 @@ impl Processor for FeatureCityGmlReader {
                 &store_pool,
                 &geom_registry,
                 &app_registry,
+                &group_key,
             )?;
 
             for p in &cache_paths {
