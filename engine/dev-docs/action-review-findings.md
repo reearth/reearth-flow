@@ -1492,7 +1492,9 @@ that logic, and the two that mattered were behaviours the code had but no text d
   and the action passed *everything*. An upstream error inverted into pass-all, silently. Now
   separated by a `filters_received` counter: nothing supplied still passes all, but supplied and
   all-rejected fails the candidates and warns once under a new `geometry.no_usable_filter` code.
-  Covered by `candidates_fail_when_every_supplied_filter_was_rejected`.
+  Covered by `candidates_fail_when_every_supplied_filter_was_rejected`. Both routes go through
+  `emit`, so a configured `outputMatchCountAttribute` is stamped with 0 rather than left absent —
+  the branch previously bypassed `emit` entirely, which the parameter's own text contradicted.
 - **`mergeFilterAttributes` did not say it overwrites the candidate's own attributes** of the
   same name (`insert`, line 581) — the common case when no prefix is set. It documented only
   filter-vs-filter collisions.

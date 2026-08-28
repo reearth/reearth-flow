@@ -360,31 +360,25 @@ impl Processor for SpatialFilter {
             // condition — passing those candidates would turn an upstream
             // error into a silent pass-everything.
             let unusable = self.filters_received > 0;
-            let port = if unusable {
-                FAILED_PORT.clone()
-            } else {
-                PASSED_PORT.clone()
-            };
-            let mut reported = false;
-            for candidate in &self.candidates {
-                let out = ExecutorContext::new_with_node_context_feature_and_port(
+            // Warn once: the cause is one upstream problem, not one per candidate.
+            if let (true, Some(first)) = (unusable, self.candidates.first()) {
+                ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
-                    candidate.feature.clone(),
-                    port.clone(),
+                    first.feature.clone(),
+                    FAILED_PORT.clone(),
+                )
+                .warn(
+                    DiagnosticDraft::new(ErrorCode::GeometryNoUsableFilter).with_message(format!(
+                        "Spatial Filter failed every candidate: all {} filter features were rejected, leaving nothing to test against.",
+                        self.filters_received
+                    )),
                 );
-                // Warn once: the cause is one upstream problem, not one per candidate.
-                if unusable && !reported {
-                    reported = true;
-                    out.warn(
-                        DiagnosticDraft::new(ErrorCode::GeometryNoUsableFilter).with_message(
-                            format!(
-                                "Spatial Filter failed every candidate: all {} filter features were rejected, leaving nothing to test against.",
-                                self.filters_received
-                            ),
-                        ),
-                    );
-                }
-                fw.send(out);
+            }
+            for candidate in &self.candidates {
+                // Through `emit` so these candidates are stamped like any
+                // other: no filter was matched, so the count is zero and there
+                // is nothing to merge.
+                self.emit(&ctx, fw, candidate, !unusable, &[]);
             }
             return Ok(());
         }
@@ -1592,5 +1586,41 @@ mod tests {
         assert_eq!(rejected.len(), 1, "the unusable filter is rejected");
         assert_eq!(passed.len(), 0, "the candidate is not passed unrestricted");
         assert_eq!(failed.len(), 1, "it fails the condition instead");
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn the_match_count_is_stamped_even_when_there_is_no_filter_to_test() {
+        // The count is documented as written to passing and failing candidates
+        // alike, so it cannot be skipped on the routes that never run a test.
+        let (passed, _, _) = run(
+            SpatialFilterParams {
+                output_match_count_attribute: Some(Attribute::new("matches")),
+                ..Default::default()
+            },
+            Vec::new(),
+            vec![square([0.0, 0.0], 10.0)],
+        );
+        assert_eq!(passed.len(), 1);
+        assert_eq!(
+            match_count(&passed[0]),
+            Some(0),
+            "a candidate passed for want of any filter matched none of them"
+        );
+
+        let (_, failed, _) = run(
+            SpatialFilterParams {
+                output_match_count_attribute: Some(Attribute::new("matches")),
+                ..Default::default()
+            },
+            vec![Feature::new_with_attributes(Attributes::new())],
+            vec![square([0.0, 0.0], 10.0)],
+        );
+        assert_eq!(failed.len(), 1);
+        assert_eq!(
+            match_count(&failed[0]),
+            Some(0),
+            "so did a candidate failed because every filter was unusable"
+        );
     }
 }
