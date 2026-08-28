@@ -2,6 +2,8 @@ package interactor
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 
@@ -12,23 +14,68 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 )
 
 // Reads hit both Redis and Mongo: stopping at a non-empty Redis result would hide terminal rows.
+// The diagnostics.json the worker uploads with the job's artifacts is the durable
+// fallback when the database has no rows (e.g. a driver without a diagnostics repo).
 type NodeDiagnostics struct {
 	diagnosticsRepo   repo.NodeDiagnostics
 	jobRepo           repo.Job
 	redisGateway      gateway.Redis
+	file              gateway.File
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewNodeDiagnostics(diagnosticsRepo repo.NodeDiagnostics, jobRepo repo.Job, redisGateway gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.NodeDiagnostics {
+func NewNodeDiagnostics(diagnosticsRepo repo.NodeDiagnostics, jobRepo repo.Job, redisGateway gateway.Redis, file gateway.File, permissionChecker gateway.PermissionChecker) interfaces.NodeDiagnostics {
 	return &NodeDiagnostics{
 		diagnosticsRepo:   diagnosticsRepo,
 		jobRepo:           jobRepo,
 		redisGateway:      redisGateway,
+		file:              file,
 		permissionChecker: permissionChecker,
 	}
+}
+
+// readArtifactDiagnostics loads the worker-written diagnostics artifact. Absent
+// or unreadable files degrade to nil: the artifact only exists for finished
+// runs, and a fallback source must never fail the query.
+func (i *NodeDiagnostics) readArtifactDiagnostics(ctx context.Context, jobID id.JobID) *gateway.JobCompleteEvent {
+	if i.file == nil {
+		return nil
+	}
+	rc, err := i.file.ReadArtifact(ctx, jobID.String()+"/diagnostics.json")
+	if err != nil || rc == nil {
+		if err != nil && !errors.Is(err, rerror.ErrNotFound) {
+			log.Warnfc(ctx, "diagnostic: failed to read diagnostics artifact: %v", err)
+		}
+		return nil
+	}
+	defer func() { _ = rc.Close() }()
+
+	var event gateway.JobCompleteEvent
+	if err := json.NewDecoder(rc).Decode(&event); err != nil {
+		log.Warnfc(ctx, "diagnostic: failed to decode diagnostics artifact: %v", err)
+		return nil
+	}
+	return &event
+}
+
+func (i *NodeDiagnostics) artifactRows(ctx context.Context, jobID id.JobID) []*diagnostic.Diagnostic {
+	event := i.readArtifactDiagnostics(ctx, jobID)
+	if event == nil {
+		return nil
+	}
+	wire := make([]gateway.WireDiagnostic, 0, len(event.FailedNodes)+len(event.AggregatedDiagnostics))
+	wire = append(wire, event.FailedNodes...)
+	wire = append(wire, event.AggregatedDiagnostics...)
+	rows, err := wireDiagnosticsToDomain(jobID, event.Timestamp, wire)
+	if err != nil {
+		log.Warnfc(ctx, "diagnostic: failed to convert diagnostics artifact rows: %v", err)
+		return nil
+	}
+	return rows
 }
 
 func (i *NodeDiagnostics) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
@@ -63,12 +110,21 @@ func (i *NodeDiagnostics) GetNodeDiagnostics(ctx context.Context, jobID id.JobID
 		}
 	}
 
+	durable := 0
 	if i.diagnosticsRepo != nil {
 		mongoRows, err := i.diagnosticsRepo.FindByJobNodeID(ctx, jobID, nodeID)
 		if err != nil {
 			return nil, err
 		}
+		durable = len(mongoRows)
 		rows = append(rows, mongoRows...)
+	}
+	if durable == 0 {
+		for _, row := range i.artifactRows(ctx, jobID) {
+			if row.NodeID() != nil && *row.NodeID() == nodeID {
+				rows = append(rows, row)
+			}
+		}
 	}
 
 	return dedupeDiagnostics(rows), nil
@@ -90,12 +146,17 @@ func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID)
 		}
 	}
 
+	durable := 0
 	if i.diagnosticsRepo != nil {
 		mongoRows, err := i.diagnosticsRepo.FindByJobID(ctx, jobID)
 		if err != nil {
 			return nil, err
 		}
+		durable = len(mongoRows)
 		rows = append(rows, mongoRows...)
+	}
+	if durable == 0 {
+		rows = append(rows, i.artifactRows(ctx, jobID)...)
 	}
 
 	return dedupeDiagnostics(rows), nil
@@ -104,28 +165,37 @@ func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID)
 // Stamped on failedNodes rows and never on aggregated ones, which is how the two are told apart.
 const fatalEffectiveDisposition = "fatal"
 
-// Mongo-only: these rows are written just once, at job-completion merge.
+// Terminal-only: rows are written just once, at job-completion merge, to the
+// database and to the diagnostics artifact.
 func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	if err := i.checkJobPermission(ctx, jobID); err != nil {
 		return nil, err
 	}
 
-	if i.diagnosticsRepo == nil {
-		return []*diagnostic.Diagnostic{}, nil
+	var rows []*diagnostic.Diagnostic
+	if i.diagnosticsRepo != nil {
+		var err error
+		rows, err = i.diagnosticsRepo.FindByJobID(ctx, jobID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	rows, err := i.diagnosticsRepo.FindByJobID(ctx, jobID)
-	if err != nil {
-		return nil, err
+	failed := filterFatal(rows)
+	if len(failed) == 0 {
+		failed = filterFatal(i.artifactRows(ctx, jobID))
 	}
+	return dedupeDiagnostics(failed), nil
+}
 
+func filterFatal(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 	failed := make([]*diagnostic.Diagnostic, 0, len(rows))
 	for _, row := range rows {
 		if ed := row.EffectiveDisposition(); ed != nil && *ed == fatalEffectiveDisposition {
 			failed = append(failed, row)
 		}
 	}
-	return dedupeDiagnostics(failed), nil
+	return failed
 }
 
 // disposition is in the key because a failed and an aggregated row can share (nodeID, code).
@@ -185,9 +255,18 @@ func (i *NodeDiagnostics) GetDroppedEventCount(ctx context.Context, jobID id.Job
 		return nil, err
 	}
 
-	if i.diagnosticsRepo == nil {
-		return nil, nil
+	if i.diagnosticsRepo != nil {
+		count, err := i.diagnosticsRepo.FindJobSummary(ctx, jobID)
+		if err != nil {
+			return nil, err
+		}
+		if count != nil {
+			return count, nil
+		}
 	}
 
-	return i.diagnosticsRepo.FindJobSummary(ctx, jobID)
+	if event := i.readArtifactDiagnostics(ctx, jobID); event != nil {
+		return event.DroppedEventCount, nil
+	}
+	return nil, nil
 }

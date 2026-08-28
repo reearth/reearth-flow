@@ -906,7 +906,15 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
     },
     "defaultValue": {
       "title": "Default Value",
-      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected."
+      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MappedValue"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
@@ -933,9 +941,35 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
         },
         "outputValue": {
           "title": "Output Value",
-          "description": "Value written to the output attribute when the input falls in this range. Any JSON type is accepted."
+          "description": "Value written to the output attribute when the input falls in this range.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MappedValue"
+            }
+          ]
         }
       }
+    },
+    "MappedValue": {
+      "title": "Mapped Value",
+      "description": "A value written to an attribute. Accepts text, a number, or true/false, written as the type given — `\"3\"` stays text and `3` stays a number.",
+      "anyOf": [
+        {
+          "title": "Text",
+          "description": "Written as text.",
+          "type": "string"
+        },
+        {
+          "title": "Number",
+          "description": "Written as a number.",
+          "type": "number"
+        },
+        {
+          "title": "True or False",
+          "description": "Written as a true/false value.",
+          "type": "boolean"
+        }
+      ]
     }
   }
 }
@@ -3294,13 +3328,13 @@ Echoes features to logs and discards them.
 ### Type
 * processor
 ### Description
-Extracts the elevation of a feature's geometry and stores it in an attribute.
+Extracts the elevation of a geometry's first vertex into an attribute. A geometry carrying no elevation passes through without it.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Elevation Extractor Parameters",
-  "description": "Configure where the extracted elevation is stored.",
+  "description": "Sets where the extracted elevation is stored.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -3308,7 +3342,7 @@ Extracts the elevation of a feature's geometry and stores it in an attribute.
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Attribute to store the elevation in.",
+      "description": "Attribute the elevation is written to. It is left unwritten when the geometry carries no elevation.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -8546,8 +8580,16 @@ Replaces null-like attribute values with configured replacement values, optional
     },
     "defaultReplacement": {
       "title": "Default Replacement",
-      "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
-      "default": null
+      "description": "What to write for null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes. When omitted, those attributes are left unchanged.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NullReplacement"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "nullDefinition": {
       "title": "Null Definition",
@@ -8595,7 +8637,8 @@ Replaces null-like attribute values with configured replacement values, optional
       "description": "Per-attribute replacement mapping",
       "type": "object",
       "required": [
-        "attribute"
+        "attribute",
+        "replacement"
       ],
       "properties": {
         "attribute": {
@@ -8605,7 +8648,12 @@ Replaces null-like attribute values with configured replacement values, optional
         },
         "replacement": {
           "title": "Replacement",
-          "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+          "description": "What to write when the attribute is null-like. Required, so that removing an attribute is stated rather than implied by leaving this out.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NullReplacement"
+            }
+          ]
         },
         "onMissing": {
           "title": "On Missing",
@@ -8618,6 +8666,94 @@ Replaces null-like attribute values with configured replacement values, optional
           ]
         }
       }
+    },
+    "NullReplacement": {
+      "title": "Null Replacement",
+      "description": "What to write in place of a null-like attribute, and the type to write it as.",
+      "oneOf": [
+        {
+          "title": "Text",
+          "description": "Written as text.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The text to write.",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "title": "Number",
+          "description": "Written as a number.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "number"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The number to write.",
+              "type": "number"
+            }
+          }
+        },
+        {
+          "title": "True or False",
+          "description": "Written as a true/false value.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "boolean"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The value to write.",
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the attribute from the feature instead of writing a value.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "remove"
+              ]
+            }
+          }
+        }
+      ]
     },
     "OnMissing": {
       "title": "On Missing",
@@ -11731,13 +11867,13 @@ Reads features from a SQL database.
 ### Type
 * source
 ### Description
-Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files).
+Reads features from a shapefile packaged in a ZIP archive. The archive is expected to hold the .shp, .shx and .dbf files the format defines, though a missing .shx is tolerated.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ShapefileReader Parameters",
-  "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+  "title": "Shapefile Reader Parameters",
+  "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one.",
   "type": "object",
   "properties": {
     "encoding": {
@@ -11750,13 +11886,13 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
     },
     "force2D": {
       "title": "Force 2D",
-      "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+      "description": "If true, drops elevations and reads every geometry as 2D. The read fails on a multipatch, which describes a surface in space and has no 2D form.",
       "default": false,
       "type": "boolean"
     },
     "allowEmptyPath": {
-      "title": "Allow Null Path",
-      "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
+      "title": "Allow Empty Path",
+      "description": "If true, a dataset path that is empty or null yields no features instead of failing, allowing an optional shapefile input.",
       "default": false,
       "type": "boolean"
     },
@@ -11823,13 +11959,13 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
 ### Type
 * sink
 ### Description
-Writes features to ESRI Shapefile format, optionally grouping them into separate files.
+Writes features as shapefiles, optionally grouping them into a separate file set per group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ShapefileWriter Parameters",
-  "description": "Configuration for writing features to ESRI Shapefile format.",
+  "title": "Shapefile Writer Parameters",
+  "description": "Sets where the shapefiles are written, whether each is archived, and how features are grouped into separate file sets.",
   "type": "object",
   "required": [
     "output"
@@ -11837,7 +11973,7 @@ Writes features to ESRI Shapefile format, optionally grouping them into separate
   "properties": {
     "output": {
       "title": "Output Directory",
-      "description": "Output directory path or expression where the generated Shapefile files are written.",
+      "description": "Directory the shapefiles are written to, as a path or an expression. Each file set inside it is named after its group value, or \"null\" when no grouping is configured.",
       "type": "object",
       "format": "code",
       "required": [
@@ -11884,7 +12020,7 @@ Writes features to ESRI Shapefile format, optionally grouping them into separate
     },
     "groupBy": {
       "title": "Group By",
-      "description": "Attributes to group features by, writing a separate file for each distinct group.",
+      "description": "Attributes to group features by, writing one file set per distinct group and naming it after the group's value. When unset, every feature goes to a single file set.",
       "type": [
         "array",
         "null"

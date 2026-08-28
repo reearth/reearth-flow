@@ -428,11 +428,15 @@ Center Point Replacer
 
 ### Still to verify
 
-Behavioural claims not yet traced to a code path (7): `Attribute Aggregator.calculationValue`
+Behavioural claims not yet traced to a code path (6): `Attribute Aggregator.calculationValue`
 precedence · `Statistics Calculator.groupBy` single-group · `Image Rasterizer.onOverlap`
-arrival-order default · `JSON Writer.converter` omitted-case · `Shapefile Reader.encoding`
-case-insensitivity · `Directory Decompressor.findDeepestSingleFolder` · `Cesium 3D Tiles
-Writer.targetTileSize` merge behaviour.
+arrival-order default · `JSON Writer.converter` omitted-case ·
+`Directory Decompressor.findDeepestSingleFolder` · `Cesium 3D Tiles Writer.targetTileSize`
+merge behaviour.
+
+`Shapefile Reader.encoding` case-insensitivity is **verified accurate** — `Encoding::from_name`
+upper-cases before matching the UTF-8 and UTF-16 labels, and `encoding_rs::Encoding::for_label`
+is ASCII-case-insensitive by specification for everything else.
 
 Stated-default mismatches to adjudicate (3, all likely wording rather than defect):
 `Footprint Replacer.projectionPlane` · `Geometry Validator.degenerateThresholds` ·
@@ -469,6 +473,15 @@ its new-geometry port landed in #2370, and it had been reviewed in the Geometry 
 so §7.2 handed it a decision rather than an audit. The §8 re-check was run against the
 new-geometry build and found no correctness defect; its outcome is in the Geometry A section
 below, along with the one item that stays deferred.
+
+⚠️ **`CSV Reader` runs but is still counted in the does-not-run bucket.** Its port merged as
+#2405 and `file/csv.rs` now has a `#[cfg(feature = "new-geometry")] async fn start`, so it
+executes in the shipped build; it is not in `base_actions.go`, and it is not in the pending-audit
+list either, so no bucket currently describes it. It was reviewed in the Input batch (#2280) —
+`offset`/`headerRows`/`geometry` were re-verified in the pass below — which by the rule above
+makes it Bufferer's case: **a re-exposure decision, not an audit.** Verified 2026-08-27.
+Its Notion row still reads "In progress" while its merged code runs, so the tracker is not the
+thing to check here. **Trigger:** none pending; this is ready to decide.
 
 **The `impl:` finding that appeared to block it never described the shipped build**, and this is
 worth keeping as a warning rather than deleting. That finding — only points, curves and single
@@ -512,30 +525,26 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 8 actions, with preliminary findings
+### Pending audit — 7 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Newly eligible — its port landed (3)
+#### Newly eligible — its port landed (2)
 
 **`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
-two cases differ and the difference is the whole point of §7.2's rule. Elevation Extractor had
-never been reviewed, so its port landing hands it to this list. Bufferer *was* reviewed, in the
-Geometry A batch (#2317), so its port landing handed it to a decision instead — taken, and
-recorded under the bucket table. Do not assume a port landing means "needs an audit"; check the
-review state first.
+two cases differ and the difference is the whole point of §7.2's rule. An action never reviewed
+lands in this list; Bufferer *was* reviewed, in the Geometry A batch (#2317), so its port landing
+handed it to a decision instead — taken in #2422, and recorded under the bucket table. Do not
+assume a port landing means "needs an audit"; check the review state first.
+
+Note which way that test cuts: a spot-check is not a review. `Area Calculator` had one line
+verified in the re-verification pass below and still belongs in this list, not in Bufferer's.
+
+`Elevation Extractor` was in this list and is now audited and exposed — see the addendum below.
 
 ```
-Elevation Extractor
-  runs:    Ported in #2384 (2026-08-21), so it now has a `#[cfg(feature = "new-geometry")]`
-             process and runs in the shipped build. That was its trigger for leaving the
-             does-not-run bucket, so it is recorded here rather than left to expire silently.
-  scan:    NOT scanned. Everything else in this list carries preliminary findings from an
-             earlier schema pass; this one was in the unported bucket then, so it has had no
-             review of any kind. Budget a full §8 pass, not a re-check.
-
 Spatial Filter
   runs:    Ported in #2410 (2026-08-27), so it now runs in the shipped build and has left the
              does-not-run bucket. Same case as Elevation Extractor and not Bufferer's: it
@@ -668,7 +677,10 @@ emits an output attribute named `fme_rejection_code`, referenced by 3 tests — 
 schema-visible rename. Both actions are currently hidden (neither runs), so this is not live
 user-facing text today, but it must be fixed before either is re-exposed.
 
-**6. Proposed CI ratchets, neither implemented.** Both are cheap and deterministic:
+**6. Proposed CI ratchets, none implemented.** All are cheap and deterministic:
+- Fail when a parameter leaf in `actions.json` declares neither `type` nor `enum` nor `const`.
+  Such a leaf has no widget for the UI to render. Would have caught the two `serde_json::Value`
+  parameters described in the addendum below, which shipped past two separate audit passes.
 - Fail when a `baseActions` key does not exist in `actions.json`, or names a `builtin: false`
   action. Nothing guards this today; the 105 names were verified by hand.
 - Fail when a parameter in `actions.json` lacks a `description`. Would have caught all four
@@ -678,6 +690,74 @@ user-facing text today, but it must be fixed before either is re-exposed.
   this file's pending-audit list. That is the §7.2 bucket drift a merged geometry port creates,
   and it is the one of the three that needs a machine-readable pending list before it can be
   written — the list here is prose. Until then the rule is a human step, stated in §7.2.
+
+**7. The readers' file path renders last, on 6 of 9.** `schemars` appends `#[serde(flatten)]`
+properties *after* the struct's own, so a reader that flattens `FileReaderCommonParam` first and
+declares format options after it emits `dataset`/`inline` at the END of the schema. §3.5 wants
+required and commonly-adjusted parameters first, and the file path is the one parameter every
+reader needs. Confirmed order today:
+
+| Reader | Schema order |
+|---|---|
+| Shapefile Reader | `encoding, force2D, allowEmptyPath, dataset, inline` |
+| CZML Reader | `force2d, skipDocumentPacket, timeSampling, dataset, inline` |
+| GeoPackage Reader | `readMode, layerName, force2D, dataset, inline` |
+| OBJ Reader | `parseMaterials, materialFile, triangulate, mergeGroups, includeTexcoords, dataset, inline` |
+| glTF Reader | `mergeMeshes, includeNodes, featureClassAttribute, featureGranularity, dataset, inline` |
+| CSV Reader | `format, encoding, dataset, inline, offset, headerRows, geometry` |
+
+`CityGML Reader`, `GeoJSON Reader` and `JSON Reader` are correct only incidentally — they
+declare nothing but flattened params, so there is nothing for schemars to put in front.
+
+**Fix:** declare `dataset`/`inline` on each reader's own param struct instead of flattening, and
+build `FileReaderCommonParam` in `build`. Deliberately NOT fixed for `Shapefile Reader` alone —
+a lone correct reader is worse than six consistent ones, and §6's "check the siblings" reasoning
+applies to ordering too. **Trigger:** a PR that takes all six together.
+
+**8. `inline` cannot work on any binary-format reader.** `FileReaderCommonParam::compile`
+evaluates `inline` to a `String` and wraps it with `Bytes::from`, so the parameter can only ever
+carry UTF-8 text. `Shapefile Reader` rejects anything that is not a ZIP archive
+(`archive::is_zip`, then `ShapefileError::DirectBytesNotSupported`), so no value a user can write
+will read. The same reasoning covers `GeoPackage Reader` (SQLite), `glTF Reader` (`.glb`) and
+`OBJ Reader`'s material sidecars. This is the §"How to use" dead-parameter class: the UI offers a
+control the code cannot honour.
+
+**Fix:** drop `inline` from the readers whose formats are binary, which means splitting
+`FileReaderCommonParam` into a text-capable and a path-only form. Same trigger as finding 7 and
+best done in the same PR, since both change the same structs.
+
+---
+
+### Deferred: Shapefile Writer output naming (its own PR — Kyle, 2026-08-25)
+
+```
+Shapefile Writer
+  impl:    `output` does not name the output file. It is `create_dir_all`'d as a DIRECTORY
+             (pipeline.rs:43-47) and each file set inside it is named after the `groupBy` key
+             (`key.to_string()`, pipeline.rs:69). With no `groupBy` the key is
+             `AttributeValue::Null`, whose `Display` is the literal `"null"`
+             (common/src/attribute.rs:247). So `output: roads.shp` writes a directory named
+             `roads.shp` containing `null.shp`, `null.shx`, `null.dbf` and `null.cpg`, and there
+             is no way to name the file at all without grouping. All five PLATEAU4 08-dem nodes
+             pass a `.shp` filename and get exactly this.
+  scope:   NOT a port regression — legacy `shapefile/pipeline.rs:72-73` is identical, so this
+             predates new-geometry. The port carried it forward faithfully.
+  tests:   The new-geometry writer has NO workflow coverage. All eight `08-dem` test cases are
+             `"skipNewGeometry": true`, so nothing has run this path end-to-end. Any fix must
+             land that coverage with it, or it is unverified twice over.
+  fix:     Give the writer a real naming scheme — `output`'s stem names the file set, `groupBy`
+             appends a suffix — and migrate the 08-dem fixtures. Behaviour-changing and
+             user-visible, so it wants its own PR with the fixtures regenerated deliberately.
+  interim: This PR documents what the code does today rather than what the parameter name
+             suggests, so the surface stops lying while the fix is pending. Re-word both
+             `output` and `groupBy` again when the scheme changes.
+  desc:    Also undocumented, and left so: the writer silently drops point clouds, CSG trees,
+             all but the first kind of a mixed collection, and array/map/byte attribute values,
+             each with a warning (see `shapefile_next.rs`'s module doc). Worth surfacing once
+             the naming is settled, since both touch the same text.
+```
+
+**Trigger:** none pending — this is ready to start whenever it is picked up.
 
 ---
 
@@ -728,6 +808,79 @@ Audited and **kept exposed**:
 
 ---
 
+### Addendum — the untyped value parameters, a re-check finding
+
+Reported by Kyle 2026-08-27 against `Attribute Range Mapper`, which **this audit had already
+passed** (Batch 1, #2394, recorded as "changes were documentation only"). A schema sweep of all
+166 actions found the defect in exactly two, both exposed, both previously audited:
+
+```
+Attribute Range Mapper · Null Attribute Mapper
+  schema:  Four parameters were `serde_json::Value`, whose honest schema is "any JSON value" —
+             so schemars emitted a leaf with a title and description and NO type, and the UI has
+             no widget to render it. `rangeTable[].outputValue` and `mappings[].replacement` are
+             REQUIRED, so those were unfillable required fields.
+  why it was missed:  §8's `impl:` line makes you trace the code, and the code was fine — the
+             field really did accept any JSON type and the conversion really worked. The text was
+             accurate too. The defect existed only in the SHAPE OF THE GENERATED SCHEMA as a UI
+             consumes it, which no checklist line looks at. Careful descriptions were written
+             over a field that could not be filled in. Hence the new CI ratchet above.
+  fix:     Closed types, but a DIFFERENT shape per action, because their choice spaces differ.
+             `MappedValue` (Attribute Range Mapper) is an **untagged** enum, so it generates
+             `anyOf` of three typed, titled scalar branches — the UI gets a labelled selector and
+             real widgets, and the YAML stays terse: `outputValue: "#f7f5a9"` is unchanged, so the
+             existing fixture needed no migration. `NullReplacement` (Null Attribute Mapper) is a
+             **tagged** enum, because it must offer `Remove` alongside the three value types.
+  fix:     An untagged `NullReplacement` with a unit `Remove` variant — which serde represents as
+             `null` — was considered and REJECTED: the UI's `simplifyAnyOf`
+             (`patchSchemaTypes.ts`) strips `type: "null"` branches out of an `anyOf`, so the
+             Remove option would be unreachable in the editor. Worth remembering before reaching
+             for null-as-a-value anywhere in a parameter schema.
+  impl:    `Option<Value>` carried OPPOSITE meanings for `None` in Null Attribute Mapper —
+             on a mapping it REMOVED the attribute, on `defaultReplacement` it left the attribute
+             UNCHANGED. Same type, inverted semantics, both invisible in the schema. `replacement`
+             is now required, so deleting an attribute is stated (`{type: remove}`) rather than
+             implied by omitting a field. `defaultReplacement` stays optional, where omitting it
+             means "leave unchanged" as before.
+  impl:    Closing the type deleted three near-identical `serde_json::from_value` blocks whose
+             `warn!` fallbacks silently dropped the output attribute. Those runtime failure paths
+             existed only because the type was open.
+  tests:   Range Mapper's tests called a helper that REIMPLEMENTED the classification rather
+             than the processor's own code, and the copy had already DRIFTED — it omitted the
+             boolean coercion that `process` performs, so the documented "booleans count as 1 and
+             0" behaviour was never exercised. The logic is now one `mapped_value` method that
+             both `process` and the tests call, and the boolean case has a test.
+  prior art: Checked the 26 reference workspaces behind the PLATEAU conversions. The equivalent
+             null-mapping component is used 6 times (5 in QC02 Building, 1 in Viz01 Building), so
+             that operation is real; the range-mapping equivalent is used nowhere, even there.
+             Neither of ours is used in any of our workflows, so the renames carry no migration
+             cost. The reference product's own parameter widget design could not be read: the
+             extracted workspace JSON truncates each component's embedded parameter payload, and
+             the help-text tooling covers only user-defined components.
+  ⚠️ method: The first "zero usage" sweep was WRONG. It covered `runtime/examples` and `testing/`
+             and missed `runtime/tests/fixture/`, where `attribute/range_mapper.yaml` drives a
+             depth-to-colour ramp with seven bare-string values. A tagged enum broke it, which is
+             what surfaced the untagged option and produced a better design. **Sweep
+             `runtime/tests/fixture/` too — three fixture roots, not two.**
+```
+
+**⚠️ Systemic i18n gap found while doing this, NOT introduced by it.** A tagged enum with OBJECT
+variants — the idiom §3.4 recommends — **cannot be translated at all**. `apply_parameter_i18n`
+(`cli/src/utils.rs:157-173`) matches an enum variant by a top-level `enum` key on the variant, but
+a tagged object variant nests its tag inside `properties.type`; and its `def_i18n` path only walks
+`definitions[X].properties`, which a `oneOf` definition does not have. So both paths skip it and
+the variant labels ship English-only, permanently. Confirmed empirically: `Coordinate Frame
+Reprojector`'s `BasePoint`, `Coordinate Extractor`'s `CoordinateExtractionMode`, and **five of
+HTTP Caller's** (`Authentication`, `RequestBody`, `BinarySource`, `MultipartPart`,
+`ResponseHandling`) have no i18n entry of any kind.
+
+This is the same class as §3.4's root-`oneOf` prohibition, one level down, and §3.4 does not
+mention it. It is fixable rather than inherent — match the variant on `properties.type.enum[0]`
+and walk `definitions[X].oneOf[i].properties` — and wants its own PR, because it changes the i18n
+skeleton for every action using the idiom. **Flagged to the HTTP Caller work, whose design leans
+on it in five places.** Until it lands, choosing this idiom trades "unrenderable" for
+"renderable but English-only", which is the better trade but not a free one.
+
 ### Addendum — Coordinate Frame Reprojector and Dissolver, audited and exposed
 
 Both were picked on the hypothesis that new-geometry support implied recent authorship and
@@ -764,11 +917,12 @@ Dissolver — kept, documentation was materially wrong
              a MIXTURE of frames that is refused. The substantive finding of the batch: a user
              could wire this up correctly and lose every feature with no indication why. The
              sibling overlayers already carry the guidance sentence; it is now here too.
-  prior art: The planar computation is universal — FME's equivalent, and GEOS/JTS via PostGIS
-             ST_Union ("the result is computed using XY only"), all overlay in XY. Refusing 3D
-             input is NOT typical: both accept it and resolve Z by a stated policy (FME exposes
-             a five-option Connect Z Mode; PostGIS copies, averages or interpolates). Rejecting
-             areal-only input matches FME exactly. The mixed-frame check is stricter than either
+  prior art: The planar computation is universal — the reference product's equivalent, and
+             GEOS/JTS via PostGIS ST_Union ("the result is computed using XY only"), all overlay
+             in XY. Refusing 3D input is NOT typical: both accept it and resolve Z by a stated
+             policy (the reference product exposes a five-option Z-connection mode; PostGIS
+             copies, averages or interpolates). Rejecting areal-only input matches the reference
+             product exactly. The mixed-frame check is stricter than either
              and is the one place we are better — both will silently run planar math across
              mismatched coordinate systems. A Z-policy parameter is the natural enhancement here,
              not a defect to fix. The only production user (PLATEAU4 tran) already chains
@@ -1111,3 +1265,80 @@ is `cargo test -p workflow-tests -- --test-threads=4`, the legacy world, 185 cas
 and after. Leaving `snap_group` a no-op in the legacy build is what makes that run useful: the
 snapping is the one change those cases cannot see, so they stay a real regression check on the
 rewiring and the parameter renames, which they DO see, rather than a wall of expected diffs.
+
+---
+
+### Addendum — Elevation Extractor and the Shapefile reader/writer, audited and exposed
+
+All three verified **Migrated** in FLOW-DEV-182 before any audit work. `Elevation Extractor` was
+exposed; the two Shapefiles already were, so what changed for them is the metadata they had been
+exposed with. Every substantive defect was in the accuracy class and none was visible to a schema
+scan.
+
+**The batch's lesson: an action that was audited and then RE-IMPLEMENTED carries text describing
+code that no longer exists.** `Shapefile Reader`/`Writer` were audited in the old Input/Output
+batches, then rewritten from scratch as `shapefile_next` modules for the geometry port (#2361).
+The old text came along unchanged. This is a third case beyond Batch 5's "a recent port needs no
+metadata work" and Batch 6's "an old action means everything is suspect": **a re-port resets the
+audit, and nothing in the process notices.** The tell is a cfg-selected `*_next` sibling module
+declared in the parent `file.rs`.
+
+```
+Elevation Extractor — kept and newly exposed
+  impl:    One parameter, read and applied. Single port, every feature emitted. Clean.
+  desc:    Claimed "the elevation of a feature's geometry". `ops::Elevation` returns the z of the
+             first vertex in nesting order, which its own module doc says describes the geometry
+             as a whole only when the geometry lies at one elevation — on anything else it is one
+             arbitrary vertex's z. Rewritten to say first vertex, and to state the pass-through
+             for a geometry with no elevation, which had no user-facing mention anywhere.
+  i18n:    es AND zh both described different behaviour again ("extracts the first z coordinate
+             value of an *entity*"); fr was an English placeholder. Third batch running in which
+             the translations carried an error the English did not.
+
+Shapefile Reader — kept, spec-vs-implementation settled on the spec's side
+  impl:    All parameters read and applied. `inline` is the exception and is filed as
+             cross-cutting finding 8: it evaluates to UTF-8 text and this reader accepts only a
+             ZIP archive, so no value a user can write will read.
+  desc:    The original named .shp, .dbf and .shx as the archive's required members. The audit
+             first "corrected" this to .shp and .dbf, on the grounds that `archive.rs` warns and
+             reads shapes in order when the .shx is absent, and `NoCompleteShapefile` requires
+             only the two.
+  prior art: **That correction was wrong and was reverted in review.** The format defines three
+             files — main file, index file, dBASE table — and all three are mandatory, so an
+             archive without a .shx is not a valid shapefile even though we read it. Describing
+             the two-file case as the requirement presents a spec-invalid archive as normal
+             input. The shipped text now states the three the format defines and records the
+             missing-index tolerance as a tolerance. **The generalisable rule: where an
+             implementation is more permissive than the format it reads, the contract is the
+             format's and the leniency is the footnote — do not promote a tolerance to a
+             requirement.** Same shape as Batch 6's `tolerance` finding, in the other direction:
+             there the code was the defect, here the implementation is fine and only the wording
+             over-rotated toward it.
+  params:  `force2D` documented only that it drops Z. It also fails the read outright on a
+             multipatch, which describes a surface in space and has no 2D form — now stated.
+             `allowEmptyPath` was titled "Allow Null Path" and described only the null case while
+             `compile` treats an empty string as absent too; retitled and reworded. Its
+             `alias = "allowEmptyPath"` duplicated the name `rename_all` already generates and is
+             removed, leaving the wire name unchanged.
+  verified: `encoding`'s documented case-insensitivity holds — `from_name` upper-cases before
+             matching, and `for_label` is ASCII-case-insensitive by specification. Struck from
+             the "still to verify" list above.
+
+Shapefile Writer — kept, one defect documented and split out
+  impl:    `output` is a directory, and the file sets inside are named after the `groupBy` key —
+             the literal "null" when ungrouped. Full detail and the split decision are in
+             "Deferred: Shapefile Writer output naming" above. Documented here rather than fixed,
+             so the surface stops lying while the behaviour change waits for its own PR.
+  desc:    Named a vendor (§2); now matches the reader's wording.
+  tests:   No new-geometry workflow coverage at all — all eight 08-dem cases are
+             `skipNewGeometry`. Recorded with the deferred item, since a naming fix must land
+             coverage with it.
+  i18n:    es/fr/zh descriptions stale (fr an English placeholder, es mistranslating "features"
+             as "características"); `groupBy`'s description was the OLD English in all four
+             languages.
+```
+
+Both parameter blocks were titled in PascalCase (`ShapefileReader Parameters`), against the
+`<Action Name> Parameters` convention every other audited action follows. Checked before changing:
+that convention is universal across the audited set, so §3.3's objection to a block title
+restating the action name is a standing exception here, not something to fix per batch.

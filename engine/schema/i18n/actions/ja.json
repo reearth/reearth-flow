@@ -336,7 +336,7 @@
       "parameterI18n": {
         "": {
           "title": "Attribute Range Mapper パラメータ",
-          "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written."
+          "description": "分類する属性、照合する範囲の表、および一致した値の格納先を定義する"
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -363,7 +363,7 @@
           },
           "outputValue": {
             "title": "出力値",
-            "description": "入力がこの範囲に収まる場合に割り当てる値（文字列・数値・真偽値など）"
+            "description": "入力がこの範囲に収まる場合に出力属性へ書き込む値"
           },
           "to": {
             "title": "終了値（最大値）",
@@ -1143,7 +1143,7 @@
     },
     {
       "name": "Elevation Extractor",
-      "description": "地物のジオメトリの標高を抽出し、属性として格納する",
+      "description": "ジオメトリの最初の頂点の標高を属性に抽出する。標高を持たないジオメトリは属性が付かないまま通過する",
       "parameterI18n": {
         "": {
           "title": "Elevation Extractor パラメータ",
@@ -1151,7 +1151,7 @@
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "標高を格納する属性"
+          "description": "標高の書き込み先の属性。ジオメトリが標高を持たない場合は書き込まれない"
         }
       }
     },
@@ -2569,7 +2569,7 @@
         },
         "defaultReplacement": {
           "title": "デフォルト置換値",
-          "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される"
+          "description": "マッピングに登録されていない null 相当の属性に書き込む内容。範囲がすべての属性を検査する場合にのみ適用される。省略した場合、それらの属性は変更されない"
         },
         "mappings": {
           "title": "属性マッピング",
@@ -2600,7 +2600,7 @@
           },
           "replacement": {
             "title": "置換値",
-            "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
+            "description": "属性が null に相当する場合に書き込む内容。必須項目とすることで、属性の削除は省略による暗黙の動作ではなく明示的な指定になる"
           }
         }
       },
@@ -3443,15 +3443,15 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "Shapefile アーカイブ（.shp、.dbf、.shx を含む .zip）から地理地物を読み取る",
+      "description": "ZIP アーカイブに格納された Shapefile から地物を読み取る。アーカイブには形式が定める .shp、.shx、.dbf が含まれることを想定するが、.shx がなくても読み取れる",
       "parameterI18n": {
         "": {
-          "title": "ShapefileReader パラメータ",
-          "description": "Shapefile アーカイブを地理的フィーチャーとして読み込む設定。必要な Shapefile コンポーネント（.shp、.dbf、.shx）を含む ZIP アーカイブを想定。"
+          "title": "Shapefile Reader パラメータ",
+          "description": "読み取るアーカイブ、属性テーブルのエンコーディング、標高を保持するかどうかを設定する。構成ファイルは名前で対応付けられ、アーカイブに複数の Shapefile がある場合は最初のものを読み取る"
         },
         "allowEmptyPath": {
-          "title": "null パスを許可",
-          "description": "true の場合、null のデータセットパスはエラーの代わりに地物を 0 件生成し、省略可能な Shapefile 入力を許可する"
+          "title": "空のパスを許可",
+          "description": "true の場合、空または null のデータセットパスはエラーではなく地物 0 件となり、Shapefile 入力を省略できる"
         },
         "dataset": {
           "title": "ファイルパス",
@@ -3463,7 +3463,7 @@
         },
         "force2D": {
           "title": "2D に強制",
-          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+          "description": "true の場合、標高を破棄してすべてのジオメトリを 2D として読み取る。マルチパッチは空間内の面を表し 2D の形式を持たないため、読み取りは失敗する"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -3473,11 +3473,11 @@
     },
     {
       "name": "Shapefile Writer",
-      "description": "地物をESRI Shapefile形式に書き出し、任意でグループごとに別ファイルに分割する",
+      "description": "地物を Shapefile として書き出し、任意でグループごとに別のファイルセットに分割する",
       "parameterI18n": {
         "": {
-          "title": "ShapefileWriter パラメータ",
-          "description": "地物をESRI Shapefile形式に書き出す設定"
+          "title": "Shapefile Writer パラメータ",
+          "description": "Shapefile の書き出し先、アーカイブ化の有無、グループごとのファイル分割を設定する"
         },
         "compressOutput": {
           "title": "圧縮出力ディレクトリ",
@@ -3485,11 +3485,11 @@
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "地物をグループ化し、グループごとに別ファイルを作成する属性"
+          "description": "地物をグループ化する属性。グループごとに 1 つのファイルセットを書き出し、グループ値をその名前にする。未設定の場合はすべての地物が 1 つのファイルセットになる"
         },
         "output": {
           "title": "出力ディレクトリ",
-          "description": "生成されたShapefileファイルを書き出す出力ディレクトリのパスまたは式"
+          "description": "Shapefile を書き出すディレクトリ（パスまたは式）。中の各ファイルセットはグループ値、グループ化しない場合は \"null\" という名前になる"
         }
       }
     },
