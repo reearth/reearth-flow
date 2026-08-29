@@ -200,6 +200,7 @@ export const typeDefs = `
     debug: Boolean
     id: ID!
     workerLogsURL: String
+    userFacingLogsURL: String
     outputURLs: [String!]
     startedAt: DateTime!
     status: JobStatus!
@@ -233,25 +234,6 @@ export const typeDefs = `
     message: String!
   }
 
-  # Node Execution Types
-  type NodeExecution {
-    id: ID!
-    nodeId: ID!
-    jobId: ID!
-    status: NodeExecutionStatus!
-    startedAt: DateTime
-    completedAt: DateTime
-    logs: [Log!]!
-  }
-
-  enum NodeExecutionStatus {
-    PENDING
-    RUNNING
-    COMPLETED
-    FAILED
-    CANCELLED
-  }
-
   # Document Types
   type ProjectDocument {
     id: ID!
@@ -274,6 +256,18 @@ export const typeDefs = `
     version: String!
     description: String
     createdAt: DateTime!
+  }
+
+  type NamedSnapshotState {
+    snapshotNumber: Int!
+    updates: [Int!]!
+  }
+
+  type NamedSnapshot {
+    snapshotNumber: Int!
+    label: String!
+    timestamp: DateTime!
+    size: Int!
   }
 
   # Trigger Types
@@ -708,12 +702,13 @@ export const typeDefs = `
     job(id: ID!): Job
 
     # Node execution queries
-    nodeExecution(jobId: ID!, nodeId: ID!): NodeExecution
 
     # Document queries
     latestProjectSnapshot(projectId: ID!): ProjectDocument
     projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
     projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
+    projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
+    projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
 
     # Trigger queries
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
@@ -747,6 +742,9 @@ export const typeDefs = `
     deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
     runProject(input: RunProjectInput!): RunProjectPayload
     previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
+
+    # Document / version-history mutations
+    saveNamedSnapshot(projectId: ID!, label: String!): NamedSnapshot!
 
     # Parameter mutations
     declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!

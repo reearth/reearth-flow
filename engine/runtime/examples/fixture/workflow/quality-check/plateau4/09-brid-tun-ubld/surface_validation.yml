@@ -486,9 +486,9 @@ nodes:
   type: action
   action: Area On Area Overlayer
   with:
-    accumulationMode: dropIncomingAttributes
+    attributeAccumulation: dropAttributes
     outputAttribute: overlap
-    generateList: list
+    listAttribute: list
 - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
   name: FeatureFilterByAreaOnAreaOverlap
   type: action
@@ -504,16 +504,16 @@ nodes:
   type: action
   action: List Indexer
   with:
-    listAttribute: list
-    listIndexToCopy: 0
+    list: list
+    index: 0
     copiedAttributeSuffix: _1
 - id: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
   name: ListIndexer2
   type: action
   action: List Indexer
   with:
-    listAttribute: list
-    listIndexToCopy: 1
+    list: list
+    index: 1
     copiedAttributeSuffix: _2
 - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
   name: Lod0SurfaceIntersectionCounter
@@ -1003,7 +1003,7 @@ edges:
 - id: ee5ff6aa-7bb8-4cc9-9dd0-3ee1ff2aa3bb
   from: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
   to: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
-  fromPort: area
+  fromPort: overlaps
   toPort: features
 - id: bb8cc9dd-0ee1-4ff2-9aa3-6bb4cc5dd6ee
   from: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa

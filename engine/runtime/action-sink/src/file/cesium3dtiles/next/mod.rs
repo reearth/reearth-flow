@@ -61,7 +61,7 @@ impl Cesium3DTilesWriter {
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
 
         self.buffer
-            .entry((output, None, None))
+            .entry(output)
             .or_default()
             .push(ctx.feature.clone());
         Ok(())
@@ -84,7 +84,7 @@ impl Cesium3DTilesWriter {
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
             texture_codec: self.params.texture_codec,
         };
-        for ((output, _, _), features) in &self.buffer {
+        for (output, features) in &self.buffer {
             if output.ends_with(".zip") {
                 let zip = reearth_flow_common::zip::StreamingZipWriter::new(std::io::Cursor::new(
                     Vec::new(),
@@ -1117,6 +1117,57 @@ mod tests {
         assert!(
             glb.windows(needle.len()).any(|w| w == needle),
             "the embedded texture is emitted as an image/png texture in the glb"
+        );
+    }
+
+    /// A geocentric (EPSG:4978) mesh must produce actual tile content: a
+    /// Euclidean mesh, lacking a georeferenced frame, yields an empty
+    /// tileset instead. This also proves the writer accepts a geocentric
+    /// declared frame.
+    #[test]
+    fn geocentric_mesh_produces_tile_content() {
+        // Small triangle near lat 35.908, lon 140.102 in ECEF metres.
+        let base = [-3958731.9, -3309830.0, 3736419.1];
+        let soup = vec![
+            base,
+            [base[0] + 30.0, base[1], base[2]],
+            [base[0], base[1] + 30.0, base[2]],
+        ];
+        let mesh = TriangularMesh3D::from_soup(CoordinateFrame::Crs(EpsgCode::new(4978)), soup);
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        );
+
+        let tiles = Mutex::new(Vec::new());
+        let built = build(
+            &[feature],
+            plain_metadata_options(),
+            DEFAULT_TARGET_TILE_SIZE,
+            plain_render_options(),
+            |name: String, glb| {
+                tiles.lock().unwrap().push((name, glb));
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert!(
+            built.tile_count > 0,
+            "a geocentric mesh must produce tile content"
+        );
+        let written = tiles.into_inner().unwrap();
+        assert!(
+            !written.is_empty(),
+            "a geocentric mesh must produce tile content"
+        );
+        assert!(
+            written.iter().all(|(_, bytes)| !bytes.is_empty()),
+            "tiles must not be empty: {:?}",
+            written
+                .iter()
+                .map(|(n, b)| (n.clone(), b.len()))
+                .collect::<Vec<_>>()
         );
     }
 

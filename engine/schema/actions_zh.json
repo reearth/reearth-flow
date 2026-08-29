@@ -23,62 +23,25 @@
     {
       "name": "Area Calculator",
       "type": "processor",
-      "description": "计算多边形几何体的平面或坡面面积，并将结果作为属性添加",
+      "description": "计算要素几何的真实表面积，并将结果存储到属性中。实体的面积是其所有边界面的总和，因此空腔的面与外壳的面同样计入总和。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Area Calculator Parameters",
-        "description": "Configure how the area of each feature's geometry is measured and stored.",
+        "title": "Area Calculator 参数",
+        "description": "每个要素上所测表面积的存储位置。",
         "type": "object",
         "properties": {
-          "areaType": {
-            "title": "Area Type",
-            "description": "Whether to measure the flat projected area or the true sloped surface area. Has no effect on a geometry with no elevation, which is always flat.",
-            "default": "planeArea",
-            "allOf": [
-              {
-                "$ref": "#/definitions/AreaType"
-              }
-            ]
-          },
           "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Attribute to store the calculated area in. Defaults to `area`.",
+            "title": "输出属性",
+            "description": "用于存储所测表面积的属性名。该属性始终会被写入，几何没有面积或无法测量时记录 `0`，因此下游处理无需应对缺失值。",
             "default": "area",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
-          },
-          "multiplier": {
-            "title": "Multiplier",
-            "description": "Factor applied to the calculated area, for converting to another unit. Defaults to 1.0.",
-            "default": 1.0,
-            "type": "number",
-            "format": "double"
           }
         },
         "definitions": {
-          "AreaType": {
-            "oneOf": [
-              {
-                "title": "Planar Area",
-                "description": "Calculates the flat area of the geometry projected onto the XY plane.",
-                "type": "string",
-                "enum": [
-                  "planeArea"
-                ]
-              },
-              {
-                "title": "Sloped Area",
-                "description": "Calculates the true surface area, accounting for the slope of each face.",
-                "type": "string",
-                "enum": [
-                  "slopedArea"
-                ]
-              }
-            ]
-          },
           "Attribute": {
             "type": "string"
           }
@@ -103,12 +66,12 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
-        "description": "Configure how area overlay analysis is performed",
+        "description": "Sets which features are overlaid together, how small a piece of geometry has to be before it counts as noise, and what the resulting pieces record about the features they came from.",
         "type": "object",
         "properties": {
           "groupBy": {
             "title": "Group By Attributes",
-            "description": "Optional attributes to group features by during overlay analysis",
+            "description": "Attributes whose values decide which features are overlaid against each other — only features matching on all of them are compared. When omitted, every feature is overlaid against every other.",
             "type": [
               "array",
               "null"
@@ -117,51 +80,62 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "accumulationMode": {
-            "title": "Accumulation Mode",
-            "description": "Controls how attributes from input features are handled in output features",
-            "default": "useAttributesFromOneFeature",
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "The size below which geometry is treated as noise rather than shape, in the unit of the input's coordinate frame: vertices closer together than this are merged before the overlay, so boundaries meant to coincide do, and an overlap covering less than its square is then discarded. Detail finer than the tolerance may therefore not survive the overlay intact. Defaults to zero, which merges and discards nothing.",
+            "default": 0.0,
+            "type": "number",
+            "format": "double"
+          },
+          "attributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes the resulting pieces keep.",
+            "default": "useOneFeature",
             "allOf": [
               {
-                "$ref": "#/definitions/AccumulationMode"
+                "$ref": "#/definitions/AttributeAccumulation"
               }
             ]
           },
-          "generateList": {
-            "title": "Generate List",
-            "description": "Name of the list attribute to store source feature attributes",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute to store overlap count",
+            "title": "Overlap Count Attribute",
+            "description": "Attribute that receives the number of input features covering the piece — two or more on `overlaps`, always one on `remnants`. Defaults to `overlayCount`.",
+            "default": "overlayCount",
+            "type": "string"
+          },
+          "listAttribute": {
+            "title": "List Attribute",
+            "description": "Attribute that receives one entry per covering feature, each holding that feature's own attributes. When omitted, no list is written.",
             "type": [
               "string",
               "null"
             ]
-          },
-          "tolerance": {
-            "title": "Tolerance",
-            "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.",
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double"
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
           },
-          "AccumulationMode": {
-            "type": "string",
-            "enum": [
-              "useAttributesFromOneFeature",
-              "dropIncomingAttributes"
+          "AttributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which attributes a resulting piece keeps.",
+            "oneOf": [
+              {
+                "title": "Use Attributes From One Feature",
+                "description": "Keeps the attributes of a single covering feature and discards the rest.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              },
+              {
+                "title": "Drop Incoming Attributes",
+                "description": "Keeps no incoming attribute, so a piece carries only its overlap count and list attribute. The grouping attributes are dropped too.",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              }
             ]
           }
         }
@@ -171,14 +145,17 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "overlaps",
         "remnants",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Attribute Aggregator",
@@ -923,6 +900,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Range Mapper Parameters",
+        "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -950,7 +928,15 @@
           },
           "defaultValue": {
             "title": "Default Value",
-            "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)"
+            "description": "Value to use when input doesn't match any range (can be string, number, boolean, etc.)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MappedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
@@ -977,9 +963,35 @@
               },
               "outputValue": {
                 "title": "Output Value",
-                "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+                "description": "Value written to the output attribute when the input falls in this range.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/MappedValue"
+                  }
+                ]
               }
             }
+          },
+          "MappedValue": {
+            "title": "Mapped Value",
+            "description": "A value written to an attribute. Accepts text, a number, or true/false, written as the type given — `\"3\"` stays text and `3` stays a number.",
+            "anyOf": [
+              {
+                "title": "Text",
+                "description": "Written as text.",
+                "type": "string"
+              },
+              {
+                "title": "Number",
+                "description": "Written as a number.",
+                "type": "number"
+              },
+              {
+                "title": "True or False",
+                "description": "Written as a true/false value.",
+                "type": "boolean"
+              }
+            ]
           }
         }
       },
@@ -993,7 +1005,9 @@
       "categories": [
         "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "mapping"
+      ]
     },
     {
       "name": "Attribute Table Extractor",
@@ -1032,7 +1046,17 @@
           },
           "inline": {
             "title": "内联表",
-            "description": "直接以JSON形式提供的抽取表内容。在未提供数据集URI时使用"
+            "description": "直接以JSON形式提供的抽取表内容。在未提供数据集URI时使用",
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ExtractRule"
+              }
+            }
           },
           "typeAttribute": {
             "title": "要素类型属性",
@@ -1040,6 +1064,62 @@
             "type": [
               "string",
               "null"
+            ]
+          }
+        },
+        "definitions": {
+          "ExtractRule": {
+            "title": "Extraction Rule",
+            "description": "Moves one value from a source path to a destination path.\n\nBoth paths are chains of attribute keys separated by **spaces**, not dots — the keys themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons and dots but never whitespace.",
+            "type": "object",
+            "required": [
+              "destinationPath",
+              "sourcePath"
+            ],
+            "properties": {
+              "destinationPath": {
+                "title": "Destination Path",
+                "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed.",
+                "type": "string"
+              },
+              "sourcePath": {
+                "title": "Source Path",
+                "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times.",
+                "type": "string"
+              },
+              "dataType": {
+                "title": "Value Type",
+                "description": "Converts the extracted value before writing it. Leave unset to write it unchanged.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ExtractDataType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "ExtractDataType": {
+            "oneOf": [
+              {
+                "title": "Integer",
+                "description": "Parses a string value as an integer.",
+                "type": "string",
+                "enum": [
+                  "int"
+                ]
+              },
+              {
+                "title": "Float",
+                "description": "Parses a string value as a floating point number.",
+                "type": "string",
+                "enum": [
+                  "float"
+                ]
+              }
             ]
           }
         }
@@ -1061,36 +1141,24 @@
     {
       "name": "Boundary Extractor",
       "type": "processor",
-      "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Boundary Extractor Parameters",
-        "description": "Configuration for extracting boundaries from geometries.",
-        "type": "object",
-        "properties": {
-          "keepEmptyBoundaries": {
-            "description": "Whether to keep features with empty boundaries (default: false)",
-            "default": false,
-            "type": "boolean"
-          },
-          "exteriorOnly": {
-            "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
+      "description": "将几何替换为其边界：曲线为其两个端点，曲面为其边界环，实体为其边界壳。",
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "boundary",
+        "no-boundary",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d",
+        "spatial"
+      ]
     },
     {
       "name": "Bounds Extractor",
@@ -1197,7 +1265,7 @@
     {
       "name": "Bufferer",
       "type": "processor",
-      "description": "在几何图形周围创建缓冲区",
+      "description": "以指定距离在每个输入几何图形周围创建缓冲区多边形",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Bufferer Parameters",
@@ -1205,8 +1273,7 @@
         "type": "object",
         "required": [
           "bufferType",
-          "distance",
-          "interpolationAngle"
+          "distance"
         ],
         "properties": {
           "bufferType": {
@@ -1226,8 +1293,11 @@
           },
           "interpolationAngle": {
             "title": "Interpolation Angle",
-            "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
-            "type": "number",
+            "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline. Values outside the range of 1.8 to 45 degrees are clamped to it. Defaults to 11.25 degrees when omitted.",
+            "type": [
+              "number",
+              "null"
+            ],
             "format": "double"
           }
         },
@@ -1236,7 +1306,7 @@
             "oneOf": [
               {
                 "title": "2D Area Buffer",
-                "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried.",
+                "description": "Creates an areal buffer around the input geometry: a 2D geometry is buffered in its coordinate plane, a planar 3D polygon within its own plane. An elevation shared by the buffered geometry is kept.",
                 "type": "string",
                 "enum": [
                   "area2d"
@@ -1401,20 +1471,20 @@
     {
       "name": "CSG Builder",
       "type": "processor",
-      "description": "从一对（左、右）实体几何体构建构造实体几何（CSG）表示。检测并集、交集和差集（左-右），但不计算结果几何体。使用CSGEvaluator来评估CSG树。",
+      "description": "将左侧实体与配对值相同的右侧实体组合，并将该对的并集、交集与差集输出为未求值的构造实体几何树。树只描述布尔运算而不计算结果，因此由下游的 CSG Evaluator 将保留的分支转换为实体。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder Parameters",
-        "description": "Configure how the CSG builder pairs features from left and right ports",
+        "description": "Sets how the two input streams are paired up and what the resulting trees record about the solids they were built from.",
         "type": "object",
+        "required": [
+          "pairId"
+        ],
         "properties": {
-          "pairIdAttribute": {
-            "title": "Pair ID Attribute",
-            "description": "Expression to evaluate the pair ID used to match features from left and right ports",
-            "type": [
-              "object",
-              "null"
-            ],
+          "pairId": {
+            "title": "Pair ID",
+            "description": "Expression evaluated on every feature to produce the value that pairs it up: a left feature and a right feature that evaluate to the same value are combined. A feature whose partner never arrives is rejected.",
+            "type": "object",
             "format": "code",
             "required": [
               "type",
@@ -1432,17 +1502,9 @@
               }
             }
           },
-          "createList": {
-            "title": "Create List",
-            "description": "When enabled, creates a list of attribute values from both children (left and right)",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "listAttributeName": {
-            "title": "List Attribute Name",
-            "description": "Name of the attribute to create the list from (required when create_list is true)",
+          "listAttribute": {
+            "title": "List Attribute",
+            "description": "Attribute that receives one entry for the left solid and one for the right, each holding that feature's own attributes. When omitted, no list is written and the resulting trees carry no attributes at all.",
             "type": [
               "string",
               "null"
@@ -1464,41 +1526,27 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "3d"
+      ]
     },
     {
       "name": "CSG Evaluator",
       "type": "processor",
-      "description": "对构造实体几何（CSG）树进行求值以生成实体几何体。接受CSG表示，计算布尔运算产生的网格。",
+      "description": "计算构造实体几何树所描述的实体，并用结果替换该树。顶点容差是距离，因此操作数必须是位于投影坐标系中、闭合且朝外定向的实体；结果不包含体积的树将从 empty 端口输出。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Evaluator Parameters",
-        "description": "Configure evaluation parameters for CSG operations",
+        "description": "Sets how closely the operands' vertices must line up for the boolean to treat them as one point.",
         "type": "object",
-        "required": [
-          "tolerance"
-        ],
         "properties": {
           "tolerance": {
             "title": "Tolerance",
-            "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. Defaults to a distance small enough that only near-identical vertices merge.",
+            "default": 1e-9,
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -1508,21 +1556,24 @@
       ],
       "outputPorts": [
         "features",
-        "nullport",
+        "empty",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "3d"
+      ]
     },
     {
       "name": "CSV Reader",
       "type": "source",
-      "description": "从CSV文件读取要素",
+      "description": "从CSV和TSV文件读取要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CsvReader Parameters",
+        "title": "CSV Reader Parameters",
         "description": "Configure how CSV and TSV files are processed and read",
         "type": "object",
         "required": [
@@ -1618,7 +1669,7 @@
           },
           "geometry": {
             "title": "Geometry Configuration",
-            "description": "Optional configuration for parsing geometry from CSV columns",
+            "description": "Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted.",
             "anyOf": [
               {
                 "$ref": "#/definitions/GeometryConfig"
@@ -1703,7 +1754,7 @@
             "properties": {
               "epsg": {
                 "title": "EPSG Code",
-                "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+                "description": "Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted.",
                 "type": [
                   "integer",
                   "null"
@@ -2811,23 +2862,12 @@
         "properties": {
           "destinationFrame": {
             "title": "Destination Frame",
-            "description": "Coordinate frame to convert geometry into.",
+            "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code.",
             "allOf": [
               {
                 "$ref": "#/definitions/DestinationFrame"
               }
             ]
-          },
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint16",
-            "minimum": 0.0
           },
           "basePointSource": {
             "title": "Base Point",
@@ -2844,19 +2884,41 @@
         },
         "definitions": {
           "DestinationFrame": {
-            "description": "The destination coordinate frame kind.",
+            "description": "The destination coordinate frame, carrying the input each kind needs.",
             "oneOf": [
               {
                 "title": "CRS",
                 "description": "Reproject to a coordinate reference system identified by an EPSG code.",
-                "type": "string",
-                "enum": [
+                "type": "object",
+                "required": [
                   "crs"
-                ]
+                ],
+                "properties": {
+                  "crs": {
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
               },
               {
                 "title": "Euclidean",
-                "description": "Convert to a non-georeferenced Euclidean frame.",
+                "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input.",
                 "type": "string",
                 "enum": [
                   "euclidean"
@@ -2987,16 +3049,19 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Date Time Converter Parameters",
+        "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back.",
         "type": "object",
         "required": [
           "attribute"
         ],
         "properties": {
           "attribute": {
+            "title": "Source Attribute",
             "description": "Attribute containing the datetime value to convert",
             "type": "string"
           },
           "inputFormat": {
+            "title": "Input Format",
             "description": "Format of the input value (default: auto)",
             "default": "auto",
             "allOf": [
@@ -3006,6 +3071,7 @@
             ]
           },
           "outputFormat": {
+            "title": "Output Format",
             "description": "Desired output format (default: auto). Use `auto` to store as typed DateTime value (parser mode). Use other formats to output as string/number (formatter mode).",
             "default": "auto",
             "allOf": [
@@ -3015,6 +3081,7 @@
             ]
           },
           "outputAttribute": {
+            "title": "Output Attribute",
             "description": "Write result to a different attribute (leave input untouched) Defaults to the same as `attribute`",
             "default": null,
             "type": [
@@ -3028,13 +3095,15 @@
             "description": "Input format options for Date Time Converter",
             "oneOf": [
               {
-                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
+                "title": "Detect Automatically",
+                "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format.",
                 "type": "string",
                 "enum": [
                   "auto"
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 format",
                 "type": "string",
                 "enum": [
@@ -3042,20 +3111,23 @@
                 ]
               },
               {
-                "description": "Unix timestamp in seconds",
+                "title": "Unix Seconds",
+                "description": "Seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unix timestamp in milliseconds",
+                "title": "Unix Milliseconds",
+                "description": "Milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "Date only format (YYYY-MM-DD)",
                 "type": "string",
                 "enum": [
@@ -3063,7 +3135,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Field-by-field pattern, for values none of the fixed formats match.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3081,6 +3154,7 @@
             "description": "Output format options for Date Time Converter",
             "oneOf": [
               {
+                "title": "Typed Datetime",
                 "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
                 "type": "string",
                 "enum": [
@@ -3088,6 +3162,7 @@
                 ]
               },
               {
+                "title": "RFC 3339",
                 "description": "RFC3339 / ISO 8601 format",
                 "type": "string",
                 "enum": [
@@ -3095,20 +3170,23 @@
                 ]
               },
               {
-                "description": "Unix timestamp in seconds",
+                "title": "Unix Seconds",
+                "description": "Writes a number: seconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_s"
+                  "unixS"
                 ]
               },
               {
-                "description": "Unix timestamp in milliseconds",
+                "title": "Unix Milliseconds",
+                "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC.",
                 "type": "string",
                 "enum": [
-                  "unix_ms"
+                  "unixMs"
                 ]
               },
               {
+                "title": "Date Only",
                 "description": "Date only format (YYYY-MM-DD)",
                 "type": "string",
                 "enum": [
@@ -3116,7 +3194,8 @@
                 ]
               },
               {
-                "description": "Custom format using chrono format specifiers",
+                "title": "Custom Pattern",
+                "description": "Writes a string built from a field-by-field pattern.",
                 "type": "object",
                 "required": [
                   "custom"
@@ -3265,7 +3344,7 @@
           },
           "AttributeAccumulationStrategy": {
             "title": "Attribute Accumulation Strategy",
-            "description": "Defines how attributes should be handled when dissolving multiple features into one",
+            "description": "Which attributes a merged feature keeps.",
             "oneOf": [
               {
                 "title": "Drop Incoming Attributes",
@@ -3300,13 +3379,16 @@
         "features"
       ],
       "outputPorts": [
-        "area",
+        "features",
         "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "Echo Processor",
@@ -3347,11 +3429,11 @@
     {
       "name": "Elevation Extractor",
       "type": "processor",
-      "description": "提取实体的第一个z坐标值并存储为一个属性",
+      "description": "将几何图形第一个顶点的高程提取到属性中。没有高程的几何图形将不带该属性通过。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Elevation Extractor Parameters",
-        "description": "Configure where the extracted elevation is stored.",
+        "description": "Sets where the extracted elevation is stored.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -3359,7 +3441,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Attribute to store the elevation in.",
+            "description": "Attribute the elevation is written to. It is left unwritten when the geometry carries no elevation.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3390,18 +3472,19 @@
     {
       "name": "Excel Writer",
       "type": "sink",
-      "description": "将要素写入Microsoft Excel格式（.xlsx文件）",
+      "description": "将每个要素写为 .xlsx 工作表中的一行，每个属性占一列。以某属性名加 `.formula` 或 `.hyperlink` 后缀命名的属性，会用公式或链接填充该列的单元格，而不是写入值。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Excel Writer Parameters",
-        "description": "Configuration for writing features to Microsoft Excel format.",
+        "description": "Sets where the workbook is written and what its worksheet is called.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "Output path or expression for the Excel file to create",
+            "title": "Output Path",
+            "description": "Path the .xlsx file is written to. An expression is evaluated per feature, so features that resolve to different paths are written to separate workbooks.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3422,11 +3505,10 @@
             }
           },
           "sheetName": {
-            "description": "Sheet name (defaults to \"Sheet1\")",
-            "type": [
-              "string",
-              "null"
-            ]
+            "title": "Sheet Name",
+            "description": "Name of the worksheet the rows are written to. Defaults to `Sheet1`.",
+            "default": "Sheet1",
+            "type": "string"
           }
         }
       },
@@ -3436,9 +3518,11 @@
       ],
       "outputPorts": [],
       "categories": [
-        "File"
+        "Output"
       ],
-      "tags": []
+      "tags": [
+        "excel"
+      ]
     },
     {
       "name": "Extruder",
@@ -3560,6 +3644,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "继承输入属性",
+            "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3581,10 +3671,11 @@
     {
       "name": "Feature CityGML 3 Reader",
       "type": "processor",
-      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取每个输入地物所指向的 CityGML 3.0 文件，并解析所有已读取文件之间的 gml:id 引用和 xlink:href 链接。指定文件的地物的属性会被带到由该文件生成的地物上。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 3 Reader Parameters",
+        "description": "要读取的文件，以及其元素如何转换为地物属性。",
         "type": "object",
         "required": [
           "dataset"
@@ -3650,6 +3741,12 @@
               "string",
               "null"
             ]
+          },
+          "inheritInputAttributes": {
+            "title": "继承输入属性",
+            "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
+            "default": true,
+            "type": "boolean"
           }
         }
       },
@@ -3663,7 +3760,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML Reader",
@@ -3860,14 +3960,39 @@
     {
       "name": "Feature Duplicate Filter",
       "type": "processor",
-      "description": "移除重复要素",
-      "parameter": null,
+      "description": "转发每个不同值的第一个地物，并将重复该值的地物分离出来。除非指定要比较的属性，否则按地物的全部内容进行比较。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Duplicate Filter Parameters",
+        "description": "Which features count as repeats of one another.",
+        "type": "object",
+        "properties": {
+          "filterBy": {
+            "title": "Filter Attributes",
+            "description": "Attributes whose combined values identify a repeat: the first feature carrying a given combination is forwarded and later ones are separated out. An attribute that is absent counts as part of the combination, so it is not the same as one holding an empty value. When omitted, features are compared on their whole content instead — every attribute and their geometry.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "duplicate"
       ],
       "categories": [
         "Feature"
@@ -4022,11 +4147,11 @@
     {
       "name": "Feature GeoJSON Writer",
       "type": "processor",
-      "description": "Writes features to a GeoJSON file for each resolved output path.",
+      "description": "将接收到的地物按解析出的每个输出路径写入 GeoJSON 文件，然后为每个已写入的文件输出一个携带该文件路径的地物。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureGeoJsonWriter Parameters",
-        "description": "Configuration for writing features to GeoJSON files.",
+        "title": "Feature GeoJSON Writer Parameters",
+        "description": "Where the GeoJSON is written, and what is declared about its coordinates.",
         "type": "object",
         "required": [
           "output"
@@ -5660,7 +5785,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Coercer Parameters",
-        "description": "Configuration for coercing geometries to specific target types.",
+        "description": "Which geometry type each feature is coerced into.",
         "type": "object",
         "required": [
           "targetType"
@@ -6256,11 +6381,11 @@
     {
       "name": "HTTP Caller",
       "type": "processor",
-      "description": "发起HTTP/HTTPS请求并使用响应数据丰富要素",
+      "description": "为每个要素调用HTTP或HTTPS端点，并将响应存储在要素属性中",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HTTP Caller Parameters",
-        "description": "Configure HTTP/HTTPS requests to enrich features with response data",
+        "description": "Configure the HTTP request made for each feature and how the response is stored",
         "type": "object",
         "required": [
           "url"
@@ -6268,7 +6393,7 @@
         "properties": {
           "url": {
             "title": "URL",
-            "description": "The target URL for the HTTP request (supports expressions)",
+            "description": "The URL to request, evaluated for each feature (supports expressions). Only http and https URLs are allowed, and requests to private or internal network addresses are blocked.",
             "type": "object",
             "format": "code",
             "required": [
@@ -6290,7 +6415,7 @@
           },
           "method": {
             "title": "HTTP Method",
-            "description": "The HTTP method to use for the request",
+            "description": "The HTTP method to use for the request (default: GET)",
             "default": "GET",
             "allOf": [
               {
@@ -6344,41 +6469,9 @@
               }
             ]
           },
-          "contentType": {
-            "title": "Content Type",
-            "description": "Override the Content-Type header for the request",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "timeouts": {
-            "title": "Timeouts",
-            "description": "Connection and transfer timeout settings",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/TimeoutConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "httpOptions": {
-            "title": "HTTP Options",
-            "description": "HTTP client behavior settings (SSL, redirects, user agent)",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/HttpOptions"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "response": {
             "title": "Response Configuration",
-            "description": "Configure how response data is stored and processed",
+            "description": "Configure how the response is stored on the feature",
             "anyOf": [
               {
                 "$ref": "#/definitions/ResponseConfig"
@@ -6412,12 +6505,24 @@
               }
             ]
           },
-          "observability": {
-            "title": "Observability",
-            "description": "Track additional metrics and diagnostics",
+          "timeouts": {
+            "title": "Timeouts",
+            "description": "Connection and transfer timeout settings",
             "anyOf": [
               {
-                "$ref": "#/definitions/ObservabilityConfig"
+                "$ref": "#/definitions/TimeoutConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "httpOptions": {
+            "title": "HTTP Options",
+            "description": "HTTP client behavior settings (SSL verification, redirects, user agent)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/HttpOptions"
               },
               {
                 "type": "null"
@@ -6484,62 +6589,6 @@
                 "type": "string",
                 "enum": [
                   "OPTIONS"
-                ]
-              },
-              {
-                "title": "COPY",
-                "description": "WebDAV: Copy a resource",
-                "type": "string",
-                "enum": [
-                  "COPY"
-                ]
-              },
-              {
-                "title": "LOCK",
-                "description": "WebDAV: Lock a resource",
-                "type": "string",
-                "enum": [
-                  "LOCK"
-                ]
-              },
-              {
-                "title": "MKCOL",
-                "description": "WebDAV: Create a collection",
-                "type": "string",
-                "enum": [
-                  "MKCOL"
-                ]
-              },
-              {
-                "title": "MOVE",
-                "description": "WebDAV: Move a resource",
-                "type": "string",
-                "enum": [
-                  "MOVE"
-                ]
-              },
-              {
-                "title": "PROPFIND",
-                "description": "WebDAV: Retrieve properties",
-                "type": "string",
-                "enum": [
-                  "PROPFIND"
-                ]
-              },
-              {
-                "title": "PROPPATCH",
-                "description": "WebDAV: Update properties",
-                "type": "string",
-                "enum": [
-                  "PROPPATCH"
-                ]
-              },
-              {
-                "title": "UNLOCK",
-                "description": "WebDAV: Unlock a resource",
-                "type": "string",
-                "enum": [
-                  "UNLOCK"
                 ]
               }
             ]
@@ -6847,7 +6896,7 @@
                   },
                   "contentType": {
                     "title": "Content Type",
-                    "description": "Override Content-Type header (e.g., application/json, text/plain)",
+                    "description": "Content-Type header for the body, such as application/json or text/plain",
                     "type": [
                       "string",
                       "null"
@@ -6881,7 +6930,7 @@
                   },
                   "contentType": {
                     "title": "Content Type",
-                    "description": "Content-Type header (e.g., application/octet-stream, image/png)",
+                    "description": "Content-Type header for the body (default: application/octet-stream)",
                     "type": [
                       "string",
                       "null"
@@ -6916,7 +6965,7 @@
               },
               {
                 "title": "Multipart Form Data",
-                "description": "Send multipart/form-data (for file uploads)",
+                "description": "Send multipart/form-data (for file uploads); cannot be combined with retry",
                 "type": "object",
                 "required": [
                   "parts",
@@ -7162,6 +7211,258 @@
               }
             ]
           },
+          "ResponseConfig": {
+            "title": "Response Configuration",
+            "description": "Configure how the response is stored. The status code, response headers, and any error message are always stored in the `_http_status_code`, `_headers`, and `_http_error` attributes.",
+            "type": "object",
+            "properties": {
+              "responseBodyAttribute": {
+                "title": "Response Body Attribute",
+                "description": "Feature attribute name to store the response body (default: `_response_body`)",
+                "default": "_response_body",
+                "type": "string"
+              },
+              "responseHandling": {
+                "title": "Response Handling",
+                "description": "Whether to store the response body in a feature attribute or save it to a file (default: attribute)",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ResponseHandling"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "responseEncoding": {
+                "title": "Response Encoding",
+                "description": "How to store the response body: as UTF-8 text or as a base64-encoded string. When omitted, the encoding is chosen from the response's Content-Type header.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ResponseEncoding"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "autoDetectEncoding": {
+                "title": "Auto Detect Encoding",
+                "description": "Choose text or base64 storage from the response's Content-Type header when Response Encoding is not set (default: true)",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "maxResponseSize": {
+                "title": "Max Response Size",
+                "description": "Maximum response body size in bytes; the download is stopped and the feature rejected when a response exceeds it (unlimited if not set)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          },
+          "ResponseHandling": {
+            "title": "Response Handling",
+            "description": "How to handle the HTTP response data",
+            "oneOf": [
+              {
+                "title": "Store in Attribute",
+                "description": "Store the response body in a feature attribute",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "attribute"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Save to File",
+                "description": "Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute",
+                "type": "object",
+                "required": [
+                  "path",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "path": {
+                    "title": "File Path",
+                    "description": "Relative path under the job's output directory where the response is saved (supports expressions)",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "ResponseEncoding": {
+            "title": "Response Encoding",
+            "description": "How to store the response body",
+            "oneOf": [
+              {
+                "title": "Text",
+                "description": "Store the response body as UTF-8 text",
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              {
+                "title": "Base64",
+                "description": "Store the response body as a base64-encoded string (for binary data)",
+                "type": "string",
+                "enum": [
+                  "base64"
+                ]
+              }
+            ]
+          },
+          "RetryConfig": {
+            "title": "Retry Configuration",
+            "description": "Configure automatic retry behavior for failed requests",
+            "type": "object",
+            "properties": {
+              "maxAttempts": {
+                "title": "Max Attempts",
+                "description": "Maximum total number of attempts including the initial request; 1 disables retries (default: 3)",
+                "default": 3,
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "initialDelayMs": {
+                "title": "Initial Delay",
+                "description": "Initial delay in milliseconds before the first retry (default: 100)",
+                "default": 100,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "backoffMultiplier": {
+                "title": "Backoff Multiplier",
+                "description": "Multiplier for exponential backoff between retries (default: 2.0)",
+                "default": 2.0,
+                "type": "number",
+                "format": "double"
+              },
+              "maxDelayMs": {
+                "title": "Max Delay",
+                "description": "Maximum delay in milliseconds between retries, also capping delays requested by the Retry-After header (default: 10000)",
+                "default": 10000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "retryOnStatus": {
+                "title": "Retry on Status Codes",
+                "description": "HTTP status codes that trigger a retry, such as [429, 503]. When omitted, all 5xx status codes are retried.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "format": "uint16",
+                  "minimum": 0.0
+                }
+              },
+              "honorRetryAfter": {
+                "title": "Honor Retry-After Header",
+                "description": "Whether to respect the Retry-After response header, in seconds or HTTP-date form, when scheduling a retry (default: true)",
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          },
+          "RateLimitConfig": {
+            "title": "Rate Limit Configuration",
+            "description": "Control the rate of HTTP requests to avoid overwhelming the server",
+            "type": "object",
+            "required": [
+              "requests"
+            ],
+            "properties": {
+              "requests": {
+                "title": "Requests",
+                "description": "Maximum number of requests allowed within the interval",
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "intervalMs": {
+                "title": "Interval",
+                "description": "Time interval in milliseconds for the rate limit (default: 1000)",
+                "default": 1000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "timing": {
+                "title": "Timing Strategy",
+                "description": "How to distribute requests within the interval (default: burst)",
+                "default": "burst",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/TimingStrategy"
+                  }
+                ]
+              }
+            }
+          },
+          "TimingStrategy": {
+            "title": "Timing Strategy",
+            "description": "How to distribute requests within the rate limit interval",
+            "oneOf": [
+              {
+                "title": "Burst",
+                "description": "Allow all requests immediately, then pause until next interval",
+                "type": "string",
+                "enum": [
+                  "burst"
+                ]
+              },
+              {
+                "title": "Distributed",
+                "description": "Evenly distribute requests throughout the interval",
+                "type": "string",
+                "enum": [
+                  "distributed"
+                ]
+              }
+            ]
+          },
           "TimeoutConfig": {
             "title": "Timeout Configuration",
             "description": "Configure connection and transfer timeouts for HTTP requests",
@@ -7196,7 +7497,7 @@
             "properties": {
               "userAgent": {
                 "title": "User Agent",
-                "description": "Custom User-Agent header value",
+                "description": "Custom User-Agent header value sent with each request",
                 "type": [
                   "string",
                   "null"
@@ -7204,7 +7505,7 @@
               },
               "verifySsl": {
                 "title": "Verify SSL",
-                "description": "Whether to verify SSL/TLS certificates (default: true)",
+                "description": "Whether to verify SSL/TLS certificates; disable only for servers with self-signed certificates (default: true)",
                 "type": [
                   "boolean",
                   "null"
@@ -7229,363 +7530,6 @@
                 "minimum": 0.0
               }
             }
-          },
-          "ResponseConfig": {
-            "title": "Response Configuration",
-            "description": "Configure how HTTP response data is stored and processed",
-            "type": "object",
-            "properties": {
-              "responseBodyAttribute": {
-                "title": "Response Body Attribute",
-                "description": "Feature attribute name to store the response body (default: \"_response_body\")",
-                "default": "_response_body",
-                "type": "string"
-              },
-              "statusCodeAttribute": {
-                "title": "Status Code Attribute",
-                "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")",
-                "default": "_http_status_code",
-                "type": "string"
-              },
-              "headersAttribute": {
-                "title": "Headers Attribute",
-                "description": "Feature attribute name to store the response headers (default: \"_headers\")",
-                "default": "_headers",
-                "type": "string"
-              },
-              "errorAttribute": {
-                "title": "Error Attribute",
-                "description": "Feature attribute name to store any error messages (default: \"_http_error\")",
-                "default": "_http_error",
-                "type": "string"
-              },
-              "responseHandling": {
-                "title": "Response Handling",
-                "description": "How to handle the response data (attribute or file)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ResponseHandling"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "maxResponseSize": {
-                "title": "Max Response Size",
-                "description": "Maximum response body size in bytes (unlimited if not set)",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "responseEncoding": {
-                "title": "Response Encoding",
-                "description": "How to encode the response body (text, base64, or binary)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ResponseEncoding"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "autoDetectEncoding": {
-                "title": "Auto Detect Encoding",
-                "description": "Automatically detect character encoding from response headers",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              }
-            }
-          },
-          "ResponseHandling": {
-            "title": "Response Handling",
-            "description": "How to handle the HTTP response data",
-            "oneOf": [
-              {
-                "title": "Store in Attribute",
-                "description": "Store response body in a feature attribute",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "attribute"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Save to File",
-                "description": "Save response body to a file",
-                "type": "object",
-                "required": [
-                  "path",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "file"
-                    ]
-                  },
-                  "path": {
-                    "title": "File Path",
-                    "description": "Path where the response should be saved",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr",
-                          "string"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "storePathInAttribute": {
-                    "title": "Store Path in Attribute",
-                    "description": "Whether to store the file path in a feature attribute",
-                    "type": [
-                      "boolean",
-                      "null"
-                    ]
-                  },
-                  "pathAttribute": {
-                    "title": "Path Attribute Name",
-                    "description": "Attribute name for storing the file path",
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          "ResponseEncoding": {
-            "title": "Response Encoding",
-            "description": "How to encode the response body data",
-            "oneOf": [
-              {
-                "title": "Text",
-                "description": "Decode response as UTF-8 text",
-                "type": "string",
-                "enum": [
-                  "text"
-                ]
-              },
-              {
-                "title": "Base64",
-                "description": "Encode response as base64 string",
-                "type": "string",
-                "enum": [
-                  "base64"
-                ]
-              },
-              {
-                "title": "Binary",
-                "description": "Store response as raw binary data",
-                "type": "string",
-                "enum": [
-                  "binary"
-                ]
-              }
-            ]
-          },
-          "RetryConfig": {
-            "title": "Retry Configuration",
-            "description": "Configure automatic retry behavior for failed requests",
-            "type": "object",
-            "properties": {
-              "maxAttempts": {
-                "title": "Max Attempts",
-                "description": "Maximum number of retry attempts (default: 3)",
-                "default": 3,
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "initialDelayMs": {
-                "title": "Initial Delay",
-                "description": "Initial delay in milliseconds before first retry (default: 100ms)",
-                "default": 100,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "backoffMultiplier": {
-                "title": "Backoff Multiplier",
-                "description": "Multiplier for exponential backoff between retries (default: 2.0)",
-                "default": 2.0,
-                "type": "number",
-                "format": "double"
-              },
-              "maxDelayMs": {
-                "title": "Max Delay",
-                "description": "Maximum delay in milliseconds between retries (default: 10000ms)",
-                "default": 10000,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "retryOnStatus": {
-                "title": "Retry on Status Codes",
-                "description": "List of HTTP status codes that should trigger a retry (e.g., [429, 503])",
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "integer",
-                  "format": "uint16",
-                  "minimum": 0.0
-                }
-              },
-              "honorRetryAfter": {
-                "title": "Honor Retry-After Header",
-                "description": "Whether to respect the Retry-After header from server responses (default: true)",
-                "default": true,
-                "type": "boolean"
-              }
-            }
-          },
-          "RateLimitConfig": {
-            "title": "Rate Limit Configuration",
-            "description": "Control the rate of HTTP requests to avoid overwhelming the server",
-            "type": "object",
-            "required": [
-              "requests"
-            ],
-            "properties": {
-              "requests": {
-                "title": "Requests",
-                "description": "Maximum number of requests allowed within the interval",
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "intervalMs": {
-                "title": "Interval",
-                "description": "Time interval in milliseconds for the rate limit (default: 1000ms)",
-                "default": 1000,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "timing": {
-                "title": "Timing Strategy",
-                "description": "How to distribute requests within the interval (default: Burst)",
-                "default": "burst",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/TimingStrategy"
-                  }
-                ]
-              }
-            }
-          },
-          "TimingStrategy": {
-            "title": "Timing Strategy",
-            "description": "How to distribute requests within the rate limit interval",
-            "oneOf": [
-              {
-                "title": "Burst",
-                "description": "Allow all requests immediately, then pause until next interval",
-                "type": "string",
-                "enum": [
-                  "burst"
-                ]
-              },
-              {
-                "title": "Distributed",
-                "description": "Evenly distribute requests throughout the interval",
-                "type": "string",
-                "enum": [
-                  "distributed"
-                ]
-              }
-            ]
-          },
-          "ObservabilityConfig": {
-            "title": "Observability Configuration",
-            "description": "Track additional metrics and diagnostics about HTTP requests",
-            "type": "object",
-            "properties": {
-              "trackDuration": {
-                "title": "Track Duration",
-                "description": "Whether to track the total request duration (default: true)",
-                "default": true,
-                "type": "boolean"
-              },
-              "durationAttribute": {
-                "title": "Duration Attribute",
-                "description": "Feature attribute name to store request duration in milliseconds",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackFinalUrl": {
-                "title": "Track Final URL",
-                "description": "Whether to track the final URL after redirects (default: false)",
-                "default": false,
-                "type": "boolean"
-              },
-              "finalUrlAttribute": {
-                "title": "Final URL Attribute",
-                "description": "Feature attribute name to store the final URL after redirects",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackRetryCount": {
-                "title": "Track Retry Count",
-                "description": "Whether to track the number of retry attempts (default: true)",
-                "default": true,
-                "type": "boolean"
-              },
-              "retryCountAttribute": {
-                "title": "Retry Count Attribute",
-                "description": "Feature attribute name to store the number of retry attempts",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackBytes": {
-                "title": "Track Bytes",
-                "description": "Whether to track the response body size in bytes (default: false)",
-                "default": false,
-                "type": "boolean"
-              },
-              "bytesAttribute": {
-                "title": "Bytes Attribute",
-                "description": "Feature attribute name to store the response body size",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            }
           }
         }
       },
@@ -7598,7 +7542,7 @@
         "rejected"
       ],
       "categories": [
-        "Web"
+        "Feature"
       ],
       "tags": []
     },
@@ -7609,7 +7553,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Hole Counter Parameters",
-        "description": "Configure where to store the count of holes found in polygon geometries",
+        "description": "Where the total number of holes is stored on each feature.",
         "type": "object",
         "required": [
           "outputAttribute"
@@ -7617,7 +7561,7 @@
         "properties": {
           "outputAttribute": {
             "title": "Output Attribute",
-            "description": "Name of the attribute where the hole count will be stored as a number",
+            "description": "Attribute the count is written to, as a number. It is set on every feature, so a geometry with no holes records zero.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -7646,14 +7590,14 @@
     {
       "name": "Hole Extractor",
       "type": "processor",
-      "description": "提取几何中的孔并作为属性添加",
+      "description": "将几何的每个面拆分为环，并将外环和每个内环（孔）各自作为独立地物输出。",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "outershell",
+        "exterior",
         "hole",
         "rejected"
       ],
@@ -8251,17 +8195,25 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "在相交处分割线，并将每个交点转换为携带相交各线合并属性的点实体。输入必须是不带高程的平面2D几何且共享同一坐标框架，请在上游放置Two Dimension Forcer或Coordinate Frame Reprojector进行展平或统一",
+      "description": "在线要素相交处将其分割，在每段结果上记录有多少条输入线沿其延伸，并将每个交点输出为点要素。输入必须是不带高程的平面二维几何且共享同一坐标系，请在上游放置 Two Dimension Forcer 或 Coordinate Frame Reprojector 以展平或统一。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",
-        "description": "Configuration for finding intersection points between line features.",
+        "description": "Sets which lines are crossed against each other, how far apart two vertices may be and still count as one, and what the resulting segments record about the lines they came from.",
         "type": "object",
         "required": [
           "tolerance"
         ],
         "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Distance below which two vertices are treated as the same point, in the unit of the input's coordinate frame. It decides which crossings split a line, which crossings are the same crossing, and which segments coincide; segments shorter than it are dropped. Must be greater than zero, or no line is ever split.",
+            "type": "number",
+            "format": "double"
+          },
           "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes whose values decide which lines are crossed against each other — only lines matching on all of them are compared. When omitted, every line is crossed against every other.",
             "type": [
               "array",
               "null"
@@ -8270,12 +8222,15 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "tolerance": {
-            "type": "number",
-            "format": "double"
+          "outputAttribute": {
+            "title": "Overlap Count Attribute",
+            "description": "Attribute that receives the number of input lines running along the resulting segment. Defaults to `overlayCount`.",
+            "default": "overlayCount",
+            "type": "string"
           },
-          "overlaidListsAttrName": {
-            "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\".",
+          "listAttribute": {
+            "title": "List Attribute",
+            "description": "Attribute that receives one entry per line running along the resulting segment, each holding that line's own attributes. When omitted, no list is written.",
             "type": [
               "string",
               "null"
@@ -8300,51 +8255,58 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "spatial",
+        "aggregation"
+      ]
     },
     {
       "name": "List Concatenator",
       "type": "processor",
-      "description": "从列表的每个元素中提取特定属性，并将其连接成单个字符串",
+      "description": "将列表属性中每个元素的某一个属性值连接成单个字符串。非键值对的元素，以及缺少该属性的元素将被跳过。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Concatenator Parameters",
-        "description": "Configuration for concatenating a specific attribute from list elements.",
+        "description": "Which list to read, which attribute to take from its elements, and where the result goes.",
         "type": "object",
         "required": [
-          "attribute",
+          "elementAttribute",
           "list",
-          "outputAttributeName",
-          "separateCharacter"
+          "outputAttribute"
         ],
         "properties": {
           "list": {
-            "description": "List attribute to read from",
+            "title": "List",
+            "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "attribute": {
-            "description": "Attribute name to extract from each list element",
+          "elementAttribute": {
+            "title": "Element Attribute",
+            "description": "Attribute to take from each element of the list. An element that is not a set of key-value pairs, or that does not carry this attribute, contributes nothing.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "separateCharacter": {
-            "description": "Character(s) to use as separator between concatenated values",
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute the joined string is written to.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "separator": {
+            "title": "Separator",
+            "description": "Text placed between consecutive values. Defaults to a comma.",
+            "default": ",",
             "type": "string"
-          },
-          "outputAttributeName": {
-            "description": "Name of the attribute to store the concatenated result",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8361,9 +8323,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "List Exploder",
@@ -8412,33 +8376,36 @@
     {
       "name": "List Indexer",
       "type": "processor",
-      "description": "将特定列表元素的属性复制为要素的主要属性",
+      "description": "将列表属性中某一个元素的键值对复制到地物本身，同名属性将被覆盖，其余属性保持不变。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Indexer Parameters",
-        "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+        "description": "Which list to read, which of its elements to copy, and how to name what is copied.",
         "type": "object",
         "required": [
-          "listAttribute",
-          "listIndexToCopy"
+          "index",
+          "list"
         ],
         "properties": {
-          "listAttribute": {
-            "description": "List attribute to read from",
+          "list": {
+            "title": "List",
+            "description": "Attribute holding the list to read. A feature whose attribute is missing, or is not a list, passes through unchanged.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
               }
             ]
           },
-          "listIndexToCopy": {
-            "description": "Index of the list element to copy (0-based)",
+          "index": {
+            "title": "Index",
+            "description": "Position of the element to copy, counting from zero. A feature whose list is shorter than this, or whose element at this position is not a set of key-value pairs, passes through unchanged.",
             "type": "integer",
             "format": "uint",
             "minimum": 0.0
           },
           "copiedAttributePrefix": {
-            "description": "Optional prefix to add to copied attribute names",
+            "title": "Copied Attribute Prefix",
+            "description": "Text placed before each copied attribute name. Omitted by default.",
             "default": null,
             "type": [
               "string",
@@ -8446,7 +8413,8 @@
             ]
           },
           "copiedAttributeSuffix": {
-            "description": "Optional suffix to add to copied attribute names",
+            "title": "Copied Attribute Suffix",
+            "description": "Text placed after each copied attribute name. Omitted by default.",
             "default": null,
             "type": [
               "string",
@@ -8468,9 +8436,11 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Attribute"
       ],
-      "tags": []
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "MVT Writer",
@@ -8604,6 +8574,22 @@
             ],
             "format": "uint32",
             "minimum": 0.0
+          },
+          "maxTileBytes": {
+            "title": "Maximum Tile Size",
+            "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+            "default": 500000,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "arrayMapSeparator": {
+            "title": "Array/Map Separator",
+            "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -8832,8 +8818,16 @@
           },
           "defaultReplacement": {
             "title": "Default Replacement",
-            "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
-            "default": null
+            "description": "What to write for null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes. When omitted, those attributes are left unchanged.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/NullReplacement"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "nullDefinition": {
             "title": "Null Definition",
@@ -8881,7 +8875,8 @@
             "description": "Per-attribute replacement mapping",
             "type": "object",
             "required": [
-              "attribute"
+              "attribute",
+              "replacement"
             ],
             "properties": {
               "attribute": {
@@ -8891,7 +8886,12 @@
               },
               "replacement": {
                 "title": "Replacement",
-                "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+                "description": "What to write when the attribute is null-like. Required, so that removing an attribute is stated rather than implied by leaving this out.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/NullReplacement"
+                  }
+                ]
               },
               "onMissing": {
                 "title": "On Missing",
@@ -8904,6 +8904,94 @@
                 ]
               }
             }
+          },
+          "NullReplacement": {
+            "title": "Null Replacement",
+            "description": "What to write in place of a null-like attribute, and the type to write it as.",
+            "oneOf": [
+              {
+                "title": "Text",
+                "description": "Written as text.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The text to write.",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Number",
+                "description": "Written as a number.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "number"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The number to write.",
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "title": "True or False",
+                "description": "Written as a true/false value.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "boolean"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The value to write.",
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "title": "Remove",
+                "description": "Removes the attribute from the feature instead of writing a value.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "remove"
+                    ]
+                  }
+                }
+              }
+            ]
           },
           "OnMissing": {
             "title": "On Missing",
@@ -12116,11 +12204,11 @@
     {
       "name": "Shapefile Reader",
       "type": "source",
-      "description": "从Shapefile存档（包含.shp、.dbf、.shx的.zip文件）读取地理要素",
+      "description": "从打包在 ZIP 存档中的 shapefile 读取要素。存档应包含该格式定义的 .shp、.shx 和 .dbf 文件，但允许缺少 .shx。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileReader Parameters",
-        "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+        "title": "Shapefile Reader Parameters",
+        "description": "Sets which archive is read, the encoding of its attribute table, and whether elevations are kept. Components are paired by name, and the first shapefile is read when the archive holds more than one.",
         "type": "object",
         "properties": {
           "encoding": {
@@ -12133,13 +12221,13 @@
           },
           "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+            "description": "If true, drops elevations and reads every geometry as 2D. The read fails on a multipatch, which describes a surface in space and has no 2D form.",
             "default": false,
             "type": "boolean"
           },
           "allowEmptyPath": {
-            "title": "Allow Null Path",
-            "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
+            "title": "Allow Empty Path",
+            "description": "If true, a dataset path that is empty or null yields no features instead of failing, allowing an optional shapefile input.",
             "default": false,
             "type": "boolean"
           },
@@ -12211,11 +12299,11 @@
     {
       "name": "Shapefile Writer",
       "type": "sink",
-      "description": "将要素写入Shapefile",
+      "description": "将要素写为 shapefile，可选择按组分别写入各自的文件集。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileWriter Parameters",
-        "description": "Configuration for writing features to ESRI Shapefile format.",
+        "title": "Shapefile Writer Parameters",
+        "description": "Sets where the shapefiles are written, whether each is archived, and how features are grouped into separate file sets.",
         "type": "object",
         "required": [
           "output"
@@ -12223,7 +12311,7 @@
         "properties": {
           "output": {
             "title": "Output Directory",
-            "description": "Output directory path or expression where the generated Shapefile files are written.",
+            "description": "Directory the shapefiles are written to, as a path or an expression. Each file set inside it is named after its group value, or \"null\" when no grouping is configured.",
             "type": "object",
             "format": "code",
             "required": [
@@ -12270,7 +12358,7 @@
           },
           "groupBy": {
             "title": "Group By",
-            "description": "Optional attributes to group features by, creating separate files for each group",
+            "description": "Attributes to group features by, writing one file set per distinct group and naming it after the group's value. When unset, every feature goes to a single file set.",
             "type": [
               "array",
               "null"
@@ -12352,16 +12440,16 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "按空间关系过滤要素",
+      "description": "按候选要素与过滤几何之间的空间关系进行过滤，关系在水平面上测试：三维几何按其平面投影比较，且必须位于使用线性单位的坐标系中。未提供任何过滤几何时，所有候选要素均通过。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SpatialFilter Parameters",
-        "description": "Configure spatial relationship testing between filter and candidate geometries",
+        "title": "Spatial Filter Parameters",
+        "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter.",
         "type": "object",
         "properties": {
           "predicate": {
             "title": "Spatial Predicate",
-            "description": "The spatial relationship to test between filter and candidate geometries",
+            "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object.",
             "default": "intersects",
             "allOf": [
               {
@@ -12369,21 +12457,25 @@
               }
             ]
           },
-          "passOnMultipleMatches": {
-            "title": "Pass on Multiple Matches",
-            "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
-            "default": true,
-            "type": "boolean"
+          "matchMode": {
+            "title": "Match Mode",
+            "description": "Whether a candidate passes by matching any single filter feature, or only by matching every filter feature.",
+            "default": "any",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MatchMode"
+              }
+            ]
           },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
-            "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+            "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins.",
             "default": false,
             "type": "boolean"
           },
           "mergedAttributesPrefix": {
             "title": "Merged Attributes Prefix",
-            "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\".",
+            "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged.",
             "default": null,
             "type": [
               "string",
@@ -12392,7 +12484,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of matching filters",
+            "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike.",
             "default": null,
             "anyOf": [
               {
@@ -12406,68 +12498,101 @@
         },
         "definitions": {
           "SpatialPredicate": {
+            "title": "Spatial Predicate",
+            "description": "The relationship each candidate is tested for against a filter geometry.",
             "oneOf": [
               {
-                "description": "Filter geometry completely contains candidate",
+                "title": "Contains",
+                "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that.",
                 "type": "string",
                 "enum": [
                   "contains"
                 ]
               },
               {
-                "description": "Candidate completely within filter geometry",
+                "title": "Within",
+                "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that.",
                 "type": "string",
                 "enum": [
                   "within"
                 ]
               },
               {
-                "description": "Geometries have any intersection",
+                "title": "Intersects",
+                "description": "Passes a candidate that shares at least one point with the filter geometry.",
                 "type": "string",
                 "enum": [
                   "intersects"
                 ]
               },
               {
-                "description": "Geometries have no spatial relationship",
+                "title": "Disjoint",
+                "description": "Passes a candidate that shares no point at all with the filter geometry.",
                 "type": "string",
                 "enum": [
                   "disjoint"
                 ]
               },
               {
-                "description": "Geometries touch at boundaries but don't overlap",
+                "title": "Touches",
+                "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior.",
                 "type": "string",
                 "enum": [
                   "touches"
                 ]
               },
               {
-                "description": "Geometries cross each other",
+                "title": "Crosses",
+                "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon.",
                 "type": "string",
                 "enum": [
                   "crosses"
                 ]
               },
               {
-                "description": "Geometries overlap partially",
+                "title": "Overlaps",
+                "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other.",
                 "type": "string",
                 "enum": [
                   "overlaps"
                 ]
               },
               {
-                "description": "Candidate is covered by filter geometry",
+                "title": "Covered By",
+                "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary.",
                 "type": "string",
                 "enum": [
                   "coveredBy"
                 ]
               },
               {
-                "description": "Filter geometry covers candidate",
+                "title": "Covers",
+                "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary.",
                 "type": "string",
                 "enum": [
                   "covers"
+                ]
+              }
+            ]
+          },
+          "MatchMode": {
+            "title": "Match Mode",
+            "description": "How the tests against the individual filter features combine into pass or fail.",
+            "oneOf": [
+              {
+                "title": "Any",
+                "description": "Passes a candidate that matches at least one filter feature.",
+                "type": "string",
+                "enum": [
+                  "any"
+                ]
+              },
+              {
+                "title": "All",
+                "description": "Passes a candidate only when every filter feature matches it.",
+                "type": "string",
+                "enum": [
+                  "all"
                 ]
               }
             ]

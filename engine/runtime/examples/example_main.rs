@@ -81,6 +81,9 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::NodeStatusChanged { .. } => {
                 // TODO: Implement this
             }
+            reearth_flow_runtime::event::Event::Diagnostic(_) => {
+                // TODO: Implement this
+            }
         }
     }
 }

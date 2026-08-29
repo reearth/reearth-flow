@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::client::ClientConfig;
 use super::errors::{HttpProcessorError, Result};
 use super::expression::ExpressionCompiler;
-use super::params::HttpCallerParam;
+use super::params::{HttpCallerParam, RequestBody};
 use super::processor::HttpCallerProcessor;
 
 #[derive(Debug, Clone, Default)]
@@ -23,7 +23,7 @@ impl ProcessorFactory for HttpCallerFactory {
     }
 
     fn description(&self) -> &str {
-        "Make HTTP/HTTPS requests and enrich features with response data"
+        "Calls an HTTP or HTTPS endpoint for each feature and stores the response in feature attributes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -31,7 +31,7 @@ impl ProcessorFactory for HttpCallerFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Web"]
+        &["Feature"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -86,6 +86,7 @@ impl ProcessorFactory for HttpCallerFactory {
                 .as_ref()
                 .and_then(|o| o.max_redirects)
                 .unwrap_or(10),
+            max_response_size: params.response.as_ref().and_then(|r| r.max_response_size),
         };
 
         // Compile expressions
@@ -173,6 +174,18 @@ impl HttpCallerFactory {
             }
         }
 
+        // A multipart body cannot be cloned for a retry, so the combination
+        // would otherwise fail on every feature at runtime.
+        if matches!(params.request_body, Some(RequestBody::Multipart { .. }))
+            && params.retry.is_some()
+        {
+            return Err(HttpProcessorError::CallerFactory(
+                "Retry is not supported for multipart requests. \
+                 Remove the retry configuration or use a different request body type."
+                    .to_string(),
+            ));
+        }
+
         Ok(())
     }
 }
@@ -181,6 +194,25 @@ impl HttpCallerFactory {
 mod tests {
     use super::*;
     use reearth_flow_types::{Code, CodeType};
+
+    fn base_params(url: &str) -> HttpCallerParam {
+        HttpCallerParam {
+            url: Code {
+                ty: CodeType::FlowExpr,
+                value: url.to_string(),
+            },
+            method: super::super::params::HttpMethod::Get,
+            authentication: None,
+            custom_headers: None,
+            query_parameters: None,
+            request_body: None,
+            response: None,
+            retry: None,
+            rate_limit: None,
+            timeouts: None,
+            http_options: None,
+        }
+    }
 
     #[test]
     fn test_factory_name() {
@@ -191,7 +223,7 @@ mod tests {
     #[test]
     fn test_factory_categories() {
         let factory = HttpCallerFactory;
-        assert_eq!(factory.categories(), &["Web"]);
+        assert_eq!(factory.categories(), &["Feature"]);
     }
 
     #[test]
@@ -211,24 +243,7 @@ mod tests {
     #[test]
     fn test_validate_parameters_empty_url() {
         let factory = HttpCallerFactory;
-        let params = HttpCallerParam {
-            url: Code {
-                ty: CodeType::FlowExpr,
-                value: String::new(),
-            },
-            method: super::super::params::HttpMethod::Get,
-            authentication: None,
-            custom_headers: None,
-            query_parameters: None,
-            request_body: None,
-            content_type: None,
-            timeouts: None,
-            http_options: None,
-            response: None,
-            retry: None,
-            rate_limit: None,
-            observability: None,
-        };
+        let params = base_params("");
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
@@ -239,28 +254,12 @@ mod tests {
         use super::super::params::{RateLimitConfig, TimingStrategy};
 
         let factory = HttpCallerFactory;
-        let params = HttpCallerParam {
-            url: Code {
-                ty: CodeType::FlowExpr,
-                value: "https://example.com".to_string(),
-            },
-            method: super::super::params::HttpMethod::Get,
-            authentication: None,
-            custom_headers: None,
-            query_parameters: None,
-            request_body: None,
-            content_type: None,
-            timeouts: None,
-            http_options: None,
-            response: None,
-            retry: None,
-            rate_limit: Some(RateLimitConfig {
-                requests: 0, // This should fail validation
-                interval_ms: 1000,
-                timing: TimingStrategy::Distributed,
-            }),
-            observability: None,
-        };
+        let mut params = base_params("https://example.com");
+        params.rate_limit = Some(RateLimitConfig {
+            requests: 0, // This should fail validation
+            interval_ms: 1000,
+            timing: TimingStrategy::Distributed,
+        });
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
@@ -268,5 +267,41 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("must be greater than 0"));
+    }
+
+    #[test]
+    fn test_validate_parameters_multipart_with_retry() {
+        use super::super::params::{MultipartPart, RetryConfig};
+
+        let factory = HttpCallerFactory;
+        let mut params = base_params("https://example.com");
+        params.request_body = Some(RequestBody::Multipart {
+            parts: vec![MultipartPart::Text {
+                name: "field".to_string(),
+                value: Code {
+                    ty: CodeType::FlowExpr,
+                    value: r#""value""#.to_string(),
+                },
+            }],
+        });
+        params.retry = Some(RetryConfig {
+            max_attempts: 3,
+            initial_delay_ms: 100,
+            backoff_multiplier: 2.0,
+            max_delay_ms: 10000,
+            retry_on_status: None,
+            honor_retry_after: true,
+        });
+
+        let result = factory.validate_parameters(&params);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not supported for multipart"));
+
+        // Multipart without retry is valid.
+        params.retry = None;
+        assert!(factory.validate_parameters(&params).is_ok());
     }
 }

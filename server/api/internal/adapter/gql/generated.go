@@ -236,14 +236,31 @@ type ComplexityRoot struct {
 		Deployment func(childComplexity int) int
 	}
 
+	Diagnostic struct {
+		ActionType           func(childComplexity int) int
+		AggregatedCount      func(childComplexity int) int
+		Category             func(childComplexity int) int
+		Code                 func(childComplexity int) int
+		EffectiveDisposition func(childComplexity int) int
+		FeatureID            func(childComplexity int) int
+		Help                 func(childComplexity int) int
+		Message              func(childComplexity int) int
+		NodeID               func(childComplexity int) int
+		SampleFeatureIds     func(childComplexity int) int
+		Severity             func(childComplexity int) int
+	}
+
 	Job struct {
 		CompletedAt       func(childComplexity int) int
 		Debug             func(childComplexity int) int
 		Deployment        func(childComplexity int) int
 		DeploymentID      func(childComplexity int) int
+		DroppedEventCount func(childComplexity int) int
+		FailedNodes       func(childComplexity int) int
 		ID                func(childComplexity int) int
 		Logs              func(childComplexity int, since time.Time) int
 		LogsURL           func(childComplexity int) int
+		NodeDiagnostics   func(childComplexity int, nodeID string) int
 		OutputURLs        func(childComplexity int) int
 		StartedAt         func(childComplexity int) int
 		Status            func(childComplexity int) int
@@ -336,16 +353,6 @@ type ComplexityRoot struct {
 		Timestamp      func(childComplexity int) int
 	}
 
-	NodeExecution struct {
-		CompletedAt func(childComplexity int) int
-		CreatedAt   func(childComplexity int) int
-		ID          func(childComplexity int) int
-		JobID       func(childComplexity int) int
-		NodeID      func(childComplexity int) int
-		StartedAt   func(childComplexity int) int
-		Status      func(childComplexity int) int
-	}
-
 	PageInfo struct {
 		CurrentPage func(childComplexity int) int
 		TotalCount  func(childComplexity int) int
@@ -420,9 +427,10 @@ type ComplexityRoot struct {
 	}
 
 	ProjectSnapshot struct {
-		Timestamp func(childComplexity int) int
-		Updates   func(childComplexity int) int
-		Version   func(childComplexity int) int
+		SnapshotNumber func(childComplexity int) int
+		Timestamp      func(childComplexity int) int
+		Updates        func(childComplexity int) int
+		Version        func(childComplexity int) int
 	}
 
 	ProjectSnapshotMetadata struct {
@@ -449,13 +457,12 @@ type ComplexityRoot struct {
 		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
 		Me                    func(childComplexity int) int
 		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		NodeExecution         func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
 		Nodes                 func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Parameters            func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectNamedSnapshots func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
-		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
+		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version *int, snapshotNumber *int) int
 		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
@@ -487,7 +494,6 @@ type ComplexityRoot struct {
 	Subscription struct {
 		JobStatus      func(childComplexity int, jobID gqlmodel.ID) int
 		Logs           func(childComplexity int, jobID gqlmodel.ID) int
-		NodeStatus     func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
 		UserFacingLogs func(childComplexity int, jobID gqlmodel.ID) int
 	}
 
@@ -613,6 +619,10 @@ type JobResolver interface {
 	Workspace(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Workspace, error)
 
 	Logs(ctx context.Context, obj *gqlmodel.Job, since time.Time) ([]*gqlmodel.Log, error)
+
+	FailedNodes(ctx context.Context, obj *gqlmodel.Job) ([]*gqlmodel.Diagnostic, error)
+	DroppedEventCount(ctx context.Context, obj *gqlmodel.Job) (*int, error)
+	NodeDiagnostics(ctx context.Context, obj *gqlmodel.Job, nodeID string) ([]*gqlmodel.Diagnostic, error)
 }
 type MeResolver interface {
 	MyWorkspace(ctx context.Context, obj *gqlmodel.Me) (*gqlmodel.Workspace, error)
@@ -692,11 +702,10 @@ type QueryResolver interface {
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
-	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error)
+	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version *int, snapshotNumber *int) (*gqlmodel.ProjectSnapshot, error)
 	ProjectNamedSnapshots(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
-	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
@@ -709,7 +718,6 @@ type QueryResolver interface {
 type SubscriptionResolver interface {
 	JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error)
 	Logs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.Log, error)
-	NodeStatus(ctx context.Context, jobID gqlmodel.ID, nodeID string) (<-chan gqlmodel.NodeStatus, error)
 	UserFacingLogs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.UserFacingLog, error)
 }
 type TriggerResolver interface {
@@ -1376,6 +1384,73 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.DeploymentPayload.Deployment(childComplexity), true
 
+	case "Diagnostic.actionType":
+		if e.complexity.Diagnostic.ActionType == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.ActionType(childComplexity), true
+	case "Diagnostic.aggregatedCount":
+		if e.complexity.Diagnostic.AggregatedCount == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.AggregatedCount(childComplexity), true
+	case "Diagnostic.category":
+		if e.complexity.Diagnostic.Category == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.Category(childComplexity), true
+	case "Diagnostic.code":
+		if e.complexity.Diagnostic.Code == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.Code(childComplexity), true
+	case "Diagnostic.effectiveDisposition":
+		if e.complexity.Diagnostic.EffectiveDisposition == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.EffectiveDisposition(childComplexity), true
+	case "Diagnostic.featureId":
+		if e.complexity.Diagnostic.FeatureID == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.FeatureID(childComplexity), true
+	case "Diagnostic.help":
+		if e.complexity.Diagnostic.Help == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.Help(childComplexity), true
+	case "Diagnostic.message":
+		if e.complexity.Diagnostic.Message == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.Message(childComplexity), true
+	case "Diagnostic.nodeId":
+		if e.complexity.Diagnostic.NodeID == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.NodeID(childComplexity), true
+	case "Diagnostic.sampleFeatureIds":
+		if e.complexity.Diagnostic.SampleFeatureIds == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.SampleFeatureIds(childComplexity), true
+	case "Diagnostic.severity":
+		if e.complexity.Diagnostic.Severity == nil {
+			break
+		}
+
+		return e.complexity.Diagnostic.Severity(childComplexity), true
+
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
 			break
@@ -1400,6 +1475,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.DeploymentID(childComplexity), true
+	case "Job.droppedEventCount":
+		if e.complexity.Job.DroppedEventCount == nil {
+			break
+		}
+
+		return e.complexity.Job.DroppedEventCount(childComplexity), true
+	case "Job.failedNodes":
+		if e.complexity.Job.FailedNodes == nil {
+			break
+		}
+
+		return e.complexity.Job.FailedNodes(childComplexity), true
 	case "Job.id":
 		if e.complexity.Job.ID == nil {
 			break
@@ -1423,6 +1510,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.LogsURL(childComplexity), true
+	case "Job.nodeDiagnostics":
+		if e.complexity.Job.NodeDiagnostics == nil {
+			break
+		}
+
+		args, err := ec.field_Job_nodeDiagnostics_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Job.NodeDiagnostics(childComplexity, args["nodeId"].(string)), true
 	case "Job.outputURLs":
 		if e.complexity.Job.OutputURLs == nil {
 			break
@@ -2072,49 +2170,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.NamedSnapshot.Timestamp(childComplexity), true
 
-	case "NodeExecution.completedAt":
-		if e.complexity.NodeExecution.CompletedAt == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.CompletedAt(childComplexity), true
-	case "NodeExecution.createdAt":
-		if e.complexity.NodeExecution.CreatedAt == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.CreatedAt(childComplexity), true
-	case "NodeExecution.id":
-		if e.complexity.NodeExecution.ID == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.ID(childComplexity), true
-	case "NodeExecution.jobId":
-		if e.complexity.NodeExecution.JobID == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.JobID(childComplexity), true
-	case "NodeExecution.nodeId":
-		if e.complexity.NodeExecution.NodeID == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.NodeID(childComplexity), true
-	case "NodeExecution.startedAt":
-		if e.complexity.NodeExecution.StartedAt == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.StartedAt(childComplexity), true
-	case "NodeExecution.status":
-		if e.complexity.NodeExecution.Status == nil {
-			break
-		}
-
-		return e.complexity.NodeExecution.Status(childComplexity), true
-
 	case "PageInfo.currentPage":
 		if e.complexity.PageInfo.CurrentPage == nil {
 			break
@@ -2400,6 +2455,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ProjectSharingInfoPayload.SharingToken(childComplexity), true
 
+	case "ProjectSnapshot.snapshotNumber":
+		if e.complexity.ProjectSnapshot.SnapshotNumber == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshot.SnapshotNumber(childComplexity), true
 	case "ProjectSnapshot.timestamp":
 		if e.complexity.ProjectSnapshot.Timestamp == nil {
 			break
@@ -2625,17 +2686,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Node(childComplexity, args["id"].(gqlmodel.ID), args["type"].(gqlmodel.NodeType)), true
-	case "Query.nodeExecution":
-		if e.complexity.Query.NodeExecution == nil {
-			break
-		}
-
-		args, err := ec.field_Query_nodeExecution_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.NodeExecution(childComplexity, args["jobId"].(gqlmodel.ID), args["nodeId"].(string)), true
 	case "Query.nodes":
 		if e.complexity.Query.Nodes == nil {
 			break
@@ -2701,7 +2751,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectSnapshot(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(int)), true
+		return e.complexity.Query.ProjectSnapshot(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(*int), args["snapshotNumber"].(*int)), true
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
 			break
@@ -2816,17 +2866,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Subscription.Logs(childComplexity, args["jobId"].(gqlmodel.ID)), true
-	case "Subscription.nodeStatus":
-		if e.complexity.Subscription.NodeStatus == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_nodeStatus_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Subscription.NodeStatus(childComplexity, args["jobId"].(gqlmodel.ID), args["nodeId"].(string)), true
 	case "Subscription.userFacingLogs":
 		if e.complexity.Subscription.UserFacingLogs == nil {
 			break
@@ -3833,6 +3872,22 @@ extend type Mutation {
   executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
 `, BuiltIn: false},
+	{Name: "../../../gql/diagnostic.graphql", Input: `"A structured diagnostic from the engine. Enum-like fields are Strings so new engine values do not break clients."
+type Diagnostic {
+  code: String!
+  category: String!
+  severity: String!
+  "The authoritative fatality signal; severity is display-only."
+  effectiveDisposition: String
+  nodeId: String
+  actionType: String
+  featureId: ID
+  message: String!
+  help: String
+  aggregatedCount: Int
+  sampleFeatureIds: [ID!]
+}
+`, BuiltIn: false},
 	{Name: "../../../gql/document.graphql", Input: `# Project History Snapshot
 type PreviewSnapshot {
   id: ID!
@@ -3854,7 +3909,8 @@ type ProjectDocument implements Node {
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
-  version: Int!
+  version: Int
+  snapshotNumber: Int
 }
 
 # Project Snapshot Metadata (without updates data)
@@ -3887,7 +3943,12 @@ extend type Mutation {
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
-  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  # Pass exactly one of version or snapshotNumber.
+  projectSnapshot(
+    projectId: ID!
+    version: Int
+    snapshotNumber: Int
+  ): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }`, BuiltIn: false},
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
@@ -3906,12 +3967,17 @@ extend type Query {
   workspaceId: ID!
   logs(since: DateTime!): [Log]
   variables: [Variable!]!
+  failedNodes: [Diagnostic!]
+  droppedEventCount: Int
+  "Diagnostics for one node. Pass an empty nodeId for the job-level bucket."
+  nodeDiagnostics(nodeId: String!): [Diagnostic!]
 }
 
 enum JobStatus {
   CANCELLED
   COMPLETED
   FAILED
+  "Never emitted by the runtime; retained for API compatibility."
   PENDING
   RUNNING
 }
@@ -3979,32 +4045,6 @@ type Log {
 
 extend type Subscription {
   logs(jobId: ID!): Log
-}
-`, BuiltIn: false},
-	{Name: "../../../gql/node.graphql", Input: `type NodeExecution implements Node {
-  id: ID!
-  jobId: ID!
-  nodeId: ID!
-  status: NodeStatus!
-  createdAt: DateTime
-  startedAt: DateTime
-  completedAt: DateTime
-}
-
-enum NodeStatus {
-  PENDING
-  STARTING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-extend type Subscription {
-  nodeStatus(jobId: ID!, nodeId: String!): NodeStatus!
-}
-
-extend type Query {
-  nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
@@ -4655,6 +4695,17 @@ func (ec *executionContext) field_Job_logs_args(ctx context.Context, rawArgs map
 		return nil, err
 	}
 	args["since"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Job_nodeDiagnostics_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "nodeId", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["nodeId"] = arg0
 	return args, nil
 }
 
@@ -5467,22 +5518,6 @@ func (ec *executionContext) field_Query_latestProjectSnapshot_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_nodeExecution_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "jobId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
-	if err != nil {
-		return nil, err
-	}
-	args["jobId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "nodeId", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["nodeId"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5567,11 +5602,16 @@ func (ec *executionContext) field_Query_projectSnapshot_args(ctx context.Context
 		return nil, err
 	}
 	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "version", ec.unmarshalNInt2int)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "version", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
 	args["version"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "snapshotNumber", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["snapshotNumber"] = arg2
 	return args, nil
 }
 
@@ -5663,22 +5703,6 @@ func (ec *executionContext) field_Subscription_logs_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["jobId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Subscription_nodeStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "jobId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
-	if err != nil {
-		return nil, err
-	}
-	args["jobId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "nodeId", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["nodeId"] = arg1
 	return args, nil
 }
 
@@ -8004,6 +8028,12 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_logs(ctx, field)
 			case "variables":
 				return ec.fieldContext_Job_variables(ctx, field)
+			case "failedNodes":
+				return ec.fieldContext_Job_failedNodes(ctx, field)
+			case "droppedEventCount":
+				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -9031,6 +9061,325 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _Diagnostic_code(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_code,
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_category(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_category,
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_severity(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_severity,
+		func(ctx context.Context) (any, error) {
+			return obj.Severity, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_severity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_effectiveDisposition(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_effectiveDisposition,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveDisposition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_effectiveDisposition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_nodeId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_nodeId,
+		func(ctx context.Context) (any, error) {
+			return obj.NodeID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_nodeId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_actionType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_actionType,
+		func(ctx context.Context) (any, error) {
+			return obj.ActionType, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_actionType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_featureId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_featureId,
+		func(ctx context.Context) (any, error) {
+			return obj.FeatureID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_featureId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_message(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_message,
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_help(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_help,
+		func(ctx context.Context) (any, error) {
+			return obj.Help, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_help(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_aggregatedCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_aggregatedCount,
+		func(ctx context.Context) (any, error) {
+			return obj.AggregatedCount, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_aggregatedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostic_sampleFeatureIds(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Diagnostic) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Diagnostic_sampleFeatureIds,
+		func(ctx context.Context) (any, error) {
+			return obj.SampleFeatureIds, nil
+		},
+		nil,
+		ec.marshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Diagnostic_sampleFeatureIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostic",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Job_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9538,6 +9887,153 @@ func (ec *executionContext) fieldContext_Job_variables(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_failedNodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_failedNodes,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Job().FailedNodes(ctx, obj)
+		},
+		nil,
+		ec.marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDiagnosticᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_failedNodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_Diagnostic_code(ctx, field)
+			case "category":
+				return ec.fieldContext_Diagnostic_category(ctx, field)
+			case "severity":
+				return ec.fieldContext_Diagnostic_severity(ctx, field)
+			case "effectiveDisposition":
+				return ec.fieldContext_Diagnostic_effectiveDisposition(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_Diagnostic_nodeId(ctx, field)
+			case "actionType":
+				return ec.fieldContext_Diagnostic_actionType(ctx, field)
+			case "featureId":
+				return ec.fieldContext_Diagnostic_featureId(ctx, field)
+			case "message":
+				return ec.fieldContext_Diagnostic_message(ctx, field)
+			case "help":
+				return ec.fieldContext_Diagnostic_help(ctx, field)
+			case "aggregatedCount":
+				return ec.fieldContext_Diagnostic_aggregatedCount(ctx, field)
+			case "sampleFeatureIds":
+				return ec.fieldContext_Diagnostic_sampleFeatureIds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Diagnostic", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Job_droppedEventCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_droppedEventCount,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Job().DroppedEventCount(ctx, obj)
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_droppedEventCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Job_nodeDiagnostics(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_nodeDiagnostics,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Job().NodeDiagnostics(ctx, obj, fc.Args["nodeId"].(string))
+		},
+		nil,
+		ec.marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDiagnosticᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_nodeDiagnostics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_Diagnostic_code(ctx, field)
+			case "category":
+				return ec.fieldContext_Diagnostic_category(ctx, field)
+			case "severity":
+				return ec.fieldContext_Diagnostic_severity(ctx, field)
+			case "effectiveDisposition":
+				return ec.fieldContext_Diagnostic_effectiveDisposition(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_Diagnostic_nodeId(ctx, field)
+			case "actionType":
+				return ec.fieldContext_Diagnostic_actionType(ctx, field)
+			case "featureId":
+				return ec.fieldContext_Diagnostic_featureId(ctx, field)
+			case "message":
+				return ec.fieldContext_Diagnostic_message(ctx, field)
+			case "help":
+				return ec.fieldContext_Diagnostic_help(ctx, field)
+			case "aggregatedCount":
+				return ec.fieldContext_Diagnostic_aggregatedCount(ctx, field)
+			case "sampleFeatureIds":
+				return ec.fieldContext_Diagnostic_sampleFeatureIds(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Diagnostic", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Job_nodeDiagnostics_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9592,6 +10088,12 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_logs(ctx, field)
 			case "variables":
 				return ec.fieldContext_Job_variables(ctx, field)
+			case "failedNodes":
+				return ec.fieldContext_Job_failedNodes(ctx, field)
+			case "droppedEventCount":
+				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -9719,6 +10221,12 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_logs(ctx, field)
 			case "variables":
 				return ec.fieldContext_Job_variables(ctx, field)
+			case "failedNodes":
+				return ec.fieldContext_Job_failedNodes(ctx, field)
+			case "droppedEventCount":
+				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -12310,209 +12818,6 @@ func (ec *executionContext) fieldContext_NamedSnapshot_size(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _NodeExecution_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_id,
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NodeExecution_jobId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_jobId,
-		func(ctx context.Context) (any, error) {
-			return obj.JobID, nil
-		},
-		nil,
-		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_jobId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NodeExecution_nodeId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_nodeId,
-		func(ctx context.Context) (any, error) {
-			return obj.NodeID, nil
-		},
-		nil,
-		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_nodeId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NodeExecution_status(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_status,
-		func(ctx context.Context) (any, error) {
-			return obj.Status, nil
-		},
-		nil,
-		ec.marshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type NodeStatus does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NodeExecution_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_createdAt,
-		func(ctx context.Context) (any, error) {
-			return obj.CreatedAt, nil
-		},
-		nil,
-		ec.marshalODateTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NodeExecution_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_startedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.StartedAt, nil
-		},
-		nil,
-		ec.marshalODateTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NodeExecution_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NodeExecution_completedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.CompletedAt, nil
-		},
-		nil,
-		ec.marshalODateTime2ᚖtimeᚐTime,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_NodeExecution_completedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NodeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _PageInfo_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -12973,6 +13278,12 @@ func (ec *executionContext) fieldContext_PreviewSchemaPayload_job(_ context.Cont
 				return ec.fieldContext_Job_logs(ctx, field)
 			case "variables":
 				return ec.fieldContext_Job_variables(ctx, field)
+			case "failedNodes":
+				return ec.fieldContext_Job_failedNodes(ctx, field)
+			case "droppedEventCount":
+				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -14087,13 +14398,42 @@ func (ec *executionContext) _ProjectSnapshot_version(ctx context.Context, field 
 			return obj.Version, nil
 		},
 		nil,
-		ec.marshalNInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
-		true,
+		false,
 	)
 }
 
 func (ec *executionContext) fieldContext_ProjectSnapshot_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshot_snapshotNumber(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshot) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectSnapshot_snapshotNumber,
+		func(ctx context.Context) (any, error) {
+			return obj.SnapshotNumber, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshot_snapshotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectSnapshot",
 		Field:      field,
@@ -15097,7 +15437,7 @@ func (ec *executionContext) _Query_projectSnapshot(ctx context.Context, field gr
 		ec.fieldContext_Query_projectSnapshot,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().ProjectSnapshot(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["version"].(int))
+			return ec.resolvers.Query().ProjectSnapshot(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["version"].(*int), fc.Args["snapshotNumber"].(*int))
 		},
 		nil,
 		ec.marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot,
@@ -15120,6 +15460,8 @@ func (ec *executionContext) fieldContext_Query_projectSnapshot(ctx context.Conte
 				return ec.fieldContext_ProjectSnapshot_updates(ctx, field)
 			case "version":
 				return ec.fieldContext_ProjectSnapshot_version(ctx, field)
+			case "snapshotNumber":
+				return ec.fieldContext_ProjectSnapshot_snapshotNumber(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectSnapshot", field.Name)
 		},
@@ -15293,6 +15635,12 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_logs(ctx, field)
 			case "variables":
 				return ec.fieldContext_Job_variables(ctx, field)
+			case "failedNodes":
+				return ec.fieldContext_Job_failedNodes(ctx, field)
+			case "droppedEventCount":
+				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -15305,63 +15653,6 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_job_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_nodeExecution(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_nodeExecution,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().NodeExecution(ctx, fc.Args["jobId"].(gqlmodel.ID), fc.Args["nodeId"].(string))
-		},
-		nil,
-		ec.marshalONodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_nodeExecution(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_NodeExecution_id(ctx, field)
-			case "jobId":
-				return ec.fieldContext_NodeExecution_jobId(ctx, field)
-			case "nodeId":
-				return ec.fieldContext_NodeExecution_nodeId(ctx, field)
-			case "status":
-				return ec.fieldContext_NodeExecution_status(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_NodeExecution_createdAt(ctx, field)
-			case "startedAt":
-				return ec.fieldContext_NodeExecution_startedAt(ctx, field)
-			case "completedAt":
-				return ec.fieldContext_NodeExecution_completedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type NodeExecution", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_nodeExecution_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -15985,6 +16276,12 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_logs(ctx, field)
 			case "variables":
 				return ec.fieldContext_Job_variables(ctx, field)
+			case "failedNodes":
+				return ec.fieldContext_Job_failedNodes(ctx, field)
+			case "droppedEventCount":
+				return ec.fieldContext_Job_droppedEventCount(ctx, field)
+			case "nodeDiagnostics":
+				return ec.fieldContext_Job_nodeDiagnostics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -16242,47 +16539,6 @@ func (ec *executionContext) fieldContext_Subscription_logs(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_logs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_nodeStatus(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_nodeStatus,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Subscription().NodeStatus(ctx, fc.Args["jobId"].(gqlmodel.ID), fc.Args["nodeId"].(string))
-		},
-		nil,
-		ec.marshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_nodeStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type NodeStatus does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_nodeStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -21910,13 +22166,6 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Project(ctx, sel, obj)
-	case gqlmodel.NodeExecution:
-		return ec._NodeExecution(ctx, sel, &obj)
-	case *gqlmodel.NodeExecution:
-		if obj == nil {
-			return graphql.Null
-		}
-		return ec._NodeExecution(ctx, sel, obj)
 	case gqlmodel.Job:
 		return ec._Job(ctx, sel, &obj)
 	case *gqlmodel.Job:
@@ -23350,6 +23599,74 @@ func (ec *executionContext) _DeploymentPayload(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var diagnosticImplementors = []string{"Diagnostic"}
+
+func (ec *executionContext) _Diagnostic(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Diagnostic) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Diagnostic")
+		case "code":
+			out.Values[i] = ec._Diagnostic_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "category":
+			out.Values[i] = ec._Diagnostic_category(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "severity":
+			out.Values[i] = ec._Diagnostic_severity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveDisposition":
+			out.Values[i] = ec._Diagnostic_effectiveDisposition(ctx, field, obj)
+		case "nodeId":
+			out.Values[i] = ec._Diagnostic_nodeId(ctx, field, obj)
+		case "actionType":
+			out.Values[i] = ec._Diagnostic_actionType(ctx, field, obj)
+		case "featureId":
+			out.Values[i] = ec._Diagnostic_featureId(ctx, field, obj)
+		case "message":
+			out.Values[i] = ec._Diagnostic_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "help":
+			out.Values[i] = ec._Diagnostic_help(ctx, field, obj)
+		case "aggregatedCount":
+			out.Values[i] = ec._Diagnostic_aggregatedCount(ctx, field, obj)
+		case "sampleFeatureIds":
+			out.Values[i] = ec._Diagnostic_sampleFeatureIds(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var jobImplementors = []string{"Job", "Node"}
 
 func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Job) graphql.Marshaler {
@@ -23499,6 +23816,105 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "failedNodes":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Job_failedNodes(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "droppedEventCount":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Job_droppedEventCount(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "nodeDiagnostics":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Job_nodeDiagnostics(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24089,66 +24505,6 @@ func (ec *executionContext) _NamedSnapshot(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var nodeExecutionImplementors = []string{"NodeExecution", "Node"}
-
-func (ec *executionContext) _NodeExecution(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.NodeExecution) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, nodeExecutionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("NodeExecution")
-		case "id":
-			out.Values[i] = ec._NodeExecution_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "jobId":
-			out.Values[i] = ec._NodeExecution_jobId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "nodeId":
-			out.Values[i] = ec._NodeExecution_nodeId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "status":
-			out.Values[i] = ec._NodeExecution_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "createdAt":
-			out.Values[i] = ec._NodeExecution_createdAt(ctx, field, obj)
-		case "startedAt":
-			out.Values[i] = ec._NodeExecution_startedAt(ctx, field, obj)
-		case "completedAt":
-			out.Values[i] = ec._NodeExecution_completedAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -24831,9 +25187,8 @@ func (ec *executionContext) _ProjectSnapshot(ctx context.Context, sel ast.Select
 			}
 		case "version":
 			out.Values[i] = ec._ProjectSnapshot_version(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+		case "snapshotNumber":
+			out.Values[i] = ec._ProjectSnapshot_snapshotNumber(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -25358,25 +25713,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "nodeExecution":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_nodeExecution(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "parameters":
 			field := field
 
@@ -25792,8 +26128,6 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_jobStatus(ctx, fields[0])
 	case "logs":
 		return ec._Subscription_logs(ctx, fields[0])
-	case "nodeStatus":
-		return ec._Subscription_nodeStatus(ctx, fields[0])
 	case "userFacingLogs":
 		return ec._Subscription_userFacingLogs(ctx, fields[0])
 	default:
@@ -27749,6 +28083,16 @@ func (ec *executionContext) marshalNDeploymentConnection2ᚖgithubᚗcomᚋreear
 	return ec._DeploymentConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNDiagnostic2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDiagnostic(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Diagnostic) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Diagnostic(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v any) (gqlmodel.EventSourceType, error) {
 	var res gqlmodel.EventSourceType
 	err := res.UnmarshalGQL(v)
@@ -28107,16 +28451,6 @@ func (ec *executionContext) marshalNNode2ᚕgithubᚗcomᚋreearthᚋreearthᚑf
 	wg.Wait()
 
 	return ret
-}
-
-func (ec *executionContext) unmarshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx context.Context, v any) (gqlmodel.NodeStatus, error) {
-	var res gqlmodel.NodeStatus
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx context.Context, sel ast.SelectionSet, v gqlmodel.NodeStatus) graphql.Marshaler {
-	return v
 }
 
 func (ec *executionContext) unmarshalNNodeType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeType(ctx context.Context, v any) (gqlmodel.NodeType, error) {
@@ -29369,6 +29703,53 @@ func (ec *executionContext) marshalODeploymentPayload2ᚖgithubᚗcomᚋreearth�
 	return ec._DeploymentPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDiagnosticᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Diagnostic) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNDiagnostic2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDiagnostic(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, v any) ([]gqlmodel.ID, error) {
 	if v == nil {
 		return nil, nil
@@ -29552,13 +29933,6 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋreearthᚋreearthᚑflow
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalONodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.NodeExecution) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._NodeExecution(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOOrderDirection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐOrderDirection(ctx context.Context, v any) (*gqlmodel.OrderDirection, error) {

@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"testing"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -108,11 +109,14 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	wsID := accountsid.NewWorkspaceID()
 	wsID2 := accountsid.NewWorkspaceID()
 
-	// Create test data
-	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").MustBuild()
-	d2 := deployment.New().NewID().Workspace(wsID).Version("v2").MustBuild()
-	d3 := deployment.New().NewID().Workspace(wsID).Version("v3").MustBuild()
-	d4 := deployment.New().NewID().Workspace(wsID2).Version("v1").MustBuild()
+	// Create test data. UpdatedAt defaults to the ID's ULID timestamp, which has
+	// millisecond resolution, so builds that straddle a millisecond boundary would
+	// otherwise reorder these under the default updatedAt DESC sort.
+	now := time.Now()
+	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").UpdatedAt(now).MustBuild()
+	d2 := deployment.New().NewID().Workspace(wsID).Version("v2").UpdatedAt(now.Add(-time.Minute)).MustBuild()
+	d3 := deployment.New().NewID().Workspace(wsID).Version("v3").UpdatedAt(now.Add(-2 * time.Minute)).MustBuild()
+	d4 := deployment.New().NewID().Workspace(wsID2).Version("v1").UpdatedAt(now).MustBuild()
 
 	tests := []struct {
 		name       string

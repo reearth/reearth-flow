@@ -1,6 +1,10 @@
+#[cfg(not(feature = "new-geometry"))]
 use crate::errors::GeometryParsingError;
+#[cfg(not(feature = "new-geometry"))]
 use indexmap::IndexMap;
+#[cfg(not(feature = "new-geometry"))]
 use nusamai_projection::crs::EpsgCode;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
     line_string::LineString2D,
@@ -10,6 +14,7 @@ use reearth_flow_geometry::types::{
     point::{Point2D, Point3D},
     polygon::Polygon2D,
 };
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::{
     gen::SchemaGenerator,
@@ -29,7 +34,7 @@ pub struct GeometryConfig {
     #[serde(flatten)]
     pub mode: GeometryMode,
     /// # EPSG Code
-    /// Coordinate Reference System code (e.g., 4326 for WGS84)
+    /// Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted.
     pub epsg: Option<u16>,
 }
 
@@ -199,6 +204,13 @@ pub fn get_geometry_column_names(config: &GeometryConfig) -> Vec<String> {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+#[path = "csv_geometry_next.rs"]
+mod csv_geometry_next;
+#[cfg(feature = "new-geometry")]
+pub use csv_geometry_next::parse_geometry;
+
+#[cfg(not(feature = "new-geometry"))]
 pub fn parse_geometry(
     row: &IndexMap<String, String>,
     config: &GeometryConfig,
@@ -265,6 +277,7 @@ pub fn parse_geometry(
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn parse_wkt_geometry(
     wkt_str: &str,
     epsg: Option<EpsgCode>,
@@ -287,6 +300,7 @@ fn parse_wkt_geometry(
     convert_geo_to_flow(geo_geom, epsg)
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn convert_geo_to_flow(
     geo_geom: geo_types::Geometry<f64>,
     epsg: Option<EpsgCode>,

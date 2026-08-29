@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/job/monitor"
@@ -24,20 +25,21 @@ import (
 var _ interfaces.Job = &Job{}
 
 type Job struct {
-	jobRepo           repo.Job
-	transaction       usecasex.Transactor
-	file              gateway.File
-	batch             gateway.Batch
-	cloudRunWorker    gateway.CloudRunWorker
-	redis             gateway.Redis
-	notifier          notification.Notifier
-	permissionChecker gateway.PermissionChecker
-	monitor           *monitor.Monitor
-	subscriptions     *subscription.JobManager
-	activeWatchers    map[string]bool
-	jobLocks          map[string]*sync.Mutex
-	jobLocksMu        sync.RWMutex
-	watchersMu        sync.Mutex
+	jobRepo             repo.Job
+	nodeDiagnosticsRepo repo.NodeDiagnostics
+	transaction         usecasex.Transactor
+	file                gateway.File
+	batch               gateway.Batch
+	cloudRunWorker      gateway.CloudRunWorker
+	redis               gateway.Redis
+	notifier            notification.Notifier
+	permissionChecker   gateway.PermissionChecker
+	monitor             *monitor.Monitor
+	subscriptions       *subscription.JobManager
+	activeWatchers      map[string]bool
+	jobLocks            map[string]*sync.Mutex
+	jobLocksMu          sync.RWMutex
+	watchersMu          sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -54,18 +56,19 @@ func NewJob(
 	permissionChecker gateway.PermissionChecker,
 ) interfaces.Job {
 	return &Job{
-		jobRepo:           r.Job,
-		transaction:       r.Transaction,
-		file:              gr.File,
-		batch:             gr.Batch,
-		cloudRunWorker:    gr.CloudRunWorker,
-		redis:             gr.Redis,
-		monitor:           monitor.NewMonitor(),
-		subscriptions:     subscription.NewJobManager(),
-		notifier:          notification.NewHTTPNotifier(),
-		permissionChecker: permissionChecker,
-		activeWatchers:    make(map[string]bool),
-		jobLocks:          make(map[string]*sync.Mutex),
+		jobRepo:             r.Job,
+		nodeDiagnosticsRepo: r.NodeDiagnostics,
+		transaction:         r.Transaction,
+		file:                gr.File,
+		batch:               gr.Batch,
+		cloudRunWorker:      gr.CloudRunWorker,
+		redis:               gr.Redis,
+		monitor:             monitor.NewMonitor(),
+		subscriptions:       subscription.NewJobManager(),
+		notifier:            notification.NewHTTPNotifier(),
+		permissionChecker:   permissionChecker,
+		activeWatchers:      make(map[string]bool),
+		jobLocks:            make(map[string]*sync.Mutex),
 	}
 }
 
@@ -168,6 +171,8 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 			}
 		}()
 
+		i.markCloudRunJobRunning(ctx, j.ID())
+
 		status, err := i.cloudRunWorker.RunJob(ctx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
@@ -192,6 +197,8 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			}
 		}()
 
+		i.markCloudRunJobRunning(ctx, j.ID())
+
 		status, err := i.cloudRunWorker.PreviewSchema(ctx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: preview-schema cloud run worker %s run error: %v", j.ID(), err)
@@ -201,6 +208,31 @@ func (i *Job) PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam
 			i.failCloudRunJob(ctx, j.ID())
 		}
 	}()
+}
+
+// markCloudRunJobRunning flips a dispatched job to RUNNING: Cloud Run jobs are
+// never polled (no GCPJobID) and the worker only ever publishes a terminal
+// event, so without this they sit in PENDING for their entire run.
+func (i *Job) markCloudRunJobRunning(ctx context.Context, jobID id.JobID) {
+	lock := i.getJobLock(jobID.String())
+	lock.Lock()
+	defer lock.Unlock()
+
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		log.Errorfc(ctx, "job: failed to reload cloud run job %s: %v", jobID, err)
+		return
+	}
+	if j.Status() != job.StatusPending {
+		return
+	}
+
+	j.SetStatus(job.StatusRunning)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: failed to save cloud run job %s: %v", jobID, err)
+		return
+	}
+	i.subscriptions.Notify(jobID.String(), job.StatusRunning)
 }
 
 // failCloudRunJob marks a debug job failed when the worker call fails. A
@@ -264,13 +296,24 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 		return nil, err
 	}
 
-	if len(jobs) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a job — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, j := range jobs {
+		if j != nil {
+			ws, haveWorkspace = j.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
 		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, jobs[0].Workspace()); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
 			return nil, err
 		}
 	}
@@ -328,7 +371,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 
 	i.activeWatchers[jobKey] = true
 
-	monitorCtx, cancel := context.WithCancel(context.Background())
+	monitorCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 
 	i.monitor.Register(jobKey, &monitor.Config{
 		Cancel:          cancel,
@@ -370,7 +413,7 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
+			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 			if err != nil {
 				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
 				continue
@@ -443,6 +486,16 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 	if statusChanged {
 		currentJob.SetStatus(currentJob.Status())
+
+		// Must run before the event is deleted below, or a failure here loses the diagnostics.
+		diagnosticsPersisted := true
+		if workerEvent != nil {
+			if err := i.persistTerminalDiagnostics(ctx, currentJob.ID(), workerEvent); err != nil {
+				diagnosticsPersisted = false
+				log.Warnf("Failed to persist terminal diagnostics for job %s: %v", currentJob.ID(), err)
+			}
+		}
+
 		if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 			if err := i.jobRepo.Save(ctx, currentJob); err != nil {
 				return fmt.Errorf("failed to save job: %w", err)
@@ -452,7 +505,7 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			return err
 		}
 
-		if workerEvent != nil {
+		if workerEvent != nil && diagnosticsPersisted {
 			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
 				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
 			}
@@ -662,4 +715,43 @@ func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 		delete(i.activeWatchers, jobID.String())
 		i.watchersMu.Unlock()
 	}
+}
+
+func (i *Job) persistTerminalDiagnostics(ctx context.Context, jobID id.JobID, event *gateway.JobCompleteEvent) error {
+	if event == nil {
+		return nil
+	}
+	if len(event.FailedNodes) == 0 && len(event.AggregatedDiagnostics) == 0 && event.DroppedEventCount == nil {
+		return nil
+	}
+	if i.nodeDiagnosticsRepo == nil {
+		return nil
+	}
+
+	failedNodes, err := wireDiagnosticsToDomain(jobID, event.Timestamp, event.FailedNodes)
+	if err != nil {
+		return fmt.Errorf("failed to convert failed nodes: %w", err)
+	}
+
+	aggregated, err := wireDiagnosticsToDomain(jobID, event.Timestamp, event.AggregatedDiagnostics)
+	if err != nil {
+		return fmt.Errorf("failed to convert aggregated diagnostics: %w", err)
+	}
+
+	return i.nodeDiagnosticsRepo.SaveTerminalDiagnostics(ctx, jobID, event.WorkflowID, event.Timestamp, failedNodes, aggregated, event.DroppedEventCount)
+}
+
+func wireDiagnosticsToDomain(jobID id.JobID, timestamp time.Time, wire []gateway.WireDiagnostic) ([]*diagnostic.Diagnostic, error) {
+	if len(wire) == 0 {
+		return nil, nil
+	}
+	result := make([]*diagnostic.Diagnostic, 0, len(wire))
+	for _, w := range wire {
+		d, err := w.ToDomain(jobID, timestamp)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, d)
+	}
+	return result, nil
 }

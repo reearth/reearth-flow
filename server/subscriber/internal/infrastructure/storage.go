@@ -3,10 +3,11 @@ package infrastructure
 import (
 	"context"
 
+	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/subscriber/pkg/diagnostic"
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
-	"github.com/reearth/reearth-flow/subscriber/pkg/node"
 	"github.com/reearth/reearth-flow/subscriber/pkg/userfacinglog"
 )
 
@@ -24,31 +25,6 @@ func (s *logStorageImpl) SaveToRedis(ctx context.Context, event *domainLog.LogEv
 	return s.redis.SaveLogToRedis(ctx, event)
 }
 
-// nodeExecutionStorage is satisfied by both the mongo and postgres adapters.
-type nodeExecutionStorage interface {
-	SaveNodeExecution(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error
-}
-
-type nodeStorageImpl struct {
-	redis *redis.RedisStorage
-	db    nodeExecutionStorage
-}
-
-func NewNodeStorageImpl(r *redis.RedisStorage, db nodeExecutionStorage) gateway.NodeStorage {
-	return &nodeStorageImpl{
-		redis: r,
-		db:    db,
-	}
-}
-
-func (s *nodeStorageImpl) SaveNodeExecution(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error {
-	return s.db.SaveNodeExecution(ctx, jobID, nodeExecution)
-}
-
-func (s *nodeStorageImpl) SaveToRedis(ctx context.Context, event *node.NodeStatusEvent) error {
-	return s.redis.SaveNodeEventToRedis(ctx, event)
-}
-
 type userFacingLogStorageImpl struct {
 	redis *redis.RedisStorage
 }
@@ -61,4 +37,24 @@ func NewUserFacingLogStorageImpl(r *redis.RedisStorage) gateway.UserFacingLogSto
 
 func (s *userFacingLogStorageImpl) SaveToRedis(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error {
 	return s.redis.SaveUserFacingLogToRedis(ctx, event)
+}
+
+type diagnosticStorageImpl struct {
+	redis *redis.RedisStorage
+	mongo *mongo.MongoStorage
+}
+
+func NewDiagnosticStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.DiagnosticStorage {
+	return &diagnosticStorageImpl{
+		redis: r,
+		mongo: m,
+	}
+}
+
+func (s *diagnosticStorageImpl) SaveToRedis(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+	return s.redis.SaveDiagnosticToRedis(ctx, event)
+}
+
+func (s *diagnosticStorageImpl) SaveToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+	return s.mongo.SaveDiagnosticToMongo(ctx, event)
 }

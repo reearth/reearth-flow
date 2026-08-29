@@ -131,8 +131,6 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(areaNode);
-      // EPSG:4326 degrees → ~m² near Tokyo (35.7°N): 1 deg² ≈ 1.0029e10 m².
-      await editor.setParamText("root_multiplier", "10029000000");
       await editor.setParamText("root_outputAttribute", "areaSqm");
       await editor.submitParams();
 

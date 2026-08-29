@@ -12,6 +12,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+
 use crate::errors::SinkError;
 use crate::file::mvt::tileid::TileIdMethod;
 
@@ -124,7 +126,10 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 type BufferKey = (String, Option<String>, Option<String>); // (output_rel_path, filename, compress_output_rel_path)
+#[cfg(feature = "new-geometry")]
+type BufferKey = String; // output_rel_path
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
@@ -315,7 +320,10 @@ impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
-            tracing::warn!("Cesium3DTilesWriter: skipping feature with no geometry");
+            // An errorPolicy override can promote this warn_drop to reject/fatal,
+            // so report() can return Err for real here; propagate it.
+            ctx.report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+                .map_err(|diag| SinkError::Cesium3DTilesWriter(diag.to_string()))?;
             return Ok(());
         };
         let geometry_value = &geometry.value;
@@ -323,7 +331,10 @@ impl Cesium3DTilesWriter {
             geometry_value,
             geometry_types::GeometryValue::CityGmlGeometry(_)
         ) {
-            tracing::warn!("Cesium3DTilesWriter: skipping feature with non-CityGML geometry");
+            ctx.report(DiagnosticDraft::new(
+                ErrorCode::Cesium3dtilesNonCitygmlGeometry,
+            ))
+            .map_err(|diag| SinkError::Cesium3DTilesWriter(diag.to_string()))?;
             return Ok(());
         }
 
@@ -383,7 +394,15 @@ impl Cesium3DTilesWriter {
 
         let feature = &ctx.feature;
         let Some(schema_type) = feature.get(schema_key).and_then(|v| v.as_string()) else {
-            tracing::warn!("Feature missing '{}' attribute for schema_key", schema_key);
+            // process_schema returns () so report()'s Result can't be
+            // ?-propagated here; a promoted Fatal still reaches the node's
+            // fatal slot inside report() itself, so discarding it below only
+            // skips this call site's own control flow, not the failure.
+            let _ = ctx.report(
+                DiagnosticDraft::new(ErrorCode::Cesium3dtilesMissingSchemaKey).with_message(
+                    format!("skipped schema feature missing '{schema_key}' attribute"),
+                ),
+            );
             return;
         };
 
@@ -643,5 +662,65 @@ impl Cesium3DTilesWriter {
             }
         });
         Ok(())
+    }
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
+    use reearth_flow_runtime::node::{NodeHandle, FEATURES_PORT};
+    use reearth_flow_types::AttributeValue;
+
+    use super::*;
+
+    fn test_writer() -> Cesium3DTilesWriter {
+        Cesium3DTilesWriter {
+            buffer: HashMap::new(),
+            schema: Default::default(),
+            params: Cesium3DTilesWriterCompiledParam {
+                output: CompiledCode::Literal(String::new()),
+                min_zoom: 0,
+                max_zoom: 0,
+                attach_texture: None,
+                compress_output: None,
+                draco_compression: true,
+                skip_unexposed_attributes: false,
+                schema_key: None,
+            },
+        }
+    }
+
+    #[test]
+    fn empty_geometry_feature_is_reported_not_warned() {
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "Cesium 3D Tiles Writer".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
+        ));
+        let node_ctx = NodeContext::default();
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            Feature::from(IndexMap::<String, AttributeValue>::new()),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+
+        let mut writer = test_writer();
+        writer.process_default(&ctx).unwrap();
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0]
+            .message
+            .contains("cesium3dtiles.empty_geometry"));
     }
 }

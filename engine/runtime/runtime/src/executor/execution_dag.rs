@@ -25,45 +25,40 @@ pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub kind: Option<NodeKind>,
-    /// Snapshot of the node role (e.g., Source/Processor/Sink).
-    /// Although this is derivable from `kind`, we persist it here because `kind` is moved (`take()`) during execution graph construction (e.g., in ProcessorNode::new),
-    /// making it unavailable later. Keeping this immutable snapshot avoids timing issues.
-    /// TODO: refactor to remove duplication once initialization no longer requires taking `kind`.
+    // Persisted here because `kind` is take()n during execution graph construction and becomes unavailable later.
     pub is_source: bool,
-    /// Factory-declared output ports, propagated from BuilderDag.
     pub output_ports: Vec<Port>,
-    /// Accumulated subgraph prefix, propagated from BuilderDag.
     pub subgraph_prefix: Option<String>,
-    /// True for OutputRouter nodes inside subgraphs: port-based intermediate
-    /// data is named `<prefix>.<port>` rather than `<prefix>.<node_id>.<port>`.
     pub is_subgraph_output: bool,
+    pub action: String,
+}
+
+impl NodeType {
+    // Mirrors builder_dag::NodeType::composed_id exactly (duplicated, not shared) — keep the two formats in sync.
+    pub fn composed_id(&self) -> String {
+        match &self.subgraph_prefix {
+            Some(prefix) => format!("{prefix}.{}", self.handle.id),
+            None => self.handle.id.to_string(),
+        }
+    }
 }
 
 #[derive(Clone)]
 pub struct EdgeType {
-    /// Edge ID.
     pub edge_id: EdgeId,
-    /// Output port handle.
     pub output_port: Port,
-    /// Edge kind.
     pub edge_kind: SchemaEdgeKind,
-    /// The sender for data flowing downstream. Edges that have same source and target node share the same sender.
     pub sender: Sender<ExecutorOperation>,
-    /// Input port handle.
     pub input_port: Port,
-    /// The receiver from receiving data from upstream. Edges that have same source and target node share the same receiver.
     pub receiver: Receiver<ExecutorOperation>,
 }
 
 pub struct ExecutionDag {
     pub(crate) id: GraphId,
-    /// Unique identifier for this workflow execution, used for cache isolation.
     pub(crate) executor_id: uuid::Uuid,
-    /// Nodes will be moved into execution threads.
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
     ingress_state: Arc<State>,
-    /// Port-based feature writers: one writer per (node, output_port) pair.
     port_writers: HashMap<NodeIndex, HashMap<Port, Box<dyn FeatureWriter>>>,
 }
 
@@ -77,13 +72,11 @@ impl ExecutionDag {
         executor_id: uuid::Uuid,
     ) -> Result<Self, ExecutionError> {
         let graph_id = builder_dag.id;
-        // We only create channel once for every pair of nodes.
         let mut channels = HashMap::<
             (petgraph::graph::NodeIndex, petgraph::graph::NodeIndex),
             (Sender<ExecutorOperation>, Receiver<ExecutorOperation>),
         >::new();
 
-        // Create new edges.
         let mut edges = vec![];
         for builder_dag_edge in builder_dag.graph().raw_edges().iter() {
             let source_node_index = builder_dag_edge.source();
@@ -93,7 +86,6 @@ impl ExecutionDag {
             let output_port = edge.to_port();
             let edge_kind = edge.edge_kind.clone();
 
-            // Create or get channel.
             let (sender, receiver) = match channels.entry((source_node_index, target_node_index)) {
                 Entry::Vacant(entry) => {
                     let (sender, receiver) = bounded(channel_buffer_sz);
@@ -103,7 +95,6 @@ impl ExecutionDag {
                 Entry::Occupied(entry) => entry.get().clone(),
             };
 
-            // Create edge.
             let edge = EdgeType {
                 edge_id,
                 output_port,
@@ -115,14 +106,11 @@ impl ExecutionDag {
             edges.push(Some(edge));
         }
 
-        // Create new graph.
         let (graph, event_hub) = builder_dag.into_graph_and_event_hub();
         let graph = graph.map(
             |_, node| NodeType {
                 handle: node.handle.clone(),
                 name: node.name.clone(),
-                // Persist role early. `kind` will be taken later (e.g., in ProcessorNode::new),
-                // so we cannot reliably derive the role at that time.
                 is_source: matches!(node.kind, NodeKind::Source(_)),
                 kind: match &node.kind {
                     NodeKind::Source(source) => Some(NodeKind::Source(source.clone())),
@@ -132,6 +120,7 @@ impl ExecutionDag {
                 output_ports: node.output_ports.clone(),
                 subgraph_prefix: node.subgraph_prefix.clone(),
                 is_subgraph_output: node.is_subgraph_output,
+                action: node.action.clone(),
             },
             |edge_index, _| {
                 edges[edge_index.index()]
@@ -139,7 +128,6 @@ impl ExecutionDag {
                     .expect("We created all edges")
             },
         );
-        // Create port-based writers: one writer per (node, output_port) pair.
         let mut port_writers = HashMap::new();
         for node_index in graph.node_indices() {
             let node = &graph[node_index];
@@ -200,7 +188,6 @@ impl ExecutionDag {
         &self,
         node_index: petgraph::graph::NodeIndex,
     ) -> Vec<SenderWithPortMapping> {
-        // Map from target node index to `SenderWithPortMapping`.
         let mut senders = HashMap::<petgraph::graph::NodeIndex, SenderWithPortMapping>::new();
         for edge in self.graph.edges(node_index) {
             match senders.entry(edge.target()) {
@@ -242,7 +229,6 @@ impl ExecutionDag {
         &self,
         node_index: petgraph::graph::NodeIndex,
     ) -> (Vec<NodeHandle>, Vec<Receiver<ExecutorOperation>>) {
-        // Map from source node index to source node handle and the receiver to receiver from source.
         let mut handles_and_receivers =
             HashMap::<petgraph::graph::NodeIndex, (NodeHandle, Receiver<ExecutorOperation>)>::new();
         for edge in self.graph.edges_directed(node_index, Direction::Incoming) {

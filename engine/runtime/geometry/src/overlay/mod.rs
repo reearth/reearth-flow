@@ -10,10 +10,16 @@
 //!   pure-Rust backend.
 //! - [`dissolve_leaves()`]: the unary case of a union, one areal operand's own
 //!   leaves merged into each other, with optional vertex snapping.
+//! - [`snap_areal_operands_2d()`]: several areal operands snapped against each
+//!   other in one pass, for callers that overlay a whole set pairwise and need
+//!   every pair to agree on the vertices they share.
 //! - [`clip()`]: the portion of a set of polylines inside (or, inverted,
 //!   outside) an areal geometry.
 //! - [`segment_intersections()`]: the pairwise segment × segment
 //!   intersections between two polyline sets.
+//! - `buffer()` (feature `new-geometry`): the offset region within a signed
+//!   distance of a geometry, with its own operand policy documented on the
+//!   `buffer` module.
 //!
 //! The operand policy is the predicates': both operands in one coordinate
 //! frame ([`MixedFrames`](PredicateError::MixedFrames) otherwise, reprojection
@@ -50,9 +56,12 @@
 //!   relationship that alone determines the result (disjoint, boundary-only
 //!   touch, containment, equality) bypasses the backend instead of trusting
 //!   its snapped output near zero-area configurations.
-//! - Output is pure 2D: any elevation on the inputs is ignored and dropped, and
-//!   appearance does not propagate.
+//! - Output is 2D: the boolean operations ignore and drop any elevation on
+//!   the inputs, while `buffer::buffer` keeps an elevation shared by the
+//!   inputs it buffers. Appearance does not propagate.
 
+#[cfg(feature = "new-geometry")]
+pub mod buffer;
 mod segments;
 mod shapes;
 mod snap;
@@ -60,9 +69,11 @@ mod snap;
 mod tests;
 
 use i_overlay::core::fill_rule::FillRule;
+use i_overlay::core::overlay::ContourDirection;
 use i_overlay::core::overlay_rule::OverlayRule;
+use i_overlay::core::solver::Solver;
 use i_overlay::float::clip::FloatClip;
-use i_overlay::float::single::SingleFloatOverlay;
+use i_overlay::float::overlay::{FloatOverlay, OverlayOptions};
 use i_overlay::string::clip::ClipRule;
 
 use crate::coordinate::CoordinateFrame;
@@ -75,6 +86,8 @@ use crate::predicates::{flatten_2d_pair, PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
 
 pub use crate::predicates::kernel::SegmentIntersection;
+#[cfg(feature = "new-geometry")]
+pub use buffer::{buffer, buffer_2d, buffer_polygon_3d, BufferStyle};
 
 /// The boolean overlay operation to apply.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -157,6 +170,82 @@ pub fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Poly
     Ok(dissolve_shapes(shapes, frame))
 }
 
+/// Pull the vertices of several areal operands onto shared positions, so
+/// boundaries that were meant to coincide but miss by less than `tolerance`
+/// meet exactly before any boolean runs over them. Each operand comes back
+/// dissolved into disjoint polygons, in operand order.
+///
+/// All the operands are snapped in one pass, and that is the point of taking
+/// them together: snapping them pairwise picks its anchors afresh for every
+/// pair, so the boundary three neighbours share ends up in three places and
+/// the pieces cut along it no longer fit. A non-positive tolerance snaps
+/// nothing and only dissolves.
+///
+/// Every operand must be areal ([`Leaf2D::Polygon`], [`Leaf2D::PolygonMesh`],
+/// [`Leaf2D::TriangularMesh`]) and all of them must share one coordinate
+/// frame. An operand with no areal leaves comes back empty.
+pub fn snap_areal_operands_2d(
+    operands: &[&Euclidean2DGeometry],
+    tolerance: f64,
+) -> Result<Vec<SnappedOperand>> {
+    let per_operand: Vec<Vec<Leaf2D<'_>>> = operands
+        .iter()
+        .map(|operand| {
+            let mut leaves = Vec::new();
+            flatten_2d(operand, &mut leaves);
+            leaves
+        })
+        .collect();
+    let all: Vec<Leaf2D<'_>> = per_operand.iter().flatten().copied().collect();
+    require_common_frame_leaves(&all, &[])?;
+
+    // One flat shape list across every operand, with each operand's span
+    // recorded so the snapped shapes can be handed back to their owner.
+    let mut shapes = Vec::new();
+    let mut spans = Vec::with_capacity(per_operand.len());
+    for leaves in &per_operand {
+        let operand_shapes =
+            shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {
+                geometry: operand_name(leaves, is_areal),
+            })?;
+        spans.push(operand_shapes.len());
+        shapes.extend(operand_shapes);
+    }
+    let moved_per_shape = snap::snap_shapes(&mut shapes, tolerance);
+
+    let mut moved_per_shape = moved_per_shape.into_iter();
+    let mut snapped = shapes.into_iter();
+    Ok(per_operand
+        .iter()
+        .zip(spans)
+        .map(|(leaves, span)| {
+            // fold, not `any`: `any` short-circuits on the first `true` and
+            // would leave the rest of this operand's span in the iterator for
+            // the next operand to read.
+            let moved = moved_per_shape
+                .by_ref()
+                .take(span)
+                .fold(false, |seen, m| seen | m);
+            let shapes: Vec<_> = snapped.by_ref().take(span).collect();
+            let polygons = match leaves.first().map(Leaf2D::frame) {
+                Some(frame) => dissolve_shapes(shapes, frame),
+                None => Vec::new(),
+            };
+            SnappedOperand { polygons, moved }
+        })
+        .collect())
+}
+
+/// One operand's result from [`snap_areal_operands_2d()`].
+pub struct SnappedOperand {
+    /// The operand's area after snapping, as disjoint polygons.
+    pub polygons: Vec<Polygon2D>,
+    /// Whether snapping moved any of this operand's vertices. When it did not,
+    /// the caller's own geometry is still exact and `polygons` is only its
+    /// dissolved form.
+    pub moved: bool,
+}
+
 /// The portion of the polylines of `lines` inside the areal geometry `area`,
 /// or, with `invert`, the portion outside it. Points exactly on `area`'s
 /// boundary count as inside either way.
@@ -207,11 +296,22 @@ pub(crate) fn dissolve_shapes(
     shapes: Vec<shapes::Shape>,
     frame: &CoordinateFrame,
 ) -> Vec<Polygon2D> {
-    let empty: Vec<shapes::Shape> = Vec::new();
-    shapes::shapes_to_polygons(
-        shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero),
-        frame,
-    )
+    let options = OverlayOptions {
+        output_direction: output_direction(frame),
+        ..Default::default()
+    };
+    let result = FloatOverlay::with_subj_custom(&shapes, options, Solver::AUTO)
+        .overlay(OverlayRule::Union, FillRule::NonZero);
+    shapes::shapes_to_polygons(result, frame, None)
+}
+
+/// `i_overlay`'s output direction that lands on Flow's convention in `frame`.
+fn output_direction(frame: &CoordinateFrame) -> ContourDirection {
+    if frame.orientation_sign().unwrap_or(1) == -1 {
+        ContourDirection::Clockwise
+    } else {
+        ContourDirection::CounterClockwise
+    }
 }
 
 // --- leaf-level implementations ------------------------------------------------
@@ -234,8 +334,14 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
             Ok(out)
         }
         Plan::Run(op) => {
-            let result = subject.overlay(&clip, op.into(), FillRule::NonZero);
-            Ok(shapes::shapes_to_polygons(result, frame))
+            let options = OverlayOptions {
+                output_direction: output_direction(frame),
+                ..Default::default()
+            };
+            let result =
+                FloatOverlay::with_subj_and_clip_custom(&subject, &clip, options, Solver::AUTO)
+                    .overlay(op.into(), FillRule::NonZero);
+            Ok(shapes::shapes_to_polygons(result, frame, None))
         }
     }
 }

@@ -18,7 +18,6 @@ graphs:
             type: flowExpr
             value: variables["csvFile"]
           geometry:
-            geometryMode: wkt
             column: geometry
             epsg: 4326
 

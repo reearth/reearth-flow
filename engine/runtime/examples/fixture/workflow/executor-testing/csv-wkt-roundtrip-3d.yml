@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: ea2f65a0-2d08-45fd-b9bd-1dd2b3c99fce
+name: "csv-wkt-roundtrip-3d"
+entryGraphId: 30466a0b-79b6-402e-b924-189ad90a37b6
+with:
+
+graphs:
+  - id: 30466a0b-79b6-402e-b924-189ad90a37b6
+    name: main
+    nodes:
+      # The CSV below is a committed fixture, not the live output of a CSV
+      # Writer node in this same run (a Source has no input port, so a
+      # Writer's output cannot feed a Reader within one workflow graph --
+      # see task-7-report.md for why). Its three bare-3D WKT rows are copied
+      # verbatim from the CSV Writer's own unit test assertions in
+      # runtime/action-sink/src/file/writer_geometry_next.rs
+      # (point_3d_writes_as_wkt_point, line_string_3d_writes_as_wkt_linestring,
+      # polygon_3d_writes_its_exterior_and_closes_its_ring), so this is
+      # exactly the text our own writer is proven to emit for 3D geometry.
+      #
+      # Every row here is good on purpose. An unparseable geometry value now
+      # fails the whole read, so disabling the bare-3D tolerance makes this
+      # workflow error out naming the column, the value and the row -- a loud,
+      # specific failure. An earlier version of this case carried a fourth,
+      # deliberately-unparseable row to force that signal, which the reader's
+      # own semantics now provide.
+      - id: f2445523-24fc-4f2b-8031-b6bacba7ea59
+        name: CsvReader
+        type: action
+        action: CSV Reader
+        with:
+          format: csv
+          inline:
+            type: string
+            value: |
+              name,geometry
+              point3d,POINT(1 2 3)
+              line3d,"LINESTRING(0 0 0, 1 1 1)"
+              polygon3d,"POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))"
+          geometry:
+            column: geometry
+
+      - id: ab7621a5-3dc9-491b-a2bc-07035d30dc9c
+        name: CsvWriter
+        type: action
+        action: CSV Writer
+        with:
+          format: csv
+          output:
+            type: string
+            value: output.csv
+          geometry:
+            column: geometry
+
+    edges:
+      - id: aa21edc7-abf6-4521-9867-12f8167cf148
+        from: f2445523-24fc-4f2b-8031-b6bacba7ea59
+        to: ab7621a5-3dc9-491b-a2bc-07035d30dc9c
+        fromPort: features
+        toPort: features

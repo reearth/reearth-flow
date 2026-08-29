@@ -11,6 +11,9 @@ use super::solid::Solid;
 
 mod constructor;
 mod evaluate;
+
+pub use evaluate::DEFAULT_TOLERANCE;
+
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -42,6 +45,16 @@ crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, ForceTwoDimension
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: Footprint);
 
+// The boolean tree is unevaluated, so it has no surface of its own yet; adding
+// up its operands' areas would describe a shape the tree does not have.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: Area);
+
+// An unevaluated boolean tree has no boundary of its own, so it has no first
+// vertex; its operands' vertices are not the tree's.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: Elevation);
+
 // An unevaluated boolean tree has no faces of its own; counting the rings of its
 // operands would describe a surface the tree does not yet have.
 crate::unsupported!(Csg: CountHoles);
@@ -55,3 +68,7 @@ crate::unsupported!(Csg: Split);
 
 // The tree is unevaluated, so it has no boundary of its own to re-represent.
 crate::unsupported!(Csg: Coerce);
+
+// The tree is unevaluated, so the surface it would bound does not exist yet and
+// its operands' shells are not it.
+crate::unsupported!(Csg: ExtractBoundary);

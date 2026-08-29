@@ -1,6 +1,5 @@
 {
   "description": "Test PLATEAU4 T-bldg-02",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

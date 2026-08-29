@@ -6,35 +6,15 @@
     },
     {
       "name": "Area Calculator",
-      "description": "地物のジオメトリの平面または傾斜面積を計算し、属性として格納する",
+      "description": "地物のジオメトリの真の表面積を計算し、属性に格納する。ソリッドの面積は境界となるすべての面の合計であり、中空部分の面も外殻の面と同じように合計に含まれる",
       "parameterI18n": {
         "": {
           "title": "Area Calculator パラメータ",
-          "description": "各地物のジオメトリの面積を計算し格納する方法を設定する"
-        },
-        "areaType": {
-          "title": "面積タイプ",
-          "description": "平面投影面積と実際の傾斜表面積のどちらを計算するか。標高を持たないジオメトリは常に平面のため影響しない"
-        },
-        "multiplier": {
-          "title": "乗数",
-          "description": "計算された面積に適用する係数。単位を変換する場合に使用する。デフォルトは 1.0"
+          "description": "各地物における計測した表面積の格納先を指定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "計算された面積を格納する属性。デフォルトは `area`"
-        }
-      },
-      "enumI18n": {
-        "AreaType": {
-          "planeArea": {
-            "title": "平面面積",
-            "description": "ジオメトリを XY 平面に投影した平坦な面積を計算する"
-          },
-          "slopedArea": {
-            "title": "傾斜面積",
-            "description": "各面の傾斜を考慮した実際の表面積を計算する"
-          }
+          "description": "計測した表面積を格納する属性名。すべての地物に設定され、面積を持たないジオメトリや計測できないジオメトリは 0 が記録されるため、下流の処理で値の欠落を扱う必要はない"
         }
       }
     },
@@ -44,27 +24,39 @@
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer パラメータ",
-          "description": "エリアオーバーレイ解析の実行方法を設定する"
+          "description": "どの地物同士を重ね合わせるか、どのサイズ未満をノイズとみなすか、分割後の断片が元の地物について記録する内容を設定する"
         },
-        "accumulationMode": {
-          "title": "累積モード",
-          "description": "入力フィーチャーの属性を出力フィーチャーに反映する方法を制御する"
-        },
-        "generateList": {
-          "title": "リストを生成",
-          "description": "ソースフィーチャーの属性を格納するリスト属性名"
+        "attributeAccumulation": {
+          "title": "属性の引き継ぎ",
+          "description": "分割後の断片が保持する属性"
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "オーバーレイ解析時にフィーチャーをグループ化する属性（任意）"
+          "description": "どの地物同士を重ね合わせるかを決める属性。すべての値が一致する地物のみが比較される。省略時はすべての地物を互いに重ね合わせる"
+        },
+        "listAttribute": {
+          "title": "リスト属性",
+          "description": "その断片を覆う地物ごとに1件のエントリを格納する属性。各エントリはその地物自身の属性を保持する。省略時はリストを作成しない"
         },
         "outputAttribute": {
-          "title": "出力属性",
-          "description": "重複数を格納する属性名"
+          "title": "重複数属性",
+          "description": "その断片を覆う入力地物の数を格納する属性。`overlaps` では2以上、`remnants` では常に1になる。デフォルトは `overlayCount`"
         },
         "tolerance": {
           "title": "許容誤差",
-          "description": "ジオメトリの許容誤差。この距離より近い頂点はオーバーレイ処理中に同一とみなされる。"
+          "description": "ジオメトリを形状ではなくノイズとみなすサイズ。入力の座標フレームの単位で指定する。この距離より近い頂点はオーバーレイ前にマージされ、本来一致すべき境界が一致するようになる。さらに、この値の2乗より小さい面積の重なりは破棄される。したがって許容誤差より細かい形状はオーバーレイをそのまま通過しない場合がある。デフォルトは 0 で、マージも破棄も行わない"
+        }
+      },
+      "enumI18n": {
+        "AttributeAccumulation": {
+          "dropAttributes": {
+            "title": "入力属性を破棄",
+            "description": "入力属性を一切保持せず、断片は重複数とリスト属性のみを持つ。グループ化属性も破棄される"
+          },
+          "useOneFeature": {
+            "title": "1つの地物の属性を使用",
+            "description": "その断片を覆う地物のうち1つの属性だけを保持し、残りを破棄する"
+          }
         }
       }
     },
@@ -343,7 +335,8 @@
       "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます",
       "parameterI18n": {
         "": {
-          "title": "Attribute Range Mapper パラメータ"
+          "title": "Attribute Range Mapper パラメータ",
+          "description": "分類する属性、照合する範囲の表、および一致した値の格納先を定義する"
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -370,7 +363,7 @@
           },
           "outputValue": {
             "title": "出力値",
-            "description": "入力がこの範囲に収まる場合に割り当てる値（文字列・数値・真偽値など）"
+            "description": "入力がこの範囲に収まる場合に出力属性へ書き込む値"
           },
           "to": {
             "title": "終了値（最大値）",
@@ -399,23 +392,39 @@
           "title": "地物タイプ属性",
           "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`"
         }
+      },
+      "definitionI18n": {
+        "ExtractRule": {
+          "dataType": {
+            "title": "Value Type",
+            "description": "Converts the extracted value before writing it. Leave unset to write it unchanged."
+          },
+          "destinationPath": {
+            "title": "Destination Path",
+            "description": "Where the value is written, as a space-separated chain of keys. A single segment writes a top-level attribute; several segments write into a nested map, creating it and any missing intermediate map as needed."
+          },
+          "sourcePath": {
+            "title": "Source Path",
+            "description": "Where the value is read from, as a space-separated chain of keys walked from the feature's top level. A segment matches either a key in a map or the first matching element of a list, so it works whether a wrapper element appears once or many times."
+          }
+        }
+      },
+      "enumI18n": {
+        "ExtractDataType": {
+          "float": {
+            "title": "Float",
+            "description": "Parses a string value as a floating point number."
+          },
+          "int": {
+            "title": "Integer",
+            "description": "Parses a string value as an integer."
+          }
+        }
       }
     },
     {
       "name": "Boundary Extractor",
-      "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
-      "parameterI18n": {
-        "": {
-          "title": "Boundary Extractor パラメータ",
-          "description": "ジオメトリから境界を抽出する設定"
-        },
-        "exteriorOnly": {
-          "description": "ポリゴンの外周境界のみ抽出するか（穴を無視）（デフォルト: false）"
-        },
-        "keepEmptyBoundaries": {
-          "description": "境界が空のフィーチャーを保持するか（デフォルト: false）"
-        }
-      }
+      "description": "ジオメトリをその境界に置き換える。曲線は両端の点、曲面は境界の曲線、立体は境界の曲面となる"
     },
     {
       "name": "Bounds Extractor",
@@ -469,14 +478,14 @@
         },
         "interpolationAngle": {
           "title": "補間角度",
-          "description": "点や曲線のバッファの丸みを近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。ポリゴンのバッファではこの値は使用されない"
+          "description": "バッファ輪郭の丸い端部、接合部、円を近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。1.8度から45度の範囲外の値はこの範囲に収められる。省略した場合は11.25度になる"
         }
       },
       "enumI18n": {
         "BufferType": {
           "area2d": {
             "title": "2D エリアバッファ",
-            "description": "入力ジオメトリの周囲に平坦なポリゴンバッファを作成し、標高は破棄する"
+            "description": "入力ジオメトリの周囲に面バッファを作成する。2D ジオメトリはその座標平面上で、平面的な 3D ポリゴンは自身の平面上でバッファされる。バッファ対象が共有する標高は保持される"
           }
         }
       }
@@ -547,37 +556,33 @@
     },
     {
       "name": "CSG Builder",
-      "description": "一対のソリッドジオメトリ（左・右）からCSG（構成的立体幾何学）表現を構築する。和・積・差（左－右）を検出するが、結果ジオメトリは計算しない。ツリーを評価するにはCSGEvaluatorを使用してください。",
+      "description": "ペア値が一致する左右のソリッドを組み合わせ、和・積・差を未評価の CSG（構成的立体幾何）ツリーとして出力する。ツリーはブール演算を計算せずに記述するだけなので、後段の CSG Evaluator で必要な分岐をソリッドに変換する",
       "parameterI18n": {
         "": {
           "title": "CSG Builder パラメータ",
-          "description": "左右のポートからフィーチャーをペアリングする方法を設定する"
+          "description": "2つの入力ストリームをどう対応付けるか、生成されるツリーが元のソリッドについて記録する内容を設定する"
         },
-        "createList": {
-          "title": "リストを作成",
-          "description": "有効にすると、左右の子要素から属性値のリストを作成する"
+        "listAttribute": {
+          "title": "リスト属性",
+          "description": "左のソリッドと右のソリッドそれぞれについて1件のエントリを格納する属性。各エントリはその地物自身の属性を保持する。省略時はリストを作成せず、生成されるツリーは属性を一切持たない"
         },
-        "listAttributeName": {
-          "title": "リスト属性名",
-          "description": "リストを作成する属性名（create_list が true の場合に必須）"
-        },
-        "pairIdAttribute": {
-          "title": "ペア ID 属性",
-          "description": "左右のポートのフィーチャーを照合するペア ID を評価する式"
+        "pairId": {
+          "title": "ペア ID",
+          "description": "各地物で評価して対応付けに使う値を求める式。同じ値になった left の地物と right の地物が組み合わされる。相手が現れなかった地物は rejected に送られる"
         }
       }
     },
     {
       "name": "CSG Evaluator",
-      "description": "CSG（構成的立体幾何学）ツリーを評価してソリッドジオメトリを生成する。CSG表現を受け取り、ブール演算から得られるメッシュを計算する。",
+      "description": "CSG（構成的立体幾何）ツリーが記述するソリッドを計算し、ツリーを結果で置き換える。頂点の許容誤差は距離なので、オペランドは閉じていて外向きに巻かれたソリッドであり、かつ投影座標系である必要がある。体積を持たない結果になったツリーは empty ポートに送られる",
       "parameterI18n": {
         "": {
           "title": "CSG Evaluator パラメータ",
-          "description": "CSG 演算の評価パラメータを設定する"
+          "description": "ブール演算がオペランドの頂点を同一の点として扱う距離を設定する"
         },
         "tolerance": {
           "title": "許容誤差",
-          "description": "ジオメトリ演算の許容誤差値（f64 に評価される式）。頂点のマージおよびメッシュ処理に使用される。"
+          "description": "頂点が切断面上にあるとみなす距離、および2つの頂点を同一とみなす距離。オペランドの座標系の単位で指定する。デフォルトは、ほぼ一致する頂点のみがマージされる十分に小さい距離"
         }
       }
     },
@@ -586,7 +591,7 @@
       "description": "CSV および TSV ファイルから地物を読み取る",
       "parameterI18n": {
         "": {
-          "title": "CsvReader パラメータ",
+          "title": "CSV Reader パラメータ",
           "description": "CSV / TSV ファイルの処理方法を設定する"
         },
         "dataset": {
@@ -603,7 +608,7 @@
         },
         "geometry": {
           "title": "ジオメトリ設定",
-          "description": "CSV 列からジオメトリを解析するための設定（任意）"
+          "description": "ジオメトリを保持する列を指定する。Well-Known Text の単一列か、座標を分けた複数の列を指定できる。指定した列は属性ではなく地物のジオメトリとして読み取られる。省略時は各行が属性のみの地物になる"
         },
         "headerRows": {
           "title": "ヘッダー行数",
@@ -622,7 +627,7 @@
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG コード",
-            "description": "座標参照系コード（例: WGS84 の場合は 4326）"
+            "description": "ファイル内の値が従う座標参照系。たとえば WGS 84 は 4326。参照先が緯度を先に定義する場合、水平方向の2つの座標値はその順序で格納され、標高の順序は変わらない。省略時は通常の座標として読み取る"
           }
         }
       },
@@ -984,22 +989,14 @@
         },
         "destinationFrame": {
           "title": "Destination Frame",
-          "description": "Coordinate frame to convert geometry into."
-        },
-        "epsgCode": {
-          "title": "EPSG Code",
-          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+          "description": "Coordinate frame to convert geometry into. Choosing a CRS also requires its EPSG code."
         }
       },
       "enumI18n": {
         "DestinationFrame": {
-          "crs": {
-            "title": "CRS",
-            "description": "Reproject to a coordinate reference system identified by an EPSG code."
-          },
           "euclidean": {
             "title": "Euclidean",
-            "description": "Convert to a non-georeferenced Euclidean frame."
+            "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
           }
         }
       }
@@ -1009,54 +1006,69 @@
       "description": "日時値を異なるフォーマット間で変換する",
       "parameterI18n": {
         "": {
-          "title": "Date Time Converter パラメータ"
+          "title": "Date Time Converter パラメータ",
+          "description": "Selects the attribute to convert, how to interpret its current value, and the format to write back."
         },
         "attribute": {
+          "title": "Source Attribute",
           "description": "変換する日時値を含む属性"
         },
         "inputFormat": {
+          "title": "Input Format",
           "description": "入力値の形式（デフォルト: auto）"
         },
         "outputAttribute": {
+          "title": "Output Attribute",
           "description": "結果を別の属性に書き込む（入力をそのまま保持）。デフォルトは `attribute` と同じ。"
         },
         "outputFormat": {
+          "title": "Output Format",
           "description": "希望する出力形式（デフォルト: auto）。`auto` は型付き DateTime 値として格納（パーサーモード）。その他の形式は文字列/数値として出力（フォーマッターモード）。"
         }
       },
       "enumI18n": {
         "DateTimeInputFormat": {
           "auto": {
-            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unix_ms` 入力形式を明示的に指定する。"
+            "title": "Detect Automatically",
+            "description": "既知の形式から自動検出する。数値は常に Unix 秒として解釈される。ミリ秒の場合は `unixMs` 入力形式を明示的に指定する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Seconds elapsed since 1970-01-01 UTC."
           }
         },
         "DateTimeOutputFormat": {
           "auto": {
+            "title": "Typed Datetime",
             "description": "自動: 型付き DateTime 値として格納する（ネイティブのバリアントを保持）。日時を文字列ではなく適切な DateTime 型として扱いたい場合に使用する。"
           },
           "date": {
+            "title": "Date Only",
             "description": "日付のみの形式（YYYY-MM-DD）"
           },
           "rfc3339": {
+            "title": "RFC 3339",
             "description": "RFC3339 / ISO 8601 形式"
           },
-          "unix_ms": {
-            "description": "Unixタイムスタンプ（ミリ秒）"
+          "unixMs": {
+            "title": "Unix Milliseconds",
+            "description": "Writes a number: milliseconds elapsed since 1970-01-01 UTC."
           },
-          "unix_s": {
-            "description": "Unixタイムスタンプ（秒）"
+          "unixS": {
+            "title": "Unix Seconds",
+            "description": "Writes a number: seconds elapsed since 1970-01-01 UTC."
           }
         }
       }
@@ -1131,7 +1143,7 @@
     },
     {
       "name": "Elevation Extractor",
-      "description": "地物のジオメトリの標高を抽出し、属性として格納する",
+      "description": "ジオメトリの最初の頂点の標高を属性に抽出する。標高を持たないジオメトリは属性が付かないまま通過する",
       "parameterI18n": {
         "": {
           "title": "Elevation Extractor パラメータ",
@@ -1139,23 +1151,25 @@
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "標高を格納する属性"
+          "description": "標高の書き込み先の属性。ジオメトリが標高を持たない場合は書き込まれない"
         }
       }
     },
     {
       "name": "Excel Writer",
-      "description": "地物をMicrosoft Excel形式（.xlsx）に書き出す",
+      "description": "各地物を .xlsx ワークシートの1行として書き出し、属性ごとに1列を割り当てる。ある属性名に `.formula` または `.hyperlink` を付けた属性は、その列のセルを値ではなく数式やリンクで埋める",
       "parameterI18n": {
         "": {
           "title": "Excel Writer パラメータ",
-          "description": "フィーチャーを Microsoft Excel 形式に書き出す設定"
+          "description": "ワークブックの書き出し先とワークシート名を設定する"
         },
         "output": {
-          "description": "作成する Excel ファイルの出力パスまたは式"
+          "title": "出力パス",
+          "description": ".xlsx ファイルを書き出すパス。式は地物ごとに評価されるため、異なるパスになる地物は別のワークブックに書き出される"
         },
         "sheetName": {
-          "description": "シート名（デフォルト: \"Sheet1\"）"
+          "title": "シート名",
+          "description": "行を書き出すワークシートの名前。デフォルトは `Sheet1`"
         }
       }
     },
@@ -1200,6 +1214,10 @@
           "title": "単一子オブジェクトノードのフラット化",
           "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse"
         },
+        "inheritInputAttributes": {
+          "title": "入力属性の継承",
+          "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
+        },
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
@@ -1208,10 +1226,11 @@
     },
     {
       "name": "Feature CityGML 3 Reader",
-      "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 3.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 3 Reader パラメータ"
+          "title": "Feature CityGML 3 Reader パラメータ",
+          "description": "読み込むファイル、およびその要素を地物の属性に変換する方法"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1232,6 +1251,10 @@
         "flattenSingleChildObjects": {
           "title": "単一子オブジェクトノードのフラット化",
           "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+        },
+        "inheritInputAttributes": {
+          "title": "入力属性の継承",
+          "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
         },
         "keepAttributes": {
           "title": "属性の保持",
@@ -1299,7 +1322,17 @@
     },
     {
       "name": "Feature Duplicate Filter",
-      "description": "重複した地物を削除する"
+      "description": "各値について最初の地物を通過させ、それを繰り返す地物を分離する。比較する属性を指定しない場合は、地物の内容全体で比較する",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Duplicate Filter Parameters",
+          "description": "どの地物を互いの重複とみなすか"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "重複を判定する属性の組み合わせ。ある組み合わせを最初に持つ地物が通過し、以降の地物は分離される。属性が存在しないこと自体も組み合わせの一部として扱われるため、空の値を持つ場合とは区別される。省略した場合は、すべての属性とジオメトリを含む内容全体で比較する"
+        }
+      }
     },
     {
       "name": "Feature File Path Extractor",
@@ -1351,10 +1384,11 @@
     },
     {
       "name": "Feature GeoJSON Writer",
+      "description": "受け取った地物を、解決された出力パスごとに GeoJSON ファイルへ書き出し、書き出したファイルごとにそのパスを持つ地物を一つ出力する",
       "parameterI18n": {
         "": {
-          "title": "FeatureGeoJsonWriter Parameters",
-          "description": "Configuration for writing features to GeoJSON files."
+          "title": "Feature GeoJSON Writer パラメータ",
+          "description": "GeoJSON の書き出し先、および座標について宣言する内容"
         },
         "output": {
           "title": "Output",
@@ -1743,11 +1777,11 @@
     },
     {
       "name": "Geometry Coercer",
-      "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
+      "description": "地物のジオメトリを別のジオメトリタイプに強制変換し、ポリライン・面・三角形として組み立て直す",
       "parameterI18n": {
         "": {
           "title": "Geometry Coercer パラメータ",
-          "description": "ジオメトリを特定のターゲットタイプに強制変換する設定"
+          "description": "各地物を強制変換するジオメトリタイプ"
         },
         "targetType": {
           "title": "ターゲットタイプ",
@@ -1939,19 +1973,15 @@
     },
     {
       "name": "HTTP Caller",
-      "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
+      "description": "地物ごとにHTTPまたはHTTPSエンドポイントを呼び出し、レスポンスを地物の属性に格納する",
       "parameterI18n": {
         "": {
           "title": "HTTP Caller パラメータ",
-          "description": "レスポンスデータでフィーチャーを拡充する HTTP/HTTPS リクエストを設定する"
+          "description": "地物ごとに実行する HTTP リクエストとレスポンスの格納方法を設定する"
         },
         "authentication": {
           "title": "認証",
           "description": "リクエストの認証方法と認証情報"
-        },
-        "contentType": {
-          "title": "コンテンツタイプ",
-          "description": "リクエストの Content-Type ヘッダーを上書きする"
         },
         "customHeaders": {
           "title": "カスタムヘッダー",
@@ -1959,15 +1989,11 @@
         },
         "httpOptions": {
           "title": "HTTP オプション",
-          "description": "HTTP クライアントの動作設定（SSL、リダイレクト、ユーザーエージェント）"
+          "description": "HTTP クライアントの動作設定（SSL 検証、リダイレクト、ユーザーエージェント）"
         },
         "method": {
           "title": "HTTP メソッド",
-          "description": "リクエストで使用する HTTP メソッド"
-        },
-        "observability": {
-          "title": "オブザーバビリティ",
-          "description": "追加メトリクスと診断情報を記録する"
+          "description": "リクエストで使用する HTTP メソッド（デフォルト: GET）"
         },
         "queryParameters": {
           "title": "クエリパラメータ",
@@ -1983,7 +2009,7 @@
         },
         "response": {
           "title": "レスポンス設定",
-          "description": "レスポンスデータの格納・処理方法を設定する"
+          "description": "レスポンスを地物に格納する方法を設定する"
         },
         "retry": {
           "title": "リトライ設定",
@@ -1995,7 +2021,7 @@
         },
         "url": {
           "title": "URL",
-          "description": "HTTP リクエストの対象 URL（式に対応）"
+          "description": "リクエスト先の URL。地物ごとに評価される（式に対応）。http と https のみ使用でき、プライベートネットワークや内部ネットワークのアドレスへのリクエストはブロックされる"
         }
       },
       "definitionI18n": {
@@ -2030,45 +2056,11 @@
           },
           "userAgent": {
             "title": "ユーザーエージェント",
-            "description": "カスタム User-Agent ヘッダー値"
+            "description": "各リクエストに送信するカスタム User-Agent ヘッダー値"
           },
           "verifySsl": {
             "title": "SSL を検証",
-            "description": "SSL/TLS 証明書を検証するか（デフォルト: true）"
-          }
-        },
-        "ObservabilityConfig": {
-          "bytesAttribute": {
-            "title": "バイト数属性",
-            "description": "レスポンスボディサイズを格納するフィーチャー属性名"
-          },
-          "durationAttribute": {
-            "title": "処理時間属性",
-            "description": "リクエスト処理時間（ミリ秒）を格納するフィーチャー属性名"
-          },
-          "finalUrlAttribute": {
-            "title": "最終 URL 属性",
-            "description": "リダイレクト後の最終 URL を格納するフィーチャー属性名"
-          },
-          "retryCountAttribute": {
-            "title": "リトライ回数属性",
-            "description": "リトライ試行回数を格納するフィーチャー属性名"
-          },
-          "trackBytes": {
-            "title": "バイト数を記録",
-            "description": "レスポンスボディサイズをバイト単位で記録するか（デフォルト: false）"
-          },
-          "trackDuration": {
-            "title": "処理時間を記録",
-            "description": "リクエストの合計処理時間を記録するか（デフォルト: true）"
-          },
-          "trackFinalUrl": {
-            "title": "最終 URL を記録",
-            "description": "リダイレクト後の最終 URL を記録するか（デフォルト: false）"
-          },
-          "trackRetryCount": {
-            "title": "リトライ回数を記録",
-            "description": "リトライ試行回数を記録するか（デフォルト: true）"
+            "description": "SSL/TLS 証明書を検証するか。自己署名証明書を使うサーバーに対してのみ無効化する（デフォルト: true）"
           }
         },
         "QueryParam": {
@@ -2084,7 +2076,7 @@
         "RateLimitConfig": {
           "intervalMs": {
             "title": "インターバル",
-            "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000ms）"
+            "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000）"
           },
           "requests": {
             "title": "リクエスト数",
@@ -2092,41 +2084,29 @@
           },
           "timing": {
             "title": "タイミング戦略",
-            "description": "インターバル内でリクエストを分配する方法（デフォルト: Burst）"
+            "description": "インターバル内でリクエストを分配する方法（デフォルト: burst）"
           }
         },
         "ResponseConfig": {
           "autoDetectEncoding": {
             "title": "エンコーディング自動検出",
-            "description": "レスポンスヘッダーから文字エンコーディングを自動検出する"
-          },
-          "errorAttribute": {
-            "title": "エラー属性",
-            "description": "エラーメッセージを格納するフィーチャー属性名（デフォルト: \"_http_error\"）"
-          },
-          "headersAttribute": {
-            "title": "ヘッダー属性",
-            "description": "レスポンスヘッダーを格納するフィーチャー属性名（デフォルト: \"_headers\"）"
+            "description": "レスポンスエンコーディング未設定時に、レスポンスの Content-Type ヘッダーからテキストか base64 かを選択する（デフォルト: true）"
           },
           "maxResponseSize": {
             "title": "最大レスポンスサイズ",
-            "description": "レスポンスボディの最大サイズ（バイト）（未設定の場合は無制限）"
+            "description": "レスポンスボディの最大サイズ（バイト）。超過した場合はダウンロードを中止し、地物をリジェクトする（未設定の場合は無制限）"
           },
           "responseBodyAttribute": {
             "title": "レスポンスボディ属性",
-            "description": "レスポンスボディを格納するフィーチャー属性名（デフォルト: \"_response_body\"）"
+            "description": "レスポンスボディを格納する地物属性名（デフォルト: `_response_body`）"
           },
           "responseEncoding": {
             "title": "レスポンスエンコーディング",
-            "description": "レスポンスボディのエンコード方法（テキスト、base64、またはバイナリ）"
+            "description": "レスポンスボディの格納方法（UTF-8 テキストまたは base64 文字列）。省略時はレスポンスの Content-Type ヘッダーから選択される"
           },
           "responseHandling": {
             "title": "レスポンス処理",
-            "description": "レスポンスデータの処理方法（属性またはファイル）"
-          },
-          "statusCodeAttribute": {
-            "title": "ステータスコード属性",
-            "description": "HTTP ステータスコードを格納するフィーチャー属性名（デフォルト: \"_http_status_code\"）"
+            "description": "レスポンスボディを地物属性に格納するかファイルに保存するか（デフォルト: attribute）"
           }
         },
         "RetryConfig": {
@@ -2136,23 +2116,23 @@
           },
           "honorRetryAfter": {
             "title": "Retry-After ヘッダーを尊重",
-            "description": "サーバーレスポンスの Retry-After ヘッダーを尊重するか（デフォルト: true）"
+            "description": "リトライ間隔の決定時に Retry-After レスポンスヘッダー（秒数または HTTP 日付形式）を尊重するか（デフォルト: true）"
           },
           "initialDelayMs": {
             "title": "初回遅延",
-            "description": "最初のリトライまでの初回遅延（ミリ秒）（デフォルト: 100ms）"
+            "description": "最初のリトライまでの初期遅延（ミリ秒）（デフォルト: 100）"
           },
           "maxAttempts": {
             "title": "最大試行回数",
-            "description": "リトライの最大試行回数（デフォルト: 3）"
+            "description": "初回リクエストを含む最大試行回数。1 でリトライは無効（デフォルト: 3）"
           },
           "maxDelayMs": {
             "title": "最大遅延",
-            "description": "リトライ間の最大遅延（ミリ秒）（デフォルト: 10000ms）"
+            "description": "リトライ間の最大遅延（ミリ秒）。Retry-After ヘッダーが要求する遅延もこの値が上限となる（デフォルト: 10000）"
           },
           "retryOnStatus": {
             "title": "リトライするステータスコード",
-            "description": "リトライのトリガーとなる HTTP ステータスコードのリスト（例: [429, 503]）"
+            "description": "リトライのトリガーとなる HTTP ステータスコード（例: [429, 503]）。省略時はすべての 5xx ステータスコードでリトライする"
           }
         },
         "TimeoutConfig": {
@@ -2178,10 +2158,6 @@
           }
         },
         "HttpMethod": {
-          "COPY": {
-            "title": "COPY",
-            "description": "WebDAV: リソースをコピーする"
-          },
           "DELETE": {
             "title": "DELETE",
             "description": "リソースを削除する"
@@ -2193,18 +2169,6 @@
           "HEAD": {
             "title": "HEAD",
             "description": "ヘッダーのみを取得する（ボディなし）"
-          },
-          "LOCK": {
-            "title": "LOCK",
-            "description": "WebDAV: リソースをロックする"
-          },
-          "MKCOL": {
-            "title": "MKCOL",
-            "description": "WebDAV: コレクションを作成する"
-          },
-          "MOVE": {
-            "title": "MOVE",
-            "description": "WebDAV: リソースを移動する"
           },
           "OPTIONS": {
             "title": "OPTIONS",
@@ -2218,35 +2182,19 @@
             "title": "POST",
             "description": "サーバーにデータを送信する"
           },
-          "PROPFIND": {
-            "title": "PROPFIND",
-            "description": "WebDAV: プロパティを取得する"
-          },
-          "PROPPATCH": {
-            "title": "PROPPATCH",
-            "description": "WebDAV: プロパティを更新する"
-          },
           "PUT": {
             "title": "PUT",
             "description": "リソースを更新または作成する"
-          },
-          "UNLOCK": {
-            "title": "UNLOCK",
-            "description": "WebDAV: リソースのロックを解除する"
           }
         },
         "ResponseEncoding": {
           "base64": {
             "title": "Base64",
-            "description": "レスポンスを Base64 文字列としてエンコードする"
-          },
-          "binary": {
-            "title": "バイナリ",
-            "description": "レスポンスを生バイナリデータとして格納する"
+            "description": "レスポンスボディを base64 エンコードの文字列として格納する（バイナリデータ向け）"
           },
           "text": {
             "title": "テキスト",
-            "description": "レスポンスを UTF-8 テキストとしてデコードする"
+            "description": "レスポンスボディを UTF-8 テキストとして格納する"
           }
         },
         "TimingStrategy": {
@@ -2263,21 +2211,21 @@
     },
     {
       "name": "Hole Counter",
-      "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
+      "description": "地物のジオメトリの各面にある穴の数を数え、合計を属性に格納する。穴を持ちえないジオメトリ、およびジオメトリを持たない地物は、いずれも 0 として数える",
       "parameterI18n": {
         "": {
           "title": "Hole Counter パラメータ",
-          "description": "ポリゴンジオメトリで検出した穴の数の格納先を設定する"
+          "description": "各地物における穴の合計数の格納先を指定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "穴の数を数値として格納する属性名"
+          "description": "穴の数を数値として格納する属性名。すべての地物に設定されるため、穴のないジオメトリは 0 が記録される"
         }
       }
     },
     {
       "name": "Hole Extractor",
-      "description": "ジオメトリ内の穴を抽出し、属性として追加する"
+      "description": "ジオメトリの各面をリングに分割し、外周リングと各内周リング（穴）をそれぞれ個別の地物として出力する"
     },
     {
       "name": "Horizontal Reprojector",
@@ -2401,38 +2349,53 @@
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "交差する位置でラインを分割し、各交点を、そこで交わるラインの属性を結合して持つ点地物に変換する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
+      "description": "ラインが交差する位置で分割し、分割後の各セグメントに沿って走る入力ラインの数を記録し、交点ごとに点地物を出力する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer パラメータ",
-          "description": "ラインフィーチャー間の交点を検出する設定"
+          "description": "どのライン同士を交差判定するか、2つの頂点をどこまで同一とみなすか、分割後のセグメントが元のラインについて記録する内容を設定する"
         },
-        "groupBy": {},
-        "overlaidListsAttrName": {
-          "description": "オーバーレイされたリストを格納する属性名。デフォルトは \"overlaidLists\"。"
+        "groupBy": {
+          "title": "グループ化属性",
+          "description": "どのライン同士を交差判定するかを決める属性。すべての値が一致するラインのみが比較される。省略時はすべてのラインを互いに交差判定する"
         },
-        "tolerance": {}
+        "listAttribute": {
+          "title": "リスト属性",
+          "description": "分割後のセグメントに沿って走るラインごとに1件のエントリを格納する属性。各エントリはそのライン自身の属性を保持する。省略時はリストを作成しない"
+        },
+        "outputAttribute": {
+          "title": "重複数属性",
+          "description": "分割後のセグメントに沿って走る入力ラインの数を格納する属性。デフォルトは `overlayCount`"
+        },
+        "tolerance": {
+          "title": "許容誤差",
+          "description": "2つの頂点を同一の点として扱う距離。入力の座標フレームの単位で指定する。どの交点でラインを分割するか、どの交点を同一の交点とみなすか、どのセグメントが重なるかを決め、この値より短いセグメントは破棄される。0 より大きい値を指定しないとラインは分割されない"
+        }
       }
     },
     {
       "name": "List Concatenator",
-      "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する",
+      "description": "リスト属性の各要素から一つの属性の値を取り出し、単一の文字列に連結する。キーと値の組でない要素、およびその属性を持たない要素は読み飛ばす",
       "parameterI18n": {
         "": {
           "title": "List Concatenator パラメータ",
-          "description": "リスト要素から特定の属性を取り出して連結する設定"
+          "description": "読み込むリスト、その要素から取り出す属性、および結果の格納先"
         },
-        "attribute": {
-          "description": "各リスト要素から取り出す属性名"
+        "elementAttribute": {
+          "title": "Element Attribute",
+          "description": "リストの各要素から取り出す属性。キーと値の組でない要素、およびこの属性を持たない要素は何も寄与しない"
         },
         "list": {
-          "description": "読み込むリスト属性"
+          "title": "List",
+          "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         },
-        "outputAttributeName": {
-          "description": "連結結果を格納する属性名"
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "連結した文字列を格納する属性"
         },
-        "separateCharacter": {
-          "description": "連結された値の間の区切り文字"
+        "separator": {
+          "title": "Separator",
+          "description": "連続する値の間に挿入する文字列。既定はカンマ"
         }
       }
     },
@@ -2452,23 +2415,27 @@
     },
     {
       "name": "List Indexer",
-      "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする",
+      "description": "リスト属性の一つの要素が持つキーと値の組を地物自体にコピーする。同名の属性は上書きし、それ以外はそのまま残す",
       "parameterI18n": {
         "": {
           "title": "List Indexer パラメータ",
-          "description": "特定のリスト要素の属性をメインのフィーチャー属性にコピーする設定"
+          "description": "読み込むリスト、コピーする要素、およびコピーした属性名の付け方"
         },
         "copiedAttributePrefix": {
-          "description": "コピーした属性名に追加するプレフィックス（任意）"
+          "title": "Copied Attribute Prefix",
+          "description": "コピーした各属性名の前に付ける文字列。既定では付けない"
         },
         "copiedAttributeSuffix": {
-          "description": "コピーした属性名に追加するサフィックス（任意）"
+          "title": "Copied Attribute Suffix",
+          "description": "コピーした各属性名の後に付ける文字列。既定では付けない"
         },
-        "listAttribute": {
-          "description": "読み込むリスト属性"
+        "index": {
+          "title": "Index",
+          "description": "コピーする要素の位置。0 から数える。リストがこれより短い地物、およびこの位置の要素がキーと値の組でない地物は、そのまま通過する"
         },
-        "listIndexToCopy": {
-          "description": "コピーするリスト要素のインデックス（0 始まり）"
+        "list": {
+          "title": "List",
+          "description": "読み込むリストを保持する属性。この属性を持たない地物、およびリストでない場合は、そのまま通過する"
         }
       }
     },
@@ -2479,6 +2446,10 @@
         "": {
           "title": "MVTWriter パラメータ",
           "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す設定"
+        },
+        "arrayMapSeparator": {
+          "title": "配列/マップの区切り文字",
+          "description": "ネストした配列やマップの属性をタグに平坦化する際、子のキーやインデックスとの間に挿入する区切り文字。未設定の場合、配列やマップの属性は出力から除外される"
         },
         "colonToUnderscore": {
           "title": "コロンをアンダースコアに変換",
@@ -2495,6 +2466,10 @@
         "layerName": {
           "title": "レイヤー名",
           "description": "生成するタイル内のレイヤー名または式"
+        },
+        "maxTileBytes": {
+          "title": "最大タイルサイズ",
+          "description": "タイル1つあたりのエンコード後の目標最大サイズ（バイト単位）。これを超える場合、視覚的重要度が低い地物を削除し、タイルサイズに収める（デフォルト: 500,000）"
         },
         "maxZoom": {
           "title": "最大ズームレベル",
@@ -2594,7 +2569,7 @@
         },
         "defaultReplacement": {
           "title": "デフォルト置換値",
-          "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される"
+          "description": "マッピングに登録されていない null 相当の属性に書き込む内容。範囲がすべての属性を検査する場合にのみ適用される。省略した場合、それらの属性は変更されない"
         },
         "mappings": {
           "title": "属性マッピング",
@@ -2625,7 +2600,7 @@
           },
           "replacement": {
             "title": "置換値",
-            "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
+            "description": "属性が null に相当する場合に書き込む内容。必須項目とすることで、属性の削除は省略による暗黙の動作ではなく明示的な指定になる"
           }
         }
       },
@@ -3468,15 +3443,15 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "Shapefile アーカイブ（.shp、.dbf、.shx を含む .zip）から地理地物を読み取る",
+      "description": "ZIP アーカイブに格納された Shapefile から地物を読み取る。アーカイブには形式が定める .shp、.shx、.dbf が含まれることを想定するが、.shx がなくても読み取れる",
       "parameterI18n": {
         "": {
-          "title": "ShapefileReader パラメータ",
-          "description": "Shapefile アーカイブを地理的フィーチャーとして読み込む設定。必要な Shapefile コンポーネント（.shp、.dbf、.shx）を含む ZIP アーカイブを想定。"
+          "title": "Shapefile Reader パラメータ",
+          "description": "読み取るアーカイブ、属性テーブルのエンコーディング、標高を保持するかどうかを設定する。構成ファイルは名前で対応付けられ、アーカイブに複数の Shapefile がある場合は最初のものを読み取る"
         },
         "allowEmptyPath": {
-          "title": "null パスを許可",
-          "description": "true の場合、null のデータセットパスはエラーの代わりに地物を 0 件生成し、省略可能な Shapefile 入力を許可する"
+          "title": "空のパスを許可",
+          "description": "true の場合、空または null のデータセットパスはエラーではなく地物 0 件となり、Shapefile 入力を省略できる"
         },
         "dataset": {
           "title": "ファイルパス",
@@ -3488,7 +3463,7 @@
         },
         "force2D": {
           "title": "2D に強制",
-          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+          "description": "true の場合、標高を破棄してすべてのジオメトリを 2D として読み取る。マルチパッチは空間内の面を表し 2D の形式を持たないため、読み取りは失敗する"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -3498,11 +3473,11 @@
     },
     {
       "name": "Shapefile Writer",
-      "description": "地物をESRI Shapefile形式に書き出し、任意でグループごとに別ファイルに分割する",
+      "description": "地物を Shapefile として書き出し、任意でグループごとに別のファイルセットに分割する",
       "parameterI18n": {
         "": {
-          "title": "ShapefileWriter パラメータ",
-          "description": "地物をESRI Shapefile形式に書き出す設定"
+          "title": "Shapefile Writer パラメータ",
+          "description": "Shapefile の書き出し先、アーカイブ化の有無、グループごとのファイル分割を設定する"
         },
         "compressOutput": {
           "title": "圧縮出力ディレクトリ",
@@ -3510,11 +3485,11 @@
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "地物をグループ化し、グループごとに別ファイルを作成する属性"
+          "description": "地物をグループ化する属性。グループごとに 1 つのファイルセットを書き出し、グループ値をその名前にする。未設定の場合はすべての地物が 1 つのファイルセットになる"
         },
         "output": {
           "title": "出力ディレクトリ",
-          "description": "生成されたShapefileファイルを書き出す出力ディレクトリのパスまたは式"
+          "description": "Shapefile を書き出すディレクトリ（パスまたは式）。中の各ファイルセットはグループ値、グループ化しない場合は \"null\" という名前になる"
         }
       }
     },
@@ -3534,61 +3509,80 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "フィルタージオメトリとの空間的な関係に基づいて候補の地物をフィルタリングする",
+      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）。フィルタージオメトリが 1 つも渡されない場合はすべての候補が通過する",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter パラメータ",
-          "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する"
+          "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する"
+        },
+        "matchMode": {
+          "title": "マッチモード",
+          "description": "候補がいずれか 1 つのフィルター地物に一致すれば通過するか、すべてのフィルター地物に一致した場合のみ通過するか"
         },
         "mergeFilterAttributes": {
           "title": "フィルター属性をマージ",
-          "description": "true の場合、一致したフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される"
+          "description": "一致したすべてのフィルター地物の属性を通過した候補にコピーする。候補が同名の属性を持つ場合は上書きされ、一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される"
         },
         "mergedAttributesPrefix": {
           "title": "マージ属性プレフィックス",
-          "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる"
+          "description": "マージする属性名に付加するプレフィックス。候補自身の属性名との衝突を防ぐ。\"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。属性をマージしない場合は無視される"
         },
         "outputMatchCountAttribute": {
           "title": "マッチ数出力属性",
-          "description": "一致したフィルター数を格納する属性名（任意）"
-        },
-        "passOnMultipleMatches": {
-          "title": "複数マッチ時に通過",
-          "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）"
+          "description": "候補が一致したフィルター地物の数を格納する属性。通過した候補と失敗した候補の両方に書き込まれる"
         },
         "predicate": {
           "title": "空間述語",
-          "description": "フィルターと候補ジオメトリ間でテストする空間関係"
+          "description": "テストする空間関係。候補を主語、フィルタージオメトリを目的語として読む"
         }
       },
       "enumI18n": {
+        "MatchMode": {
+          "all": {
+            "title": "すべて",
+            "description": "すべてのフィルター地物に一致した場合のみ候補を通過させる"
+          },
+          "any": {
+            "title": "いずれか",
+            "description": "少なくとも 1 つのフィルター地物に一致した候補を通過させる"
+          }
+        },
         "SpatialPredicate": {
           "contains": {
-            "description": "フィルタージオメトリが候補を完全に含む"
+            "title": "含む",
+            "description": "候補がフィルタージオメトリを内部に含み、内部を共有する。フィルターが候補の境界上のみにある場合は該当しない（その場合は Covers を使用）"
           },
           "coveredBy": {
-            "description": "候補がフィルタージオメトリに覆われている"
+            "title": "覆われる",
+            "description": "候補のすべての点がフィルタージオメトリ内にある。境界上のみにある場合も含む"
           },
           "covers": {
-            "description": "フィルタージオメトリが候補を覆う"
+            "title": "覆う",
+            "description": "候補がフィルタージオメトリのすべての点を含む。フィルターが境界上のみにある場合も含む"
           },
           "crosses": {
-            "description": "ジオメトリが互いに交差する"
+            "title": "横断する",
+            "description": "候補がフィルタージオメトリを横切り、ポリゴンを横断する線のように次元の低い重なりで内部と交わる"
           },
           "disjoint": {
-            "description": "ジオメトリに空間的な関係がない"
+            "title": "交差しない",
+            "description": "候補がフィルタージオメトリと 1 点も共有しない"
           },
           "intersects": {
-            "description": "ジオメトリが何らかの交差を持つ"
+            "title": "交差する",
+            "description": "候補がフィルタージオメトリと少なくとも 1 点を共有する"
           },
           "overlaps": {
-            "description": "ジオメトリが部分的に重なる"
+            "title": "重なる",
+            "description": "候補がフィルタージオメトリと同じ次元を持ち、内部を共有しつつ互いに外側の点も持つ"
           },
           "touches": {
-            "description": "ジオメトリが境界で接しているが重なっていない"
+            "title": "接する",
+            "description": "候補がフィルタージオメトリと境界のみで接し、内部を共有しない"
           },
           "within": {
-            "description": "候補がフィルタージオメトリの内部に完全に含まれる"
+            "title": "含まれる",
+            "description": "候補がフィルタージオメトリの内部にあり、内部を共有する。候補がフィルターの境界上のみにある場合は該当しない（その場合は Covered By を使用）"
           }
         }
       }

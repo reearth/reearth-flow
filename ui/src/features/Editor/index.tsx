@@ -54,7 +54,7 @@ export default function Editor({
     refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
-    handleDebugRunVariableValueChange,
+    workflowVariableDefaults,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -82,6 +82,7 @@ export default function Editor({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    handleResetDebugRunWorkflowVariables,
     schemaProbes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
@@ -93,6 +94,7 @@ export default function Editor({
     handlePaste,
     handleProjectSnapshotSave,
     isLocked,
+    isReaderRestricted,
     handleProjectLockChange,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
@@ -122,6 +124,7 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
+      isReaderRestricted,
       canViewIntermediateData: true,
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
@@ -139,6 +142,7 @@ export default function Editor({
     }),
     [
       isLocked,
+      isReaderRestricted,
       handleNodesChange,
       handleNodeSettings,
       currentYWorkflow,
@@ -178,6 +182,7 @@ export default function Editor({
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+            workflowVariableDefaults={workflowVariableDefaults}
             openNodePickerViaShortcut={openNodePickerViaShortcut}
             refetchWorkflowVariables={refetchWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
@@ -201,7 +206,9 @@ export default function Editor({
               handleFromSelectedNodeDebugRunStart
             }
             onDebugRunStop={handleDebugRunStop}
-            onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
+            onResetDebugRunWorkflowVariables={
+              handleResetDebugRunWorkflowVariables
+            }
             onProjectSnapshotSave={handleProjectSnapshotSave}
             onProjectLockChange={handleProjectLockChange}
             onSpotlightUserSelect={handleSpotlightUserSelect}

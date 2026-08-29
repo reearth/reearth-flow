@@ -1,0 +1,7 @@
+{
+  "description": "CSV Reader parses the bare 3D WKT (no Z tag) that the CSV Writer emits, then CSV Writer re-emits it unchanged -- the write/read seam that let 3D WKT round-trips break before with_z_tag. Every row is good on purpose: an unparseable geometry value fails the whole read, so disabling the bare-3D tolerance makes this case error out naming the column, value and row rather than quietly producing a short file.",
+  "workflowPath": "executor-testing/csv-wkt-roundtrip-3d.yml",
+  "expectedOutput": {
+    "expectedFile": ["output.csv"]
+  }
+}

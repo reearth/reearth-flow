@@ -482,6 +482,71 @@ impl Footprint for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for Polygon2D {
+    /// A 2D face has no elevation to slope, so its area is simply its planar
+    /// area.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self.area())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for Polygon3D {
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(polygon_3d_surface_area(self))
+    }
+}
+
+use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
+
+// A face is bounded by its own rings, exterior first, each kept verbatim. A face
+// with no exterior ring encloses nothing, so there is nothing to bound. That is
+// the one case where a face itself has no boundary to give.
+impl ExtractBoundary for Polygon2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let mut lines = Vec::new();
+        push_face_lines_2d(self, &mut lines);
+        wrap_2d(lines)
+            .map(Boundary::Bounded)
+            .ok_or_else(unbounded::<Self>)
+    }
+}
+
+impl ExtractBoundary for Polygon3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let mut lines = Vec::new();
+        push_face_lines_3d(self, &mut lines);
+        wrap_3d(lines)
+            .map(Boundary::Bounded)
+            .ok_or_else(unbounded::<Self>)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Polygon2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Polygon3D {
+    /// The exterior ring's first vertex; the holes lie inside it and are not
+    /// reached.
+    fn elevation(&self) -> Option<f64> {
+        self.exterior().first().map(|c| c[2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

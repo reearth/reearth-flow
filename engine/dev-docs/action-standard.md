@@ -6,7 +6,11 @@ Reference for authoring and reviewing Re:Earth Flow actions. Covers naming, desc
 
 ## How to use this standard
 
-This standard applies to both **authoring new actions** and **reviewing existing ones**. Use §7 as a self-check before submitting a new action, and as a review checklist during audits.
+This standard applies to both **authoring new actions** and **reviewing existing ones**. Use §8 as a self-check before submitting a new action, and as a review checklist during audits.
+
+**Who the design is judged for.** Judge every action as a general-purpose geospatial tool, for a user who has never seen the project that motivated it. An action built for one dataset or one pipeline is still held to that bar. Low or zero usage in existing workflows is a reason to look *harder* — it often means the action is hard to understand or does not do the general thing its name promises — never a reason to skip the review.
+
+**Prior art.** For anything with an established equivalent — a geometry operation, a file format's options, a well-known transformation — read how comparable tooling exposes it before designing names, parameters, or ports. That includes open specifications and implementations (OGC Simple Features, PostGIS, JTS, GDAL/OGR) and the commercial GIS tools users arrive from. The point is not to copy: it is that a user who already knows the operation should recognise ours, and that a difference should be a deliberate improvement rather than an accident. See §2 for how to cite prior art in text that ships.
 
 **The schema is generated — never edit it directly.** All action properties (name, description, parameters, ports, categories, tags) are defined in the Rust implementation. After any change, regenerate the schema:
 
@@ -15,9 +19,13 @@ cargo make schema-base        # regenerates actions.json and syncs i18n skeleton
 cargo make schema-translated  # regenerates per-language JSON files
 ```
 
-**Verify against the implementation before writing — do this first, every time.** A title or description must describe what the code actually does, not what the parameter name suggests or what a prior description claimed. Polishing text for clarity without reading the code produces confident, wrong documentation. Before adding or editing any title or description, read the factory's `build`, the parameter struct, and the action's execution path (`process`/`start`/`run`), and confirm each of the following:
+**The implementation is the source of truth — verify against it first, every time.** Every user-facing property of an action must be traceable to code that delivers it. A name, title, or description must describe what the code actually does — not what the parameter name suggests, not what a prior description claimed, not what was intended.
 
-- **Every parameter is actually read and applied.** A parameter accepted but never used (e.g. stored into a field with a `_` prefix and never referenced) is a bug, not something to document — flag it for removal rather than writing a description for behavior that does not exist.
+Text that reads well is not evidence. A description can be fluent, accurate-sounding, and compliant with every rule below while describing behavior that does not exist, so **a property that looks correct is not exempt from being checked.** This is the most common way the surface starts lying: nobody writes an obviously wrong description, so the wrong ones are the ones that read best.
+
+Whether authoring an action or reviewing one, before the schema is regenerated read the factory's `build`, the parameter struct, and the execution path (`process`/`start`/`run`), and confirm each of the following:
+
+- **Every parameter is actually read and applied.** A parameter accepted but never used (e.g. stored into a field with a `_` prefix and never referenced) is a bug, not something to document — flag it for removal rather than writing a description for behavior that does not exist. Check for *forwarding*: a parameter copied into another struct in `build` and never read from there is still unused. And check **which build it is unused in** — a `cfg`-gated action can read a parameter in one geometry world and ignore it in the other, so establish whether it is dead everywhere, dead only in the shipped build (a migration artifact — leave it, it belongs to the migration's own cleanup), or dead only in the legacy build (live, keep it). `schema/actions.json` is generated from the default build, so anything appearing there is what users see today.
 - **Enum variants behave as their names and descriptions claim** — trace each variant to its branch in the code.
 - **Defaults, fallbacks, and "when omitted" behavior match the text** — confirm the actual default value and the code path taken when the parameter is absent.
 - **The description reflects real behavior** — what the action consumes, what it emits, and any side effects — including where inputs come from (e.g. a path read from the incoming feature vs. a fixed parameter).
@@ -64,6 +72,12 @@ Verb-first, present tense, third-person singular — start directly with the ver
 - End every sentence with a period — required for consistent rendering across all supported languages
 - Describes what the action does to data, not how it is implemented
 - Does not mention port names or internal implementation details
+
+**Naming other software.** Doc comments on factories, parameters and enum variants are compiled into `actions.json` and shipped to users in the UI and the generated docs — they are product copy, not code comments. Where naming prior art genuinely helps a reader, cite an open specification or implementation (OGC Simple Features, PostGIS, JTS, GDAL/OGR). Do not name a commercial product: describing our behaviour as matching, differing from, or replacing a named vendor's tool reads as a comparative claim we do not want to make or maintain, and it dates badly. Research those tools freely (§"Prior art") — just do not put their names in text that ships. This applies to `///` comments in particular, since it is easy to forget they are user-facing.
+
+**Diagnostic registry text is product copy too.** The `message` and `help` strings in `schema/error-codes/*.toml` reach users the same way a doc comment does: they travel with the diagnostic through the engine, the server's ingestion and the GraphQL API, keyed by the code the action raises. So they are held to the accuracy rule in §"How to use" and to the prohibition on naming a commercial product above. Trace each string to the branch that raises its code and say what actually causes it — **a string copied from a neighbouring code is the failure to watch for**, because the neighbour's cause is not this code's.
+
+Their genre differs from an action description, so the style rules above do not transfer. Follow the registry's own conventions instead: a `message` is a lowercase clause with no closing period, naming what happened; `help` is one or two imperative sentences telling the user what to change, and naming the action that would fix it is normal and useful (`raster.texture_assignment_failed` names `Image Rasterizer`). Note this text has **no translation path** — `schema/i18n/` covers `actions` only — so it ships in English in every language.
 
 | ✗ | ✓ |
 |---|---|
@@ -128,6 +142,12 @@ enum AreaType {
 
 A plain `enum` with no doc comments produces no per-variant descriptions and should be converted to this pattern. A comprehensive property `description` that names and explains all variants is acceptable only when the enum has two or three self-describing values and the description remains one sentence.
 
+**Keep mode enums inside a property — never make the parameter block itself a `oneOf`.** A Rust enum used *as the whole parameter type* (`#[serde(tag = "...")] enum FooParam`) generates a schema whose root is a `oneOf` rather than an object with `properties`. Translation cannot reach the variants: `apply_parameter_i18n` (`cli/src/utils.rs`) patches the root's own title/description, root `properties[*]`, `definitions[*].properties[*]`, and `definitions[*].oneOf|anyOf` variants — and that last traversal is scoped *inside* the `definitions` object, so a `oneOf` sitting at the schema root is never visited.
+
+The failure is quiet, which is what makes it dangerous: the block's own title and description still translate via the root, so the action looks localised while the mode labels the user actually chooses between stay in English permanently. `Geometry Filter` is in this state today — its Japanese entry has a translated block header and no variant entries at all.
+
+Give the action a normal parameter object with the enum as one property instead. When a mode needs its own sub-parameters, use a `#[serde(tag = "type")]` enum *as a property value* — the variants carry their own fields, the user only sees the fields belonging to the mode they chose, and the whole thing still translates.
+
 **Single-variant enums** are a design smell — they present the user with a parameter that has no real choice. If only one variant exists and no others are planned, remove the parameter and hard-code the behavior. If additional variants are planned but not yet implemented, keep the `oneOf` and note the intent in a code comment (`// TODO: add X, Y variants`).
 
 ### 3.5 Parameter usability
@@ -136,11 +156,15 @@ A plain `enum` with no doc comments produces no per-variant descriptions and sho
 
 **Volume guideline.** More than 8 parameters is a signal to review whether any can be combined, given sensible defaults, or split into a separate action. It is not a hard cap, but it requires justification.
 
+**Grouped configuration objects.** A nested object that groups related optional settings (a `retry` block, a `timeouts` block) counts as **one** parameter toward the volume guideline — the user sees one collapsible group, not its leaves. The grouping is not a loophole: every leaf inside the object must justify itself under the same rules as a top-level parameter, and a group is only legitimate when it is optional as a whole and the action behaves sensibly with the entire object absent. A group of two that would read fine as top-level parameters does not need to be a group.
+
 **Ordering.** In the schema's `properties` object, define required parameters first, followed by commonly adjusted optional parameters, followed by edge-case optional parameters last. This ordering is the foundation for future UI grouping (such as a collapsible advanced section) and makes the action easier to understand even before any grouping is added.
 
 For example: a reprojection action puts `targetEpsgCode` (required) before `horizontalDatumTransformation` (common optional) before `axisOrder` (edge-case optional).
 
 **No implementation leakage.** Infrastructure knobs like `timeout`, `retryCount`, `bufferSize`, or `connectionPoolSize` are internal concerns, not user controls. Omit them unless tuning them is necessary to make a workflow correct. The same applies to algorithm tuning parameters (`coordinateEpsilon`, `snapTolerance`, `maxIterations`) — expose them only when the user must adjust them for accuracy or correctness, not as a convenience for power users.
+
+The test is whether the knob tunes *our implementation* or *the interaction with an external system the action exists to talk to*. On an action whose core purpose is I/O against a service or resource the user chose — an HTTP endpoint, a database — timeouts, retry policy and rate limits are part of correctly using that system (its rate limits, its latency, its transient failures), and the user is the only party who knows the right values. Those belong in a grouped configuration object with working defaults. `bufferSize` on a file writer stays internal either way.
 
 ---
 
@@ -175,9 +199,25 @@ Use these names when the semantics match. Only use custom names when the action 
 
 Every feature received must be accounted for — either emitted to a named output port, or intentionally consumed to produce an output (as in merge and join operations). No feature may be silently discarded. Actions with no output ports (sinks/writers) are exempt; consuming a feature is their purpose.
 
-- If an action can fail to process a feature (parse error, missing attribute, invalid geometry) it must have a `rejected` output port for those features
 - Validators and conditional routers must route every feature to a named port
 - Actions with multiple semantically distinct outputs should use descriptive names rather than `features`
+
+**Failure versus no-op — get this right before adding a `rejected` port.**
+
+Ask: did the action *attempt* the transformation and fail, or was there simply *nothing to do*? Only the first is `rejected`.
+
+| Situation | Port |
+|---|---|
+| Input was malformed — unparseable geometry, undecodable payload, a value of the wrong type | `rejected` |
+| The action had nothing to act on — no geometry where geometry is optional, an absent attribute, a type the action legitimately leaves alone | pass through on `features` |
+
+A missing attribute is **usually a no-op, not a failure.** Treating it as a failure is the most common way this rule gets broken, because "the attribute wasn't there" sounds like an error when it is normally just an absence.
+
+**Sources are outside this rule.** A source receives no features, so it has nothing to route — there is no incoming feature for a `rejected` outcome to attach to. When a reader meets input it cannot parse, the correct behaviour is to fail the read with an error naming the offending location, not to route somewhere: a reader that emits part of a file and quietly drops the rest hides corrupt input at the point where the user can still fix it. This does not license failing on absence. A blank cell where a value is optional is the no-op case above, and the feature is still emitted; reserve the failure for input that is present and malformed.
+
+**Check the paired producer.** Extractor/Replacer, Splitter/Merger and similar pairs only work if both halves agree. If the producer conditionally skips writing its attribute, the consumer *must* tolerate its absence — a `rejected` port on the consumer silently deletes the features the producer deliberately left alone.
+
+**Adding a port is a data-loss change.** A new port is unwired in every existing workflow, so features newly routed to it are dropped on the floor rather than reaching the destination they used to. Before adding one: grep the fixtures for the action name to size the blast radius, and run `cargo make test-qc` afterwards. Silent loss shows up as a downstream count that quietly drops, not as a test error at the changed node.
 
 ---
 
@@ -204,31 +244,132 @@ New categories can be added when a meaningful group of actions does not fit any 
 
 ## 6. Tags
 
+Tags exist to cut **across** categories. The category is where a user browses; a tag is how they find the action from somewhere else. `citygml` earns its place because it spans `Input`, `Output`, `Geometry`, and `Filter` — one tag collects the whole CityGML toolkit. `geometry` on a `Geometry` action tells the user nothing they did not already know from where they found it.
+
 - All lowercase, hyphenated if multi-word: `coordinate-system`, `citygml`
-- Aim for 2–4 tags; 1 is acceptable when no second tag adds genuine discovery value. Never pad to meet a count.
+- **The test:** would this tag help someone find the action from *outside* its category? If not, it is padding.
+- **Zero tags is a valid and complete answer.** When every candidate would restate the category, the action has no cross-cutting axis and takes none. This is normal for general-purpose processors — most `Geometry` and `Debug` actions are in this position. Never invent a tag to avoid an empty list.
+- Two to four tags where the axes genuinely exist — typically format, dimensionality, or domain. Readers and writers almost always qualify (`csv`, `gltf`, `geopackage`, `citygml`); a plain geometry operation usually does not.
+- **Check the siblings.** An action doing the same kind of work as a tagged action should carry the same tag. A gap between siblings — `Three Dimension Forcer` tagged `3d` while `Two Dimension Forcer` has nothing — is an oversight, not a judgement, and it is the reliable way to tell the two apart.
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `excel`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `gltf`, `json`, `list`, `logging`, `mapping`, `obj`, `raster`, `routing`, `scripting`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
-New tags can be proposed when an established term does not adequately describe an action's domain. Avoid adding tags that duplicate an action's category.
+Some vocabulary entries share a name with a category (`geometry`, `filter`, `file`, `debug`, `attribute`). Those are valid only *outside* the matching category, where they still cut across — `geometry` on `Dimension Filter` and `file` on `Zip File Writer` both earn their place; `file` on a `File` action does not.
+
+New tags can be proposed when an established term does not adequately describe an action's domain.
 
 ---
 
-## 7. Review Checklist
+## 7. Functionality and exposure
+
+Every other section in this standard asks whether an action is *described* correctly. This one asks whether it *works*, and whether it should be offered at all. An action can satisfy every rule above — clean name, accurate parameters, complete ports — and still be broken or inappropriate to ship, so these are checked separately.
+
+### 7.1 Does it run?
+
+Confirm the action executes in the build that ships. Two ways it can fail to:
+
+- **Trait defaults.** `Processor::process` and `Source::start` have defaults that return ``Err("`{name}` is not yet ported to new geometry")``. An action whose only implementation is under `#[cfg(not(feature = "new-geometry"))]` therefore fails on **every feature** in the shipped build, while looking complete in the source.
+- **Deliberate stubs.** A `process` that returns `Err` unconditionally — typically an action superseded by another — is a removal that has not happened yet, not a working action.
+
+Check by confirming an implementation exists for the default feature set, not merely that one exists.
+
+### 7.2 Should it be exposed?
+
+`server/api/internal/app/base_actions.go` gates which actions appear in the palette. It is a separate file in a separate language from the action itself, so the two drift silently. An action must not be listed there unless it runs per §7.1.
+
+This cuts both ways, and both have happened:
+
+- Promoting an action without an engine-side review ships whatever state its metadata was in.
+- Leaving a listed action to rot means the palette advertises something that always fails.
+
+When an action cannot run, removing it from `base_actions.go` is the immediate mitigation — cheap, reversible, and independent of whatever fix is pending.
+
+**A geometry port changes an action's bucket, and the porting PR will not say so.** An action that could not run because its only implementation was under `#[cfg(not(feature = "new-geometry"))]` starts running the moment its port merges. It does not thereby become exposable — it now owes the engine-side review it never had. So a port PR silently moves its action out of "does not run" and into "pending audit", and porting PRs are written and reviewed as geometry work: they touch the action's `process`, not `base_actions.go` and not the audit's records.
+
+**So after any geometry-port PR merges, record the move — and check the action's review state to know where it moves to.** The two cases are not the same, and both have now occurred:
+
+- **Never reviewed** — it joins the pending-audit list and owes a full §8 pass. `Elevation Extractor`'s port merged in #2384 leaving the action running, unexposed, and absent from every list, found only because an unrelated branch merged `main` and re-counted the buckets.
+- **Already reviewed** — it owes a decision rather than an audit, and the decision is not automatic. `Bufferer`'s port merged in #2370; it was reviewed in #2317, but that review left an open `impl:` finding, and it predates this standard's rescoping, so the `impl:` trace had never been run against the new-geometry code that ships. Both had to be settled before it was exposed, and settling them turned up the trap in this case: **a finding written before a port describes the implementation the port replaced.** The blocking `impl:` finding was about legacy code that no longer runs, and its text had survived unchanged. Check which implementation a finding describes before treating it as a blocker.
+
+In neither case add it to `base_actions.go` as part of the same step — running is only half of §7.2, and promoting on "it runs now" alone is the first failure mode above. Nothing checks any of this, so it needs a person to do it.
+
+### 7.3 Disabled behaviour must not stay documented
+
+If behaviour is turned off — a code path commented out, a branch rerouted, functions kept only under `#[allow(dead_code)]` — then the parameters, enum variants, and description advertising it are now false and must go with it. "Temporarily disabled" is not a state the user-facing surface can represent: from the outside there is no difference between a feature that is off and one that never worked.
+
+Silencing a warning is not a substitute for either finishing or removing the work. `#[allow(dead_code)]` on an action code path is a review flag: it means something is unreachable, and unreachable code with live documentation is exactly how the surface starts lying.
+
+---
+
+## 8. Review Checklist
 
 For each action, flag anything that violates the rules above. Only log issues — skip clean items.
 
 **First, verify against the implementation** (see "How to use this standard"): read the factory and execution path and confirm every parameter is actually used, enum variants and defaults behave as documented, and each title/description matches real behavior. Accuracy is checked before style — a well-worded but incorrect description is a defect, and a parameter that is accepted but never applied is flagged for removal, not documented.
 
+**Check that it runs before reviewing how it reads** (§7.1). Polishing the description of an action that cannot execute is wasted work, and it makes a broken action look reviewed.
+
 ```
 ActionName
+  runs:    [only if it does NOT run in the shipped build, or is listed in
+              base_actions.go while broken (§7)]
+  impl:    [parameters declared but never applied; enum variants with no branch;
+              defaults or "when omitted" text the code contradicts; declared
+              ports never emitted]
   name:    [proposed space-case name if different]
   desc:    [issue if any]
   params:  [list issues by param name; flag if count exceeds 8 without justification (§3.5)]
-  ports:   [list issues by port name]
+  ports:   [failure-vs-no-op errors (§4.3); missing or unemitted ports]
   cat:     [issue if wrong category]
-  tags:    [missing tags | irrelevant tags]
+  tags:    [missing cross-cutting tag | tag that restates the category (§6)]
 ```
 
+**Every line except `impl:` can be answered from the generated `actions.json`. `impl:` cannot.** It is the only one that requires opening the code, and it is therefore the only one that catches a description which is well-written and false, or a parameter the UI offers and the code ignores. An action marked clean without `impl:` having been worked through has been *read*, not checked.
+
 If an action is clean on all dimensions, write: `ActionName — OK`
+
+**Deferred findings need a stated trigger.** When an item is parked because something else blocks it, record what would unblock it, in the finding itself — "revisit when X is ungated", not "deferred for now". A deferral whose precondition silently expires is indistinguishable from a finding nobody wrote down. This has already cost us: the reprojector removal was correctly deferred while its replacement was gated out of the shipped build, the gate later lifted, and nothing reopened the item.
+
+---
+
+## Changelog
+
+Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-08-28
+
+- **§4.3** — added the carve-out that sources sit outside the port-completeness rule: a reader has no incoming feature to reject, so input it cannot parse fails the read rather than routing to `rejected`. Settled while auditing `CSV Reader`, whose new-geometry read removed a `rejected` port that had been advertised but never emitted to. The table above continues to govern processors unchanged, so no past verdict changes.
+
+### 2026-08-27
+
+- **§2 — this widens what the standard covers.** Diagnostic registry text (`message`/`help` in `schema/error-codes/*.toml`) is now product copy, subject to the accuracy rule and to the ban on naming commercial products. Added while auditing `Area Calculator`, the first audited action to emit structured diagnostics. No past *verdict* changes, but **no past review read this text at all**: the codes outside `geometry.area_*` have never been checked against any rule, and are recorded in the findings file as owing a pass. The entry also records that this text has no i18n path, which the audit cannot fix on its own.
+- **§3.5 — this loosens the volume guideline and narrows "implementation leakage".** A nested config object of related optional settings now counts as one parameter toward the guideline (each leaf still owes its own justification), and timeout/retry/rate-limit knobs are legitimate on actions whose core purpose is I/O against an external system the user must tune against. Decided for HTTP Caller, whose grouped `retry`/`rateLimit`/`timeouts` the old wording — which names `timeout` and `retryCount` as canonical leakage — would have deleted. No past verdict changes: no previously-reviewed action was failed on these grounds.
+
+### 2026-08-24
+
+- **§7.2** — added the rule that a merged geometry-port PR moves its action out of "does not run", and that the porting PR will not do that bookkeeping itself. Amended the same day it was first written: the destination depends on whether the action has been reviewed. A never-reviewed one joins pending audit (`Elevation Extractor`); an already-reviewed one owes a decision instead (`Bufferer`), since a stale review plus open findings is not the same as no review. No past verdict changes.
+
+### 2026-08-21 (later)
+
+- **§6** — added `excel` to the established tag vocabulary. Every audited reader and writer carries its format as a tag (`csv`, `json`, `geojson`, `shapefile`, `geopackage`), and `Excel Writer` had no term to draw on. No past verdict changes.
+
+### 2026-08-21
+
+- **§"How to use" rescoped — this widens what the rule covers.** The verify-against-implementation duty was previously worded as a precondition for *adding or editing* a title or description, which exempted any property that already looked compliant. It now attaches to the action itself: every user-facing property must be traceable to code that delivers it, checked before the schema is regenerated, whether authoring or reviewing. Reviews done under the old wording may have triaged on how the text reads rather than on what the code does.
+- **§8** — added an `impl:` line to the checklist, for parameters never applied, enum variants with no branch, defaults the code contradicts, and ports never emitted. Every other line in the checklist can be answered from the generated schema; this one cannot, which is the point.
+- **§6 corrected — this reverses previous guidance.** The old wording set a floor ("aim for 2–4; 1 is acceptable") while also forbidding tags that duplicate the category, which made the floor unreachable for single-domain actions and invited padding. Tags are now defined by their purpose — cross-category discovery — and **zero tags is explicitly valid** when no orthogonal axis exists. Actions reviewed under the old wording may carry a tag that only restates the category, and a zero-tag action is no longer a finding on its own. Sibling comparison is the test for a genuine omission.
+
+### 2026-08-20
+
+- **§4.3 corrected — this reverses previous guidance.** The old wording listed "missing attribute" as a `rejected` case. That is wrong: a missing attribute is normally a no-op that must pass through, and the failure-versus-no-op distinction now has its own subsection. Actions reviewed before this date may carry a `rejected` port added on the old advice; those are worth re-checking, particularly either half of a producer/consumer pair.
+- **§7 added** (Functionality and exposure), covering whether an action runs in the shipped build, whether `base_actions.go` should list it, and the rule that disabled behaviour cannot stay documented. No earlier review checked these, so every action reviewed before this date is unverified on them. The review checklist gains a `runs:` line.
+- **§3.4** — added the prohibition on making a parameter block a root-level `oneOf`, which permanently blocks translation. Existing actions shaped this way need restructuring, not just re-wording.
+- **§"How to use"** — the unused-parameter rule now requires establishing *which* geometry world a parameter is dead in, and catching forwarding-then-dropped parameters.
+- **§"How to use"** — added the audience statement and the prior-art requirement.
+- **§2** — added the rule against naming commercial products in text that ships.
+
+### 2026-07-23
+
+- Added the ACCURACY-BEFORE-STYLE clause in §"How to use" (PR #2280). Introduced mid-audit: the Debug, Merge, Filter and Output batches were reviewed before it existed and were never re-checked against it.

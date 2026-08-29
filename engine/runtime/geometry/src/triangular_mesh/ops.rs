@@ -468,6 +468,101 @@ impl TriangularMesh3DData {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::{ring_surface_area, triangle_area_2d, triangle_area_sum_3d};
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for TriangularMesh2D {
+    /// Each triangle's area, summed. A 2D mesh has no elevation to slope.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let vertices = self.vertices();
+        Ok(self
+            .triangles()
+            .map(|t| {
+                triangle_area_2d(
+                    vertices[t[0] as usize],
+                    vertices[t[1] as usize],
+                    vertices[t[2] as usize],
+                )
+            })
+            .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for TriangularMesh3D {
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(triangle_area_sum_3d(
+            self.vertices(),
+            self.triangles(),
+            ring_surface_area,
+        ))
+    }
+}
+
+use crate::ops::boundary::{Boundary, ExtractBoundary};
+use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+
+fn triangle_boundary_edges(triangles: impl Iterator<Item = [u32; 3]>) -> BoundaryEdges {
+    let mut edges = BoundaryEdges::new();
+    for triangle in triangles {
+        edges.add_triangle(triangle);
+    }
+    edges
+}
+
+impl ExtractBoundary for TriangularMesh2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        Ok(surface_boundary_2d(
+            self.frame(),
+            self.vertices(),
+            self.elevation(),
+            triangle_boundary_edges(self.triangles()),
+        )
+        .into())
+    }
+}
+
+impl ExtractBoundary for TriangularMesh3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        Ok(surface_boundary_3d(
+            self.frame(),
+            self.vertices(),
+            triangle_boundary_edges(self.triangles()),
+        )
+        .into())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for TriangularMesh2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for TriangularMesh3D {
+    fn elevation(&self) -> Option<f64> {
+        self.data.first_triangle_elevation()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl TriangularMesh3DData {
+    /// The z of the first triangle's first vertex, which is where the mesh's
+    /// traversal starts — the vertex pool's own order is unrelated.
+    pub(crate) fn first_triangle_elevation(&self) -> Option<f64> {
+        let [i, _, _] = self.triangles().next()?;
+        Some(self.vertices()[i as usize][2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

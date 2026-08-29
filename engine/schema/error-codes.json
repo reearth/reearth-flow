@@ -1,0 +1,195 @@
+[
+  {
+    "code": "cesium3dtiles.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with empty geometry",
+    "help": "Filter empty-geometry features upstream or fix the source data."
+  },
+  {
+    "code": "cesium3dtiles.missing_schema_key",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped schema feature missing the configured schemaKey attribute",
+    "help": "Ensure upstream features carry the attribute named by schemaKey, or unset schemaKey."
+  },
+  {
+    "code": "cesium3dtiles.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "Cesium 3D Tiles Writer only accepts CityGML geometry; route other geometry types to a different writer."
+  },
+  {
+    "code": "citygml.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no geometry for the configured LOD mask",
+    "help": "Check the feature's LODs against the writer's LOD configuration."
+  },
+  {
+    "code": "citygml.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
+  },
+  {
+    "code": "csv.no_data_rows",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "the file contained no data rows",
+    "help": "Check the file path, and check the header row settings if the file does have data."
+  },
+  {
+    "code": "czml.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose geometry contains no polygons",
+    "help": "Check the feature's LOD geometries; only LOD > 0 geometries with polygons are converted."
+  },
+  {
+    "code": "czml.missing_feature_id",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature without a feature_id",
+    "help": "Ensure upstream features carry a CityGML gml:id before reaching the CZML Writer."
+  },
+  {
+    "code": "czml.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "CZML Writer only converts CityGML geometry to polygons; route other geometry types to a different writer."
+  },
+  {
+    "code": "expr.attribute_operation_failed",
+    "category": "expression",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped attribute operation that failed to evaluate",
+    "help": "Check the operation's expression for the attribute it reads or produces."
+  },
+  {
+    "code": "geometry.area_angular_crs",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "area is in square degrees, not a real-world area",
+    "help": "Check your input geometry's coordinate system and reproject it to a projected CRS; a geographic CRS measures area in degrees, not a real-world unit."
+  },
+  {
+    "code": "geometry.area_mixed_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "geometry parts sit in different coordinate frames, so the summed area mixes units",
+    "help": "Reproject all parts of the geometry to a single coordinate system before measuring area."
+  },
+  {
+    "code": "geometry.area_not_measurable",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "area not measurable, wrote 0",
+    "help": "An unevaluated CSG tree is the one geometry Area Calculator cannot measure; run CSG Evaluator to compute the solid it describes, then measure the result."
+  },
+  {
+    "code": "geometry.area_skipped_parts",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped geometry part(s) that cannot be measured; their area is not in the total",
+    "help": "An unevaluated CSG tree is the one geometry part that cannot be measured; run CSG Evaluator on the geometry before measuring so that every part counts toward the total."
+  },
+  {
+    "code": "geometry.area_unknown_unit",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "cannot establish the coordinate system's unit, so the area's unit is unknown",
+    "help": "Check your input geometry's coordinate system; Area Calculator could not determine whether it measures in a linear or an angular unit."
+  },
+  {
+    "code": "geometry.coordinate_frame_mismatch",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature in a different coordinate frame than the node's other inputs",
+    "help": "Reproject every input of the node to one coordinate frame upstream."
+  },
+  {
+    "code": "geometry.footprint_unavailable",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose horizontal footprint could not be computed",
+    "help": "Planar tests compare 3D geometry by its footprint; check that the geometry is a supported, non-degenerate solid or surface."
+  },
+  {
+    "code": "geometry.mixed_coordinate_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose parts are in different coordinate frames",
+    "help": "Reproject the geometry to one coordinate frame upstream."
+  },
+  {
+    "code": "geometry.mixed_dimensions",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature mixing 2D and 3D parts",
+    "help": "Split the geometry, or force it to a single dimension upstream."
+  },
+  {
+    "code": "geometry.no_usable_filter",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "failed every candidate because no supplied filter geometry could be prepared",
+    "help": "Every feature supplied as a filter was rejected, so there was nothing left to test against; the preceding warnings name the cause. Reproject all inputs of the node to one coordinate frame in linear units upstream."
+  },
+  {
+    "code": "geometry.non_linear_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped 3D feature in a coordinate frame without linear units",
+    "help": "Reproject 3D input to a coordinate system in linear units upstream."
+  },
+  {
+    "code": "geometry.spatial_test_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose spatial relationship test failed",
+    "help": "Check that the geometry is valid and in a frame the predicate can test."
+  },
+  {
+    "code": "gltf.zero_face_solid",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped solid with zero faces",
+    "help": "The solid has no renderable faces; check upstream geometry processing."
+  },
+  {
+    "code": "internal.diagnostics_overflow",
+    "category": "internal",
+    "defaultDisposition": "warn_drop",
+    "message": "additional diagnostics collapsed into this overflow marker"
+  },
+  {
+    "code": "internal.invariant_violation",
+    "category": "internal",
+    "defaultDisposition": "fatal",
+    "message": "internal invariant violated"
+  },
+  {
+    "code": "internal.unclassified",
+    "category": "internal",
+    "defaultDisposition": "fatal",
+    "message": "node failed with an unclassified error"
+  },
+  {
+    "code": "raster.image_save_failed",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "failed to save the rasterized image",
+    "help": "Check that the configured save path is writable."
+  },
+  {
+    "code": "raster.texture_assignment_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped assigning texture coordinates to a feature",
+    "help": "Image Rasterizer only assigns texture coordinates to CityGML geometry with a non-degenerate boundary."
+  }
+]

@@ -12,11 +12,17 @@ import (
 type checker struct {
 	repo          cerbos.Repo
 	workspaceRepo gqlworkspace.WorkspaceRepo
+	aliases       *aliasCache
 	service       string
 }
 
 func NewChecker(repo cerbos.Repo, workspaceRepo gqlworkspace.WorkspaceRepo, service string) gateway.PermissionChecker {
-	return &checker{repo: repo, workspaceRepo: workspaceRepo, service: service}
+	return &checker{
+		repo:          repo,
+		workspaceRepo: workspaceRepo,
+		aliases:       newAliasCache(defaultAliasCacheSize, defaultAliasCacheTTL),
+		service:       service,
+	}
 }
 
 func (c *checker) CheckPermission(ctx context.Context, resource string, action string, workspaceID ...accountsid.WorkspaceID) (bool, error) {
@@ -41,16 +47,28 @@ func (c *checker) CheckPermission(ctx context.Context, resource string, action s
 	if err != nil {
 		return false, err
 	}
-	return result.Allowed, nil
+	if !result.Allowed {
+		return false, nil
+	}
+
+	if len(workspaceID) > 0 {
+		wsID := workspaceID[0]
+		if !wsID.IsNil() && !c.workspaceRoleAllows(ctx, resource, action, wsID) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // resolveAlias returns the workspace alias for wsID. The accounts client returns a
 // non-nil error (never (nil, nil)) when the workspace is missing or unauthorized, so
 // any failure propagates and the caller fails closed.
 func (c *checker) resolveAlias(ctx context.Context, wsID accountsid.WorkspaceID) (string, error) {
-	ws, err := c.workspaceRepo.FindByID(ctx, wsID.String())
-	if err != nil {
-		return "", err
-	}
-	return ws.Alias(), nil
+	return c.aliases.resolve(ctx, wsID.String(), func(ctx context.Context) (string, error) {
+		ws, err := c.workspaceRepo.FindByID(ctx, wsID.String())
+		if err != nil {
+			return "", err
+		}
+		return ws.Alias(), nil
+	})
 }

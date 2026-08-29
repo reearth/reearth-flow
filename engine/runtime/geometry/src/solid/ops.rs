@@ -269,6 +269,65 @@ impl Footprint for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for Solid {
+    /// The true surface of every shell, voids included: a void's faces are real
+    /// surfaces, so a hollow body has *more* surface than a solid one. That is
+    /// deliberately unlike a polygon's holes, which subtract.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_boundary_face(|face| total += polygon_3d_surface_area(&face));
+        Ok(total)
+    }
+}
+
+use crate::ops::boundary::{Boundary, ExtractBoundary};
+use crate::polygon_mesh::PolygonMesh3D;
+use crate::triangular_mesh::TriangularMesh3D;
+
+// The shells the volume already carries, paired with the frame they are
+// expressed in. Nothing is re-triangulated and appearance stays on them.
+//
+// Whether the shells close is not asserted here: taking the boundary of the
+// result answers that, and is empty exactly when they do.
+impl ExtractBoundary for Solid {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let frame = self.frame();
+        let shells = std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| match shell {
+                Shell::PolygonMesh(data) => Euclidean3DGeometry::PolygonMesh(Box::new(
+                    PolygonMesh3D::new(frame.clone(), data.clone()),
+                )),
+                Shell::TriangularMesh(data) => Euclidean3DGeometry::TriangularMesh(Box::new(
+                    TriangularMesh3D::new(frame.clone(), data.clone()),
+                )),
+            })
+            .collect();
+        Ok(wrap_3d(shells).unwrap_or(Geometry::None).into())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Solid {
+    /// The exterior shell's first face; the voids are inside it and are not
+    /// reached. A shell with no face has no vertex to read.
+    fn elevation(&self) -> Option<f64> {
+        match &self.exterior {
+            Shell::PolygonMesh(data) => data.first_face_elevation(),
+            Shell::TriangularMesh(data) => data.first_triangle_elevation(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

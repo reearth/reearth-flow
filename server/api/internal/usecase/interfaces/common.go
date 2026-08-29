@@ -13,28 +13,28 @@ const (
 )
 
 var (
-	ErrSceneIsLocked   error = errors.New("scene is locked")
-	ErrOperationDenied error = errors.New("operation denied")
-	ErrFileNotIncluded error = errors.New("file not included")
-	ErrFeatureNotFound error = errors.New("feature not found")
-	ErrInvalidOperator error = errors.New("invalid operator")
+	ErrSceneIsLocked    error = errors.New("scene is locked")
+	ErrOperationDenied  error = errors.New("operation denied")
+	ErrFileNotIncluded  error = errors.New("file not included")
+	ErrFeatureNotFound  error = errors.New("feature not found")
+	ErrInvalidOperator  error = errors.New("invalid operator")
+	ErrSnapshotNotFound error = errors.New("snapshot not found")
 )
 
 type Container struct {
-	Asset         Asset
-	CMS           CMS
-	Deployment    Deployment
-	EdgeExecution EdgeExecution
-	Job           Job
-	Log           Log
-	NodeExecution NodeExecution
-	Parameter     Parameter
-	Project       Project
-	ProjectAccess ProjectAccess
-	Trigger       Trigger
-	UserFacingLog UserFacingLog
-	User          User
-	Workspace     Workspace
-	Websocket     WebsocketClient
-	WorkerConfig  WorkerConfig
+	Asset           Asset
+	CMS             CMS
+	Deployment      Deployment
+	Job             Job
+	Log             Log
+	NodeDiagnostics NodeDiagnostics
+	Parameter       Parameter
+	Project         Project
+	ProjectAccess   ProjectAccess
+	Trigger         Trigger
+	UserFacingLog   UserFacingLog
+	User            User
+	Workspace       Workspace
+	Websocket       WebsocketClient
+	WorkerConfig    WorkerConfig
 }
