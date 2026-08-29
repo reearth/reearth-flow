@@ -8,9 +8,6 @@ use uuid::Uuid;
 use reearth_flow_worker::pubsub::Publisher;
 use reearth_flow_worker::types::diagnostic_event::{DiagnosticEvent, ENABLE_DIAGNOSTICS};
 use reearth_flow_worker::types::log_stream_event::LogStreamEvent;
-use reearth_flow_worker::types::node_status_event::{
-    NodeMetrics as PublishNodeMetrics, NodeStatus as PublishNodeStatus, NodeStatusEvent,
-};
 
 /// The identity a failure event carried: always a node id, plus the node's
 /// name when the event had one.
@@ -154,65 +151,6 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 );
                 if let Err(e) = self.publisher.publish(log_stream_event).await {
                     tracing::error!("Failed to publish log stream event: {}", e);
-                }
-            }
-            reearth_flow_runtime::event::Event::NodeStatusChanged {
-                node_handle,
-                status,
-                feature_id,
-                metrics,
-            } => {
-                tracing::info!(
-                    "SENDING NODE STATUS EVENT: node_id={}, status={:?}, feature_id={:?}",
-                    node_handle.id,
-                    status,
-                    feature_id
-                );
-
-                let publish_status = match status {
-                    NodeStatus::Starting => PublishNodeStatus::Starting,
-                    NodeStatus::Processing => PublishNodeStatus::Processing,
-                    NodeStatus::Completed => {
-                        tracing::info!("Node completed: {}", node_handle.id);
-                        PublishNodeStatus::Completed
-                    }
-                    NodeStatus::Failed => {
-                        tracing::warn!("Node failed: {}", node_handle.id);
-                        PublishNodeStatus::Failed
-                    }
-                };
-
-                let publish_metrics = metrics.map(|m| PublishNodeMetrics {
-                    features_processed: m.features_processed,
-                    features_written: m.features_written,
-                    finish_feature_count: m.finish_feature_count,
-                });
-
-                let node_status_event = NodeStatusEvent::new(
-                    self.workflow_id,
-                    self.job_id,
-                    node_handle.id.to_string(),
-                    publish_status,
-                    *feature_id,
-                    publish_metrics,
-                );
-
-                match self.publisher.publish(node_status_event).await {
-                    Ok(_) => {
-                        tracing::info!(
-                            "Successfully published node status: node_id={}, status={:?}",
-                            node_handle.id,
-                            status
-                        );
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            "Failed to publish node status event for node_id={}, status={:?}: {}",
-                            node_handle.id,
-                            status,
-                            e
-                        );
-                    }
                 }
             }
             reearth_flow_runtime::event::Event::Diagnostic(diagnostic) => {

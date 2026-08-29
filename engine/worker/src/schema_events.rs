@@ -7,7 +7,7 @@ use reearth_flow_worker::{
     errors::{Error, Result},
     types::{
         diagnostic_event::DiagnosticEvent, job_complete_event::JobCompleteEvent,
-        log_stream_event::LogStreamEvent, node_status_event::NodeStatusEvent,
+        log_stream_event::LogStreamEvent,
     },
 };
 
@@ -16,7 +16,7 @@ pub fn build_schema_events_command() -> Command {
         .about("Generate JSON Schema files for the worker's pubsub wire event types.")
         .long_about(
             "Writes JSON Schema documents for JobCompleteEvent, LogStreamEvent, \
-             NodeStatusEvent, and DiagnosticEvent — derived directly from the Rust \
+             and DiagnosticEvent — derived directly from the Rust \
              types via `schemars` — into `--dir`. Run after changing any of these \
              types so the committed schema/*.json files cannot drift from the \
              structs that actually go over the wire.",
@@ -58,11 +58,6 @@ impl SchemaEventsCommand {
             &self.dir,
             "log_stream_event.json",
             schemars::schema_for!(LogStreamEvent),
-        )?;
-        Self::write_schema(
-            &self.dir,
-            "node_status_event.json",
-            schemars::schema_for!(NodeStatusEvent),
         )?;
         Self::write_schema(
             &self.dir,
