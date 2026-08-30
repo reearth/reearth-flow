@@ -32,6 +32,7 @@
   "literal": "字面量",
   "No value set": "未设置值",
   "Reset": "重置",
+  "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "{{featureCount}} 个要素已隐藏，因为其坐标不是 WGS84（EPSG:4326）。地理查看器仅支持 EPSG:4326，请将数据重投影后再查看。",
   "Select All": "全选",
   "Deselect All": "全不选",
   "Default Value": "默认值",
