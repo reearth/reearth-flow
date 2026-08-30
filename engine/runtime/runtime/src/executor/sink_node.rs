@@ -225,6 +225,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     // Upstream dropped its sender without a Terminate (e.g. it
                     // failed) — on_terminate() below is never reached, so flush
                     // accumulated summaries and reject rows here or they're lost.
+                    self.source_intermediate_recorder.flush(
+                        &self.feature_state,
+                        &self.node_name,
+                        self.node_handle.id.as_ref(),
+                    );
                     let summaries =
                         crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
                     *self.summaries_sink.lock() = summaries;
@@ -342,6 +347,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     is_terminated[index] = true;
                     sel.remove(index);
                     if is_terminated.iter().all(|value| *value) {
+                        self.source_intermediate_recorder.flush(
+                            &self.feature_state,
+                            &self.node_name,
+                            self.node_handle.id.as_ref(),
+                        );
                         let features_count = self
                             .features_written
                             .load(std::sync::atomic::Ordering::Relaxed);
