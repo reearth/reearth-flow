@@ -706,12 +706,6 @@ impl AttributeFlattener {
     /// so it's logged the same way finish() logs true end-of-run orphans.
     fn flush_group_state(&mut self, ending_group: &str) {
         let orphan_count: usize = self.children_buffer.values().map(|v| v.len()).sum();
-        eprintln!(
-            "[MEASURE attribute_flattener] flush group={ending_group:?} gmlid_to_citygml_attributes={} gmlid_to_subfeature_inherited={} gmlid_to_risk_attr_keys={} children_buffer_orphans={orphan_count}",
-            self.gmlid_to_citygml_attributes.len(),
-            self.gmlid_to_subfeature_inherited.len(),
-            self.gmlid_to_risk_attr_keys.len(),
-        );
         if orphan_count > 0 {
             tracing::error!(
                 "Found {orphan_count} orphaned features without parents in buffer at end of group {ending_group:?}",

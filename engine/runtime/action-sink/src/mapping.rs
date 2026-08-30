@@ -13,7 +13,6 @@ use crate::{
         obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, xml::XmlWriterFactory,
         zip::ZipFileWriterFactory,
     },
-    mem_accumulator_debug::MemAccumulatorDebugSinkFactory,
     noop::NoopSinkFactory,
 };
 
@@ -26,7 +25,6 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<ExcelWriterFactory>::default(),
         Box::<JsonWriterFactory>::default(),
         Box::<NoopSinkFactory>::default(),
-        Box::<MemAccumulatorDebugSinkFactory>::default(),
         Box::<GeoPackageWriterFactory>::default(),
         Box::<GeoJsonWriterFactory>::default(),
         Box::<MVTSinkFactory>::default(),

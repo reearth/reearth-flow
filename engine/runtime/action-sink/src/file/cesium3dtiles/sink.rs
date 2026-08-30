@@ -328,16 +328,6 @@ impl Cesium3DTilesWriter {
                 .or_default()
                 .push((feature_type, buffer));
         }
-        let flushed: usize = grouped
-            .values()
-            .flat_map(|v| v.iter())
-            .map(|(_, feats)| feats.len())
-            .sum();
-        eprintln!(
-            "[MEASURE cesium_writer] flush group={group:?} keys={} features={flushed} buffered_keys_remaining={}",
-            grouped.len(),
-            self.buffer.len()
-        );
         for ((output, compress_output), upstream) in &grouped {
             self.write(ctx.clone(), upstream, output, compress_output)?;
         }
@@ -380,11 +370,6 @@ impl Cesium3DTilesWriter {
                 .or_default()
                 .push((feature_type.clone(), buffer.clone()));
         }
-        let flushed: usize = self.buffer.values().map(|v| v.len()).sum();
-        eprintln!(
-            "[MEASURE cesium_writer] finish flush keys={} features={flushed} (final/leftover groups)",
-            self.buffer.len()
-        );
         for ((output, compress_output), buffer) in &features {
             self.write(ctx.clone(), buffer, output, compress_output)?;
         }
