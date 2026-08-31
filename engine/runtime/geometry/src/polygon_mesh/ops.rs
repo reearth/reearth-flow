@@ -787,14 +787,28 @@ impl Elevation for PolygonMesh3D {
 }
 
 #[cfg(feature = "new-geometry")]
+impl PolygonMesh3D {
+    /// The `[x, y, z]` of the exterior shell's first face's first vertex; see
+    /// [`PolygonMesh3DData::first_face_vertex`].
+    pub fn first_face_vertex(&self) -> Option<[f64; 3]> {
+        self.data().first_face_vertex()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
 impl PolygonMesh3DData {
-    /// The z of the first face's first exterior vertex. The CSR index buffer
-    /// begins with that face's exterior ring, so this is where the mesh's
+    /// The `[x, y, z]` of the first face's first exterior vertex. The CSR index
+    /// buffer begins with that face's exterior ring, so this is where the mesh's
     /// traversal starts — the vertex pool's own order is unrelated.
-    pub(crate) fn first_face_elevation(&self) -> Option<f64> {
+    pub fn first_face_vertex(&self) -> Option<[f64; 3]> {
         let (face_indices, _, _) = self.csr_buffers();
         let [i] = face_indices.iter_u32().next()?;
-        Some(self.vertices()[i as usize][2])
+        Some(self.vertices()[i as usize])
+    }
+
+    /// The z of the first face's first exterior vertex.
+    pub(crate) fn first_face_elevation(&self) -> Option<f64> {
+        self.first_face_vertex().map(|v| v[2])
     }
 }
 
