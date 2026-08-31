@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::Attribute;
+use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -69,7 +69,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 
         let process = AttributeDuplicateFilter {
             params,
-            seen: HashSet::new(),
+            buffer: HashMap::new(),
         };
         Ok(Box::new(process))
     }
@@ -78,7 +78,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 #[derive(Debug, Clone)]
 struct AttributeDuplicateFilter {
     params: AttributeDuplicateFilterParam,
-    seen: HashSet<String>,
+    buffer: HashMap<String, Feature>,
 }
 
 /// # AttributeDuplicateFilter Parameters
@@ -91,10 +91,14 @@ struct AttributeDuplicateFilterParam {
 }
 
 impl Processor for AttributeDuplicateFilter {
+    fn is_accumulating(&self) -> bool {
+        true
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let key_values = self
@@ -107,17 +111,22 @@ impl Processor for AttributeDuplicateFilter {
             .iter()
             .map(|&v| v.clone().to_string())
             .collect::<Vec<_>>();
-        if self.seen.insert(key_values.join(",")) {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
-        }
+        self.buffer.insert(key_values.join(","), feature.clone());
         Ok(())
     }
 
     fn finish(
         &mut self,
-        _ctx: NodeContext,
-        _fw: &ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        for feature in self.buffer.values() {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                DEFAULT_PORT.clone(),
+            ));
+        }
         Ok(())
     }
 

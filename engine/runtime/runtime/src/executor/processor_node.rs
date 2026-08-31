@@ -453,7 +453,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        channel_manager.wait_until_downstream_empty();
+        channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
         channel_manager.reset_send_count();
         let result = processor
             .write()
