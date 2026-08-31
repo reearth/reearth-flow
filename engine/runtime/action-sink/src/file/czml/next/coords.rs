@@ -115,16 +115,28 @@ mod tests {
     }
 
     #[test]
-    fn wgs84_input_is_left_essentially_alone() {
+    fn wgs84_input_passes_through_untouched_in_lat_lon_order() {
+        // Input is already EPSG:4979, so it is stated in 4979's own authority
+        // order: latitude first, then longitude, then height (see the module
+        // docs). Tokyo's lat (35.68) and lon (139.76) ranges are disjoint, so
+        // a fixture written lon-first — or an implementation that swapped —
+        // could not pass this.
         let mut cache = ReprojectionCache::default();
-        let mut coords = vec![[139.7, 35.7, 10.0]];
+        let mut coords = vec![[35.68, 139.76, 10.0]];
         to_wgs84(
             &mut cache,
             &CoordinateFrame::Crs(WGS84_GEOGRAPHIC),
             &mut coords,
         )
         .expect("4979 reprojects");
-        assert!((coords[0][0] - 139.7).abs() < 1e-9);
-        assert!((coords[0][1] - 35.7).abs() < 1e-9);
+        // The same-CRS short circuit returns without transforming at all, so
+        // this is exact equality, not an approximate comparison: any drift in
+        // any component means the short circuit was skipped and a real
+        // transform ran.
+        assert_eq!(
+            coords,
+            vec![[35.68, 139.76, 10.0]],
+            "a 4979 input must come back byte-identical, still [lat, lon, height]"
+        );
     }
 }

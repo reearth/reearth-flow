@@ -153,12 +153,15 @@ mod tests {
 
     #[test]
     fn a_face_becomes_a_polygon_packet() {
+        // Ring vertices are stated in the frame's own authority order, which
+        // for EPSG:4979 is [lat, lon, height] — so 35.x leads and 139.x
+        // follows. See `coords`'s module docs.
         let face = Face {
             rings: vec![vec![
-                [139.0, 35.0, 0.0],
-                [139.1, 35.0, 0.0],
-                [139.1, 35.1, 0.0],
-                [139.0, 35.0, 0.0],
+                [35.0, 139.0, 0.0],
+                [35.0, 139.1, 0.0],
+                [35.1, 139.1, 0.0],
+                [35.0, 139.0, 0.0],
             ]],
             frame: wgs84(),
         };
@@ -170,19 +173,21 @@ mod tests {
 
     #[test]
     fn a_face_with_a_hole_keeps_the_hole() {
+        // [lat, lon, height], EPSG:4979 authority order — as everywhere else
+        // in this module.
         let face = Face {
             rings: vec![
                 vec![
-                    [139.0, 35.0, 0.0],
-                    [139.4, 35.0, 0.0],
-                    [139.4, 35.4, 0.0],
-                    [139.0, 35.0, 0.0],
+                    [35.0, 139.0, 0.0],
+                    [35.0, 139.4, 0.0],
+                    [35.4, 139.4, 0.0],
+                    [35.0, 139.0, 0.0],
                 ],
                 vec![
-                    [139.1, 35.1, 0.0],
-                    [139.2, 35.1, 0.0],
-                    [139.2, 35.2, 0.0],
-                    [139.1, 35.1, 0.0],
+                    [35.1, 139.1, 0.0],
+                    [35.1, 139.2, 0.0],
+                    [35.2, 139.2, 0.0],
+                    [35.1, 139.1, 0.0],
                 ],
             ],
             frame: wgs84(),
@@ -196,7 +201,8 @@ mod tests {
     #[test]
     fn a_polyline_packet_keeps_every_vertex() {
         // Fixes the defect where a LineString wrote only its first point.
-        let vertices = [[139.0, 35.0, 0.0], [139.1, 35.1, 0.0], [139.2, 35.2, 0.0]];
+        // Vertices are [lat, lon, height], EPSG:4979 authority order.
+        let vertices = [[35.0, 139.0, 0.0], [35.1, 139.1, 0.0], [35.2, 139.2, 0.0]];
         let mut cache = ReprojectionCache::default();
         let packet =
             polyline_packet(&mut cache, &vertices, &wgs84(), "parent").expect("wgs84 line");
