@@ -114,6 +114,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 }
 
 type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
+type GroupedBuffers = HashMap<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>;
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
@@ -317,7 +318,7 @@ impl Cesium3DTilesWriter {
         let Some(keys) = self.group_keys.remove(group) else {
             return Ok(());
         };
-        let mut grouped: HashMap<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>> = HashMap::new();
+        let mut grouped: GroupedBuffers = HashMap::new();
         for key in keys {
             let Some(buffer) = self.buffer.remove(&key) else {
                 continue;
