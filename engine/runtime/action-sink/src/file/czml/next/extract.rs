@@ -123,75 +123,141 @@ pub(crate) enum ArealError {
 /// reprojection and no axis swapping happen here. Reprojection happens later
 /// (`coords::to_wgs84`), and the lat/lon swap into CZML's `cartographicDegrees`
 /// happens later still, in the packet builder (Task 5).
+///
+/// Runs the same tree walk twice through [`FaceSink`]: once with a
+/// [`FaceCounter`] that only sums `PolygonMesh::num_faces` /
+/// `TriangularMesh::num_triangles` / `Shell::num_faces` — all already O(1) —
+/// so a feature over budget is refused **before** a single ring is
+/// materialized, and only if that count is within budget a second pass with a
+/// [`FaceCollector`] actually builds them. A single generic walk (rather than
+/// two independent matches over the geometry enum) is what makes counting and
+/// collecting incapable of disagreeing: a leaf variant added to the match
+/// gets both behaviors from one call site, or the match itself fails to
+/// compile.
 pub(crate) fn faces_of(geometry: &Geometry) -> Result<Vec<Face>, ArealError> {
-    let mut faces = Vec::new();
-    collect_faces(geometry, &mut faces);
-    if faces.len() > MAX_FACES_PER_FEATURE {
-        Err(ArealError::TooManyFaces(faces.len()))
-    } else if faces.is_empty() {
-        Err(ArealError::NothingDrawable)
-    } else {
-        Ok(faces)
+    let mut counter = FaceCounter::default();
+    walk(geometry, &mut counter);
+    if counter.total > MAX_FACES_PER_FEATURE {
+        return Err(ArealError::TooManyFaces(counter.total));
+    }
+    if counter.total == 0 {
+        return Err(ArealError::NothingDrawable);
+    }
+    let mut collector = FaceCollector::default();
+    walk(geometry, &mut collector);
+    Ok(collector.faces)
+}
+
+/// Where a face goes once the tree walk finds it: either just a count, or an
+/// actually-built [`Face`]. Each leaf below hands its face(s) to `one`/`many`
+/// as a lazily-evaluated closure, so [`FaceCounter`] can add the count without
+/// ever running the closure that would gather ring coordinates.
+trait FaceSink {
+    /// A leaf that is exactly one face (a bare `Polygon`).
+    fn one(&mut self, make: impl FnOnce() -> Face);
+    /// A leaf mesh containing exactly `n` faces (a `PolygonMesh`,
+    /// `TriangularMesh`, or `Solid` shell); `n` must come from an O(1) counter
+    /// (`num_faces`/`num_triangles`), never from actually walking the mesh.
+    fn many(&mut self, n: usize, make: impl FnOnce() -> Vec<Face>);
+}
+
+/// Sums face counts without ever building a [`Face`]. See [`faces_of`].
+#[derive(Default)]
+struct FaceCounter {
+    total: usize,
+}
+
+impl FaceSink for FaceCounter {
+    fn one(&mut self, _make: impl FnOnce() -> Face) {
+        self.total += 1;
+    }
+
+    fn many(&mut self, n: usize, _make: impl FnOnce() -> Vec<Face>) {
+        self.total += n;
     }
 }
 
-fn collect_faces(geometry: &Geometry, out: &mut Vec<Face>) {
+/// Actually builds every [`Face`]. See [`faces_of`].
+#[derive(Default)]
+struct FaceCollector {
+    faces: Vec<Face>,
+}
+
+impl FaceSink for FaceCollector {
+    fn one(&mut self, make: impl FnOnce() -> Face) {
+        self.faces.push(make());
+    }
+
+    fn many(&mut self, _n: usize, make: impl FnOnce() -> Vec<Face>) {
+        self.faces.extend(make());
+    }
+}
+
+fn walk<S: FaceSink>(geometry: &Geometry, sink: &mut S) {
     match geometry {
         Geometry::None => {}
-        Geometry::Euclidean3D(g) => collect_3d(g, out),
-        Geometry::Euclidean2D(g) => collect_2d(g, out),
+        Geometry::Euclidean3D(g) => walk_3d(g, sink),
+        Geometry::Euclidean2D(g) => walk_2d(g, sink),
         Geometry::GeometryCollection(c) => {
             for member in c.members() {
-                collect_faces(member, out);
+                walk(member, sink);
             }
         }
     }
 }
 
-/// [`collect_faces`] for a 3D-embedded geometry. Mirrors
-/// `cesium3dtiles/next/mesh.rs`'s `collect_euclidean3d`: `Collection` recurses,
-/// `PolygonMesh`/`TriangularMesh` are taken directly, a bare `Polygon` is a
-/// single-face case, and a `Solid`'s boundary shells are unpacked and
-/// re-paired with the solid's frame, since a shell is coordinate-free and its
-/// frame lives on the enclosing `Solid`. Unlike that traversal, this one
-/// collects faces (CZML has no mesh primitive; every face becomes its own
-/// entity) rather than whole meshes.
-fn collect_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<Face>) {
+/// [`walk`] for a 3D-embedded geometry. Mirrors `cesium3dtiles/next/mesh.rs`'s
+/// `collect_euclidean3d`: `Collection` recurses, `PolygonMesh`/`TriangularMesh`
+/// are taken directly, a bare `Polygon` is a single-face case, and a `Solid`'s
+/// boundary shells are unpacked and re-paired with the solid's frame, since a
+/// shell is coordinate-free and its frame lives on the enclosing `Solid`.
+/// Unlike that traversal, this one collects faces (CZML has no mesh primitive;
+/// every face becomes its own entity) rather than whole meshes, and every leaf
+/// reports its count up front (`sink.many`/`sink.one`) rather than pushing
+/// into a running list, so a counting-only pass never materializes rings.
+fn walk_3d<S: FaceSink>(geometry: &Euclidean3DGeometry, sink: &mut S) {
     match geometry {
         Euclidean3DGeometry::Collection(c) => {
             for member in c.members() {
-                collect_3d(member, out);
+                walk_3d(member, sink);
             }
         }
-        Euclidean3DGeometry::Polygon(p) => out.push(Face {
+        Euclidean3DGeometry::Polygon(p) => sink.one(|| Face {
             rings: polygon_3d_rings(p),
             frame: p.frame().clone(),
         }),
         Euclidean3DGeometry::PolygonMesh(m) => {
             let frame = m.frame().clone();
-            for face in m.faces() {
-                out.push(Face {
-                    rings: polygon_3d_rings(&face),
-                    frame: frame.clone(),
-                });
-            }
+            sink.many(m.num_faces(), || {
+                m.faces()
+                    .iter()
+                    .map(|face| Face {
+                        rings: polygon_3d_rings(face),
+                        frame: frame.clone(),
+                    })
+                    .collect()
+            });
         }
         Euclidean3DGeometry::TriangularMesh(m) => {
             let frame = m.frame().clone();
-            let vertices = m.vertices();
-            for [a, b, c] in m.triangles() {
-                out.push(triangle_face(
-                    vertices[a as usize],
-                    vertices[b as usize],
-                    vertices[c as usize],
-                    frame.clone(),
-                ));
-            }
+            sink.many(m.num_triangles(), || {
+                let vertices = m.vertices();
+                m.triangles()
+                    .map(|[a, b, c]| {
+                        triangle_face(
+                            vertices[a as usize],
+                            vertices[b as usize],
+                            vertices[c as usize],
+                            frame.clone(),
+                        )
+                    })
+                    .collect()
+            });
         }
         Euclidean3DGeometry::Solid(solid) => {
             let frame = solid.frame().clone();
             for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
-                collect_shell(shell, &frame, out);
+                walk_shell(shell, &frame, sink);
             }
         }
         // A point cloud has no surface; an unevaluated boolean tree has no
@@ -203,38 +269,48 @@ fn collect_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<Face>) {
 }
 
 /// A `Solid` boundary shell, re-paired with the solid's own frame (a shell is
-/// coordinate-free).
-fn collect_shell(shell: &Shell, frame: &CoordinateFrame, out: &mut Vec<Face>) {
+/// coordinate-free). `Shell::num_faces` (`PolygonMesh::num_faces` /
+/// `TriangularMesh::num_triangles` under the hood) is the O(1) count handed to
+/// `sink.many`; only the collecting sink's closure walks the shell's rings.
+fn walk_shell<S: FaceSink>(shell: &Shell, frame: &CoordinateFrame, sink: &mut S) {
+    let n = shell.num_faces();
     match shell {
         Shell::PolygonMesh(data) => {
-            for face in data.faces(frame) {
-                out.push(Face {
-                    rings: polygon_3d_rings(&face),
-                    frame: frame.clone(),
-                });
-            }
+            let frame = frame.clone();
+            sink.many(n, || {
+                data.faces(&frame)
+                    .iter()
+                    .map(|face| Face {
+                        rings: polygon_3d_rings(face),
+                        frame: frame.clone(),
+                    })
+                    .collect()
+            });
         }
         Shell::TriangularMesh(data) => {
-            for [a, b, c] in data.triangle_coords() {
-                out.push(triangle_face(a, b, c, frame.clone()));
-            }
+            let frame = frame.clone();
+            sink.many(n, || {
+                data.triangle_coords()
+                    .map(|[a, b, c]| triangle_face(a, b, c, frame.clone()))
+                    .collect()
+            });
         }
     }
 }
 
-/// [`collect_faces`] for a 2D-embedded geometry. Each ring is lifted to 3D
-/// using the leaf's optional elevation, `0.0` when absent — the same
-/// convention `position_2d` uses.
-fn collect_2d(geometry: &Euclidean2DGeometry, out: &mut Vec<Face>) {
+/// [`walk`] for a 2D-embedded geometry. Each ring is lifted to 3D using the
+/// leaf's optional elevation, `0.0` when absent — the same convention
+/// `position_2d` uses.
+fn walk_2d<S: FaceSink>(geometry: &Euclidean2DGeometry, sink: &mut S) {
     match geometry {
         Euclidean2DGeometry::Collection(c) => {
             for member in c.members() {
-                collect_2d(member, out);
+                walk_2d(member, sink);
             }
         }
         Euclidean2DGeometry::Polygon(p) => {
             let elevation = p.elevation().unwrap_or(0.0);
-            out.push(Face {
+            sink.one(|| Face {
                 rings: polygon_2d_rings(p.exterior(), p.interiors(), elevation),
                 frame: p.frame().clone(),
             });
@@ -242,26 +318,33 @@ fn collect_2d(geometry: &Euclidean2DGeometry, out: &mut Vec<Face>) {
         Euclidean2DGeometry::PolygonMesh(m) => {
             let frame = m.frame().clone();
             let elevation = m.elevation().unwrap_or(0.0);
-            for face in m.faces() {
-                out.push(Face {
-                    rings: polygon_2d_rings(face.exterior(), face.interiors(), elevation),
-                    frame: frame.clone(),
-                });
-            }
+            sink.many(m.num_faces(), || {
+                m.faces()
+                    .iter()
+                    .map(|face| Face {
+                        rings: polygon_2d_rings(face.exterior(), face.interiors(), elevation),
+                        frame: frame.clone(),
+                    })
+                    .collect()
+            });
         }
         Euclidean2DGeometry::TriangularMesh(m) => {
             let frame = m.frame().clone();
             let elevation = m.elevation().unwrap_or(0.0);
-            let vertices = m.vertices();
-            let lift = |[x, y]: [f64; 2]| [x, y, elevation];
-            for [a, b, c] in m.triangles() {
-                out.push(triangle_face(
-                    lift(vertices[a as usize]),
-                    lift(vertices[b as usize]),
-                    lift(vertices[c as usize]),
-                    frame.clone(),
-                ));
-            }
+            sink.many(m.num_triangles(), || {
+                let vertices = m.vertices();
+                let lift = |[x, y]: [f64; 2]| [x, y, elevation];
+                m.triangles()
+                    .map(|[a, b, c]| {
+                        triangle_face(
+                            lift(vertices[a as usize]),
+                            lift(vertices[b as usize]),
+                            lift(vertices[c as usize]),
+                            frame.clone(),
+                        )
+                    })
+                    .collect()
+            });
         }
         // Neither carries a surface.
         Euclidean2DGeometry::Point(_) | Euclidean2DGeometry::LineString(_) => {}
@@ -634,6 +717,27 @@ mod tests {
                 PolygonMesh3D::from_parts(CoordinateFrame::default(), vertices, faces).unwrap();
             Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
         }
+
+        /// As [`mesh_with_faces`], but for `n` in the millions: built from flat
+        /// CSR buffers directly (not a `Vec<Vec<u32>>` per face), so
+        /// construction itself stays cheap even at this size. Exists only to
+        /// make the cost gap between *counting* faces (`num_faces`, O(1)) and
+        /// *collecting* them (walking and materializing every ring) large
+        /// enough to be observable in wall-clock time from outside `faces_of`.
+        pub(super) fn huge_mesh_with_faces(n: usize) -> Geometry {
+            let vertices = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+            let face_indices: Vec<u32> = (0..n).flat_map(|_| [0u32, 1, 2]).collect();
+            let face_offsets: Vec<u32> = (1..n as u32).map(|i| i * 3).collect();
+            let mesh = PolygonMesh3D::from_raw_parts(
+                CoordinateFrame::default(),
+                vertices,
+                face_indices,
+                face_offsets,
+                Vec::new(),
+            )
+            .unwrap();
+            Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
+        }
     }
 
     #[test]
@@ -675,6 +779,37 @@ mod tests {
             Err(ArealError::TooManyFaces(n)) => assert_eq!(n, MAX_FACES_PER_FEATURE + 1),
             other => panic!("expected TooManyFaces, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn too_many_faces_is_refused_without_materializing_any_of_them() {
+        // `faces_of`'s return value alone can't distinguish "rejected after
+        // counting" from "rejected after building and discarding every face":
+        // both produce the same `Err`. The one thing that *does* differ is
+        // cost, since `PolygonMesh::num_faces` is O(1) but building a face's
+        // rings is not. So the fixture goes to eight million faces
+        // specifically to make that cost gap observable from outside
+        // `faces_of` — a materializing implementation would need to build
+        // eight million `Face`s (each its own heap-allocated `Vec<Vec<[f64;
+        // 3]>>`) before ever reaching the rejection; the counting-only path
+        // reads a single O(1) `num_faces` call. If this ever starts flaking
+        // on a slower CI runner, that's this test reaching the edge of what a
+        // wall-clock budget can responsibly assert, not evidence the guard
+        // stopped working — the fix would be to widen the budget or the face
+        // count, not to delete the coverage.
+        let g = fixture::huge_mesh_with_faces(8_000_000);
+        let start = std::time::Instant::now();
+        let result = faces_of(&g);
+        let elapsed = start.elapsed();
+        assert!(
+            matches!(result, Err(ArealError::TooManyFaces(8_000_000))),
+            "expected TooManyFaces(8_000_000), got {result:?}"
+        );
+        assert!(
+            elapsed < std::time::Duration::from_millis(500),
+            "rejecting 8,000,000 faces took {elapsed:?}, which is far more than an O(1) count \
+             should need; that points at faces being materialized before the guard rejects them"
+        );
     }
 
     #[test]
