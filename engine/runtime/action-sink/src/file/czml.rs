@@ -1,3 +1,6 @@
+#[cfg(feature = "new-geometry")]
+mod next;
+
 use std::collections::HashMap;
 use std::io::Write;
 use std::vec;
