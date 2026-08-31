@@ -120,7 +120,25 @@ const CanvasContextMenu: React.FC<Props> = ({
     async (node?: Node, nodes?: Node[]) => {
       if (!nodes && !node) return;
 
-      const toDelete = nodes ?? (node ? [node] : []);
+      const selected = nodes ?? (node ? [node] : []);
+
+      const toDeleteIds = new Set(selected.map((n) => n.id));
+      let added = true;
+      while (added) {
+        added = false;
+        for (const n of allNodes) {
+          if (
+            n.parentId &&
+            toDeleteIds.has(n.parentId) &&
+            !toDeleteIds.has(n.id)
+          ) {
+            toDeleteIds.add(n.id);
+            added = true;
+          }
+        }
+      }
+      const toDelete = allNodes.filter((n) => toDeleteIds.has(n.id));
+
       const shouldDelete = await onBeforeDelete?.({ nodes: toDelete });
 
       if (shouldDelete) {
@@ -130,7 +148,7 @@ const CanvasContextMenu: React.FC<Props> = ({
         );
       }
     },
-    [onBeforeDelete, onNodesChange, onNodesDeleteCleanup],
+    [allNodes, onBeforeDelete, onNodesChange, onNodesDeleteCleanup],
   );
 
   const clipboardHasReadersOrWriters =

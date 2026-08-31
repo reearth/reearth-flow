@@ -171,10 +171,22 @@ export default ({
   );
 
   const handleYWorkflowAddFromSelection = useCallback(
-    async (nodes: Node[], edges: Edge[]) => {
+    async (snapshotNodes: Node[], snapshotEdges: Edge[]) => {
       try {
         const routers = await fetchRouterConfigs();
         undoTrackerActionWrapper(() => {
+          const live = currentYWorkflow
+            ? rebuildWorkflow(currentYWorkflow)
+            : undefined;
+
+          const selectedIds = new Set(
+            snapshotNodes.filter((n) => n.selected).map((n) => n.id),
+          );
+          const nodes = (
+            (live?.nodes as Node[] | undefined) ?? snapshotNodes
+          ).map((n) => ({ ...n, selected: selectedIds.has(n.id) }));
+          const edges = (live?.edges as Edge[] | undefined) ?? snapshotEdges;
+
           const selectedNodes = nodes.filter((n) => n.selected);
           if (selectedNodes.length === 0) return;
 

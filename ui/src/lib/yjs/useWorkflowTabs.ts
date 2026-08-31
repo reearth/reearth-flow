@@ -37,6 +37,13 @@ export default ({
     }));
   }, [workflowNames]);
 
+  useEffect(() => {
+    if (workflows.length === 0) return;
+    if (!workflows.some((w) => w.id === currentWorkflowId)) {
+      setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
+    }
+  }, [workflows, currentWorkflowId, setCurrentWorkflowId]);
+
   const handleCurrentWorkflowIdChange = useCallback(
     (id?: string) => {
       if (!id) return setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
@@ -48,6 +55,17 @@ export default ({
   const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>([
     DEFAULT_ENTRY_GRAPH_ID,
   ]);
+
+  useEffect(() => {
+    if (workflows.length === 0) return;
+    setOpenWorkflowIds((ids) => {
+      const kept = ids.filter(
+        (id) =>
+          id === DEFAULT_ENTRY_GRAPH_ID || workflows.some((w) => w.id === id),
+      );
+      return kept.length === ids.length ? ids : kept;
+    });
+  }, [workflows]);
 
   const openWorkflows: {
     id: string;

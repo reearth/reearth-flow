@@ -27,7 +27,15 @@ export default ({ edges, onEdgesAdd, onEdgesChange }: Props) => {
         id: generateUUID(),
         ...connection,
       };
-      if (edges.find((e) => e.id === newEdge.id)) return;
+
+      const alreadyConnected = edges.some(
+        (e) =>
+          e.source === newEdge.source &&
+          e.target === newEdge.target &&
+          (e.sourceHandle ?? null) === (newEdge.sourceHandle ?? null) &&
+          (e.targetHandle ?? null) === (newEdge.targetHandle ?? null),
+      );
+      if (alreadyConnected) return;
       onEdgesAdd?.([newEdge]);
     },
     [edges, onEdgesAdd],

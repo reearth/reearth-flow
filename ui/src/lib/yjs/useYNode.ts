@@ -10,7 +10,7 @@ import type {
   Workflow,
 } from "@flow/types";
 
-import { yNodeConstructor } from "./conversions";
+import { updateYNode, yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
@@ -185,8 +185,7 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.item) {
-              const newYNode = yNodeConstructor(change.item);
-              yNodes.set(change.id, newYNode);
+              updateYNode(existingYNode, change.item);
             }
             break;
           }
@@ -237,19 +236,21 @@ export default ({
               ) {
                 handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
               } else if (nodeToDelete.data.params?.routingPort) {
+                const currentWorkflowId = currentYWorkflow
+                  ?.get("id")
+                  ?.toJSON() as string;
                 const parentWorkflowId = rawWorkflows.find((w) => {
                   const nodes = w.nodes as Node[];
                   return nodes.some(
-                    (n) =>
-                      n.id ===
-                      (currentYWorkflow?.get("id")?.toJSON() as string),
+                    (n) => n.data.subworkflowId === currentWorkflowId,
                   );
                 })?.id;
-                if (!parentWorkflowId) return;
-                const parentYWorkflow = yWorkflows.get(parentWorkflowId);
+                const parentYWorkflow = parentWorkflowId
+                  ? yWorkflows.get(parentWorkflowId)
+                  : undefined;
                 if (parentYWorkflow) {
                   removeParentYWorkflowNodePseudoPort(
-                    currentYWorkflow?.get("id")?.toJSON() as string,
+                    currentWorkflowId,
                     parentYWorkflow,
                     nodeToDelete,
                   );

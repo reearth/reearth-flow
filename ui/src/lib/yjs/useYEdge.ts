@@ -3,7 +3,7 @@ import { Dispatch, SetStateAction, useCallback } from "react";
 
 import { Edge } from "@flow/types";
 
-import { yEdgeConstructor } from "./conversions";
+import { updateYEdge, yEdgeConstructor } from "./conversions";
 import type { YEdge, YEdgesMap, YWorkflow } from "./types";
 
 export default ({
@@ -65,8 +65,7 @@ export default ({
                   return seids.filter((seid) => seid !== change.id);
                 });
 
-                const newYEdge = yEdgeConstructor(change.item);
-                yEdges.set(change.id, newYEdge);
+                updateYEdge(existing, change.item);
               }
               break;
             }

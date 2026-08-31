@@ -6,6 +6,7 @@ import type { YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 import useYHistory from "./useYHistory";
 import useYLayout from "./useYLayout";
+import useYMapKeyVersion from "./useYMapKeyVersion";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 
@@ -27,6 +28,10 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
+  // Keeps currentYWorkflow below from going stale when a workflow entry is
+  // added, replaced or deleted - see useYMapKeyVersion.
+  useYMapKeyVersion(yWorkflows);
+
   const rawWorkflows = Array.from(yWorkflows.entries()).map(([_, yw]) =>
     rebuildWorkflow(yw),
   );
