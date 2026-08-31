@@ -142,6 +142,44 @@ impl super::PolygonMesh3DData {
     }
 }
 
+// Callback-based traversal is enough for every consumer inside this crate, but
+// the CZML writer (a different crate) wants every face's own ring coordinates
+// up front rather than a running fold, so it needs an owned, `pub` collection
+// form. Mirrors the visibility pattern of `first_face_vertex` and friends: a
+// small `pub` wrapper over the existing crate-internal walk.
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh2D {
+    /// Every face of the mesh, each rebuilt as a standalone bare [`Polygon2D`]
+    /// in the mesh's frame (exterior ring first, then hole rings).
+    pub fn faces(&self) -> Vec<Polygon2D> {
+        let mut out = Vec::new();
+        self.for_each_face_polygon(|p| out.push(p));
+        out
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh3D {
+    /// As [`PolygonMesh2D::faces`], for the 3D mesh.
+    pub fn faces(&self) -> Vec<Polygon3D> {
+        let mut out = Vec::new();
+        self.for_each_face_polygon(|p| out.push(p));
+        out
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl super::PolygonMesh3DData {
+    /// As [`PolygonMesh3D::faces`], but with the frame supplied by the caller —
+    /// the form a [`Solid`](crate::solid::Solid) shell needs, since a shell
+    /// holds mesh data and takes its frame from the solid.
+    pub fn faces(&self, frame: &CoordinateFrame) -> Vec<Polygon3D> {
+        let mut out = Vec::new();
+        self.for_each_face_polygon(frame, |p| out.push(p));
+        out
+    }
+}
+
 /// Build a [`Polygon2D`] from a face's rings (exterior first, then holes), at the
 /// host mesh's `elevation`.
 fn polygon_2d_from_rings(

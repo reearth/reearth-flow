@@ -566,6 +566,21 @@ impl TriangularMesh3DData {
     pub(crate) fn first_triangle_elevation(&self) -> Option<f64> {
         self.first_triangle_vertex().map(|v| v[2])
     }
+
+    /// Every triangle's three vertex coordinates, gathered from the vertex
+    /// pool in the mesh's own triangle order. The [`Solid`](crate::solid::Solid)
+    /// shell form of `TriangularMesh3D::vertices`/`TriangularMesh3D::triangles`:
+    /// a shell stores this coordinate-free data directly, so outside this crate
+    /// there is no `pub` vertex pool of its own to zip against `triangles()`.
+    pub fn triangle_coords(&self) -> impl Iterator<Item = [[f64; 3]; 3]> + '_ {
+        self.triangles().map(move |[a, b, c]| {
+            [
+                self.vertices()[a as usize],
+                self.vertices()[b as usize],
+                self.vertices()[c as usize],
+            ]
+        })
+    }
 }
 
 #[cfg(test)]
