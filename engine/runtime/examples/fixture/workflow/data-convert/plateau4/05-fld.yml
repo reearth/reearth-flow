@@ -15,6 +15,7 @@ with:
   - ifld
   - rfld
   workerArtifactPath: null
+  channelBufferSize: 1
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader

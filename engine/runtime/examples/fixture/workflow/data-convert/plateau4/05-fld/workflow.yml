@@ -16,6 +16,7 @@ with:
     - ifld
     - rfld
   workerArtifactPath:
+  channelBufferSize: 1
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
