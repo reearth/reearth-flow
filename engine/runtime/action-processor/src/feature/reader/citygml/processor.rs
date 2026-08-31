@@ -89,7 +89,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             original_dataset: params.dataset.clone(),
             flatten: params.flatten,
             codelists_path,
-            group_by_attribute: params.group_by_attribute,
+            chunk_by_attribute: params.chunk_by_attribute,
         };
         let process = FeatureCityGmlReader {
             global_params: with,
@@ -98,7 +98,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
-            current_group: None,
+            current_chunk: None,
             cache_dir: None,
         };
         Ok(Box::new(process))
@@ -108,16 +108,16 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureCityGmlReaderParam,
-    // Registries/cache for whichever group is currently being accumulated. When
-    // group_by_attribute is unset, there's only ever one (implicit) group, so this
+    // Registries/cache for whichever chunk is currently being accumulated. When
+    // chunk_by_attribute is unset, there's only ever one (implicit) chunk, so this
     // holds the whole dataset until the single flush in finish().
     geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
     app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>>,
     store_pool: StorePool,
     cache_paths: Vec<PathBuf>,
-    // Last seen group_by_attribute value; a change means the previous group is
+    // Last seen chunk_by_attribute value; a change means the previous chunk is
     // complete and can be flushed (see Processor::process).
-    current_group: Option<String>,
+    current_chunk: Option<AttributeValue>,
     cache_dir: Option<PathBuf>,
 }
 
@@ -139,7 +139,7 @@ impl Clone for FeatureCityGmlReader {
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
-            current_group: None,
+            current_chunk: None,
             cache_dir: None,
         }
     }
@@ -168,14 +168,10 @@ pub struct FeatureCityGmlReaderParam {
     /// # Codelists Path
     /// Optional path to the codelists directory for resolving codelist values
     codelists_path: Option<Expr>,
-    /// # Group By Attribute
-    /// Opt-in: an attribute name (e.g. "udxDirs") to group files by. When set, each
-    /// group's registries are flushed and freed as soon as the attribute's value
-    /// changes, instead of holding the whole dataset in memory for the entire run.
-    /// Requires features of the same group to arrive contiguously — add a
-    /// `FeatureSorter` upstream if that isn't already guaranteed. Leave unset for
-    /// unchanged, original behavior.
-    group_by_attribute: Option<String>,
+    /// # Chunk By Attribute
+    /// An attribute name to split processing into chunks by. Features sharing a
+    /// value must already be adjacent, and every feature must have it set.
+    chunk_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -184,7 +180,7 @@ struct CompiledFeatureCityGmlReaderParam {
     original_dataset: Expr,
     flatten: Option<bool>,
     codelists_path: Option<rhai::AST>,
-    group_by_attribute: Option<String>,
+    chunk_by_attribute: Option<String>,
 }
 
 impl Processor for FeatureCityGmlReader {
@@ -222,16 +218,18 @@ impl Processor for FeatureCityGmlReader {
             self.cache_dir = Some(dir);
         }
 
-        if let Some(group_attr) = self.params.group_by_attribute.clone() {
-            let group = match feature.attributes.get(&Attribute::new(group_attr)) {
-                Some(AttributeValue::String(s)) => s.clone(),
-                _ => String::new(),
+        if let Some(chunk_attr) = self.params.chunk_by_attribute.clone() {
+            let Some(chunk) = feature.attributes.get(&Attribute::new(chunk_attr.clone())) else {
+                return Err(FeatureProcessorError::FileCityGmlReader(format!(
+                    "chunkByAttribute {chunk_attr:?} is set but feature is missing that attribute"
+                ))
+                .into());
             };
-            if self.current_group.as_deref() != Some(group.as_str()) {
-                if self.current_group.is_some() {
+            if self.current_chunk.as_ref() != Some(chunk) {
+                if self.current_chunk.is_some() {
                     self.flush_current(ctx.clone(), fw)?;
                 }
-                self.current_group = Some(group);
+                self.current_chunk = Some(chunk.clone());
             }
         }
 
@@ -267,9 +265,9 @@ impl Processor for FeatureCityGmlReader {
 }
 
 impl FeatureCityGmlReader {
-    /// Emits everything accumulated so far — the group that just completed, or,
-    /// when `group_by_attribute` is unset, the whole dataset — then drops it so
-    /// the next group (if any) starts from empty registries.
+    /// Emits everything accumulated so far — the chunk that just completed, or,
+    /// when `chunk_by_attribute` is unset, the whole dataset — then drops it so
+    /// the next chunk (if any) starts from empty registries.
     fn flush_current(
         &mut self,
         ctx: Context,

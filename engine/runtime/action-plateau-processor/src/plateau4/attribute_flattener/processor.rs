@@ -72,14 +72,11 @@ pub(crate) struct AttributeFlattenerParam {
     /// When false (default), include all defined attributes in the schema regardless of usage.
     #[serde(default)]
     existing_flatten_attributes: bool,
-    /// Opt-in: an attribute name (e.g. "udxDirs") whose value groups incoming features.
-    /// When set, ancestor-lookup caches (gmlid_to_citygml_attributes, gmlid_to_subfeature_inherited,
-    /// gmlid_to_risk_attr_keys, children_buffer) are cleared whenever this value changes, so they
-    /// don't accumulate unboundedly across the whole run. Requires that parent/child and cross-file
-    /// references never cross group boundaries (already assumed elsewhere, e.g. FeatureCityGmlReader's
-    /// own per-group cross-file ref cache). Leave unset for unchanged, original behavior.
+    /// An attribute name to split processing into chunks by. Features sharing a
+    /// value must already be adjacent, and every feature must have it set.
+    /// Parent/child relationships and cross-file references must not span chunks.
     #[serde(default)]
-    group_by_attribute: Option<String>,
+    chunk_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -133,7 +130,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         };
         let process = AttributeFlattener {
             filter_existing_flatten_attributes: params.existing_flatten_attributes,
-            group_by_attribute: params.group_by_attribute,
+            chunk_by_attribute: params.chunk_by_attribute,
             ..Default::default()
         };
         Ok(Box::new(process))
@@ -164,11 +161,11 @@ pub(super) struct AttributeFlattener {
     lod4_to_ancestor_type: HashMap<String, String>,
     // risk attribute keys per feature, for excluding from LOD4 inheritance
     gmlid_to_risk_attr_keys: HashMap<String, HashSet<String>>,
-    // Opt-in: attribute name that groups incoming features (see AttributeFlattenerParam::group_by_attribute)
-    group_by_attribute: Option<String>,
-    // last seen value of group_by_attribute; a change means the previous group is
+    // attribute name that chunks incoming features (see AttributeFlattenerParam::chunk_by_attribute)
+    chunk_by_attribute: Option<String>,
+    // last seen value of chunk_by_attribute; a change means the previous chunk is
     // complete and its ancestor-lookup caches can be dropped
-    current_group: Option<String>,
+    current_chunk: Option<AttributeValue>,
 }
 
 // remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
@@ -700,18 +697,18 @@ impl AttributeFlattener {
         Ok(())
     }
 
-    /// Called when group_by_attribute's value changes: drops the ancestor-lookup
-    /// caches accumulated for the group that just ended. Anything still in
-    /// children_buffer at this point never found its parent within the group,
+    /// Called when chunk_by_attribute's value changes: drops the ancestor-lookup
+    /// caches accumulated for the chunk that just ended. Anything still in
+    /// children_buffer at this point never found its parent within the chunk,
     /// so it's logged the same way finish() logs true end-of-run orphans.
-    fn flush_group_state(&mut self, ending_group: &str) {
+    fn flush_chunk_state(&mut self, ending_chunk: &AttributeValue) {
         let orphan_count: usize = self.children_buffer.values().map(|v| v.len()).sum();
         if orphan_count > 0 {
             tracing::error!(
-                "Found {orphan_count} orphaned features without parents in buffer at end of group {ending_group:?}",
+                "Found {orphan_count} orphaned features without parents in buffer at end of chunk {ending_chunk:?}",
             );
-            self.children_buffer.clear();
         }
+        self.children_buffer.clear();
         self.gmlid_to_citygml_attributes.clear();
         self.gmlid_to_subfeature_inherited.clear();
         self.gmlid_to_risk_attr_keys.clear();
@@ -906,18 +903,18 @@ impl Processor for AttributeFlattener {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        if let Some(group_attr) = self.group_by_attribute.clone() {
-            let group = ctx
-                .feature
-                .get(group_attr.as_str())
-                .and_then(|v| v.as_string());
-            if let Some(group) = group {
-                if self.current_group.as_deref() != Some(group.as_str()) {
-                    if let Some(prev) = self.current_group.take() {
-                        self.flush_group_state(&prev);
-                    }
-                    self.current_group = Some(group);
+        if let Some(chunk_attr) = self.chunk_by_attribute.clone() {
+            let Some(chunk) = ctx.feature.get(chunk_attr.as_str()) else {
+                return Err(PlateauProcessorError::AttributeFlattener(format!(
+                    "chunkByAttribute {chunk_attr:?} is set but feature is missing that attribute"
+                ))
+                .into());
+            };
+            if self.current_chunk.as_ref() != Some(chunk) {
+                if let Some(prev) = self.current_chunk.take() {
+                    self.flush_chunk_state(&prev);
                 }
+                self.current_chunk = Some(chunk.clone());
             }
         }
 

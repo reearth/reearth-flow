@@ -1342,6 +1342,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "chunkByAttribute": {
+      "title": "Chunk By Attribute",
+      "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to incrementally flush completed groups instead of buffering everything until the run ends. Requires the attribute's output-path partitioning to match 1:1 (otherwise a later group sharing the same output path would overwrite an earlier flush). Leave unset for unchanged, original behavior (single flush at the end of the run).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "compressOutput": {
       "title": "Compressed Output Path",
       "description": "Optional path for compressed archive output",
@@ -1359,14 +1367,6 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "description": "Use draco compression. Defaults to true.",
       "type": [
         "boolean",
-        "null"
-      ]
-    },
-    "groupByAttribute": {
-      "title": "Group By Attribute",
-      "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to incrementally flush completed groups instead of buffering everything until the run ends. Requires the attribute's output-path partitioning to match 1:1 (otherwise a later group sharing the same output path would overwrite an earlier flush). Leave unset for unchanged, original behavior (single flush at the end of the run).",
-      "type": [
-        "string",
         "null"
       ]
     },
@@ -2802,6 +2802,14 @@ Reads and processes features from CityGML files with optional flattening
     "dataset"
   ],
   "properties": {
+    "chunkByAttribute": {
+      "title": "Chunk By Attribute",
+      "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to group files by. When set, each group's registries are flushed and freed as soon as the attribute's value changes, instead of holding the whole dataset in memory for the entire run. Requires features of the same group to arrive contiguously — add a `FeatureSorter` upstream if that isn't already guaranteed. Leave unset for unchanged, original behavior.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "codelistsPath": {
       "title": "Codelists Path",
       "description": "Optional path to the codelists directory for resolving codelist values",
@@ -2828,14 +2836,6 @@ Reads and processes features from CityGML files with optional flattening
       "description": "Whether to flatten the hierarchical structure of the CityGML data",
       "type": [
         "boolean",
-        "null"
-      ]
-    },
-    "groupByAttribute": {
-      "title": "Group By Attribute",
-      "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to group files by. When set, each group's registries are flushed and freed as soon as the attribute's value changes, instead of holding the whole dataset in memory for the entire run. Requires features of the same group to arrive contiguously — add a `FeatureSorter` upstream if that isn't already guaranteed. Leave unset for unchanged, original behavior.",
-      "type": [
-        "string",
         "null"
       ]
     }
@@ -7639,18 +7639,18 @@ Flatten attributes for building feature
   "title": "AttributeFlattener Parameters",
   "type": "object",
   "properties": {
-    "existingFlattenAttributes": {
-      "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
-      "default": false,
-      "type": "boolean"
-    },
-    "groupByAttribute": {
+    "chunkByAttribute": {
       "description": "Opt-in: an attribute name (e.g. \"udxDirs\") whose value groups incoming features. When set, ancestor-lookup caches (gmlid_to_citygml_attributes, gmlid_to_subfeature_inherited, gmlid_to_risk_attr_keys, children_buffer) are cleared whenever this value changes, so they don't accumulate unboundedly across the whole run. Requires that parent/child and cross-file references never cross group boundaries (already assumed elsewhere, e.g. FeatureCityGmlReader's own per-group cross-file ref cache). Leave unset for unchanged, original behavior.",
       "default": null,
       "type": [
         "string",
         "null"
       ]
+    },
+    "existingFlattenAttributes": {
+      "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }

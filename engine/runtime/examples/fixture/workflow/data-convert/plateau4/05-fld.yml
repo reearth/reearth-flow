@@ -155,7 +155,7 @@ graphs:
     with:
       codelistsPath: env.get("__value").codelists
       flatten: true
-      groupByAttribute: udxDirs
+      chunkByAttribute: udxDirs
       dataset: |
         env.get("__value")["path"]
   - id: 65852d63-eb2c-486c-95d5-2646874d11a2
@@ -195,7 +195,7 @@ graphs:
     type: action
     action: PLATEAU4.AttributeFlattener
     with:
-      groupByAttribute: udxDirs
+      chunkByAttribute: udxDirs
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: AttributeManagerRename
     type: action
@@ -264,7 +264,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
-      groupByAttribute: udxDirs
+      chunkByAttribute: udxDirs
       output: |
         let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");

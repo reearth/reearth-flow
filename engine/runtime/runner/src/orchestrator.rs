@@ -74,13 +74,26 @@ impl Orchestrator {
         let executor = Executor {};
         // Same convention as the "workerArtifactPath" global parameter: a workflow can
         // override this deployment-wide env var default via its top-level `with`.
-        let channel_buffer_sz = workflow
+        let channel_buffer_sz = match workflow
             .with
             .as_ref()
             .and_then(|with| with.get("channelBufferSize"))
-            .and_then(|v| v.as_u64())
-            .map(|v| v as usize)
-            .unwrap_or(*CHANNEL_BUFFER_SIZE);
+        {
+            Some(v) => {
+                let n = v.as_u64().ok_or_else(|| {
+                    Error::RuntimeError(format!(
+                        "channelBufferSize must be an integer between 1 and 65536, got {v}"
+                    ))
+                })?;
+                if !(1..=65536).contains(&n) {
+                    return Err(Error::RuntimeError(format!(
+                        "channelBufferSize must be between 1 and 65536, got {n}"
+                    )));
+                }
+                n as usize
+            }
+            None => *CHANNEL_BUFFER_SIZE,
+        };
         let options = ExecutorOptions {
             channel_buffer_sz,
             event_hub_capacity: *EVENT_HUB_CAPACITY,

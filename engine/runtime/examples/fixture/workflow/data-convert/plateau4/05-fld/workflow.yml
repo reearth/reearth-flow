@@ -42,7 +42,7 @@ graphs:
         type: subGraph
         subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
 
-      # FeatureCityGmlReader's groupByAttribute requires same-group features to
+      # FeatureCityGmlReader's chunkByAttribute requires same-chunk features to
       # arrive contiguously; this sorter is what guarantees that, explicitly.
       - id: 528c600f-c289-471b-af53-de5b01881337
         name: FeatureSorterByUdxDirs
@@ -60,7 +60,7 @@ graphs:
         with:
           codelistsPath: env.get("__value").codelists
           flatten: true
-          groupByAttribute: udxDirs
+          chunkByAttribute: udxDirs
           dataset: |
             env.get("__value")["path"]
 
@@ -103,7 +103,7 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
         with:
-          groupByAttribute: udxDirs
+          chunkByAttribute: udxDirs
 
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: AttributeManagerRename
@@ -178,7 +178,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          groupByAttribute: udxDirs
+          chunkByAttribute: udxDirs
           output: |
             let udx_dirs = env.get("__value")["udxDirs"];
             udx_dirs.replace("/", "_");
