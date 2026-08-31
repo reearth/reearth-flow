@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use parking_lot::Mutex;
 use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction};
 use reearth_flow_state::State;
 
@@ -10,12 +11,19 @@ use crate::{
 
 use super::execution_dag::ExecutionDag;
 
+/// One flush = one storage append (open/write/close), which costs milliseconds
+/// on remote-backed filesystems — per-feature appends made large runs I/O-bound
+/// (~24ms per feature on Cloud Run). Matches the feature store's granularity.
+const FLUSH_LINES: usize = 512;
+
 #[derive(Debug)]
 pub struct SourceIntermediateRecorder {
     /// Track incoming edge IDs for source intermediate data
     incoming_edge_ids: Vec<EdgeId>,
     /// Track which upstream nodes are sources
     incoming_is_source: Vec<bool>,
+    /// Buffered JSONL lines per edge file, flushed at FLUSH_LINES and on flush().
+    buffers: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl SourceIntermediateRecorder {
@@ -49,6 +57,7 @@ impl SourceIntermediateRecorder {
         Self {
             incoming_edge_ids,
             incoming_is_source,
+            buffers: Mutex::new(HashMap::new()),
         }
     }
 
@@ -83,21 +92,74 @@ impl SourceIntermediateRecorder {
             }
         };
 
-        if let Err(e) = feature_state.append_sync(&ctx.feature, &file_id) {
+        let line = match feature_state.to_jsonl_line(&ctx.feature) {
+            Ok(line) => line,
+            Err(e) => {
+                tracing::warn!(
+                    "source-intermediate-serialize failed: node={}({}) edge_id={} feature_id={} err={:?}",
+                    node_name,
+                    node_id,
+                    file_id,
+                    ctx.feature.id,
+                    e,
+                );
+                return;
+            }
+        };
+
+        let full = {
+            let mut buffers = self.buffers.lock();
+            let buf = buffers.entry(file_id.clone()).or_default();
+            buf.push(line);
+            if buf.len() >= FLUSH_LINES {
+                Some(std::mem::take(buf))
+            } else {
+                None
+            }
+        };
+        if let Some(lines) = full {
+            self.write_lines(feature_state, &file_id, lines, node_name, node_id);
+        }
+    }
+
+    /// Drains every buffered edge file. Call at node terminate; a node that
+    /// dies without terminating loses its tail, the same trade the feature
+    /// store makes for batched writes.
+    pub fn flush(&self, feature_state: &State, node_name: &str, node_id: &str) {
+        let drained: Vec<(String, Vec<String>)> = self.buffers.lock().drain().collect();
+        for (file_id, lines) in drained {
+            self.write_lines(feature_state, &file_id, lines, node_name, node_id);
+        }
+    }
+
+    fn write_lines(
+        &self,
+        feature_state: &State,
+        file_id: &str,
+        lines: Vec<String>,
+        node_name: &str,
+        node_id: &str,
+    ) {
+        if lines.is_empty() {
+            return;
+        }
+        let count = lines.len();
+        if let Err(e) = feature_state.append_jsonl_lines_sync(&lines.concat(), file_id) {
             tracing::warn!(
-                "source-intermediate-append failed: node={}({}) edge_id={} err={:?}",
+                "source-intermediate-append failed: node={}({}) edge_id={} lines={} err={:?}",
                 node_name,
                 node_id,
                 file_id,
+                count,
                 e,
             );
         } else {
             tracing::debug!(
-                "source-intermediate-append OK: node={}({}) edge_id={} feature_id={}",
+                "source-intermediate-append OK: node={}({}) edge_id={} lines={}",
                 node_name,
                 node_id,
                 file_id,
-                ctx.feature.id,
+                count,
             );
         }
     }

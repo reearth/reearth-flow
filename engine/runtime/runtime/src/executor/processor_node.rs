@@ -523,6 +523,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
+        self.source_intermediate_recorder.flush(
+            &self.feature_state,
+            &self.node_name,
+            self.node_handle.id.as_ref(),
+        );
         let channel_manager = Arc::clone(&self.channel_manager);
         let channel_manager_guard = channel_manager.read();
         let processor = Arc::clone(&self.processor);

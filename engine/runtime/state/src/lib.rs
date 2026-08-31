@@ -114,6 +114,28 @@ impl State {
             .map_err(Error::other)
     }
 
+    /// Serializes one object as a JSONL line, trailing newline included.
+    pub fn to_jsonl_line<T>(&self, obj: &T) -> Result<String>
+    where
+        for<'de> T: Serialize + Deserialize<'de>,
+    {
+        Ok(self.object_to_string(obj)? + "\n")
+    }
+
+    /// Appends pre-serialized JSONL lines in one storage write. `append_sync`
+    /// pays a full open/write/close per call — milliseconds on remote-backed
+    /// filesystems — so per-feature writers batch lines and flush through this.
+    pub fn append_jsonl_lines_sync(&self, lines: &str, id: &str) -> Result<()> {
+        if lines.is_empty() {
+            return Ok(());
+        }
+        let content = self.encode(lines.as_bytes())?;
+        let p = self.id_to_location(id, self.jsonl_ext());
+        self.storage
+            .append_sync(p.as_path(), content)
+            .map_err(Error::other)
+    }
+
     pub async fn get<T>(&self, id: &str) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,
@@ -754,6 +776,29 @@ mod tests {
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
     struct Data {
         x: i32,
+    }
+
+    #[tokio::test]
+    async fn batched_jsonl_append_round_trips_like_per_object_appends() {
+        let temp_dir = Builder::new().prefix("batched_append_").tempdir().unwrap();
+        let root = format!("file://{}", temp_dir.path().to_str().unwrap());
+        let storage_resolver = Arc::new(StorageResolver::new());
+        let state = State::new(&Uri::for_test(&root), &storage_resolver).unwrap();
+
+        let lines: String = (0..3)
+            .map(|x| state.to_jsonl_line(&Data { x }).unwrap())
+            .collect();
+        state.append_jsonl_lines_sync(&lines, "edge-1").unwrap();
+        state.append_jsonl_lines_sync("", "edge-1").unwrap();
+        state
+            .append_jsonl_lines_sync(&state.to_jsonl_line(&Data { x: 3 }).unwrap(), "edge-1")
+            .unwrap();
+
+        let all = state.read_jsonl_auto_sync::<Data>("edge-1").unwrap();
+        assert_eq!(
+            all,
+            vec![Data { x: 0 }, Data { x: 1 }, Data { x: 2 }, Data { x: 3 }]
+        );
     }
 
     #[tokio::test]
