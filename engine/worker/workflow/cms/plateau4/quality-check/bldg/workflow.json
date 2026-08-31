@@ -207,10 +207,7 @@
           "id": "747d2fa3-2527-4324-b630-92fba84a548c",
           "name": "PLATEAU4.DomainOfDefinitionValidator",
           "type": "action",
-          "action": "PLATEAU4.DomainOfDefinitionValidator",
-          "with": {
-            "codelistsPath": "env.get(\"__value\").dirCodelists\n"
-          }
+          "action": "PLATEAU4.DomainOfDefinitionValidator"
         },
         {
           "id": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
@@ -450,14 +447,26 @@
           }
         },
         {
+          "id": "c7315341-26b3-4405-9d02-039d721cd225",
+          "name": "DirectoryDecompressor",
+          "type": "action",
+          "action": "DirectoryDecompressor",
+          "with": {
+            "archiveAttributes": [
+              "codelists",
+              "schemas"
+            ]
+          }
+        },
+        {
           "id": "2aaa4ac9-2e79-479f-aa50-6543f461a76e",
           "name": "FeatureFilePathExtractor",
           "type": "action",
           "action": "FeatureFilePathExtractor",
           "with": {
+            "destPrefix": "udx",
             "sourceDataset": "env.get(\"__value\")[\"cityGmlPath\"]\n",
-            "extractArchive": true,
-            "destPrefix": "udx"
+            "extractArchive": true
           }
         },
         {
@@ -579,7 +588,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_L01エラー.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_L01エラー.csv\")\n"
           }
         },
         {
@@ -623,7 +632,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_L02エラー.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_L02エラー.csv\")\n"
           }
         },
         {
@@ -753,7 +762,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通.csv\")\n"
           }
         },
         {
@@ -818,7 +827,7 @@
           "with": {
             "format": "json",
             "converter": "if env.get(\"__features\").is_empty() {\n  []\n} else {\n  let result = [];\n  let feature = env.get(\"__features\")[0];\n  for key in feature.keys() {\n    result.push(#{\n      name: key,\n      count: feature[key],\n    });\n  }\n  result\n}\n",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"summary_common.json\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"summary_common.json\")\n"
           }
         },
         {
@@ -858,7 +867,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_GML_ID書式不正.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_GML_ID書式不正.csv\")\n"
           }
         },
         {
@@ -898,7 +907,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_GML_ID重複.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_GML_ID重複.csv\")\n"
           }
         },
         {
@@ -982,7 +991,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_L06エラー.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_L06エラー.csv\")\n"
           }
         },
         {
@@ -1034,7 +1043,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_L04エラー.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_L04エラー.csv\")\n"
           }
         },
         {
@@ -1086,7 +1095,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_不正なcodeSpace.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_不正なcodeSpace.csv\")\n"
           }
         },
         {
@@ -1156,7 +1165,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_xlink参照先なし.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_xlink参照先なし.csv\")\n"
           }
         },
         {
@@ -1212,7 +1221,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_T03エラー.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_T03エラー.csv\")\n"
           }
         },
         {
@@ -1256,7 +1265,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01_共通_L-frn-01エラー.csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通_L-frn-01エラー.csv\")\n"
           }
         },
         {
@@ -1301,21 +1310,19 @@
           "with": {
             "routingPort": "summaryOutput"
           }
-        },
-        {
-          "id": "7b8c9d0e-1f2a-4b3c-5d6e-7f8a9b0c1d2e",
-          "name": "OutputRouterPerFile",
-          "type": "action",
-          "action": "OutputRouter",
-          "with": {
-            "routingPort": "perFileOutput"
-          }
         }
       ],
       "edges": [
         {
           "id": "7c5a60ec-66cb-4ee0-9793-88c1f57b495c",
           "from": "3a85e550-49e8-4b67-bc92-908430ef6eee",
+          "to": "c7315341-26b3-4405-9d02-039d721cd225",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "b729c108-a200-4b6f-aa60-7c0c10866343",
+          "from": "c7315341-26b3-4405-9d02-039d721cd225",
           "to": "2aaa4ac9-2e79-479f-aa50-6543f461a76e",
           "fromPort": "default",
           "toPort": "default"
@@ -1690,13 +1697,6 @@
           "to": "6a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d",
           "fromPort": "default",
           "toPort": "default"
-        },
-        {
-          "id": "6b9c0d1e-2f3a-4c5d-6e7f-8a9b0c1d2e3f",
-          "from": "f19638b9-679a-4dd9-9a39-3cf2a82c6ff5",
-          "to": "7b8c9d0e-1f2a-4b3c-5d6e-7f8a9b0c1d2e",
-          "fromPort": "default",
-          "toPort": "default"
         }
       ]
     },
@@ -1714,12 +1714,24 @@
           }
         },
         {
+          "id": "c7315341-26b3-4405-9d02-039d721cd225",
+          "name": "DirectoryDecompressor",
+          "type": "action",
+          "action": "DirectoryDecompressor",
+          "with": {
+            "archiveAttributes": [
+              "codelists",
+              "schemas"
+            ]
+          }
+        },
+        {
           "id": "c790e59a-4283-452f-bc24-9cc966c3ec79",
           "name": "PLATEAU4.ObjectListExtractor",
           "type": "action",
           "action": "PLATEAU4.ObjectListExtractor",
           "with": {
-            "objectListPathAttribute": "objectListsPath"
+            "objectListPathAttribute": "objectListPath"
           }
         },
         {
@@ -1729,8 +1741,7 @@
           "action": "FeatureFilePathExtractor",
           "with": {
             "sourceDataset": "env.get(\"__value\")[\"cityGmlPath\"]\n",
-            "extractArchive": true,
-            "destPrefix": "udx"
+            "extractArchive": true
           }
         },
         {
@@ -1797,7 +1808,7 @@
           "with": {
             "format": "json",
             "converter": "if env.get(\"__features\").is_empty() {\n  {}\n} else {\n  let feature = env.get(\"__features\")[0];\n  feature[\"dataFileData\"]\n}\n",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"summary_common2-\" + env.get(\"__value\")[\"package\"] + \".json\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"summary_common2-\" + env.get(\"__value\")[\"package\"] + \".json\")\n"
           }
         },
         {
@@ -1845,7 +1856,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01-2_必須属性等_C05必須属性等の欠落_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01-2_必須属性等_C05必須属性等の欠落_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
           }
         },
         {
@@ -1877,7 +1888,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01-2_必須属性等_C06現われない属性等_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01-2_必須属性等_C06現われない属性等_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
           }
         },
         {
@@ -1925,7 +1936,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01-2_必須属性等_C07品質属性_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01-2_必須属性等_C07品質属性_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
           }
         },
         {
@@ -1973,7 +1984,7 @@
           "action": "FeatureWriter",
           "with": {
             "format": "csv",
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"01-2_必須属性等_C08公共測量品質属性_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01-2_必須属性等_C08公共測量品質属性_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
           }
         },
         {
@@ -2008,72 +2019,19 @@
           "with": {
             "routingPort": "summaryOutput"
           }
-        },
-        {
-          "id": "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
-          "name": "StatisticsCalculatorC05PerFile",
-          "type": "action",
-          "action": "StatisticsCalculator",
-          "with": {
-            "groupBy": [
-              "filename"
-            ],
-            "calculations": [
-              {
-                "newAttribute": "C05エラー",
-                "expr": "1"
-              }
-            ]
-          }
-        },
-        {
-          "id": "2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a",
-          "name": "StatisticsCalculatorC07PerFile",
-          "type": "action",
-          "action": "StatisticsCalculator",
-          "with": {
-            "groupBy": [
-              "filename"
-            ],
-            "calculations": [
-              {
-                "newAttribute": "C07エラー",
-                "expr": "1"
-              }
-            ]
-          }
-        },
-        {
-          "id": "3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b",
-          "name": "StatisticsCalculatorC08PerFile",
-          "type": "action",
-          "action": "StatisticsCalculator",
-          "with": {
-            "groupBy": [
-              "filename"
-            ],
-            "calculations": [
-              {
-                "newAttribute": "C08エラー",
-                "expr": "1"
-              }
-            ]
-          }
-        },
-        {
-          "id": "7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
-          "name": "OutputRouterPerFile",
-          "type": "action",
-          "action": "OutputRouter",
-          "with": {
-            "routingPort": "perFileOutput"
-          }
         }
       ],
       "edges": [
         {
           "id": "668cbbf5-9da8-45db-baca-312d69d219c2",
           "from": "00f42e7e-080b-4927-933b-70fc8d8136b8",
+          "to": "c7315341-26b3-4405-9d02-039d721cd225",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc",
+          "from": "c7315341-26b3-4405-9d02-039d721cd225",
           "to": "c790e59a-4283-452f-bc24-9cc966c3ec79",
           "fromPort": "default",
           "toPort": "default"
@@ -2229,48 +2187,6 @@
           "id": "8d9e0f1a-9b0c-4d1e-2f3a-4b5c6d7e8f9a",
           "from": "6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d",
           "to": "7d8e9f0a-1b2c-4d3e-5f6a-7b8c9d0e1f2a",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "9e0f1a2b-0c1d-4e2f-3a4b-5c6d7e8f9a0b",
-          "from": "a4b8150a-6241-46ac-849d-39be21d39d1b",
-          "to": "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "0f1a2b3c-1d2e-4f3a-4b5c-6d7e8f9a0b1c",
-          "from": "8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f",
-          "to": "2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "1a2b3c4d-2e3f-4a5b-5c6d-7e8f9a0b1c2d",
-          "from": "a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b",
-          "to": "3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "2b3c4d5e-3f4a-5b6c-6d7e-8f9a0b1c2d3e",
-          "from": "1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f",
-          "to": "7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "3c4d5e6f-4a5b-6c7d-7e8f-9a0b1c2d3e4f",
-          "from": "2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a",
-          "to": "7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "4d5e6f7a-5b6c-7d8e-8f9a-0b1c2d3e4f5a",
-          "from": "3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b",
-          "to": "7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
           "fromPort": "default",
           "toPort": "default"
         }

@@ -42,9 +42,9 @@
           "type": "action",
           "action": "FeatureFilePathExtractor",
           "with": {
+            "destPrefix": "udx",
             "sourceDataset": "env.get(\"__value\").cityGmlPath\n",
-            "extractArchive": true,
-            "destPrefix": "udx"
+            "extractArchive": true
           }
         },
         {
@@ -70,6 +70,20 @@
             "cityGmlPath": "env.get(\"__value\")[\"path\"]\n",
             "codelistsPath": "codelists",
             "schemasPath": "schemas"
+          }
+        },
+        {
+          "id": "a1554a74-3caa-4880-a4a3-6dc4ab526a13",
+          "name": "FeatureFilterByPackage",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "(env.get(\"targetPackages\") ?? []).is_empty() || env.get(\"__value\")[\"package\"] in env.get(\"targetPackages\")\n",
+                "outputPort": "default"
+              }
+            ]
           }
         },
         {
@@ -137,6 +151,13 @@
         {
           "id": "2379a497-9e4e-40fb-8361-d2eeeb491764",
           "from": "712e4c72-950d-466d-9598-19f299668e7e",
+          "to": "a1554a74-3caa-4880-a4a3-6dc4ab526a13",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "2379a497-9e4e-40fb-8361-d2eeeb491766",
+          "from": "a1554a74-3caa-4880-a4a3-6dc4ab526a13",
           "to": "f3465c78-59fa-4307-bc02-67c46c2ddd98",
           "fromPort": "default",
           "toPort": "default"
@@ -184,20 +205,6 @@
           "with": {
             "format": "citygml",
             "dataset": "env.get(\"__value\")[\"path\"]\n"
-          }
-        },
-        {
-          "id": "7519f13d-95c6-4dd9-942b-e060c3cf51f0",
-          "name": "TargetPackagesFilter",
-          "type": "action",
-          "action": "FeatureFilter",
-          "with": {
-            "conditions": [
-              {
-                "expr": "(env.get(\"targetPackages\") ?? []).is_empty() || env.get(\"__value\")[\"package\"] in env.get(\"targetPackages\")\n",
-                "outputPort": "default"
-              }
-            ]
           }
         },
         {
@@ -584,13 +591,6 @@
         {
           "id": "cf845867-6ffc-4b83-9fd5-e376a22470e2",
           "from": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
-          "to": "7519f13d-95c6-4dd9-942b-e060c3cf51f0",
-          "fromPort": "default",
-          "toPort": "default"
-        },
-        {
-          "id": "34e078ae-5425-4129-89f9-07695867f4eb",
-          "from": "7519f13d-95c6-4dd9-942b-e060c3cf51f0",
           "to": "33e32a91-5ade-4265-8665-b061f552839c",
           "fromPort": "default",
           "toPort": "default"
