@@ -121,7 +121,7 @@ mod tests {
     /// Test-only helpers for reaching into [`CzmlPolygon`]'s real (vendored)
     /// field shape from an assertion.
     mod fixture {
-        use nusamai_czml::{CzmlPolygon, PositionList};
+        use nusamai_czml::{CzmlPolygon, PositionList, PositionListOfLists};
 
         pub(super) fn first_lon(polygon: &CzmlPolygon) -> f64 {
             let PositionList::Object(props) = polygon.positions.as_ref().expect("positions") else {
@@ -131,6 +131,19 @@ mod tests {
                 .cartographic_degrees
                 .as_ref()
                 .expect("cartographicDegrees")[0]
+        }
+
+        /// As [`first_lon`], but for the first hole ring's leading component —
+        /// so the swap is pinned on `holes` directly, not inherited from the
+        /// exterior assertion.
+        pub(super) fn first_hole_lon(polygon: &CzmlPolygon) -> f64 {
+            let PositionListOfLists::Object(props) = polygon.holes.as_ref().expect("holes") else {
+                panic!("expected PositionListOfLists::Object");
+            };
+            props
+                .cartographic_degrees
+                .as_ref()
+                .expect("cartographicDegrees")[0][0]
         }
     }
 
@@ -197,6 +210,36 @@ mod tests {
     }
 
     #[test]
+    fn a_polylines_longitude_and_latitude_are_written_in_czml_order() {
+        // Same disjoint-range guard as the polygon exterior/hole cases, but
+        // for the polyline path, which shares `cartographic_degrees` but is
+        // built as raw JSON rather than through `CzmlPolygon`. Pins exact
+        // per-vertex values and order, not just the vertex count.
+        let vertices = [
+            [35.68, 139.76, 1.0],
+            [35.69, 139.77, 2.0],
+            [35.70, 139.78, 3.0],
+        ];
+        let mut cache = ReprojectionCache::default();
+        let packet =
+            polyline_packet(&mut cache, &vertices, &wgs84(), "parent").expect("wgs84 line");
+        let polyline = packet.polyline.expect("polyline");
+        let positions = polyline.get("positions").expect("positions");
+        let degrees: Vec<f64> = positions
+            .get("cartographicDegrees")
+            .and_then(|v| v.as_array())
+            .expect("cartographicDegrees array")
+            .iter()
+            .map(|v| v.as_f64().expect("numeric component"))
+            .collect();
+        assert_eq!(
+            degrees,
+            vec![139.76, 35.68, 1.0, 139.77, 35.69, 2.0, 139.78, 35.70, 3.0],
+            "cartographicDegrees must be [lon, lat, height] per vertex, in order"
+        );
+    }
+
+    #[test]
     fn an_unplaceable_frame_produces_no_packet() {
         let face = Face {
             rings: vec![vec![
@@ -235,6 +278,42 @@ mod tests {
         assert!(
             (139.0..140.0).contains(&first_lon),
             "cartographicDegrees must lead with longitude; got {first_lon}"
+        );
+    }
+
+    #[test]
+    fn a_holes_longitude_and_latitude_are_written_in_czml_order() {
+        // Exterior and hole sit in disjoint lon/lat ranges from each other,
+        // as well as internally disjoint lat vs. lon (Tokyo-like), so this
+        // pins the swap on `holes` directly rather than inheriting a pass
+        // from the exterior assertion, and a swap (or a wrong-ring read)
+        // cannot pass either.
+        let face = Face {
+            rings: vec![
+                // exterior: lat 10..11, lon 150..151.
+                vec![
+                    [10.0, 150.0, 0.0],
+                    [10.0, 151.0, 0.0],
+                    [11.0, 151.0, 0.0],
+                    [10.0, 150.0, 0.0],
+                ],
+                // hole: lat 35..36, lon 139..140.
+                vec![
+                    [35.68, 139.76, 0.0],
+                    [35.69, 139.77, 0.0],
+                    [35.70, 139.78, 0.0],
+                    [35.68, 139.76, 0.0],
+                ],
+            ],
+            frame: wgs84(),
+        };
+        let mut cache = ReprojectionCache::default();
+        let packet = face_packet(&mut cache, &face, "parent").expect("wgs84 face");
+        let polygon = packet.polygon.expect("polygon");
+        let first_hole_lon = fixture::first_hole_lon(&polygon);
+        assert!(
+            (139.0..140.0).contains(&first_hole_lon),
+            "hole cartographicDegrees must lead with longitude; got {first_hole_lon}"
         );
     }
 
