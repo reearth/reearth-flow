@@ -1343,7 +1343,7 @@
           },
           "chunkByAttribute": {
             "title": "Chunk By Attribute",
-            "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to incrementally flush completed groups instead of buffering everything until the run ends. Requires the attribute's output-path partitioning to match 1:1 (otherwise a later group sharing the same output path would overwrite an earlier flush). Leave unset for unchanged, original behavior (single flush at the end of the run).",
+            "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set. Each chunk's value must map to a different output path.",
             "type": [
               "string",
               "null"
@@ -2804,7 +2804,7 @@
         "properties": {
           "chunkByAttribute": {
             "title": "Chunk By Attribute",
-            "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to group files by. When set, each group's registries are flushed and freed as soon as the attribute's value changes, instead of holding the whole dataset in memory for the entire run. Requires features of the same group to arrive contiguously — add a `FeatureSorter` upstream if that isn't already guaranteed. Leave unset for unchanged, original behavior.",
+            "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set.",
             "type": [
               "string",
               "null"
@@ -7656,7 +7656,7 @@
         "type": "object",
         "properties": {
           "chunkByAttribute": {
-            "description": "Opt-in: an attribute name (e.g. \"udxDirs\") whose value groups incoming features. When set, ancestor-lookup caches (gmlid_to_citygml_attributes, gmlid_to_subfeature_inherited, gmlid_to_risk_attr_keys, children_buffer) are cleared whenever this value changes, so they don't accumulate unboundedly across the whole run. Requires that parent/child and cross-file references never cross group boundaries (already assumed elsewhere, e.g. FeatureCityGmlReader's own per-group cross-file ref cache). Leave unset for unchanged, original behavior.",
+            "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set. Parent/child relationships and cross-file references must not span chunks.",
             "default": null,
             "type": [
               "string",
