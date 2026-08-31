@@ -1,15 +1,14 @@
-# HTTPCaller Advanced Example
-# This workflow demonstrates advanced HTTPCaller features:
+# HTTP Caller Advanced Example
+# This workflow demonstrates advanced HTTP Caller features:
 # - POST requests with JSON body
 # - Authentication (Bearer token)
 # - Custom headers
 # - Query parameters
 # - Retry logic with exponential backoff
 # - Rate limiting
-# - Response handling
 
 id: 550e8400-e29b-41d4-a716-446655440010
-name: "HTTPCaller Advanced Example"
+name: "HTTP Caller Advanced Example"
 entryGraphId: 550e8400-e29b-41d4-a716-446655440011
 
 graphs:
@@ -52,10 +51,6 @@ graphs:
 
           # Custom headers
           customHeaders:
-            - name: "Content-Type"
-              value:
-                type: string
-                value: "application/json"
             - name: "X-Custom-Header"
               value:
                 type: string
@@ -89,18 +84,19 @@ graphs:
               value: your-api-token-here
 
           # Response configuration
-          responseBodyAttribute: "_api_response"
-          statusCodeAttribute: "_status_code"
-          headersAttribute: "_response_headers"
-          errorAttribute: "_error_message"
+          response:
+            responseBodyAttribute: "_api_response"
 
           # Connection settings
-          connectionTimeout: 30
-          transferTimeout: 120
-          userAgent: "reearth-flow-http-caller/1.0"
-          verifySsl: true
-          followRedirects: true
-          maxRedirects: 5
+          timeouts:
+            connectionTimeout: 30
+            transferTimeout: 120
+
+          httpOptions:
+            userAgent: "reearth-flow-http-caller/1.0"
+            verifySsl: true
+            followRedirects: true
+            maxRedirects: 5
 
           # Retry configuration with exponential backoff
           retry:
@@ -116,17 +112,6 @@ graphs:
             requests: 10
             intervalMs: 1000
             timing: distributed
-
-          # Observability - track all metrics
-          observability:
-            trackDuration: true
-            durationAttribute: "_request_time_ms"
-            trackFinalUrl: true
-            finalUrlAttribute: "_final_url"
-            trackRetryCount: true
-            retryCountAttribute: "_retries"
-            trackBytes: true
-            bytesAttribute: "_response_bytes"
 
       # Write successful responses to one file
       - id: 550e8400-e29b-41d4-a716-446655440040
@@ -173,5 +158,6 @@ graphs:
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run \
 #   --workflow runtime/examples/fixture/workflow/http_caller_advanced.yml \
-#   --var outputFilePath=/tmp/http_success.json \
-#   --var errorFilePath=/tmp/http_errors.json
+#   --var outputFilePath=http_success.json \
+#   --var errorFilePath=http_errors.json
+# Both files land in the job's artifact directory, printed in the CLI startup logs.

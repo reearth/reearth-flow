@@ -23,16 +23,16 @@
     {
       "name": "Area Calculator",
       "type": "processor",
-      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
+      "description": "地物のジオメトリの真の表面積を計算し、属性に格納する。ソリッドの面積は境界となるすべての面の合計であり、中空部分の面も外殻の面と同じように合計に含まれる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area Calculator パラメータ",
-        "description": "各地物のジオメトリの面積を計算し格納する方法を設定する",
+        "description": "各地物における計測した表面積の格納先を指定する",
         "type": "object",
         "properties": {
           "outputAttribute": {
             "title": "出力属性",
-            "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one.",
+            "description": "計測した表面積を格納する属性名。すべての地物に設定され、面積を持たないジオメトリや計測できないジオメトリは 0 が記録されるため、下流の処理で値の欠落を扱う必要はない",
             "default": "area",
             "allOf": [
               {
@@ -900,7 +900,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Range Mapper パラメータ",
-        "description": "Defines the attribute to classify, the table of ranges to match it against, and where the matched value is written.",
+        "description": "分類する属性、照合する範囲の表、および一致した値の格納先を定義する",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -928,7 +928,15 @@
           },
           "defaultValue": {
             "title": "デフォルト値",
-            "description": "入力がどの範囲にも一致しない場合に使用する値（文字列・数値・真偽値など）"
+            "description": "入力がどの範囲にも一致しない場合に使用する値（文字列・数値・真偽値など）",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MappedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
@@ -955,9 +963,35 @@
               },
               "outputValue": {
                 "title": "出力値",
-                "description": "入力がこの範囲に収まる場合に割り当てる値（文字列・数値・真偽値など）"
+                "description": "入力がこの範囲に収まる場合に出力属性へ書き込む値",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/MappedValue"
+                  }
+                ]
               }
             }
+          },
+          "MappedValue": {
+            "title": "Mapped Value",
+            "description": "A value written to an attribute. Accepts text, a number, or true/false, written as the type given — `\"3\"` stays text and `3` stays a number.",
+            "anyOf": [
+              {
+                "title": "Text",
+                "description": "Written as text.",
+                "type": "string"
+              },
+              {
+                "title": "Number",
+                "description": "Written as a number.",
+                "type": "number"
+              },
+              {
+                "title": "True or False",
+                "description": "Written as a true/false value.",
+                "type": "boolean"
+              }
+            ]
           }
         }
       },
@@ -1539,7 +1573,7 @@
       "description": "CSV および TSV ファイルから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CsvReader パラメータ",
+        "title": "CSV Reader パラメータ",
         "description": "CSV / TSV ファイルの処理方法を設定する",
         "type": "object",
         "required": [
@@ -1635,7 +1669,7 @@
           },
           "geometry": {
             "title": "ジオメトリ設定",
-            "description": "CSV 列からジオメトリを解析するための設定（任意）",
+            "description": "ジオメトリを保持する列を指定する。Well-Known Text の単一列か、座標を分けた複数の列を指定できる。指定した列は属性ではなく地物のジオメトリとして読み取られる。省略時は各行が属性のみの地物になる",
             "anyOf": [
               {
                 "$ref": "#/definitions/GeometryConfig"
@@ -1720,7 +1754,7 @@
             "properties": {
               "epsg": {
                 "title": "EPSG コード",
-                "description": "座標参照系コード（例: WGS84 の場合は 4326）",
+                "description": "ファイル内の値が従う座標参照系。たとえば WGS 84 は 4326。参照先が緯度を先に定義する場合、水平方向の2つの座標値はその順序で格納され、標高の順序は変わらない。省略時は通常の座標として読み取る",
                 "type": [
                   "integer",
                   "null"
@@ -6361,11 +6395,11 @@
     {
       "name": "HTTP Caller",
       "type": "processor",
-      "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
+      "description": "地物ごとにHTTPまたはHTTPSエンドポイントを呼び出し、レスポンスを地物の属性に格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HTTP Caller パラメータ",
-        "description": "レスポンスデータでフィーチャーを拡充する HTTP/HTTPS リクエストを設定する",
+        "description": "地物ごとに実行する HTTP リクエストとレスポンスの格納方法を設定する",
         "type": "object",
         "required": [
           "url"
@@ -6373,7 +6407,7 @@
         "properties": {
           "url": {
             "title": "URL",
-            "description": "HTTP リクエストの対象 URL（式に対応）",
+            "description": "リクエスト先の URL。地物ごとに評価される（式に対応）。http と https のみ使用でき、プライベートネットワークや内部ネットワークのアドレスへのリクエストはブロックされる",
             "type": "object",
             "format": "code",
             "required": [
@@ -6395,7 +6429,7 @@
           },
           "method": {
             "title": "HTTP メソッド",
-            "description": "リクエストで使用する HTTP メソッド",
+            "description": "リクエストで使用する HTTP メソッド（デフォルト: GET）",
             "default": "GET",
             "allOf": [
               {
@@ -6449,41 +6483,9 @@
               }
             ]
           },
-          "contentType": {
-            "title": "コンテンツタイプ",
-            "description": "リクエストの Content-Type ヘッダーを上書きする",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "timeouts": {
-            "title": "タイムアウト",
-            "description": "接続・転送タイムアウトの設定",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/TimeoutConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "httpOptions": {
-            "title": "HTTP オプション",
-            "description": "HTTP クライアントの動作設定（SSL、リダイレクト、ユーザーエージェント）",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/HttpOptions"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "response": {
             "title": "レスポンス設定",
-            "description": "レスポンスデータの格納・処理方法を設定する",
+            "description": "レスポンスを地物に格納する方法を設定する",
             "anyOf": [
               {
                 "$ref": "#/definitions/ResponseConfig"
@@ -6517,12 +6519,24 @@
               }
             ]
           },
-          "observability": {
-            "title": "オブザーバビリティ",
-            "description": "追加メトリクスと診断情報を記録する",
+          "timeouts": {
+            "title": "タイムアウト",
+            "description": "接続・転送タイムアウトの設定",
             "anyOf": [
               {
-                "$ref": "#/definitions/ObservabilityConfig"
+                "$ref": "#/definitions/TimeoutConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "httpOptions": {
+            "title": "HTTP オプション",
+            "description": "HTTP クライアントの動作設定（SSL 検証、リダイレクト、ユーザーエージェント）",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/HttpOptions"
               },
               {
                 "type": "null"
@@ -6589,62 +6603,6 @@
                 "type": "string",
                 "enum": [
                   "OPTIONS"
-                ]
-              },
-              {
-                "title": "COPY",
-                "description": "WebDAV: リソースをコピーする",
-                "type": "string",
-                "enum": [
-                  "COPY"
-                ]
-              },
-              {
-                "title": "LOCK",
-                "description": "WebDAV: リソースをロックする",
-                "type": "string",
-                "enum": [
-                  "LOCK"
-                ]
-              },
-              {
-                "title": "MKCOL",
-                "description": "WebDAV: コレクションを作成する",
-                "type": "string",
-                "enum": [
-                  "MKCOL"
-                ]
-              },
-              {
-                "title": "MOVE",
-                "description": "WebDAV: リソースを移動する",
-                "type": "string",
-                "enum": [
-                  "MOVE"
-                ]
-              },
-              {
-                "title": "PROPFIND",
-                "description": "WebDAV: プロパティを取得する",
-                "type": "string",
-                "enum": [
-                  "PROPFIND"
-                ]
-              },
-              {
-                "title": "PROPPATCH",
-                "description": "WebDAV: プロパティを更新する",
-                "type": "string",
-                "enum": [
-                  "PROPPATCH"
-                ]
-              },
-              {
-                "title": "UNLOCK",
-                "description": "WebDAV: リソースのロックを解除する",
-                "type": "string",
-                "enum": [
-                  "UNLOCK"
                 ]
               }
             ]
@@ -6952,7 +6910,7 @@
                   },
                   "contentType": {
                     "title": "Content Type",
-                    "description": "Override Content-Type header (e.g., application/json, text/plain)",
+                    "description": "Content-Type header for the body, such as application/json or text/plain",
                     "type": [
                       "string",
                       "null"
@@ -6986,7 +6944,7 @@
                   },
                   "contentType": {
                     "title": "Content Type",
-                    "description": "Content-Type header (e.g., application/octet-stream, image/png)",
+                    "description": "Content-Type header for the body (default: application/octet-stream)",
                     "type": [
                       "string",
                       "null"
@@ -7021,7 +6979,7 @@
               },
               {
                 "title": "Multipart Form Data",
-                "description": "Send multipart/form-data (for file uploads)",
+                "description": "Send multipart/form-data (for file uploads); cannot be combined with retry",
                 "type": "object",
                 "required": [
                   "parts",
@@ -7267,6 +7225,258 @@
               }
             ]
           },
+          "ResponseConfig": {
+            "title": "Response Configuration",
+            "description": "Configure how the response is stored. The status code, response headers, and any error message are always stored in the `_http_status_code`, `_headers`, and `_http_error` attributes.",
+            "type": "object",
+            "properties": {
+              "responseBodyAttribute": {
+                "title": "レスポンスボディ属性",
+                "description": "レスポンスボディを格納する地物属性名（デフォルト: `_response_body`）",
+                "default": "_response_body",
+                "type": "string"
+              },
+              "responseHandling": {
+                "title": "レスポンス処理",
+                "description": "レスポンスボディを地物属性に格納するかファイルに保存するか（デフォルト: attribute）",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ResponseHandling"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "responseEncoding": {
+                "title": "レスポンスエンコーディング",
+                "description": "レスポンスボディの格納方法（UTF-8 テキストまたは base64 文字列）。省略時はレスポンスの Content-Type ヘッダーから選択される",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ResponseEncoding"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "autoDetectEncoding": {
+                "title": "エンコーディング自動検出",
+                "description": "レスポンスエンコーディング未設定時に、レスポンスの Content-Type ヘッダーからテキストか base64 かを選択する（デフォルト: true）",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "maxResponseSize": {
+                "title": "最大レスポンスサイズ",
+                "description": "レスポンスボディの最大サイズ（バイト）。超過した場合はダウンロードを中止し、地物をリジェクトする（未設定の場合は無制限）",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            }
+          },
+          "ResponseHandling": {
+            "title": "Response Handling",
+            "description": "How to handle the HTTP response data",
+            "oneOf": [
+              {
+                "title": "Store in Attribute",
+                "description": "Store the response body in a feature attribute",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "attribute"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Save to File",
+                "description": "Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute",
+                "type": "object",
+                "required": [
+                  "path",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "path": {
+                    "title": "File Path",
+                    "description": "Relative path under the job's output directory where the response is saved (supports expressions)",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "ResponseEncoding": {
+            "title": "Response Encoding",
+            "description": "How to store the response body",
+            "oneOf": [
+              {
+                "title": "テキスト",
+                "description": "レスポンスボディを UTF-8 テキストとして格納する",
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              {
+                "title": "Base64",
+                "description": "レスポンスボディを base64 エンコードの文字列として格納する（バイナリデータ向け）",
+                "type": "string",
+                "enum": [
+                  "base64"
+                ]
+              }
+            ]
+          },
+          "RetryConfig": {
+            "title": "Retry Configuration",
+            "description": "Configure automatic retry behavior for failed requests",
+            "type": "object",
+            "properties": {
+              "maxAttempts": {
+                "title": "最大試行回数",
+                "description": "初回リクエストを含む最大試行回数。1 でリトライは無効（デフォルト: 3）",
+                "default": 3,
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "initialDelayMs": {
+                "title": "初回遅延",
+                "description": "最初のリトライまでの初期遅延（ミリ秒）（デフォルト: 100）",
+                "default": 100,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "backoffMultiplier": {
+                "title": "バックオフ乗数",
+                "description": "リトライ間の指数バックオフの乗数（デフォルト: 2.0）",
+                "default": 2.0,
+                "type": "number",
+                "format": "double"
+              },
+              "maxDelayMs": {
+                "title": "最大遅延",
+                "description": "リトライ間の最大遅延（ミリ秒）。Retry-After ヘッダーが要求する遅延もこの値が上限となる（デフォルト: 10000）",
+                "default": 10000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "retryOnStatus": {
+                "title": "リトライするステータスコード",
+                "description": "リトライのトリガーとなる HTTP ステータスコード（例: [429, 503]）。省略時はすべての 5xx ステータスコードでリトライする",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "format": "uint16",
+                  "minimum": 0.0
+                }
+              },
+              "honorRetryAfter": {
+                "title": "Retry-After ヘッダーを尊重",
+                "description": "リトライ間隔の決定時に Retry-After レスポンスヘッダー（秒数または HTTP 日付形式）を尊重するか（デフォルト: true）",
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          },
+          "RateLimitConfig": {
+            "title": "Rate Limit Configuration",
+            "description": "Control the rate of HTTP requests to avoid overwhelming the server",
+            "type": "object",
+            "required": [
+              "requests"
+            ],
+            "properties": {
+              "requests": {
+                "title": "リクエスト数",
+                "description": "インターバル内に許容されるリクエストの最大数",
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "intervalMs": {
+                "title": "インターバル",
+                "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000）",
+                "default": 1000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "timing": {
+                "title": "タイミング戦略",
+                "description": "インターバル内でリクエストを分配する方法（デフォルト: burst）",
+                "default": "burst",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/TimingStrategy"
+                  }
+                ]
+              }
+            }
+          },
+          "TimingStrategy": {
+            "title": "Timing Strategy",
+            "description": "How to distribute requests within the rate limit interval",
+            "oneOf": [
+              {
+                "title": "バースト",
+                "description": "すべてのリクエストを即時に許可し、次のインターバルまで一時停止する",
+                "type": "string",
+                "enum": [
+                  "burst"
+                ]
+              },
+              {
+                "title": "分散",
+                "description": "インターバル全体にリクエストを均等に分散する",
+                "type": "string",
+                "enum": [
+                  "distributed"
+                ]
+              }
+            ]
+          },
           "TimeoutConfig": {
             "title": "Timeout Configuration",
             "description": "Configure connection and transfer timeouts for HTTP requests",
@@ -7301,7 +7511,7 @@
             "properties": {
               "userAgent": {
                 "title": "ユーザーエージェント",
-                "description": "カスタム User-Agent ヘッダー値",
+                "description": "各リクエストに送信するカスタム User-Agent ヘッダー値",
                 "type": [
                   "string",
                   "null"
@@ -7309,7 +7519,7 @@
               },
               "verifySsl": {
                 "title": "SSL を検証",
-                "description": "SSL/TLS 証明書を検証するか（デフォルト: true）",
+                "description": "SSL/TLS 証明書を検証するか。自己署名証明書を使うサーバーに対してのみ無効化する（デフォルト: true）",
                 "type": [
                   "boolean",
                   "null"
@@ -7332,363 +7542,6 @@
                 ],
                 "format": "uint8",
                 "minimum": 0.0
-              }
-            }
-          },
-          "ResponseConfig": {
-            "title": "Response Configuration",
-            "description": "Configure how HTTP response data is stored and processed",
-            "type": "object",
-            "properties": {
-              "responseBodyAttribute": {
-                "title": "レスポンスボディ属性",
-                "description": "レスポンスボディを格納するフィーチャー属性名（デフォルト: \"_response_body\"）",
-                "default": "_response_body",
-                "type": "string"
-              },
-              "statusCodeAttribute": {
-                "title": "ステータスコード属性",
-                "description": "HTTP ステータスコードを格納するフィーチャー属性名（デフォルト: \"_http_status_code\"）",
-                "default": "_http_status_code",
-                "type": "string"
-              },
-              "headersAttribute": {
-                "title": "ヘッダー属性",
-                "description": "レスポンスヘッダーを格納するフィーチャー属性名（デフォルト: \"_headers\"）",
-                "default": "_headers",
-                "type": "string"
-              },
-              "errorAttribute": {
-                "title": "エラー属性",
-                "description": "エラーメッセージを格納するフィーチャー属性名（デフォルト: \"_http_error\"）",
-                "default": "_http_error",
-                "type": "string"
-              },
-              "responseHandling": {
-                "title": "レスポンス処理",
-                "description": "レスポンスデータの処理方法（属性またはファイル）",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ResponseHandling"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "maxResponseSize": {
-                "title": "最大レスポンスサイズ",
-                "description": "レスポンスボディの最大サイズ（バイト）（未設定の場合は無制限）",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "responseEncoding": {
-                "title": "レスポンスエンコーディング",
-                "description": "レスポンスボディのエンコード方法（テキスト、base64、またはバイナリ）",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/ResponseEncoding"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "autoDetectEncoding": {
-                "title": "エンコーディング自動検出",
-                "description": "レスポンスヘッダーから文字エンコーディングを自動検出する",
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              }
-            }
-          },
-          "ResponseHandling": {
-            "title": "Response Handling",
-            "description": "How to handle the HTTP response data",
-            "oneOf": [
-              {
-                "title": "Store in Attribute",
-                "description": "Store response body in a feature attribute",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "attribute"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Save to File",
-                "description": "Save response body to a file",
-                "type": "object",
-                "required": [
-                  "path",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "file"
-                    ]
-                  },
-                  "path": {
-                    "title": "File Path",
-                    "description": "Path where the response should be saved",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr",
-                          "string"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "storePathInAttribute": {
-                    "title": "Store Path in Attribute",
-                    "description": "Whether to store the file path in a feature attribute",
-                    "type": [
-                      "boolean",
-                      "null"
-                    ]
-                  },
-                  "pathAttribute": {
-                    "title": "Path Attribute Name",
-                    "description": "Attribute name for storing the file path",
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          "ResponseEncoding": {
-            "title": "Response Encoding",
-            "description": "How to encode the response body data",
-            "oneOf": [
-              {
-                "title": "テキスト",
-                "description": "レスポンスを UTF-8 テキストとしてデコードする",
-                "type": "string",
-                "enum": [
-                  "text"
-                ]
-              },
-              {
-                "title": "Base64",
-                "description": "レスポンスを Base64 文字列としてエンコードする",
-                "type": "string",
-                "enum": [
-                  "base64"
-                ]
-              },
-              {
-                "title": "バイナリ",
-                "description": "レスポンスを生バイナリデータとして格納する",
-                "type": "string",
-                "enum": [
-                  "binary"
-                ]
-              }
-            ]
-          },
-          "RetryConfig": {
-            "title": "Retry Configuration",
-            "description": "Configure automatic retry behavior for failed requests",
-            "type": "object",
-            "properties": {
-              "maxAttempts": {
-                "title": "最大試行回数",
-                "description": "リトライの最大試行回数（デフォルト: 3）",
-                "default": 3,
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "initialDelayMs": {
-                "title": "初回遅延",
-                "description": "最初のリトライまでの初回遅延（ミリ秒）（デフォルト: 100ms）",
-                "default": 100,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "backoffMultiplier": {
-                "title": "バックオフ乗数",
-                "description": "リトライ間の指数バックオフの乗数（デフォルト: 2.0）",
-                "default": 2.0,
-                "type": "number",
-                "format": "double"
-              },
-              "maxDelayMs": {
-                "title": "最大遅延",
-                "description": "リトライ間の最大遅延（ミリ秒）（デフォルト: 10000ms）",
-                "default": 10000,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "retryOnStatus": {
-                "title": "リトライするステータスコード",
-                "description": "リトライのトリガーとなる HTTP ステータスコードのリスト（例: [429, 503]）",
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "integer",
-                  "format": "uint16",
-                  "minimum": 0.0
-                }
-              },
-              "honorRetryAfter": {
-                "title": "Retry-After ヘッダーを尊重",
-                "description": "サーバーレスポンスの Retry-After ヘッダーを尊重するか（デフォルト: true）",
-                "default": true,
-                "type": "boolean"
-              }
-            }
-          },
-          "RateLimitConfig": {
-            "title": "Rate Limit Configuration",
-            "description": "Control the rate of HTTP requests to avoid overwhelming the server",
-            "type": "object",
-            "required": [
-              "requests"
-            ],
-            "properties": {
-              "requests": {
-                "title": "リクエスト数",
-                "description": "インターバル内に許容されるリクエストの最大数",
-                "type": "integer",
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "intervalMs": {
-                "title": "インターバル",
-                "description": "レート制限の時間間隔（ミリ秒）（デフォルト: 1000ms）",
-                "default": 1000,
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "timing": {
-                "title": "タイミング戦略",
-                "description": "インターバル内でリクエストを分配する方法（デフォルト: Burst）",
-                "default": "burst",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/TimingStrategy"
-                  }
-                ]
-              }
-            }
-          },
-          "TimingStrategy": {
-            "title": "Timing Strategy",
-            "description": "How to distribute requests within the rate limit interval",
-            "oneOf": [
-              {
-                "title": "バースト",
-                "description": "すべてのリクエストを即時に許可し、次のインターバルまで一時停止する",
-                "type": "string",
-                "enum": [
-                  "burst"
-                ]
-              },
-              {
-                "title": "分散",
-                "description": "インターバル全体にリクエストを均等に分散する",
-                "type": "string",
-                "enum": [
-                  "distributed"
-                ]
-              }
-            ]
-          },
-          "ObservabilityConfig": {
-            "title": "Observability Configuration",
-            "description": "Track additional metrics and diagnostics about HTTP requests",
-            "type": "object",
-            "properties": {
-              "trackDuration": {
-                "title": "処理時間を記録",
-                "description": "リクエストの合計処理時間を記録するか（デフォルト: true）",
-                "default": true,
-                "type": "boolean"
-              },
-              "durationAttribute": {
-                "title": "処理時間属性",
-                "description": "リクエスト処理時間（ミリ秒）を格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackFinalUrl": {
-                "title": "最終 URL を記録",
-                "description": "リダイレクト後の最終 URL を記録するか（デフォルト: false）",
-                "default": false,
-                "type": "boolean"
-              },
-              "finalUrlAttribute": {
-                "title": "最終 URL 属性",
-                "description": "リダイレクト後の最終 URL を格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackRetryCount": {
-                "title": "リトライ回数を記録",
-                "description": "リトライ試行回数を記録するか（デフォルト: true）",
-                "default": true,
-                "type": "boolean"
-              },
-              "retryCountAttribute": {
-                "title": "リトライ回数属性",
-                "description": "リトライ試行回数を格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "trackBytes": {
-                "title": "バイト数を記録",
-                "description": "レスポンスボディサイズをバイト単位で記録するか（デフォルト: false）",
-                "default": false,
-                "type": "boolean"
-              },
-              "bytesAttribute": {
-                "title": "バイト数属性",
-                "description": "レスポンスボディサイズを格納するフィーチャー属性名",
-                "type": [
-                  "string",
-                  "null"
-                ]
               }
             }
           }
@@ -8979,8 +8832,16 @@
           },
           "defaultReplacement": {
             "title": "デフォルト置換値",
-            "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される",
-            "default": null
+            "description": "マッピングに登録されていない null 相当の属性に書き込む内容。範囲がすべての属性を検査する場合にのみ適用される。省略した場合、それらの属性は変更されない",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/NullReplacement"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "nullDefinition": {
             "title": "null の定義",
@@ -9028,7 +8889,8 @@
             "description": "Per-attribute replacement mapping",
             "type": "object",
             "required": [
-              "attribute"
+              "attribute",
+              "replacement"
             ],
             "properties": {
               "attribute": {
@@ -9038,7 +8900,12 @@
               },
               "replacement": {
                 "title": "置換値",
-                "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
+                "description": "属性が null に相当する場合に書き込む内容。必須項目とすることで、属性の削除は省略による暗黙の動作ではなく明示的な指定になる",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/NullReplacement"
+                  }
+                ]
               },
               "onMissing": {
                 "title": "欠落時の動作",
@@ -9051,6 +8918,94 @@
                 ]
               }
             }
+          },
+          "NullReplacement": {
+            "title": "Null Replacement",
+            "description": "What to write in place of a null-like attribute, and the type to write it as.",
+            "oneOf": [
+              {
+                "title": "Text",
+                "description": "Written as text.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The text to write.",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Number",
+                "description": "Written as a number.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "number"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The number to write.",
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "title": "True or False",
+                "description": "Written as a true/false value.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "boolean"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "The value to write.",
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "title": "Remove",
+                "description": "Removes the attribute from the feature instead of writing a value.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "remove"
+                    ]
+                  }
+                }
+              }
+            ]
           },
           "OnMissing": {
             "title": "On Missing",
@@ -12499,16 +12454,16 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）",
+      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）。フィルタージオメトリが 1 つも渡されない場合はすべての候補が通過する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Spatial Filter パラメータ",
-        "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する",
+        "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する",
         "type": "object",
         "properties": {
           "predicate": {
             "title": "空間述語",
-            "description": "テストする空間関係。候補が主語となる: within は候補がフィルタージオメトリの内部にある場合に通過し、contains は候補がフィルタージオメトリを含む場合に通過する",
+            "description": "テストする空間関係。候補を主語、フィルタージオメトリを目的語として読む",
             "default": "intersects",
             "allOf": [
               {
@@ -12528,13 +12483,13 @@
           },
           "mergeFilterAttributes": {
             "title": "フィルター属性をマージ",
-            "description": "true の場合、一致したすべてのフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後に一致したフィルターの値が優先される",
+            "description": "一致したすべてのフィルター地物の属性を通過した候補にコピーする。候補が同名の属性を持つ場合は上書きされ、一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される",
             "default": false,
             "type": "boolean"
           },
           "mergedAttributesPrefix": {
             "title": "マージ属性プレフィックス",
-            "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる",
+            "description": "マージする属性名に付加するプレフィックス。候補自身の属性名との衝突を防ぐ。\"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。属性をマージしない場合は無視される",
             "default": null,
             "type": [
               "string",
@@ -12543,7 +12498,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "マッチ数出力属性",
-            "description": "候補が一致したフィルター地物の数を格納する属性名（任意）",
+            "description": "候補が一致したフィルター地物の数を格納する属性。通過した候補と失敗した候補の両方に書き込まれる",
             "default": null,
             "anyOf": [
               {
@@ -12557,65 +12512,76 @@
         },
         "definitions": {
           "SpatialPredicate": {
+            "title": "Spatial Predicate",
+            "description": "The relationship each candidate is tested for against a filter geometry.",
             "oneOf": [
               {
-                "description": "候補がフィルタージオメトリを完全に含む",
+                "title": "含む",
+                "description": "候補がフィルタージオメトリを内部に含み、内部を共有する。フィルターが候補の境界上のみにある場合は該当しない（その場合は Covers を使用）",
                 "type": "string",
                 "enum": [
                   "contains"
                 ]
               },
               {
-                "description": "候補がフィルタージオメトリの内部に完全に含まれる",
+                "title": "含まれる",
+                "description": "候補がフィルタージオメトリの内部にあり、内部を共有する。候補がフィルターの境界上のみにある場合は該当しない（その場合は Covered By を使用）",
                 "type": "string",
                 "enum": [
                   "within"
                 ]
               },
               {
-                "description": "ジオメトリが何らかの交差を持つ",
+                "title": "交差する",
+                "description": "候補がフィルタージオメトリと少なくとも 1 点を共有する",
                 "type": "string",
                 "enum": [
                   "intersects"
                 ]
               },
               {
-                "description": "ジオメトリに空間的な関係がない",
+                "title": "交差しない",
+                "description": "候補がフィルタージオメトリと 1 点も共有しない",
                 "type": "string",
                 "enum": [
                   "disjoint"
                 ]
               },
               {
-                "description": "ジオメトリが境界で接しているが重なっていない",
+                "title": "接する",
+                "description": "候補がフィルタージオメトリと境界のみで接し、内部を共有しない",
                 "type": "string",
                 "enum": [
                   "touches"
                 ]
               },
               {
-                "description": "ジオメトリが互いに交差する",
+                "title": "横断する",
+                "description": "候補がフィルタージオメトリを横切り、ポリゴンを横断する線のように次元の低い重なりで内部と交わる",
                 "type": "string",
                 "enum": [
                   "crosses"
                 ]
               },
               {
-                "description": "ジオメトリが部分的に重なる",
+                "title": "重なる",
+                "description": "候補がフィルタージオメトリと同じ次元を持ち、内部を共有しつつ互いに外側の点も持つ",
                 "type": "string",
                 "enum": [
                   "overlaps"
                 ]
               },
               {
-                "description": "候補がフィルタージオメトリに覆われている",
+                "title": "覆われる",
+                "description": "候補のすべての点がフィルタージオメトリ内にある。境界上のみにある場合も含む",
                 "type": "string",
                 "enum": [
                   "coveredBy"
                 ]
               },
               {
-                "description": "候補がフィルタージオメトリを覆う",
+                "title": "覆う",
+                "description": "候補がフィルタージオメトリのすべての点を含む。フィルターが境界上のみにある場合も含む",
                 "type": "string",
                 "enum": [
                   "covers"

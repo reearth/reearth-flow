@@ -34,7 +34,7 @@ mod tests {
         }
         assert_eq!(
             ErrorCode::ALL.len(),
-            30,
+            31,
             "update this count when adding registry codes"
         );
     }

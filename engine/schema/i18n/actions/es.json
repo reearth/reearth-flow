@@ -6,15 +6,15 @@
     },
     {
       "name": "Area Calculator",
-      "description": "Calculates the true surface area of a feature's geometry and stores it in an attribute. A solid's area is the sum of its boundary surfaces, so a void's faces count toward it just like the exterior's.",
+      "description": "Calcula el área real de la superficie de la geometría de una entidad y la almacena en un atributo. El área de un sólido es la suma de todas sus superficies de contorno, por lo que las caras de un hueco cuentan igual que las del exterior.",
       "parameterI18n": {
         "": {
-          "title": "Area Calculator Parameters",
-          "description": "Configure how the area of each feature's geometry is measured and stored."
+          "title": "Parámetros de Area Calculator",
+          "description": "Dónde se almacena el área de superficie medida en cada entidad."
         },
         "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one."
+          "title": "Atributo de salida",
+          "description": "Atributo en el que se almacena el área de superficie medida. El atributo se escribe siempre, y registra `0` cuando la geometría no tiene área o no se ha podido medir, de modo que ningún paso posterior tenga que gestionar un valor ausente."
         }
       }
     },
@@ -363,7 +363,7 @@
           },
           "outputValue": {
             "title": "Output Value",
-            "description": "The value to assign when input falls within this range (can be string, number, boolean, etc.)"
+            "description": "Value written to the output attribute when the input falls in this range."
           },
           "to": {
             "title": "To (Maximum)",
@@ -588,10 +588,10 @@
     },
     {
       "name": "CSV Reader",
-      "description": "Lee características de un archivo CSV",
+      "description": "Lee entidades de archivos CSV y TSV",
       "parameterI18n": {
         "": {
-          "title": "CsvReader Parameters",
+          "title": "CSV Reader Parameters",
           "description": "Configure how CSV and TSV files are processed and read"
         },
         "dataset": {
@@ -608,7 +608,7 @@
         },
         "geometry": {
           "title": "Geometry Configuration",
-          "description": "Optional configuration for parsing geometry from CSV columns"
+          "description": "Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted."
         },
         "headerRows": {
           "title": "Header Row Count",
@@ -627,7 +627,7 @@
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG Code",
-            "description": "Coordinate Reference System code (e.g., 4326 for WGS84)"
+            "description": "Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted."
           }
         }
       },
@@ -1977,19 +1977,15 @@
     },
     {
       "name": "HTTP Caller",
-      "description": "Realizar solicitudes HTTP/HTTPS y enriquecer entidades con datos de respuesta",
+      "description": "Llamar a un endpoint HTTP o HTTPS por cada entidad y almacenar la respuesta en atributos de la entidad",
       "parameterI18n": {
         "": {
           "title": "HTTP Caller Parameters",
-          "description": "Configure HTTP/HTTPS requests to enrich features with response data"
+          "description": "Configure the HTTP request made for each feature and how the response is stored"
         },
         "authentication": {
           "title": "Authentication",
           "description": "Authentication method and credentials for the request"
-        },
-        "contentType": {
-          "title": "Content Type",
-          "description": "Override the Content-Type header for the request"
         },
         "customHeaders": {
           "title": "Custom Headers",
@@ -1997,15 +1993,11 @@
         },
         "httpOptions": {
           "title": "HTTP Options",
-          "description": "HTTP client behavior settings (SSL, redirects, user agent)"
+          "description": "HTTP client behavior settings (SSL verification, redirects, user agent)"
         },
         "method": {
           "title": "HTTP Method",
-          "description": "The HTTP method to use for the request"
-        },
-        "observability": {
-          "title": "Observability",
-          "description": "Track additional metrics and diagnostics"
+          "description": "The HTTP method to use for the request (default: GET)"
         },
         "queryParameters": {
           "title": "Query Parameters",
@@ -2021,7 +2013,7 @@
         },
         "response": {
           "title": "Response Configuration",
-          "description": "Configure how response data is stored and processed"
+          "description": "Configure how the response is stored on the feature"
         },
         "retry": {
           "title": "Retry Configuration",
@@ -2033,7 +2025,7 @@
         },
         "url": {
           "title": "URL",
-          "description": "The target URL for the HTTP request (supports expressions)"
+          "description": "The URL to request, evaluated for each feature (supports expressions). Only http and https URLs are allowed, and requests to private or internal network addresses are blocked."
         }
       },
       "definitionI18n": {
@@ -2068,45 +2060,11 @@
           },
           "userAgent": {
             "title": "User Agent",
-            "description": "Custom User-Agent header value"
+            "description": "Custom User-Agent header value sent with each request"
           },
           "verifySsl": {
             "title": "Verify SSL",
-            "description": "Whether to verify SSL/TLS certificates (default: true)"
-          }
-        },
-        "ObservabilityConfig": {
-          "bytesAttribute": {
-            "title": "Bytes Attribute",
-            "description": "Feature attribute name to store the response body size"
-          },
-          "durationAttribute": {
-            "title": "Duration Attribute",
-            "description": "Feature attribute name to store request duration in milliseconds"
-          },
-          "finalUrlAttribute": {
-            "title": "Final URL Attribute",
-            "description": "Feature attribute name to store the final URL after redirects"
-          },
-          "retryCountAttribute": {
-            "title": "Retry Count Attribute",
-            "description": "Feature attribute name to store the number of retry attempts"
-          },
-          "trackBytes": {
-            "title": "Track Bytes",
-            "description": "Whether to track the response body size in bytes (default: false)"
-          },
-          "trackDuration": {
-            "title": "Track Duration",
-            "description": "Whether to track the total request duration (default: true)"
-          },
-          "trackFinalUrl": {
-            "title": "Track Final URL",
-            "description": "Whether to track the final URL after redirects (default: false)"
-          },
-          "trackRetryCount": {
-            "title": "Track Retry Count",
-            "description": "Whether to track the number of retry attempts (default: true)"
+            "description": "Whether to verify SSL/TLS certificates; disable only for servers with self-signed certificates (default: true)"
           }
         },
         "QueryParam": {
@@ -2122,7 +2080,7 @@
         "RateLimitConfig": {
           "intervalMs": {
             "title": "Interval",
-            "description": "Time interval in milliseconds for the rate limit (default: 1000ms)"
+            "description": "Time interval in milliseconds for the rate limit (default: 1000)"
           },
           "requests": {
             "title": "Requests",
@@ -2130,41 +2088,29 @@
           },
           "timing": {
             "title": "Timing Strategy",
-            "description": "How to distribute requests within the interval (default: Burst)"
+            "description": "How to distribute requests within the interval (default: burst)"
           }
         },
         "ResponseConfig": {
           "autoDetectEncoding": {
             "title": "Auto Detect Encoding",
-            "description": "Automatically detect character encoding from response headers"
-          },
-          "errorAttribute": {
-            "title": "Error Attribute",
-            "description": "Feature attribute name to store any error messages (default: \"_http_error\")"
-          },
-          "headersAttribute": {
-            "title": "Headers Attribute",
-            "description": "Feature attribute name to store the response headers (default: \"_headers\")"
+            "description": "Choose text or base64 storage from the response's Content-Type header when Response Encoding is not set (default: true)"
           },
           "maxResponseSize": {
             "title": "Max Response Size",
-            "description": "Maximum response body size in bytes (unlimited if not set)"
+            "description": "Maximum response body size in bytes; the download is stopped and the feature rejected when a response exceeds it (unlimited if not set)"
           },
           "responseBodyAttribute": {
             "title": "Response Body Attribute",
-            "description": "Feature attribute name to store the response body (default: \"_response_body\")"
+            "description": "Feature attribute name to store the response body (default: `_response_body`)"
           },
           "responseEncoding": {
             "title": "Response Encoding",
-            "description": "How to encode the response body (text, base64, or binary)"
+            "description": "How to store the response body: as UTF-8 text or as a base64-encoded string. When omitted, the encoding is chosen from the response's Content-Type header."
           },
           "responseHandling": {
             "title": "Response Handling",
-            "description": "How to handle the response data (attribute or file)"
-          },
-          "statusCodeAttribute": {
-            "title": "Status Code Attribute",
-            "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")"
+            "description": "Whether to store the response body in a feature attribute or save it to a file (default: attribute)"
           }
         },
         "RetryConfig": {
@@ -2174,23 +2120,23 @@
           },
           "honorRetryAfter": {
             "title": "Honor Retry-After Header",
-            "description": "Whether to respect the Retry-After header from server responses (default: true)"
+            "description": "Whether to respect the Retry-After response header, in seconds or HTTP-date form, when scheduling a retry (default: true)"
           },
           "initialDelayMs": {
             "title": "Initial Delay",
-            "description": "Initial delay in milliseconds before first retry (default: 100ms)"
+            "description": "Initial delay in milliseconds before the first retry (default: 100)"
           },
           "maxAttempts": {
             "title": "Max Attempts",
-            "description": "Maximum number of retry attempts (default: 3)"
+            "description": "Maximum total number of attempts including the initial request; 1 disables retries (default: 3)"
           },
           "maxDelayMs": {
             "title": "Max Delay",
-            "description": "Maximum delay in milliseconds between retries (default: 10000ms)"
+            "description": "Maximum delay in milliseconds between retries, also capping delays requested by the Retry-After header (default: 10000)"
           },
           "retryOnStatus": {
             "title": "Retry on Status Codes",
-            "description": "List of HTTP status codes that should trigger a retry (e.g., [429, 503])"
+            "description": "HTTP status codes that trigger a retry, such as [429, 503]. When omitted, all 5xx status codes are retried."
           }
         },
         "TimeoutConfig": {
@@ -2216,10 +2162,6 @@
           }
         },
         "HttpMethod": {
-          "COPY": {
-            "title": "COPY",
-            "description": "WebDAV: Copy a resource"
-          },
           "DELETE": {
             "title": "DELETE",
             "description": "Delete a resource"
@@ -2231,18 +2173,6 @@
           "HEAD": {
             "title": "HEAD",
             "description": "Retrieve headers only (no body)"
-          },
-          "LOCK": {
-            "title": "LOCK",
-            "description": "WebDAV: Lock a resource"
-          },
-          "MKCOL": {
-            "title": "MKCOL",
-            "description": "WebDAV: Create a collection"
-          },
-          "MOVE": {
-            "title": "MOVE",
-            "description": "WebDAV: Move a resource"
           },
           "OPTIONS": {
             "title": "OPTIONS",
@@ -2256,35 +2186,19 @@
             "title": "POST",
             "description": "Submit data to the server"
           },
-          "PROPFIND": {
-            "title": "PROPFIND",
-            "description": "WebDAV: Retrieve properties"
-          },
-          "PROPPATCH": {
-            "title": "PROPPATCH",
-            "description": "WebDAV: Update properties"
-          },
           "PUT": {
             "title": "PUT",
             "description": "Update or create a resource"
-          },
-          "UNLOCK": {
-            "title": "UNLOCK",
-            "description": "WebDAV: Unlock a resource"
           }
         },
         "ResponseEncoding": {
           "base64": {
             "title": "Base64",
-            "description": "Encode response as base64 string"
-          },
-          "binary": {
-            "title": "Binary",
-            "description": "Store response as raw binary data"
+            "description": "Store the response body as a base64-encoded string (for binary data)"
           },
           "text": {
             "title": "Text",
-            "description": "Decode response as UTF-8 text"
+            "description": "Store the response body as UTF-8 text"
           }
         },
         "TimingStrategy": {
@@ -2659,7 +2573,7 @@
         },
         "defaultReplacement": {
           "title": "Default Replacement",
-          "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes."
+          "description": "What to write for null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes. When omitted, those attributes are left unchanged."
         },
         "mappings": {
           "title": "Attribute Mappings",
@@ -2690,7 +2604,7 @@
           },
           "replacement": {
             "title": "Replacement",
-            "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+            "description": "What to write when the attribute is null-like. Required, so that removing an attribute is stated rather than implied by leaving this out."
           }
         }
       },
@@ -3594,11 +3508,11 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales.",
+      "description": "Filtra entidades candidatas por su relación espacial con geometrías de filtro, evaluada en el plano horizontal: una geometría 3D se compara por su huella y debe estar en un marco de coordenadas con unidades lineales. Todas las candidatas pasan cuando no se suministra ninguna geometría de filtro.",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter Parameters",
-          "description": "Configure spatial relationship testing between filter and candidate geometries"
+          "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter."
         },
         "matchMode": {
           "title": "Match Mode",
@@ -3606,19 +3520,19 @@
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins."
+          "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
-          "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\"."
+          "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged."
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of filter features the candidate matched."
+          "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike."
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one."
+          "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object."
         }
       },
       "enumI18n": {
@@ -3634,31 +3548,40 @@
         },
         "SpatialPredicate": {
           "contains": {
-            "description": "Candidate completely contains the filter geometry"
+            "title": "Contains",
+            "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that."
           },
           "coveredBy": {
-            "description": "Candidate is covered by filter geometry"
+            "title": "Covered By",
+            "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary."
           },
           "covers": {
-            "description": "Candidate covers the filter geometry"
+            "title": "Covers",
+            "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary."
           },
           "crosses": {
-            "description": "Geometries cross each other"
+            "title": "Crosses",
+            "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon."
           },
           "disjoint": {
-            "description": "Geometries have no spatial relationship"
+            "title": "Disjoint",
+            "description": "Passes a candidate that shares no point at all with the filter geometry."
           },
           "intersects": {
-            "description": "Geometries have any intersection"
+            "title": "Intersects",
+            "description": "Passes a candidate that shares at least one point with the filter geometry."
           },
           "overlaps": {
-            "description": "Geometries overlap partially"
+            "title": "Overlaps",
+            "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other."
           },
           "touches": {
-            "description": "Geometries touch at boundaries but don't overlap"
+            "title": "Touches",
+            "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior."
           },
           "within": {
-            "description": "Candidate completely within filter geometry"
+            "title": "Within",
+            "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that."
           }
         }
       }

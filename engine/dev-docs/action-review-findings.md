@@ -355,8 +355,12 @@ Ray Intersector
 
 ### Verified accurate (spot-checked, no action needed)
 
-- `Area Calculator.areaType` — "Has no effect on a geometry with no elevation" is true;
-  the parameter is only consulted inside the 3D branch (`area_calculator.rs:148-161`).
+- ~~`Area Calculator.areaType`~~ — **deleted 2026-08-27. The parameter no longer exists**:
+  #2385 removed it from both builds, so the line described a knob the user cannot set, while
+  reading as coverage. It never was coverage — a spot-check is not a review — and the action's
+  own §8 pass is in its addendum at the bottom of this file. Kept as a stub rather than removed
+  silently, because "a note written before a port describes the implementation the port
+  replaced" is the trap §7.2 records, and this is its second instance.
 - `Feature Counter.countStart` — "Value assigned to the first feature" is true;
   `fetch_add` returns the pre-increment value seeded from `start`.
 - `XML Validator.{attribute,inputType,validationType}` — all three applied
@@ -455,16 +459,16 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **76** actions, down from 105. The gate is now
+`server/api/internal/app/base_actions.go` exposes **80** actions, down from 105. The gate is now
 strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 76 | — |
-| Does not run in the shipped build | 17 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **8** | An engine-side §8 pass — the list below |
+| Exposed and audited | 80 | — |
+| Does not run in the shipped build | 16 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **5** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
 
@@ -474,15 +478,6 @@ so §7.2 handed it a decision rather than an audit. The §8 re-check was run aga
 new-geometry build and found no correctness defect; its outcome is in the Geometry A section
 below, along with the one item that stays deferred.
 
-⚠️ **`CSV Reader` runs but is still counted in the does-not-run bucket.** Its port merged as
-#2405 and `file/csv.rs` now has a `#[cfg(feature = "new-geometry")] async fn start`, so it
-executes in the shipped build; it is not in `base_actions.go`, and it is not in the pending-audit
-list either, so no bucket currently describes it. It was reviewed in the Input batch (#2280) —
-`offset`/`headerRows`/`geometry` were re-verified in the pass below — which by the rule above
-makes it Bufferer's case: **a re-exposure decision, not an audit.** Verified 2026-08-27.
-Its Notion row still reads "In progress" while its merged code runs, so the tracker is not the
-thing to check here. **Trigger:** none pending; this is ready to decide.
-
 **The `impl:` finding that appeared to block it never described the shipped build**, and this is
 worth keeping as a warning rather than deleting. That finding — only points, curves and single
 polygons buffered, every other type emitted **unbuffered** — was written against the legacy
@@ -491,19 +486,22 @@ finding's text survived the port, so it reads as live. Anyone re-reading a findi
 before an action's geometry port should confirm which implementation it describes before
 treating it as a blocker.
 
-**`CSV Reader`'s port landed in #2405 (merged 2026-08-27) and it is the same case as Bufferer.**
-It now has a `#[cfg(feature = "new-geometry")] start` (`file/csv.rs:166`) so it runs, and it was
-reviewed in the Input batch (#2280) — so §7.2 hands it a decision rather than an audit. Like
-Bufferer's, that review predates the 2026-08-20/21 rescoping (§7, the §8 `impl:` line, the §6 tag
-rewrite), so the decision needs an §8 re-check against the new-geometry code first. It is not in
-`base_actions.go`. Note the table has no bucket for "runs, reviewed, awaiting a decision" — that
-is why this is prose, and it is the slot Bufferer occupied until this PR.
+**`CSV Reader`'s port landed in #2405, and it has now been audited and exposed** — outcome in
+the addendum at the bottom of this file. It was triaged as Bufferer's case (reviewed in the Input
+batch #2280, so a decision rather than an audit), and that triage was overturned before any work
+started: #2280 merged 2026-07-23, which is *earlier than every Changelog entry in the standard
+except its own*. §7 did not exist, §8 had no `impl:` line, and §4.3 and §6 have both been
+corrected since. A review that predates that much of the standard supplies almost no coverage, so
+it was audited in full. **The general rule: date the prior review against the Changelog before
+calling anything a re-check** — Bufferer's review (#2317, 2026-07-31) postdates most of those
+entries and CSV Reader's does not, which is what separates the two cases.
 
-**`Area Calculator`'s port landed in #2385 (merged 2026-08-27) and it moves to pending audit.**
-Recorded here per §7.2 rather than left to expire: it now has a `#[cfg(feature = "new-geometry")]
-process` (`area_calculator.rs:165`) so it runs, it is not in `base_actions.go`, and it has had no
-§8 pass — only a spot-check of `areaType` in "Verified accurate" below. Same case as Elevation
-Extractor, not Bufferer's.
+**`Area Calculator`'s port landed in #2385 (merged 2026-08-27), it went to pending audit per
+§7.2, and it has now been audited and exposed** — outcome in the addendum at the bottom of this
+file. It was the Elevation Extractor case, not Bufferer's: the only prior note on it was a
+spot-check of `areaType`, a parameter #2385 deleted, and a spot-check is not a review. Its audit
+is also why §2 now covers diagnostic registry text, so it is the first action whose review had to
+read a surface outside `actions.json`.
 
 `Coordinate Frame Reprojector` and `Dissolver` were audited after the rest of this section was
 written and are **exposed**; their outcomes are at the bottom. Both were picked because they had
@@ -525,13 +523,13 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 7 actions, with preliminary findings
+### Pending audit — 5 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
 grouping is a suggestion, not a constraint.
 
-#### Newly eligible — its port landed (2)
+#### Newly eligible — its port landed (0 remaining)
 
 **`Bufferer`'s port also landed (#2370, 2026-08-25) and it is NOT in this list**, because the
 two cases differ and the difference is the whole point of §7.2's rule. An action never reviewed
@@ -540,25 +538,12 @@ handed it to a decision instead — taken in #2422, and recorded under the bucke
 assume a port landing means "needs an audit"; check the review state first.
 
 Note which way that test cuts: a spot-check is not a review. `Area Calculator` had one line
-verified in the re-verification pass below and still belongs in this list, not in Bufferer's.
+verified in the re-verification pass below, which is why its port landing put it in this list
+rather than in Bufferer's — the audit it then owed is the addendum at the bottom of this file.
 
-`Elevation Extractor` was in this list and is now audited and exposed — see the addendum below.
-
-```
-Spatial Filter
-  runs:    Ported in #2410 (2026-08-27), so it now runs in the shipped build and has left the
-             does-not-run bucket. Same case as Elevation Extractor and not Bufferer's: it
-             appears nowhere in this file, so it has never been reviewed and the port landing
-             hands it here rather than to a decision.
-  scan:    NOT scanned, for the same reason. Budget a full §8 pass.
-
-Area Calculator
-  runs:    Ported in #2385 (2026-08-27), so it now runs in the shipped build and has left the
-             does-not-run bucket. Same case as Elevation Extractor and Spatial Filter: it has
-             had no §8 pass, so the port landing hands it here rather than to a decision.
-  scan:    Only `areaType` has been looked at, as a spot-check recorded under "Verified
-             accurate" below — that is not a review. Budget a full §8 pass.
-```
+`Elevation Extractor`, `Area Calculator` and `Spatial Filter` were all in this list and are now
+audited and exposed; `HTTP Caller` left it on its own PR track. See their addenda below. This
+sub-list is now empty — the next action to join it will be whichever geometry port merges next.
 
 #### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
 
@@ -587,18 +572,16 @@ XML Fragmenter  — ALREADY AUDITED, still non-compliant
 
 This group is schema-breaking by nature and wants its own PR.
 
-#### Group F — Known-heavy (2)
+#### Group F — Known-heavy (1)
+
+`HTTP Caller` was audited and **exposed** on its own PR track (2026-08-27): egress control
+added (scheme restriction; private, loopback and link-local blocking at the URL, DNS and
+redirect level; `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK` opt-out for self-hosters), surface
+trimmed under the amended §3.5 (observability and WebDAV verbs removed, fixed response
+attribute names), response file writes sandboxed, and the correctness defects from the
+scoping pass fixed.
 
 ```
-HTTP Caller
-  params:  13 parameters including `timeouts`, `retry`, `rateLimit`, `httpOptions` and
-             `observability`. §3.5 "No implementation leakage" names `timeout` and
-             `retryCount` as its canonical examples of what must NOT be exposed, and §3.5's
-             volume guideline is 8. Applying the rule as written would delete roughly half
-             this action's surface — that is a product decision, not an audit call.
-  cat:     Was `Web` (off-taxonomy, would have landed in a phantom palette group);
-             recategorised to `Feature` in #2373. Done.
-
 Attribute Duplicate Filter
   desc:    "Remove Duplicate Features Based on Attribute Values" — Title Case, no period.
              Param block has no root description.
@@ -679,7 +662,10 @@ emits an output attribute named `fme_rejection_code`, referenced by 3 tests — 
 schema-visible rename. Both actions are currently hidden (neither runs), so this is not live
 user-facing text today, but it must be fixed before either is re-exposed.
 
-**6. Proposed CI ratchets, neither implemented.** Both are cheap and deterministic:
+**6. Proposed CI ratchets, none implemented.** All are cheap and deterministic:
+- Fail when a parameter leaf in `actions.json` declares neither `type` nor `enum` nor `const`.
+  Such a leaf has no widget for the UI to render. Would have caught the two `serde_json::Value`
+  parameters described in the addendum below, which shipped past two separate audit passes.
 - Fail when a `baseActions` key does not exist in `actions.json`, or names a `builtin: false`
   action. Nothing guards this today; the 105 names were verified by hand.
 - Fail when a parameter in `actions.json` lacks a `description`. Would have caught all four
@@ -807,6 +793,79 @@ Audited and **kept exposed**:
 
 ---
 
+### Addendum — the untyped value parameters, a re-check finding
+
+Reported by Kyle 2026-08-27 against `Attribute Range Mapper`, which **this audit had already
+passed** (Batch 1, #2394, recorded as "changes were documentation only"). A schema sweep of all
+166 actions found the defect in exactly two, both exposed, both previously audited:
+
+```
+Attribute Range Mapper · Null Attribute Mapper
+  schema:  Four parameters were `serde_json::Value`, whose honest schema is "any JSON value" —
+             so schemars emitted a leaf with a title and description and NO type, and the UI has
+             no widget to render it. `rangeTable[].outputValue` and `mappings[].replacement` are
+             REQUIRED, so those were unfillable required fields.
+  why it was missed:  §8's `impl:` line makes you trace the code, and the code was fine — the
+             field really did accept any JSON type and the conversion really worked. The text was
+             accurate too. The defect existed only in the SHAPE OF THE GENERATED SCHEMA as a UI
+             consumes it, which no checklist line looks at. Careful descriptions were written
+             over a field that could not be filled in. Hence the new CI ratchet above.
+  fix:     Closed types, but a DIFFERENT shape per action, because their choice spaces differ.
+             `MappedValue` (Attribute Range Mapper) is an **untagged** enum, so it generates
+             `anyOf` of three typed, titled scalar branches — the UI gets a labelled selector and
+             real widgets, and the YAML stays terse: `outputValue: "#f7f5a9"` is unchanged, so the
+             existing fixture needed no migration. `NullReplacement` (Null Attribute Mapper) is a
+             **tagged** enum, because it must offer `Remove` alongside the three value types.
+  fix:     An untagged `NullReplacement` with a unit `Remove` variant — which serde represents as
+             `null` — was considered and REJECTED: the UI's `simplifyAnyOf`
+             (`patchSchemaTypes.ts`) strips `type: "null"` branches out of an `anyOf`, so the
+             Remove option would be unreachable in the editor. Worth remembering before reaching
+             for null-as-a-value anywhere in a parameter schema.
+  impl:    `Option<Value>` carried OPPOSITE meanings for `None` in Null Attribute Mapper —
+             on a mapping it REMOVED the attribute, on `defaultReplacement` it left the attribute
+             UNCHANGED. Same type, inverted semantics, both invisible in the schema. `replacement`
+             is now required, so deleting an attribute is stated (`{type: remove}`) rather than
+             implied by omitting a field. `defaultReplacement` stays optional, where omitting it
+             means "leave unchanged" as before.
+  impl:    Closing the type deleted three near-identical `serde_json::from_value` blocks whose
+             `warn!` fallbacks silently dropped the output attribute. Those runtime failure paths
+             existed only because the type was open.
+  tests:   Range Mapper's tests called a helper that REIMPLEMENTED the classification rather
+             than the processor's own code, and the copy had already DRIFTED — it omitted the
+             boolean coercion that `process` performs, so the documented "booleans count as 1 and
+             0" behaviour was never exercised. The logic is now one `mapped_value` method that
+             both `process` and the tests call, and the boolean case has a test.
+  prior art: Checked the 26 reference workspaces behind the PLATEAU conversions. The equivalent
+             null-mapping component is used 6 times (5 in QC02 Building, 1 in Viz01 Building), so
+             that operation is real; the range-mapping equivalent is used nowhere, even there.
+             Neither of ours is used in any of our workflows, so the renames carry no migration
+             cost. The reference product's own parameter widget design could not be read: the
+             extracted workspace JSON truncates each component's embedded parameter payload, and
+             the help-text tooling covers only user-defined components.
+  ⚠️ method: The first "zero usage" sweep was WRONG. It covered `runtime/examples` and `testing/`
+             and missed `runtime/tests/fixture/`, where `attribute/range_mapper.yaml` drives a
+             depth-to-colour ramp with seven bare-string values. A tagged enum broke it, which is
+             what surfaced the untagged option and produced a better design. **Sweep
+             `runtime/tests/fixture/` too — three fixture roots, not two.**
+```
+
+**⚠️ Systemic i18n gap found while doing this, NOT introduced by it.** A tagged enum with OBJECT
+variants — the idiom §3.4 recommends — **cannot be translated at all**. `apply_parameter_i18n`
+(`cli/src/utils.rs:157-173`) matches an enum variant by a top-level `enum` key on the variant, but
+a tagged object variant nests its tag inside `properties.type`; and its `def_i18n` path only walks
+`definitions[X].properties`, which a `oneOf` definition does not have. So both paths skip it and
+the variant labels ship English-only, permanently. Confirmed empirically: `Coordinate Frame
+Reprojector`'s `BasePoint`, `Coordinate Extractor`'s `CoordinateExtractionMode`, and **five of
+HTTP Caller's** (`Authentication`, `RequestBody`, `BinarySource`, `MultipartPart`,
+`ResponseHandling`) have no i18n entry of any kind.
+
+This is the same class as §3.4's root-`oneOf` prohibition, one level down, and §3.4 does not
+mention it. It is fixable rather than inherent — match the variant on `properties.type.enum[0]`
+and walk `definitions[X].oneOf[i].properties` — and wants its own PR, because it changes the i18n
+skeleton for every action using the idiom. **Flagged to the HTTP Caller work, whose design leans
+on it in five places.** Until it lands, choosing this idiom trades "unrenderable" for
+"renderable but English-only", which is the better trade but not a free one.
+
 ### Addendum — Coordinate Frame Reprojector and Dissolver, audited and exposed
 
 Both were picked on the hypothesis that new-geometry support implied recent authorship and
@@ -843,11 +902,12 @@ Dissolver — kept, documentation was materially wrong
              a MIXTURE of frames that is refused. The substantive finding of the batch: a user
              could wire this up correctly and lose every feature with no indication why. The
              sibling overlayers already carry the guidance sentence; it is now here too.
-  prior art: The planar computation is universal — FME's equivalent, and GEOS/JTS via PostGIS
-             ST_Union ("the result is computed using XY only"), all overlay in XY. Refusing 3D
-             input is NOT typical: both accept it and resolve Z by a stated policy (FME exposes
-             a five-option Connect Z Mode; PostGIS copies, averages or interpolates). Rejecting
-             areal-only input matches FME exactly. The mixed-frame check is stricter than either
+  prior art: The planar computation is universal — the reference product's equivalent, and
+             GEOS/JTS via PostGIS ST_Union ("the result is computed using XY only"), all overlay
+             in XY. Refusing 3D input is NOT typical: both accept it and resolve Z by a stated
+             policy (the reference product exposes a five-option Z-connection mode; PostGIS
+             copies, averages or interpolates). Rejecting areal-only input matches the reference
+             product exactly. The mixed-frame check is stricter than either
              and is the one place we are better — both will silently run planar math across
              mismatched coordinate systems. A Z-policy parameter is the natural enhancement here,
              not a defect to fix. The only production user (PLATEAU4 tran) already chains
@@ -1267,3 +1327,283 @@ Both parameter blocks were titled in PascalCase (`ShapefileReader Parameters`), 
 `<Action Name> Parameters` convention every other audited action follows. Checked before changing:
 that convention is universal across the audited set, so §3.3's objection to a block title
 restating the action name is a standing exception here, not something to fix per batch.
+
+---
+
+### Addendum — Area Calculator, audited and exposed
+
+Kept and exposed; no correctness defect. Its port (#2385) was written to the current standard
+and it shows — Batch 5's lesson holds a third time. The `impl:` trace was run anyway, because
+two batches have now found the substantive defect in the action a schema scan called cheapest,
+and it is what turned up the one real error here: **the defect was not in the action's schema at
+all, but in a user-facing surface the standard did not cover.** §2 was amended in this PR to
+cover it.
+
+```
+Area Calculator — kept and exposed
+  runs:    `#[cfg(feature = "new-geometry")] process` (`area_calculator.rs:165`). Runs.
+  impl:    Traced through `Area::surface_area` and clean. Per leaf: `Polygon3D`, `PolygonMesh3D`
+             and `TriangularMesh3D` measure half the magnitude of each ring's Newell vector,
+             holes subtracted and floored at zero; `Polygon2D` and the 2D meshes take their
+             planar area, which for a flat thing IS its surface area; `Solid` sums every
+             boundary face via `for_each_boundary_face` (`solid/ops.rs:282`), so a void's faces
+             add surface where a polygon's holes subtract it; points, curves and point clouds
+             answer `Ok(0.0)` through `no_area!` rather than refusing; collections
+             `filter_map(.ok()).sum()`. The one refusal in the model is an unevaluated `Csg`.
+             `area_report`'s `walk_2d`/`walk_3d` are exhaustive matches with no wildcard arm, so
+             a geometry variant added later is a compile error rather than a silent omission —
+             worth preserving.
+  params:  One optional parameter, correct default. But `outputAttribute`'s description spent
+             two of its three sentences restating the action description's void semantics
+             verbatim (§3.3: a parameter description says what the parameter controls), and
+             never mentioned the one behaviour that is genuinely the parameter's own: **the
+             attribute is always written, recording `0` when the geometry has no area or could
+             not be measured.** That promise is asserted in three tests and argued for in code
+             comments, and appeared nowhere a user could see it — so a user reading `area: 0`
+             could not tell a degenerate polygon from an unmeasurable geometry. Rewritten to
+             drop the duplication and state the promise.
+  ports:   `features` → `features`, and the single-port design is right rather than a §4.3 gap.
+             The action does not fail a feature it cannot measure; it writes zero. That is the
+             established model, not a local shortcut: PostGIS `ST_Area` returns 0 for non-areal
+             geometry and JTS `Geometry.getArea()` returns `0.0` for every non-areal type. §4.3
+             also warns that adding a port is a data-loss change, and there is nothing here to
+             route to one.
+  desc:    Clean and accurate, including the surprising half — a solid's voids adding surface.
+  cat:     `Geometry`. Correct.
+  tags:    Zero, and correct. `Vertex Counter`, `Hole Counter` and `Bounds Extractor` — the same
+             family of measure-and-attach actions — all carry none, and `3d` would be wrong for
+             an action that measures 2D geometry equally.
+  i18n:    Was the worst state seen in any batch. The **action description was the English
+             placeholder in all four languages**, and es/fr/zh were English throughout including
+             the parameter block's own title and description, which are usually the two that do
+             get translated. `ja` was in the state that is easiest to misread as finished: block
+             title and `outputAttribute.title` translated, action description and
+             `outputAttribute.description` English. All four rewritten.
+  fixtures: Five nodes, all in `runtime/examples/fixture/workflow/solar-radiation/`, and every
+             one passes `outputAttribute` alone — no undeclared `with:` key, so the Batch 6
+             signal is absent here. Confirmed by reading all five, not by a single grep.
+```
+
+**The action has no automated workflow coverage at all**, and this is recorded rather than filed
+(Kyle's call). Its only fixtures are the solar-radiation example workflows, and
+`testing/data/testcases/` contains no case that names it — so a green `test-qc` says nothing
+whatsoever about this action. Its unit tests are thorough by way of compensation, including the
+diagnostics paths, which is why this was judged acceptable.
+
+#### The finding that mattered: diagnostic registry text
+
+`Area Calculator` is the first audited action to emit structured diagnostics. #2385 wired it to
+`ctx.warn` with five codes, whose `message` and `help` strings live in
+`schema/error-codes/geometry.toml`. That text reaches users the same way a doc comment does —
+`DiagnosticEvent` → server ingestion (#2271) → GraphQL `Diagnostic.message` / `Diagnostic.help`
+— and **PR #2401 renders both raw in the UI**, in a table whose every other column is translated
+through the frontend's own i18n. So this is product copy, and the standard had never said so.
+§2 now does.
+
+Reading the five under the new rule found one genuine error, of exactly the kind the new clause
+predicts — a string copied from a neighbouring code:
+
+```
+geometry.area_not_measurable
+  help:    Said "check that it is a supported, non-degenerate type". Both halves name causes
+             that cannot occur. **Degeneracy is never the cause** — a degenerate ring measures
+             `0.0` through the `Ok` path, and a point or curve answers `Ok(0.0)` too — and every
+             type is supported bar one. The `Err` arm is reachable from exactly one thing: an
+             unevaluated `Csg` tree. The phrase was copied from `geometry.footprint_unavailable`,
+             where degeneracy genuinely IS a cause. Rewritten to name the real cause and point
+             at `CSG Evaluator`, which is what resolves it.
+
+geometry.area_skipped_parts
+  help:    Accurate but told the user to "check them individually" without saying what to look
+             for, when the cause is the same single one. Rewritten to name it.
+```
+
+The other three are accurate and were left alone. Also checked and **not** a defect: two of the
+five name `Area Calculator` inside their own `help`, which duplicates the diagnostic's
+`actionType` field — but `raster.texture_assignment_failed` already names `Image Rasterizer`, so
+this is the registry's established convention and §2 now records it as one rather than flagging
+it. Verifying before acting was the difference.
+
+**Still open, and not fixable inside an audit: this text has no i18n path.** `schema/i18n/`
+covers `actions` only, so all 27 codes ship English in every language. Revisit when error-code
+i18n exists, or when #2401 merges and makes the gap visible in the product — whichever comes
+first. The 22 codes outside `geometry.area_*` have never been read against any rule and owe a
+pass under the amended §2 (Changelog rule: a new rule does not retroactively change a verdict,
+but these had no verdict).
+
+**Verified, not trusted: `geometry.toml`'s comment claiming `default_disposition = "warn_drop"`
+is inert for these five is correct.** `ExecutorContext::warn` (`executor_operation.rs:281`)
+records `WarnContinue` unconditionally; only `report()` (`:239`) calls `handle.resolve` and
+branches on the result, and this action never calls `report()`. One consequence the comment does
+not draw out and which is worth knowing: a workflow-level `ErrorPolicy` override selecting these
+codes — or `category: geometry` — is therefore **silently ignored**. That is true of every
+`warn()` call site in the codebase, not of this action, so it is recorded here rather than fixed.
+
+**Bucket arithmetic — and the predicted hazard fired, twice over.** **78 exposed / 6 pending**,
+recomputed with `grep -c 'true,' base_actions.go` rather than by subtracting.
+
+This PR predicted a collision with #2413 and put the number at 77 / 7. That was wrong in the
+same direction it warned about, because **two** PRs landed while it was open, not one: #2413
+exposed `Elevation Extractor` and #2425 exposed `HTTP Caller`. On merging, `base_actions.go`
+auto-merged correctly to 78 while the bucket table's text auto-merged to **76 / 8** — this
+branch's own numbers, taken silently over main's, with no conflict reported. The code was right
+and the document disagreed with it, exactly as in Batches 6 and 7.
+
+**So the rule is not "predict the post-merge number", it is "recount at merge time".** A
+predicted figure is one more piece of text that merges cleanly and is wrong. Count the file.
+
+---
+
+## Addendum — Spatial Filter (audited and exposed)
+
+Its new-geometry port merged as #2410 and it had never been reviewed, so §7.2 put it in pending
+audit rather than handing it a decision. Full §8 pass run against the shipped (new-geometry)
+build; it is now in `base_actions.go`.
+
+**The port did the geometry well and the metadata not at all, and the split is instructive.**
+The `impl:` trace found no defect in the predicate logic — the footprint-then-relate strategy,
+the frame discipline and the exact `intersects`/`contains`/`covers` fast paths all behave as
+[[new_geometry_spatial_predicate_pattern]] settled. Every finding was in the surface *around*
+that logic, and the two that mattered were behaviours the code had but no text described.
+
+`impl:`
+
+- **`SpatialPredicate`'s nine variants had no `/// # Title`**, so schemars emitted `description`
+  with no `title` and the UI dropdown had no variant labels. `MatchMode`, twenty lines away in
+  the same file, had them. The tell was visible in `ja.json`: `MatchMode` had `title` keys and
+  `SpatialPredicate` had none. Fixed, with the enum gaining its own block title/description too.
+- **Three variant descriptions were wrong, and the wrongest read the best.** `disjoint` said
+  "Geometries have no spatial relationship" — disjoint *is* a relationship, and the code is
+  `!intersects`. `contains` said "completely contains", which describes `covers`; the exact
+  `contains` path excludes a filter lying wholly on the candidate's boundary, and that exclusion
+  is the *only* thing separating the two variants. `covers` restated its own name (§3.3). All
+  nine rewritten to state the boundary cases, and none had a terminating period (§2).
+- **Zero filters passed every candidate, undocumented** (`finish`, was `spatial_filter.rs:325`).
+- **A filter set emptied by rejection became indistinguishable from no filter set.** A filter
+  failing `prepare` routes to `rejected` and shrinks `filters`; if all of them failed — plausible
+  when they share one cause, e.g. every filter 3D in an angular frame — `filters.is_empty()` held
+  and the action passed *everything*. An upstream error inverted into pass-all, silently. Now
+  separated by a `filters_received` counter: nothing supplied still passes all, but supplied and
+  all-rejected fails the candidates and warns once under a new `geometry.no_usable_filter` code.
+  Covered by `candidates_fail_when_every_supplied_filter_was_rejected`. Both routes go through
+  `emit`, so a configured `outputMatchCountAttribute` is stamped with 0 rather than left absent —
+  the branch previously bypassed `emit` entirely, which the parameter's own text contradicted.
+- **`mergeFilterAttributes` did not say it overwrites the candidate's own attributes** of the
+  same name (`insert`, line 581) — the common case when no prefix is set. It documented only
+  filter-vs-filter collisions.
+- `mergedAttributesPrefix` is inert when merging is off; now stated rather than changed.
+
+`desc:` action description gained the zero-filter sentence; the parameter block description was
+imperative and unterminated. `params:` 5, ordering fine. `ports:` clean — `filter`/`candidate`
+in, `passed`/`failed`/`rejected` out, all §4.2, and filter features are consumed join-style,
+which §4.3 permits. `cat:`/`tags:` clean (`Filter` + `spatial`, which genuinely cuts across).
+
+**Diagnostics (§2).** The six codes #2410 added trace correctly and follow the registry's
+conventions. They declared `default_disposition = "warn_drop"` with no note, which is doubly
+misleading here: `ctx.warn()` ignores disposition entirely (`executor_operation.rs:281-292`
+records `WarnContinue` unconditionally), *and* the feature is routed to `rejected`, not dropped.
+The `geometry.area_*` block below them carried that explanation already; a pointer now sits above
+the spatial codes so a reader hits it first.
+
+**Fixture `with:` sweep came back empty** — all 12 nodes across the three solar-radiation files
+pass only `predicate`, `mergeFilterAttributes` and `mergedAttributesPrefix`, all declared.
+
+### Deferred: the solar-radiation example workflow's Spatial Filter nodes
+
+Four nodes in `runtime/examples/fixture/workflow/solar-radiation/` almost certainly reject every
+feature under the new frame rules, and #2410 touched no fixtures. `adequate_place_judgement.yml`
+wires an EPSG:4612 snow shapefile into `filter` against EPSG:6697 buildings and says so in a
+comment; three more feed 3D buildings in EPSG:6697, an angular frame. Both are rejections proven
+by existing tests (`frames_other_than_the_first_accepted_one_are_rejected`,
+`three_dimensional_input_in_angular_frames_is_rejected`), so this is deduction from tested
+behaviour, not speculation.
+
+**Deliberately not fixed, for three reasons that are worth keeping together.** The workflow calls
+five `PLATEAU4.*` actions, so it belongs to PLATEAU Flow under the audit's settled scope. It
+cannot be executed here at all — every input path variable is empty and the repo bundles no
+dataset; `generate-examples-cms-workflow` only regenerates the file via `yaml-include` and
+nothing runs it. And it is already dead in the shipped build for reasons predating this action:
+nine of its actions are unexposed, including both reprojectors, which error on every feature.
+
+**Trigger:** if the solar-radiation workflow is kept rather than removed, route its filter
+shapefiles through the existing reprojectors so both operands share one linear-unit frame. If it
+is removed, this item goes with it.
+
+---
+
+### Addendum — CSV Reader, audited and exposed
+
+Triaged as a re-check under §7.2's "already reviewed" case, then audited in full. The triage was
+overturned before any work started, and the reason generalises: **date the prior review against
+the standard's Changelog before calling anything a re-check.** #2280 merged 2026-07-23, earlier
+than every Changelog entry except the one it introduced itself. §7 did not exist, §8 had no
+`impl:` line, §4.3 and §6 have both been *corrected* since, and §"How to use" was rescoped so
+that text which merely reads well is no longer exempt. What survived from #2280 was §1, part of
+§3, and §5. Bufferer's review (#2317, 2026-07-31) postdates most of those entries; this one
+predates all of them, which is the whole difference between the two cases.
+
+```
+CSV Reader
+  runs:    OK — `#[cfg(feature = "new-geometry")] start`, file/csv.rs:166
+  impl:    `geometryMode` accepted by every fixture and README, applied by nothing
+  desc:    OK
+  params:  7, under the §3.5 guideline. Block title was `CsvReader Parameters` (pre-#2240)
+  ports:   `features` only — fail-the-read vs `rejected` settled by amending §4.3
+  cat/tags: Input / ["csv"] — both OK, tags match the sibling readers per §6
+  i18n:    es/zh descriptions dropped TSV; fr was an English placeholder; all four
+             carried the stale `CsvReader` block title
+```
+
+**`geometryMode` was removed deliberately, in two steps, and the leftovers outlived it.** History:
+#1615 introduced `#[serde(tag = "geometryMode")]` with a derived schema — tag in the schema, tag
+required by serde, consistent. #1641 replaced the derive with a hand-written `impl JsonSchema`
+"to hide the redundant geometryMode field from UI" **but kept the tag**, so for that window the
+schema omitted a key serde still required: a config built from the schema could not deserialize.
+#1655 then made the enum `untagged`, which restored consistency by deleting the discriminator.
+The end state is sound — the mode is inferable from which columns are supplied — but every
+workflow and both READMEs still passed the dead key: 9 fixture nodes across 6 files and 8 more
+occurrences in documentation. Removed. **The tell for this shape is a hand-written
+`impl JsonSchema`: it decouples the schema from the struct, so serde and the schema can disagree
+without anything failing.**
+
+**Not a translation argument, contrary to a first reading.** Restoring the tag was considered
+partly to make the two variant labels translatable. It would not have: `apply_parameter_i18n`
+reaches a `oneOf` variant only when it carries a literal `enum` key at its top level, which
+neither a tagged variant (its tag sits at `properties.type.enum[0]`) nor an untagged branch does.
+Both shapes are equally unreachable, so translation is an argument for neither. The fix is the
+queued i18n reach work, not a schema reshape.
+
+**§4.3 amended rather than followed.** #2405 removed a `rejected` port and made an unparseable
+geometry value fail the whole read; §4.3's table said malformed input routes to `rejected`. The
+code was right and the rule was incomplete: a source has no incoming feature for a rejection to
+attach to, and a reader that emits part of a file while dropping the rest hides corrupt input at
+the only point the user can still fix it. §4.3 now carves sources out explicitly, with the
+absence-versus-malformed line preserved. Note the old port was advertised and never emitted to,
+so the pre-#2405 state was its own §4.3 defect.
+
+**The example READMEs were non-functional, which no test could have caught.** Both used
+pre-#2240 PascalCase action names — `CsvReader`, `CsvWriter`, `GeoJsonWriter` — while the
+fixtures beside them use the current space-separated names, so every YAML snippet a user might
+copy would fail with "Action not found". Fixed, along with a parameter list missing `headerRows`
+and `encoding` entirely, and a vendor name that §2 now prohibits. **Worth a sweep: nothing links
+a README to the schema, so #2240's rename could not have reached them.**
+
+**A failing test that was not a defect.** `test_executor_csv_wkt_roundtrip_3d` is one of the 37
+`workflow-tests` failures on main. It fails **only in the legacy build** and passes with
+`--features new-geometry`: `parse_geometry` is cfg-swapped (`csv_geometry.rs:207-213`) and only
+the new-geometry arm tolerates the bare 3D WKT that our own CSV Writer emits. `workflow-tests`
+defaults to `default = []`, i.e. legacy. **Run any failure in that suite both ways before calling
+it a defect** — and note `cargo test … | tail` exited 0 on the failing run, so read the body for
+`test result:`, never the exit code.
+
+**Filed, not fixed:**
+
+- `CSV Reader` is already listed in the schemars-flatten ordering finding above (`dataset`/`inline`
+  render after `format` and `encoding`). Unchanged here; it wants the shared fix, not a local one.
+- **50 actions carry a parameter-block title that is an internal PascalCase struct name** —
+  `CsvReader Parameters`, `CenterPointReplacerParam`, `GeoJsonWriter Parameters`. CSV Reader's own
+  is fixed in all four i18n files as well as the schema, since `parameterI18n[""].title` overrides
+  it. **Trigger:** a batch willing to sweep all 50, or the next time each is audited.
+- `dataset` and `inline` are both schema-optional while omitting both fails at runtime, against
+  §3.2. Shared by all nine readers. **Trigger:** the same flatten fix above, which has to touch
+  every reader's param struct anyway.

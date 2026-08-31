@@ -24,12 +24,12 @@ Calculates the true surface area of a feature's geometry and stores it in an att
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Area Calculator Parameters",
-  "description": "Configure how the area of each feature's geometry is measured and stored.",
+  "description": "Where the measured surface area is stored on each feature.",
   "type": "object",
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Attribute to store the calculated true surface area in. Defaults to `area`. A solid's area sums the areas of all of its boundary surfaces, so a void's faces count toward the total just like the exterior's do — a hollow body measures *more* surface than a solid one.",
+      "description": "Attribute to store the measured surface area in. The attribute is always written, recording `0` when the geometry has no area or could not be measured, so a downstream step never has to handle a missing value.",
       "default": "area",
       "allOf": [
         {
@@ -906,7 +906,15 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
     },
     "defaultValue": {
       "title": "Default Value",
-      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected."
+      "description": "Value written when no range matches, and also when the input attribute is absent or is not a number, numeric string, or boolean. When omitted, those features pass through with the output attribute left unset rather than being rejected.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MappedValue"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
@@ -933,9 +941,35 @@ Classifies a numeric attribute by looking its value up in a table of ranges and 
         },
         "outputValue": {
           "title": "Output Value",
-          "description": "Value written to the output attribute when the input falls in this range. Any JSON type is accepted."
+          "description": "Value written to the output attribute when the input falls in this range.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MappedValue"
+            }
+          ]
         }
       }
+    },
+    "MappedValue": {
+      "title": "Mapped Value",
+      "description": "A value written to an attribute. Accepts text, a number, or true/false, written as the type given — `\"3\"` stays text and `3` stays a number.",
+      "anyOf": [
+        {
+          "title": "Text",
+          "description": "Written as text.",
+          "type": "string"
+        },
+        {
+          "title": "Number",
+          "description": "Written as a number.",
+          "type": "number"
+        },
+        {
+          "title": "True or False",
+          "description": "Written as a true/false value.",
+          "type": "boolean"
+        }
+      ]
     }
   }
 }
@@ -1492,7 +1526,7 @@ Reads features from CSV and TSV files.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CsvReader Parameters",
+  "title": "CSV Reader Parameters",
   "description": "Configure how CSV and TSV files are processed and read",
   "type": "object",
   "required": [
@@ -1588,7 +1622,7 @@ Reads features from CSV and TSV files.
     },
     "geometry": {
       "title": "Geometry Configuration",
-      "description": "Optional configuration for parsing geometry from CSV columns",
+      "description": "Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted.",
       "anyOf": [
         {
           "$ref": "#/definitions/GeometryConfig"
@@ -1673,7 +1707,7 @@ Reads features from CSV and TSV files.
       "properties": {
         "epsg": {
           "title": "EPSG Code",
-          "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+          "description": "Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted.",
           "type": [
             "integer",
             "null"
@@ -6164,13 +6198,13 @@ Divides polygon geometries into a regular grid of equal-sized cells.
 ### Type
 * processor
 ### Description
-Make HTTP/HTTPS requests and enrich features with response data
+Calls an HTTP or HTTPS endpoint for each feature and stores the response in feature attributes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HTTP Caller Parameters",
-  "description": "Configure HTTP/HTTPS requests to enrich features with response data",
+  "description": "Configure the HTTP request made for each feature and how the response is stored",
   "type": "object",
   "required": [
     "url"
@@ -6178,7 +6212,7 @@ Make HTTP/HTTPS requests and enrich features with response data
   "properties": {
     "url": {
       "title": "URL",
-      "description": "The target URL for the HTTP request (supports expressions)",
+      "description": "The URL to request, evaluated for each feature (supports expressions). Only http and https URLs are allowed, and requests to private or internal network addresses are blocked.",
       "type": "object",
       "format": "code",
       "required": [
@@ -6200,7 +6234,7 @@ Make HTTP/HTTPS requests and enrich features with response data
     },
     "method": {
       "title": "HTTP Method",
-      "description": "The HTTP method to use for the request",
+      "description": "The HTTP method to use for the request (default: GET)",
       "default": "GET",
       "allOf": [
         {
@@ -6254,41 +6288,9 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "contentType": {
-      "title": "Content Type",
-      "description": "Override the Content-Type header for the request",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "timeouts": {
-      "title": "Timeouts",
-      "description": "Connection and transfer timeout settings",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/TimeoutConfig"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "httpOptions": {
-      "title": "HTTP Options",
-      "description": "HTTP client behavior settings (SSL, redirects, user agent)",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/HttpOptions"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "response": {
       "title": "Response Configuration",
-      "description": "Configure how response data is stored and processed",
+      "description": "Configure how the response is stored on the feature",
       "anyOf": [
         {
           "$ref": "#/definitions/ResponseConfig"
@@ -6322,12 +6324,24 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
-    "observability": {
-      "title": "Observability",
-      "description": "Track additional metrics and diagnostics",
+    "timeouts": {
+      "title": "Timeouts",
+      "description": "Connection and transfer timeout settings",
       "anyOf": [
         {
-          "$ref": "#/definitions/ObservabilityConfig"
+          "$ref": "#/definitions/TimeoutConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "httpOptions": {
+      "title": "HTTP Options",
+      "description": "HTTP client behavior settings (SSL verification, redirects, user agent)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/HttpOptions"
         },
         {
           "type": "null"
@@ -6394,62 +6408,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           "type": "string",
           "enum": [
             "OPTIONS"
-          ]
-        },
-        {
-          "title": "COPY",
-          "description": "WebDAV: Copy a resource",
-          "type": "string",
-          "enum": [
-            "COPY"
-          ]
-        },
-        {
-          "title": "LOCK",
-          "description": "WebDAV: Lock a resource",
-          "type": "string",
-          "enum": [
-            "LOCK"
-          ]
-        },
-        {
-          "title": "MKCOL",
-          "description": "WebDAV: Create a collection",
-          "type": "string",
-          "enum": [
-            "MKCOL"
-          ]
-        },
-        {
-          "title": "MOVE",
-          "description": "WebDAV: Move a resource",
-          "type": "string",
-          "enum": [
-            "MOVE"
-          ]
-        },
-        {
-          "title": "PROPFIND",
-          "description": "WebDAV: Retrieve properties",
-          "type": "string",
-          "enum": [
-            "PROPFIND"
-          ]
-        },
-        {
-          "title": "PROPPATCH",
-          "description": "WebDAV: Update properties",
-          "type": "string",
-          "enum": [
-            "PROPPATCH"
-          ]
-        },
-        {
-          "title": "UNLOCK",
-          "description": "WebDAV: Unlock a resource",
-          "type": "string",
-          "enum": [
-            "UNLOCK"
           ]
         }
       ]
@@ -6757,7 +6715,7 @@ Make HTTP/HTTPS requests and enrich features with response data
             },
             "contentType": {
               "title": "Content Type",
-              "description": "Override Content-Type header (e.g., application/json, text/plain)",
+              "description": "Content-Type header for the body, such as application/json or text/plain",
               "type": [
                 "string",
                 "null"
@@ -6791,7 +6749,7 @@ Make HTTP/HTTPS requests and enrich features with response data
             },
             "contentType": {
               "title": "Content Type",
-              "description": "Content-Type header (e.g., application/octet-stream, image/png)",
+              "description": "Content-Type header for the body (default: application/octet-stream)",
               "type": [
                 "string",
                 "null"
@@ -6826,7 +6784,7 @@ Make HTTP/HTTPS requests and enrich features with response data
         },
         {
           "title": "Multipart Form Data",
-          "description": "Send multipart/form-data (for file uploads)",
+          "description": "Send multipart/form-data (for file uploads); cannot be combined with retry",
           "type": "object",
           "required": [
             "parts",
@@ -7072,6 +7030,258 @@ Make HTTP/HTTPS requests and enrich features with response data
         }
       ]
     },
+    "ResponseConfig": {
+      "title": "Response Configuration",
+      "description": "Configure how the response is stored. The status code, response headers, and any error message are always stored in the `_http_status_code`, `_headers`, and `_http_error` attributes.",
+      "type": "object",
+      "properties": {
+        "responseBodyAttribute": {
+          "title": "Response Body Attribute",
+          "description": "Feature attribute name to store the response body (default: `_response_body`)",
+          "default": "_response_body",
+          "type": "string"
+        },
+        "responseHandling": {
+          "title": "Response Handling",
+          "description": "Whether to store the response body in a feature attribute or save it to a file (default: attribute)",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResponseHandling"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "responseEncoding": {
+          "title": "Response Encoding",
+          "description": "How to store the response body: as UTF-8 text or as a base64-encoded string. When omitted, the encoding is chosen from the response's Content-Type header.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ResponseEncoding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "autoDetectEncoding": {
+          "title": "Auto Detect Encoding",
+          "description": "Choose text or base64 storage from the response's Content-Type header when Response Encoding is not set (default: true)",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "maxResponseSize": {
+          "title": "Max Response Size",
+          "description": "Maximum response body size in bytes; the download is stopped and the feature rejected when a response exceeds it (unlimited if not set)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "ResponseHandling": {
+      "title": "Response Handling",
+      "description": "How to handle the HTTP response data",
+      "oneOf": [
+        {
+          "title": "Store in Attribute",
+          "description": "Store the response body in a feature attribute",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "attribute"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Save to File",
+          "description": "Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute",
+          "type": "object",
+          "required": [
+            "path",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            },
+            "path": {
+              "title": "File Path",
+              "description": "Relative path under the job's output directory where the response is saved (supports expressions)",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ResponseEncoding": {
+      "title": "Response Encoding",
+      "description": "How to store the response body",
+      "oneOf": [
+        {
+          "title": "Text",
+          "description": "Store the response body as UTF-8 text",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        },
+        {
+          "title": "Base64",
+          "description": "Store the response body as a base64-encoded string (for binary data)",
+          "type": "string",
+          "enum": [
+            "base64"
+          ]
+        }
+      ]
+    },
+    "RetryConfig": {
+      "title": "Retry Configuration",
+      "description": "Configure automatic retry behavior for failed requests",
+      "type": "object",
+      "properties": {
+        "maxAttempts": {
+          "title": "Max Attempts",
+          "description": "Maximum total number of attempts including the initial request; 1 disables retries (default: 3)",
+          "default": 3,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "initialDelayMs": {
+          "title": "Initial Delay",
+          "description": "Initial delay in milliseconds before the first retry (default: 100)",
+          "default": 100,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "backoffMultiplier": {
+          "title": "Backoff Multiplier",
+          "description": "Multiplier for exponential backoff between retries (default: 2.0)",
+          "default": 2.0,
+          "type": "number",
+          "format": "double"
+        },
+        "maxDelayMs": {
+          "title": "Max Delay",
+          "description": "Maximum delay in milliseconds between retries, also capping delays requested by the Retry-After header (default: 10000)",
+          "default": 10000,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "retryOnStatus": {
+          "title": "Retry on Status Codes",
+          "description": "HTTP status codes that trigger a retry, such as [429, 503]. When omitted, all 5xx status codes are retried.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "honorRetryAfter": {
+          "title": "Honor Retry-After Header",
+          "description": "Whether to respect the Retry-After response header, in seconds or HTTP-date form, when scheduling a retry (default: true)",
+          "default": true,
+          "type": "boolean"
+        }
+      }
+    },
+    "RateLimitConfig": {
+      "title": "Rate Limit Configuration",
+      "description": "Control the rate of HTTP requests to avoid overwhelming the server",
+      "type": "object",
+      "required": [
+        "requests"
+      ],
+      "properties": {
+        "requests": {
+          "title": "Requests",
+          "description": "Maximum number of requests allowed within the interval",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "intervalMs": {
+          "title": "Interval",
+          "description": "Time interval in milliseconds for the rate limit (default: 1000)",
+          "default": 1000,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "timing": {
+          "title": "Timing Strategy",
+          "description": "How to distribute requests within the interval (default: burst)",
+          "default": "burst",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TimingStrategy"
+            }
+          ]
+        }
+      }
+    },
+    "TimingStrategy": {
+      "title": "Timing Strategy",
+      "description": "How to distribute requests within the rate limit interval",
+      "oneOf": [
+        {
+          "title": "Burst",
+          "description": "Allow all requests immediately, then pause until next interval",
+          "type": "string",
+          "enum": [
+            "burst"
+          ]
+        },
+        {
+          "title": "Distributed",
+          "description": "Evenly distribute requests throughout the interval",
+          "type": "string",
+          "enum": [
+            "distributed"
+          ]
+        }
+      ]
+    },
     "TimeoutConfig": {
       "title": "Timeout Configuration",
       "description": "Configure connection and transfer timeouts for HTTP requests",
@@ -7106,7 +7316,7 @@ Make HTTP/HTTPS requests and enrich features with response data
       "properties": {
         "userAgent": {
           "title": "User Agent",
-          "description": "Custom User-Agent header value",
+          "description": "Custom User-Agent header value sent with each request",
           "type": [
             "string",
             "null"
@@ -7114,7 +7324,7 @@ Make HTTP/HTTPS requests and enrich features with response data
         },
         "verifySsl": {
           "title": "Verify SSL",
-          "description": "Whether to verify SSL/TLS certificates (default: true)",
+          "description": "Whether to verify SSL/TLS certificates; disable only for servers with self-signed certificates (default: true)",
           "type": [
             "boolean",
             "null"
@@ -7137,363 +7347,6 @@ Make HTTP/HTTPS requests and enrich features with response data
           ],
           "format": "uint8",
           "minimum": 0.0
-        }
-      }
-    },
-    "ResponseConfig": {
-      "title": "Response Configuration",
-      "description": "Configure how HTTP response data is stored and processed",
-      "type": "object",
-      "properties": {
-        "responseBodyAttribute": {
-          "title": "Response Body Attribute",
-          "description": "Feature attribute name to store the response body (default: \"_response_body\")",
-          "default": "_response_body",
-          "type": "string"
-        },
-        "statusCodeAttribute": {
-          "title": "Status Code Attribute",
-          "description": "Feature attribute name to store the HTTP status code (default: \"_http_status_code\")",
-          "default": "_http_status_code",
-          "type": "string"
-        },
-        "headersAttribute": {
-          "title": "Headers Attribute",
-          "description": "Feature attribute name to store the response headers (default: \"_headers\")",
-          "default": "_headers",
-          "type": "string"
-        },
-        "errorAttribute": {
-          "title": "Error Attribute",
-          "description": "Feature attribute name to store any error messages (default: \"_http_error\")",
-          "default": "_http_error",
-          "type": "string"
-        },
-        "responseHandling": {
-          "title": "Response Handling",
-          "description": "How to handle the response data (attribute or file)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ResponseHandling"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "maxResponseSize": {
-          "title": "Max Response Size",
-          "description": "Maximum response body size in bytes (unlimited if not set)",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "responseEncoding": {
-          "title": "Response Encoding",
-          "description": "How to encode the response body (text, base64, or binary)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/ResponseEncoding"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "autoDetectEncoding": {
-          "title": "Auto Detect Encoding",
-          "description": "Automatically detect character encoding from response headers",
-          "type": [
-            "boolean",
-            "null"
-          ]
-        }
-      }
-    },
-    "ResponseHandling": {
-      "title": "Response Handling",
-      "description": "How to handle the HTTP response data",
-      "oneOf": [
-        {
-          "title": "Store in Attribute",
-          "description": "Store response body in a feature attribute",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "attribute"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Save to File",
-          "description": "Save response body to a file",
-          "type": "object",
-          "required": [
-            "path",
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "file"
-              ]
-            },
-            "path": {
-              "title": "File Path",
-              "description": "Path where the response should be saved",
-              "type": "object",
-              "format": "code",
-              "required": [
-                "type",
-                "value"
-              ],
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "flowExpr",
-                    "string"
-                  ]
-                },
-                "value": {
-                  "type": "string"
-                }
-              }
-            },
-            "storePathInAttribute": {
-              "title": "Store Path in Attribute",
-              "description": "Whether to store the file path in a feature attribute",
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "pathAttribute": {
-              "title": "Path Attribute Name",
-              "description": "Attribute name for storing the file path",
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "ResponseEncoding": {
-      "title": "Response Encoding",
-      "description": "How to encode the response body data",
-      "oneOf": [
-        {
-          "title": "Text",
-          "description": "Decode response as UTF-8 text",
-          "type": "string",
-          "enum": [
-            "text"
-          ]
-        },
-        {
-          "title": "Base64",
-          "description": "Encode response as base64 string",
-          "type": "string",
-          "enum": [
-            "base64"
-          ]
-        },
-        {
-          "title": "Binary",
-          "description": "Store response as raw binary data",
-          "type": "string",
-          "enum": [
-            "binary"
-          ]
-        }
-      ]
-    },
-    "RetryConfig": {
-      "title": "Retry Configuration",
-      "description": "Configure automatic retry behavior for failed requests",
-      "type": "object",
-      "properties": {
-        "maxAttempts": {
-          "title": "Max Attempts",
-          "description": "Maximum number of retry attempts (default: 3)",
-          "default": 3,
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "initialDelayMs": {
-          "title": "Initial Delay",
-          "description": "Initial delay in milliseconds before first retry (default: 100ms)",
-          "default": 100,
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "backoffMultiplier": {
-          "title": "Backoff Multiplier",
-          "description": "Multiplier for exponential backoff between retries (default: 2.0)",
-          "default": 2.0,
-          "type": "number",
-          "format": "double"
-        },
-        "maxDelayMs": {
-          "title": "Max Delay",
-          "description": "Maximum delay in milliseconds between retries (default: 10000ms)",
-          "default": 10000,
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "retryOnStatus": {
-          "title": "Retry on Status Codes",
-          "description": "List of HTTP status codes that should trigger a retry (e.g., [429, 503])",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "integer",
-            "format": "uint16",
-            "minimum": 0.0
-          }
-        },
-        "honorRetryAfter": {
-          "title": "Honor Retry-After Header",
-          "description": "Whether to respect the Retry-After header from server responses (default: true)",
-          "default": true,
-          "type": "boolean"
-        }
-      }
-    },
-    "RateLimitConfig": {
-      "title": "Rate Limit Configuration",
-      "description": "Control the rate of HTTP requests to avoid overwhelming the server",
-      "type": "object",
-      "required": [
-        "requests"
-      ],
-      "properties": {
-        "requests": {
-          "title": "Requests",
-          "description": "Maximum number of requests allowed within the interval",
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "intervalMs": {
-          "title": "Interval",
-          "description": "Time interval in milliseconds for the rate limit (default: 1000ms)",
-          "default": 1000,
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "timing": {
-          "title": "Timing Strategy",
-          "description": "How to distribute requests within the interval (default: Burst)",
-          "default": "burst",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TimingStrategy"
-            }
-          ]
-        }
-      }
-    },
-    "TimingStrategy": {
-      "title": "Timing Strategy",
-      "description": "How to distribute requests within the rate limit interval",
-      "oneOf": [
-        {
-          "title": "Burst",
-          "description": "Allow all requests immediately, then pause until next interval",
-          "type": "string",
-          "enum": [
-            "burst"
-          ]
-        },
-        {
-          "title": "Distributed",
-          "description": "Evenly distribute requests throughout the interval",
-          "type": "string",
-          "enum": [
-            "distributed"
-          ]
-        }
-      ]
-    },
-    "ObservabilityConfig": {
-      "title": "Observability Configuration",
-      "description": "Track additional metrics and diagnostics about HTTP requests",
-      "type": "object",
-      "properties": {
-        "trackDuration": {
-          "title": "Track Duration",
-          "description": "Whether to track the total request duration (default: true)",
-          "default": true,
-          "type": "boolean"
-        },
-        "durationAttribute": {
-          "title": "Duration Attribute",
-          "description": "Feature attribute name to store request duration in milliseconds",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "trackFinalUrl": {
-          "title": "Track Final URL",
-          "description": "Whether to track the final URL after redirects (default: false)",
-          "default": false,
-          "type": "boolean"
-        },
-        "finalUrlAttribute": {
-          "title": "Final URL Attribute",
-          "description": "Feature attribute name to store the final URL after redirects",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "trackRetryCount": {
-          "title": "Track Retry Count",
-          "description": "Whether to track the number of retry attempts (default: true)",
-          "default": true,
-          "type": "boolean"
-        },
-        "retryCountAttribute": {
-          "title": "Retry Count Attribute",
-          "description": "Feature attribute name to store the number of retry attempts",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "trackBytes": {
-          "title": "Track Bytes",
-          "description": "Whether to track the response body size in bytes (default: false)",
-          "default": false,
-          "type": "boolean"
-        },
-        "bytesAttribute": {
-          "title": "Bytes Attribute",
-          "description": "Feature attribute name to store the response body size",
-          "type": [
-            "string",
-            "null"
-          ]
         }
       }
     }
@@ -8741,8 +8594,16 @@ Replaces null-like attribute values with configured replacement values, optional
     },
     "defaultReplacement": {
       "title": "Default Replacement",
-      "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
-      "default": null
+      "description": "What to write for null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes. When omitted, those attributes are left unchanged.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NullReplacement"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "nullDefinition": {
       "title": "Null Definition",
@@ -8790,7 +8651,8 @@ Replaces null-like attribute values with configured replacement values, optional
       "description": "Per-attribute replacement mapping",
       "type": "object",
       "required": [
-        "attribute"
+        "attribute",
+        "replacement"
       ],
       "properties": {
         "attribute": {
@@ -8800,7 +8662,12 @@ Replaces null-like attribute values with configured replacement values, optional
         },
         "replacement": {
           "title": "Replacement",
-          "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
+          "description": "What to write when the attribute is null-like. Required, so that removing an attribute is stated rather than implied by leaving this out.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/NullReplacement"
+            }
+          ]
         },
         "onMissing": {
           "title": "On Missing",
@@ -8813,6 +8680,94 @@ Replaces null-like attribute values with configured replacement values, optional
           ]
         }
       }
+    },
+    "NullReplacement": {
+      "title": "Null Replacement",
+      "description": "What to write in place of a null-like attribute, and the type to write it as.",
+      "oneOf": [
+        {
+          "title": "Text",
+          "description": "Written as text.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The text to write.",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "title": "Number",
+          "description": "Written as a number.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "number"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The number to write.",
+              "type": "number"
+            }
+          }
+        },
+        {
+          "title": "True or False",
+          "description": "Written as a true/false value.",
+          "type": "object",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "boolean"
+              ]
+            },
+            "value": {
+              "title": "Value",
+              "description": "The value to write.",
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the attribute from the feature instead of writing a value.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "remove"
+              ]
+            }
+          }
+        }
+      ]
     },
     "OnMissing": {
       "title": "On Missing",
@@ -12155,18 +12110,18 @@ Validates the Solid Boundary Geometry
 ### Type
 * processor
 ### Description
-Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units.
+Filters candidate features by their spatial relationship to filter geometries, tested in the horizontal plane — a 3D geometry is compared by its footprint and must be in a coordinate frame with linear units. Every candidate passes when no filter geometry is supplied at all.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Spatial Filter Parameters",
-  "description": "Configure spatial relationship testing between filter and candidate geometries",
+  "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter.",
   "type": "object",
   "properties": {
     "predicate": {
       "title": "Spatial Predicate",
-      "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
+      "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object.",
       "default": "intersects",
       "allOf": [
         {
@@ -12186,13 +12141,13 @@ Filters candidate features by their spatial relationship to filter geometries, t
     },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
+      "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins.",
       "default": false,
       "type": "boolean"
     },
     "mergedAttributesPrefix": {
       "title": "Merged Attributes Prefix",
-      "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\".",
+      "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged.",
       "default": null,
       "type": [
         "string",
@@ -12201,7 +12156,7 @@ Filters candidate features by their spatial relationship to filter geometries, t
     },
     "outputMatchCountAttribute": {
       "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of filter features the candidate matched.",
+      "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike.",
       "default": null,
       "anyOf": [
         {
@@ -12215,65 +12170,76 @@ Filters candidate features by their spatial relationship to filter geometries, t
   },
   "definitions": {
     "SpatialPredicate": {
+      "title": "Spatial Predicate",
+      "description": "The relationship each candidate is tested for against a filter geometry.",
       "oneOf": [
         {
-          "description": "Candidate completely contains the filter geometry",
+          "title": "Contains",
+          "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that.",
           "type": "string",
           "enum": [
             "contains"
           ]
         },
         {
-          "description": "Candidate completely within filter geometry",
+          "title": "Within",
+          "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that.",
           "type": "string",
           "enum": [
             "within"
           ]
         },
         {
-          "description": "Geometries have any intersection",
+          "title": "Intersects",
+          "description": "Passes a candidate that shares at least one point with the filter geometry.",
           "type": "string",
           "enum": [
             "intersects"
           ]
         },
         {
-          "description": "Geometries have no spatial relationship",
+          "title": "Disjoint",
+          "description": "Passes a candidate that shares no point at all with the filter geometry.",
           "type": "string",
           "enum": [
             "disjoint"
           ]
         },
         {
-          "description": "Geometries touch at boundaries but don't overlap",
+          "title": "Touches",
+          "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior.",
           "type": "string",
           "enum": [
             "touches"
           ]
         },
         {
-          "description": "Geometries cross each other",
+          "title": "Crosses",
+          "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon.",
           "type": "string",
           "enum": [
             "crosses"
           ]
         },
         {
-          "description": "Geometries overlap partially",
+          "title": "Overlaps",
+          "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other.",
           "type": "string",
           "enum": [
             "overlaps"
           ]
         },
         {
-          "description": "Candidate is covered by filter geometry",
+          "title": "Covered By",
+          "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary.",
           "type": "string",
           "enum": [
             "coveredBy"
           ]
         },
         {
-          "description": "Candidate covers the filter geometry",
+          "title": "Covers",
+          "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary.",
           "type": "string",
           "enum": [
             "covers"

@@ -34,7 +34,7 @@ pub struct GeometryConfig {
     #[serde(flatten)]
     pub mode: GeometryMode,
     /// # EPSG Code
-    /// Coordinate Reference System code (e.g., 4326 for WGS84)
+    /// Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted.
     pub epsg: Option<u16>,
 }
 

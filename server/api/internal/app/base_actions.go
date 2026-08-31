@@ -30,6 +30,7 @@ package app
 //     attribute flattening; it needs a decision on scope before it is offered.
 var baseActions = map[string]bool{
 	// Input
+	"CSV Reader":          true,
 	"Feature Creator":     true,
 	"File Path Extractor": true,
 	"GeoJSON Reader":      true,
@@ -53,6 +54,7 @@ var baseActions = map[string]bool{
 	"Zip File Writer":        true,
 	// Geometry
 	"Appearance Remover":           true,
+	"Area Calculator":              true,
 	"Area On Area Overlayer":       true,
 	"Boundary Extractor":           true,
 	"Bounds Extractor":             true,
@@ -73,6 +75,7 @@ var baseActions = map[string]bool{
 	"Hole Extractor":               true,
 	"Line On Line Overlayer":       true,
 	"Offsetter":                    true,
+	"Spatial Filter":               true,
 	"Two Dimension Forcer":         true,
 	// Attribute
 	"Attribute Aggregator":       true,
@@ -101,6 +104,7 @@ var baseActions = map[string]bool{
 	"Feature Sorter":              true,
 	"Feature Transformer":         true,
 	"Feature Type Filter":         true,
+	"HTTP Caller":                 true,
 	"Input Router":                true,
 	"Output Router":               true,
 	// Utility
