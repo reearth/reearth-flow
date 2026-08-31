@@ -2833,7 +2833,7 @@
           },
           "groupByAttribute": {
             "title": "Group By Attribute",
-            "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to group files by. When set, each group is parsed and emitted independently so its memory is freed before the next group starts, instead of holding the whole dataset for the entire run. Requires files of the same group to be delivered contiguously by upstream. Leave unset for unchanged, original streaming behavior.",
+            "description": "Opt-in: an attribute name (e.g. \"udxDirs\") to group files by. When set, each group's registries are flushed and freed as soon as the attribute's value changes, instead of holding the whole dataset in memory for the entire run. Requires features of the same group to arrive contiguously — add a `FeatureSorter` upstream if that isn't already guaranteed. Leave unset for unchanged, original behavior.",
             "type": [
               "string",
               "null"
