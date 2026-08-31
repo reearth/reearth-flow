@@ -140,6 +140,14 @@ graphs:
     name: FolderAndFilePathReader
     type: subGraph
     subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+  - id: 528c600f-c289-471b-af53-de5b01881337
+    name: FeatureSorterByUdxDirs
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - udxDirs
+      order: ascending
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
     name: FeatureReaderByCityGml
     type: action
@@ -341,6 +349,11 @@ graphs:
     toPort: default
   - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
     from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+    to: 528c600f-c289-471b-af53-de5b01881337
+    fromPort: default
+    toPort: default
+  - id: fb8c8f3e-7cf6-43e4-8583-de6ebda59929
+    from: 528c600f-c289-471b-af53-de5b01881337
     to: ded2e272-e05c-4918-86b3-aa9f763da6e6
     fromPort: default
     toPort: default
