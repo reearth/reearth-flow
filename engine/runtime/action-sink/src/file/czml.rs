@@ -520,19 +520,24 @@ impl Sink for CzmlWriter {
                             version: Some("1.0".into()),
                             ..Default::default()
                         };
+                        // The separator is emitted *before* each subsequent
+                        // packet, not seeded as a trailing comma after the
+                        // document packet: with zero feature packets (every
+                        // feature skipped -- an all-Euclidean-frame batch is
+                        // the likely production case) a seeded trailing comma
+                        // would produce `[{...},]`, which is invalid JSON.
+                        // This way a zero-packet batch still closes as a
+                        // valid, document-only array.
                         let mut buffer =
-                            Vec::from(format!(r#"[{},"#, serde_json::to_string(&doc).unwrap()));
+                            Vec::from(format!("[{}", serde_json::to_string(&doc).unwrap()));
 
-                        let mut iter = receiver.into_iter().peekable();
-                        while let Some(bytes) = iter.next() {
+                        for bytes in receiver.into_iter() {
+                            buffer
+                                .write(b",")
+                                .map_err(crate::errors::SinkError::czml_writer)?;
                             buffer
                                 .write(&bytes)
                                 .map_err(crate::errors::SinkError::czml_writer)?;
-                            if iter.peek().is_some() {
-                                buffer
-                                    .write(b",")
-                                    .map_err(crate::errors::SinkError::czml_writer)?;
-                            };
                         }
 
                         buffer
@@ -860,13 +865,34 @@ fn build_timeseries_czml_next(
     Ok(output_buffer)
 }
 
+/// The first face's polygon JSON for `feature`, if its geometry is areal —
+/// restores `build_entity_packet`'s old "polygon for polygon features"
+/// behavior for the new model. Only the first face is used: a CZML entity
+/// carries exactly one graphic, unlike mode 2 (`feature_to_packets_next`)
+/// where every feature gets its own entity and every face its own packet.
+/// `None` on anything non-areal, on a too-many-faces feature, or on an
+/// unplaceable frame — every case falls back to the plain `point` graphic in
+/// the caller, silently, matching the old writer's non-polygon fallback.
+#[cfg(feature = "new-geometry")]
+fn polygon_value_for(
+    feature: &Feature,
+    entity_id: &str,
+    cache: &mut ReprojectionCache,
+) -> Option<Value> {
+    let faces = faces_of(&feature.geometry).ok()?;
+    let face = faces.first()?;
+    let packet = face_packet(cache, face, entity_id).ok()?;
+    serde_json::to_value(packet.polygon?).ok()
+}
+
 /// Build a single CZML packet for a time-dynamic entity from grouped
 /// features — the new-geometry counterpart of `build_entity_packet`. Same
-/// shape, except: position samples come from `cartographic_position` instead
-/// of `extract_point_coords`, and the entity always gets a `point` graphic
-/// rather than auto-detecting a polygon — `feature_geometry_to_polygon_json`
-/// is old-geometry-specific, and a moving areal entity has no natural
-/// grouped-timeseries representation here.
+/// shape, including the polygon-vs-point graphic decision: position samples
+/// come from `cartographic_position` instead of `extract_point_coords`, and
+/// the polygon-or-point decision comes from `polygon_value_for` (first face
+/// of the group's first feature) instead of `feature_geometry_to_polygon_json`
+/// (old-geometry-specific), but the resulting shape is the same — a polygon
+/// feature still renders as a footprint, with `position` removed, not a dot.
 #[cfg(feature = "new-geometry")]
 fn build_entity_packet_next(
     entity_id: &str,
@@ -1020,10 +1046,27 @@ fn build_entity_packet_next(
         packet["description"] = serde_json::json!(d);
     }
 
-    packet["point"] = serde_json::json!({
-        "pixelSize": 10,
-        "heightReference": "NONE",
-    });
+    // Add graphic based on geometry type: polygon for areal features, point
+    // for everything else — same decision `build_entity_packet` makes via
+    // `feature_geometry_to_polygon_json`, just sourced from `polygon_value_for`.
+    match sorted
+        .first()
+        .and_then(|f| polygon_value_for(f, entity_id, cache))
+    {
+        Some(polygon_val) => {
+            packet["polygon"] = polygon_val;
+            // Polygon positions are self-contained; remove redundant position.
+            if let Some(obj) = packet.as_object_mut() {
+                obj.remove("position");
+            }
+        }
+        None => {
+            packet["point"] = serde_json::json!({
+                "pixelSize": 10,
+                "heightReference": "NONE",
+            });
+        }
+    }
 
     Ok(packet)
 }
@@ -2520,36 +2563,99 @@ mod diagnostics_tests {
 mod new_geometry_tests {
     use super::*;
 
+    /// Parse written CZML as JSON, so a test tells "correctly skipped" apart
+    /// from "wrote rubbish" — a substring check on the raw bytes cannot: it
+    /// passes over a malformed document (e.g. a stray trailing comma) just as
+    /// happily as over a genuinely valid one.
+    fn parse(out: &str) -> Vec<Value> {
+        serde_json::from_str(out).expect("written CZML must be valid JSON")
+    }
+
     #[test]
     fn a_mesh_feature_and_a_point_feature_both_write() {
         // The old writer dispatched on `has_citygml` with an `.any()` over the
         // whole batch, so one CityGML feature caused every non-CityGML sibling
         // to be rejected. Deciding per feature is the fix.
-        let out = fixture::write_batch(vec![
+        let doc = parse(&fixture::write_batch(vec![
             fixture::mesh_feature_in(6677),
             fixture::point_feature_in(6677),
-        ]);
-        assert!(out.contains("\"polygon\""), "the mesh wrote a polygon");
-        assert!(out.contains("\"position\""), "the point wrote a position");
+        ]));
+        assert!(
+            doc.iter().any(|p| p.get("polygon").is_some()),
+            "the mesh wrote a polygon"
+        );
+        assert!(
+            doc.iter().any(|p| p.get("position").is_some()),
+            "the point wrote a position"
+        );
     }
 
     #[test]
     fn a_multi_face_feature_writes_every_face() {
         // Fixes the defect where only the first polygon was written.
-        let out = fixture::write_batch(vec![fixture::three_face_mesh_in(6677)]);
-        assert_eq!(out.matches("\"polygon\"").count(), 3);
+        let doc = parse(&fixture::write_batch(vec![fixture::three_face_mesh_in(
+            6677,
+        )]));
+        let polygon_count = doc.iter().filter(|p| p.get("polygon").is_some()).count();
+        assert_eq!(polygon_count, 3);
     }
 
     #[test]
     fn a_line_feature_writes_a_polyline_not_a_point() {
-        let out = fixture::write_batch(vec![fixture::line_feature_in(6677)]);
-        assert!(out.contains("\"polyline\""), "a line must write a polyline");
+        let doc = parse(&fixture::write_batch(vec![fixture::line_feature_in(6677)]));
+        assert!(
+            doc.iter().any(|p| p.get("polyline").is_some()),
+            "a line must write a polyline"
+        );
     }
 
     #[test]
     fn an_unplaceable_feature_is_skipped_not_written_wrong() {
-        let out = fixture::write_batch(vec![fixture::mesh_feature_euclidean()]);
-        assert!(!out.contains("\"polygon\""), "nothing should be drawn");
+        // `parse` alone pins the regression this test exists for: seeding the
+        // packet-array buffer with a trailing comma (`[{doc},`) produces
+        // `[{"id":"document","version":"1.0"},]` when every feature is
+        // skipped — exactly this fixture's case — which `serde_json` rejects.
+        // A plain `!out.contains("\"polygon\"")` is trivially true of that
+        // garbage too, so it can't catch the bug on its own.
+        let doc = parse(&fixture::write_batch(vec![
+            fixture::mesh_feature_euclidean(),
+        ]));
+        assert_eq!(doc.len(), 1, "only the document packet, nothing drawn");
+        assert_eq!(doc[0]["id"], "document");
+        assert!(
+            doc.iter().all(|p| p.get("polygon").is_none()),
+            "nothing should be drawn"
+        );
+    }
+
+    #[test]
+    fn a_grouped_timeseries_polygon_feature_still_renders_as_a_polygon() {
+        // The old `build_entity_packet` rendered a polygon feature's entity
+        // as a footprint (`polygon`, with `position` removed) rather than a
+        // point. Restored via `polygon_value_for` (the group's first
+        // feature's first face) rather than simplified away — losing this
+        // silently would shrink every such entity to an undifferentiated dot.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![fixture::polygon_timeseries_feature_in(
+                6677,
+                "2024-01-01T00:00:00Z",
+                "v1",
+            )],
+            "timestamp",
+            "vehicleId",
+        ));
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity packet");
+        assert!(
+            entity.get("polygon").is_some(),
+            "a polygon feature must render as a polygon, not a point: {entity:?}"
+        );
+        assert!(
+            entity.get("position").is_none(),
+            "position must be removed once polygon is set: {entity:?}"
+        );
     }
 
     /// Test-only helpers: build features directly against the new geometry
@@ -2569,7 +2675,7 @@ mod new_geometry_tests {
         use reearth_flow_runtime::event::EventHub;
         use reearth_flow_runtime::executor_operation::NodeContext;
         use reearth_flow_runtime::node::{Sink, SinkFactory, FEATURES_PORT};
-        use reearth_flow_types::Feature;
+        use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
         use super::super::CzmlWriterFactory;
 
@@ -2637,10 +2743,51 @@ mod new_geometry_tests {
             )))
         }
 
+        /// A single-face mesh feature carrying the two attributes a
+        /// grouped-timeseries workflow needs: a time value and a group key.
+        pub(super) fn polygon_timeseries_feature_in(epsg: u16, time: &str, group: &str) -> Feature {
+            let mut f = feature_with(single_face_mesh(frame(epsg)));
+            f.insert(
+                Attribute::new("timestamp"),
+                AttributeValue::String(time.to_string()),
+            );
+            f.insert(
+                Attribute::new("vehicleId"),
+                AttributeValue::String(group.to_string()),
+            );
+            f
+        }
+
         /// Build a `CzmlWriter` via its factory, feed `features` through
         /// `process`, call `finish` against a real temp-dir `SinkOutput`, and
         /// return what it wrote.
         pub(super) fn write_batch(features: Vec<Feature>) -> String {
+            write_batch_with(features, HashMap::new())
+        }
+
+        /// As [`write_batch`], but wired for grouped-timeseries mode
+        /// (`timeField` + `groupTimeseriesBy` both set).
+        pub(super) fn write_timeseries_batch(
+            features: Vec<Feature>,
+            time_field: &str,
+            group_timeseries_by: &str,
+        ) -> String {
+            // Unlike `output` (a `Code`, which deserializes from a
+            // `{"type", "value"}` struct), `timeField`/`groupTimeseriesBy` are
+            // plain `Attribute`s and deserialize straight from a bare string.
+            let mut extra = HashMap::new();
+            extra.insert("timeField".to_string(), serde_json::json!(time_field));
+            extra.insert(
+                "groupTimeseriesBy".to_string(),
+                serde_json::json!(group_timeseries_by),
+            );
+            write_batch_with(features, extra)
+        }
+
+        fn write_batch_with(
+            features: Vec<Feature>,
+            mut with: HashMap<String, serde_json::Value>,
+        ) -> String {
             let tmp = tempfile::tempdir().expect("tempdir");
             let root =
                 Uri::from_str(&format!("file://{}", tmp.path().display())).expect("valid file uri");
@@ -2649,7 +2796,6 @@ mod new_geometry_tests {
                 ..NodeContext::default()
             };
 
-            let mut with: HashMap<String, serde_json::Value> = HashMap::new();
             with.insert(
                 "output".to_string(),
                 serde_json::json!({"type": "string", "value": "out.czml"}),
