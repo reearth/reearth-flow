@@ -186,4 +186,147 @@ mod tests {
         let g = Geometry::Euclidean2D(Euclidean2DGeometry::Point(p));
         assert_eq!(position_of(&g).unwrap().0, [1.0, 2.0, 0.0]);
     }
+
+    #[test]
+    fn a_polygon_mesh_uses_its_first_faces_first_vertex_not_the_vertex_pool_head() {
+        use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
+
+        // The vertex pool's own head ([9,9,9]) is not referenced by the first
+        // face, so reading it instead of walking the CSR face topology would
+        // give the wrong answer.
+        let mesh = PolygonMesh3D::from_parts(
+            CoordinateFrame::default(),
+            vec![
+                [9.0, 9.0, 9.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 2.0, 2.0],
+                [3.0, 3.0, 3.0],
+            ],
+            vec![vec![1u32, 2, 3], vec![0u32, 1, 2]],
+        )
+        .unwrap();
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+        assert_eq!(position_of(&g).unwrap().0, [1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn a_triangular_mesh_uses_its_first_triangles_first_vertex_not_the_vertex_pool_head() {
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+
+        // Same trap as the polygon-mesh case: the pool is ordered so its head
+        // is not the first triangle's first vertex.
+        let mesh = TriangularMesh3D::from_parts(
+            CoordinateFrame::default(),
+            vec![
+                [0.0, 0.0, 9.0],
+                [1.0, 0.0, 9.0],
+                [1.0, 1.0, 9.0],
+                [0.0, 0.0, 4.0],
+                [1.0, 0.0, 4.0],
+                [1.0, 1.0, 4.0],
+            ],
+            [3u32, 4, 5, 0, 1, 2],
+        )
+        .unwrap();
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+        assert_eq!(position_of(&g).unwrap().0, [0.0, 0.0, 4.0]);
+    }
+
+    #[test]
+    fn a_solid_uses_its_exterior_shells_first_vertex_and_the_solids_own_frame() {
+        use reearth_flow_geometry::coordinate::EpsgCode;
+        use reearth_flow_geometry::solid::Solid;
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3DData;
+
+        // A `Solid`'s shell is coordinate-free (`TriangularMesh3DData` here
+        // carries no frame of its own); the frame lives on the `Solid`. Using
+        // a distinctive, non-default frame (EPSG:6677) makes it obvious if a
+        // future refactor read a shell-level frame instead.
+        let shell = TriangularMesh3DData::from_parts(
+            vec![[5.0, 6.0, 7.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        let solid = Solid::from_exterior(CoordinateFrame::Crs(EpsgCode::new(6677)), shell);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
+
+        let (pos, frame) = position_of(&g).unwrap();
+        assert_eq!(pos, [5.0, 6.0, 7.0]);
+        assert_eq!(frame, CoordinateFrame::Crs(EpsgCode::new(6677)));
+    }
+
+    #[test]
+    fn a_collection_returns_its_first_members_position_not_its_last() {
+        use reearth_flow_geometry::collection::Collection3D;
+
+        // Both members carry a position; a bug that returned the last member
+        // (or picked one arbitrarily) would still pass an `is_some()`-only
+        // check but fail this one.
+        let members = [
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::default(), [1.0, 2.0, 3.0])),
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::default(), [9.0, 9.0, 9.0])),
+        ];
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new(members)));
+        assert_eq!(position_of(&g).unwrap().0, [1.0, 2.0, 3.0]);
+    }
+
+    #[test]
+    fn a_nested_collection_recurses_past_a_member_with_no_position() {
+        use reearth_flow_geometry::collection::Collection3D;
+        use reearth_flow_geometry::point_cloud::PointCloud;
+        use reearth_flow_geometry::GeometryCollection;
+
+        // The outer collection's first member (a `PointCloud`) has no
+        // position of its own; the real position sits one level deeper, in a
+        // nested collection. Only actual recursion reaches it.
+        let leading_member_with_no_position =
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                Euclidean3DGeometry::PointCloud(Box::new(PointCloud::from_positions(
+                    CoordinateFrame::default(),
+                    vec![[0.0, 0.0, 0.0]],
+                ))),
+            ])));
+        let nested =
+            Geometry::GeometryCollection(GeometryCollection::new([Geometry::Euclidean3D(
+                Euclidean3DGeometry::Point(Point3D::new(
+                    CoordinateFrame::default(),
+                    [42.0, 43.0, 44.0],
+                )),
+            )]));
+        let outer = Geometry::GeometryCollection(GeometryCollection::new([
+            leading_member_with_no_position,
+            nested,
+        ]));
+        assert_eq!(position_of(&outer).unwrap().0, [42.0, 43.0, 44.0]);
+    }
+
+    #[test]
+    fn a_point_cloud_has_no_position() {
+        use reearth_flow_geometry::point_cloud::PointCloud;
+
+        let cloud = PointCloud::from_positions(CoordinateFrame::default(), vec![[1.0, 2.0, 3.0]]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud)));
+        assert_eq!(position_of(&g), None);
+    }
+
+    #[test]
+    fn an_unevaluated_csg_tree_has_no_position() {
+        use reearth_flow_geometry::csg::{Csg, ThreeDimensional};
+        use reearth_flow_geometry::solid::Solid;
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3DData;
+
+        let operand = || {
+            ThreeDimensional::Solid(Box::new(Solid::from_exterior(
+                CoordinateFrame::default(),
+                TriangularMesh3DData::from_parts(
+                    vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                    [0u32, 1, 2],
+                )
+                .unwrap(),
+            )))
+        };
+        let csg = Csg::Union(Box::new(operand()), Box::new(operand()));
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg));
+        assert_eq!(position_of(&g), None);
+    }
 }
