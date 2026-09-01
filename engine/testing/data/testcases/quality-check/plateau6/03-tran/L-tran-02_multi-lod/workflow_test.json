@@ -1,5 +1,5 @@
 {
-  "description": "Test surface errors for plateau6 03-tran",
+  "description": "Test L-tran-02 for plateau6 where one road pair overlaps at both LOD1 and LOD3",
   "workflowPath": "quality-check/plateau6/03-tran/workflow.yml",
   "workflowVariables": [
     {
@@ -39,18 +39,19 @@
   ],
   "expectedOutput": {
     "expectedFile": [
-      "03_交通_面のエラー.csv",
-      "error_geometry/03_交通_面のエラー.geojson",
-      "error_geometry/03_交通_面のエラー位置.geojson"
+      "03_交通_隣接面重複.csv"
+    ],
+    "except": [
+      "隣接ID"
     ]
   },
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "03_交通_検査結果一覧.csv",
       "includeColumns": [
-        "面のエラー"
+        "隣接面重複"
       ]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": true
 }

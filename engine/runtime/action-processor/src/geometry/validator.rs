@@ -26,6 +26,8 @@ use super::errors::GeometryProcessorError;
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
+#[cfg(feature = "new-geometry")]
+static ISSUE_LOCATIONS_PORT: Lazy<Port> = Lazy::new(|| Port::new("issue-locations"));
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
 #[derive(Debug, Clone, Default)]
@@ -60,9 +62,14 @@ impl ProcessorFactory for GeometryValidatorFactory {
         vec![
             SUCCESS_PORT.clone(),
             FAILED_PORT.clone(),
+            // `issue-locations` duplicates what `failed` already carries, one
+            // feature per flagged position, so leaving it unwired loses nothing.
+            #[cfg(feature = "new-geometry")]
+            ISSUE_LOCATIONS_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
     }
+
     fn build(
         &self,
         _ctx: NodeContext,
@@ -357,6 +364,10 @@ impl Processor for GeometryValidator {
     /// every applicable check go to `success`, and geometries with at least one
     /// failed check go to `failed` carrying a `validationResult` attribute (the
     /// total problem count and a per-check problem count).
+    ///
+    /// A failed geometry additionally goes to `issue-locations` once per flagged
+    /// position: the same attributes plus `validationCheck` naming the check,
+    /// with the geometry replaced by the position the check flagged.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -415,22 +426,36 @@ impl Processor for GeometryValidator {
 
         let mut checks = serde_json::Map::new();
         let mut error_count = 0usize;
+        let mut issue_locations: Vec<(String, Geometry)> = Vec::new();
         for (check, result) in validate_with(feature.geometry.as_ref(), &params) {
             if let ValidationResult::Failed(positions) = result {
                 error_count += positions.len();
-                checks.insert(check.to_string(), serde_json::json!(positions.len()));
+                let check = check.to_string();
+                checks.insert(check.clone(), serde_json::json!(positions.len()));
+                issue_locations.extend(positions.into_iter().map(|p| (check.clone(), p)));
             }
         }
 
         if checks.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
         } else {
-            let mut feature = feature.clone();
-            feature.insert(
+            let mut failed = feature.clone();
+            failed.insert(
                 "validationResult",
                 serde_json::json!({ "errorCount": error_count, "checks": checks }).into(),
             );
-            fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(failed, FAILED_PORT.clone()));
+
+            // `validate_with` returns an unordered map, so emission order would
+            // otherwise vary between runs. Stable sort keeps each check's own
+            // positions in the order the check found them.
+            issue_locations.sort_by(|(a, _), (b, _)| a.cmp(b));
+            for (check, position) in issue_locations {
+                let mut located = feature.clone();
+                located.insert("validationCheck", serde_json::json!(check).into());
+                located.set_geometry(position);
+                fw.send(ctx.new_with_feature_and_port(located, ISSUE_LOCATIONS_PORT.clone()));
+            }
         }
         Ok(())
     }
@@ -515,5 +540,137 @@ impl GeometryValidator {
             fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
         }
         Ok(())
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::polygon::Polygon3D;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::{Attribute, AttributeValue, Feature};
+
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+
+    /// A closed 4x4 square, flat and correctly wound.
+    const SQUARE: [[f64; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 0.0],
+        [0.0, 4.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ];
+
+    /// The same square with one corner lifted well out of the other three's plane.
+    const NON_PLANAR: [[f64; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 2.0],
+        [0.0, 4.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ];
+
+    /// An attribute of the incoming feature, unrelated to validation.
+    const SURFACE_ID_ATTRIBUTE: &str = "surfaceId";
+    const SURFACE_ID: u64 = 7;
+
+    fn polygon(ring: [[f64; 3]; 5]) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                ring,
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )))
+    }
+
+    fn feature(ring: [[f64; 3]; 5]) -> Feature {
+        let mut feature = Feature::from(polygon(ring));
+        feature.insert(
+            SURFACE_ID_ATTRIBUTE,
+            AttributeValue::Number(SURFACE_ID.into()),
+        );
+        feature
+    }
+
+    /// Run the validator over `feature`, returning what it sent, port by port.
+    fn validate(feature: &Feature) -> Vec<(Port, Feature)> {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        serde_json::from_value::<GeometryValidator>(serde_json::json!({}))
+            .expect("every parameter has a default")
+            .process(create_default_execute_context(feature), &fw)
+            .unwrap();
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        let features = noop.send_features.lock().unwrap().clone();
+        ports.into_iter().zip(features).collect()
+    }
+
+    fn on_port<'a>(sent: &'a [(Port, Feature)], port: &Port) -> Vec<&'a Feature> {
+        sent.iter()
+            .filter(|(p, _)| p == port)
+            .map(|(_, f)| f)
+            .collect()
+    }
+
+    #[test]
+    fn valid_geometry_emits_no_issue_location() {
+        let sent = validate(&feature(SQUARE));
+
+        assert_eq!(
+            sent.iter().map(|(p, _)| p.to_string()).collect::<Vec<_>>(),
+            vec![SUCCESS_PORT.to_string()]
+        );
+    }
+
+    #[test]
+    fn each_flagged_position_becomes_one_issue_location() {
+        let sent = validate(&feature(NON_PLANAR));
+
+        let failed = on_port(&sent, &FAILED_PORT);
+        assert_eq!(failed.len(), 1, "one feature on `failed`");
+        let Some(AttributeValue::Map(result)) = failed[0].get(Attribute::new("validationResult"))
+        else {
+            panic!("`failed` should carry a validationResult map");
+        };
+        let Some(AttributeValue::Number(error_count)) = result.get("errorCount") else {
+            panic!("validationResult should carry errorCount");
+        };
+        let error_count = error_count.as_u64().expect("errorCount is a count");
+
+        let located = on_port(&sent, &ISSUE_LOCATIONS_PORT);
+        assert_eq!(
+            located.len() as u64,
+            error_count,
+            "one issue location per flagged position"
+        );
+        for feature in &located {
+            assert!(
+                matches!(
+                    feature.get(Attribute::new("validationCheck")),
+                    Some(AttributeValue::String(_))
+                ),
+                "each issue location names the check that flagged it"
+            );
+            assert_eq!(
+                feature.get(Attribute::new(SURFACE_ID_ATTRIBUTE)),
+                Some(&AttributeValue::Number(SURFACE_ID.into())),
+                "attributes of the incoming feature are kept"
+            );
+            assert!(
+                feature.get(Attribute::new("validationResult")).is_none(),
+                "the per-geometry summary belongs to `failed`, not to a position"
+            );
+            assert_ne!(
+                feature.geometry.as_ref(),
+                &polygon(NON_PLANAR),
+                "the geometry is replaced by the flagged position"
+            );
+        }
     }
 }

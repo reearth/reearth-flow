@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
+
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -69,7 +71,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 
         let process = AttributeDuplicateFilter {
             params,
-            buffer: HashMap::new(),
+            buffer: IndexMap::new(),
         };
         Ok(Box::new(process))
     }
@@ -78,7 +80,8 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 #[derive(Debug, Clone)]
 struct AttributeDuplicateFilter {
     params: AttributeDuplicateFilterParam,
-    buffer: HashMap<String, Feature>,
+    /// Insertion-ordered so the output order is reproducible across runs.
+    buffer: IndexMap<String, Feature>,
 }
 
 /// # Attribute Duplicate Filter Parameters

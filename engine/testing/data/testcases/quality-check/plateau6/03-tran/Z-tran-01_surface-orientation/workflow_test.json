@@ -38,7 +38,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "03_交通_面の向き不正.csv"
+    "expectedFile": [
+      "03_交通_面の向き不正.csv",
+      "error_geometry/03_交通_面の向き不正.geojson"
+    ]
   },
   "summaryOutput": {
     "fileErrorSummary": {

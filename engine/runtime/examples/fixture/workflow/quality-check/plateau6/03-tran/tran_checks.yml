@@ -277,6 +277,141 @@ nodes:
         type: string
         value: 03_交通_面の向き不正.csv
 
+  # --- Error detail GeoJSON for the surface checks ---
+  # Fed from the sub-graph's ports only. City objects the reprojection could not
+  # convert reach the CSV on their own branch and are deliberately left out
+  # here: they are still in the input CRS, and mixing frames in one file forces
+  # the `crs` member to null.
+  #
+  # Coordinates stay in the inspection CRS (variable "prcs"); the `crs` member
+  # names it. A face belongs to the innermost city object that encloses it, so
+  # `gmlId` prefers the geometry's owner and `rootGmlId` names the city object
+  # the reader emitted.
+  - id: d5000000-0000-4000-8000-000000000039
+    name: SurfaceValidationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000003a
+    name: SurfaceValidationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_面のエラー.geojson
+      writeCrs: true
+
+  # One feature per flagged position rather than per face, so `issue` names the
+  # single check that flagged this spot and no count attribute is needed.
+  - id: d5000000-0000-4000-8000-00000000003b
+    name: IssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 面のエラー位置
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000003c
+    name: IssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_面のエラー位置.geojson
+      writeCrs: true
+
+  - id: d5000000-0000-4000-8000-00000000003d
+    name: OrientationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 面の向き不正
+        # Reaching this mapper already means the face is wound the wrong way, so
+        # both labels are fixed.
+        - attribute: issue
+          expr:
+            type: string
+            value: Incorrect Orientation
+        - attribute: orientation
+          expr:
+            type: string
+            value: right_hand_rule
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000003e
+    name: OrientationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_面の向き不正.geojson
+      writeCrs: true
+
   # --- L-tran-01/02: adjacent surface overlap detection ---
   # Railway (rwy) is excluded: its surfaces legitimately abut one another.
   - id: d5000000-0000-4000-8000-000000000013
@@ -447,23 +582,33 @@ nodes:
       countStart: 0
       outputAttribute: areaOverlapIndex
 
-  # Collapse each overlap region to one row per distinct set of roads.
+  # Collapse each overlap region to one row per distinct set of roads. The ids
+  # are sorted because the set is what identifies the overlap: the order they
+  # arrive in is an artifact of upstream scheduling and varies between runs.
   - id: d5000000-0000-4000-8000-000000000024
-    name: ListConcatenator
+    name: OverlapKeyBuilder
     type: action
-    action: List Concatenator
+    action: Attribute Manager
     with:
-      list: areaOverlapList
-      elementAttribute: __citygml_gml_id
-      separator: ","
-      outputAttribute: concatenatedGmlIds
+      operations:
+        - attribute: concatenatedGmlIds
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              ",".join(itertools.sorted(itertools.map(
+                attributes.get("areaOverlapList", []),
+                fn(element) { element.get("__citygml_gml_id", "") }
+              )))
 
+  # `lod` is part of the key because the same pair of roads can overlap
+  # independently at more than one LOD, and each is a separate finding.
   - id: d5000000-0000-4000-8000-000000000025
     name: DuplicateFilter
     type: action
     action: Attribute Duplicate Filter
     with:
-      filterBy: ["concatenatedGmlIds"]
+      filterBy: ["concatenatedGmlIds", "lod"]
 
   - id: d5000000-0000-4000-8000-000000000026
     name: ListExploderForAreaOverlaps
@@ -830,6 +975,8 @@ edges:
     toPort: features
 
   # LOD splitter -> surface checks
+  # `lod0` and `lod4` stay unwired: at LOD0 a traffic area is a curve
+  # (lod0MultiCurve), not a face, and CityGML 3.0 has no LOD4.
   - id: d5000000-0000-4000-8000-00010000000e
     from: d5000000-0000-4000-8000-00000000000c
     to: d5000000-0000-4000-8000-00000000000d
@@ -864,6 +1011,38 @@ edges:
   - id: d5000000-0000-4000-8000-000100000014
     from: d5000000-0000-4000-8000-000000000011
     to: d5000000-0000-4000-8000-000000000012
+    fromPort: features
+    toPort: features
+
+  # Surface checks -> error detail GeoJSON
+  - id: d5000000-0000-4000-8000-00010000004d
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-000000000039
+    fromPort: invalidSurface
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004e
+    from: d5000000-0000-4000-8000-000000000039
+    to: d5000000-0000-4000-8000-00000000003a
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004f
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000003b
+    fromPort: issueLocation
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000050
+    from: d5000000-0000-4000-8000-00000000003b
+    to: d5000000-0000-4000-8000-00000000003c
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000051
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000003d
+    fromPort: inCorrectOrientation
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000052
+    from: d5000000-0000-4000-8000-00000000003d
+    to: d5000000-0000-4000-8000-00000000003e
     fromPort: features
     toPort: features
 
@@ -1156,6 +1335,21 @@ edges:
     toPort: features
   - id: d5000000-0000-4000-8000-00010000004c
     from: d5000000-0000-4000-8000-000000000036
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000053
+    from: d5000000-0000-4000-8000-00000000003a
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000054
+    from: d5000000-0000-4000-8000-00000000003c
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000055
+    from: d5000000-0000-4000-8000-00000000003e
     to: d5000000-0000-4000-8000-000000000037
     fromPort: features
     toPort: features
