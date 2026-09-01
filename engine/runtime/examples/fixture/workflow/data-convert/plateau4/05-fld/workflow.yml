@@ -118,45 +118,33 @@ graphs:
               method: rename
               value: city_code
 
-      # Schema branch - defines tileset.json properties
-      - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-        name: AttributeMapperSchema
+      # Schema branch - defines tileset.json properties. Hardcoded: this set of
+      # keys is static, and every fld/tnm/htd/ifld/rfld feature is wtr:WaterBody.
+      - id: 8dc084cb-14f1-488c-8abe-015a54397d56
+        name: HardcodedFldSchema
         type: action
-        action: AttributeMapper
+        action: FeatureCreator
         with:
-          mappers:
-            - attribute: city_code
-              valueAttribute: city_code
-            - attribute: city_name
-              valueAttribute: city_name
-            - attribute: feature_type
-              valueAttribute: feature_type
-            - attribute: attributes
-              valueAttribute: attributes
-            - attribute: gml:name
-              valueAttribute: gml:name
-            - attribute: core:creationDate
-              valueAttribute: core:creationDate
-            - attribute: wtr:class
-              valueAttribute: wtr:class
-            - attribute: wtr:function
-              valueAttribute: wtr:function
-            - attribute: uro:description
-              valueAttribute: uro:description
-            - attribute: uro:rank
-              valueAttribute: uro:rank
-            - attribute: uro:rank_code
-              expr: "0"
-            - attribute: uro:rankOrg
-              valueAttribute: uro:rankOrg
-            - attribute: uro:rankOrg_code
-              expr: "0"
-            - attribute: uro:adminType
-              valueAttribute: uro:adminType
-            - attribute: uro:scale
-              valueAttribute: uro:scale
-            - attribute: uro:geometrySrcDescLod1
-              valueAttribute: uro:geometrySrcDescLod1
+          creator: |
+            #{
+              __feature_type: "wtr:WaterBody",
+              city_code: "",
+              city_name: "",
+              feature_type: "wtr:WaterBody",
+              attributes: "",
+              "gml:name": "",
+              "core:creationDate": "",
+              "wtr:class": "",
+              "wtr:function": "",
+              "uro:description": "",
+              "uro:rank": "",
+              "uro:rank_code": 0,
+              "uro:rankOrg": "",
+              "uro:rankOrg_code": 0,
+              "uro:adminType": "",
+              "uro:scale": "",
+              "uro:geometrySrcDescLod1": "",
+            }
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
@@ -305,12 +293,6 @@ graphs:
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         fromPort: default
         toPort: default
-      # Schema branch: AttributeFlattener → AttributeMapperSchema
-      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-        fromPort: schema
-        toPort: default
       - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
@@ -321,9 +303,9 @@ graphs:
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
-      # Schema branch: AttributeMapperSchema → Cesium3DTilesWriter (schema port)
+      # Schema branch: HardcodedFldSchema → Cesium3DTilesWriter (schema port)
       - id: f1e2d3c4-b5a6-9788-0fed-cba987654321
-        from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+        from: 8dc084cb-14f1-488c-8abe-015a54397d56
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: schema
