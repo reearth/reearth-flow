@@ -145,7 +145,13 @@ graphs:
               "uro:rankOrg_code": 0,
               "uro:geometrySrcDescLod1": "",
             };
-            if "fld" in (env.get("targetPackages") ?? []) {
+            let target_packages = env.get("targetPackages") ?? [];
+            let has_fld = if target_packages.type_of() == "array" {
+              target_packages.contains("fld")
+            } else {
+              target_packages == "fld"
+            };
+            if has_fld {
               schema["uro:adminType"] = "";
               schema["uro:scale"] = "";
             }
