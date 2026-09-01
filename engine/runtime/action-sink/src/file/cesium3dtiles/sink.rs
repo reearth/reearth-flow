@@ -258,6 +258,12 @@ impl Cesium3DTilesWriter {
             None
         };
 
+        if crate::schema::schema_attributes(feature_type, &self.schema).is_none() {
+            tracing::warn!(
+                "Cesium3DTilesWriter: no schema entry yet for feature_type {feature_type:?} — writing unfiltered attributes"
+            );
+        }
+
         let feature = {
             let mut attrs = crate::schema::filter_and_cast_attributes(&ctx.feature, &self.schema);
             if self.params.skip_unexposed_attributes {
