@@ -214,7 +214,7 @@ graphs:
     action: FeatureCreator
     with:
       creator: |
-        #{
+        let schema = #{
           __feature_type: "wtr:WaterBody",
           city_code: "",
           city_name: "",
@@ -229,10 +229,13 @@ graphs:
           "uro:rank_code": 0,
           "uro:rankOrg": "",
           "uro:rankOrg_code": 0,
-          "uro:adminType": "",
-          "uro:scale": "",
           "uro:geometrySrcDescLod1": "",
+        };
+        if "fld" in (env.get("targetPackages") ?? []) {
+          schema["uro:adminType"] = "";
+          schema["uro:scale"] = "";
         }
+        schema
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojector
     type: action

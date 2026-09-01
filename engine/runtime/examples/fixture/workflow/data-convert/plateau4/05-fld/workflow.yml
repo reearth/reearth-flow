@@ -120,13 +120,15 @@ graphs:
 
       # Schema branch - defines tileset.json properties. Hardcoded: this set of
       # keys is static, and every fld/tnm/htd/ifld/rfld feature is wtr:WaterBody.
+      # uro:adminType/uro:scale are fld-only (see FLATTEN_ATTRIBUTES), so they're
+      # only included when fld is actually targeted.
       - id: 8dc084cb-14f1-488c-8abe-015a54397d56
         name: HardcodedFldSchema
         type: action
         action: FeatureCreator
         with:
           creator: |
-            #{
+            let schema = #{
               __feature_type: "wtr:WaterBody",
               city_code: "",
               city_name: "",
@@ -141,10 +143,13 @@ graphs:
               "uro:rank_code": 0,
               "uro:rankOrg": "",
               "uro:rankOrg_code": 0,
-              "uro:adminType": "",
-              "uro:scale": "",
               "uro:geometrySrcDescLod1": "",
+            };
+            if "fld" in (env.get("targetPackages") ?? []) {
+              schema["uro:adminType"] = "";
+              schema["uro:scale"] = "";
             }
+            schema
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
