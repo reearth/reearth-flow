@@ -152,7 +152,7 @@ impl PolygonMesh2D {
     /// Every face of the mesh, each rebuilt as a standalone bare [`Polygon2D`]
     /// in the mesh's frame (exterior ring first, then hole rings).
     pub fn faces(&self) -> Vec<Polygon2D> {
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(self.num_faces());
         self.for_each_face_polygon(|p| out.push(p));
         out
     }
@@ -162,7 +162,7 @@ impl PolygonMesh2D {
 impl PolygonMesh3D {
     /// As [`PolygonMesh2D::faces`], for the 3D mesh.
     pub fn faces(&self) -> Vec<Polygon3D> {
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(self.num_faces());
         self.for_each_face_polygon(|p| out.push(p));
         out
     }
@@ -174,7 +174,7 @@ impl super::PolygonMesh3DData {
     /// the form a [`Solid`](crate::solid::Solid) shell needs, since a shell
     /// holds mesh data and takes its frame from the solid.
     pub fn faces(&self, frame: &CoordinateFrame) -> Vec<Polygon3D> {
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(self.num_faces());
         self.for_each_face_polygon(frame, |p| out.push(p));
         out
     }

@@ -718,25 +718,49 @@ mod tests {
             Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
         }
 
-        /// As [`mesh_with_faces`], but for `n` in the millions: built from flat
-        /// CSR buffers directly (not a `Vec<Vec<u32>>` per face), so
-        /// construction itself stays cheap even at this size. Exists only to
-        /// make the cost gap between *counting* faces (`num_faces`, O(1)) and
-        /// *collecting* them (walking and materializing every ring) large
-        /// enough to be observable in wall-clock time from outside `faces_of`.
-        pub(super) fn huge_mesh_with_faces(n: usize) -> Geometry {
-            let vertices = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-            let face_indices: Vec<u32> = (0..n).flat_map(|_| [0u32, 1, 2]).collect();
-            let face_offsets: Vec<u32> = (1..n as u32).map(|i| i * 3).collect();
-            let mesh = PolygonMesh3D::from_raw_parts(
-                CoordinateFrame::default(),
-                vertices,
-                face_indices,
-                face_offsets,
-                Vec::new(),
-            )
-            .unwrap();
-            Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
+        /// A `TriangularMesh3D` with `n` triangles (`n` meant to exceed
+        /// `MAX_FACES_PER_FEATURE`) but a *single* vertex, every triangle
+        /// pointing at vertex index 1 — which does not exist, since the only
+        /// valid index is 0.
+        ///
+        /// Built through the `unsafe` [`TriangularMesh3D::from_parts_unchecked`],
+        /// which performs no index validation, so this is cheap to construct
+        /// (one vertex; the index buffer is the only thing that scales with
+        /// `n`, and stays narrow since the vertex-count-derived width is
+        /// `u8`) even at `n` far past the cap — unlike a real `n`-face mesh,
+        /// which needs `n` genuine, distinct faces to build.
+        ///
+        /// This exists to pin `faces_of`'s "rejected without materializing
+        /// any of them" guarantee without a wall-clock budget: `num_triangles`
+        /// (O(1), reads only the index buffer's length) can count this mesh
+        /// correctly and reject it, but the collecting pass would panic the
+        /// instant it dereferences `vertices[1]` on the first triangle it
+        /// tries to build. So an implementation that materializes before
+        /// checking the count panics on this fixture; one that counts first
+        /// never touches the vertex pool at all.
+        ///
+        /// # Safety
+        /// It is safe to build this deliberately invalid mesh with the
+        /// `unsafe` constructor only because nothing is ever allowed to read
+        /// its vertices: the whole point of the fixture is that the guard
+        /// must reject it before any code — test or production — indexes
+        /// into `vertices` with the out-of-range value. If that invariant is
+        /// ever violated, the test panics loudly instead of silently
+        /// returning wrong data.
+        pub(super) fn mesh_with_invalid_index_and_faces(n: usize) -> Geometry {
+            use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+
+            let vertices = vec![[0.0, 0.0, 0.0]];
+            let indices = std::iter::repeat_n(1u32, 3 * n);
+            let mesh = unsafe {
+                TriangularMesh3D::from_parts_unchecked(
+                    CoordinateFrame::default(),
+                    vertices,
+                    n,
+                    indices,
+                )
+            };
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)))
         }
     }
 
@@ -785,30 +809,21 @@ mod tests {
     fn too_many_faces_is_refused_without_materializing_any_of_them() {
         // `faces_of`'s return value alone can't distinguish "rejected after
         // counting" from "rejected after building and discarding every face":
-        // both produce the same `Err`. The one thing that *does* differ is
-        // cost, since `PolygonMesh::num_faces` is O(1) but building a face's
-        // rings is not. So the fixture goes to eight million faces
-        // specifically to make that cost gap observable from outside
-        // `faces_of` — a materializing implementation would need to build
-        // eight million `Face`s (each its own heap-allocated `Vec<Vec<[f64;
-        // 3]>>`) before ever reaching the rejection; the counting-only path
-        // reads a single O(1) `num_faces` call. If this ever starts flaking
-        // on a slower CI runner, that's this test reaching the edge of what a
-        // wall-clock budget can responsibly assert, not evidence the guard
-        // stopped working — the fix would be to widen the budget or the face
-        // count, not to delete the coverage.
-        let g = fixture::huge_mesh_with_faces(8_000_000);
-        let start = std::time::Instant::now();
+        // both produce the same `Err`. Rather than pinning that distinction to
+        // a wall-clock budget (flaky across CI runners, and requiring a
+        // multi-million-face fixture just to make the gap observable), the
+        // fixture mesh has an out-of-range vertex index on every triangle: its
+        // `num_triangles` (O(1), just the index buffer's length) counts and
+        // rejects it correctly, but a collecting pass would panic on
+        // `vertices[1]` the instant it tried to build the first face. See
+        // `fixture::mesh_with_invalid_index_and_faces` for the full
+        // reasoning and the safety justification for its `unsafe` build.
+        let n = MAX_FACES_PER_FEATURE + 1;
+        let g = fixture::mesh_with_invalid_index_and_faces(n);
         let result = faces_of(&g);
-        let elapsed = start.elapsed();
         assert!(
-            matches!(result, Err(ArealError::TooManyFaces(8_000_000))),
-            "expected TooManyFaces(8_000_000), got {result:?}"
-        );
-        assert!(
-            elapsed < std::time::Duration::from_millis(500),
-            "rejecting 8,000,000 faces took {elapsed:?}, which is far more than an O(1) count \
-             should need; that points at faces being materialized before the guard rejects them"
+            matches!(result, Err(ArealError::TooManyFaces(count)) if count == n),
+            "expected TooManyFaces({n}), got {result:?}"
         );
     }
 
