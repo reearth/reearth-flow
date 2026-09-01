@@ -6289,6 +6289,7 @@
       "outputPorts": [
         "success",
         "failed",
+        "issue-locations",
         "rejected"
       ],
       "categories": [
@@ -11320,6 +11321,53 @@
       "outputPorts": [
         "A",
         "B"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.TransportationXlinkDetector",
+      "type": "processor",
+      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransportationXlinkDetectorParam",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed"
       ],
       "categories": [
         "PLATEAU"
