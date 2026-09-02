@@ -433,68 +433,6 @@ mod tests {
     use crate::plateau4::transportation_xlink_strategy::Plateau4TransportationXlinkStrategy;
     use crate::plateau6::transportation_xlink_strategy::Plateau6TransportationXlinkStrategy;
 
-    #[test]
-    fn both_generations_scan_lod2_and_lod3_of_tran_road() {
-        let strategies: [&dyn TransportationXlinkStrategy; 2] = [
-            &Plateau4TransportationXlinkStrategy,
-            &Plateau6TransportationXlinkStrategy,
-        ];
-        for strategy in strategies {
-            assert_eq!(strategy.containers(), &["tran:Road"]);
-            assert_eq!(strategy.lods(), &[("lod2", "2"), ("lod3", "3")]);
-        }
-    }
-
-    #[test]
-    fn the_aggregate_surface_moves_from_tran_to_core_in_citygml3() {
-        assert_eq!(
-            Plateau4TransportationXlinkStrategy.aggregate_tag("lod3"),
-            "tran:lod3MultiSurface"
-        );
-        assert_eq!(
-            Plateau6TransportationXlinkStrategy.aggregate_tag("lod3"),
-            "core:lod3MultiSurface"
-        );
-    }
-
-    #[test]
-    fn the_xlink_xpath_hangs_off_the_generations_aggregate_tag() {
-        assert_eq!(
-            Plateau4TransportationXlinkStrategy.aggregate_xlink_xpath("lod2"),
-            "tran:lod2MultiSurface//gml:surfaceMember[@xlink:href]"
-        );
-        assert_eq!(
-            Plateau6TransportationXlinkStrategy.aggregate_xlink_xpath("lod2"),
-            "core:lod2MultiSurface//gml:surfaceMember[@xlink:href]"
-        );
-    }
-
-    #[test]
-    fn citygml3_reaches_the_boundary_polygons_through_a_space_and_core_boundary() {
-        let v2 = Plateau4TransportationXlinkStrategy.child_surface_xpath("lod3");
-        assert!(v2.contains("tran:trafficArea/tran:TrafficArea/tran:lod3MultiSurface"));
-        assert!(v2
-            .contains("tran:auxiliaryTrafficArea/tran:AuxiliaryTrafficArea/tran:lod3MultiSurface"));
-
-        let v3 = Plateau6TransportationXlinkStrategy.child_surface_xpath("lod3");
-        assert!(v3.contains(".//tran:TrafficArea/core:lod3MultiSurface//gml:Polygon[@gml:id]"));
-        assert!(
-            v3.contains(".//tran:AuxiliaryTrafficArea/core:lod3MultiSurface//gml:Polygon[@gml:id]")
-        );
-    }
-
-    #[test]
-    fn gml_id_resolves_in_the_generations_own_gml_namespace() {
-        assert_eq!(
-            Plateau4TransportationXlinkStrategy.gml_namespace(),
-            "http://www.opengis.net/gml"
-        );
-        assert_eq!(
-            Plateau6TransportationXlinkStrategy.gml_namespace(),
-            "http://www.opengis.net/gml/3.2"
-        );
-    }
-
     /// `tran:Road` whose traffic spaces are nested two levels deep in
     /// `tran:section/tran:Section`, as real PLATEAU 6 data is. Each boundary
     /// carries two LOD3 polygons, of which the aggregate references only one.
@@ -596,5 +534,87 @@ mod tests {
         );
 
         assert!(extract_from(&Plateau6TransportationXlinkStrategy, &gml).is_none());
+    }
+
+    /// CityGML 2.0 `tran:Road`: boundaries hang directly off `tran:trafficArea`
+    /// / `tran:auxiliaryTrafficArea` and the aggregate surface belongs to
+    /// `tran`. LOD2 and LOD3 each carry two boundary polygons, of which the
+    /// aggregate references only one.
+    const CITYGML2_ROAD: &str = r##"<?xml version="1.0" encoding="UTF-8"?>
+<tran:Road xmlns:tran="http://www.opengis.net/citygml/transportation/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    gml:id="road-1">
+  <tran:lod2MultiSurface>
+    <gml:MultiSurface>
+      <gml:surfaceMember xlink:href="#lod2-traffic-referenced"/>
+    </gml:MultiSurface>
+  </tran:lod2MultiSurface>
+  <tran:lod3MultiSurface>
+    <gml:MultiSurface>
+      <gml:surfaceMember xlink:href="#lod3-auxiliary-referenced"/>
+    </gml:MultiSurface>
+  </tran:lod3MultiSurface>
+  <tran:trafficArea>
+    <tran:TrafficArea>
+      <tran:lod2MultiSurface>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod2-traffic-referenced"/>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod2-traffic-unreferenced"/>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </tran:lod2MultiSurface>
+    </tran:TrafficArea>
+  </tran:trafficArea>
+  <tran:auxiliaryTrafficArea>
+    <tran:AuxiliaryTrafficArea>
+      <tran:lod3MultiSurface>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod3-auxiliary-referenced"/>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod3-auxiliary-unreferenced"/>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </tran:lod3MultiSurface>
+    </tran:AuxiliaryTrafficArea>
+  </tran:auxiliaryTrafficArea>
+</tran:Road>
+"##;
+
+    #[test]
+    fn a_citygml2_road_reports_unreferenced_surfaces_of_every_lod() {
+        let result = extract_from(&Plateau4TransportationXlinkStrategy, CITYGML2_ROAD)
+            .expect("the two unreferenced polygons should be reported");
+
+        assert_eq!(result.road_id, "road-1");
+        assert_eq!(
+            result.unreferenced_surfaces,
+            vec![
+                ("2".to_string(), "lod2-traffic-unreferenced".to_string()),
+                ("3".to_string(), "lod3-auxiliary-unreferenced".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_citygml2_road_whose_aggregates_reference_every_boundary_surface_passes() {
+        let gml = CITYGML2_ROAD
+            .replace(
+                r##"<gml:surfaceMember xlink:href="#lod2-traffic-referenced"/>"##,
+                r##"<gml:surfaceMember xlink:href="#lod2-traffic-referenced"/>
+      <gml:surfaceMember xlink:href="#lod2-traffic-unreferenced"/>"##,
+            )
+            .replace(
+                r##"<gml:surfaceMember xlink:href="#lod3-auxiliary-referenced"/>"##,
+                r##"<gml:surfaceMember xlink:href="#lod3-auxiliary-referenced"/>
+      <gml:surfaceMember xlink:href="#lod3-auxiliary-unreferenced"/>"##,
+            );
+
+        assert!(extract_from(&Plateau4TransportationXlinkStrategy, &gml).is_none());
     }
 }
