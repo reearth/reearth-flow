@@ -1,11 +1,5 @@
 //! PLATEAU 4 (CityGML 2.0) extraction seam for the common transportation
 //! xlink check.
-//!
-//! The Road aggregate surface is `tran:`-namespaced (`tran:lodXMultiSurface`)
-//! and the boundary polygons hang directly off `tran:trafficArea` /
-//! `tran:auxiliaryTrafficArea`; `gml:id` resolves in the GML 3.1.1 namespace.
-//! The difference from PLATEAU 6 is the aggregate namespace prefix, the boundary
-//! nesting, and the `gml` namespace, so only those seams are provided.
 
 use crate::common::transportation_xlink_detector::TransportationXlinkStrategy;
 

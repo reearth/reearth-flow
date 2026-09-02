@@ -7,13 +7,7 @@
 //! check reads the raw GML and reports, per LOD, every boundary polygon
 //! `gml:id` that the aggregate surface does not reference.
 //!
-//! The generation-independent orchestration (raw-GML load, per-container
-//! traversal, set difference, port emission) lives here as a template method.
-//! The generation-specific seam — the aggregate-surface namespace prefix, where
-//! the boundary polygons live, and which `gml` namespace resolves `gml:id` — is
-//! injected as a [`TransportationXlinkStrategy`] trait object, so a generation
-//! whose extraction *logic* (not merely its constants) differs can override the
-//! behavioral methods without touching this file.
+//! Generation-specific differences are injected as a [`TransportationXlinkStrategy`].
 
 use std::{
     cell::RefCell,
@@ -51,11 +45,6 @@ pub static PASSED_PORT: Lazy<Port> = Lazy::new(|| Port::new("passed"));
 pub static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
 /// Generation-specific seam for the transportation xlink check.
-///
-/// The accessors describe *where* the aggregate references and the boundary
-/// definitions live; the `aggregate_*` methods carry the default extraction
-/// built from those accessors and are override points for a generation whose
-/// extraction logic genuinely differs (rather than only its constants).
 pub(crate) trait TransportationXlinkStrategy: Send + Sync + Debug {
     /// Feature containers to scan, as `//{name}` roots (e.g. `tran:Road`).
     fn containers(&self) -> &[&str];
@@ -87,10 +76,7 @@ pub(crate) trait TransportationXlinkStrategy: Send + Sync + Debug {
     }
 
     /// XPath, relative to the container, matching the boundary polygons of one
-    /// LOD (each keyed by its `gml:id`). Generation-specific: CityGML 2.0 nests
-    /// boundaries directly under `tran:trafficArea` / `tran:auxiliaryTrafficArea`,
-    /// while 3.0 nests them under `tran:trafficSpace` / `tran:auxiliaryTrafficSpace`
-    /// -> `core:boundary`.
+    /// LOD, each keyed by its `gml:id`.
     fn child_surface_xpath(&self, lod: &str) -> String;
 }
 
