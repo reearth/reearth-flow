@@ -90,9 +90,6 @@ pub fn filter_and_cast_attributes(feature: &Feature, schema: &Schema) -> Attribu
         .as_ref()
         .and_then(|ft| schema_attributes(ft, schema))
     else {
-        tracing::warn!(
-            "no schema entry yet for feature_type {schema_key:?} — writing unfiltered attributes"
-        );
         return feature.attributes.as_ref().clone();
     };
 
