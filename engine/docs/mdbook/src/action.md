@@ -6102,6 +6102,7 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
 ### Output Ports
 * success
 * failed
+* issue-locations
 * rejected
 ### Category
 * Geometry
@@ -10497,7 +10498,7 @@ Creates pairs of features from Area On Area Overlayer output for solid intersect
 ### Type
 * processor
 ### Description
-Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)
+Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)
 ### Parameters
 ```json
 {
@@ -11008,6 +11009,52 @@ Creates pairs of features from Area On Area Overlayer output for solid intersect
 ### Output Ports
 * A
 * B
+### Category
+* PLATEAU
+
+## PLATEAU6.TransportationXlinkDetector
+### Type
+* processor
+### Description
+Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransportationXlinkDetectorParam",
+  "type": "object",
+  "required": [
+    "cityGmlPath"
+  ],
+  "properties": {
+    "cityGmlPath": {
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* passed
+* failed
 ### Category
 * PLATEAU
 

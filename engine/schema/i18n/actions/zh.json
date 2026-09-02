@@ -3250,6 +3250,15 @@
       }
     },
     {
+      "name": "PLATEAU6.TransportationXlinkDetector",
+      "parameterI18n": {
+        "": {
+          "title": "TransportationXlinkDetectorParam"
+        },
+        "cityGmlPath": {}
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "从PLATEAU6数据中提取UDX文件夹",
       "parameterI18n": {

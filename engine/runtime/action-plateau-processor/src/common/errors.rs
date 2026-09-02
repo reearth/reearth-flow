@@ -36,6 +36,10 @@ pub(crate) enum PlateauProcessorError {
     UnmatchedXlinkDetectorFactory(String),
     #[error("Unmatched Xlink Detector error: {0}")]
     UnmatchedXlinkDetector(String),
+    #[error("Transportation Xlink Detector Factory error: {0}")]
+    TransportationXlinkDetectorFactory(String),
+    #[error("Transportation Xlink Detector error: {0}")]
+    TransportationXlinkDetector(String),
     #[error("DestinationMeshCodeExtractor Factory error: {0}")]
     DestinationMeshCodeExtractorFactory(String),
     #[error("DestinationMeshCodeExtractor error: {0}")]

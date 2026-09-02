@@ -7,6 +7,7 @@ pub(crate) mod missing_attribute_detector;
 pub(crate) mod object_list_extractor;
 mod profile;
 pub(crate) mod solid_intersection_test_pair_creator;
+pub(crate) mod transportation_xlink_detector;
 pub(crate) mod udx_folder_extractor;
 pub(crate) mod unmatched_xlink_detector;
 pub(crate) use profile::PlateauProfile;

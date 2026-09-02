@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_05c9f952-3a3c-4c54-ac4c-7772b148c0a6">
+<gml:name>Road_lodType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Road_lodType_1">
+<gml:description>道路横断方向の高さを一律とし、車道の高さで表現</gml:description>
+<gml:name>2.0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Road_lodType_2">
+<gml:description>15cm以上の高低差に応じて車道部・歩道部・島の高さを表現</gml:description>
+<gml:name>2.1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Road_lodType_3">
+<gml:description>2cm以上の高低差に応じて車道部・歩道部・島の高さを表現</gml:description>
+<gml:name>2.2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>
