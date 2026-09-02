@@ -273,13 +273,6 @@ The `faces → Polygon` edge is conceptual: a `PolygonMesh` face has the same ri
 structure as a `Polygon` but is stored in the mesh's shared CSR buffers, not as
 separate `Polygon` values.
 
-## Coordinate order
-
-GML `posList` / `pos` for the geographic CRSs used by CityGML are in
-latitude, longitude, height order. The reader stores coordinates in `x, y, z`
-order, so the leading latitude/longitude pair is swapped to `x = longitude`,
-`y = latitude`. Reprojection to other CRSs happens in later workflow steps.
-
 ## Note on representation
 
 Abstract substitution-group hubs are not drawn: aggregate members are almost
