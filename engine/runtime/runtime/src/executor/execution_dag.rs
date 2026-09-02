@@ -68,7 +68,6 @@ pub struct ExecutionDag {
     pub(crate) executor_id: uuid::Uuid,
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
-    feature_state: Arc<State>,
     port_writers: HashMap<NodeIndex, HashMap<Port, Box<dyn FeatureWriter>>>,
 }
 
@@ -159,7 +158,6 @@ impl ExecutionDag {
             executor_id,
             graph,
             event_hub,
-            feature_state,
             port_writers,
         })
     }
@@ -178,10 +176,6 @@ impl ExecutionDag {
 
     pub fn event_hub(&self) -> &EventHub {
         &self.event_hub
-    }
-
-    pub fn feature_state(&self) -> Arc<State> {
-        Arc::clone(&self.feature_state)
     }
 
     pub fn collect_senders(
