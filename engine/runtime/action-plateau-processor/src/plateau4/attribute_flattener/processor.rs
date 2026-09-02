@@ -72,6 +72,11 @@ pub(crate) struct AttributeFlattenerParam {
     /// When false (default), include all defined attributes in the schema regardless of usage.
     #[serde(default)]
     existing_flatten_attributes: bool,
+    /// An attribute name to split processing into chunks by. Features sharing a
+    /// value must already be adjacent, and every feature must have it set.
+    /// Parent/child relationships and cross-file references must not span chunks.
+    #[serde(default)]
+    chunk_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -125,6 +130,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         };
         let process = AttributeFlattener {
             filter_existing_flatten_attributes: params.existing_flatten_attributes,
+            chunk_by_attribute: params.chunk_by_attribute,
             ..Default::default()
         };
         Ok(Box::new(process))
@@ -155,6 +161,11 @@ pub(super) struct AttributeFlattener {
     lod4_to_ancestor_type: HashMap<String, String>,
     // risk attribute keys per feature, for excluding from LOD4 inheritance
     gmlid_to_risk_attr_keys: HashMap<String, HashSet<String>>,
+    // attribute name that chunks incoming features (see AttributeFlattenerParam::chunk_by_attribute)
+    chunk_by_attribute: Option<String>,
+    // last seen value of chunk_by_attribute; a change means the previous chunk is
+    // complete and its ancestor-lookup caches can be dropped
+    current_chunk: Option<AttributeValue>,
 }
 
 // remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
@@ -686,6 +697,23 @@ impl AttributeFlattener {
         Ok(())
     }
 
+    /// Called when chunk_by_attribute's value changes: drops the ancestor-lookup
+    /// caches accumulated for the chunk that just ended. Anything still in
+    /// children_buffer at this point never found its parent within the chunk,
+    /// so it's logged the same way finish() logs true end-of-run orphans.
+    fn flush_chunk_state(&mut self, ending_chunk: &AttributeValue) {
+        let orphan_count: usize = self.children_buffer.values().map(|v| v.len()).sum();
+        if orphan_count > 0 {
+            tracing::error!(
+                "Found {orphan_count} orphaned features without parents in buffer at end of chunk {ending_chunk:?}",
+            );
+        }
+        self.children_buffer.clear();
+        self.gmlid_to_citygml_attributes.clear();
+        self.gmlid_to_subfeature_inherited.clear();
+        self.gmlid_to_risk_attr_keys.clear();
+    }
+
     fn generate_schema_feature(&self, feature_type_key: &str) -> Feature {
         let mut attributes = Attributes::new();
         for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
@@ -875,6 +903,21 @@ impl Processor for AttributeFlattener {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        if let Some(chunk_attr) = self.chunk_by_attribute.clone() {
+            let Some(chunk) = ctx.feature.get(chunk_attr.as_str()) else {
+                return Err(PlateauProcessorError::AttributeFlattener(format!(
+                    "chunkByAttribute {chunk_attr:?} is set but feature is missing that attribute"
+                ))
+                .into());
+            };
+            if self.current_chunk.as_ref() != Some(chunk) {
+                if let Some(prev) = self.current_chunk.take() {
+                    self.flush_chunk_state(&prev);
+                }
+                self.current_chunk = Some(chunk.clone());
+            }
+        }
+
         let feature = ctx.feature.clone();
 
         // Get cityGmlAttributes to check for parent

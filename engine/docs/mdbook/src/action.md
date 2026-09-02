@@ -1342,6 +1342,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "chunkByAttribute": {
+      "title": "Chunk By Attribute",
+      "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set. Each chunk's value must map to a different output path.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "compressOutput": {
       "title": "Compressed Output Path",
       "description": "Optional path for compressed archive output",
@@ -2794,6 +2802,14 @@ Reads and processes features from CityGML files with optional flattening
     "dataset"
   ],
   "properties": {
+    "chunkByAttribute": {
+      "title": "Chunk By Attribute",
+      "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "codelistsPath": {
       "title": "Codelists Path",
       "description": "Optional path to the codelists directory for resolving codelist values",
@@ -7623,6 +7639,14 @@ Flatten attributes for building feature
   "title": "AttributeFlattener Parameters",
   "type": "object",
   "properties": {
+    "chunkByAttribute": {
+      "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set. Parent/child relationships and cross-file references must not span chunks.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "existingFlattenAttributes": {
       "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
       "default": false,

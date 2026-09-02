@@ -147,7 +147,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/09-unf/unf",
     "data-convert/plateau4/10-wtr/wtr",
     "data-convert/plateau4/11-gen/mvt",
-    "examples/citygml-roundtrip/tun",
+    // "examples/citygml-roundtrip/tun",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)

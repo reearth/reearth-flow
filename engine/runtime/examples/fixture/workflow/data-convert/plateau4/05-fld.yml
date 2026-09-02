@@ -15,6 +15,7 @@ with:
   - ifld
   - rfld
   workerArtifactPath: null
+  channelBufferSize: 1
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -139,6 +140,14 @@ graphs:
     name: FolderAndFilePathReader
     type: subGraph
     subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+  - id: 528c600f-c289-471b-af53-de5b01881337
+    name: FeatureSorterByUdxDirs
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - udxDirs
+      order: ascending
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
     name: FeatureReaderByCityGml
     type: action
@@ -146,6 +155,7 @@ graphs:
     with:
       codelistsPath: env.get("__value").codelists
       flatten: true
+      chunkByAttribute: udxDirs
       dataset: |
         env.get("__value")["path"]
   - id: 65852d63-eb2c-486c-95d5-2646874d11a2
@@ -184,6 +194,8 @@ graphs:
     name: AttributeFlattener
     type: action
     action: PLATEAU4.AttributeFlattener
+    with:
+      chunkByAttribute: udxDirs
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: AttributeManagerRename
     type: action
@@ -196,44 +208,40 @@ graphs:
       - attribute: cityCode
         method: rename
         value: city_code
-  - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    name: AttributeMapperSchema
+  - id: 8dc084cb-14f1-488c-8abe-015a54397d56
+    name: HardcodedFldSchema
     type: action
-    action: AttributeMapper
+    action: FeatureCreator
     with:
-      mappers:
-      - attribute: city_code
-        valueAttribute: city_code
-      - attribute: city_name
-        valueAttribute: city_name
-      - attribute: feature_type
-        valueAttribute: feature_type
-      - attribute: attributes
-        valueAttribute: attributes
-      - attribute: gml:name
-        valueAttribute: gml:name
-      - attribute: core:creationDate
-        valueAttribute: core:creationDate
-      - attribute: wtr:class
-        valueAttribute: wtr:class
-      - attribute: wtr:function
-        valueAttribute: wtr:function
-      - attribute: uro:description
-        valueAttribute: uro:description
-      - attribute: uro:rank
-        valueAttribute: uro:rank
-      - attribute: uro:rank_code
-        expr: '0'
-      - attribute: uro:rankOrg
-        valueAttribute: uro:rankOrg
-      - attribute: uro:rankOrg_code
-        expr: '0'
-      - attribute: uro:adminType
-        valueAttribute: uro:adminType
-      - attribute: uro:scale
-        valueAttribute: uro:scale
-      - attribute: uro:geometrySrcDescLod1
-        valueAttribute: uro:geometrySrcDescLod1
+      creator: |
+        let schema = #{
+          __feature_type: "wtr:WaterBody",
+          city_code: "",
+          city_name: "",
+          feature_type: "wtr:WaterBody",
+          attributes: "",
+          "gml:name": "",
+          "core:creationDate": "",
+          "wtr:class": "",
+          "wtr:function": "",
+          "uro:description": "",
+          "uro:rank": "",
+          "uro:rank_code": 0,
+          "uro:rankOrg": "",
+          "uro:rankOrg_code": 0,
+          "uro:geometrySrcDescLod1": "",
+        };
+        let target_packages = env.get("targetPackages") ?? [];
+        let has_fld = if target_packages.type_of() == "array" {
+          target_packages.contains("fld")
+        } else {
+          target_packages == "fld"
+        };
+        if has_fld {
+          schema["uro:adminType"] = "";
+          schema["uro:scale"] = "";
+        }
+        schema
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojector
     type: action
@@ -252,6 +260,7 @@ graphs:
       minZoom: 15
       maxZoom: 18
       attachTexture: false
+      chunkByAttribute: udxDirs
       output: |
         let udx_dirs = env.get("__value")["udxDirs"];
         udx_dirs.replace("/", "_");
@@ -336,6 +345,11 @@ graphs:
     toPort: default
   - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
     from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+    to: 528c600f-c289-471b-af53-de5b01881337
+    fromPort: default
+    toPort: default
+  - id: fb8c8f3e-7cf6-43e4-8583-de6ebda59929
+    from: 528c600f-c289-471b-af53-de5b01881337
     to: ded2e272-e05c-4918-86b3-aa9f763da6e6
     fromPort: default
     toPort: default
@@ -364,11 +378,6 @@ graphs:
     to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     fromPort: default
     toPort: default
-  - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
-    from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-    to: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
-    fromPort: schema
-    toPort: default
   - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
     from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
@@ -380,7 +389,7 @@ graphs:
     fromPort: default
     toPort: default
   - id: f1e2d3c4-b5a6-9788-0fed-cba987654321
-    from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+    from: 8dc084cb-14f1-488c-8abe-015a54397d56
     to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     fromPort: default
     toPort: schema

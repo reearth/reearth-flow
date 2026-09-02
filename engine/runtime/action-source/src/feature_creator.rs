@@ -104,11 +104,7 @@ impl Source for FeatureCreator {
             })?;
         if new_value.is::<rhai::Map>() {
             if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                let attributes = new_value
-                    .iter()
-                    .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                    .collect::<IndexMap<Attribute, AttributeValue>>();
-                let feature = Feature::from(attributes);
+                let feature = to_feature(new_value);
                 sender
                     .send((
                         DEFAULT_PORT.clone(),
@@ -127,11 +123,7 @@ impl Source for FeatureCreator {
             })?;
             for new_value in array_values {
                 if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                    let attributes = new_value
-                        .iter()
-                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                        .collect::<IndexMap<Attribute, AttributeValue>>();
-                    let feature = Feature::from(attributes);
+                    let feature = to_feature(new_value);
                     sender
                         .send((
                             DEFAULT_PORT.clone(),
@@ -147,4 +139,23 @@ impl Source for FeatureCreator {
         }
         Ok(())
     }
+}
+
+/// Builds a Feature from created attributes. A `__feature_type` key, if present, is
+/// consumed to set the feature's metadata feature_type (never surfaced as an attribute) —
+/// the only way a FeatureCreator-made feature can carry one, since Feature::from(attributes)
+/// otherwise leaves it unset.
+fn to_feature(new_value: HashMap<String, AttributeValue>) -> Feature {
+    let mut attributes = new_value
+        .iter()
+        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
+        .collect::<IndexMap<Attribute, AttributeValue>>();
+    let feature_type = attributes
+        .shift_remove(&Attribute::new("__feature_type".to_string()))
+        .and_then(|v| v.as_string());
+    let mut feature = Feature::from(attributes);
+    if let Some(feature_type) = feature_type {
+        feature.update_feature_type(feature_type);
+    }
+    feature
 }

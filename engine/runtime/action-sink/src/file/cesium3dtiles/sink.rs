@@ -14,7 +14,7 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -95,6 +95,9 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             global_params: with,
             buffer: HashMap::new(),
             schema: Default::default(),
+            current_chunk: None,
+            chunk_keys: HashMap::new(),
+            pending_flush: Vec::new(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
                 min_zoom: params.min_zoom,
@@ -103,6 +106,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 compress_output,
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
+                chunk_by_attribute: params.chunk_by_attribute,
             },
         };
         Ok(Box::new(sink))
@@ -110,12 +114,18 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 }
 
 type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
+type GroupedBuffers = HashMap<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>;
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     pub(super) schema: Schema,
+    // last seen chunk_by_attribute value; a change means the previous chunk is complete and can be flushed
+    pub(super) current_chunk: Option<AttributeValue>,
+    pub(super) chunk_keys: HashMap<AttributeValue, std::collections::HashSet<BufferKey>>,
+    // chunks whose data closed before every feature_type they need has a schema entry
+    pub(super) pending_flush: Vec<AttributeValue>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
@@ -144,6 +154,11 @@ pub struct Cesium3DTilesWriterParam {
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Chunk By Attribute
+    /// An attribute name to split processing into chunks by. Features sharing a
+    /// value must already be adjacent, and every feature must have it set. Each
+    /// chunk's value must map to a different output path.
+    pub(super) chunk_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +170,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
+    pub(super) chunk_by_attribute: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -204,6 +220,26 @@ impl Cesium3DTilesWriter {
             ));
         }
 
+        let chunk = match &self.params.chunk_by_attribute {
+            Some(attr) => {
+                let Some(v) = ctx.feature.attributes.get(&Attribute::new(attr.clone())) else {
+                    return Err(SinkError::Cesium3DTilesWriter(format!(
+                        "chunkByAttribute {attr:?} is set but feature is missing that attribute"
+                    )));
+                };
+                Some(v.clone())
+            }
+            None => None,
+        };
+        if let Some(chunk) = &chunk {
+            if self.current_chunk.as_ref() != Some(chunk) {
+                if let Some(prev) = self.current_chunk.take() {
+                    self.maybe_flush_chunk(ctx.as_context(), &prev)?;
+                }
+                self.current_chunk = Some(chunk.clone());
+            }
+        }
+
         let output = self.params.output.clone();
         let scope = ctx
             .feature
@@ -232,11 +268,77 @@ impl Cesium3DTilesWriter {
             feature
         };
 
-        let buffer = self
-            .buffer
-            .entry((output, feature_type.clone(), compress_output.clone()))
-            .or_default();
-        buffer.push(feature);
+        let key = (output, feature_type.clone(), compress_output);
+        if let Some(chunk) = &chunk {
+            self.chunk_keys
+                .entry(chunk.clone())
+                .or_default()
+                .insert(key.clone());
+        }
+        self.buffer.entry(key).or_default().push(feature);
+        Ok(())
+    }
+
+    fn chunk_ready(&self, chunk: &AttributeValue) -> bool {
+        if self.schema.types.is_empty() {
+            // schema port never wired for this workflow (or hasn't sent anything yet) —
+            // don't block flushing on it, otherwise nothing would ever flush incrementally
+            return true;
+        }
+        self.chunk_keys
+            .get(chunk)
+            .map(|keys| {
+                keys.iter()
+                    .all(|(_, feature_type, _)| self.schema.types.contains_key(feature_type))
+            })
+            .unwrap_or(true)
+    }
+
+    fn maybe_flush_chunk(
+        &mut self,
+        ctx: Context,
+        chunk: &AttributeValue,
+    ) -> crate::errors::Result<()> {
+        if self.chunk_ready(chunk) {
+            self.flush_chunk(ctx, chunk)
+        } else {
+            self.pending_flush.push(chunk.clone());
+            Ok(())
+        }
+    }
+
+    fn retry_pending_flush(&mut self, ctx: Context) -> crate::errors::Result<()> {
+        let ready: Vec<AttributeValue> = self
+            .pending_flush
+            .iter()
+            .filter(|c| self.chunk_ready(c))
+            .cloned()
+            .collect();
+        for c in ready {
+            self.pending_flush.retain(|x| x != &c);
+            self.flush_chunk(ctx.clone(), &c)?;
+        }
+        Ok(())
+    }
+
+    fn flush_chunk(&mut self, ctx: Context, chunk: &AttributeValue) -> crate::errors::Result<()> {
+        let Some(keys) = self.chunk_keys.remove(chunk) else {
+            return Ok(());
+        };
+        let mut grouped: GroupedBuffers = HashMap::new();
+        for key in keys {
+            let Some(buffer) = self.buffer.remove(&key) else {
+                continue;
+            };
+            let (output, feature_type, compress_output) = key;
+            grouped
+                .entry((output, compress_output))
+                .or_default()
+                .push((feature_type, buffer));
+        }
+        for ((output, compress_output), upstream) in &grouped {
+            self.write(ctx.clone(), upstream, output, compress_output)?;
+        }
         Ok(())
     }
 
@@ -262,6 +364,9 @@ impl Cesium3DTilesWriter {
 
         let typedef: TypeDef = (&sanitized_feature).into();
         self.schema.types.insert(feature_type.clone(), typedef);
+        if !self.pending_flush.is_empty() {
+            self.retry_pending_flush(ctx.as_context())?;
+        }
         Ok(())
     }
 
