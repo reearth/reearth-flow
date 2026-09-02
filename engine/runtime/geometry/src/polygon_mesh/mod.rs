@@ -130,6 +130,16 @@ impl PolygonMesh2D {
         self.z
     }
 
+    /// The `[x, y]` of the first face's first exterior vertex. The CSR index
+    /// buffer begins with that face's exterior ring, so this is where the
+    /// mesh's traversal starts — the vertex pool's own order is unrelated.
+    /// `None` when the mesh has no face.
+    pub fn first_face_vertex(&self) -> Option<[f64; 2]> {
+        let (face_indices, _, _) = self.csr_buffers();
+        let [i] = face_indices.iter_u32().next()?;
+        Some(self.vertices[i as usize])
+    }
+
     /// The number of faces.
     #[inline]
     pub fn num_faces(&self) -> usize {

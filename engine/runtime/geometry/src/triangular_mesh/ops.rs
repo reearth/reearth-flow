@@ -555,11 +555,31 @@ impl Elevation for TriangularMesh3D {
 
 #[cfg(feature = "new-geometry")]
 impl TriangularMesh3DData {
-    /// The z of the first triangle's first vertex, which is where the mesh's
-    /// traversal starts — the vertex pool's own order is unrelated.
-    pub(crate) fn first_triangle_elevation(&self) -> Option<f64> {
+    /// The `[x, y, z]` of the first triangle's first vertex, which is where the
+    /// mesh's traversal starts — the vertex pool's own order is unrelated.
+    pub fn first_triangle_vertex(&self) -> Option<[f64; 3]> {
         let [i, _, _] = self.triangles().next()?;
-        Some(self.vertices()[i as usize][2])
+        Some(self.vertices()[i as usize])
+    }
+
+    /// The z of the first triangle's first vertex.
+    pub(crate) fn first_triangle_elevation(&self) -> Option<f64> {
+        self.first_triangle_vertex().map(|v| v[2])
+    }
+
+    /// Every triangle's three vertex coordinates, gathered from the vertex
+    /// pool in the mesh's own triangle order. The [`Solid`](crate::solid::Solid)
+    /// shell form of `TriangularMesh3D::vertices`/`TriangularMesh3D::triangles`:
+    /// a shell stores this coordinate-free data directly, so outside this crate
+    /// there is no `pub` vertex pool of its own to zip against `triangles()`.
+    pub fn triangle_coords(&self) -> impl Iterator<Item = [[f64; 3]; 3]> + '_ {
+        self.triangles().map(move |[a, b, c]| {
+            [
+                self.vertices()[a as usize],
+                self.vertices()[b as usize],
+                self.vertices()[c as usize],
+            ]
+        })
     }
 }
 
