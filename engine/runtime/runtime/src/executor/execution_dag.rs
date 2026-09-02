@@ -34,16 +34,17 @@ pub struct NodeType {
 }
 
 impl NodeType {
-    // Mirrors builder_dag::NodeType::composed_id exactly (duplicated, not shared) — keep the two formats in sync.
     /// Id of the intermediate-data file written for one of this node's output ports.
     pub fn port_file_id(&self, port: &Port) -> String {
-        match (&self.subgraph_prefix, self.is_subgraph_output) {
-            (Some(prefix), true) => format!("{}.{}", prefix, port),
-            (Some(prefix), false) => format!("{}.{}.{}", prefix, self.handle.id, port),
-            (None, _) => format!("{}.{}", self.handle.id, port),
-        }
+        crate::node::port_file_id(
+            self.subgraph_prefix.as_deref(),
+            self.is_subgraph_output,
+            self.handle.id.as_ref(),
+            port.as_ref(),
+        )
     }
 
+    // Mirrors builder_dag::NodeType::composed_id exactly (duplicated, not shared); keep the two formats in sync.
     pub fn composed_id(&self) -> String {
         match &self.subgraph_prefix {
             Some(prefix) => format!("{prefix}.{}", self.handle.id),

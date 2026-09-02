@@ -503,6 +503,8 @@ fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
     Ok((meta, handle))
 }
 
+/// Nodes that must run in an incremental run: the start node, everything downstream
+/// of it, and any node whose upstream port file is not available for replay.
 fn collect_executable_node_ids(
     dag: &ExecutionDag,
     cfg: &IncrementalRunConfig,
@@ -573,6 +575,9 @@ struct ReplayGroup {
     edges: Vec<ReplayEdge>,
 }
 
+/// Groups the edges from skipped nodes into executed nodes by channel, one group per
+/// (source node, destination node) pair, keeping the sender the replayed features are
+/// injected on.
 fn build_replay_groups(
     dag: &ExecutionDag,
     execute: &HashSet<NodeId>,
@@ -580,8 +585,10 @@ fn build_replay_groups(
 ) -> Vec<ReplayGroup> {
     let g = dag.graph();
 
-    let mut grouped: HashMap<(NodeId, Port), (Sender<ExecutorOperation>, Vec<ReplayEdge>)> =
-        HashMap::new();
+    let mut grouped: HashMap<
+        (petgraph::graph::NodeIndex, petgraph::graph::NodeIndex),
+        (Sender<ExecutorOperation>, Vec<ReplayEdge>),
+    > = HashMap::new();
 
     for e in g.edge_references() {
         let src = g[e.source()].handle.id.clone();
@@ -608,7 +615,7 @@ fn build_replay_groups(
             };
 
             grouped
-                .entry((dst.clone(), downstream_input_port))
+                .entry((e.source(), e.target()))
                 .and_modify(|(_, v)| v.push(replay_edge.clone()))
                 .or_insert((e.weight().sender.clone(), vec![replay_edge]));
         }
@@ -620,6 +627,7 @@ fn build_replay_groups(
         .collect()
 }
 
+/// Reads every feature of one port file from the previous run's feature store.
 fn read_replay_features(
     state: &reearth_flow_state::State,
     port_file_id: &str,

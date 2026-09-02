@@ -92,7 +92,7 @@ pub fn collect_reusable_ids(
     })
 }
 
-/// Collects reusable edges and port file IDs in a graph, treating nodes upstream of
+/// Collects reusable port file IDs in a graph, treating nodes upstream of
 /// `start_node_id` as reusable. Also recursively processes upstream subworkflow nodes.
 fn collect_reusable_in_graph_and_upstream_subworkflows(
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
@@ -223,7 +223,9 @@ fn extract_subgraph_id_if_subworkflow_node(node: &reearth_flow_types::Node) -> O
 
 /// Builds a mapping from graph_id to all prefix chains reaching that graph.
 /// Each prefix chain is the sequence of SubGraph entity IDs from the entry
-/// graph down to the target graph. The entry graph itself has an empty chain.
+/// graph down to the target graph. The entry graph itself has an empty chain,
+/// a graph called from several places gets one chain per call site, and a
+/// cyclic subgraph reference is cut where a graph would re-enter itself.
 fn build_all_prefix_chains(
     workflow: &reearth_flow_types::Workflow,
     graphs: &HashMap<uuid::Uuid, &reearth_flow_types::Graph>,
@@ -234,44 +236,46 @@ fn build_all_prefix_chains(
         .or_default()
         .push(vec![]);
 
-    // Track (graph_id, caller_entity_id) to avoid infinite loops on cyclic subgraph references.
-    let mut visited: HashSet<(uuid::Uuid, Option<uuid::Uuid>)> = HashSet::new();
-    visited.insert((workflow.entry_graph_id, None));
+    // Queue entries: (graph id, entity chain reaching it, graph ids along that chain).
+    let mut queue: VecDeque<(uuid::Uuid, Vec<uuid::Uuid>, Vec<uuid::Uuid>)> = VecDeque::new();
+    queue.push_back((
+        workflow.entry_graph_id,
+        vec![],
+        vec![workflow.entry_graph_id],
+    ));
 
-    let mut queue: VecDeque<(uuid::Uuid, Vec<uuid::Uuid>)> = VecDeque::new();
-    queue.push_back((workflow.entry_graph_id, vec![]));
-
-    while let Some((graph_id, current_chain)) = queue.pop_front() {
-        if let Some(graph) = graphs.get(&graph_id) {
-            for node in &graph.nodes {
-                if let reearth_flow_types::Node::SubGraph {
-                    entity,
-                    sub_graph_id,
-                } = node
-                {
-                    if !visited.insert((*sub_graph_id, Some(entity.id))) {
-                        continue;
-                    }
-                    let mut child_chain = current_chain.clone();
-                    child_chain.push(entity.id);
-                    result
-                        .entry(*sub_graph_id)
-                        .or_default()
-                        .push(child_chain.clone());
-                    queue.push_back((*sub_graph_id, child_chain));
-                }
+    while let Some((graph_id, current_chain, ancestors)) = queue.pop_front() {
+        let Some(graph) = graphs.get(&graph_id) else {
+            continue;
+        };
+        for node in &graph.nodes {
+            let reearth_flow_types::Node::SubGraph {
+                entity,
+                sub_graph_id,
+            } = node
+            else {
+                continue;
+            };
+            if ancestors.contains(sub_graph_id) {
+                continue;
             }
+            let mut child_chain = current_chain.clone();
+            child_chain.push(entity.id);
+            result
+                .entry(*sub_graph_id)
+                .or_default()
+                .push(child_chain.clone());
+            let mut child_ancestors = ancestors.clone();
+            child_ancestors.push(*sub_graph_id);
+            queue.push_back((*sub_graph_id, child_chain, child_ancestors));
         }
     }
 
     result
 }
 
-/// Computes port-based file ID strings for a node, matching the naming convention
-/// in execution_dag.rs:
-///   - (Some(prefix), is_subgraph_output=true)  => "{prefix}.{port}"
-///   - (Some(prefix), is_subgraph_output=false)  => "{prefix}.{node_id}.{port}"
-///   - (None, _)                                  => "{node_id}.{port}"
+/// Computes the intermediate-data file ids of every output port of a node
+/// instantiated under `prefix_chain`.
 fn compute_port_file_ids(
     graph: &reearth_flow_types::Graph,
     node: &reearth_flow_types::Node,
@@ -281,7 +285,7 @@ fn compute_port_file_ids(
         return vec![];
     }
 
-    let node_id = node.id();
+    let node_id = node.id().to_string();
     let ports = collect_output_ports(graph, node);
     if ports.is_empty() {
         return vec![];
@@ -303,10 +307,8 @@ fn compute_port_file_ids(
 
     ports
         .into_iter()
-        .map(|port| match (&prefix_str, is_subgraph_output) {
-            (Some(pfx), true) => format!("{}.{}", pfx, port),
-            (Some(pfx), false) => format!("{}.{}.{}", pfx, node_id, port),
-            (None, _) => format!("{}.{}", node_id, port),
+        .map(|port| {
+            crate::node::port_file_id(prefix_str.as_deref(), is_subgraph_output, &node_id, &port)
         })
         .collect()
 }
@@ -356,7 +358,7 @@ fn is_output_router(node: &reearth_flow_types::Node) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::{Edge, Graph, Node, NodeEntity};
+    use reearth_flow_types::{Edge, Graph, Node, NodeEntity, Workflow};
 
     /// Builds a `Node::SubGraph` referencing `sub_graph_id`. This is the exact
     /// shape `extract_subgraph_id_if_subworkflow_node` matches.
@@ -492,5 +494,92 @@ mod tests {
         assert!(visited.contains(&g1_id));
         assert!(visited.contains(&g2_id));
         assert!(visited.contains(&g3_id));
+    }
+
+    fn graph(id: uuid::Uuid, nodes: Vec<Node>) -> Graph {
+        Graph {
+            id,
+            name: id.to_string(),
+            nodes,
+            edges: vec![],
+        }
+    }
+
+    fn workflow(entry_graph_id: uuid::Uuid, graphs: Vec<Graph>) -> Workflow {
+        Workflow {
+            id: uuid::Uuid::new_v4(),
+            name: "wf".to_string(),
+            entry_graph_id,
+            with: None,
+            graphs,
+            error_policy: None,
+        }
+    }
+
+    fn sorted(mut chains: Vec<Vec<uuid::Uuid>>) -> Vec<Vec<uuid::Uuid>> {
+        chains.sort();
+        chains
+    }
+
+    #[test]
+    fn build_all_prefix_chains_keeps_every_call_site_of_a_nested_subgraph() {
+        let entry_id = uuid::Uuid::new_v4();
+        let g1_id = uuid::Uuid::new_v4();
+        let g2_id = uuid::Uuid::new_v4();
+        let call_a = uuid::Uuid::new_v4();
+        let call_b = uuid::Uuid::new_v4();
+        let call_e = uuid::Uuid::new_v4();
+
+        // The entry graph calls G1 twice; G1 calls G2 once.
+        let wf = workflow(
+            entry_id,
+            vec![
+                graph(
+                    entry_id,
+                    vec![subgraph_node(call_a, g1_id), subgraph_node(call_b, g1_id)],
+                ),
+                graph(g1_id, vec![subgraph_node(call_e, g2_id)]),
+                graph(g2_id, vec![]),
+            ],
+        );
+        let graphs: HashMap<uuid::Uuid, &Graph> = wf.graphs.iter().map(|g| (g.id, g)).collect();
+
+        let chains = build_all_prefix_chains(&wf, &graphs);
+
+        assert_eq!(chains[&entry_id], vec![Vec::<uuid::Uuid>::new()]);
+        assert_eq!(
+            sorted(chains[&g1_id].clone()),
+            sorted(vec![vec![call_a], vec![call_b]])
+        );
+        assert_eq!(
+            sorted(chains[&g2_id].clone()),
+            sorted(vec![vec![call_a, call_e], vec![call_b, call_e]])
+        );
+    }
+
+    #[test]
+    fn build_all_prefix_chains_cuts_cyclic_subgraph_references() {
+        let entry_id = uuid::Uuid::new_v4();
+        let g1_id = uuid::Uuid::new_v4();
+        let g2_id = uuid::Uuid::new_v4();
+        let call_a = uuid::Uuid::new_v4();
+        let call_e = uuid::Uuid::new_v4();
+        let call_back = uuid::Uuid::new_v4();
+
+        // G2 calls G1 again, closing a cycle.
+        let wf = workflow(
+            entry_id,
+            vec![
+                graph(entry_id, vec![subgraph_node(call_a, g1_id)]),
+                graph(g1_id, vec![subgraph_node(call_e, g2_id)]),
+                graph(g2_id, vec![subgraph_node(call_back, g1_id)]),
+            ],
+        );
+        let graphs: HashMap<uuid::Uuid, &Graph> = wf.graphs.iter().map(|g| (g.id, g)).collect();
+
+        let chains = build_all_prefix_chains(&wf, &graphs);
+
+        assert_eq!(chains[&g1_id], vec![vec![call_a]]);
+        assert_eq!(chains[&g2_id], vec![vec![call_a, call_e]]);
     }
 }

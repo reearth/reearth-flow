@@ -32,6 +32,9 @@ impl DirCopySpec {
     }
 }
 
+/// Downloads the reusable port files of `previous_job_id` into `feature_state` for an
+/// incremental run starting at `start_node_id`. Returns the previous run's feature
+/// store and the ids of the port files that were copied.
 #[allow(clippy::too_many_arguments)]
 pub async fn prepare_incremental_feature_store(
     storage_key: &str,
