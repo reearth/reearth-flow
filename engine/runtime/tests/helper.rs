@@ -69,8 +69,6 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
     let binding = tempdir().unwrap();
     let folder_path = binding.path();
     std::fs::create_dir_all(folder_path).unwrap();
-    let ingress_state =
-        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
     let feature_state =
         Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
     let logger_factory = Arc::new(LoggerFactory::new(
@@ -104,7 +102,6 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
-        ingress_state,
         feature_state,
         None,
         sandbox_root,
@@ -138,8 +135,6 @@ pub(crate) fn execute_expect_err(test_id: &str, fixture_files: Vec<&str>) -> Str
     let binding = tempdir().unwrap();
     let folder_path = binding.path();
     std::fs::create_dir_all(folder_path).unwrap();
-    let ingress_state =
-        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
     let feature_state =
         Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
     let logger_factory = Arc::new(LoggerFactory::new(
@@ -173,7 +168,6 @@ pub(crate) fn execute_expect_err(test_id: &str, fixture_files: Vec<&str>) -> Str
         BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
-        ingress_state,
         feature_state,
         None,
         sandbox_root,

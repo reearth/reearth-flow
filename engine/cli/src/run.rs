@@ -251,7 +251,6 @@ impl RunCliCommand {
             State::new(&feature_state_uri, &storage_resolver)
                 .map_err(crate::errors::Error::init)?,
         );
-        let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
@@ -325,7 +324,6 @@ impl RunCliCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver,
-            ingress_state,
             feature_state,
             incremental_run_config,
             artifact_uri,

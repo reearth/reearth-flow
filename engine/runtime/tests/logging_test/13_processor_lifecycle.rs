@@ -168,8 +168,6 @@ fn run_workflow_yaml(
     let folder_str = folder_path.to_str().unwrap().to_string();
 
     let storage_resolver = Arc::new(StorageResolver::new());
-    let ingress_state =
-        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
     let feature_state_dir = folder_path.join("feature-state");
     std::fs::create_dir_all(&feature_state_dir).unwrap();
     let feature_state_uri = format!("file://{}/", feature_state_dir.to_str().unwrap());
@@ -201,7 +199,6 @@ fn run_workflow_yaml(
         factories,
         logger_factory,
         storage_resolver,
-        ingress_state,
         feature_state,
         None,
         event_handlers,

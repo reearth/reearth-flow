@@ -234,9 +234,9 @@ impl RunWorkerCommand {
             }
         };
 
-        let (ingress_state, feature_state, logger_factory, incremental_run_config, artifact_uri) =
-            self.prepare_workflow(&storage_resolver, &meta, &mut workflow)
-                .await?;
+        let (feature_state, logger_factory, incremental_run_config, artifact_uri) = self
+            .prepare_workflow(&storage_resolver, &meta, &mut workflow)
+            .await?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub.clone() {
             PubSubBackend::Google(p) => Arc::new(EventHandler::new(workflow.id, meta.job_id, p)),
@@ -252,7 +252,6 @@ impl RunWorkerCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver.clone(),
-            ingress_state,
             feature_state,
             incremental_run_config,
             vec![handler, node_failure_handler.clone()],
@@ -411,7 +410,6 @@ impl RunWorkerCommand {
         workflow: &mut Workflow,
     ) -> errors::Result<(
         Arc<State>,
-        Arc<State>,
         Arc<LoggerFactory>,
         Option<IncrementalRunConfig>,
         Uri,
@@ -484,7 +482,6 @@ impl RunWorkerCommand {
             setup_job_directory("workers", "feature-store", job_id).map_err(Error::init)?;
         let feature_state =
             Arc::new(State::new(&feature_state_uri, storage_resolver).map_err(Error::init)?);
-        let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
@@ -556,7 +553,6 @@ impl RunWorkerCommand {
             action_log_uri.path(),
         ));
         Ok((
-            ingress_state,
             feature_state,
             logger_factory,
             incremental_run_config,

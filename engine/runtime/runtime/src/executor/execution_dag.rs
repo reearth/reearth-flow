@@ -67,7 +67,7 @@ pub struct ExecutionDag {
     pub(crate) executor_id: uuid::Uuid,
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
-    ingress_state: Arc<State>,
+    feature_state: Arc<State>,
     port_writers: HashMap<NodeIndex, HashMap<Port, Box<dyn FeatureWriter>>>,
 }
 
@@ -76,7 +76,6 @@ impl ExecutionDag {
         builder_dag: BuilderDag,
         channel_buffer_sz: usize,
         feature_flush_threshold: usize,
-        ingress_state: Arc<State>,
         feature_state: Arc<State>,
         executor_id: uuid::Uuid,
     ) -> Result<Self, ExecutionError> {
@@ -159,7 +158,7 @@ impl ExecutionDag {
             executor_id,
             graph,
             event_hub,
-            ingress_state,
+            feature_state,
             port_writers,
         })
     }
@@ -181,11 +180,7 @@ impl ExecutionDag {
     }
 
     pub fn feature_state(&self) -> Arc<State> {
-        Arc::clone(&self.ingress_state)
-    }
-
-    pub fn ingress_state(&self) -> &Arc<State> {
-        &self.ingress_state
+        Arc::clone(&self.feature_state)
     }
 
     pub fn collect_senders(

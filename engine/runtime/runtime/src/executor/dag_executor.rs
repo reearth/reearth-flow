@@ -148,7 +148,6 @@ impl DagExecutor {
         variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
-        ingress_state: Arc<State>,
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
@@ -161,7 +160,6 @@ impl DagExecutor {
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.feature_flush_threshold,
-            Arc::clone(&ingress_state),
             Arc::clone(&feature_state),
             executor_id,
         )?;
