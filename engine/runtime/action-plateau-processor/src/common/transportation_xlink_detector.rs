@@ -477,12 +477,10 @@ mod tests {
             .contains("tran:auxiliaryTrafficArea/tran:AuxiliaryTrafficArea/tran:lod3MultiSurface"));
 
         let v3 = Plateau6TransportationXlinkStrategy.child_surface_xpath("lod3");
-        assert!(v3.contains(
-            "tran:trafficSpace/tran:TrafficSpace/core:boundary/tran:TrafficArea/core:lod3MultiSurface"
-        ));
-        assert!(v3.contains(
-            "tran:auxiliaryTrafficSpace/tran:AuxiliaryTrafficSpace/core:boundary/tran:AuxiliaryTrafficArea/core:lod3MultiSurface"
-        ));
+        assert!(v3.contains(".//tran:TrafficArea/core:lod3MultiSurface//gml:Polygon[@gml:id]"));
+        assert!(
+            v3.contains(".//tran:AuxiliaryTrafficArea/core:lod3MultiSurface//gml:Polygon[@gml:id]")
+        );
     }
 
     #[test]
@@ -495,5 +493,108 @@ mod tests {
             Plateau6TransportationXlinkStrategy.gml_namespace(),
             "http://www.opengis.net/gml/3.2"
         );
+    }
+
+    /// `tran:Road` whose traffic spaces are nested two levels deep in
+    /// `tran:section/tran:Section`, as real PLATEAU 6 data is. Each boundary
+    /// carries two LOD3 polygons, of which the aggregate references only one.
+    const NESTED_SECTION_ROAD: &str = r##"<?xml version="1.0" encoding="UTF-8"?>
+<tran:Road xmlns:core="http://www.opengis.net/citygml/3.0"
+    xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
+    xmlns:gml="http://www.opengis.net/gml/3.2"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    gml:id="road-1">
+  <core:lod3MultiSurface>
+    <gml:MultiSurface>
+      <gml:surfaceMember>
+        <gml:CompositeSurface>
+          <gml:surfaceMember xlink:href="#traffic-referenced"/>
+          <gml:surfaceMember xlink:href="#auxiliary-referenced"/>
+        </gml:CompositeSurface>
+      </gml:surfaceMember>
+    </gml:MultiSurface>
+  </core:lod3MultiSurface>
+  <tran:section>
+    <tran:Section>
+      <tran:section>
+        <tran:Section>
+          <tran:trafficSpace>
+            <tran:TrafficSpace>
+              <core:boundary>
+                <tran:TrafficArea>
+                  <core:lod3MultiSurface>
+                    <gml:MultiSurface>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="traffic-referenced"/>
+                      </gml:surfaceMember>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="traffic-unreferenced"/>
+                      </gml:surfaceMember>
+                    </gml:MultiSurface>
+                  </core:lod3MultiSurface>
+                </tran:TrafficArea>
+              </core:boundary>
+            </tran:TrafficSpace>
+          </tran:trafficSpace>
+          <tran:auxiliaryTrafficSpace>
+            <tran:AuxiliaryTrafficSpace>
+              <core:boundary>
+                <tran:AuxiliaryTrafficArea>
+                  <core:lod3MultiSurface>
+                    <gml:MultiSurface>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="auxiliary-referenced"/>
+                      </gml:surfaceMember>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="auxiliary-unreferenced"/>
+                      </gml:surfaceMember>
+                    </gml:MultiSurface>
+                  </core:lod3MultiSurface>
+                </tran:AuxiliaryTrafficArea>
+              </core:boundary>
+            </tran:AuxiliaryTrafficSpace>
+          </tran:auxiliaryTrafficSpace>
+        </tran:Section>
+      </tran:section>
+    </tran:Section>
+  </tran:section>
+</tran:Road>
+"##;
+
+    fn extract_from(
+        strategy: &'static dyn TransportationXlinkStrategy,
+        gml: &str,
+    ) -> Option<UnreferencedSurfacesResult> {
+        let document = xml::parse(gml).expect("the test GML should parse");
+        let ctx = xml::create_context(&document).expect("the xpath context should build");
+        let road = xml::get_root_readonly_node(&document).expect("the root node should exist");
+        extract_unreferenced_surfaces(strategy, &ctx, &road).expect("extraction should succeed")
+    }
+
+    #[test]
+    fn boundary_surfaces_nested_under_tran_section_are_still_checked() {
+        let result = extract_from(&Plateau6TransportationXlinkStrategy, NESTED_SECTION_ROAD)
+            .expect("the two unreferenced polygons should be reported");
+
+        assert_eq!(result.road_id, "road-1");
+        assert_eq!(
+            result.unreferenced_surfaces,
+            vec![
+                ("3".to_string(), "traffic-unreferenced".to_string()),
+                ("3".to_string(), "auxiliary-unreferenced".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_road_whose_aggregate_references_every_nested_boundary_surface_passes() {
+        let gml = NESTED_SECTION_ROAD.replace(
+            r##"<gml:surfaceMember xlink:href="#auxiliary-referenced"/>"##,
+            r##"<gml:surfaceMember xlink:href="#auxiliary-referenced"/>
+          <gml:surfaceMember xlink:href="#traffic-unreferenced"/>
+          <gml:surfaceMember xlink:href="#auxiliary-unreferenced"/>"##,
+        );
+
+        assert!(extract_from(&Plateau6TransportationXlinkStrategy, &gml).is_none());
     }
 }

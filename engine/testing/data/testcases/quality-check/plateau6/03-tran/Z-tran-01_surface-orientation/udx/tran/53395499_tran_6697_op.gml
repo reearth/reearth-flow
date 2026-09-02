@@ -40,76 +40,80 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<tran:trafficSpace>
-				<tran:TrafficSpace gml:id="tran_6f3c9d52-8b1a-4e74-9026-3d5f7b9c1e48">
-					<core:boundary>
-						<tran:TrafficArea gml:id="tran_7a4d0e63-9c2b-4f85-8137-4e6a8c0d2f59">
-							<core:lod1MultiSurface>
-								<gml:MultiSurface gml:id="ms_8b5e1f74-0d3c-4096-9248-5f7b9d1e3a60">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="poly_0f3c7a51-2d6b-4e84-9137-5a8c0e2b4d69">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>35.83100 139.61785 0 35.83110 139.61785 0 35.83110 139.61770 0 35.83100 139.61770 0 35.83100 139.61785 0</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-									<gml:surfaceMember>
-										<!-- Same rectangle, reversed winding. -->
-										<gml:Polygon gml:id="poly_1a4d8b62-3e7c-4f95-8248-6b9d1f3c5e70">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>35.83100 139.61785 0 35.83100 139.61770 0 35.83110 139.61770 0 35.83110 139.61785 0 35.83100 139.61785 0</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</core:lod1MultiSurface>
-							<tran:function codeSpace="../../codelists/TrafficArea_function.xml">1000</tran:function>
-						</tran:TrafficArea>
-					</core:boundary>
-					<tran:function codeSpace="../../codelists/TrafficSpace_function.xml">1000</tran:function>
-					<tran:granularity>way</tran:granularity>
-				</tran:TrafficSpace>
-			</tran:trafficSpace>
-			<tran:auxiliaryTrafficSpace>
-				<tran:AuxiliaryTrafficSpace gml:id="tran_9c6f2a85-1e4d-4a07-8359-7c0e2b4d6f81">
-					<core:boundary>
-						<tran:AuxiliaryTrafficArea gml:id="tran_0d7a3b96-2f5e-4b18-946a-8d1f3c5e7a92">
-							<core:lod3MultiSurface>
-								<gml:MultiSurface gml:id="ms_1e8b4c07-3a6f-4c29-857b-9e2a4d6f8b03">
-									<gml:surfaceMember>
-										<gml:Polygon gml:id="poly_2b5e9c73-4f8a-4d06-9159-7c0e2a4b6d81">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>35.83100 139.61805 2.5 35.83110 139.61805 2.5 35.83110 139.61790 2.5 35.83100 139.61790 2.5 35.83100 139.61805 2.5</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-									<gml:surfaceMember>
-										<!-- Same rectangle, reversed winding. -->
-										<gml:Polygon gml:id="poly_3c6f0d84-5a9b-4e17-826a-8d1f3b5c7e92">
-											<gml:exterior>
-												<gml:LinearRing>
-													<gml:posList>35.83100 139.61805 2.5 35.83100 139.61790 2.5 35.83110 139.61790 2.5 35.83110 139.61805 2.5 35.83100 139.61805 2.5</gml:posList>
-												</gml:LinearRing>
-											</gml:exterior>
-										</gml:Polygon>
-									</gml:surfaceMember>
-								</gml:MultiSurface>
-							</core:lod3MultiSurface>
-							<tran:function codeSpace="../../codelists/AuxiliaryTrafficArea_function.xml">1000</tran:function>
-						</tran:AuxiliaryTrafficArea>
-					</core:boundary>
-					<tran:function codeSpace="../../codelists/AuxiliaryTrafficSpace_function.xml">1000</tran:function>
-					<tran:granularity>way</tran:granularity>
-				</tran:AuxiliaryTrafficSpace>
-			</tran:auxiliaryTrafficSpace>
 			<tran:class codeSpace="../../codelists/Road_class.xml">1040</tran:class>
 			<tran:function codeSpace="../../codelists/Road_function.xml">3</tran:function>
+			<tran:section>
+				<tran:Section gml:id="tran_b3a48d02-3368-4e81-91ae-84d4fb18891a">
+					<tran:trafficSpace>
+						<tran:TrafficSpace gml:id="tran_6f3c9d52-8b1a-4e74-9026-3d5f7b9c1e48">
+							<core:boundary>
+								<tran:TrafficArea gml:id="tran_7a4d0e63-9c2b-4f85-8137-4e6a8c0d2f59">
+									<core:lod1MultiSurface>
+										<gml:MultiSurface gml:id="ms_8b5e1f74-0d3c-4096-9248-5f7b9d1e3a60">
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="poly_0f3c7a51-2d6b-4e84-9137-5a8c0e2b4d69">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>35.83100 139.61785 0 35.83110 139.61785 0 35.83110 139.61770 0 35.83100 139.61770 0 35.83100 139.61785 0</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<!-- Same rectangle, reversed winding. -->
+												<gml:Polygon gml:id="poly_1a4d8b62-3e7c-4f95-8248-6b9d1f3c5e70">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>35.83100 139.61785 0 35.83100 139.61770 0 35.83110 139.61770 0 35.83110 139.61785 0 35.83100 139.61785 0</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+										</gml:MultiSurface>
+									</core:lod1MultiSurface>
+									<tran:function codeSpace="../../codelists/TrafficArea_function.xml">1000</tran:function>
+								</tran:TrafficArea>
+							</core:boundary>
+							<tran:function codeSpace="../../codelists/TrafficSpace_function.xml">1000</tran:function>
+							<tran:granularity>way</tran:granularity>
+						</tran:TrafficSpace>
+					</tran:trafficSpace>
+					<tran:auxiliaryTrafficSpace>
+						<tran:AuxiliaryTrafficSpace gml:id="tran_9c6f2a85-1e4d-4a07-8359-7c0e2b4d6f81">
+							<core:boundary>
+								<tran:AuxiliaryTrafficArea gml:id="tran_0d7a3b96-2f5e-4b18-946a-8d1f3c5e7a92">
+									<core:lod3MultiSurface>
+										<gml:MultiSurface gml:id="ms_1e8b4c07-3a6f-4c29-857b-9e2a4d6f8b03">
+											<gml:surfaceMember>
+												<gml:Polygon gml:id="poly_2b5e9c73-4f8a-4d06-9159-7c0e2a4b6d81">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>35.83100 139.61805 2.5 35.83110 139.61805 2.5 35.83110 139.61790 2.5 35.83100 139.61790 2.5 35.83100 139.61805 2.5</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+											<gml:surfaceMember>
+												<!-- Same rectangle, reversed winding. -->
+												<gml:Polygon gml:id="poly_3c6f0d84-5a9b-4e17-826a-8d1f3b5c7e92">
+													<gml:exterior>
+														<gml:LinearRing>
+															<gml:posList>35.83100 139.61805 2.5 35.83100 139.61790 2.5 35.83110 139.61790 2.5 35.83110 139.61805 2.5 35.83100 139.61805 2.5</gml:posList>
+														</gml:LinearRing>
+													</gml:exterior>
+												</gml:Polygon>
+											</gml:surfaceMember>
+										</gml:MultiSurface>
+									</core:lod3MultiSurface>
+									<tran:function codeSpace="../../codelists/AuxiliaryTrafficArea_function.xml">1000</tran:function>
+								</tran:AuxiliaryTrafficArea>
+							</core:boundary>
+							<tran:function codeSpace="../../codelists/AuxiliaryTrafficSpace_function.xml">1000</tran:function>
+							<tran:granularity>way</tran:granularity>
+						</tran:AuxiliaryTrafficSpace>
+					</tran:auxiliaryTrafficSpace>
+				</tran:Section>
+			</tran:section>
 		</tran:Road>
 	</core:cityObjectMember>
 </core:CityModel>

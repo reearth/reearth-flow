@@ -19,10 +19,17 @@ impl TransportationXlinkStrategy for Plateau6TransportationXlinkStrategy {
     fn gml_namespace(&self) -> &str {
         "http://www.opengis.net/gml/3.2"
     }
+    /// Descendant axis, because the traffic spaces may sit directly under the
+    /// container or be nested through any depth of `tran:Section` /
+    /// `tran:Intersection`.
+    ///
+    /// Limitation: a nested space that carries its own aggregate surface is not
+    /// distinguished, so its boundary surfaces are still matched against the
+    /// outermost container's references.
     fn child_surface_xpath(&self, lod: &str) -> String {
         format!(
-            "tran:trafficSpace/tran:TrafficSpace/core:boundary/tran:TrafficArea/core:{lod}MultiSurface//gml:Polygon[@gml:id] | \
-             tran:auxiliaryTrafficSpace/tran:AuxiliaryTrafficSpace/core:boundary/tran:AuxiliaryTrafficArea/core:{lod}MultiSurface//gml:Polygon[@gml:id]"
+            ".//tran:TrafficArea/core:{lod}MultiSurface//gml:Polygon[@gml:id] | \
+             .//tran:AuxiliaryTrafficArea/core:{lod}MultiSurface//gml:Polygon[@gml:id]"
         )
     }
 }
