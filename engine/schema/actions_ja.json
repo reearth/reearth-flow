@@ -6355,6 +6355,20 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
+          },
+          "origin": {
+            "title": "グリッド原点",
+            "description": "グリッドの基準点となる座標。ジオメトリと同じ座標系での `[x, y]`。指定すると、セルはこの点を基準に配置されるため、複数の Grid Divider で同じ格子を共有でき、繰り返し実行しても地物は同じセルに入る。省略すると、各グループのグリッドはそのグループ自身の範囲の角から始まるため、入力が変わると位置がずれる",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
           }
         },
         "definitions": {

@@ -5,13 +5,23 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 
 use rayon::prelude::*;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::coordinate::UnitKind;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::{
+    Aabb, BoundingBox, CellCoverage, DivideByGrid, GridDivideError, GridSpec,
+};
 use reearth_flow_geometry::types::coordinate::{Coordinate2D, Coordinate3D};
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::types::rect::Rect2D;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -21,8 +31,12 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::Attributes;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::Geometry;
 use reearth_flow_types::{
-    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
+    Attribute, AttributeValue, CityGmlGeometry, Feature, GeometryValue, GmlGeometry,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -30,6 +44,54 @@ use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
+
+/// The most cells one grid may span before the run stops.
+///
+/// Bounds a feature's own extent on the streaming path and a group's combined
+/// extent on the accumulating one; both are "how many cells did this cell size
+/// just ask for", which is the question worth refusing.
+///
+/// A cell size is typed by hand, and a slip of three decimal places turns a
+/// city-sized extent into more cells than can ever be produced. Failing here
+/// with the number in hand beats grinding to a halt with no explanation.
+#[cfg(feature = "new-geometry")]
+pub(super) const MAX_CELLS_PER_GRID: u128 = 50_000_000;
+
+/// The group a feature belongs to.
+///
+/// Every attribute in `group_by` contributes a slot, with `Null` where the
+/// feature does not carry it, so a feature missing an attribute cannot collapse
+/// into a group it does not belong to.
+#[cfg(feature = "new-geometry")]
+fn group_key(attributes: &Attributes, group_by: &Option<Vec<Attribute>>) -> AttributeValue {
+    match group_by {
+        None => AttributeValue::Null,
+        Some(attrs) => AttributeValue::Array(
+            attrs
+                .iter()
+                .map(|a| attributes.get(a).cloned().unwrap_or(AttributeValue::Null))
+                .collect(),
+        ),
+    }
+}
+
+/// Widen a group's running extent to include one more feature's.
+#[cfg(feature = "new-geometry")]
+fn merge_bounds(
+    bounds: &mut HashMap<AttributeValue, ([f64; 2], [f64; 2])>,
+    key: AttributeValue,
+    incoming: ([f64; 2], [f64; 2]),
+) {
+    bounds
+        .entry(key)
+        .and_modify(|(min, max)| {
+            for i in 0..2 {
+                min[i] = min[i].min(incoming.0[i]);
+                max[i] = max[i].max(incoming.1[i]);
+            }
+        })
+        .or_insert(incoming);
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct GridDividerFactory;
@@ -102,7 +164,10 @@ impl ProcessorFactory for GridDividerFactory {
             cell_size,
             complete_cells_only: param.complete_cells_only.unwrap_or(false),
             group_by: param.group_by,
+            origin: param.origin,
+            angular_warned: false,
             bounds_per_group: HashMap::new(),
+            bounds_2d: HashMap::new(),
             group_map: HashMap::new(),
             group_keys: Vec::new(),
             group_count: 0,
@@ -133,15 +198,33 @@ pub struct GridDividerParam {
     /// Attributes whose values group features together. Each group is divided on
     /// its own grid origin, derived from that group's combined bounds.
     pub group_by: Option<Vec<Attribute>>,
+    /// # Grid Origin
+    /// The point the grid is anchored at, as `[x, y]` in the same coordinate
+    /// system as the geometry. When set, cells line up with this point, so
+    /// separate Grid Dividers can share a lattice and repeat runs place features
+    /// in the same cells. When left out, each group's grid starts at the corner
+    /// of that group's own extent, which shifts if the input changes.
+    pub origin: Option<[f64; 2]>,
 }
 
 pub struct GridDivider {
     cell_size: f64,
     complete_cells_only: bool,
     group_by: Option<Vec<Attribute>>,
+    origin: Option<[f64; 2]>,
+    // Whether the angular-frame warning has already fired for this processor,
+    // so a stream of features on a degree-based grid warns once rather than
+    // once per feature. Read only on the streaming (explicit-origin) path.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    angular_warned: bool,
 
     // Disk-backed state
     bounds_per_group: HashMap<AttributeValue, Rect2D<f64>>,
+    // The new-geometry equivalent of `bounds_per_group`: a group's running 2D
+    // extent as `(min, max)`, widened by `merge_bounds` as features are
+    // spooled. Read only on the accumulating (no-`origin`) new-geometry path.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    bounds_2d: HashMap<AttributeValue, ([f64; 2], [f64; 2])>,
     group_map: HashMap<AttributeValue, usize>,
     group_keys: Vec<AttributeValue>,
     group_count: usize,
@@ -169,7 +252,39 @@ impl Clone for GridDivider {
             cell_size: self.cell_size,
             complete_cells_only: self.complete_cells_only,
             group_by: self.group_by.clone(),
+            origin: self.origin,
+            angular_warned: false,
             bounds_per_group: HashMap::new(),
+            bounds_2d: HashMap::new(),
+            group_map: HashMap::new(),
+            group_keys: Vec::new(),
+            group_count: 0,
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            temp_dir: None,
+            executor_id: None,
+        }
+    }
+}
+
+#[cfg(test)]
+impl GridDivider {
+    /// A `GridDivider` with every field at its zero value, for tests that only
+    /// care about a few fields and would otherwise have to repeat the rest.
+    ///
+    /// Only the new-geometry tests use this today (Task 8's accumulating tests
+    /// are expected to as well), so it is unused — not an error — when the
+    /// crate is tested without the `new-geometry` feature.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    fn empty() -> Self {
+        Self {
+            cell_size: 1.0,
+            complete_cells_only: false,
+            group_by: None,
+            origin: None,
+            angular_warned: false,
+            bounds_per_group: HashMap::new(),
+            bounds_2d: HashMap::new(),
             group_map: HashMap::new(),
             group_keys: Vec::new(),
             group_count: 0,
@@ -242,8 +357,16 @@ impl GridDivider {
 }
 
 impl Processor for GridDivider {
+    #[cfg(not(feature = "new-geometry"))]
     fn is_accumulating(&self) -> bool {
         true
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn is_accumulating(&self) -> bool {
+        // With an origin in hand there is nothing to learn from the whole
+        // stream, so features can be divided as they arrive.
+        self.origin.is_none()
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -482,8 +605,426 @@ impl Processor for GridDivider {
         Ok(())
     }
 
+    /// Divide the feature onto the grid and send one feature per cell.
+    ///
+    /// Only the streaming half lives here. Without an explicit origin the grid
+    /// is not known until every feature's extent has been seen, so `process`
+    /// spools instead and `finish` does the dividing.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let Some(origin) = self.origin else {
+            return self.spool(ctx, fw);
+        };
+
+        let grid = GridSpec::new(origin, self.cell_size)
+            .map_err(|e| GeometryProcessorError::GridDivider(e.to_string()))?;
+
+        self.warn_if_angular(&ctx);
+        self.guard_cell_count(&ctx.feature.geometry, &grid)?;
+
+        let complete_only = self.complete_cells_only;
+        let feature = &ctx.feature;
+        let mut sent = 0usize;
+        let result = feature
+            .geometry
+            .divide_by_grid(&grid, &mut |cell, coverage, piece| {
+                if complete_only && coverage != CellCoverage::Full {
+                    return;
+                }
+                let mut out = feature.clone();
+                out.set_geometry(piece);
+                out.insert(
+                    "_grid_row",
+                    AttributeValue::Number(serde_json::Number::from(cell.row)),
+                );
+                out.insert(
+                    "_grid_col",
+                    AttributeValue::Number(serde_json::Number::from(cell.col)),
+                );
+                fw.send(ctx.new_with_feature_and_port(out, FEATURES_PORT.clone()));
+                sent += 1;
+            });
+
+        match result {
+            Ok(()) if sent > 0 => Ok(()),
+            // Divided into nothing, or had nothing to divide: the feature
+            // leaves with a reason attached rather than vanishing.
+            Ok(()) => {
+                self.reject(&ctx, fw, "geometry produced no cells");
+                Ok(())
+            }
+            Err(e) => {
+                self.reject_with(&ctx, fw, e);
+                Ok(())
+            }
+        }
+    }
+
+    /// The streaming path (explicit origin) divides and emits everything in
+    /// `process`, so there is nothing left to do at end of stream.
+    ///
+    /// The accumulating path (no `origin`) derives each group's grid from
+    /// that group's own extent, which was not known until the whole stream
+    /// had been spooled to disk, so the actual dividing happens here.
+    #[cfg(feature = "new-geometry")]
+    fn finish(
+        &mut self,
+        ctx: NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        if self.origin.is_some() {
+            // Streaming: everything was already sent from `process`.
+            return Ok(());
+        }
+
+        self.flush_buffer()?;
+        self.buffer = HashMap::new();
+
+        let Some(dir) = self.temp_dir.clone() else {
+            // Nothing arrived.
+            return Ok(());
+        };
+
+        let group_keys = std::mem::take(&mut self.group_keys);
+        let group_map = std::mem::take(&mut self.group_map);
+        let bounds = std::mem::take(&mut self.bounds_2d);
+
+        let output_path = dir.join("output.jsonl.zst");
+        let mut writer = BufWriter::new(zstd::Encoder::new(File::create(&output_path)?, 1)?);
+        let mut total = 0usize;
+
+        for key in &group_keys {
+            let (Some(&group_idx), Some(&(min, max))) = (group_map.get(key), bounds.get(key))
+            else {
+                continue;
+            };
+            let group_path = dir.join(format!("group_{group_idx:06}.jsonl.zst"));
+            if !group_path.exists() {
+                continue;
+            }
+
+            let grid = GridSpec::new(min, self.cell_size)
+                .map_err(|e| GeometryProcessorError::GridDivider(e.to_string()))?;
+
+            // Bound the group's own extent against the same cell-count limit
+            // the streaming path checks per feature. The message says "group
+            // extent" (not "extent") so a user can tell this fired on a
+            // group's combined bounds, not on one feature's.
+            let count = grid.cell_count(min, max);
+            if count > MAX_CELLS_PER_GRID {
+                return Err(GeometryProcessorError::GridDivider(format!(
+                    "cell size {} over a group extent of {:.1} x {:.1} implies {} \
+                     cells, more than the limit of {}. Check the cell size is in \
+                     the units of the data's coordinate system.",
+                    self.cell_size,
+                    max[0] - min[0],
+                    max[1] - min[1],
+                    count,
+                    MAX_CELLS_PER_GRID,
+                ))
+                .into());
+            }
+
+            total += self.divide_group(&group_path, &grid, &mut writer, &ctx, fw)?;
+        }
+
+        writer.into_inner().map_err(|e| e.into_error())?.finish()?;
+        if total > 0 {
+            fw.send_file(output_path, FEATURES_PORT.clone(), ctx.as_context());
+        }
+        Ok(())
+    }
+
     fn name(&self) -> &str {
         "Grid Divider"
+    }
+}
+
+/// How one spooled feature's division came out, on the way to being either
+/// written to the output file or routed to `rejected`.
+///
+/// Kept separate from sending/writing themselves so `divide_group`'s rayon
+/// step can stay a pure `map`, with the (non-`Sync`) writer and forwarder
+/// only touched afterward, sequentially.
+#[cfg(feature = "new-geometry")]
+enum DivideOutcome {
+    /// Divided into one or more pieces, each already tagged with its cell.
+    Divided(Vec<Feature>),
+    /// `divide_by_grid` succeeded but produced nothing worth keeping — either
+    /// the geometry touched no cells, or `completeCellsOnly` filtered every
+    /// piece it did touch.
+    Empty(Feature),
+    /// `divide_by_grid` itself failed.
+    Failed(Feature, GridDivideError),
+}
+
+#[cfg(feature = "new-geometry")]
+impl GridDivider {
+    /// Accumulate features until every group's extent has been seen, so a grid
+    /// can be derived per group without an explicit origin.
+    ///
+    /// Records the feature's extent against its group (so `finish` can derive
+    /// that group's grid), assigns the feature a group index, and appends it
+    /// to that group's spool file. A feature with no extent to place on a
+    /// grid is routed to `rejected` immediately, rather than silently
+    /// dropped or spooled where it could never be divided.
+    ///
+    /// This is also where the accumulating path runs the angular-frame check.
+    /// `finish` and `divide_group` have no `ExecutorContext` and see features
+    /// only after they have been round-tripped through the spool, so the frame
+    /// is read here, on the way in, exactly as the streaming `process` does --
+    /// the warning is about the grid's units, which is not a per-path
+    /// question. `warn_if_angular` is itself once-per-run, so spooling many
+    /// features still yields at most one warning.
+    fn spool(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        if self.executor_id.is_none() {
+            self.executor_id = Some(fw.executor_id());
+        }
+
+        self.warn_if_angular(&ctx);
+
+        let Ok(aabb) = ctx.feature.geometry.bounding_box() else {
+            self.reject(&ctx, fw, "geometry has no extent to place on a grid");
+            return Ok(());
+        };
+        let (min, max) = match aabb {
+            Aabb::D2 { min, max } => (min, max),
+            Aabb::D3 { min, max } => ([min[0], min[1]], [max[0], max[1]]),
+        };
+
+        let key = group_key(&ctx.feature.attributes, &self.group_by);
+        merge_bounds(&mut self.bounds_2d, key.clone(), (min, max));
+
+        let group_idx = match self.group_map.get(&key) {
+            Some(&idx) => idx,
+            None => {
+                let idx = self.group_count;
+                self.group_map.insert(key.clone(), idx);
+                self.group_keys.push(key);
+                self.group_count += 1;
+                idx
+            }
+        };
+
+        let json = serde_json::to_string(&ctx.feature).map_err(|e| {
+            GeometryProcessorError::GridDivider(format!("Failed to serialize feature: {e}"))
+        })?;
+        self.buffer_bytes += json.len();
+        let mut src = json.into_bytes();
+        src.push(b'\n');
+        let frame = zstd::encode_all(src.as_slice(), 1)?;
+        self.buffer.entry(group_idx).or_default().extend(frame);
+
+        if self.buffer_bytes >= ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+            self.flush_buffer()?;
+        }
+        Ok(())
+    }
+
+    /// Divide one group's spooled features, writing successful divisions to
+    /// `writer` and routing anything that fails to divide to `rejected` via
+    /// `node_ctx` (built per-feature into an [`ExecutorContext`], mirroring
+    /// the streaming path's `reject`/`reject_with`) — a feature is not
+    /// silently dropped here just because it went through the disk-backed
+    /// path rather than the streaming one.
+    ///
+    /// Reads and divides in chunks bounded by
+    /// `ACCUMULATOR_BUFFER_BYTE_THRESHOLD`, dividing each chunk in parallel:
+    /// a group can be far larger than memory.
+    fn divide_group(
+        &self,
+        group_path: &PathBuf,
+        grid: &GridSpec,
+        writer: &mut BufWriter<zstd::Encoder<'static, File>>,
+        node_ctx: &NodeContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<usize, BoxedError> {
+        let reader = BufReader::new(zstd::Decoder::new(File::open(group_path)?)?);
+        let mut lines = reader.lines();
+        let mut total = 0usize;
+
+        loop {
+            let mut chunk: Vec<Feature> = Vec::new();
+            let mut chunk_bytes = 0usize;
+            let mut eof = false;
+
+            while chunk_bytes < ACCUMULATOR_BUFFER_BYTE_THRESHOLD {
+                match lines.next() {
+                    Some(Ok(line)) if line.is_empty() => continue,
+                    Some(Ok(line)) => {
+                        chunk_bytes += line.len();
+                        chunk.push(serde_json::from_str(&line)?);
+                    }
+                    Some(Err(e)) => return Err(e.into()),
+                    None => {
+                        eof = true;
+                        break;
+                    }
+                }
+            }
+            if chunk.is_empty() {
+                break;
+            }
+
+            let complete_only = self.complete_cells_only;
+            let outcomes: Vec<DivideOutcome> = chunk
+                .par_iter()
+                .map(|feature| {
+                    let mut pieces = Vec::new();
+                    let result =
+                        feature
+                            .geometry
+                            .divide_by_grid(grid, &mut |cell, coverage, piece| {
+                                if complete_only && coverage != CellCoverage::Full {
+                                    return;
+                                }
+                                let mut f = feature.clone();
+                                f.set_geometry(piece);
+                                f.insert(
+                                    "_grid_row",
+                                    AttributeValue::Number(serde_json::Number::from(cell.row)),
+                                );
+                                f.insert(
+                                    "_grid_col",
+                                    AttributeValue::Number(serde_json::Number::from(cell.col)),
+                                );
+                                pieces.push(f);
+                            });
+                    match result {
+                        Ok(()) if !pieces.is_empty() => DivideOutcome::Divided(pieces),
+                        // Divided into nothing, or had nothing to divide: as
+                        // on the streaming path, the feature is rejected with
+                        // a reason rather than vanishing.
+                        Ok(()) => DivideOutcome::Empty(feature.clone()),
+                        Err(e) => DivideOutcome::Failed(feature.clone(), e),
+                    }
+                })
+                .collect();
+
+            // Writing and rejecting both happen sequentially, after the
+            // parallel step, since `writer` and `fw` are shared per-group
+            // state rather than something each rayon thread could touch
+            // independently.
+            for outcome in outcomes {
+                match outcome {
+                    DivideOutcome::Divided(pieces) => {
+                        for f in &pieces {
+                            writer.write_all(serde_json::to_string(f)?.as_bytes())?;
+                            writer.write_all(b"\n")?;
+                        }
+                        total += pieces.len();
+                    }
+                    DivideOutcome::Empty(feature) => {
+                        let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+                            node_ctx,
+                            feature,
+                            FEATURES_PORT.clone(),
+                        );
+                        self.reject(&exec_ctx, fw, "geometry produced no cells");
+                    }
+                    DivideOutcome::Failed(feature, e) => {
+                        let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+                            node_ctx,
+                            feature,
+                            FEATURES_PORT.clone(),
+                        );
+                        self.reject_with(&exec_ctx, fw, e);
+                    }
+                }
+            }
+
+            if eof {
+                break;
+            }
+        }
+        Ok(total)
+    }
+
+    /// Stop the run when a cell size implies more cells than could be meant.
+    fn guard_cell_count(&self, geometry: &Geometry, grid: &GridSpec) -> Result<(), BoxedError> {
+        let Ok(aabb) = geometry.bounding_box() else {
+            return Ok(());
+        };
+        let (min, max) = match aabb {
+            Aabb::D2 { min, max } => (min, max),
+            Aabb::D3 { min, max } => ([min[0], min[1]], [max[0], max[1]]),
+        };
+        let count = grid.cell_count(min, max);
+        if count > MAX_CELLS_PER_GRID {
+            return Err(GeometryProcessorError::GridDivider(format!(
+                "cell size {} over an extent of {:.1} x {:.1} implies {} cells, \
+                 more than the limit of {}. Check the cell size is in the units \
+                 of the data's coordinate system.",
+                self.cell_size,
+                max[0] - min[0],
+                max[1] - min[1],
+                count,
+                MAX_CELLS_PER_GRID,
+            ))
+            .into());
+        }
+        Ok(())
+    }
+
+    /// Say so once when the grid is measured in degrees rather than metres.
+    ///
+    /// Called on both paths, once per feature on the way in: from `process`
+    /// on the streaming (explicit-origin) path and from `spool` on the
+    /// accumulating one. The units of a grid do not depend on how the grid's
+    /// origin was arrived at, and every workflow written before this port
+    /// omits `origin` -- so a check wired only to the streaming path would
+    /// never fire in practice.
+    ///
+    /// A feature whose frame is not angular, or whose frame cannot be
+    /// determined at all (`Geometry::frame()` returns `None` on disagreement
+    /// or when nothing exposes one), leaves the check armed: only a feature
+    /// that is actually found angular latches `angular_warned`, so an early
+    /// non-angular or indeterminate feature can never permanently silence a
+    /// later, genuinely angular one.
+    fn warn_if_angular(&mut self, ctx: &ExecutorContext) {
+        if self.angular_warned {
+            return;
+        }
+        if let Some(frame) = ctx.feature.geometry.frame() {
+            if matches!(frame.unit_kind(), UnitKind::Angular) {
+                self.angular_warned = true;
+                ctx.warn(DiagnosticDraft::new(ErrorCode::GridAngularFrame));
+            }
+        }
+    }
+
+    /// Send `ctx`'s feature to `rejected` with `why` recorded on `_grid_error`.
+    fn reject(&self, ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, why: &str) {
+        let mut out = ctx.feature.clone();
+        out.insert("_grid_error", AttributeValue::String(why.to_string()));
+        fw.send(ctx.new_with_feature_and_port(out, REJECTED_PORT.clone()));
+    }
+
+    /// As [`reject`](Self::reject), plus the diagnostic code a `GridDivideError`
+    /// implies. Uses `ctx.warn`, not `ctx.report`: the feature is already being
+    /// routed to `rejected` explicitly here, so a disposition-driven drop would
+    /// be redundant at best and double-count at worst.
+    fn reject_with(
+        &self,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+        e: GridDivideError,
+    ) {
+        match &e {
+            GridDivideError::MixedFrames => {
+                ctx.warn(DiagnosticDraft::new(ErrorCode::GridMixedFrames))
+            }
+            _ => ctx.warn(DiagnosticDraft::new(ErrorCode::GridUnsupportedGeometry)),
+        }
+        self.reject(ctx, fw, &e.to_string());
     }
 }
 
@@ -1384,5 +1925,598 @@ mod tests {
             output.attributes.get(&Attribute::new("_grid_col")),
             Some(&AttributeValue::Number(serde_json::Number::from(2)))
         );
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod new_geometry_tests {
+    use super::*;
+
+    #[test]
+    fn explicit_origin_makes_the_processor_streaming() {
+        // Built via `empty()` then direct field assignment, not struct-update
+        // syntax (`..base`): `GridDivider` implements `Drop`, and Rust refuses
+        // to move fields out of a `Drop` type via `..base` (E0509). Direct
+        // assignment on an owned value has no such restriction and keeps
+        // `Drop` unconditional.
+        let mut streaming = GridDivider::empty();
+        streaming.cell_size = 1.0;
+        streaming.complete_cells_only = false;
+        streaming.group_by = None;
+        streaming.origin = Some([0.0, 0.0]);
+        assert!(!streaming.is_accumulating());
+
+        let mut accumulating = streaming.clone();
+        accumulating.origin = None;
+        assert!(accumulating.is_accumulating());
+    }
+
+    #[test]
+    fn cell_count_guard_rejects_an_absurd_cell_size() {
+        // 4 km by 3 km at 1 mm cells is 1.2e13 cells.
+        let grid = GridSpec::new([0.0, 0.0], 0.001).expect("valid spec");
+        let count = grid.cell_count([0.0, 0.0], [4000.0, 3000.0]);
+        assert!(count > MAX_CELLS_PER_GRID);
+    }
+
+    #[test]
+    fn a_sane_cell_size_passes_the_guard() {
+        let grid = GridSpec::new([0.0, 0.0], 1.0).expect("valid spec");
+        let count = grid.cell_count([0.0, 0.0], [4000.0, 3000.0]);
+        assert!(count <= MAX_CELLS_PER_GRID);
+    }
+
+    #[test]
+    fn group_key_distinguishes_a_missing_attribute_from_a_present_one() {
+        // B7: with filter_map, {region: "north"} and {zone: "north"} both keyed
+        // to ["north"] and shared a grid origin.
+        let group_by = vec![
+            Attribute::new("region".to_string()),
+            Attribute::new("zone".to_string()),
+        ];
+
+        let mut only_region = Attributes::default();
+        only_region.insert(
+            Attribute::new("region".to_string()),
+            AttributeValue::String("north".to_string()),
+        );
+
+        let mut only_zone = Attributes::default();
+        only_zone.insert(
+            Attribute::new("zone".to_string()),
+            AttributeValue::String("north".to_string()),
+        );
+
+        assert_ne!(
+            group_key(&only_region, &Some(group_by.clone())),
+            group_key(&only_zone, &Some(group_by)),
+        );
+    }
+
+    #[test]
+    fn derived_origin_is_the_group_extent_corner() {
+        // Two features 10 units apart in one group: the grid starts at the
+        // lower-left of their combined extent, not at either one's own.
+        let mut bounds: HashMap<AttributeValue, ([f64; 2], [f64; 2])> = HashMap::new();
+        merge_bounds(&mut bounds, AttributeValue::Null, ([3.0, 4.0], [5.0, 6.0]));
+        merge_bounds(
+            &mut bounds,
+            AttributeValue::Null,
+            ([13.0, 14.0], [15.0, 16.0]),
+        );
+
+        let (min, max) = bounds[&AttributeValue::Null];
+        assert_eq!(min, [3.0, 4.0]);
+        assert_eq!(max, [15.0, 16.0]);
+
+        let grid = GridSpec::new(min, 1.0).expect("valid spec");
+        assert_eq!(grid.origin(), [3.0, 4.0]);
+    }
+
+    #[test]
+    fn separate_groups_get_separate_origins() {
+        let mut bounds: HashMap<AttributeValue, ([f64; 2], [f64; 2])> = HashMap::new();
+        let north = AttributeValue::String("north".to_string());
+        let south = AttributeValue::String("south".to_string());
+        merge_bounds(&mut bounds, north.clone(), ([0.0, 0.0], [1.0, 1.0]));
+        merge_bounds(&mut bounds, south.clone(), ([100.0, 100.0], [101.0, 101.0]));
+
+        assert_eq!(bounds[&north].0, [0.0, 0.0]);
+        assert_eq!(bounds[&south].0, [100.0, 100.0]);
+    }
+
+    // End-to-end coverage of `process` itself: the tests above pin the pieces
+    // (the guard's math, the streaming/accumulating switch, the group key),
+    // but none of them actually runs a feature through the processor. These
+    // do, using the same `Noop` forwarder + broadcast-hub harness
+    // `area_calculator`'s tests use.
+    mod process {
+        use std::sync::Arc;
+
+        use reearth_flow_common::uri::Uri;
+        use reearth_flow_geometry::collection::Collection3D;
+        use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+        use reearth_flow_geometry::point::Point3D;
+        use reearth_flow_geometry::polygon::Polygon3D;
+        use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+        use reearth_flow_runtime::event::Event;
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+        use reearth_flow_runtime::kvs;
+        use reearth_flow_storage::resolve::StorageResolver;
+        use serde_json::json;
+
+        use super::*;
+
+        /// A flat rectangle from `min` to `max` at `z = 0`, in `frame`.
+        fn rect_leaf(min: [f64; 2], max: [f64; 2], frame: CoordinateFrame) -> Euclidean3DGeometry {
+            Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+                frame,
+                vec![
+                    [min[0], min[1], 0.0],
+                    [max[0], min[1], 0.0],
+                    [max[0], max[1], 0.0],
+                    [min[0], max[1], 0.0],
+                    [min[0], min[1], 0.0],
+                ],
+                Vec::<Vec<[f64; 3]>>::new(),
+            )))
+        }
+
+        /// As [`rect_leaf`], in `CoordinateFrame::Euclidean`, wrapped as a
+        /// top-level [`Geometry`].
+        fn rect(min: [f64; 2], max: [f64; 2]) -> Geometry {
+            Geometry::Euclidean3D(rect_leaf(min, max, CoordinateFrame::Euclidean))
+        }
+
+        fn build(with: Value) -> Box<dyn Processor> {
+            GridDividerFactory
+                .build(
+                    NodeContext::default(),
+                    EventHub::new(1),
+                    "Grid Divider".to_string(),
+                    Some(serde_json::from_value(with).unwrap()),
+                )
+                .unwrap()
+        }
+
+        fn row_col(feature: &Feature) -> (i64, i64) {
+            let get = |name: &str| match feature.attributes.get(&Attribute::new(name.to_string())) {
+                Some(AttributeValue::Number(n)) => n.as_i64().unwrap(),
+                other => panic!("expected `{name}` on {feature:?}, got {other:?}"),
+            };
+            (get("_grid_row"), get("_grid_col"))
+        }
+
+        fn grid_error(feature: &Feature) -> Option<&str> {
+            match feature
+                .attributes
+                .get(&Attribute::new("_grid_error".to_string()))
+            {
+                Some(AttributeValue::String(s)) => Some(s.as_str()),
+                _ => None,
+            }
+        }
+
+        /// Run every `geometry` through one processor built from `with`, and
+        /// return every feature it sent alongside the diagnostic code of every
+        /// warning it raised. Mirrors `area_calculator`'s `process_many`.
+        fn process_many(with: Value, geometries: Vec<Geometry>) -> (Vec<Feature>, Vec<ErrorCode>) {
+            let hub = EventHub::new(64);
+            let mut rx = hub.receiver.resubscribe();
+            let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+            let mut processor = build(with);
+
+            for geometry in geometries {
+                let ctx = ExecutorContext::new(
+                    Feature::from(geometry),
+                    FEATURES_PORT.clone(),
+                    Arc::new(serde_json::Map::new()),
+                    Arc::new(StorageResolver::new()),
+                    Arc::new(kvs::create_kv_store()),
+                    hub.clone(),
+                    Uri::for_test("file:///"),
+                );
+                processor.process(ctx, &fw).unwrap();
+            }
+
+            let ProcessorChannelForwarder::Noop(noop) = &fw else {
+                unreachable!("built as a noop forwarder");
+            };
+            let features = noop.send_features.lock().unwrap().clone();
+
+            let mut warnings = Vec::new();
+            while let Ok(event) = rx.try_recv() {
+                if let Event::Diagnostic(diagnostic) = event {
+                    warnings.push(diagnostic.code);
+                }
+            }
+            (features, warnings)
+        }
+
+        /// A square exactly two cells wide divides into all four cells it
+        /// touches, each reported full, tagged with its own row and column.
+        #[test]
+        fn a_two_by_two_square_divides_into_four_full_cells() {
+            let (features, _) = process_many(
+                json!({"cellSize": 1.0, "origin": [0.0, 0.0]}),
+                vec![rect([0.0, 0.0], [2.0, 2.0])],
+            );
+
+            let mut cells: Vec<(i64, i64)> = features.iter().map(row_col).collect();
+            cells.sort();
+            assert_eq!(cells, vec![(0, 0), (0, 1), (1, 0), (1, 1)]);
+            assert!(
+                features.iter().all(|f| grid_error(f).is_none()),
+                "a successful division carries no `_grid_error`"
+            );
+        }
+
+        /// A rectangle one cell tall and half a cell into the next touches one
+        /// full cell and one partial cell. `completeCellsOnly` keeps the full
+        /// one and drops the partial one, rather than rejecting the feature
+        /// outright.
+        #[test]
+        fn complete_cells_only_drops_the_partial_cell_and_keeps_the_full_one() {
+            let geometry = rect([0.0, 0.0], [1.0, 1.5]);
+
+            let (both, _) = process_many(
+                json!({"cellSize": 1.0, "origin": [0.0, 0.0]}),
+                vec![geometry.clone()],
+            );
+            assert_eq!(both.len(), 2, "one full cell, one partial: {both:?}");
+
+            let (complete_only, _) = process_many(
+                json!({"cellSize": 1.0, "origin": [0.0, 0.0], "completeCellsOnly": true}),
+                vec![geometry],
+            );
+            assert_eq!(
+                complete_only.len(),
+                1,
+                "only the full cell survives: {complete_only:?}"
+            );
+            assert_eq!(row_col(&complete_only[0]), (0, 0));
+        }
+
+        /// A bare point has no area to divide, so `divide_by_grid` reports it
+        /// `Unsupported`. The feature is not dropped silently: it leaves via
+        /// `rejected` with a reason attached, and the run is told why via the
+        /// registered diagnostic code.
+        #[test]
+        fn unsupported_geometry_is_rejected_with_a_reason_and_a_diagnostic() {
+            let point = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                [0.0, 0.0, 0.0],
+            )));
+
+            let (features, warnings) =
+                process_many(json!({"cellSize": 1.0, "origin": [0.0, 0.0]}), vec![point]);
+
+            assert_eq!(features.len(), 1);
+            assert!(
+                grid_error(&features[0]).is_some(),
+                "expected `_grid_error` on {:?}",
+                features[0]
+            );
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridUnsupportedGeometry)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// `grid.unsupported_geometry` is the catch-all: `reject_with` raises
+        /// it for *every* `GridDivideError` except `MixedFrames`, not only for
+        /// a leaf kind with no area. A mesh with no faces reports
+        /// `GridDivideError::Empty` rather than `Unsupported`, and still leaves
+        /// under this code -- which is why the code's registered help text has
+        /// to cover more than "this shape has no area", and points the reader
+        /// at `_grid_error` for the cause that actually applied.
+        #[test]
+        fn a_non_unsupported_failure_also_leaves_under_the_unsupported_code() {
+            // A vertex pool with no triangles indexing it: a bounding box to
+            // reach the division by, and nothing in it to divide.
+            let mesh = reearth_flow_geometry::triangular_mesh::TriangularMesh3D::from_parts(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0, 0.0]],
+                std::iter::empty::<u32>(),
+            )
+            .expect("a mesh with no triangles is well-formed, just empty");
+            let empty = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+            let (features, warnings) =
+                process_many(json!({"cellSize": 1.0, "origin": [0.0, 0.0]}), vec![empty]);
+
+            assert_eq!(features.len(), 1);
+            assert_eq!(
+                grid_error(&features[0]),
+                Some("geometry has no area to divide"),
+                "the specific cause must still reach `_grid_error`"
+            );
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridUnsupportedGeometry)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// A feature whose parts sit in different coordinate frames cannot be
+        /// covered by one grid. It is rejected with the mixed-frames code, not
+        /// the generic unsupported one.
+        #[test]
+        fn mixed_frames_are_rejected_with_the_mixed_frames_diagnostic() {
+            let mixed =
+                Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new(vec![
+                    rect_leaf([0.0, 0.0], [1.0, 1.0], CoordinateFrame::Euclidean),
+                    rect_leaf(
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                        CoordinateFrame::Crs(EpsgCode::from(3857)),
+                    ),
+                ])));
+
+            let (features, warnings) =
+                process_many(json!({"cellSize": 1.0, "origin": [0.0, 0.0]}), vec![mixed]);
+
+            assert_eq!(features.len(), 1);
+            assert!(grid_error(&features[0]).is_some());
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridMixedFrames)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// Once a feature is found angular, the warning stays quiet for the
+        /// rest of the run (`GridDivider::warn_if_angular` latches
+        /// `angular_warned` only on that path) — one grid is one origin and
+        /// one cell size for the whole stream, so a second look never tells
+        /// the run anything new. Two angular features in, one warning out.
+        #[test]
+        fn the_angular_frame_warning_fires_once_per_run_not_once_per_feature() {
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, warnings) = process_many(
+                json!({"cellSize": 1.0, "origin": [0.0, 0.0]}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], angular.clone())),
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], angular)),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// The check must stay armed past a feature that turns out not to be
+        /// angular (or whose frame can't be determined at all): only a
+        /// feature that is actually found angular may latch `angular_warned`.
+        /// A non-angular first feature followed by a genuinely angular one
+        /// must still warn — the bug this guards against is the flag being
+        /// set unconditionally on the first call, which would permanently
+        /// silence every angular feature behind a non-angular first one.
+        #[test]
+        fn a_non_angular_first_feature_does_not_suppress_a_later_angular_one() {
+            let euclidean = CoordinateFrame::Euclidean;
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, warnings) = process_many(
+                json!({"cellSize": 1.0, "origin": [0.0, 0.0]}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], euclidean)),
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], angular)),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "a non-angular first feature must not permanently silence the check: {warnings:?}"
+            );
+        }
+
+        /// As [`process_many`], but for the accumulating (no-`origin`) path:
+        /// runs every `geometry` through `process` (which spools them, since
+        /// there is no origin to divide by immediately) and then calls
+        /// `finish`, returning every feature sent afterward alongside its
+        /// port and the diagnostic code of every warning raised.
+        fn spool_and_finish(
+            with: Value,
+            geometries: Vec<Geometry>,
+        ) -> (Vec<Feature>, Vec<Port>, Vec<ErrorCode>) {
+            let hub = EventHub::new(64);
+            let mut rx = hub.receiver.resubscribe();
+            let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+            let mut processor = build(with);
+
+            let node_ctx = NodeContext {
+                variables: Arc::new(serde_json::Map::new()),
+                storage_resolver: Arc::new(StorageResolver::new()),
+                kv_store: Arc::new(kvs::create_kv_store()),
+                event_hub: hub.clone(),
+                sandbox_root: Uri::for_test("file:///"),
+                diagnostics: None,
+            };
+
+            for geometry in geometries {
+                let ctx = ExecutorContext::new(
+                    Feature::from(geometry),
+                    FEATURES_PORT.clone(),
+                    Arc::new(serde_json::Map::new()),
+                    Arc::new(StorageResolver::new()),
+                    Arc::new(kvs::create_kv_store()),
+                    hub.clone(),
+                    Uri::for_test("file:///"),
+                );
+                processor.process(ctx, &fw).unwrap();
+            }
+            processor.finish(node_ctx, &fw).unwrap();
+
+            let ProcessorChannelForwarder::Noop(noop) = &fw else {
+                unreachable!("built as a noop forwarder");
+            };
+            let features = noop.send_features.lock().unwrap().clone();
+            let ports = noop.send_ports.lock().unwrap().clone();
+
+            let mut warnings = Vec::new();
+            while let Ok(event) = rx.try_recv() {
+                if let Event::Diagnostic(diagnostic) = event {
+                    warnings.push(diagnostic.code);
+                }
+            }
+            (features, ports, warnings)
+        }
+
+        /// With no `origin`, two features spool to disk in `process` and are
+        /// only divided in `finish`, once the grid can be derived from their
+        /// combined extent. The grid's origin sits at the group's own
+        /// minimum corner (here `[10, 10]`), so the first feature lands in
+        /// cell `(0, 0)` and the second — three units over — in `(0, 3)`.
+        #[test]
+        fn no_origin_derives_the_grid_from_the_group_and_finish_emits_it() {
+            let (features, ports, _) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![
+                    rect([10.0, 10.0], [11.0, 11.0]),
+                    rect([13.0, 10.0], [14.0, 11.0]),
+                ],
+            );
+
+            assert!(
+                ports.iter().all(|p| *p == FEATURES_PORT.clone()),
+                "{ports:?}"
+            );
+            let mut cells: Vec<(i64, i64)> = features.iter().map(row_col).collect();
+            cells.sort();
+            assert_eq!(cells, vec![(0, 0), (0, 3)]);
+        }
+
+        /// A feature that fails to divide is rejected from `finish` just as
+        /// it would be from the streaming `process`: routed to `rejected`
+        /// with `_grid_error` set and the matching diagnostic code raised,
+        /// not silently dropped for having gone through the disk-backed path.
+        #[test]
+        fn no_origin_rejects_a_feature_that_fails_to_divide_from_finish() {
+            let point = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                [5.0, 5.0, 0.0],
+            )));
+
+            let (features, ports, warnings) =
+                spool_and_finish(json!({"cellSize": 1.0}), vec![point]);
+
+            assert_eq!(features.len(), 1);
+            assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+            assert!(
+                grid_error(&features[0]).is_some(),
+                "expected `_grid_error` on {:?}",
+                features[0]
+            );
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridUnsupportedGeometry)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// The angular-frame warning is not a property of the streaming path.
+        /// Every workflow written before this port omits `origin` and so runs
+        /// the accumulating path — including both solar-radiation nodes — so a
+        /// check wired only to `process`'s explicit-origin half would never
+        /// fire in practice, which is the opposite of what D9 asks for.
+        #[test]
+        fn the_angular_frame_warning_also_fires_on_the_accumulating_path() {
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, _, warnings) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![Geometry::Euclidean3D(rect_leaf(
+                    [0.0, 0.0],
+                    [1.0, 1.0],
+                    angular,
+                ))],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "no `origin` must not mean no warning: {warnings:?}"
+            );
+        }
+
+        /// The accumulating path keeps the same once-per-run semantics the
+        /// streaming path has: one grid is one cell size for the whole
+        /// stream, so a second angular feature tells the run nothing new.
+        #[test]
+        fn the_accumulating_path_warns_once_per_run_not_once_per_feature() {
+            let angular = CoordinateFrame::Crs(EpsgCode::from(4269));
+            let (_, _, warnings) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf([0.0, 0.0], [1.0, 1.0], angular.clone())),
+                    Geometry::Euclidean3D(rect_leaf([2.0, 2.0], [3.0, 3.0], angular)),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "{warnings:?}"
+            );
+        }
+
+        /// And the same arming rule: only a feature actually found angular may
+        /// burn the one shot, so a non-angular first feature must not silence
+        /// a genuinely angular one behind it.
+        #[test]
+        fn a_non_angular_first_feature_does_not_suppress_a_later_angular_one_when_spooling() {
+            let (_, _, warnings) = spool_and_finish(
+                json!({"cellSize": 1.0}),
+                vec![
+                    Geometry::Euclidean3D(rect_leaf(
+                        [0.0, 0.0],
+                        [1.0, 1.0],
+                        CoordinateFrame::Euclidean,
+                    )),
+                    Geometry::Euclidean3D(rect_leaf(
+                        [2.0, 2.0],
+                        [3.0, 3.0],
+                        CoordinateFrame::Crs(EpsgCode::from(4269)),
+                    )),
+                ],
+            );
+
+            assert_eq!(
+                warnings
+                    .iter()
+                    .filter(|&&c| c == ErrorCode::GridAngularFrame)
+                    .count(),
+                1,
+                "a non-angular first feature must not permanently silence the check: {warnings:?}"
+            );
+        }
     }
 }

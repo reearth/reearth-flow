@@ -165,6 +165,23 @@ impl Appearance {
         self.themes.iter().flat_map(|theme| theme.uv_sets.iter())
     }
 
+    /// The default theme's front-side, default-channel UV, if any.
+    ///
+    /// This is the "primary" UV a caller reaches for when it needs exactly one
+    /// per-corner UV to work with and does not want to reason about multi-theme
+    /// / two-sided / multi-channel structure -- e.g. a geometric op that
+    /// interpolates UV through a cut alongside position, which can only carry
+    /// one UV channel per corner.
+    #[cfg(feature = "new-geometry")]
+    pub(crate) fn default_uv(&self) -> Option<&UvSource> {
+        let theme = self.themes.iter().find(|t| t.theme == self.default_theme)?;
+        theme
+            .uv_sets
+            .iter()
+            .find(|uv| uv.side == Side::Front && uv.channel == ChannelId::default())
+            .map(|uv| &uv.uv)
+    }
+
     /// Assemble an appearance from already-validated parts.
     pub(crate) fn from_parts(
         materials: Vec<Material>,
@@ -292,7 +309,15 @@ impl Appearance {
     /// Remove palette entries unreferenced by any binding and reindex the
     /// survivors. Kept materials retain their relative order, so the compacted
     /// palette is a stable subsequence of the original.
-    fn compact_materials(&mut self) {
+    ///
+    /// `pub(crate)` (rather than private, like the rest of this `impl` block)
+    /// because a caller that builds an `Appearance` through [`from_parts`]
+    /// directly -- rather than the validated setters, which call this
+    /// themselves -- and then drops a binding of its own (e.g. a geometric op
+    /// that can no longer supply UV for a channel a material references, and
+    /// removes that binding to avoid an orphan reference) needs the same
+    /// cleanup those setters get for free.
+    pub(crate) fn compact_materials(&mut self) {
         // A palette this large (only via `appearance_mut`) can't be reindexed
         // without truncating `kept.len() as u32`; leave the valid indices as-is.
         if self.materials.len() > u32::MAX as usize {

@@ -88,6 +88,12 @@ crate::unsupported!(Point3D: Coerce);
 #[cfg(feature = "new-geometry")]
 crate::no_area!(Point2D, Point3D);
 
+// A point has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point3D: DivideByGrid);
+
 // A position has no extent, so it reports the empty boundary rather than
 // refusing the operation.
 impl crate::ops::ExtractBoundary for Point2D {
