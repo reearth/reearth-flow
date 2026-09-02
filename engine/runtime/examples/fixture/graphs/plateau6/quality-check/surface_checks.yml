@@ -1,5 +1,5 @@
 id: c4000000-0000-4000-8000-000000000000
-name: TranSurfaceChecks
+name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue`, and every
 # face whose 2D outline is wound against the coordinate frame on

@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -10163.19813128247,
+              71815.39286378962,
+              0.0
+            ],
+            [
+              -10163.195503441611,
+              71817.6120639647,
+              0.0
+            ],
+            [
+              -10161.40725721751,
+              71817.60994661911,
+              0.0
+            ],
+            [
+              -10161.409884595989,
+              71815.39074644474,
+              0.0
+            ],
+            [
+              -10163.19813128247,
+              71815.39286378962,
+              0.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の向きエラー",
+        "issue": "IncorrectOrientation",
+        "filename": "54370054_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_a1b2c3d4-0001-11f0-a3af-18ece7a5508c",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_a1b2c3d4-0001-11f0-a3af-18ece7a5508c",
+        "lod": 0
+      }
+    }
+  ]
+}

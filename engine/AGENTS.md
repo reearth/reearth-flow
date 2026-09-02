@@ -102,3 +102,7 @@ cargo make test
 - [Engine Architecture](dev-docs/architecture.md) - Runtime design, expression system, environment variables, debugging
 - [Action Standard](dev-docs/action-standard.md) - Naming, description, parameter, and port conventions for authoring and reviewing actions
 - [Geodetic Grids](runtime/geometry/grids/README.md) - Which geoid grids ship in the binary, how to change the set, and how to supply the rest
+
+### PLATEAU
+
+- [PLATEAU Quality-check Error Geometry](dev-docs/plateau-quality-check-error-geometry.md) - GeoJSON error-detail layers of the PLATEAU quality-check workflows: properties, CRS policy, and wiring patterns
