@@ -17,7 +17,7 @@ with:
     - wwy
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
 
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
     name: entry_point

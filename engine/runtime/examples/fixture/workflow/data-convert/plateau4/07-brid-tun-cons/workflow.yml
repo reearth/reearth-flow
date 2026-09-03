@@ -14,7 +14,7 @@ with:
     - cons
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
   - id: 3ee62cf6-3156-4b7f-aada-66fbe785b63a
     name: entry_point
     nodes:

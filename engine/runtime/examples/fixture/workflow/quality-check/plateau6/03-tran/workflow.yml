@@ -24,7 +24,7 @@ graphs:
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include ../../../../graphs/lod_splitter.yml
-  - !include ../../../../graphs/plateau6/quality-check/surface_checks.yml
+  - !include ../../../../graphs/plateau6/surface_checks.yml
   - !include tran_checks.yml
   - id: 84d76387-7115-4cc9-9d53-98278cfbb4a4
     name: entry_point
