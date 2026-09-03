@@ -31,7 +31,7 @@ use crate::event::{Event, EventHandler, EventHub};
 use crate::executor_operation::{ExecutorOperation, ExecutorOptions, NodeContext};
 use crate::incremental::IncrementalRunConfig;
 use crate::kvs::KvStore;
-use crate::node::{EdgeId, NodeId, Port, REJECTED_PORT};
+use crate::node::{NodeId, Port, REJECTED_PORT};
 
 use super::execution_dag::ExecutionDag;
 use super::source_node::{create_source_node, SourceNode};
@@ -148,7 +148,6 @@ impl DagExecutor {
         variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
-        ingress_state: Arc<State>,
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
@@ -161,7 +160,6 @@ impl DagExecutor {
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.feature_flush_threshold,
-            Arc::clone(&ingress_state),
             Arc::clone(&feature_state),
             executor_id,
         )?;
@@ -252,7 +250,6 @@ impl DagExecutor {
                         node_index,
                         shutdown.clone(),
                         runtime.clone(),
-                        incremental_run_config.is_some(),
                         warn_once.clone(),
                         disposition_policy.clone(),
                     )
@@ -273,7 +270,6 @@ impl DagExecutor {
                         node_index,
                         shutdown.clone(),
                         runtime.clone(),
-                        incremental_run_config.is_some(),
                         warn_once.clone(),
                         disposition_policy.clone(),
                     );
@@ -283,15 +279,18 @@ impl DagExecutor {
         }
 
         if let Some(cfg) = incremental_run_config.clone() {
-            let replay_groups =
-                build_replay_groups(&execution_dag, &execute_node_ids, &cfg.available_edge_ids);
+            let replay_groups = build_replay_groups(
+                &execution_dag,
+                &execute_node_ids,
+                &cfg.available_port_file_ids,
+            );
             tracing::info!("Replay groups:");
             for g in &replay_groups {
                 tracing::info!("  group edges={}", g.edges.len());
                 for e in &g.edges {
                     tracing::info!(
-                        "    edge_id={}, port={}",
-                        e.edge_id,
+                        "    port_file={}, port={}",
+                        e.port_file_id,
                         e.downstream_input_port
                     );
                 }
@@ -504,6 +503,8 @@ fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
     Ok((meta, handle))
 }
 
+/// Nodes that must run in an incremental run: the start node, everything downstream
+/// of it, and any node whose upstream port file is not available for replay.
 fn collect_executable_node_ids(
     dag: &ExecutionDag,
     cfg: &IncrementalRunConfig,
@@ -545,13 +546,13 @@ fn collect_executable_node_ids(
         }
 
         let has_unavailable_edge = g.edges_directed(node_idx, Direction::Incoming).any(|edge| {
-            let edge_id = edge.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
-            edge_id.is_none_or(|id| !cfg.available_edge_ids.contains(&id))
+            let port_file_id = g[edge.source()].port_file_id(&edge.weight().input_port);
+            !cfg.available_port_file_ids.contains(&port_file_id)
         });
 
         if has_unavailable_edge {
             tracing::info!(
-                "Node {} marked as executable: has incoming edges not in available_edges",
+                "Node {} marked as executable: has incoming edges whose upstream port file is not available",
                 node_id
             );
             executable_nodes.insert(node_id);
@@ -563,7 +564,8 @@ fn collect_executable_node_ids(
 
 #[derive(Clone)]
 struct ReplayEdge {
-    edge_id: EdgeId,
+    /// Intermediate-data file of the upstream output port feeding this edge.
+    port_file_id: String,
     downstream_input_port: Port,
 }
 
@@ -573,43 +575,47 @@ struct ReplayGroup {
     edges: Vec<ReplayEdge>,
 }
 
+/// Groups the edges from skipped nodes into executed nodes by channel, one group per
+/// (source node, destination node) pair, keeping the sender the replayed features are
+/// injected on.
 fn build_replay_groups(
     dag: &ExecutionDag,
     execute: &HashSet<NodeId>,
-    available_edge_ids: &HashSet<uuid::Uuid>,
+    available_port_file_ids: &HashSet<String>,
 ) -> Vec<ReplayGroup> {
     let g = dag.graph();
 
-    let mut grouped: HashMap<(NodeId, Port), (Sender<ExecutorOperation>, Vec<ReplayEdge>)> =
-        HashMap::new();
+    let mut grouped: HashMap<
+        (petgraph::graph::NodeIndex, petgraph::graph::NodeIndex),
+        (Sender<ExecutorOperation>, Vec<ReplayEdge>),
+    > = HashMap::new();
 
     for e in g.edge_references() {
         let src = g[e.source()].handle.id.clone();
         let dst = g[e.target()].handle.id.clone();
 
         if execute.contains(&dst) && !execute.contains(&src) {
-            let edge_id_parsed = e.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
-            let is_available = edge_id_parsed.is_some_and(|id| available_edge_ids.contains(&id));
+            let port_file_id = g[e.source()].port_file_id(&e.weight().input_port);
 
-            if !is_available {
+            if !available_port_file_ids.contains(&port_file_id) {
                 tracing::info!(
-                    "Skipping replay edge {} -> {}: edge {} not in available_edges",
+                    "Skipping replay edge {} -> {}: port file {} not available",
                     src,
                     dst,
-                    e.weight().edge_id
+                    port_file_id
                 );
                 continue;
             }
 
-            let downstream_input_port = e.weight().input_port.clone();
+            let downstream_input_port = e.weight().output_port.clone();
 
             let replay_edge = ReplayEdge {
-                edge_id: e.weight().edge_id.clone(),
+                port_file_id,
                 downstream_input_port: downstream_input_port.clone(),
             };
 
             grouped
-                .entry((dst.clone(), downstream_input_port))
+                .entry((e.source(), e.target()))
                 .and_modify(|(_, v)| v.push(replay_edge.clone()))
                 .or_insert((e.weight().sender.clone(), vec![replay_edge]));
         }
@@ -621,11 +627,12 @@ fn build_replay_groups(
         .collect()
 }
 
+/// Reads every feature of one port file from the previous run's feature store.
 fn read_replay_features(
     state: &reearth_flow_state::State,
-    edge_id: &str,
+    port_file_id: &str,
 ) -> std::io::Result<Vec<reearth_flow_types::Feature>> {
-    let values = state.read_jsonl_auto_sync::<serde_json::Value>(edge_id)?;
+    let values = state.read_jsonl_auto_sync::<serde_json::Value>(port_file_id)?;
     let mut out = Vec::with_capacity(values.len());
     for v in values {
         let f: reearth_flow_types::Feature =
@@ -642,8 +649,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
         let mut sent = 0usize;
 
         for e in &g.edges {
-            let edge_id_str = e.edge_id.to_string();
-            match read_replay_features(&cfg.previous_feature_state, &edge_id_str) {
+            match read_replay_features(&cfg.previous_feature_state, &e.port_file_id) {
                 Ok(features) => {
                     for feature in features {
                         let ctx = crate::executor_operation::ExecutorContext::new(
@@ -664,7 +670,11 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                     }
                 }
                 Err(err) => {
-                    tracing::warn!("Replay inject read failed for {}: {:?}", edge_id_str, err);
+                    tracing::warn!(
+                        "Replay inject read failed for {}: {:?}",
+                        e.port_file_id,
+                        err
+                    );
                 }
             }
         }

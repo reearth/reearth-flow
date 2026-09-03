@@ -12,7 +12,6 @@ use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode};
-use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
@@ -30,7 +29,6 @@ use crate::{
 };
 
 use super::receiver_loop::init_select;
-use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
@@ -66,9 +64,6 @@ pub struct ProcessorNode<F> {
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
     sandbox_root: Uri,
-    source_intermediate_recorder: SourceIntermediateRecorder,
-    feature_state: Arc<State>,
-    incremental_mode: bool,
     diagnostics: crate::diagnostics::SharedNodeDiagnostics,
     summaries_sink: Arc<parking_lot::Mutex<Vec<Diagnostic>>>,
 }
@@ -81,7 +76,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         node_index: NodeIndex,
         shutdown: F,
         runtime: Arc<Handle>,
-        incremental_mode: bool,
         warn_once: reearth_flow_diagnostics::WarnOnceSet,
         disposition_policy: Arc<reearth_flow_diagnostics::DispositionPolicy>,
     ) -> Self {
@@ -127,10 +121,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let sandbox_root = ctx.sandbox_root.clone();
         let num_threads = processor.num_threads();
 
-        let source_intermediate_recorder =
-            SourceIntermediateRecorder::collect(dag, node_index, &node_handles);
-        let feature_state = dag.feature_state();
-
         let diagnostics = Arc::new(crate::diagnostics::NodeDiagnosticsHandle::new(
             composed_id,
             node_handle.clone(),
@@ -166,9 +156,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             kv_store,
             event_hub: dag.event_hub().clone(),
             sandbox_root,
-            source_intermediate_recorder,
-            feature_state,
-            incremental_mode,
             diagnostics,
             summaries_sink: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }
@@ -407,15 +394,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             };
             match op {
                 ExecutorOperation::Op { ctx } => {
-                    if !self.incremental_mode {
-                        self.source_intermediate_recorder.record_if_from_source(
-                            &self.feature_state,
-                            index,
-                            &ctx,
-                            &self.node_name,
-                            self.node_handle.id.as_ref(),
-                        );
-                    }
                     self.wait_until_pool_has_capacity();
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;

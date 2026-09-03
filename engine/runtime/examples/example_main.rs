@@ -103,7 +103,6 @@ pub(crate) fn execute(workflow: &str) {
         .expect("Failed to setup job directory.");
     let storage_resolver = Arc::new(StorageResolver::new());
     let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
-    let ingress_state = Arc::clone(&feature_state);
     let workflow = create_workflow(workflow);
     let logger_factory = Arc::new(LoggerFactory::new(
         create_root_logger(action_log_uri.path()),
@@ -119,7 +118,6 @@ pub(crate) fn execute(workflow: &str) {
         ALL_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
-        ingress_state,
         feature_state,
         None,
         handlers,

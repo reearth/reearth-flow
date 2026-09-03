@@ -10,7 +10,6 @@ use std::{
 use crossbeam::channel::Receiver;
 use futures::Future;
 use petgraph::graph::NodeIndex;
-use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::info_span;
@@ -28,7 +27,6 @@ use crate::{
 };
 
 use super::receiver_loop::ReceiverLoop;
-use super::source_intermediate::SourceIntermediateRecorder;
 use super::{execution_dag::ExecutionDag, receiver_loop::init_select};
 
 #[derive(Debug)]
@@ -49,9 +47,6 @@ pub struct SinkNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     sandbox_root: Uri,
-    source_intermediate_recorder: SourceIntermediateRecorder,
-    feature_state: Arc<State>,
-    incremental_mode: bool,
     diagnostics: crate::diagnostics::SharedNodeDiagnostics,
     summaries_sink: Arc<parking_lot::Mutex<Vec<Diagnostic>>>,
 }
@@ -64,7 +59,6 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         node_index: NodeIndex,
         shutdown: F,
         runtime: Arc<Handle>,
-        incremental_mode: bool,
         warn_once: reearth_flow_diagnostics::WarnOnceSet,
         disposition_policy: Arc<reearth_flow_diagnostics::DispositionPolicy>,
     ) -> Self {
@@ -81,10 +75,6 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         };
         // NOTE: `action` may legitimately diverge from `sink.name()` — don't assert equality.
         let (node_handles, receivers) = dag.collect_receivers(node_index);
-
-        let source_intermediate_recorder =
-            SourceIntermediateRecorder::collect(dag, node_index, &node_handles);
-        let feature_state = dag.feature_state();
 
         let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
@@ -120,9 +110,6 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
             sandbox_root: ctx.sandbox_root.clone(),
-            source_intermediate_recorder,
-            feature_state,
-            incremental_mode,
             diagnostics,
             summaries_sink: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }
@@ -236,16 +223,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             };
             match op {
                 ExecutorOperation::Op { ctx } => {
-                    if !self.incremental_mode {
-                        self.source_intermediate_recorder.record_if_from_source(
-                            &self.feature_state,
-                            index,
-                            &ctx,
-                            &self.node_name,
-                            self.node_handle.id.as_ref(),
-                        );
-                    }
-
                     let result = self.on_op(ctx.clone());
 
                     if let Err(e) = result {

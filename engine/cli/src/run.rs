@@ -251,7 +251,6 @@ impl RunCliCommand {
             State::new(&feature_state_uri, &storage_resolver)
                 .map_err(crate::errors::Error::init)?,
         );
-        let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
@@ -276,15 +275,16 @@ impl RunCliCommand {
             let start_node_id =
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
-            let (previous_feature_state, available_edge_ids) = prepare_incremental_feature_store(
-                "engine",
-                &workflow,
-                job_id,
-                storage_resolver.as_ref(),
-                prev_job_id,
-                start_node_id,
-                feature_state.as_ref(),
-            )?;
+            let (previous_feature_state, available_port_file_ids) =
+                prepare_incremental_feature_store(
+                    "engine",
+                    &workflow,
+                    job_id,
+                    storage_resolver.as_ref(),
+                    prev_job_id,
+                    start_node_id,
+                    feature_state.as_ref(),
+                )?;
 
             prepare_incremental_artifacts(
                 "engine",
@@ -306,7 +306,7 @@ impl RunCliCommand {
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
                 previous_feature_state,
-                available_edge_ids,
+                available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
@@ -324,7 +324,6 @@ impl RunCliCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver,
-            ingress_state,
             feature_state,
             incremental_run_config,
             artifact_uri,
