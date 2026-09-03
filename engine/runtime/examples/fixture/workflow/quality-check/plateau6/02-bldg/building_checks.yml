@@ -2648,11 +2648,13 @@ nodes:
               part_id = attributes.get("uroPartId", "");
               feature_type = attributes.get("__citygml_feature_type", "");
               building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id) != null;
-              branch_id_valid = branch_id == "" or type(branch_id) == "int";
+              # The reader hands branch/part ids over as strings, so accept digit strings too.
+              is_int = fn(v) { type(v) == int or Regex(r"^\d+$").find(str(v)) != null };
+              branch_id_valid = branch_id == "" or is_int(branch_id);
               if feature_type == "bldg:Building" {
                 part_id_valid = part_id == "";
               } else if feature_type == "bldg:BuildingPart" {
-                part_id_valid = type(part_id) == "int";
+                part_id_valid = part_id != "" and is_int(part_id);
               } else {
                 part_id_valid = false;
               }

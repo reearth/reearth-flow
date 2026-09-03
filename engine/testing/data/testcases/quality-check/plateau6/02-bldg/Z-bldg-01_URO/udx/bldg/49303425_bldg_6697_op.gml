@@ -6,11 +6,10 @@
   is 4 digits instead of the required 5), so it must be reported as 不正な建物ID.
   Building 2 has a well-formed uro:buildingID "16211-bldg-78" and must NOT be flagged.
   uro:branchID / uro:partID are absent on both, so they are reported as （なし）.
+  Building 3 adds a numeric uro:branchID and must NOT be flagged; Building 4 has a
+  non-numeric uro:branchID "A" and must be flagged.
 
-  NOTE: the plateau6 building-ID-format check is not yet wired into the workflow.
-  The expected CSV / JSON here mirror the plateau4 Z-bldg-01_URO fixtures and are
-  provisional; they will be reconciled with the actual output once the check is
-  implemented. The i-UR objectlist is the provisional plateau4 version (see skill).
+  NOTE: the i-UR objectlist is the provisional plateau4 version (see skill).
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -251,6 +250,234 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-78</uro:buildingID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</bldg:adeOfAbstractBuilding>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 3: uro:branchID = 1 (VALID numeric branch id, must not be flagged) -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_c1b1d101-0003-4a01-8001-cccccccccccc">
+			<gml:name>16211-bldg-79</gml:name>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
+			<core:lod0MultiSurface>
+				<gml:MultiSurface gml:id="ms_c1b1d101-0003">
+					<gml:surfaceMember>
+						<gml:Polygon gml:id="poly_lod0_c1b1d101-0003">
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>36.6477 137.0547 0 36.6478 137.0547 0 36.6478 137.0546 0 36.6477 137.0546 0 36.6477 137.0547 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</core:lod0MultiSurface>
+			<core:lod1Solid>
+				<gml:Solid gml:id="solid_lod1_c1b1d101-0003">
+					<gml:exterior>
+						<gml:CompositeSurface>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0547 0 36.6477 137.0546 0 36.6478 137.0546 0 36.6478 137.0547 0 36.6477 137.0547 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0547 0 36.6478 137.0547 0 36.6478 137.0547 9 36.6477 137.0547 9 36.6477 137.0547 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6478 137.0547 0 36.6478 137.0546 0 36.6478 137.0546 9 36.6478 137.0547 9 36.6478 137.0547 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6478 137.0546 0 36.6477 137.0546 0 36.6477 137.0546 9 36.6478 137.0546 9 36.6478 137.0546 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0546 0 36.6477 137.0547 0 36.6477 137.0547 9 36.6477 137.0546 9 36.6477 137.0546 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0547 9 36.6478 137.0547 9 36.6478 137.0546 9 36.6477 137.0546 9 36.6477 137.0547 9</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:CompositeSurface>
+					</gml:exterior>
+				</gml:Solid>
+			</core:lod1Solid>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-79</uro:buildingID>
+					<uro:branchID>1</uro:branchID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</bldg:adeOfAbstractBuilding>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 4: uro:branchID = A (INVALID: not a number) -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_c1b1d101-0004-4a01-8001-dddddddddddd">
+			<gml:name>16211-bldg-80</gml:name>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
+			<core:lod0MultiSurface>
+				<gml:MultiSurface gml:id="ms_c1b1d101-0004">
+					<gml:surfaceMember>
+						<gml:Polygon gml:id="poly_lod0_c1b1d101-0004">
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>36.6477 137.0527 0 36.6478 137.0527 0 36.6478 137.0526 0 36.6477 137.0526 0 36.6477 137.0527 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</core:lod0MultiSurface>
+			<core:lod1Solid>
+				<gml:Solid gml:id="solid_lod1_c1b1d101-0004">
+					<gml:exterior>
+						<gml:CompositeSurface>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0527 0 36.6477 137.0526 0 36.6478 137.0526 0 36.6478 137.0527 0 36.6477 137.0527 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0527 0 36.6478 137.0527 0 36.6478 137.0527 9 36.6477 137.0527 9 36.6477 137.0527 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6478 137.0527 0 36.6478 137.0526 0 36.6478 137.0526 9 36.6478 137.0527 9 36.6478 137.0527 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6478 137.0526 0 36.6477 137.0526 0 36.6477 137.0526 9 36.6478 137.0526 9 36.6478 137.0526 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0526 0 36.6477 137.0527 0 36.6477 137.0527 9 36.6477 137.0526 9 36.6477 137.0526 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.6477 137.0527 9 36.6478 137.0527 9 36.6478 137.0526 9 36.6477 137.0526 9 36.6477 137.0527 9</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:CompositeSurface>
+					</gml:exterior>
+				</gml:Solid>
+			</core:lod1Solid>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-80</uro:buildingID>
+					<uro:branchID>A</uro:branchID>
 					<uro:prefecture>16</uro:prefecture>
 					<uro:city>16211</uro:city>
 				</uro:BuildingIDAttribute>
