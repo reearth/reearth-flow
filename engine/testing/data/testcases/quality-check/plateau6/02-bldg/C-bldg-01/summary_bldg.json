@@ -2,5 +2,9 @@
   {
     "name": "C-bldg-01 エラー",
     "count": 4
+  },
+  {
+    "name": "不正な建物ID",
+    "count": 2
   }
 ]
