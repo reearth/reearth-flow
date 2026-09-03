@@ -1,5 +1,5 @@
 {
-  "description": "Test L13 (#2) for LOD1 on plateau6. A lod1Solid interior ring touching the exterior ring, reported as InteriorRingNotContainedInExteriorRing under 'LOD1 境界面のエラー'.",
+  "description": "Test L13 (#2) for LOD1 on plateau6. A lod1Solid interior ring touching the exterior ring, reported as SelfIntersection under 'LOD1 境界面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

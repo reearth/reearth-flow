@@ -1,5 +1,5 @@
 {
-  "description": "Test L13 (#3) for LOD1 on plateau6. Two overlapping lod1Solid interior rings, reported as IntersectionBetweenInteriorAndInterior under 'LOD1 境界面のエラー'.",
+  "description": "Test L13 (#3) for LOD1 on plateau6. Two overlapping lod1Solid interior rings, reported as SelfIntersection under 'LOD1 境界面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

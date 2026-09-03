@@ -1116,7 +1116,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lbldg06_error", 0)
-        # TODO: wire to a PLATEAU6 BuildingInstallation geometry-type check (T-bldg-02)
+        # T-bldg-02 was removed from the quality requirements. The column stays at 0
+        # so the summary keeps the same shape as plateau4.
         - attribute: "T-bldg-02エラー"
           expr:
             type: flowExpr
@@ -1476,9 +1477,8 @@ nodes:
   # GeoJSON error-detail output for the LOD2/LOD3 boundary-surface check.
   # The CityGML reader already emits each con:*Surface (wall/roof/ground) as its
   # own feature, so the geometry pinpoints the offending boundary surface rather
-  # than the whole building. Coordinates stay in the inspection CRS (variable "prcs");
-  # the validator rotates near-horizontal surfaces by ~identity, so the emitted
-  # ground-surface geometry matches the real-world footprint. LOD2 and LOD3 share
+  # than the whole building. Coordinates stay in the inspection CRS (variable "prcs")
+  # and the offending face is emitted exactly as it was read. LOD2 and LOD3 share
   # one writer and merge into a single GeoJSON, mirroring the combined CSV.
   - id: 8047c601-56d5-42c0-8854-a6d35c631f2f
     name: AttributeMapperLod2InvalidSurfaceGeoJson
