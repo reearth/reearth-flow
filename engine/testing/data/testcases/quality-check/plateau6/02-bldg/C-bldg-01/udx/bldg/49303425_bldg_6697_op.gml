@@ -3,6 +3,9 @@
   Two bldg:Building features share the same uro:buildingID "16211-bldg-77"
   (uro:branchID / uro:partID are both absent). The duplicate composite key
   (buildingID + branchID + partID) makes both buildings detected as C-bldg-01 errors.
+  Building 3 holds two bldg:BuildingPart features that likewise share a composite key
+  (16211-bldg-79 + partID 1); BuildingPart carries its own uro:BuildingIDAttribute, so
+  both parts are C-bldg-01 errors too.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -243,6 +246,78 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-77</uro:buildingID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</bldg:adeOfAbstractBuilding>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 3: two bldg:BuildingPart features share the same composite key
+	     (16211-bldg-79 + no branchID + partID 1), so both parts are C-bldg-01 errors.
+	     The parent Building itself carries no partID, so its own key is unique. -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_c1b1d101-0003-4a01-8001-cccccccccccc">
+			<gml:name>16211-bldg-79</gml:name>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:buildingPart>
+				<bldg:BuildingPart gml:id="bpart_c1b1d101-0003-4a01-8001-cccccccccccc">
+					<gml:name>16211-bldg-79-1</gml:name>
+					<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+					<core:lod1Solid>
+						<gml:Solid gml:id="solid_lod1_c1b1d101-0003">
+							<gml:exterior>
+								<gml:CompositeSurface>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6480 137.0516 0 36.6481 137.0516 0 36.6481 137.0517 0 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6481 137.0517 0 36.6481 137.0517 9 36.6480 137.0517 9 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0517 0 36.6481 137.0516 0 36.6481 137.0516 9 36.6481 137.0517 9 36.6481 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0516 0 36.6480 137.0516 0 36.6480 137.0516 9 36.6481 137.0516 9 36.6481 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0516 0 36.6480 137.0517 0 36.6480 137.0517 9 36.6480 137.0516 9 36.6480 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 9 36.6481 137.0517 9 36.6481 137.0516 9 36.6480 137.0516 9 36.6480 137.0517 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+								</gml:CompositeSurface>
+							</gml:exterior>
+						</gml:Solid>
+					</core:lod1Solid>
+					<bldg:adeOfAbstractBuilding>
+						<uro:BuildingIDAttribute>
+							<uro:buildingID>16211-bldg-79</uro:buildingID>
+							<uro:partID>1</uro:partID>
+							<uro:prefecture>16</uro:prefecture>
+							<uro:city>16211</uro:city>
+						</uro:BuildingIDAttribute>
+					</bldg:adeOfAbstractBuilding>
+				</bldg:BuildingPart>
+			</bldg:buildingPart>
+			<bldg:buildingPart>
+				<bldg:BuildingPart gml:id="bpart_c1b1d101-0004-4a01-8001-dddddddddddd">
+					<gml:name>16211-bldg-79-1 (duplicate partID)</gml:name>
+					<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+					<core:lod1Solid>
+						<gml:Solid gml:id="solid_lod1_c1b1d101-0004">
+							<gml:exterior>
+								<gml:CompositeSurface>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 0 36.6480 137.0506 0 36.6481 137.0506 0 36.6481 137.0507 0 36.6480 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 0 36.6481 137.0507 0 36.6481 137.0507 9 36.6480 137.0507 9 36.6480 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0507 0 36.6481 137.0506 0 36.6481 137.0506 9 36.6481 137.0507 9 36.6481 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0506 0 36.6480 137.0506 0 36.6480 137.0506 9 36.6481 137.0506 9 36.6481 137.0506 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0506 0 36.6480 137.0507 0 36.6480 137.0507 9 36.6480 137.0506 9 36.6480 137.0506 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 9 36.6481 137.0507 9 36.6481 137.0506 9 36.6480 137.0506 9 36.6480 137.0507 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+								</gml:CompositeSurface>
+							</gml:exterior>
+						</gml:Solid>
+					</core:lod1Solid>
+					<bldg:adeOfAbstractBuilding>
+						<uro:BuildingIDAttribute>
+							<uro:buildingID>16211-bldg-79</uro:buildingID>
+							<uro:partID>1</uro:partID>
+							<uro:prefecture>16</uro:prefecture>
+							<uro:city>16211</uro:city>
+						</uro:BuildingIDAttribute>
+					</bldg:adeOfAbstractBuilding>
+				</bldg:BuildingPart>
+			</bldg:buildingPart>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-79</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
 					<uro:city>16211</uro:city>
 				</uro:BuildingIDAttribute>

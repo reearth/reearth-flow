@@ -2436,20 +2436,23 @@ nodes:
         type: flowExpr
         value: attributes["gmlFilenameA"]
 
-  # --- C-bldg-01 duplicate building-id pipeline ---
-  # Detect bldg:Building features that share the same composite key
-  # (uro:buildingID + uro:branchID + uro:partID). In CityGML 3.0 the building id
-  # lives under bldg:adeOfAbstractBuilding > uro:BuildingIDAttribute > uro:buildingID;
+  # --- Entry point of the building-id / usage-attribute checks ---
+  # BuildingPart carries its own uro:BuildingIDAttribute and
+  # uro:BuildingDetailAttribute, so it has to go through the same checks as
+  # Building. In CityGML 3.0 the building id lives under
+  # bldg:adeOfAbstractBuilding > uro:BuildingIDAttribute > uro:buildingID;
   # the reader keeps a single ADE as a map and multiple ADEs as a list.
   - id: c1b00001-0000-4000-8000-000000000001
-    name: FeatureFilterBuildingForDuplicateId
+    name: FeatureFilterBuildingAndBuildingPart
     type: action
     action: Feature Filter
     with:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["__citygml_feature_type"] == "bldg:Building"
+            value: |
+              feature_type = attributes["__citygml_feature_type"];
+              feature_type == "bldg:Building" or feature_type == "bldg:BuildingPart"
           outputPort: features
 
   # Flatten the building id parts into plain attributes for keying/counting.

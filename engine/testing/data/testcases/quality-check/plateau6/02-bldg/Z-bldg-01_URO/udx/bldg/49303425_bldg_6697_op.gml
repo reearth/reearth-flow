@@ -8,6 +8,9 @@
   uro:branchID / uro:partID are absent on both, so they are reported as （なし）.
   Building 3 adds a numeric uro:branchID and must NOT be flagged; Building 4 has a
   non-numeric uro:branchID "A" and must be flagged.
+  Buildings 5 and 6 each hold a bldg:BuildingPart, the only feature type that carries
+  uro:partID: part 5 has a numeric partID and must NOT be flagged, part 6 has the
+  non-numeric partID "B" and must be flagged. Both parent Buildings are well-formed.
 
   NOTE: the i-UR objectlist is the provisional plateau4 version (see skill).
 -->
@@ -478,6 +481,93 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-80</uro:buildingID>
 					<uro:branchID>A</uro:branchID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</bldg:adeOfAbstractBuilding>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 5: a BuildingPart with a well-formed uro:partID = 1 (must not be flagged).
+	     partID only exists on BuildingPart, so this is the only place the partID branch of
+	     the format check is exercised. The parent Building carries no partID, as required. -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_c1b1d101-0005-4a01-8001-eeeeeeeeeeee">
+			<gml:name>16211-bldg-81</gml:name>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:buildingPart>
+				<bldg:BuildingPart gml:id="bpart_c1b1d101-0005-4a01-8001-eeeeeeeeeeee">
+					<gml:name>16211-bldg-81-1</gml:name>
+					<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+					<core:lod1Solid>
+						<gml:Solid gml:id="solid_lod1_c1b1d101-0005">
+							<gml:exterior>
+								<gml:CompositeSurface>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6480 137.0516 0 36.6481 137.0516 0 36.6481 137.0517 0 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6481 137.0517 0 36.6481 137.0517 9 36.6480 137.0517 9 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0517 0 36.6481 137.0516 0 36.6481 137.0516 9 36.6481 137.0517 9 36.6481 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0516 0 36.6480 137.0516 0 36.6480 137.0516 9 36.6481 137.0516 9 36.6481 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0516 0 36.6480 137.0517 0 36.6480 137.0517 9 36.6480 137.0516 9 36.6480 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 9 36.6481 137.0517 9 36.6481 137.0516 9 36.6480 137.0516 9 36.6480 137.0517 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+								</gml:CompositeSurface>
+							</gml:exterior>
+						</gml:Solid>
+					</core:lod1Solid>
+					<bldg:adeOfAbstractBuilding>
+						<uro:BuildingIDAttribute>
+							<uro:buildingID>16211-bldg-81</uro:buildingID>
+							<uro:partID>1</uro:partID>
+							<uro:prefecture>16</uro:prefecture>
+							<uro:city>16211</uro:city>
+						</uro:BuildingIDAttribute>
+					</bldg:adeOfAbstractBuilding>
+				</bldg:BuildingPart>
+			</bldg:buildingPart>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-81</uro:buildingID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</bldg:adeOfAbstractBuilding>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 6: a BuildingPart with uro:partID = B (INVALID: not a number).
+	     Only the BuildingPart is flagged; the parent Building is well-formed. -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_c1b1d101-0006-4a01-8001-ffffffffffff">
+			<gml:name>16211-bldg-82</gml:name>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:buildingPart>
+				<bldg:BuildingPart gml:id="bpart_c1b1d101-0006-4a01-8001-ffffffffffff">
+					<gml:name>16211-bldg-82-B</gml:name>
+					<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+					<core:lod1Solid>
+						<gml:Solid gml:id="solid_lod1_c1b1d101-0006">
+							<gml:exterior>
+								<gml:CompositeSurface>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 0 36.6480 137.0506 0 36.6481 137.0506 0 36.6481 137.0507 0 36.6480 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 0 36.6481 137.0507 0 36.6481 137.0507 9 36.6480 137.0507 9 36.6480 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0507 0 36.6481 137.0506 0 36.6481 137.0506 9 36.6481 137.0507 9 36.6481 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0506 0 36.6480 137.0506 0 36.6480 137.0506 9 36.6481 137.0506 9 36.6481 137.0506 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0506 0 36.6480 137.0507 0 36.6480 137.0507 9 36.6480 137.0506 9 36.6480 137.0506 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 9 36.6481 137.0507 9 36.6481 137.0506 9 36.6480 137.0506 9 36.6480 137.0507 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+								</gml:CompositeSurface>
+							</gml:exterior>
+						</gml:Solid>
+					</core:lod1Solid>
+					<bldg:adeOfAbstractBuilding>
+						<uro:BuildingIDAttribute>
+							<uro:buildingID>16211-bldg-82</uro:buildingID>
+							<uro:partID>B</uro:partID>
+							<uro:prefecture>16</uro:prefecture>
+							<uro:city>16211</uro:city>
+						</uro:BuildingIDAttribute>
+					</bldg:adeOfAbstractBuilding>
+				</bldg:BuildingPart>
+			</bldg:buildingPart>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-82</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
 					<uro:city>16211</uro:city>
 				</uro:BuildingIDAttribute>
