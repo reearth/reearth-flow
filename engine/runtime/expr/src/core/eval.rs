@@ -145,25 +145,27 @@ thread_local! {
     static TYPE_TYPE: Rc<TypeValue> = Rc::new(TypeValue::new("type", Some(NativeFn::new(builtin_type))));
 }
 
+pub fn new_root_env() -> Env {
+    let env = new_frame(None);
+    env_bind(&env, "str", Value::Type(STR_TYPE.with(Rc::clone)));
+    env_bind(&env, "int", Value::Type(INT_TYPE.with(Rc::clone)));
+    env_bind(&env, "float", Value::Type(FLOAT_TYPE.with(Rc::clone)));
+    env_bind(&env, "bool", Value::Type(BOOL_TYPE.with(Rc::clone)));
+    env_bind(&env, "list", Value::Type(LIST_TYPE.with(Rc::clone)));
+    env_bind(&env, "dict", Value::Type(DICT_TYPE.with(Rc::clone)));
+    env_bind(&env, "Regex", Value::Type(regex_type_value()));
+    env_bind(&env, "math", builtin_math());
+    env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
+    env_bind(&env, "type", Value::Type(TYPE_TYPE.with(Rc::clone)));
+    env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
+    env_bind(&env, "itertools", builtin_itertools());
+    env_bind(&env, "json", builtin_json());
+    env_bind(&env, "range", Value::Fn(NativeFn::new(builtin_range)));
+    env
+}
+
 thread_local! {
-    static BUILTIN_ENV: Env = {
-        let env = new_frame(None);
-        env_bind(&env, "str", Value::Type(STR_TYPE.with(Rc::clone)));
-        env_bind(&env, "int", Value::Type(INT_TYPE.with(Rc::clone)));
-        env_bind(&env, "float", Value::Type(FLOAT_TYPE.with(Rc::clone)));
-        env_bind(&env, "bool", Value::Type(BOOL_TYPE.with(Rc::clone)));
-        env_bind(&env, "list", Value::Type(LIST_TYPE.with(Rc::clone)));
-        env_bind(&env, "dict", Value::Type(DICT_TYPE.with(Rc::clone)));
-        env_bind(&env, "Regex", Value::Type(regex_type_value()));
-        env_bind(&env, "math", builtin_math());
-        env_bind(&env, "print", Value::Fn(NativeFn::new(builtin_print)));
-        env_bind(&env, "type", Value::Type(TYPE_TYPE.with(Rc::clone)));
-        env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
-        env_bind(&env, "itertools", builtin_itertools());
-        env_bind(&env, "json", builtin_json());
-        env_bind(&env, "range", Value::Fn(NativeFn::new(builtin_range)));
-        env
-    };
+    static BUILTIN_ENV: Env = new_root_env();
 }
 
 pub fn default_env() -> Env {
