@@ -6,7 +6,7 @@ reference system it is written in, and the two wiring patterns that get the
 right geometry to the writer.
 
 The reference implementation is
-[`runtime/examples/fixture/workflow/quality-check/plateau6/02-bldg/building_checks.yml`](/runtime/examples/fixture/workflow/quality-check/plateau6/02-bldg/building_checks.yml).
+[`runtime/examples/fixture/workflow/quality-check/plateau6/02-bldg/building_checks.yml`](../runtime/examples/fixture/workflow/quality-check/plateau6/02-bldg/building_checks.yml).
 
 ---
 
@@ -113,9 +113,9 @@ overlay, then index the list and restore each side from its own suffixed copy.
 ## 6. GeoJSON cannot hold a solid
 
 The GeoJSON conversion rejects `Solid`, `Csg` and `PointCloud`
-([`runtime/types/src/conversion/geojson_next.rs`](/runtime/types/src/conversion/geojson_next.rs)),
+([`runtime/types/src/conversion/geojson_next.rs`](../runtime/types/src/conversion/geojson_next.rs)),
 and the writer only warns about a feature it cannot convert
-([`runtime/action-sink/src/file/geojson.rs`](/runtime/action-sink/src/file/geojson.rs)).
+([`runtime/action-sink/src/file/geojson.rs`](../runtime/action-sink/src/file/geojson.rs)).
 A solid layer wired without a conversion therefore produces an **empty file and
 a successful run** — the easiest failure to miss.
 
