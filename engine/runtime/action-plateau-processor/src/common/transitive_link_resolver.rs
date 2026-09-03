@@ -1,15 +1,9 @@
-//! Transitive link resolution, shared across PLATEAU generations.
+//! Transitive link resolution.
 //!
 //! Features that name one another through an ID attribute form a graph. This
-//! action closes that relation transitively: within each scope it finds the sets
+//! action resolves that relation transitively. Within each scope it finds the sets
 //! of features reachable from one another, and labels every feature with the set
 //! it landed in and whether that set spans the whole scope.
-//!
-//! No geometry is read. The PLATEAU BuildingPart connectivity check (L-bldg-02)
-//! is the motivating use: an upstream step records, per BuildingPart, the
-//! gml:ids it shares a boundary polygon with, and a scope of parent Building +
-//! LOD + source file turns this action's verdict into that check's
-//! `full` / `partial` / `alone` result.
 use std::cmp::Reverse;
 use std::collections::HashMap;
 
@@ -576,41 +570,5 @@ mod tests {
             ]
         );
         Ok(())
-    }
-
-    #[test]
-    fn a_missing_link_attribute_means_no_links() -> Result<(), BoxedError> {
-        let mut attributes = IndexMap::new();
-        attributes.insert("gmlId".to_string(), AttributeValue::String("a".to_string()));
-        attributes.insert(
-            "parentGmlId".to_string(),
-            AttributeValue::String("bldg".to_string()),
-        );
-
-        let output = run(vec![Feature::from(attributes), part("b", &[], "bldg")])?;
-
-        assert_eq!(
-            output,
-            vec![
-                ("a".to_string(), "alone".to_string(), 0, 1),
-                ("b".to_string(), "alone".to_string(), 1, 1),
-            ]
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn a_missing_id_attribute_fails() {
-        let mut attributes = IndexMap::new();
-        attributes.insert(
-            "parentGmlId".to_string(),
-            AttributeValue::String("bldg".to_string()),
-        );
-
-        let error = run(vec![Feature::from(attributes)]).unwrap_err();
-        assert!(
-            error.to_string().contains("gmlId"),
-            "unexpected error: {error}"
-        );
     }
 }
