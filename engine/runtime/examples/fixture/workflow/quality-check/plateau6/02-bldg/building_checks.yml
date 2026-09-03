@@ -470,24 +470,9 @@ nodes:
       writeCrs: true
 
   # --- LOD0 surface orientation pipeline ---
-  # SurfaceChecks emits every LOD0 face whose 2D outline is wound against the
-  # coordinate frame on `inCorrectOrientation`.
-  # Exclude surfaces that are also invalid (e.g. self-intersecting): those are
-  # reported under "LOD0 面のエラー" and must not be double-counted as an
-  # orientation error. The unmerged port carries reversed-but-otherwise-valid
-  # surfaces (gml_id not present in the invalid-surface stream).
-  - id: af670379-9f3c-4eef-bccb-580a53c2cc69
-    name: OrientationInvalidSurfaceExcluder
-    type: action
-    action: Feature Merger
-    with:
-      requestorAttributeValue:
-        type: flowExpr
-        value: attributes["__citygml_gml_id"]
-      supplierAttributeValue:
-        type: flowExpr
-        value: attributes["__citygml_gml_id"]
-
+  # SurfaceChecks emits every LOD0 face whose 2D exterior ring is wound against
+  # the coordinate frame on `inCorrectOrientation`. A face that also fails a
+  # surface check is still counted here: the two errors are independent.
   - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
     name: Lod0IncorrectOrientationCounter
     type: action
@@ -3317,20 +3302,8 @@ edges:
   # LOD0 surface orientation pipeline (taps inCorrectOrientation surfaces).
   - id: 8712059f-8e80-4cb6-ba77-12c294035546
     from: d12958f8-f52d-4c95-b62c-58a92d363017
-    to: af670379-9f3c-4eef-bccb-580a53c2cc69
-    fromPort: inCorrectOrientation
-    toPort: requestor
-  # Invalid LOD0 surfaces feed the excluder as suppliers (anti-join key gml_id).
-  - id: 469b3b7d-20fd-419b-84c2-3b4c1fb4b66b
-    from: d12958f8-f52d-4c95-b62c-58a92d363017
-    to: af670379-9f3c-4eef-bccb-580a53c2cc69
-    fromPort: invalidSurface
-    toPort: supplier
-  # Reversed-but-valid surfaces (unmerged) -> orientation counter.
-  - id: f91d425d-2d3d-4a2a-bcc7-fa40b2848977
-    from: af670379-9f3c-4eef-bccb-580a53c2cc69
     to: 0177ff7b-a842-4aca-be99-47813bf1b11d
-    fromPort: unmerged
+    fromPort: inCorrectOrientation
     toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer (one row per surface)
   - id: 6acfa6f3-ff6b-43e9-af8e-72c99ea08c36

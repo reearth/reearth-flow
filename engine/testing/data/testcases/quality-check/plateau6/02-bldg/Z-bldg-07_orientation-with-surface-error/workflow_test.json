@@ -1,5 +1,5 @@
 {
-  "description": "Test L09 for LOD0 on plateau6. A self-intersecting LOD0 ring reported as SelfIntersection under 'LOD0 面のエラー'.",
+  "description": "Test that a LOD0 face failing both checks is reported twice on plateau6: a clockwise exterior ring with a repeated vertex is counted under both 'LOD0 面のエラー' and 'LOD0 面の向きエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -38,7 +38,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_LOD0面のエラー.csv"
+    "expectedFile": [
+      "02_建築物_LOD0面のエラー.csv",
+      "02_建築物_LOD0面の向きエラー.csv"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {
