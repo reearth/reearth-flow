@@ -122,6 +122,25 @@ fn eval_with_vars(
     reearth_flow_expr::eval::<FlowValue>(expr, &env).map(|FlowValue(v)| v)
 }
 
+fn eval_with_features(
+    expr: &reearth_flow_expr::CompiledExpr,
+    features: &[Feature],
+    variables: &Variables,
+) -> TypesResult<AttributeValue> {
+    let env = new_frame(Some(base_env(variables)));
+    env_bind(
+        &env,
+        "features",
+        ExprValue::list(
+            features
+                .iter()
+                .map(|f| ExprValue::object(AttributesObject(Arc::clone(&f.attributes))))
+                .collect(),
+        ),
+    );
+    reearth_flow_expr::eval::<FlowValue>(expr, &env).map(|FlowValue(v)| v)
+}
+
 #[nutype(
     sanitize(trim),
     derive(
@@ -373,6 +392,20 @@ impl CompiledCode {
             CompiledCode::Expr(e) => eval_with_vars(e, &variables)?
                 .as_string()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
+        }
+    }
+
+    /// Evaluate with `features` (a list of `attributes` objects) and `variables` in scope.
+    pub fn eval_features(
+        &self,
+        features: &[Feature],
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> TypesResult<AttributeValue> {
+        match self {
+            CompiledCode::Literal(_) => Err(TypesError::Conversion(
+                "a string literal cannot produce a list of attributes".into(),
+            )),
+            CompiledCode::Expr(e) => eval_with_features(e, features, &variables),
         }
     }
 }
