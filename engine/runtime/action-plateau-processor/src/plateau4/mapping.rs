@@ -14,13 +14,13 @@ use super::{
     gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory, unshared_edge_detector::UnsharedEdgeDetectorFactory,
 };
-use crate::common::building_part_connectivity_checker::BuildingPartConnectivityCheckerFactory;
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
 use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
 use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
+use crate::common::transitive_link_resolver::TransitiveLinkResolverFactory;
 use crate::common::transportation_xlink_detector::TransportationXlinkDetectorFactory;
 use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
@@ -35,7 +35,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<MaxLodExtractorFactory>::default(),
         Box::<AttributeFlattenerFactory>::default(),
         Box::<BuildingInstallationGeometryTypeCheckerFactory>::default(),
-        Box::new(BuildingPartConnectivityCheckerFactory::new(&PLATEAU4)),
+        Box::new(TransitiveLinkResolverFactory::new(&PLATEAU4)),
         Box::new(BuildingUsageAttributeValidatorFactory::new(
             &PLATEAU4,
             &Plateau4BuildingUsageStrategy,

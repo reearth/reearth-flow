@@ -4788,7 +4788,6 @@ dependencies = [
  "nutype",
  "object_store",
  "once_cell",
- "parking_lot",
  "petgraph 0.8.3",
  "proj",
  "quick-xml 0.37.5",

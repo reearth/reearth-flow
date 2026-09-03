@@ -9677,76 +9677,6 @@
       "tags": []
     },
     {
-      "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "type": "processor",
-      "description": "Vérifie la connectivité entre les BuildingParts au sein du même bâtiment par la correspondance des surfaces limites 3D",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BuildingPartConnectivityChecker Parameters",
-        "description": "Configure how to check connectivity between BuildingParts",
-        "type": "object",
-        "properties": {
-          "buildingIdAttribute": {
-            "title": "Building ID Attribute",
-            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
-            "default": "gmlId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "partIdAttribute": {
-            "title": "Part ID Attribute",
-            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-            "default": "featureId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "lodAttribute": {
-            "title": "LOD Attribute",
-            "description": "Attribute containing the Level of Detail (default: \"lod\")",
-            "default": "lod",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "fileIndexAttribute": {
-            "title": "File Index Attribute",
-            "description": "Attribute containing the file index (default: \"fileIndex\")",
-            "default": "fileIndex",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": false,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature",
-        "PLATEAU"
-      ],
-      "tags": []
-    },
-    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "Valide les attributs d'utilisation des bâtiments en vérifiant la présence des attributs requis et l'exactitude des codes de ville. Les erreurs sont émises via les ports lBldgError et codeError.",
@@ -10797,6 +10727,68 @@
       "tags": []
     },
     {
+      "name": "PLATEAU4.TransitiveLinkResolver",
+      "type": "processor",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransitiveLinkResolver Parameters",
+        "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+        "type": "object",
+        "required": [
+          "idAttribute",
+          "linkedIdsAttribute"
+        ],
+        "properties": {
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "linkedIdsAttribute": {
+            "title": "Linked IDs Attribute",
+            "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "type": "processor",
       "description": "Détecte les surfaces non référencées dans les modèles de transport PLATEAU (L-TRAN-03)",
@@ -10977,76 +10969,6 @@
         "unshared"
       ],
       "categories": [
-        "PLATEAU"
-      ],
-      "tags": []
-    },
-    {
-      "name": "PLATEAU6.BuildingPartConnectivityChecker",
-      "type": "processor",
-      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BuildingPartConnectivityChecker Parameters",
-        "description": "Configure how to check connectivity between BuildingParts",
-        "type": "object",
-        "properties": {
-          "buildingIdAttribute": {
-            "title": "Building ID Attribute",
-            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
-            "default": "gmlId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "partIdAttribute": {
-            "title": "Part ID Attribute",
-            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-            "default": "featureId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "lodAttribute": {
-            "title": "LOD Attribute",
-            "description": "Attribute containing the Level of Detail (default: \"lod\")",
-            "default": "lod",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "fileIndexAttribute": {
-            "title": "File Index Attribute",
-            "description": "Attribute containing the file index (default: \"fileIndex\")",
-            "default": "fileIndex",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": false,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature",
         "PLATEAU"
       ],
       "tags": []
@@ -11321,6 +11243,68 @@
       "outputPorts": [
         "A",
         "B"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.TransitiveLinkResolver",
+      "type": "processor",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransitiveLinkResolver Parameters",
+        "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+        "type": "object",
+        "required": [
+          "idAttribute",
+          "linkedIdsAttribute"
+        ],
+        "properties": {
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "linkedIdsAttribute": {
+            "title": "Linked IDs Attribute",
+            "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
       ],
       "categories": [
         "PLATEAU"
