@@ -9392,75 +9392,6 @@ Checks BuildingInstallation's geometry type
 ### Category
 * PLATEAU
 
-## PLATEAU4.BuildingPartConnectivityChecker
-### Type
-* processor
-### Description
-Check connectivity between BuildingParts within the same Building using 3D boundary surface matching
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BuildingPartConnectivityChecker Parameters",
-  "description": "Configure how to check connectivity between BuildingParts",
-  "type": "object",
-  "properties": {
-    "buildingIdAttribute": {
-      "title": "Building ID Attribute",
-      "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
-      "default": "gmlId",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "partIdAttribute": {
-      "title": "Part ID Attribute",
-      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-      "default": "featureId",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "lodAttribute": {
-      "title": "LOD Attribute",
-      "description": "Attribute containing the Level of Detail (default: \"lod\")",
-      "default": "lod",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "fileIndexAttribute": {
-      "title": "File Index Attribute",
-      "description": "Attribute containing the file index (default: \"fileIndex\")",
-      "default": "fileIndex",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-### Category
-* Feature
-* PLATEAU
-
 ## PLATEAU4.BuildingUsageAttributeValidator
 ### Type
 * processor
@@ -10494,6 +10425,67 @@ Creates pairs of features from Area On Area Overlayer output for solid intersect
 ### Category
 * PLATEAU
 
+## PLATEAU4.TransitiveLinkResolver
+### Type
+* processor
+### Description
+Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransitiveLinkResolver Parameters",
+  "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+  "type": "object",
+  "required": [
+    "idAttribute",
+    "linkedIdsAttribute"
+  ],
+  "properties": {
+    "idAttribute": {
+      "title": "ID Attribute",
+      "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "linkedIdsAttribute": {
+      "title": "Linked IDs Attribute",
+      "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* PLATEAU
+
 ## PLATEAU4.TransportationXlinkDetector
 ### Type
 * processor
@@ -10671,75 +10663,6 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Output Ports
 * unshared
 ### Category
-* PLATEAU
-
-## PLATEAU6.BuildingPartConnectivityChecker
-### Type
-* processor
-### Description
-Check connectivity between BuildingParts within the same Building using 3D boundary surface matching
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BuildingPartConnectivityChecker Parameters",
-  "description": "Configure how to check connectivity between BuildingParts",
-  "type": "object",
-  "properties": {
-    "buildingIdAttribute": {
-      "title": "Building ID Attribute",
-      "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
-      "default": "gmlId",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "partIdAttribute": {
-      "title": "Part ID Attribute",
-      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-      "default": "featureId",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "lodAttribute": {
-      "title": "LOD Attribute",
-      "description": "Attribute containing the Level of Detail (default: \"lod\")",
-      "default": "lod",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "fileIndexAttribute": {
-      "title": "File Index Attribute",
-      "description": "Attribute containing the file index (default: \"fileIndex\")",
-      "default": "fileIndex",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-### Category
-* Feature
 * PLATEAU
 
 ## PLATEAU6.BuildingUsageAttributeValidator
@@ -11009,6 +10932,67 @@ Creates pairs of features from Area On Area Overlayer output for solid intersect
 ### Output Ports
 * A
 * B
+### Category
+* PLATEAU
+
+## PLATEAU6.TransitiveLinkResolver
+### Type
+* processor
+### Description
+Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransitiveLinkResolver Parameters",
+  "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+  "type": "object",
+  "required": [
+    "idAttribute",
+    "linkedIdsAttribute"
+  ],
+  "properties": {
+    "idAttribute": {
+      "title": "ID Attribute",
+      "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "linkedIdsAttribute": {
+      "title": "Linked IDs Attribute",
+      "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
 ### Category
 * PLATEAU
 

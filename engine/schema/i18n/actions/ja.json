@@ -2829,32 +2829,6 @@
       "description": "BuildingInstallationのジオメトリタイプを確認する"
     },
     {
-      "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker パラメータ",
-          "description": "BuildingPart 間の接続性チェック方法を設定する"
-        },
-        "buildingIdAttribute": {
-          "title": "建物 ID 属性",
-          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
-        },
-        "fileIndexAttribute": {
-          "title": "ファイルインデックス属性",
-          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
-        },
-        "lodAttribute": {
-          "title": "LOD 属性",
-          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
-        },
-        "partIdAttribute": {
-          "title": "パーツ ID 属性",
-          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
-        }
-      }
-    },
-    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "description": "必須属性の存在と都市コードの正確性を確認して建物用途属性を検証する。問題が見つかった場合はlBldgErrorおよびcodeErrorポートからエラーを出力する。",
       "parameterI18n": {
@@ -3100,6 +3074,27 @@
       }
     },
     {
+      "name": "PLATEAU4.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+        }
+      }
+    },
+    {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "description": "PLATEAU交通モデルの未参照サーフェスを検出する（L-TRAN-03）",
       "parameterI18n": {
@@ -3139,32 +3134,6 @@
         },
         "tolerance": {
           "description": "エッジ照合の許容誤差（メートル）（デフォルト: 0.1）。この距離内のエッジは同一エッジとみなされる。"
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.BuildingPartConnectivityChecker",
-      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker パラメータ",
-          "description": "BuildingPart 間の接続性チェック方法を設定する"
-        },
-        "buildingIdAttribute": {
-          "title": "建物 ID 属性",
-          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
-        },
-        "fileIndexAttribute": {
-          "title": "ファイルインデックス属性",
-          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
-        },
-        "lodAttribute": {
-          "title": "LOD 属性",
-          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
-        },
-        "partIdAttribute": {
-          "title": "パーツ ID 属性",
-          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
         }
       }
     },
@@ -3250,6 +3219,27 @@
         },
         "pairIdAttribute": {
           "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
         }
       }
     },

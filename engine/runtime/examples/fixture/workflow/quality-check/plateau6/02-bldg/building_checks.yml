@@ -1100,8 +1100,9 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_invalid_building_id_format", 0)
-        # TODO: wire to the L-bldg-02 BuildingPart-connectivity pipeline once
-        # BuildingPartConnectivityChecker supports this geometry model.
+        # TODO: wire to the L-bldg-02 BuildingPart-connectivity pipeline once an
+        # upstream action can record, per BuildingPart, the gml:ids it shares a
+        # boundary polygon with.
         - attribute: "L-bldg-02 エラー"
           expr:
             type: flowExpr
@@ -2989,8 +2990,11 @@ nodes:
     type: subGraph
     subGraphId: b1000000-0000-4000-8000-000000000000
 
-  # TODO: add the L-bldg-02 check (LOD2/LOD3 BuildingPart connectivity) once
-  # BuildingPartConnectivityChecker supports this geometry model.
+  # TODO: add the L-bldg-02 check (LOD2/LOD3 BuildingPart connectivity) once an
+  # upstream action can pair up near-identical polygons and record, per
+  # BuildingPart, the gml:ids it shares a boundary polygon with.
+  # PLATEAU6.TransitiveLinkResolver consumes that link list and reads no
+  # geometry itself, so it is the producer that is still missing.
   # TODO: add the destination mesh code check (図郭不正) once
   # DestinationMeshCodeExtractor supports this geometry model.
 

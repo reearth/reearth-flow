@@ -1,4 +1,3 @@
-pub(crate) mod building_part_connectivity_checker;
 pub(crate) mod building_usage_attribute_validator;
 pub(crate) mod destination_mesh_code_extractor;
 pub(crate) mod domain_of_definition_validator;
@@ -7,6 +6,7 @@ pub(crate) mod missing_attribute_detector;
 pub(crate) mod object_list_extractor;
 mod profile;
 pub(crate) mod solid_intersection_test_pair_creator;
+pub(crate) mod transitive_link_resolver;
 pub(crate) mod transportation_xlink_detector;
 pub(crate) mod udx_folder_extractor;
 pub(crate) mod unmatched_xlink_detector;

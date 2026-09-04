@@ -2829,32 +2829,6 @@
       "description": "Vérifie le type de géométrie de BuildingInstallation"
     },
     {
-      "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "description": "Vérifie la connectivité entre les BuildingParts au sein du même bâtiment par la correspondance des surfaces limites 3D",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker Parameters",
-          "description": "Configure how to check connectivity between BuildingParts"
-        },
-        "buildingIdAttribute": {
-          "title": "Building ID Attribute",
-          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
-        },
-        "fileIndexAttribute": {
-          "title": "File Index Attribute",
-          "description": "Attribute containing the file index (default: \"fileIndex\")"
-        },
-        "lodAttribute": {
-          "title": "LOD Attribute",
-          "description": "Attribute containing the Level of Detail (default: \"lod\")"
-        },
-        "partIdAttribute": {
-          "title": "Part ID Attribute",
-          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
-        }
-      }
-    },
-    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "description": "Valide les attributs d'utilisation des bâtiments en vérifiant la présence des attributs requis et l'exactitude des codes de ville. Les erreurs sont émises via les ports lBldgError et codeError.",
       "parameterI18n": {
@@ -3100,6 +3074,27 @@
       }
     },
     {
+      "name": "PLATEAU4.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+        }
+      }
+    },
+    {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "description": "Détecte les surfaces non référencées dans les modèles de transport PLATEAU (L-TRAN-03)",
       "parameterI18n": {
@@ -3139,31 +3134,6 @@
         },
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.BuildingPartConnectivityChecker",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker Parameters",
-          "description": "Configure how to check connectivity between BuildingParts"
-        },
-        "buildingIdAttribute": {
-          "title": "Building ID Attribute",
-          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
-        },
-        "fileIndexAttribute": {
-          "title": "File Index Attribute",
-          "description": "Attribute containing the file index (default: \"fileIndex\")"
-        },
-        "lodAttribute": {
-          "title": "LOD Attribute",
-          "description": "Attribute containing the Level of Detail (default: \"lod\")"
-        },
-        "partIdAttribute": {
-          "title": "Part ID Attribute",
-          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
         }
       }
     },
@@ -3246,6 +3216,27 @@
         },
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
         }
       }
     },
