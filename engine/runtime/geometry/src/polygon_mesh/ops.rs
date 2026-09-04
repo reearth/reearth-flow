@@ -798,6 +798,45 @@ impl PolygonMesh3DData {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for PolygonMesh2D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        use crate::predicates::equal::surface_curves_2d;
+
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        Ok(surface_curves_2d(self)?.within(&surface_curves_2d(rhs)?, tolerance.distance))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for PolygonMesh3D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        use crate::ops::triangulation::Cache;
+        use crate::predicates::equal::facet_curves;
+        use crate::predicates::view3d::TriangleSet;
+
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        let mut cache = Cache::new();
+        let ours = facet_curves(
+            &TriangleSet::from_polygon_mesh_data(self.data(), &mut cache),
+            tolerance.coplanarity,
+        );
+        let theirs = facet_curves(
+            &TriangleSet::from_polygon_mesh_data(rhs.data(), &mut cache),
+            tolerance.coplanarity,
+        );
+        Ok(ours.within(&theirs, tolerance.distance))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

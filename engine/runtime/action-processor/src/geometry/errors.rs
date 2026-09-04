@@ -129,6 +129,10 @@ pub(super) enum GeometryProcessorError {
     BoundsExtractorFactory(String),
     #[error("BoundsExtractor error: {0}")]
     BoundsExtractor(String),
+    #[error("GeometryIdentifier Factory error: {0}")]
+    GeometryIdentifierFactory(String),
+    #[error("GeometryIdentifier error: {0}")]
+    GeometryIdentifier(String),
     #[error("GeometryPartExtractor Factory error: {0}")]
     GeometryPartExtractorFactory(String),
     #[error("GeometryPartExtractor error: {0}")]

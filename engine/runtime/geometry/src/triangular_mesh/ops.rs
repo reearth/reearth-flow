@@ -563,6 +563,171 @@ impl TriangularMesh3DData {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for TriangularMesh2D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        // 2D is the one case where every shared edge may be cancelled: the mesh
+        // lies in a single plane, so its region is recoverable from its outline
+        // and no crease can hide inside it.
+        use crate::predicates::equal::surface_curves_2d;
+
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        Ok(surface_curves_2d(self)?.within(&surface_curves_2d(rhs)?, tolerance.distance))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for TriangularMesh3D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        use crate::predicates::equal::facet_curves;
+        use crate::predicates::view3d::TriangleSet;
+
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        let ours = facet_curves(
+            &TriangleSet::from_triangular_data(self.data()),
+            tolerance.coplanarity,
+        );
+        let theirs = facet_curves(
+            &TriangleSet::from_triangular_data(rhs.data()),
+            tolerance.coplanarity,
+        );
+        Ok(ours.within(&theirs, tolerance.distance))
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod equal_tests {
+    use super::*;
+    use crate::predicates::{Equal, Tolerance};
+
+    fn tolerance() -> Tolerance {
+        Tolerance {
+            distance: 1e-9,
+            coplanarity: 1e-6,
+        }
+    }
+
+    fn mesh(vertices: Vec<[f64; 3]>, indices: Vec<u32>) -> TriangularMesh3D {
+        TriangularMesh3D::from_parts(CoordinateFrame::Euclidean, vertices, indices).unwrap()
+    }
+
+    /// The unit square in `z = 0`, corners counter-clockwise from the origin.
+    fn square() -> Vec<[f64; 3]> {
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ]
+    }
+
+    /// The eight corners of the unit cube.
+    fn cube_corners() -> Vec<[f64; 3]> {
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [0.0, 1.0, 1.0],
+        ]
+    }
+
+    const CUBE_FACES: [[u32; 4]; 6] = [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [0, 1, 5, 4],
+        [1, 2, 6, 5],
+        [2, 3, 7, 6],
+        [3, 0, 4, 7],
+    ];
+
+    /// Cut each quad along one diagonal (`flip == false`) or the other.
+    fn cube(flip: bool) -> TriangularMesh3D {
+        let mut indices = Vec::new();
+        for [a, b, c, d] in CUBE_FACES {
+            if flip {
+                indices.extend([a, b, d, b, c, d]);
+            } else {
+                indices.extend([a, b, c, a, c, d]);
+            }
+        }
+        mesh(cube_corners(), indices)
+    }
+
+    #[test]
+    fn two_triangulations_of_one_square_are_equal() {
+        let across = mesh(square(), vec![0, 1, 2, 0, 2, 3]);
+        let the_other_way = mesh(square(), vec![0, 1, 3, 1, 2, 3]);
+
+        assert!(across.equal(&the_other_way, tolerance()).unwrap());
+        assert!(the_other_way.equal(&across, tolerance()).unwrap());
+    }
+
+    #[test]
+    fn an_interior_vertex_added_to_a_flat_region_changes_nothing() {
+        let across = mesh(square(), vec![0, 1, 2, 0, 2, 3]);
+        let mut fanned = square();
+        fanned.push([0.5, 0.5, 0.0]);
+        let fan = mesh(fanned, vec![0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4]);
+
+        assert!(across.equal(&fan, tolerance()).unwrap());
+    }
+
+    #[test]
+    fn two_triangulations_of_one_closed_cube_are_equal() {
+        // The case that rules out cancelling every shared edge: a closed shell
+        // has no edge with only one triangle on it, so that rule would reduce
+        // both of these to nothing and call every closed body equal.
+        assert!(cube(false).equal(&cube(true), tolerance()).unwrap());
+    }
+
+    #[test]
+    fn a_closed_shell_does_not_reduce_to_nothing() {
+        // A cube is not the same shape as a flat square, and would be if both
+        // came out empty.
+        let flat = mesh(square(), vec![0, 1, 2, 0, 2, 3]);
+        assert!(!cube(false).equal(&flat, tolerance()).unwrap());
+    }
+
+    #[test]
+    fn a_tent_is_not_equal_to_the_square_it_stands_on() {
+        // Same boundary loop, different surface: the creases are what tell them
+        // apart, so they have to survive the merging.
+        let flat = mesh(square(), vec![0, 1, 2, 0, 2, 3]);
+        let mut pitched = square();
+        pitched.push([0.5, 0.5, 0.5]);
+        let tent = mesh(pitched, vec![0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4]);
+
+        assert!(!flat.equal(&tent, tolerance()).unwrap());
+    }
+
+    #[test]
+    fn a_cube_is_not_equal_to_one_of_another_size() {
+        let bigger = cube_corners()
+            .into_iter()
+            .map(|[x, y, z]| [x * 2.0, y, z])
+            .collect::<Vec<_>>();
+        let mut indices = Vec::new();
+        for [a, b, c, d] in CUBE_FACES {
+            indices.extend([a, b, c, a, c, d]);
+        }
+        assert!(!cube(false)
+            .equal(&mesh(bigger, indices), tolerance())
+            .unwrap());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

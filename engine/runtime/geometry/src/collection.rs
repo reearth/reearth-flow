@@ -164,6 +164,44 @@ impl BoundingBox for Collection2D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for Collection2D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        use crate::predicates::equal::single_of_members_2d;
+        match (
+            single_of_members_2d(self.members())?,
+            single_of_members_2d(rhs.members())?,
+        ) {
+            (None, None) => Ok(true),
+            (Some(a), Some(b)) => crate::predicates::Equal::equal(a, b, tolerance),
+            _ => Ok(false),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for Collection3D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        use crate::predicates::equal::single_of_members_3d;
+        match (
+            single_of_members_3d(self.members())?,
+            single_of_members_3d(rhs.members())?,
+        ) {
+            (None, None) => Ok(true),
+            (Some(a), Some(b)) => crate::predicates::Equal::equal(a, b, tolerance),
+            _ => Ok(false),
+        }
+    }
+}
+
 impl BoundingBox for Collection3D {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
         union_results(self.members.iter().map(|m| m.bounding_box())).ok_or(UnsupportedOperation {
