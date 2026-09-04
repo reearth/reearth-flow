@@ -108,7 +108,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
       - name: Install
-        run: yarn install
+        run: yarn install --immutable
       - uses: reearth/actions/license-checker/npm@ecb4231198dc0992c3f69c333ee9748ec50ee8a4
         with:
           subdirectory: ui

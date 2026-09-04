@@ -42,7 +42,7 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=8192"
         run: |
           cd ui
-          yarn install
+          yarn install --immutable
           yarn build
           tar -zcvf flow-ui.tar.gz dist
           mv flow-ui.tar.gz flow-ui_${{ inputs.name }}.tar.gz
