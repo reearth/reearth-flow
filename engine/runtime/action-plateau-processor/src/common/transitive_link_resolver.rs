@@ -206,7 +206,9 @@ pub struct TransitiveLinkResolver {
     parts: Vec<BufferedPart>,
     /// Group key -> indices into `parts`, each in arrival order. The key holds one
     /// entry per `group_by` attribute, `None` where the feature carries none.
-    groups: HashMap<Vec<Option<String>>, Vec<usize>>,
+    /// Values are kept as read: rendering them as text would put a string and
+    /// the number it spells in the same scope.
+    groups: HashMap<Vec<Option<AttributeValue>>, Vec<usize>>,
 }
 
 impl Processor for TransitiveLinkResolver {
@@ -260,12 +262,7 @@ impl Processor for TransitiveLinkResolver {
             .as_deref()
             .unwrap_or_default()
             .iter()
-            .map(|attribute| {
-                feature
-                    .attributes
-                    .get(attribute)
-                    .map(|value| value.to_string())
-            })
+            .map(|attribute| feature.attributes.get(attribute).cloned())
             .collect::<Vec<_>>();
 
         let index = self.parts.len();
