@@ -5978,6 +5978,87 @@
       "tags": []
     },
     {
+      "name": "Geometry Identifier",
+      "type": "processor",
+      "description": "Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance. Optionally records on each feature the identifiers the other features sharing its geometry carry.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Identifier Parameters",
+        "description": "How close two geometries must stay to count as one shape, which features are compared against which, and where the results are written.",
+        "type": "object",
+        "required": [
+          "tolerance"
+        ],
+        "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Greatest distance, in the units the coordinates are expressed in, that two geometries may stray from one another and still count as the same shape. Zero admits only geometries whose coordinates coincide exactly, which leaves no room for rounding; prefer a small positive distance.",
+            "type": "number",
+            "format": "double"
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the set a geometry is compared against, such as a parent feature or a source file. Geometries in different groups are never identified with one another. When omitted, all input features form a single group.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute the identifier is written to, as a zero-based index counted within the group.",
+            "default": "_equivalence_id",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature itself. When set, the values the other features sharing a geometry carry for it are collected into the matched IDs attribute.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matchedIdsAttribute": {
+            "title": "Matched IDs Attribute",
+            "description": "Attribute the identifiers collected from the other features sharing a geometry are written to, as an array. Has no effect unless the ID attribute is set.",
+            "default": "_matched_ids",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "Geometry Part Extractor",
       "type": "processor",
       "description": "将3D几何体中的几何部件（面）提取为单独的要素",

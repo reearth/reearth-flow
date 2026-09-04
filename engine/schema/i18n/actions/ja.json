@@ -1830,6 +1830,35 @@
       }
     },
     {
+      "name": "Geometry Identifier",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Identifier Parameters",
+          "description": "How close two geometries must stay to count as one shape, which features are compared against which, and where the results are written."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the set a geometry is compared against, such as a parent feature or a source file. Geometries in different groups are never identified with one another. When omitted, all input features form a single group."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature itself. When set, the values the other features sharing a geometry carry for it are collected into the matched IDs attribute."
+        },
+        "matchedIdsAttribute": {
+          "title": "Matched IDs Attribute",
+          "description": "Attribute the identifiers collected from the other features sharing a geometry are written to, as an array. Has no effect unless the ID attribute is set."
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Attribute the identifier is written to, as a zero-based index counted within the group."
+        },
+        "tolerance": {
+          "title": "Tolerance",
+          "description": "Greatest distance, in the units the coordinates are expressed in, that two geometries may stray from one another and still count as the same shape. Zero admits only geometries whose coordinates coincide exactly, which leaves no room for rounding; prefer a small positive distance."
+        }
+      }
+    },
+    {
       "name": "Geometry Part Extractor",
       "description": "ジオメトリの各サーフェスを抽出し、個別の地物として出力する",
       "parameterI18n": {
