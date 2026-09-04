@@ -204,8 +204,9 @@ pub struct TransitiveLinkResolver {
     params: TransitiveLinkResolverParam,
     /// Buffered parts in arrival order; the output preserves that order.
     parts: Vec<BufferedPart>,
-    /// Group key -> indices into `parts`, each in arrival order.
-    groups: HashMap<String, Vec<usize>>,
+    /// Group key -> indices into `parts`, each in arrival order. The key holds one
+    /// entry per `group_by` attribute, `None` where the feature carries none.
+    groups: HashMap<Vec<Option<String>>, Vec<usize>>,
 }
 
 impl Processor for TransitiveLinkResolver {
@@ -264,10 +265,8 @@ impl Processor for TransitiveLinkResolver {
                     .attributes
                     .get(attribute)
                     .map(|value| value.to_string())
-                    .unwrap_or_default()
             })
-            .collect::<Vec<_>>()
-            .join("|");
+            .collect::<Vec<_>>();
 
         let index = self.parts.len();
         self.parts.push(BufferedPart {
