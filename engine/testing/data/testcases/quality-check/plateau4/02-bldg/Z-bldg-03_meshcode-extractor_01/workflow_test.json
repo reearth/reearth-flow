@@ -1,6 +1,5 @@
 {
   "description": "Test PLATEAU4.DestinationMeshCodeExtractor",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -49,5 +48,5 @@
       ]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": true
 }

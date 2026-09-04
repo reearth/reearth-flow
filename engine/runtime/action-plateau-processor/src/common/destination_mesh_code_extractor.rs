@@ -1,11 +1,24 @@
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{
     area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
 };
-use reearth_flow_geometry::types::{
-    coordinate::Coordinate2D, geometry::Geometry2D, polygon::Polygon2D, rect::Rect2D,
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::{geometry::Geometry2D, polygon::Polygon2D};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{
+    collection::Collection2D,
+    coordinate::{CoordinateFrame, EpsgCode},
+    line_string::LineString2D,
+    ops::{reproject::transform_coords_3d, Aabb, BoundingBox, ReprojectionCache},
+    overlay::{overlay_2d, OverlayOp},
+    polygon::Polygon2D,
+    predicates::view::{flatten_2d, Leaf2D},
+    Euclidean2DGeometry, Geometry,
 };
+// The mesh grid is still described with the pre-migration rectangle types.
+use reearth_flow_geometry::types::{coordinate::Coordinate2D, rect::Rect2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -15,9 +28,9 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
-use reearth_flow_types::{
-    Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature, GeometryValue,
-};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -30,6 +43,7 @@ use super::PlateauProfile;
 // Stores both forward (6697 -> target) and inverse (target -> 6697) projections.
 // Each thread maintains its own cache to ensure thread-safety without requiring
 // unsafe Send/Sync implementations on types containing proj::Proj.
+#[cfg(not(feature = "new-geometry"))]
 thread_local! {
     // Cache for forward projections: 6697 -> target EPSG
     static PROJ_TO_CACHE: RefCell<HashMap<String, proj::Proj>> = RefCell::new(HashMap::new());
@@ -173,6 +187,7 @@ pub struct DestinationMeshCodeExtractor {
     epsg_code_ast: CompiledCode,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 /// Helper function to ensure proj instances exist in thread-local cache for the given EPSG code.
 fn ensure_proj_cached(epsg_code: &str) -> Result<(), BoxedError> {
     use std::collections::hash_map::Entry;
@@ -241,29 +256,7 @@ impl Processor for DestinationMeshCodeExtractor {
                     return Ok(());
                 };
 
-                let mut new_feature = feature.clone();
-                new_feature.attributes_mut().insert(
-                    Attribute::new(&self.meshcode_attr),
-                    AttributeValue::String(mesh_result.selected_mesh.to_number().to_string()),
-                );
-                new_feature.attributes_mut().insert(
-                    Attribute::new("_mesh_count"),
-                    AttributeValue::Number(Number::from(mesh_result.mesh_count)),
-                );
-                new_feature.attributes_mut().insert(
-                    Attribute::new("__area"),
-                    AttributeValue::Number(
-                        Number::from_f64(mesh_result.max_area).unwrap_or(Number::from(0)),
-                    ),
-                );
-                new_feature.attributes_mut().insert(
-                    Attribute::new("_meshcode_to_area"),
-                    AttributeValue::String(
-                        serde_json::to_string(&mesh_result.meshcode_to_area)
-                            .unwrap_or(String::new()),
-                    ),
-                );
-
+                let new_feature = self.with_mesh_attributes(feature, &mesh_result);
                 fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             _ => {
@@ -273,7 +266,57 @@ impl Processor for DestinationMeshCodeExtractor {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let feature = &ctx.feature;
+        let epsg_code = self.evaluate_epsg_code(feature, ctx.variables.clone())?;
+        let epsg = epsg_code
+            .trim()
+            .parse::<u16>()
+            .map(EpsgCode::new)
+            .map_err(|e| {
+                PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                    "epsg_code expression ({epsg_code}) is not an EPSG code: {e}"
+                ))
+            })?;
+
+        // The footprint must already be a flat areal geometry in `epsg`: this
+        // action measures intersection areas in that projected space and never
+        // reprojects the feature itself.
+        let mesh_result = match feature.geometry.as_ref() {
+            Geometry::Euclidean2D(geometry) => {
+                match areal_operand(geometry, &CoordinateFrame::Crs(epsg)) {
+                    Some(area) => self.calculate_mesh(&area, epsg),
+                    None => Ok(None),
+                }
+            }
+            _ => Ok(None),
+        };
+        let mesh_result = match mesh_result {
+            Ok(Some(result)) => result,
+            Ok(None) => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            }
+            Err(e) => {
+                ctx.event_hub.warn_log(
+                    Some(ctx.error_span()),
+                    format!("mesh code extraction failed: {e}"),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            }
+        };
+
+        let new_feature = self.with_mesh_attributes(feature, &mesh_result);
+        fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -328,6 +371,36 @@ impl DestinationMeshCodeExtractor {
         }
     }
 
+    /// A copy of the feature carrying the mesh result: the chosen mesh code,
+    /// how many meshes it spans, the area inside the chosen one, and the full
+    /// mesh-to-area mapping as JSON.
+    fn with_mesh_attributes(&self, feature: &Feature, result: &MeshCalculationResult) -> Feature {
+        let mut feature = feature.clone();
+        let attributes = feature.attributes_mut();
+        attributes.insert(
+            Attribute::new(&self.meshcode_attr),
+            AttributeValue::String(result.selected_mesh.to_number().to_string()),
+        );
+        attributes.insert(
+            Attribute::new("_mesh_count"),
+            AttributeValue::Number(Number::from(result.mesh_count)),
+        );
+        attributes.insert(
+            Attribute::new("__area"),
+            AttributeValue::Number(Number::from_f64(result.max_area).unwrap_or(Number::from(0))),
+        );
+        attributes.insert(
+            Attribute::new("_meshcode_to_area"),
+            AttributeValue::String(
+                serde_json::to_string(&result.meshcode_to_area).unwrap_or_default(),
+            ),
+        );
+        feature
+    }
+}
+
+#[cfg(not(feature = "new-geometry"))]
+impl DestinationMeshCodeExtractor {
     /// Calculate mesh code with detailed information for all required attributes
     /// Returns comprehensive mesh calculation result including count, areas, and mapping
     /// Uses thread-local cached proj instances for coordinate transformations
@@ -564,7 +637,229 @@ impl DestinationMeshCodeExtractor {
     }
 }
 
-#[cfg(test)]
+/// The geographic CRS the Japanese mesh grid is described in: the 2D horizontal
+/// counterpart of EPSG:6697, sharing its datum and its `[latitude, longitude]`
+/// axis order. [`JPMeshCode`], in contrast, works in `(x = longitude,
+/// y = latitude)`, so coordinates are swapped at every crossing between them.
+#[cfg(feature = "new-geometry")]
+const GEOGRAPHIC_EPSG: EpsgCode = EpsgCode::new(6668);
+
+/// How many pieces each edge of a mesh cell is cut into before it is projected.
+#[cfg(feature = "new-geometry")]
+const SEGMENTS_PER_EDGE: usize = 16;
+
+#[cfg(feature = "new-geometry")]
+thread_local! {
+    /// The live PROJ transforms, kept off the `Processor` (which must be
+    /// `Send + Sync + Clone`) because they wrap non-shareable PROJ pointers.
+    /// One per direction: a cache holds a single `(from, to)` pair, so sharing
+    /// one between the two directions would rebuild the transform every call.
+    static TO_GEOGRAPHIC: RefCell<ReprojectionCache> = RefCell::new(ReprojectionCache::new());
+    static FROM_GEOGRAPHIC: RefCell<ReprojectionCache> = RefCell::new(ReprojectionCache::new());
+}
+
+#[cfg(feature = "new-geometry")]
+impl DestinationMeshCodeExtractor {
+    /// The mesh the footprint belongs to, together with the per-mesh
+    /// intersection areas behind that choice. `None` when it meets no mesh.
+    ///
+    /// Areas are measured in `epsg`, the projected CRS the footprint is already
+    /// expressed in, so they come out in square metres.
+    fn calculate_mesh(
+        &self,
+        area: &Euclidean2DGeometry,
+        epsg: EpsgCode,
+    ) -> Result<Option<MeshCalculationResult>, BoxedError> {
+        let Ok(Aabb::D2 { min, max }) = area.bounding_box() else {
+            return Ok(None);
+        };
+        let bounds = geographic_bounds(min, max, epsg)?;
+        let frame = CoordinateFrame::Crs(epsg);
+
+        let mut max_area = 0.0f64;
+        let mut selected_mesh: Option<JPMeshCode> = None;
+        let mut selected_number = u64::MAX;
+        let mut meshcode_to_area = Vec::new();
+        let mut mesh_count = 0usize;
+
+        for mesh_code in JPMeshCode::from_inside_bounds(bounds, self.mesh_type) {
+            let mesh = mesh_face(&mesh_code.bounds(), epsg, &frame)?;
+            let mesh = Euclidean2DGeometry::Polygon(Box::new(mesh));
+            let number = mesh_code.to_number();
+            let pieces = overlay_2d(area, &mesh, OverlayOp::Intersection).map_err(|e| {
+                PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                    "Failed to intersect the footprint with mesh {number}: {e}"
+                ))
+            })?;
+            let intersection: f64 = pieces.iter().map(Polygon2D::area).sum();
+            // Two decimal places, as the PLATEAU specification reports them.
+            let area = (intersection * 100.0).round() / 100.0;
+            if area <= 0.0 {
+                continue;
+            }
+
+            mesh_count += 1;
+            meshcode_to_area.push(MeshCodeToArea {
+                mesh_code: number,
+                area,
+            });
+            // The largest area wins; the smaller mesh code breaks a tie.
+            if area > max_area || (area == max_area && number < selected_number) {
+                max_area = area;
+                selected_mesh = Some(mesh_code);
+                selected_number = number;
+            }
+        }
+
+        Ok(selected_mesh.map(|mesh| MeshCalculationResult {
+            selected_mesh: mesh,
+            mesh_count,
+            max_area,
+            meshcode_to_area,
+        }))
+    }
+}
+
+/// The geometry as an areal operand, or `None` when it is not one: an empty
+/// geometry, a leaf outside `frame`, a leaf raised to an elevation, or a leaf
+/// that encloses no area.
+#[cfg(feature = "new-geometry")]
+fn areal_operand(
+    geometry: &Euclidean2DGeometry,
+    frame: &CoordinateFrame,
+) -> Option<Euclidean2DGeometry> {
+    let mut leaves = Vec::new();
+    flatten_2d(geometry, &mut leaves);
+    if leaves.is_empty() {
+        return None;
+    }
+    for leaf in &leaves {
+        if leaf.frame() != frame || leaf_elevation(leaf).is_some() {
+            return None;
+        }
+        match leaf {
+            Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => {}
+            Leaf2D::Line(line) if is_closed_ring(line) => {}
+            _ => return None,
+        }
+    }
+    Some(as_faces(geometry))
+}
+
+/// The elevation the leaf lies at, if it carries one.
+#[cfg(feature = "new-geometry")]
+fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
+    match leaf {
+        Leaf2D::Point(_) => None,
+        Leaf2D::Line(l) => l.elevation(),
+        Leaf2D::Polygon(p) => p.elevation(),
+        Leaf2D::PolygonMesh(m) => m.elevation(),
+        Leaf2D::TriangularMesh(m) => m.elevation(),
+    }
+}
+
+/// Whether the line string traces a ring: closed, and enclosing something.
+#[cfg(feature = "new-geometry")]
+fn is_closed_ring(line: &LineString2D) -> bool {
+    let coords = line.coords();
+    coords.len() >= 4 && coords.first() == coords.last()
+}
+
+/// The geometry with every closed line string replaced by the face it traces,
+/// leaving the other members as they are. Boolean overlay takes areal leaves
+/// only.
+#[cfg(feature = "new-geometry")]
+fn as_faces(geometry: &Euclidean2DGeometry) -> Euclidean2DGeometry {
+    match geometry {
+        Euclidean2DGeometry::LineString(line) => {
+            Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+                line.frame().clone(),
+                line.coords().iter().copied(),
+                Vec::<Vec<[f64; 2]>>::new(),
+            )))
+        }
+        Euclidean2DGeometry::Collection(collection) => Euclidean2DGeometry::Collection(
+            Collection2D::new(collection.members().iter().map(as_faces)),
+        ),
+        other => other.clone(),
+    }
+}
+
+/// A projected bounding box carried back to the mesh grid's geographic space,
+/// as the `(longitude, latitude)` rectangle [`JPMeshCode`] expects.
+#[cfg(feature = "new-geometry")]
+fn geographic_bounds(
+    min: [f64; 2],
+    max: [f64; 2],
+    epsg: EpsgCode,
+) -> Result<Rect2D<f64>, BoxedError> {
+    let mut corners = [[min[0], min[1], 0.0], [max[0], max[1], 0.0]];
+    TO_GEOGRAPHIC
+        .with(|cache| {
+            transform_coords_3d(&mut cache.borrow_mut(), epsg, GEOGRAPHIC_EPSG, &mut corners)
+        })
+        .map_err(|e| {
+            PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                "Failed to transform the footprint bounds from EPSG:{epsg} to EPSG:{GEOGRAPHIC_EPSG}: {e}"
+            ))
+        })?;
+    Ok(Rect2D::new(
+        Coordinate2D::new_(corners[0][1], corners[0][0]),
+        Coordinate2D::new_(corners[1][1], corners[1][0]),
+    ))
+}
+
+/// One mesh cell as a face in `frame`, its edges subdivided before projection.
+///
+/// A cell is bounded by lines of constant latitude and longitude, which curve
+/// under a Transverse Mercator projection. Straight edges between the four
+/// corners would cut into the cell, so intermediate vertices are added while
+/// the ring is still geographic.
+#[cfg(feature = "new-geometry")]
+fn mesh_face(
+    bounds: &Rect2D<f64>,
+    epsg: EpsgCode,
+    frame: &CoordinateFrame,
+) -> Result<Polygon2D, BoxedError> {
+    let (min_lng, min_lat) = (bounds.min().x, bounds.min().y);
+    let (max_lng, max_lat) = (bounds.max().x, bounds.max().y);
+    let step = |i: usize| i as f64 / SEGMENTS_PER_EDGE as f64;
+
+    // South, east, north then west edge: counter-clockwise seen in
+    // (East, North). Vertices are held as [latitude, longitude], the geographic
+    // CRS's declared axis order, ready for the transform.
+    let mut ring = Vec::with_capacity(4 * SEGMENTS_PER_EDGE + 1);
+    for i in 0..SEGMENTS_PER_EDGE {
+        ring.push([min_lat, min_lng + step(i) * (max_lng - min_lng), 0.0]);
+    }
+    for i in 0..SEGMENTS_PER_EDGE {
+        ring.push([min_lat + step(i) * (max_lat - min_lat), max_lng, 0.0]);
+    }
+    for i in 0..SEGMENTS_PER_EDGE {
+        ring.push([max_lat, max_lng - step(i) * (max_lng - min_lng), 0.0]);
+    }
+    for i in 0..SEGMENTS_PER_EDGE {
+        ring.push([max_lat - step(i) * (max_lat - min_lat), min_lng, 0.0]);
+    }
+    ring.push(ring[0]);
+
+    FROM_GEOGRAPHIC
+        .with(|cache| {
+            transform_coords_3d(&mut cache.borrow_mut(), GEOGRAPHIC_EPSG, epsg, &mut ring)
+        })
+        .map_err(|e| {
+            PlateauProcessorError::DestinationMeshCodeExtractor(format!(
+                "Failed to transform a mesh cell from EPSG:{GEOGRAPHIC_EPSG} to EPSG:{epsg}: {e}"
+            ))
+        })?;
+
+    Ok(Polygon2D::from_rings(
+        frame.clone(),
+        ring.iter().map(|c| [c[0], c[1]]),
+        Vec::<Vec<[f64; 2]>>::new(),
+    ))
+}
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use super::*;
 
@@ -605,5 +900,78 @@ mod tests {
             (rounded_area - EXPECTED_AREA).abs() < 0.0001,
             "Calculated area {rounded_area} should be close to expected area 9.1410"
         );
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use super::*;
+
+    /// Real coordinates from the `Z-bldg-03_meshcode-extractor_01` fixture, as
+    /// `(longitude, latitude)`. Its expected CSV row is mesh 54377085 covering
+    /// 9.14 m², a value originally obtained from the original implementation.
+    const FOOTPRINT: [(f64, f64); 5] = [
+        (137.07022204628032, 36.65423985231743),
+        (137.07018801464667, 36.65426289610968),
+        (137.0701714804155, 36.654247021162256),
+        (137.07020551204704, 36.65422397737467),
+        (137.07022204628032, 36.65423985231743),
+    ];
+
+    const PRCS: EpsgCode = EpsgCode::new(6675);
+
+    /// A ring of `(longitude, latitude)` pairs as a footprint projected into
+    /// EPSG:6675, the shape the workflow hands this action.
+    fn footprint_in_prcs(ring: &[(f64, f64)]) -> Euclidean2DGeometry {
+        let mut coords: Vec<[f64; 3]> = ring.iter().map(|&(lng, lat)| [lat, lng, 0.0]).collect();
+        FROM_GEOGRAPHIC
+            .with(|cache| {
+                transform_coords_3d(&mut cache.borrow_mut(), GEOGRAPHIC_EPSG, PRCS, &mut coords)
+            })
+            .expect("projection into EPSG:6675");
+        Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+            CoordinateFrame::Crs(PRCS),
+            coords.iter().map(|c| [c[0], c[1]]),
+            Vec::<Vec<[f64; 2]>>::new(),
+        )))
+    }
+
+    fn extractor() -> DestinationMeshCodeExtractor {
+        DestinationMeshCodeExtractor {
+            mesh_type: JPMeshType::Mesh1km,
+            meshcode_attr: default_meshcode_attr(),
+            epsg_code_ast: default_epsg_code().compile().unwrap(),
+        }
+    }
+
+    #[test]
+    fn coordinates_keep_each_crs_declared_axis_order() {
+        let geometry = footprint_in_prcs(&FOOTPRINT);
+        let Ok(Aabb::D2 { min, max }) = geometry.bounding_box() else {
+            panic!("the footprint has no 2D bounding box");
+        };
+        // EPSG:6675's origin is 36°N 137°10′E, so this footprint sits ~72.6 km
+        // north and ~8.6 km west of it, stored [northing, easting].
+        assert!((min[0] - 72_580.0).abs() < 200.0, "northing was {}", min[0]);
+        assert!((min[1] + 8_620.0).abs() < 200.0, "easting was {}", min[1]);
+
+        // Back in geographic space the rectangle is (longitude, latitude),
+        // which is what JPMeshCode reads.
+        let bounds = geographic_bounds(min, max, PRCS).expect("inverse projection");
+        assert!((bounds.min().x - 137.0701714804155).abs() < 1e-7);
+        assert!((bounds.min().y - 36.65422397737467).abs() < 1e-7);
+    }
+
+    #[test]
+    fn selects_the_mesh_the_footprint_lies_in() {
+        let result = extractor()
+            .calculate_mesh(&footprint_in_prcs(&FOOTPRINT), PRCS)
+            .expect("mesh calculation")
+            .expect("the footprint meets a mesh");
+
+        assert_eq!(result.selected_mesh.to_number(), 54377085);
+        assert_eq!(result.mesh_count, 1);
+        assert_eq!(result.max_area, 9.14);
+        assert_eq!(result.meshcode_to_area.len(), 1);
     }
 }

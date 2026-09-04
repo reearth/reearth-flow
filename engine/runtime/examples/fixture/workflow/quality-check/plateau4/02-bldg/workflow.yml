@@ -562,6 +562,7 @@ graphs:
                 type: flowExpr
                 value: attributes.get("LOD0-1のBuildingPart", 0)
 
+            # 図郭不正 is kept out of totalErrorCount, matching the original implementation.
             - newAttribute: totalErrorCount
               expr:
                 type: flowExpr
@@ -594,7 +595,6 @@ graphs:
                     attributes.get("LOD4 立体の交差", 0),
                     attributes.get("T-bldg-02エラー", 0),
                     attributes.get("LOD0-1のBuildingPart", 0),
-                    attributes.get("図郭不正", 0),
                   ])
 
       # Phase 6: JSON output with converter
@@ -923,6 +923,12 @@ graphs:
         from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
         to: 4712539b-5103-41ee-9359-0333eefb82ef
         fromPort: errorCountLod4SolidIssues
+        toPort: features
+
+      - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: 4712539b-5103-41ee-9359-0333eefb82ef
+        fromPort: errorCountIncorrectMeshcode
         toPort: features
 
       - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d

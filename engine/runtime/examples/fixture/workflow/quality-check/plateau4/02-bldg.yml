@@ -3366,6 +3366,83 @@ graphs:
     action: Output Router
     with:
       routingPort: errorCountLod0SurfaceIntersection
+  - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    name: DestinationMeshCodeExtractor
+    type: action
+    action: PLATEAU4.DestinationMeshCodeExtractor
+    with:
+      meshType: 3
+      epsgCode:
+        type: flowExpr
+        value: variables.get("prcs")
+      meshcodeAttr: meshcode
+  - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    name: MeshCodeTester
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+      - expr:
+          type: flowExpr
+          value: not attributes["gmlFilename"].starts_with(attributes["meshcode"])
+        outputPort: failed
+  - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    name: AttributeMapperIncorrectMeshCode
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+      - attribute: gmlFilename
+        valueAttribute: gmlFilename
+      - attribute: filename
+        valueAttribute: gmlFilename
+      - attribute: feature_type
+        valueAttribute: featureType
+      - attribute: lod
+        valueAttribute: lod
+      - attribute: gml_id
+        valueAttribute: gmlId
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: meshcount
+        valueAttribute: _mesh_count
+      - attribute: mesh2area
+        valueAttribute: _meshcode_to_area
+  - id: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    name: AttributeManagerIncorrectMeshCode
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: gmlFilename
+        method: remove
+  - id: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    name: FeatureWriterIncorrectMeshCode
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
+  - id: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    name: IncorrectMeshCodeCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+      - gmlFilename
+      calculations:
+      - newAttribute: _num_incorrect_meshcode
+        expr:
+          type: flowExpr
+          value: '1'
+  - id: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    name: ErrorCount-IncorrectMeshCode
+    type: action
+    action: Output Router
+    with:
+      routingPort: errorCountIncorrectMeshcode
   - id: 950407af-eec5-49ee-902c-2b41f31150d3
     name: SurfaceChecksLod1
     type: subGraph
@@ -3998,6 +4075,46 @@ graphs:
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: features
     toPort: features
+  - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1cc
+    from: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
+    to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    fromPort: features
+    toPort: features
+  - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f
+    from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    fromPort: features
+    toPort: features
+  - id: 5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b
+    from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    to: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    fromPort: failed
+    toPort: features
+  - id: 6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c
+    from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    fromPort: features
+    toPort: features
+  - id: 66d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    from: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    to: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    fromPort: features
+    toPort: features
+  - id: 7a8b9c0d-1e2f-403b-4c5d-6e7f8a9b0c1d
+    from: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: features
+    toPort: features
+  - id: 88f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    fromPort: features
+    toPort: features
+  - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    from: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    to: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    fromPort: features
+    toPort: features
   - id: 6a4ed27d-58b6-4021-ae4c-d919534e5fb3
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     to: 950407af-eec5-49ee-902c-2b41f31150d3
@@ -4316,6 +4433,9 @@ graphs:
       port: features
     - id: errorCountLod4InvalidSurface
       nodeId: aabacbdc-3ede-4f5a-6b7c-8d9e0f1a2b3c
+      port: features
+    - id: errorCountIncorrectMeshcode
+      nodeId: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
       port: features
     - id: errorCountLod2NotClosedSolid
       nodeId: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
@@ -4843,6 +4963,7 @@ graphs:
         expr:
           type: flowExpr
           value: attributes.get("LOD0-1のBuildingPart", 0)
+      # 図郭不正 is kept out of totalErrorCount, matching the original implementation.
       - newAttribute: totalErrorCount
         expr:
           type: flowExpr
@@ -4875,7 +4996,6 @@ graphs:
               attributes.get("LOD4 立体の交差", 0),
               attributes.get("T-bldg-02エラー", 0),
               attributes.get("LOD0-1のBuildingPart", 0),
-              attributes.get("図郭不正", 0),
             ])
   - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
     name: JSONSummaryWriter
@@ -5166,6 +5286,11 @@ graphs:
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod4SolidIssues
+    toPort: features
+  - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
+    fromPort: errorCountIncorrectMeshcode
     toPort: features
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
