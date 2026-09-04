@@ -5,21 +5,65 @@ import { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
+import {
+  type Diagnostic,
+  compareDiagnosticSeverity,
+  isFatalDiagnostic,
+} from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 
 export default ({ jobId }: { jobId: string }) => {
   const t = useT();
   const { navigate } = useRouter();
 
-  const { useGetJob, useJobCancel } = useJob();
+  const { useGetJob, useGetJobDiagnostics, useJobCancel } = useJob();
 
   const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 
   const { job, refetch } = useGetJob(jobId);
 
-  // Poll for outputURLs after job completes (they are generated asynchronously)
+  const currentStatus = jobStatus ?? job?.status;
+  const isJobActive = currentStatus === "running" || currentStatus === "queued";
+
+  const {
+    diagnostics: jobLevelDiagnostics,
+    isFetching: isFetchingDiagnostics,
+    refetch: refetchDiagnostics,
+  } = useGetJobDiagnostics(jobId, isJobActive);
+
+  // The status subscription carries the status enum and nothing else, so a
+  // status change is only a cue to go re-read the rows that actually hold the
+  // diagnostics. `failedNodes` in particular is persisted at completion, so the
+  // job itself has to be re-read too.
   useEffect(() => {
-    if (jobStatus === "completed" && job && !job.outputURLs) {
+    if (!jobStatus) return;
+    refetch();
+    refetchDiagnostics();
+  }, [jobStatus, refetch, refetchDiagnostics]);
+
+  // The job-level bucket, minus the fatal rows that `failedNodes` already
+  // renders in its own callout: `failedNodes` selects on disposition alone and
+  // ignores nodeId, so a fatal row with no nodeId is in both. Filtering here is
+  // exact, not a dedupe heuristic — failedNodes holds every fatal row.
+  //
+  // The schema exposes no job-wide query, so per-node non-fatal rows remain
+  // unreachable from this page.
+  const diagnostics: Diagnostic[] = useMemo(
+    () =>
+      (jobLevelDiagnostics ?? [])
+        .filter((diagnostic) => !isFatalDiagnostic(diagnostic))
+        .sort(compareDiagnosticSeverity),
+    [jobLevelDiagnostics],
+  );
+
+  // Poll for outputURLs after job completes (they are generated asynchronously),
+  // and for failedNodes after it fails: those are persisted at completion, so
+  // the status event can land before the write does.
+  useEffect(() => {
+    const awaitingOutputURLs = jobStatus === "completed" && !job?.outputURLs;
+    const awaitingFailedNodes = jobStatus === "failed" && !job?.failedNodes;
+
+    if (job && (awaitingOutputURLs || awaitingFailedNodes)) {
       const pollInterval = setInterval(() => {
         refetch();
       }, 3000);
@@ -93,6 +137,17 @@ export default ({ jobId }: { jobId: string }) => {
               value: job.outputURLs || t("N/A"),
               type: job.outputURLs ? "link" : undefined,
             },
+            // Only worth surfacing when something was actually lost: a
+            // non-zero count means the diagnostics below are incomplete.
+            ...(job.droppedEventCount
+              ? [
+                  {
+                    id: "droppedEventCount",
+                    name: t("Dropped Diagnostics"),
+                    value: job.droppedEventCount.toLocaleString(),
+                  },
+                ]
+              : []),
           ]
         : undefined,
     [t, job, jobStatus],
@@ -101,6 +156,8 @@ export default ({ jobId }: { jobId: string }) => {
     job,
     details,
     jobStatus,
+    diagnostics,
+    isFetchingDiagnostics,
     handleCancelJob,
     handleBack,
   };

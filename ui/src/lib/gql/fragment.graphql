@@ -80,6 +80,20 @@ fragment Trigger on Trigger {
   enabled
 }
 
+fragment Diagnostic on Diagnostic {
+  code
+  category
+  severity
+  effectiveDisposition
+  nodeId
+  actionType
+  featureId
+  message
+  help
+  aggregatedCount
+  sampleFeatureIds
+}
+
 fragment Job on Job {
   id
   workspaceId
@@ -89,6 +103,10 @@ fragment Job on Job {
   outputURLs
   userFacingLogsURL
   debug
+  droppedEventCount
+  failedNodes {
+    ...Diagnostic
+  }
   deployment {
     id
     description

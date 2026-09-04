@@ -10,6 +10,7 @@ export * from "./Checkbox";
 export * from "./ContextMenu";
 export * from "./Collapsible";
 export * from "./DataTable";
+export * from "./DiagnosticsTable";
 export * from "./Dialog";
 export * from "./DropdownMenu";
 export * from "./FileTree";
