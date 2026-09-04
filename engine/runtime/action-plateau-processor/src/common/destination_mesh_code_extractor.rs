@@ -10,8 +10,7 @@ use reearth_flow_geometry::types::{geometry::Geometry2D, polygon::Polygon2D};
 use reearth_flow_geometry::{
     collection::Collection2D,
     coordinate::{CoordinateFrame, EpsgCode},
-    line_string::LineString2D,
-    ops::{reproject::transform_coords_3d, Aabb, BoundingBox, ReprojectionCache},
+    ops::{reproject::transform_coords_3d, Aabb, BoundingBox, Elevation, ReprojectionCache},
     overlay::{overlay_2d, OverlayOp},
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
@@ -734,35 +733,16 @@ fn areal_operand(
         return None;
     }
     for leaf in &leaves {
-        if leaf.frame() != frame || leaf_elevation(leaf).is_some() {
+        if leaf.frame() != frame || leaf.elevation().is_some() {
             return None;
         }
         match leaf {
             Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => {}
-            Leaf2D::Line(line) if is_closed_ring(line) => {}
+            Leaf2D::Line(line) if line.is_closed_ring() => {}
             _ => return None,
         }
     }
     Some(as_faces(geometry))
-}
-
-/// The elevation the leaf lies at, if it carries one.
-#[cfg(feature = "new-geometry")]
-fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
-    match leaf {
-        Leaf2D::Point(_) => None,
-        Leaf2D::Line(l) => l.elevation(),
-        Leaf2D::Polygon(p) => p.elevation(),
-        Leaf2D::PolygonMesh(m) => m.elevation(),
-        Leaf2D::TriangularMesh(m) => m.elevation(),
-    }
-}
-
-/// Whether the line string traces a ring: closed, and enclosing something.
-#[cfg(feature = "new-geometry")]
-fn is_closed_ring(line: &LineString2D) -> bool {
-    let coords = line.coords();
-    coords.len() >= 4 && coords.first() == coords.last()
 }
 
 /// The geometry with every closed line string replaced by the face it traces,

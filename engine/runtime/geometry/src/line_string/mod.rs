@@ -62,6 +62,12 @@ impl LineString2D {
     pub fn elevation(&self) -> Option<f64> {
         self.z
     }
+
+    /// Whether the chain traces a ring: closed, and enclosing something.
+    #[inline]
+    pub fn is_closed_ring(&self) -> bool {
+        self.coords.len() >= 4 && self.coords.first() == self.coords.last()
+    }
 }
 
 impl LineString3D {

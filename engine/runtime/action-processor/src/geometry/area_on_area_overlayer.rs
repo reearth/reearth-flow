@@ -38,7 +38,7 @@ use reearth_flow_geometry::{
     collection::Collection2D,
     coordinate::CoordinateFrame,
     line_string::LineString2D,
-    ops::{Aabb, BoundingBox},
+    ops::{Aabb, BoundingBox, Elevation},
     overlay::{overlay_2d, snap_areal_operands_2d, OverlayOp},
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
@@ -696,12 +696,12 @@ fn intake(geometry: &Geometry) -> Option<([f64; 4], &CoordinateFrame)> {
     flatten_2d(geom_2d, &mut leaves);
     let frame = leaves.first()?.frame();
     for leaf in &leaves {
-        if leaf.frame() != frame || leaf_elevation(leaf).is_some() {
+        if leaf.frame() != frame || leaf.elevation().is_some() {
             return None;
         }
         match leaf {
             Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => {}
-            Leaf2D::Line(line) if is_closed_ring(line) => {}
+            Leaf2D::Line(line) if line.is_closed_ring() => {}
             _ => return None,
         }
     }
@@ -709,13 +709,6 @@ fn intake(geometry: &Geometry) -> Option<([f64; 4], &CoordinateFrame)> {
         return None;
     };
     Some(([min[0], min[1], max[0], max[1]], frame))
-}
-
-/// Whether the line string traces a closed ring that can enclose area.
-#[cfg(feature = "new-geometry")]
-fn is_closed_ring(line: &LineString2D) -> bool {
-    let coords = line.coords();
-    coords.len() >= 4 && coords.first() == coords.last()
 }
 
 /// The stored feature `i`'s geometry as a working area, or `None` when it is
@@ -745,7 +738,7 @@ fn read_working_area(disk_feats: &DiskBackedFeatures, i: usize) -> Option<Workin
 #[cfg(feature = "new-geometry")]
 fn normalize_area(geom: &Euclidean2DGeometry) -> Euclidean2DGeometry {
     match geom {
-        Euclidean2DGeometry::LineString(line) if is_closed_ring(line) => {
+        Euclidean2DGeometry::LineString(line) if line.is_closed_ring() => {
             Euclidean2DGeometry::Polygon(Box::new(ring_face(line)))
         }
         Euclidean2DGeometry::Collection(collection) => {
@@ -931,18 +924,6 @@ impl OutputShaper {
     /// Install `area` as `feature`'s geometry.
     fn apply(&mut self, feature: &mut Feature, area: WorkingArea) {
         *feature.geometry_mut() = Geometry::Euclidean2D(area);
-    }
-}
-
-/// The elevation a 2D leaf lies at, or `None` when it is planar.
-#[cfg(feature = "new-geometry")]
-fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
-    match leaf {
-        Leaf2D::Polygon(p) => p.elevation(),
-        Leaf2D::PolygonMesh(m) => m.elevation(),
-        Leaf2D::TriangularMesh(m) => m.elevation(),
-        Leaf2D::Line(l) => l.elevation(),
-        Leaf2D::Point(_) => None,
     }
 }
 
@@ -1690,7 +1671,7 @@ mod tests {
         let mut leaves = Vec::new();
         flatten_2d(geom, &mut leaves);
         assert!(!leaves.is_empty());
-        assert!(leaves.iter().all(|l| leaf_elevation(l).is_none()));
+        assert!(leaves.iter().all(|l| l.elevation().is_none()));
 
         let _ = std::fs::remove_dir_all(&dir);
     }
