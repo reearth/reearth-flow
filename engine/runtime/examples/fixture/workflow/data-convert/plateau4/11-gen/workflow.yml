@@ -13,7 +13,7 @@ with:
     - gen
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
 
   - id: 33692bd1-f0e8-4764-a443-51b5167cfe86
     name: entry_point

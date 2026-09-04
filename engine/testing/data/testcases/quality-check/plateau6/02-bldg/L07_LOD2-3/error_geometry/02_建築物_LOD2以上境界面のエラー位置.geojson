@@ -1,0 +1,53 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14515.481559364549,
+          -146047.13811035294,
+          0.0
+        ]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー位置",
+        "issue": "DuplicateConsecutivePoints",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "gnd_l07lod2-0001",
+        "parentGmlId": "bldg_l07lod2-0001",
+        "rootGmlId": "bldg_l07lod2-0001",
+        "lod": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14517.025335538001,
+          -145980.0551821195,
+          0.0
+        ]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー位置",
+        "issue": "DuplicateConsecutivePoints",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "gnd_l07lod3-0001",
+        "parentGmlId": "bldg_l07lod3-0001",
+        "rootGmlId": "bldg_l07lod3-0001",
+        "lod": 3
+      }
+    }
+  ]
+}

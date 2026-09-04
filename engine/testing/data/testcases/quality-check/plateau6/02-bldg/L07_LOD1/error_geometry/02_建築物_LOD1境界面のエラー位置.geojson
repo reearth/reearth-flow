@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          14515.481559364549,
+          -146047.13811035294,
+          0.0
+        ]
+      },
+      "properties": {
+        "check": "LOD1境界面のエラー位置",
+        "issue": "DuplicateConsecutivePoints",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_l07lod1-0001",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_l07lod1-0001",
+        "lod": 1
+      }
+    }
+  ]
+}

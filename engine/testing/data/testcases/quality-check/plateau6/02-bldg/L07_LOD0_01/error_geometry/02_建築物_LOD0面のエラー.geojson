@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -10100.544205667582,
+              71870.79898462472,
+              0.0
+            ],
+            [
+              -10100.544205666278,
+              71870.7989857352,
+              0.0
+            ],
+            [
+              -10100.531147212909,
+              71881.89498642962,
+              0.0
+            ],
+            [
+              -10109.472311230731,
+              71881.905513609,
+              0.0
+            ],
+            [
+              -10109.485381245013,
+              71870.80951179279,
+              0.0
+            ],
+            [
+              -10100.544205667582,
+              71870.79898462472,
+              0.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面のエラー",
+        "issue": "DuplicateConsecutivePoints",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_1922674b-cc85-4dc4-a0df-83e2b77cddc1",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_1922674b-cc85-4dc4-a0df-83e2b77cddc1",
+        "lod": 0
+      }
+    }
+  ]
+}

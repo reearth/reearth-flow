@@ -328,17 +328,30 @@ impl Arena {
 
     /// The corner with the largest turn: fanning from one inside a collinear
     /// run would turn the run into slivers and lose its vertices.
+    ///
+    /// Every corner of a triangle turns by the same amount, as does every
+    /// corner of a parallelogram, so the largest turn is often a tie that only
+    /// the last bits of the coordinates break. Corners count as equally sharp
+    /// unless one turns [`SHARPER`] more than the other, and the earliest of
+    /// them takes the apex: which triangles a ring fans into then does not
+    /// follow coordinates that differ far below the tolerance.
     fn sharpest_corner(&self, ring: &[VertexId]) -> usize {
+        /// How much more a corner must turn to count as the sharper of two,
+        /// relative to the turn it is compared against: far above the gap
+        /// rounding leaves between turns that are equal in exact arithmetic,
+        /// far below any real difference in sharpness.
+        const SHARPER: f64 = 1e-6;
+
         let n = ring.len();
         let mut apex = 0;
-        let mut sharpest = -1.0;
+        let mut sharpest = 0.0;
         for i in 0..n {
             let before = self.position(ring[(i + n - 1) % n]);
             let at = self.position(ring[i]);
             let after = self.position(ring[(i + 1) % n]);
             let turn = cross3(sub3(at, before), sub3(after, at));
             let turn = dot3(turn, turn);
-            if turn > sharpest {
+            if turn > sharpest * (1.0 + SHARPER) {
                 sharpest = turn;
                 apex = i;
             }
@@ -1095,5 +1108,47 @@ mod tests {
             cube_shell([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
         );
         assert!(Csg::union(a, b).evaluate(1e-9).is_err());
+    }
+
+    /// A ring whose corners all turn by the same amount has no sharpest corner
+    /// to find, so a shift in the coordinates' last places must not move the
+    /// apex: it would rotate the triangle a triangular ring fans into, and
+    /// re-cut a rectangular one along its other diagonal.
+    #[test]
+    fn tied_corners_keep_the_apex_under_a_shift_in_the_last_places() {
+        fn apex_of(ring: &[[f64; 3]]) -> usize {
+            let mut arena = Arena::default();
+            let ids: Vec<VertexId> = ring.iter().map(|&p| arena.push(p)).collect();
+            arena.sharpest_corner(&ids)
+        }
+
+        let triangle = vec![
+            [-10099.69, 71875.2, 105.03314],
+            [-10099.824879, 71876.30976, 105.03314],
+            [-10101.683698, 71876.311949, 105.03314],
+        ];
+        let rectangle = vec![
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 3.0, 0.0],
+            [0.0, 3.0, 0.0],
+        ];
+
+        for ring in [triangle, rectangle] {
+            let apex = apex_of(&ring);
+            for corner in 0..ring.len() {
+                for axis in 0..2 {
+                    for shift in [1e-9, -1e-9] {
+                        let mut shifted = ring.clone();
+                        shifted[corner][axis] += shift;
+                        assert_eq!(
+                            apex_of(&shifted),
+                            apex,
+                            "apex moved when corner {corner} shifted by {shift:e} on axis {axis}"
+                        );
+                    }
+                }
+            }
+        }
     }
 }

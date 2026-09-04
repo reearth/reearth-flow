@@ -1,6 +1,5 @@
 {
   "description": "Test L07 extension for LOD0 on plateau6. A LOD0 ring with fewer than 4 points reported as TooFewPoints under 'LOD0 面のエラー'.",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

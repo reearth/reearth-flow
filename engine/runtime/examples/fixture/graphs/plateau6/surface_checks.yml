@@ -1,8 +1,8 @@
 id: c4000000-0000-4000-8000-000000000000
-name: TranSurfaceChecks
+name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue`, and every
-# face whose 2D outline is wound against the coordinate frame on
+# face whose 2D exterior ring is wound against the coordinate frame on
 # `inCorrectOrientation`. `issueLocation` repeats the same failures positioned
 # at the spot each check flagged, for error detail output. Geometry no step
 # could handle also leaves via `invalidSurface`, so nothing is dropped silently.
@@ -93,7 +93,15 @@ nodes:
     with:
       outputAttribute: original_face_geometry
 
-  # The absolute winding of a face's outline is a 2D property, so the face is
+  # Only the exterior ring's winding is reported here. A hole wound the same way
+  # as its exterior is already a failed `Orientation` check on the 3D pass, so
+  # letting the holes through would report the same face twice.
+  - id: c4000000-0000-4000-8000-000000000012
+    name: HoleExtractorFace
+    type: action
+    action: Hole Extractor
+
+  # The absolute winding of a ring is a 2D property, so the exterior ring is
   # flattened before the orientation check reads it.
   - id: c4000000-0000-4000-8000-000000000009
     name: TwoDimensionForcer
@@ -236,8 +244,14 @@ edges:
     toPort: features
   - id: c4000000-0000-4000-8000-000000000112
     from: c4000000-0000-4000-8000-00000000000e
-    to: c4000000-0000-4000-8000-000000000009
+    to: c4000000-0000-4000-8000-000000000012
     fromPort: features
+    toPort: features
+  # `hole` is deliberately unwired: interior rings are the 3D pass's business.
+  - id: c4000000-0000-4000-8000-000000000115
+    from: c4000000-0000-4000-8000-000000000012
+    to: c4000000-0000-4000-8000-000000000009
+    fromPort: exterior
     toPort: features
   - id: c4000000-0000-4000-8000-000000000109
     from: c4000000-0000-4000-8000-000000000009
@@ -270,6 +284,11 @@ edges:
   ## Geometry no step could handle is reported rather than dropped
   - id: c4000000-0000-4000-8000-00000000010c
     from: c4000000-0000-4000-8000-000000000005
+    to: c4000000-0000-4000-8000-00000000000d
+    fromPort: rejected
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000116
+    from: c4000000-0000-4000-8000-000000000012
     to: c4000000-0000-4000-8000-00000000000d
     fromPort: rejected
     toPort: features

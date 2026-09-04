@@ -1,6 +1,5 @@
 {
   "description": "Demo: a LOD2 box building with six boundary surfaces where only the west wall is non-planar. Exactly that one con:WallSurface is reported under 'LOD2以上境界面のエラー', showing surface-level error identification.",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
