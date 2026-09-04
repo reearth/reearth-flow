@@ -1,21 +1,21 @@
-//! Geometry identity: labelling the features whose geometries occupy the same space.
+//! Geometry identity: labelling the features whose geometries occupy the same
+//! space.
 //!
-//! Two geometries are the same shape when neither strays further than the
-//! tolerance from the other: every point of one has a point of the other within
-//! that distance, and the other way round. That is the Hausdorff distance
-//! between the two point sets, so a shape stays itself under a re-wound ring, a
-//! different starting vertex, or an extra vertex sitting on an edge.
+//! Deciding whether two geometries occupy the same space is
+//! [`Equal`](reearth_flow_geometry::predicates::Equal)'s job, and what that
+//! means is settled per geometry type there. This action does the rest: it
+//! buffers the input, groups it, pairs candidates up by bounding box, and
+//! numbers the results.
 //!
-//! Being the same shape is not transitive once the tolerance is above zero, so
-//! it is not on its own the equivalence the identifiers report: two geometries
-//! share an identifier when a chain of same-shape steps runs between them.
+//! Occupying the same space is not transitive once the tolerance is above zero,
+//! so it is not on its own the equivalence the identifiers report: two features
+//! share an identifier when a chain of same-space steps runs between them.
 
 use std::collections::HashMap;
 
-use reearth_flow_geometry::coordinate::CoordinateFrame;
-use reearth_flow_geometry::ops::triangulation::Cache;
-use reearth_flow_geometry::ops::{Coerce, CoercionTarget};
-use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+use reearth_flow_geometry::ops::{Aabb, BoundingBox};
+use reearth_flow_geometry::predicates::{Equal, Tolerance};
+use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -24,29 +24,19 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
-use rstar::{PointDistance, RTree, RTreeObject, AABB};
+use rstar::{RTree, RTreeObject, AABB};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
-thread_local! {
-    /// Scratch for the coercion that reduces a geometry to its boundary curves.
-    /// Kept off the `Processor` (which must be `Send + Sync + Clone`); one per
-    /// worker thread.
-    static COERCION_CACHE: std::cell::RefCell<Cache> = std::cell::RefCell::new(Cache::new());
-}
-
-/// Number of primitives above which a shape gets its own spatial index; below
-/// it, scanning the primitives costs less than building and walking a tree.
-const INDEX_THRESHOLD: usize = 64;
-
-/// How many sub-segments one segment may be split into while deciding whether it
-/// stays within the tolerance. The refinement below halves a sub-segment only
-/// where neither exact test settles it, so this is reached only by a segment that
-/// hugs the tolerance along its whole length.
-const REFINEMENT_BUDGET: usize = 4096;
+/// Greatest angle between two adjacent faces still counted as lying in one flat
+/// facet, which is what lets a mesh be weighed independently of how it was cut
+/// into triangles. Not a knob: it is here to absorb the rounding in a computed
+/// normal, not to merge shallow creases, so it stays far below any angle a real
+/// surface turns through.
+const COPLANARITY_TOLERANCE: f64 = 1e-9;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct GeometryIdentifierFactory;
@@ -165,11 +155,13 @@ fn default_matched_ids_attribute() -> Attribute {
     Attribute::new("_matched_ids")
 }
 
-/// One buffered input feature and the shape read from its geometry.
+/// One buffered input feature and the box its geometry sits in.
 #[derive(Debug, Clone)]
 struct BufferedFeature {
-    /// `None` for a feature that arrived without geometry.
-    shape: Option<Shape>,
+    /// `None` for a feature whose geometry occupies nowhere — absent, or an
+    /// empty container. Such a feature shares its space with nothing and is
+    /// left unlabelled.
+    envelope: Option<Aabb>,
     feature: Feature,
 }
 
@@ -193,9 +185,12 @@ impl Processor for GeometryIdentifier {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let shape = Shape::of(&feature.geometry).map_err(|e| {
-            GeometryProcessorError::GeometryIdentifier(format!("Cannot read the geometry: {e}"))
-        })?;
+        // A geometry that bounds nothing occupies nowhere. `Equal` is what
+        // decides whether two geometries match; the box only pairs candidates up.
+        let envelope = match &*feature.geometry {
+            Geometry::None => None,
+            geometry => geometry.bounding_box().ok(),
+        };
 
         let group_key = self
             .params
@@ -215,7 +210,7 @@ impl Processor for GeometryIdentifier {
 
         let index = self.buffer.len();
         self.buffer.push(BufferedFeature {
-            shape,
+            envelope,
             feature: feature.clone(),
         });
         self.groups.entry(group_key).or_default().push(index);
@@ -283,20 +278,23 @@ impl GeometryIdentifier {
     /// where the feature arrived without geometry and so shares none.
     fn resolve(&self) -> Result<Vec<Option<Verdict>>, BoxedError> {
         let mut verdicts = vec![None; self.buffer.len()];
+        let tolerance = Tolerance {
+            distance: self.params.tolerance,
+            coplanarity: COPLANARITY_TOLERANCE,
+        };
 
         for indices in self.groups.values() {
-            // A face and the curve bounding it cover different point sets, and a
-            // face and a one-member collection of that face are two ways of
-            // saying the same thing; neither is identified with the other, so
-            // the kinds are binned apart and never compared.
-            let mut bins: HashMap<&str, Vec<usize>> = HashMap::new();
+            // A 2D and a 3D geometry are not a pair `Equal` will weigh — there is
+            // no implicit promotion between the embeddings — so they are binned
+            // apart and never put to it.
+            let mut bins: HashMap<u8, Vec<usize>> = HashMap::new();
             for &index in indices {
-                if let Some(shape) = &self.buffer[index].shape {
-                    bins.entry(shape.kind.as_str()).or_default().push(index);
+                if let Some(envelope) = &self.buffer[index].envelope {
+                    bins.entry(embedding(envelope)).or_default().push(index);
                 }
             }
 
-            // Feature index -> the index representing the shape it shares. Kept
+            // Feature index -> the index representing the space it shares. Kept
             // across bins so identifiers are numbered once per group.
             let mut root_of: HashMap<usize, usize> = HashMap::new();
             for members in bins.values() {
@@ -306,29 +304,33 @@ impl GeometryIdentifier {
                         .iter()
                         .enumerate()
                         .map(|(slot, &index)| BoxEntry {
-                            envelope: self.buffer[index]
-                                .shape
-                                .as_ref()
-                                .expect("binned")
-                                .envelope(),
+                            envelope: box_of(self.envelope(index), 0.0),
                             slot,
                         })
                         .collect(),
                 );
                 for (slot, &index) in members.iter().enumerate() {
-                    let shape = self.buffer[index].shape.as_ref().expect("binned");
-                    let reach = shape.envelope_grown_by(self.params.tolerance);
+                    // Only geometries whose boxes come within the tolerance of
+                    // one another can occupy the same space, so the rest are
+                    // never weighed.
+                    let reach = box_of(self.envelope(index), self.params.tolerance);
                     for candidate in tree.locate_in_envelope_intersecting(&reach) {
-                        // Each unordered pair is enough, and a shape need not be
-                        // compared with itself.
+                        // Each unordered pair is enough, and a geometry need not
+                        // be weighed against itself.
                         if candidate.slot <= slot {
                             continue;
                         }
-                        let other = self.buffer[members[candidate.slot]]
-                            .shape
-                            .as_ref()
-                            .expect("binned");
-                        if shape.same_as(other, self.params.tolerance) {
+                        let other = members[candidate.slot];
+                        let same = self.buffer[index]
+                            .feature
+                            .geometry
+                            .equal(&self.buffer[other].feature.geometry, tolerance)
+                            .map_err(|e| {
+                                GeometryProcessorError::GeometryIdentifier(format!(
+                                    "Cannot tell whether two geometries occupy the same space: {e}"
+                                ))
+                            })?;
+                        if same {
                             union_find.union(slot, candidate.slot);
                         }
                     }
@@ -379,6 +381,11 @@ impl GeometryIdentifier {
         Ok(verdicts)
     }
 
+    /// The box one binned feature's geometry sits in.
+    fn envelope(&self, index: usize) -> &Aabb {
+        self.buffer[index].envelope.as_ref().expect("binned")
+    }
+
     /// The ID attribute's value on one buffered feature.
     fn read_id(&self, index: usize, attribute: &Attribute) -> Result<String, BoxedError> {
         self.buffer[index]
@@ -395,49 +402,10 @@ impl GeometryIdentifier {
     }
 }
 
-/// A geometry reduced to the primitives its point set is the union of: the
-/// segments of every boundary ring and curve, plus each isolated position as a
-/// segment of zero length.
-#[derive(Debug, Clone)]
-struct Shape {
-    primitives: Vec<Primitive>,
-    min: [f64; 3],
-    max: [f64; 3],
-    /// Geometries labelled differently are never identified with one another:
-    /// the leaf type they are built from, and the coordinate frames they are
-    /// expressed in.
-    kind: String,
-    /// Built only for a shape large enough for the scan to cost more than the
-    /// tree; see [`INDEX_THRESHOLD`].
-    index: Option<RTree<Primitive>>,
-}
-
-/// One straight piece of a shape's point set. A position is the degenerate case
-/// where both ends coincide.
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Primitive {
-    a: [f64; 3],
-    b: [f64; 3],
-}
-
-impl RTreeObject for Primitive {
-    type Envelope = AABB<[f64; 3]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        AABB::from_corners(self.a, self.b)
-    }
-}
-
-impl PointDistance for Primitive {
-    fn distance_2(&self, point: &[f64; 3]) -> f64 {
-        point_primitive_distance_2(*point, self)
-    }
-}
-
-/// One shape's bounding box in the tree that pairs shapes up.
+/// One geometry's bounding box in the tree that pairs candidates up.
 struct BoxEntry {
     envelope: AABB<[f64; 3]>,
-    /// Position of the shape within its bin.
+    /// Position of the geometry within its bin.
     slot: usize,
 }
 
@@ -449,318 +417,27 @@ impl RTreeObject for BoxEntry {
     }
 }
 
-impl Shape {
-    /// The shape of one geometry, or `None` when the feature carries none.
-    fn of(geometry: &Geometry) -> Result<Option<Self>, String> {
-        if matches!(geometry, Geometry::None) {
-            return Ok(None);
-        }
-        let mut shape = Shape {
-            primitives: Vec::new(),
-            min: [f64::INFINITY; 3],
-            max: [f64::NEG_INFINITY; 3],
-            kind: leaf_kind(geometry).to_string(),
-            index: None,
-        };
-        let mut frames: Vec<CoordinateFrame> = Vec::new();
-        collect(&reduce_to_curves(geometry), &mut shape, &mut frames)?;
-        if shape.primitives.is_empty() {
-            return Ok(None);
-        }
-        // A frame is part of what a geometry is: the same numbers in two frames
-        // are two different places.
-        shape.kind.push_str(&format!("|{frames:?}"));
-        if shape.primitives.len() > INDEX_THRESHOLD {
-            shape.index = Some(RTree::bulk_load(shape.primitives.clone()));
-        }
-        Ok(Some(shape))
-    }
-
-    fn push_position(&mut self, position: [f64; 3]) {
-        self.push_primitive(Primitive {
-            a: position,
-            b: position,
-        });
-    }
-
-    /// Push the segments between consecutive coordinates of a chain. A chain of
-    /// one coordinate contributes that position.
-    fn push_chain(&mut self, coords: impl IntoIterator<Item = [f64; 3]>) {
-        let mut previous: Option<[f64; 3]> = None;
-        for coord in coords {
-            match previous {
-                None => self.push_position(coord),
-                Some(previous) => self.push_primitive(Primitive {
-                    a: previous,
-                    b: coord,
-                }),
-            }
-            previous = Some(coord);
-        }
-    }
-
-    fn push_primitive(&mut self, primitive: Primitive) {
-        // A chain's first coordinate enters as a position and is covered again by
-        // the segment that follows it, so drop the position once it is.
-        if let Some(last) = self.primitives.last() {
-            if last.a == last.b && last.a == primitive.a {
-                self.primitives.pop();
-            }
-        }
-        for axis in 0..3 {
-            self.min[axis] = self.min[axis].min(primitive.a[axis]).min(primitive.b[axis]);
-            self.max[axis] = self.max[axis].max(primitive.a[axis]).max(primitive.b[axis]);
-        }
-        self.primitives.push(primitive);
-    }
-
-    fn envelope(&self) -> AABB<[f64; 3]> {
-        AABB::from_corners(self.min, self.max)
-    }
-
-    fn envelope_grown_by(&self, distance: f64) -> AABB<[f64; 3]> {
-        AABB::from_corners(
-            [
-                self.min[0] - distance,
-                self.min[1] - distance,
-                self.min[2] - distance,
-            ],
-            [
-                self.max[0] + distance,
-                self.max[1] + distance,
-                self.max[2] + distance,
-            ],
-        )
-    }
-
-    /// Whether the two shapes occupy the same space: neither strays further than
-    /// `tolerance` from the other.
-    fn same_as(&self, other: &Shape, tolerance: f64) -> bool {
-        self.kind == other.kind && self.covers(other, tolerance) && other.covers(self, tolerance)
-    }
-
-    /// Whether every point of `other` lies within `tolerance` of this shape.
-    fn covers(&self, other: &Shape, tolerance: f64) -> bool {
-        other
-            .primitives
-            .iter()
-            .all(|primitive| self.covers_segment(primitive.a, primitive.b, tolerance))
-    }
-
-    /// Whether every point of the straight segment from `a` to `b` lies within
-    /// `tolerance` of this shape.
-    ///
-    /// Two exact tests settle a segment without looking inside it, and a segment
-    /// neither settles is halved and retried. The distance to a shape is
-    /// 1-Lipschitz, which bounds how far it can climb between the two ends; and a
-    /// primitive is convex, so one primitive holding both ends within the
-    /// tolerance holds everything between them too.
-    fn covers_segment(&self, a: [f64; 3], b: [f64; 3], tolerance: f64) -> bool {
-        let mut pending = vec![(a, b)];
-        let mut budget = REFINEMENT_BUDGET;
-        while let Some((p, q)) = pending.pop() {
-            let dp = self.distance(p);
-            let dq = self.distance(q);
-            if dp > tolerance || dq > tolerance {
-                return false;
-            }
-            if (dp + dq + distance(p, q)) / 2.0 <= tolerance {
-                continue;
-            }
-            if self.holds_both(p, q, tolerance) {
-                continue;
-            }
-            // Out of refinement: the ends are within the tolerance and the rest
-            // of this sub-segment goes undecided rather than failing the shape.
-            if budget == 0 {
-                continue;
-            }
-            budget -= 1;
-            let mid = [
-                (p[0] + q[0]) / 2.0,
-                (p[1] + q[1]) / 2.0,
-                (p[2] + q[2]) / 2.0,
-            ];
-            pending.push((p, mid));
-            pending.push((mid, q));
-        }
-        true
-    }
-
-    /// Distance from `point` to the nearest primitive.
-    fn distance(&self, point: [f64; 3]) -> f64 {
-        let squared = match &self.index {
-            Some(index) => index
-                .nearest_neighbor(&point)
-                .map(|primitive| point_primitive_distance_2(point, primitive))
-                .unwrap_or(f64::INFINITY),
-            None => self
-                .primitives
-                .iter()
-                .map(|primitive| point_primitive_distance_2(point, primitive))
-                .fold(f64::INFINITY, f64::min),
-        };
-        squared.sqrt()
-    }
-
-    /// Whether one primitive alone holds both `p` and `q` within `tolerance`.
-    fn holds_both(&self, p: [f64; 3], q: [f64; 3], tolerance: f64) -> bool {
-        let limit = tolerance * tolerance;
-        let holds = |primitive: &Primitive| point_primitive_distance_2(q, primitive) <= limit;
-        match &self.index {
-            Some(index) => index.locate_within_distance(p, limit).any(holds),
-            None => self
-                .primitives
-                .iter()
-                .filter(|primitive| point_primitive_distance_2(p, primitive) <= limit)
-                .any(holds),
-        }
+/// Which embedding a box came from: geometries of different embeddings are
+/// never weighed against one another.
+fn embedding(aabb: &Aabb) -> u8 {
+    match aabb {
+        Aabb::D2 { .. } => 2,
+        Aabb::D3 { .. } => 3,
     }
 }
 
-/// Squared distance from a point to the nearest point of a primitive.
-fn point_primitive_distance_2(point: [f64; 3], primitive: &Primitive) -> f64 {
-    let (a, b) = (primitive.a, primitive.b);
-    let along = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let length_2 = along[0] * along[0] + along[1] * along[1] + along[2] * along[2];
-    let to_point = [point[0] - a[0], point[1] - a[1], point[2] - a[2]];
-    let projection = if length_2 <= 0.0 {
-        0.0
-    } else {
-        ((to_point[0] * along[0] + to_point[1] * along[1] + to_point[2] * along[2]) / length_2)
-            .clamp(0.0, 1.0)
+/// One box grown by `distance` on every side, as a 3D box so both embeddings
+/// can share a tree. A 2D box is read at zero elevation, which is sound because
+/// only boxes of one embedding ever meet in a tree.
+fn box_of(aabb: &Aabb, distance: f64) -> AABB<[f64; 3]> {
+    let (min, max) = match aabb {
+        Aabb::D2 { min, max } => ([min[0], min[1], 0.0], [max[0], max[1], 0.0]),
+        Aabb::D3 { min, max } => (*min, *max),
     };
-    let offset = [
-        to_point[0] - projection * along[0],
-        to_point[1] - projection * along[1],
-        to_point[2] - projection * along[2],
-    ];
-    offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2]
-}
-
-fn distance(a: [f64; 3], b: [f64; 3]) -> f64 {
-    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
-}
-
-/// Re-represent a geometry as the curves bounding it, leaving what already is a
-/// curve or a position as it stands.
-fn reduce_to_curves(geometry: &Geometry) -> Geometry {
-    let mut geometry = geometry.clone();
-    let coerced = COERCION_CACHE
-        .with(|cache| geometry.coerce(CoercionTarget::LineString, &mut cache.borrow_mut()));
-    // Coercion reports `Err` when nothing changed, which leaves the geometry as
-    // it arrived — a curve or a position, both of which are already reduced.
-    coerced.unwrap_or(geometry)
-}
-
-/// The leaf type a geometry is built from, before it is reduced to curves.
-fn leaf_kind(geometry: &Geometry) -> &'static str {
-    match geometry {
-        Geometry::None => "none",
-        Geometry::GeometryCollection(_) => "geometryCollection",
-        Geometry::Euclidean2D(geometry) => match geometry {
-            Euclidean2DGeometry::Point(_) => "2d/point",
-            Euclidean2DGeometry::LineString(_) => "2d/lineString",
-            Euclidean2DGeometry::Polygon(_) => "2d/polygon",
-            Euclidean2DGeometry::PolygonMesh(_) => "2d/polygonMesh",
-            Euclidean2DGeometry::TriangularMesh(_) => "2d/triangularMesh",
-            Euclidean2DGeometry::Collection(_) => "2d/collection",
-        },
-        Geometry::Euclidean3D(geometry) => match geometry {
-            Euclidean3DGeometry::Point(_) => "3d/point",
-            Euclidean3DGeometry::PointCloud(_) => "3d/pointCloud",
-            Euclidean3DGeometry::LineString(_) => "3d/lineString",
-            Euclidean3DGeometry::Polygon(_) => "3d/polygon",
-            Euclidean3DGeometry::PolygonMesh(_) => "3d/polygonMesh",
-            Euclidean3DGeometry::TriangularMesh(_) => "3d/triangularMesh",
-            Euclidean3DGeometry::Solid(_) => "3d/solid",
-            Euclidean3DGeometry::Csg(_) => "3d/csg",
-            Euclidean3DGeometry::Collection(_) => "3d/collection",
-        },
-    }
-}
-
-/// Read the primitives out of a geometry already reduced to curves and positions.
-fn collect(
-    geometry: &Geometry,
-    shape: &mut Shape,
-    frames: &mut Vec<CoordinateFrame>,
-) -> Result<(), String> {
-    match geometry {
-        Geometry::None => Ok(()),
-        Geometry::Euclidean2D(geometry) => collect_2d(geometry, shape, frames),
-        Geometry::Euclidean3D(geometry) => collect_3d(geometry, shape, frames),
-        Geometry::GeometryCollection(collection) => collection
-            .members()
-            .iter()
-            .try_for_each(|member| collect(member, shape, frames)),
-    }
-}
-
-fn collect_2d(
-    geometry: &Euclidean2DGeometry,
-    shape: &mut Shape,
-    frames: &mut Vec<CoordinateFrame>,
-) -> Result<(), String> {
-    match geometry {
-        Euclidean2DGeometry::Point(point) => {
-            push_frame(frames, point.frame());
-            let [x, y] = point.position();
-            shape.push_position([x, y, 0.0]);
-            Ok(())
-        }
-        Euclidean2DGeometry::LineString(line) => {
-            push_frame(frames, line.frame());
-            // A 2.5D chain lies at its own elevation; one without lies at zero.
-            let elevation = line.elevation().unwrap_or(0.0);
-            shape.push_chain(line.coords().iter().map(|&[x, y]| [x, y, elevation]));
-            Ok(())
-        }
-        Euclidean2DGeometry::Collection(collection) => collection
-            .members()
-            .iter()
-            .try_for_each(|member| collect_2d(member, shape, frames)),
-        other => Err(format!(
-            "no point set can be read from `{}`",
-            leaf_kind(&Geometry::Euclidean2D(other.clone()))
-        )),
-    }
-}
-
-fn collect_3d(
-    geometry: &Euclidean3DGeometry,
-    shape: &mut Shape,
-    frames: &mut Vec<CoordinateFrame>,
-) -> Result<(), String> {
-    match geometry {
-        Euclidean3DGeometry::Point(point) => {
-            push_frame(frames, point.frame());
-            shape.push_position(point.position());
-            Ok(())
-        }
-        Euclidean3DGeometry::LineString(line) => {
-            push_frame(frames, line.frame());
-            shape.push_chain(line.coords().iter().copied());
-            Ok(())
-        }
-        Euclidean3DGeometry::Collection(collection) => collection
-            .members()
-            .iter()
-            .try_for_each(|member| collect_3d(member, shape, frames)),
-        other => Err(format!(
-            "no point set can be read from `{}`",
-            leaf_kind(&Geometry::Euclidean3D(other.clone()))
-        )),
-    }
-}
-
-/// Record a frame the shape's coordinates are expressed in, once per distinct
-/// frame and in the order they were met.
-fn push_frame(frames: &mut Vec<CoordinateFrame>, frame: &CoordinateFrame) {
-    if !frames.contains(frame) {
-        frames.push(frame.clone());
-    }
+    AABB::from_corners(
+        [min[0] - distance, min[1] - distance, min[2] - distance],
+        [max[0] + distance, max[1] + distance, max[2] + distance],
+    )
 }
 
 /// Union-find over the shapes of one bin, indexed by position within it.
@@ -815,6 +492,7 @@ mod tests {
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::point::Point3D;
     use reearth_flow_geometry::polygon::Polygon3D;
+    use reearth_flow_geometry::Euclidean3DGeometry;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
 
     /// A closed square ring in the `z = 0` plane, one metre on a side.
@@ -1085,5 +763,44 @@ mod tests {
         assert_eq!(out[1].0, Some(0));
         assert_eq!(out[2].0, Some(0));
         assert_eq!(out[0].1, vec!["b".to_string(), "c".to_string()]);
+    }
+
+    #[test]
+    fn without_an_id_attribute_only_the_identifier_is_written() {
+        // No ID to collect, so the matched-IDs attribute is left off entirely
+        // rather than written as an empty array — and no feature is required to
+        // carry an ID at all.
+        let mut params = params(0.0, None);
+        params.id_attribute = None;
+
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = GeometryIdentifier {
+            params,
+            buffer: Vec::new(),
+            groups: HashMap::new(),
+        };
+        let mut bare = Feature::from(face(SQUARE.to_vec()));
+        bare.insert("group", AttributeValue::String("g".to_string()));
+        for feature in [feature("a", "g", face(SQUARE.to_vec())), bare] {
+            processor
+                .process(create_default_execute_context(&feature), &fw)
+                .unwrap();
+        }
+        processor.finish(NodeContext::default(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let sent = noop.send_features.lock().unwrap().clone();
+        for feature in &sent {
+            assert_eq!(
+                feature.attributes.get(&default_output_attribute()),
+                Some(&AttributeValue::Number(0.into()))
+            );
+            assert!(feature
+                .attributes
+                .get(&default_matched_ids_attribute())
+                .is_none());
+        }
     }
 }

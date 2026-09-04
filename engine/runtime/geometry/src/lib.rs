@@ -70,6 +70,8 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{Area, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
+use predicates::{Equal, PredicateError, Tolerance};
+#[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::{CoordinateFrame, EpsgCode};
@@ -351,6 +353,92 @@ impl Area for GeometryCollection {
             .iter()
             .filter_map(|m| m.surface_area().ok())
             .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for Geometry {
+    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+        use predicates::equal::{denoted, Denoted};
+        match (denoted(self)?, denoted(rhs)?) {
+            // Two geometries that denote nothing occupy the same nothing.
+            (Denoted::Nothing, Denoted::Nothing) => Ok(true),
+            (Denoted::TwoD(a), Denoted::TwoD(b)) => a.equal(b, tolerance),
+            (Denoted::ThreeD(a), Denoted::ThreeD(b)) => a.equal(b, tolerance),
+            // There is no implicit promotion between the embeddings, so the same
+            // numbers in 2D and in 3D are not a question this can answer; the
+            // caller settles it by projecting or lifting first.
+            (Denoted::TwoD(_), Denoted::ThreeD(_)) | (Denoted::ThreeD(_), Denoted::TwoD(_)) => {
+                Err(PredicateError::CrossDimension)
+            }
+            // One denotes a geometry, the other denotes none.
+            (Denoted::Nothing, _) | (_, Denoted::Nothing) => Ok(false),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for Euclidean2DGeometry {
+    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+        use predicates::equal::single_leaf_2d;
+        use Euclidean2DGeometry as G;
+        match (single_leaf_2d(self)?, single_leaf_2d(rhs)?) {
+            (None, None) => Ok(true),
+            (Some(a), Some(b)) => match (a, b) {
+                (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
+                (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
+                (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
+                (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
+                (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
+                // A face and the curve bounding it cover different point sets;
+                // neither is the other.
+                _ => Ok(false),
+            },
+            // One denotes a geometry, the other denotes none.
+            _ => Ok(false),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for Euclidean3DGeometry {
+    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+        use predicates::equal::single_leaf_3d;
+        use Euclidean3DGeometry as G;
+        match (single_leaf_3d(self)?, single_leaf_3d(rhs)?) {
+            (None, None) => Ok(true),
+            (Some(a), Some(b)) => match (a, b) {
+                (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
+                (G::PointCloud(a), G::PointCloud(b)) => a.equal(b, tolerance),
+                (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
+                (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
+                (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
+                (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
+                (G::Solid(a), G::Solid(b)) => a.equal(b, tolerance),
+                (G::Csg(a), G::Csg(b)) => a.equal(b, tolerance),
+                _ => Ok(false),
+            },
+            _ => Ok(false),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for GeometryCollection {
+    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+        use predicates::equal::{denoted_members, Denoted};
+        match (
+            denoted_members(self.members())?,
+            denoted_members(rhs.members())?,
+        ) {
+            (Denoted::Nothing, Denoted::Nothing) => Ok(true),
+            (Denoted::TwoD(a), Denoted::TwoD(b)) => a.equal(b, tolerance),
+            (Denoted::ThreeD(a), Denoted::ThreeD(b)) => a.equal(b, tolerance),
+            (Denoted::TwoD(_), Denoted::ThreeD(_)) | (Denoted::ThreeD(_), Denoted::TwoD(_)) => {
+                Err(PredicateError::CrossDimension)
+            }
+            (Denoted::Nothing, _) | (_, Denoted::Nothing) => Ok(false),
+        }
     }
 }
 

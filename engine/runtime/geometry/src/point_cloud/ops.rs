@@ -162,6 +162,21 @@ impl Elevation for PointCloud {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for PointCloud {
+    fn equal(
+        &self,
+        _rhs: &Self,
+        _tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        // A cloud has no `Coerce` and so never had a point set to read here; the
+        // 3D predicates refuse it for the same reason.
+        Err(crate::predicates::PredicateError::Unsupported {
+            geometry: "PointCloud",
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
