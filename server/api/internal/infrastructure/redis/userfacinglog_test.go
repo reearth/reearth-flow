@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
@@ -47,6 +48,8 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		data1, _ := json.Marshal(entry1)
 		data2, _ := json.Marshal(entry2)
 
+		mock.ExpectExists("userfacinglog:" + jobID.String()).SetVal(0)
+
 		pattern := "userfacinglog:*:" + jobID.String() + ":*"
 
 		// Mock SCAN command
@@ -77,6 +80,8 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
 
+		mock.ExpectExists("userfacinglog:" + jobID.String()).SetVal(0)
+
 		pattern := "userfacinglog:*:" + jobID.String() + ":*"
 
 		// Mock SCAN command to return error
@@ -98,6 +103,8 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		client, mock := redismock.NewClientMock()
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
+
+		mock.ExpectExists("userfacinglog:" + jobID.String()).SetVal(0)
 
 		pattern := "userfacinglog:*:" + jobID.String() + ":*"
 
@@ -139,6 +146,8 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		oldData, _ := json.Marshal(oldEntry)
 		recentData, _ := json.Marshal(recentEntry)
 
+		mock.ExpectExists("userfacinglog:" + jobID.String()).SetVal(0)
+
 		pattern := "userfacinglog:*:" + jobID.String() + ":*"
 
 		// Mock SCAN command
@@ -168,6 +177,8 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
 
+		mock.ExpectExists("userfacinglog:" + jobID.String()).SetVal(0)
+
 		pattern := "userfacinglog:*:" + jobID.String() + ":*"
 
 		// Mock SCAN command
@@ -186,6 +197,66 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, result)
 
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestRedisLog_GetUserFacingLogs_Stream(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+	workflowID := id.NewWorkflowID()
+	now := time.Now().UTC()
+	streamKey := "userfacinglog:" + jobID.String()
+
+	entry := func(ts time.Time, message string) string {
+		data, _ := json.Marshal(map[string]interface{}{
+			"workflowId": workflowID.String(),
+			"jobId":      jobID.String(),
+			"timestamp":  ts,
+			"level":      "info",
+			"message":    message,
+		})
+		return string(data)
+	}
+
+	t.Run("stream is preferred over the key scan", func(t *testing.T) {
+		client, mock := redismock.NewClientMock()
+		redisLog, err := redis.NewRedisLog(client)
+		require.NoError(t, err)
+
+		since := now.Add(-1 * time.Hour)
+		until := now
+		start := strconv.FormatInt(since.Add(-time.Minute).UnixMilli(), 10)
+
+		mock.ExpectExists(streamKey).SetVal(1)
+		mock.ExpectXRange(streamKey, start, "+").SetVal([]goredis.XMessage{
+			{ID: "1-0", Values: map[string]interface{}{"data": entry(now.Add(-30*time.Minute), "streamed log")}},
+			{ID: "2-0", Values: map[string]interface{}{"data": entry(now.Add(-2*time.Hour), "outside window")}},
+		})
+
+		result, err := redisLog.GetUserFacingLogs(ctx, since, until, jobID)
+
+		assert.NoError(t, err)
+		require.Len(t, result, 1)
+		assert.Equal(t, "streamed log", result[0].Message())
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("existing empty stream does not fall back to the scan", func(t *testing.T) {
+		client, mock := redismock.NewClientMock()
+		redisLog, err := redis.NewRedisLog(client)
+		require.NoError(t, err)
+
+		since := now.Add(-1 * time.Hour)
+		start := strconv.FormatInt(since.Add(-time.Minute).UnixMilli(), 10)
+
+		mock.ExpectExists(streamKey).SetVal(1)
+		mock.ExpectXRange(streamKey, start, "+").SetVal([]goredis.XMessage{})
+
+		result, err := redisLog.GetUserFacingLogs(ctx, since, now, jobID)
+
+		assert.NoError(t, err)
+		assert.Empty(t, result)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
