@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	apiotel "github.com/reearth/reearth-flow/api/internal/app/otel"
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
@@ -26,7 +27,7 @@ const (
 	maxMemorySize     = 100 * 1024 * 1024       // 100MB
 )
 
-func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.HandlerFunc {
+func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string, instruments *apiotel.Instruments) echo.HandlerFunc {
 	schema := gql.NewExecutableSchema(gql.Config{
 		Resolvers: gql.NewResolver(),
 	})
@@ -75,6 +76,7 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 	})
 
 	srv.Use(otelgqlgen.Middleware())
+	srv.Use(&metricsExtension{instruments: instruments})
 
 	if conf.ComplexityLimit > 0 {
 		srv.Use(extension.FixedComplexityLimit(conf.ComplexityLimit))

@@ -40,3 +40,10 @@ func (m *Monitor) Remove(jobID string) {
 		delete(m.configs, jobID)
 	}
 }
+
+// Count returns the number of jobs currently registered for monitoring.
+func (m *Monitor) Count() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.configs)
+}
