@@ -1840,17 +1840,9 @@
           "title": "Group By",
           "description": "Attributes delimiting the set a geometry is compared against, such as a parent feature or a source file. Geometries in different groups are never identified with one another. When omitted, all input features form a single group."
         },
-        "idAttribute": {
-          "title": "ID Attribute",
-          "description": "Attribute holding the identifier of the feature itself. When set, the values the other features sharing a geometry carry for it are collected into the matched IDs attribute."
-        },
-        "matchedIdsAttribute": {
-          "title": "Matched IDs Attribute",
-          "description": "Attribute the identifiers collected from the other features sharing a geometry are written to, as an array. Has no effect unless the ID attribute is set."
-        },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Attribute the identifier is written to, as a zero-based index counted within the group."
+          "description": "Attribute the identifier is written to. Features whose geometries occupy the same space carry the same value. Identifiers are counted across the whole input rather than restarted per group, so the same value always names the same set of features however they are grouped again downstream."
         },
         "tolerance": {
           "title": "Tolerance",
@@ -3107,19 +3099,19 @@
       "parameterI18n": {
         "": {
           "title": "TransitiveLinkResolver Parameters",
-          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+          "description": "Names the attribute identifying each feature, the attribute whose value linked features share, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "equivalenceAttribute": {
+          "title": "Equivalence Attribute",
+          "description": "Attribute whose value linked features share, such as the identifier an upstream action writes on the features whose geometries occupy the same space. Every feature carrying one value is linked to every other feature carrying it. An absent or null value means the feature links to nothing."
         },
         "groupBy": {
           "title": "Group By",
-          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Features outside the scope say nothing about it, even when they share an equivalence value."
         },
         "idAttribute": {
           "title": "ID Attribute",
-          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
-        },
-        "linkedIdsAttribute": {
-          "title": "Linked IDs Attribute",
-          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Features carrying one identifier are one node of the graph."
         }
       }
     },
@@ -3253,19 +3245,19 @@
       "parameterI18n": {
         "": {
           "title": "TransitiveLinkResolver Parameters",
-          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+          "description": "Names the attribute identifying each feature, the attribute whose value linked features share, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "equivalenceAttribute": {
+          "title": "Equivalence Attribute",
+          "description": "Attribute whose value linked features share, such as the identifier an upstream action writes on the features whose geometries occupy the same space. Every feature carrying one value is linked to every other feature carrying it. An absent or null value means the feature links to nothing."
         },
         "groupBy": {
           "title": "Group By",
-          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Features outside the scope say nothing about it, even when they share an equivalence value."
         },
         "idAttribute": {
           "title": "ID Attribute",
-          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
-        },
-        "linkedIdsAttribute": {
-          "title": "Linked IDs Attribute",
-          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Features carrying one identifier are one node of the graph."
         }
       }
     },

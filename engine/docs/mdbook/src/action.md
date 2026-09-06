@@ -5802,7 +5802,7 @@ Filter Features by Geometry Type
 ### Type
 * processor
 ### Description
-Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance. Optionally records on each feature the identifiers the other features sharing its geometry carry.
+Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance.
 ### Parameters
 ```json
 {
@@ -5833,30 +5833,8 @@ Labels every feature with an identifier shared by the features whose geometry oc
     },
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Attribute the identifier is written to, as a zero-based index counted within the group.",
+      "description": "Attribute the identifier is written to. Features whose geometries occupy the same space carry the same value. Identifiers are counted across the whole input rather than restarted per group, so the same value always names the same set of features however they are grouped again downstream.",
       "default": "_equivalence_id",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "idAttribute": {
-      "title": "ID Attribute",
-      "description": "Attribute holding the identifier of the feature itself. When set, the values the other features sharing a geometry carry for it are collected into the matched IDs attribute.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "matchedIdsAttribute": {
-      "title": "Matched IDs Attribute",
-      "description": "Attribute the identifiers collected from the other features sharing a geometry are written to, as an array. Has no effect unless the ID attribute is set.",
-      "default": "_matched_ids",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -10509,31 +10487,31 @@ Creates pairs of features from Area On Area Overlayer output for solid intersect
 ### Type
 * processor
 ### Description
-Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
+Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TransitiveLinkResolver Parameters",
-  "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+  "description": "Names the attribute identifying each feature, the attribute whose value linked features share, and the attributes delimiting the scope a verdict is computed over.",
   "type": "object",
   "required": [
-    "idAttribute",
-    "linkedIdsAttribute"
+    "equivalenceAttribute",
+    "idAttribute"
   ],
   "properties": {
     "idAttribute": {
       "title": "ID Attribute",
-      "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+      "description": "Attribute holding the identifier of the feature, such as its gml:id. Features carrying one identifier are one node of the graph.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "linkedIdsAttribute": {
-      "title": "Linked IDs Attribute",
-      "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+    "equivalenceAttribute": {
+      "title": "Equivalence Attribute",
+      "description": "Attribute whose value linked features share, such as the identifier an upstream action writes on the features whose geometries occupy the same space. Every feature carrying one value is linked to every other feature carrying it. An absent or null value means the feature links to nothing.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -10542,7 +10520,7 @@ Resolves which features link to one another, directly or transitively, through a
     },
     "groupBy": {
       "title": "Group By",
-      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Features outside the scope say nothing about it, even when they share an equivalence value.",
       "type": [
         "array",
         "null"
@@ -11019,31 +10997,31 @@ Creates pairs of features from Area On Area Overlayer output for solid intersect
 ### Type
 * processor
 ### Description
-Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
+Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TransitiveLinkResolver Parameters",
-  "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+  "description": "Names the attribute identifying each feature, the attribute whose value linked features share, and the attributes delimiting the scope a verdict is computed over.",
   "type": "object",
   "required": [
-    "idAttribute",
-    "linkedIdsAttribute"
+    "equivalenceAttribute",
+    "idAttribute"
   ],
   "properties": {
     "idAttribute": {
       "title": "ID Attribute",
-      "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+      "description": "Attribute holding the identifier of the feature, such as its gml:id. Features carrying one identifier are one node of the graph.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
         }
       ]
     },
-    "linkedIdsAttribute": {
-      "title": "Linked IDs Attribute",
-      "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+    "equivalenceAttribute": {
+      "title": "Equivalence Attribute",
+      "description": "Attribute whose value linked features share, such as the identifier an upstream action writes on the features whose geometries occupy the same space. Every feature carrying one value is linked to every other feature carrying it. An absent or null value means the feature links to nothing.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -11052,7 +11030,7 @@ Resolves which features link to one another, directly or transitively, through a
     },
     "groupBy": {
       "title": "Group By",
-      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Features outside the scope say nothing about it, even when they share an equivalence value.",
       "type": [
         "array",
         "null"

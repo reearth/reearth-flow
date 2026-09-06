@@ -1,9 +1,16 @@
 //! Transitive link resolution.
 //!
-//! Features that name one another through an ID attribute form a graph. This
-//! action resolves that relation transitively. Within each scope it finds the sets
-//! of features reachable from one another, and labels every feature with the set
-//! it landed in and whether that set spans the whole scope.
+//! Features that share an equivalence attribute's value are linked, and that
+//! relation forms a graph over the identifiers they carry. This action resolves
+//! the relation transitively. Within each scope it finds the sets of features
+//! reachable from one another, and labels every feature with the set it landed
+//! in and whether that set spans the whole scope.
+//!
+//! The equivalence value comes from an upstream action that decided which
+//! features belong together — `Geometry Identifier` labels the features whose
+//! geometries occupy the same space. Reading a shared label rather than a list
+//! of names per feature keeps the same graph: features carrying one value are
+//! one clique, which is exactly what naming one another pairwise would build.
 use std::cmp::Reverse;
 use std::collections::HashMap;
 
@@ -48,7 +55,7 @@ impl ProcessorFactory for TransitiveLinkResolverFactory {
     }
 
     fn description(&self) -> &str {
-        "Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope."
+        "Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -100,20 +107,20 @@ impl ProcessorFactory for TransitiveLinkResolverFactory {
 }
 
 /// # TransitiveLinkResolver Parameters
-/// Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.
+/// Names the attribute identifying each feature, the attribute whose value linked features share, and the attributes delimiting the scope a verdict is computed over.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TransitiveLinkResolverParam {
     /// # ID Attribute
-    /// Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.
+    /// Attribute holding the identifier of the feature, such as its gml:id. Features carrying one identifier are one node of the graph.
     pub id_attribute: Attribute,
 
-    /// # Linked IDs Attribute
-    /// Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.
-    pub linked_ids_attribute: Attribute,
+    /// # Equivalence Attribute
+    /// Attribute whose value linked features share, such as the identifier an upstream action writes on the features whose geometries occupy the same space. Every feature carrying one value is linked to every other feature carrying it. An absent or null value means the feature links to nothing.
+    pub equivalence_attribute: Attribute,
 
     /// # Group By
-    /// Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.
+    /// Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Features outside the scope say nothing about it, even when they share an equivalence value.
     pub group_by: Option<Vec<Attribute>>,
 }
 
@@ -121,7 +128,8 @@ pub struct TransitiveLinkResolverParam {
 #[derive(Debug, Clone)]
 struct BufferedPart {
     id: String,
-    linked_ids: Vec<String>,
+    /// `None` for a feature carrying no equivalence value, which links to nothing.
+    equivalence: Option<i64>,
     feature: Feature,
 }
 
@@ -234,23 +242,18 @@ impl Processor for TransitiveLinkResolver {
                 ))
             })?;
 
-        let linked_ids = match feature.attributes.get(&self.params.linked_ids_attribute) {
-            None | Some(AttributeValue::Null) => Vec::new(),
-            Some(AttributeValue::Array(values)) => values
-                .iter()
-                .map(|value| {
-                    value.as_string().ok_or_else(|| {
-                        PlateauProcessorError::TransitiveLinkResolver(format!(
-                            "Linked IDs attribute `{}` holds a non-string entry: {value}",
-                            self.params.linked_ids_attribute
-                        ))
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?,
+        let equivalence = match feature.attributes.get(&self.params.equivalence_attribute) {
+            None | Some(AttributeValue::Null) => None,
+            Some(AttributeValue::Number(number)) => Some(number.as_i64().ok_or_else(|| {
+                PlateauProcessorError::TransitiveLinkResolver(format!(
+                    "Equivalence attribute `{}` holds a number that is not a whole number: {number}",
+                    self.params.equivalence_attribute
+                ))
+            })?),
             Some(other) => {
                 return Err(PlateauProcessorError::TransitiveLinkResolver(format!(
-                    "Linked IDs attribute `{}` is not an array: {other}",
-                    self.params.linked_ids_attribute
+                    "Equivalence attribute `{}` is not a number: {other}",
+                    self.params.equivalence_attribute
                 ))
                 .into())
             }
@@ -268,7 +271,7 @@ impl Processor for TransitiveLinkResolver {
         let index = self.parts.len();
         self.parts.push(BufferedPart {
             id,
-            linked_ids,
+            equivalence,
             feature: feature.clone(),
         });
         self.groups.entry(group_key).or_default().push(index);
@@ -337,15 +340,24 @@ impl TransitiveLinkResolver {
 
             let node_count = node_of_id.len();
             let mut union_find = UnionFind::new(node_count);
+            // Every feature carrying one equivalence value is linked to every
+            // other carrying it, so each value's nodes join one component. Only
+            // this scope's features are gathered, so a value shared with a
+            // feature outside it says nothing about the scope's connectivity.
+            let mut nodes_of_value: HashMap<i64, Vec<usize>> = HashMap::new();
             for &index in indices {
                 let part = &self.parts[index];
-                let node = node_of_id[part.id.as_str()];
-                for linked_id in &part.linked_ids {
-                    // A link leaving this scope says nothing about the scope's
-                    // own connectivity.
-                    if let Some(&linked_node) = node_of_id.get(linked_id.as_str()) {
-                        union_find.union(node, linked_node);
-                    }
+                if let Some(value) = part.equivalence {
+                    nodes_of_value
+                        .entry(value)
+                        .or_default()
+                        .push(node_of_id[part.id.as_str()]);
+                }
+            }
+            for nodes in nodes_of_value.values() {
+                // Joining consecutive nodes joins them all.
+                for pair in nodes.windows(2) {
+                    union_find.union(pair[0], pair[1]);
                 }
             }
 
@@ -404,18 +416,21 @@ mod tests {
         action_prefix: "PLATEAU",
     };
 
-    /// One feature: its ID, the IDs it links to, and the scope it belongs to.
-    fn part(id: &str, linked: &[&str], building: &str) -> Feature {
+    /// One feature: the ID of the part it belongs to, the shape it occupies (or
+    /// `None` for a feature sharing its shape with nothing), and its scope.
+    /// Several features may carry one part ID; they are one node of the graph.
+    fn surface(part: &str, shape: Option<i64>, building: &str) -> Feature {
         let mut attributes = IndexMap::new();
-        attributes.insert("gmlId".to_string(), AttributeValue::String(id.to_string()));
         attributes.insert(
-            "next".to_string(),
-            AttributeValue::Array(
-                linked
-                    .iter()
-                    .map(|id| AttributeValue::String((*id).to_string()))
-                    .collect(),
-            ),
+            "gmlId".to_string(),
+            AttributeValue::String(part.to_string()),
+        );
+        attributes.insert(
+            "shape".to_string(),
+            match shape {
+                None => AttributeValue::Null,
+                Some(shape) => AttributeValue::Number(shape.into()),
+            },
         );
         attributes.insert(
             "parentGmlId".to_string(),
@@ -434,8 +449,8 @@ mod tests {
                 Value::String("gmlId".to_string()),
             ),
             (
-                "linkedIdsAttribute".to_string(),
-                Value::String("next".to_string()),
+                "equivalenceAttribute".to_string(),
+                Value::String("shape".to_string()),
             ),
             (
                 "groupBy".to_string(),
@@ -479,16 +494,20 @@ mod tests {
 
     #[test]
     fn all_parts_in_one_component_are_full() -> Result<(), BoxedError> {
+        // `a` and `b` share shape 0, `b` and `c` share shape 1, so all three are
+        // reachable from one another through `b`.
         let output = run(vec![
-            part("a", &["b"], "bldg"),
-            part("b", &["a", "c"], "bldg"),
-            part("c", &["b"], "bldg"),
+            surface("a", Some(0), "bldg"),
+            surface("b", Some(0), "bldg"),
+            surface("b", Some(1), "bldg"),
+            surface("c", Some(1), "bldg"),
         ])?;
 
         assert_eq!(
             output,
             vec![
                 ("a".to_string(), "full".to_string(), 0, 3),
+                ("b".to_string(), "full".to_string(), 0, 3),
                 ("b".to_string(), "full".to_string(), 0, 3),
                 ("c".to_string(), "full".to_string(), 0, 3),
             ]
@@ -498,9 +517,27 @@ mod tests {
 
     #[test]
     fn a_lone_part_is_alone() -> Result<(), BoxedError> {
-        let output = run(vec![part("a", &[], "bldg")])?;
+        let output = run(vec![surface("a", None, "bldg")])?;
 
         assert_eq!(output, vec![("a".to_string(), "alone".to_string(), 0, 1)]);
+        Ok(())
+    }
+
+    #[test]
+    fn a_shape_one_feature_alone_occupies_links_nothing() -> Result<(), BoxedError> {
+        // A shape no other feature shares is not a link, so the part stays alone.
+        let output = run(vec![
+            surface("a", Some(7), "bldg"),
+            surface("b", Some(8), "bldg"),
+        ])?;
+
+        assert_eq!(
+            output,
+            vec![
+                ("a".to_string(), "alone".to_string(), 0, 1),
+                ("b".to_string(), "alone".to_string(), 1, 1),
+            ]
+        );
         Ok(())
     }
 
@@ -508,9 +545,9 @@ mod tests {
     fn a_split_building_reports_partial_and_alone() -> Result<(), BoxedError> {
         // The isolated part sorts after the pair, so the pair takes component 0.
         let output = run(vec![
-            part("lonely", &[], "bldg"),
-            part("a", &["b"], "bldg"),
-            part("b", &["a"], "bldg"),
+            surface("lonely", None, "bldg"),
+            surface("a", Some(0), "bldg"),
+            surface("b", Some(0), "bldg"),
         ])?;
 
         assert_eq!(
@@ -527,10 +564,10 @@ mod tests {
     #[test]
     fn equal_sized_components_are_ordered_by_arrival() -> Result<(), BoxedError> {
         let output = run(vec![
-            part("c", &["d"], "bldg"),
-            part("d", &["c"], "bldg"),
-            part("a", &["b"], "bldg"),
-            part("b", &["a"], "bldg"),
+            surface("c", Some(0), "bldg"),
+            surface("d", Some(0), "bldg"),
+            surface("a", Some(1), "bldg"),
+            surface("b", Some(1), "bldg"),
         ])?;
 
         let component_ids: Vec<u64> = output.iter().map(|(_, _, id, _)| *id).collect();
@@ -539,30 +576,21 @@ mod tests {
     }
 
     #[test]
-    fn a_link_leaving_the_scope_is_ignored() -> Result<(), BoxedError> {
-        // `a` and `b` touch, but belong to different Buildings, so neither is
-        // connected within its own group.
-        let output = run(vec![part("a", &["b"], "left"), part("b", &["a"], "right")])?;
+    fn a_shape_shared_across_scopes_is_ignored() -> Result<(), BoxedError> {
+        // `a` and `b` occupy one shape but belong to different Buildings, so
+        // neither is connected within its own group. This is what keeps the
+        // equivalence value from meaning anything outside the scope it was
+        // computed in.
+        let output = run(vec![
+            surface("a", Some(0), "left"),
+            surface("b", Some(0), "right"),
+        ])?;
 
         assert_eq!(
             output,
             vec![
                 ("a".to_string(), "alone".to_string(), 0, 1),
                 ("b".to_string(), "alone".to_string(), 0, 1),
-            ]
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn a_link_recorded_on_one_side_only_still_connects() -> Result<(), BoxedError> {
-        let output = run(vec![part("a", &["b"], "bldg"), part("b", &[], "bldg")])?;
-
-        assert_eq!(
-            output,
-            vec![
-                ("a".to_string(), "full".to_string(), 0, 2),
-                ("b".to_string(), "full".to_string(), 0, 2),
             ]
         );
         Ok(())

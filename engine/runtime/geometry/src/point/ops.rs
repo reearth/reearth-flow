@@ -204,6 +204,34 @@ impl Elevation for Point3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for Point2D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        let (a, b) = (self.position(), rhs.position());
+        let d = [b[0] - a[0], b[1] - a[1]];
+        Ok((d[0] * d[0] + d[1] * d[1]).sqrt() <= tolerance.distance)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for Point3D {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        let (a, b) = (self.position(), rhs.position());
+        let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        Ok((d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt() <= tolerance.distance)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -49,6 +49,8 @@
 pub mod contains;
 pub mod distance;
 pub(crate) mod edge_set;
+#[cfg(feature = "new-geometry")]
+pub mod equal;
 pub mod intersects;
 pub mod intersects3d;
 pub mod kernel;
@@ -67,6 +69,8 @@ pub mod view3d;
 
 pub use contains::{contains, covers};
 pub use distance::distance;
+#[cfg(feature = "new-geometry")]
+pub use equal::{Equal, Tolerance};
 pub use intersects::intersects;
 pub use intersects3d::intersects_3d;
 pub use kernel::CoordPos;

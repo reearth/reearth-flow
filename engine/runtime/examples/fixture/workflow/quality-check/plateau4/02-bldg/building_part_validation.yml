@@ -80,9 +80,12 @@ nodes:
     type: action
     action: Geometry Splitter
 
-  # Surfaces occupying the same space name each other's BuildingPart. The
+  # Surfaces occupying the same space are given one identifier, which the
+  # resolver reads as a link between the BuildingParts they belong to. The
   # tolerance is one millimetre in the plane rectangular CS the geometry has been
   # reprojected into, which absorbs rounding without joining distinct surfaces.
+  # The resolver's scope below must stay no coarser than this grouping: the
+  # identifier is only meaningful within the group it was counted in.
   - id: 3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c
     name: BuildingPartSurfaceIdentifier
     type: action
@@ -94,8 +97,6 @@ nodes:
         - gmlFilename
         - gmlId
         - lod
-      idAttribute: featureId
-      matchedIdsAttribute: _shared_part_ids
 
   - id: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: PLATEAU4.TransitiveLinkResolver
@@ -103,7 +104,7 @@ nodes:
     action: PLATEAU4.TransitiveLinkResolver
     with:
       idAttribute: featureId
-      linkedIdsAttribute: _shared_part_ids
+      equivalenceAttribute: _equivalence_id
       groupBy:
         - fileIndex
         - gmlFilename

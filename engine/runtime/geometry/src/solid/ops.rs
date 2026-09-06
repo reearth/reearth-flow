@@ -328,6 +328,46 @@ impl Elevation for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::predicates::Equal for Solid {
+    fn equal(
+        &self,
+        rhs: &Self,
+        tolerance: crate::predicates::Tolerance,
+    ) -> crate::predicates::Result<bool> {
+        // Exterior shell against exterior, voids paired off as a bag — the same
+        // reason a face weighs its exterior apart from its holes.
+        use crate::ops::triangulation::Cache;
+        use crate::predicates::equal::{facet_curves, pair_off};
+        use crate::predicates::view3d::TriangleSet;
+
+        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
+        let mut cache = Cache::new();
+        let shell = |shell: &Shell, cache: &mut Cache| {
+            facet_curves(
+                &TriangleSet::from_shell(shell, cache),
+                tolerance.coplanarity,
+            )
+        };
+        if !shell(self.exterior(), &mut cache)
+            .within(&shell(rhs.exterior(), &mut cache), tolerance.distance)
+        {
+            return Ok(false);
+        }
+        let ours: Vec<_> = self
+            .interiors()
+            .iter()
+            .map(|s| shell(s, &mut cache))
+            .collect();
+        let theirs: Vec<_> = rhs
+            .interiors()
+            .iter()
+            .map(|s| shell(s, &mut cache))
+            .collect();
+        pair_off(&ours, &theirs, |a, b| Ok(a.within(b, tolerance.distance)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
