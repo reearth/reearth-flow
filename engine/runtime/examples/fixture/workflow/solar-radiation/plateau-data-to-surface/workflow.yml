@@ -66,7 +66,7 @@ nodes:
     with:
       targetType: polygon
 
-  # Step 5: Calculates the planar or sloped area of polygon geometries and adds the results as attributes.
+  # Step 5: Measures the true surface area of each polygon and stores it in an attribute.
   - id: 0fa15342-d72c-11f0-b45f-6c02e0440ed6
     name: AreaCalculator
     type: action

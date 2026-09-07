@@ -29,12 +29,10 @@ type BatchConfig struct {
 	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
-	NodeStatusPropagationDelayMS    string
 	PubSubDiagnosticTopic           string
 	PubSubEdgePassThroughEventTopic string
 	PubSubLogStreamTopic            string
 	PubSubJobCompleteTopic          string
-	PubSubNodeStatusTopic           string
 	PubSubUserFacingLogTopic        string
 	ProjectID                       string
 	Region                          string
@@ -269,16 +267,12 @@ func (b *BatchRepo) submitCommand(
 					"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
 					"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
 					"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
-					"FLOW_WORKER_NODE_STATUS_TOPIC":             b.config.PubSubNodeStatusTopic,
 					"FLOW_WORKER_USER_FACING_LOG_TOPIC":         b.config.PubSubUserFacingLogTopic,
 					"RUST_LOG":                                  rustLog,
 					"RUST_BACKTRACE":                            "1",
 				}
 
 				// Only set runtime config if values are provided
-				if b.config.NodeStatusPropagationDelayMS != "" {
-					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = b.config.NodeStatusPropagationDelayMS
-				}
 				if b.config.ChannelBufferSize != "" {
 					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = b.config.ChannelBufferSize
 				}

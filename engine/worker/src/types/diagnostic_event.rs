@@ -190,7 +190,7 @@ mod tests {
         }
     }
 
-    /// Explicit nulls, not omission — matches `NodeStatusEvent`/`LogStreamEvent`'s convention.
+    /// Explicit nulls, not omission — matches `LogStreamEvent`'s convention.
     #[test]
     fn diagnostic_event_serializes_camel_case_with_explicit_nulls_for_absent_fields() {
         let event = fixed_event();

@@ -88,14 +88,14 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "area not measurable, wrote 0",
-    "help": "Area Calculator could not measure this geometry; check that it is a supported, non-degenerate type."
+    "help": "An unevaluated CSG tree is the one geometry Area Calculator cannot measure; run CSG Evaluator to compute the solid it describes, then measure the result."
   },
   {
     "code": "geometry.area_skipped_parts",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped geometry part(s) that cannot be measured; their area is not in the total",
-    "help": "One or more members of this geometry could not be measured and were excluded from the total; check them individually."
+    "help": "An unevaluated CSG tree is the one geometry part that cannot be measured; run CSG Evaluator on the geometry before measuring so that every part counts toward the total."
   },
   {
     "code": "geometry.area_unknown_unit",
@@ -131,6 +131,13 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped feature mixing 2D and 3D parts",
     "help": "Split the geometry, or force it to a single dimension upstream."
+  },
+  {
+    "code": "geometry.no_usable_filter",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "failed every candidate because no supplied filter geometry could be prepared",
+    "help": "Every feature supplied as a filter was rejected, so there was nothing left to test against; the preceding warnings name the cause. Reproject all inputs of the node to one coordinate frame in linear units upstream."
   },
   {
     "code": "geometry.non_linear_frame",

@@ -234,9 +234,9 @@ impl RunWorkerCommand {
             }
         };
 
-        let (ingress_state, feature_state, logger_factory, incremental_run_config, artifact_uri) =
-            self.prepare_workflow(&storage_resolver, &meta, &mut workflow)
-                .await?;
+        let (feature_state, logger_factory, incremental_run_config, artifact_uri) = self
+            .prepare_workflow(&storage_resolver, &meta, &mut workflow)
+            .await?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub.clone() {
             PubSubBackend::Google(p) => Arc::new(EventHandler::new(workflow.id, meta.job_id, p)),
@@ -252,7 +252,6 @@ impl RunWorkerCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver.clone(),
-            ingress_state,
             feature_state,
             incremental_run_config,
             vec![handler, node_failure_handler.clone()],
@@ -411,7 +410,6 @@ impl RunWorkerCommand {
         workflow: &mut Workflow,
     ) -> errors::Result<(
         Arc<State>,
-        Arc<State>,
         Arc<LoggerFactory>,
         Option<IncrementalRunConfig>,
         Uri,
@@ -484,7 +482,6 @@ impl RunWorkerCommand {
             setup_job_directory("workers", "feature-store", job_id).map_err(Error::init)?;
         let feature_state =
             Arc::new(State::new(&feature_state_uri, storage_resolver).map_err(Error::init)?);
-        let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
@@ -507,17 +504,18 @@ impl RunWorkerCommand {
             let prev_job_id = uuid::Uuid::parse_str(prev_job_str).map_err(Error::init)?;
             let start_node_id = uuid::Uuid::parse_str(start_node_str).map_err(Error::init)?;
 
-            let (previous_feature_state, available_edge_ids) = prepare_incremental_feature_store(
-                "workers",
-                workflow,
-                job_id,
-                storage_resolver.as_ref(),
-                meta,
-                prev_job_id,
-                start_node_id,
-                feature_state.as_ref(),
-            )
-            .await?;
+            let (previous_feature_state, available_port_file_ids) =
+                prepare_incremental_feature_store(
+                    "workers",
+                    workflow,
+                    job_id,
+                    storage_resolver.as_ref(),
+                    meta,
+                    prev_job_id,
+                    start_node_id,
+                    feature_state.as_ref(),
+                )
+                .await?;
 
             prepare_incremental_artifacts(
                 "workers",
@@ -542,7 +540,7 @@ impl RunWorkerCommand {
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
                 previous_feature_state,
-                available_edge_ids,
+                available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
@@ -555,7 +553,6 @@ impl RunWorkerCommand {
             action_log_uri.path(),
         ));
         Ok((
-            ingress_state,
             feature_state,
             logger_factory,
             incremental_run_config,
@@ -591,28 +588,27 @@ fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -
 /// before producing a RunSummary: one fatal row per failed node the handler
 /// captured, or a single workflow-level row when it captured none.
 fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSummary {
-    let fatal = |node_id: Option<String>| {
+    let fatal = |node_id: Option<String>, name: Option<String>| {
         let mut d = Diagnostic::from_draft(
             DiagnosticDraft::new(ErrorCode::InternalUnclassified)
                 .with_message(error_detail.clone()),
             node_id,
-            None,
+            name,
             None,
         );
         d.effective_disposition = Some(Disposition::Fatal);
         d
     };
 
-    let mut node_ids = handler.failed_nodes();
-    node_ids.sort();
-    node_ids.dedup();
-
-    let mut failed_nodes: Vec<Diagnostic> = node_ids
+    let mut failed_nodes: Vec<Diagnostic> = handler
+        .failure_details()
         .into_iter()
-        .map(|node_id| fatal(Some(node_id)))
+        .map(|node| fatal(Some(node.id), node.name))
         .collect();
+    // A run that died before any node event (e.g. a graph-build error) still
+    // gets a workflow-level row carrying the execution error.
     if failed_nodes.is_empty() {
-        failed_nodes.push(fatal(None));
+        failed_nodes.push(fatal(None, None));
     }
 
     RunSummary {
@@ -628,10 +624,23 @@ mod tests {
 
     #[test]
     fn failure_summary_builds_a_fatal_row_per_failed_node_deduped() {
+        use crate::event_handler::FailedNode;
+
         let handler = NodeFailureHandler::new();
-        handler.failed_sinks.lock().push("node-a".to_string());
-        handler.failed_sinks.lock().push("node-a".to_string());
-        handler.failed_sinks.lock().push("node-b".to_string());
+        // A status-Failed capture (no name) followed by the processor event for
+        // the same node (named), plus a second node — 2 rows, name preserved.
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: None,
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: Some("CityGML Reader".to_string()),
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-b".to_string(),
+            name: None,
+        });
 
         let summary = failure_summary("ExecutionError(Source(..))".to_string(), &handler);
 
@@ -640,6 +649,13 @@ mod tests {
             assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
             assert_eq!(row.message, "ExecutionError(Source(..))");
         }
+        assert_eq!(summary.failed_nodes[0].node_id.as_deref(), Some("node-a"));
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("CityGML Reader")
+        );
+        assert_eq!(summary.failed_nodes[1].node_id.as_deref(), Some("node-b"));
+        assert_eq!(summary.failed_nodes[1].action_type, None);
         assert!(summary.aggregated_diagnostics.is_empty());
         assert_eq!(summary.dropped_event_count, 0);
     }

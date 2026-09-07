@@ -34,7 +34,17 @@ pub struct NodeType {
 }
 
 impl NodeType {
-    // Mirrors builder_dag::NodeType::composed_id exactly (duplicated, not shared) — keep the two formats in sync.
+    /// Id of the intermediate-data file written for one of this node's output ports.
+    pub fn port_file_id(&self, port: &Port) -> String {
+        crate::node::port_file_id(
+            self.subgraph_prefix.as_deref(),
+            self.is_subgraph_output,
+            self.handle.id.as_ref(),
+            port.as_ref(),
+        )
+    }
+
+    // Mirrors builder_dag::NodeType::composed_id exactly (duplicated, not shared); keep the two formats in sync.
     pub fn composed_id(&self) -> String {
         match &self.subgraph_prefix {
             Some(prefix) => format!("{prefix}.{}", self.handle.id),
@@ -58,7 +68,6 @@ pub struct ExecutionDag {
     pub(crate) executor_id: uuid::Uuid,
     graph: petgraph::graph::DiGraph<NodeType, EdgeType>,
     event_hub: EventHub,
-    ingress_state: Arc<State>,
     port_writers: HashMap<NodeIndex, HashMap<Port, Box<dyn FeatureWriter>>>,
 }
 
@@ -67,7 +76,6 @@ impl ExecutionDag {
         builder_dag: BuilderDag,
         channel_buffer_sz: usize,
         feature_flush_threshold: usize,
-        ingress_state: Arc<State>,
         feature_state: Arc<State>,
         executor_id: uuid::Uuid,
     ) -> Result<Self, ExecutionError> {
@@ -133,13 +141,8 @@ impl ExecutionDag {
             let node = &graph[node_index];
             let mut node_port_writers = HashMap::new();
             for port in &node.output_ports {
-                let file_id = match (&node.subgraph_prefix, node.is_subgraph_output) {
-                    (Some(prefix), true) => format!("{}.{}", prefix, port),
-                    (Some(prefix), false) => format!("{}.{}.{}", prefix, node.handle.id, port),
-                    (None, _) => format!("{}.{}", node.handle.id, port),
-                };
                 let writer = create_feature_writer(
-                    EdgeId::new(file_id),
+                    EdgeId::new(node.port_file_id(port)),
                     Arc::clone(&feature_state),
                     feature_flush_threshold,
                 );
@@ -155,7 +158,6 @@ impl ExecutionDag {
             executor_id,
             graph,
             event_hub,
-            ingress_state,
             port_writers,
         })
     }
@@ -174,14 +176,6 @@ impl ExecutionDag {
 
     pub fn event_hub(&self) -> &EventHub {
         &self.event_hub
-    }
-
-    pub fn feature_state(&self) -> Arc<State> {
-        Arc::clone(&self.ingress_state)
-    }
-
-    pub fn ingress_state(&self) -> &Arc<State> {
-        &self.ingress_state
     }
 
     pub fn collect_senders(
