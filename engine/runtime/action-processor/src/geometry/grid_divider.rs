@@ -195,15 +195,15 @@ pub struct GridDividerParam {
     /// where the grid meets the edge of a geometry. Defaults to false.
     pub complete_cells_only: Option<bool>,
     /// # Group By Attributes
-    /// Attributes whose values group features together. Each group is divided on
-    /// its own grid origin, derived from that group's combined bounds.
+    /// Attributes whose values group features together. Unless `origin` is set,
+    /// each group is divided on its own grid, anchored at the corner of that
+    /// group's combined bounds.
     pub group_by: Option<Vec<Attribute>>,
     /// # Grid Origin
     /// The point the grid is anchored at, as `[x, y]` in the same coordinate
-    /// system as the geometry. When set, cells line up with this point, so
-    /// separate Grid Dividers can share a lattice and repeat runs place features
-    /// in the same cells. When left out, each group's grid starts at the corner
-    /// of that group's own extent, which shifts if the input changes.
+    /// system as the geometry. Anchoring the grid explicitly makes cells fall in
+    /// the same places across groups and across runs, instead of shifting with
+    /// each group's extent.
     pub origin: Option<[f64; 2]>,
 }
 
