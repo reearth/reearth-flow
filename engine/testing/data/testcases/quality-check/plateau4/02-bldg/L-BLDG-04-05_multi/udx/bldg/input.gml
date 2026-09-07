@@ -245,8 +245,8 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					<!-- TEST: two simultaneous L-bldg-04,05 violations in ONE building.
 					     (1) majorUsage2 present, majorUsage absent.
 					     (2) secondFloorUsage present, groundFloorUsage absent. -->
-					<uro:majorUsage2 codeSpace="../../codelists/BuildingDetailAttribute_majorUsage.xml">01002</uro:majorUsage2>
-					<uro:secondFloorUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">412</uro:secondFloorUsage>
+					<uro:majorUsage2 codeSpace="../../codelists/BuildingDetailAttribute_majorUsage.xml">401</uro:majorUsage2>
+					<uro:secondFloorUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4121</uro:secondFloorUsage>
 
 					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">461</uro:detailedUsage>
 					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>

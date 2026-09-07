@@ -18,8 +18,8 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/surface_validator.yml
   - !include wtr.yml
   # Entry point graph
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f

@@ -46,16 +46,18 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					</core:xalAddress>
 				</core:Address>
 			</bldg:address>
-			<!-- L09 check target: LOD0 exterior LinearRing self-intersects (bow-tie / figure-8).
-			     4 distinct, closed, planar points so it passes the corrupt-geometry / too-few-points
-			     checks but fails the self-intersection check -> SelfIntersection under "LOD0 面のエラー". -->
+			<!-- L09 check target: LOD0 exterior LinearRing self-intersects. A counter-clockwise
+			     quad with a spike whose edge crosses the bottom edge: the ring is closed, planar
+			     and has a clearly signed area, so only the self-intersection check fails ->
+			     SelfIntersection under "LOD0 面のエラー". A symmetric bow-tie would not do: its
+			     signed area is zero, leaving the orientation check on a numerical knife edge. -->
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_l09a0001-02e4-11f0-a3af-18ece7a5509a">
 					<gml:surfaceMember>
 						<gml:Polygon gml:id="poly_lod0_l09a0001-02e4-11f0-a3af-18ece7a5509a">
 							<gml:exterior>
 								<gml:LinearRing>
-									<gml:posList>36.6477 137.0537 0 36.6478 137.0537 0 36.6477 137.0536 0 36.6478 137.0536 0 36.6477 137.0537 0</gml:posList>
+									<gml:posList>36.64772 137.0536 0 36.64772 137.0537 0 36.6478 137.0537 0 36.6478 137.0536 0 36.6477 137.05365 0 36.64772 137.0536 0</gml:posList>
 								</gml:LinearRing>
 							</gml:exterior>
 						</gml:Polygon>

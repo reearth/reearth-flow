@@ -43,30 +43,34 @@
                     </gml:exterior>
                 </gml:Solid>
             </bldg:lod1Solid>
-            <uro:buildingDataQualityAttribute>
-                <uro:BuildingDataQualityAttribute>
-                    <uro:srcScale codeSpace="../../codelists/BuildingDataQualityAttribute_srcScale.xml">1</uro:srcScale>
-                    <uro:geometrySrcDesc codeSpace="../../codelists/BuildingDataQualityAttribute_geometrySrcDesc.xml">5</uro:geometrySrcDesc>
-                    <uro:thematicSrcDesc codeSpace="../../codelists/BuildingDataQualityAttribute_thematicSrcDesc.xml">1</uro:thematicSrcDesc>
-                    <uro:lod1HeightType codeSpace="../../codelists/BuildingDataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
-                </uro:BuildingDataQualityAttribute>
-            </uro:buildingDataQualityAttribute>
+            <uro:bldgDataQualityAttribute>
+                <uro:DataQualityAttribute>
+                    <uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">103</uro:geometrySrcDescLod1>
+                    <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
+                    <uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
+                    <uro:publicSurveyDataQualityAttribute>
+                        <uro:PublicSurveyDataQualityAttribute>
+                            <uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+                        </uro:PublicSurveyDataQualityAttribute>
+                    </uro:publicSurveyDataQualityAttribute>
+                </uro:DataQualityAttribute>
+            </uro:bldgDataQualityAttribute>
             <uro:buildingDetailAttribute>
                 <uro:BuildingDetailAttribute>
                     <uro:totalFloorArea uom="m2">1014.21</uro:totalFloorArea>
                     <uro:buildingFootprintArea uom="m2">1014.21</uro:buildingFootprintArea>
                     <uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">601</uro:buildingStructureType>
-                    <uro:areaClassificationType codeSpace="../../codelists/Common_areaClassificationType.xml">23</uro:areaClassificationType>
-                    <uro:orgUsage2 codeSpace="../../codelists/BuildingDetailAttribute_orgUsage2.xml">1320</uro:orgUsage2>
+                    <uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">214</uro:landUseType>
+                    <uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4222</uro:detailedUsage>
                     <uro:buildingHeight uom="m">5.5</uro:buildingHeight>
                     <uro:surveyYear>2022</uro:surveyYear>
                 </uro:BuildingDetailAttribute>
             </uro:buildingDetailAttribute>
             <uro:buildingIDAttribute>
                 <uro:BuildingIDAttribute>
-                    <uro:buildingID>23201-bldg-10467</uro:buildingID>
-                    <uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">23</uro:prefecture>
-                    <uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">23201</uro:city>
+                    <uro:buildingID>16211-bldg-10467</uro:buildingID>
+                    <uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
+                    <uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
                 </uro:BuildingIDAttribute>
             </uro:buildingIDAttribute>
         </bldg:Building>

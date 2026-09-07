@@ -1,0 +1,620 @@
+//! Transportation xlink-reference completeness detector (L-tran-03), shared
+//! across PLATEAU generations.
+//!
+//! A `tran:Road` aggregates the boundary surfaces of its `TrafficArea` /
+//! `AuxiliaryTrafficArea` into an aggregate `lodXMultiSurface` whose
+//! `gml:surfaceMember` entries reference those polygons by `xlink:href`. This
+//! check reads the raw GML and reports, per LOD, every boundary polygon
+//! `gml:id` that the aggregate surface does not reference.
+//!
+//! Generation-specific differences are injected as a [`TransportationXlinkStrategy`].
+
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    rc::Rc,
+    str::FromStr,
+};
+
+use fastxml::transform::Transformer;
+use once_cell::sync::Lazy;
+use reearth_flow_common::{
+    uri::Uri,
+    xml::{self, XmlContext, XmlRoNode},
+};
+use reearth_flow_runtime::{
+    errors::BoxedError,
+    event::EventHub,
+    executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::errors::{PlateauProcessorError, Result};
+use super::PlateauProfile;
+
+/// XML namespace for `xlink:href`. Identical across CityGML 2.0/3.0.
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
+
+pub static PASSED_PORT: Lazy<Port> = Lazy::new(|| Port::new("passed"));
+pub static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
+
+/// Generation-specific seam for the transportation xlink check.
+pub(crate) trait TransportationXlinkStrategy: Send + Sync + Debug {
+    /// Feature containers to scan, as `//{name}` roots (e.g. `tran:Road`).
+    fn containers(&self) -> &[&str];
+    /// Namespace prefix of the container's own aggregate `lodXMultiSurface`
+    /// (`tran` in CityGML 2.0, `core` in 3.0).
+    fn aggregate_prefix(&self) -> &str;
+    /// XML namespace that resolves `gml:id` (differs by GML version).
+    fn gml_namespace(&self) -> &str;
+
+    /// LODs to inspect, as (lod fragment, lod number label). LOD2 and LOD3 carry
+    /// aggregate surfaces in both generations (LOD4 is abolished in 3.0 and was
+    /// never scanned in 2.0).
+    fn lods(&self) -> &[(&str, &str)] {
+        &[("lod2", "2"), ("lod3", "3")]
+    }
+
+    /// Qualified aggregate multi-surface tag for a LOD (e.g. `tran:lod3MultiSurface`).
+    fn aggregate_tag(&self, lod: &str) -> String {
+        format!("{}:{lod}MultiSurface", self.aggregate_prefix())
+    }
+
+    /// XPath, relative to the container, matching the aggregate surface's
+    /// `xlink:href` references for one LOD.
+    fn aggregate_xlink_xpath(&self, lod: &str) -> String {
+        format!(
+            "{}//gml:surfaceMember[@xlink:href]",
+            self.aggregate_tag(lod)
+        )
+    }
+
+    /// XPath, relative to the container, matching the boundary polygons of one
+    /// LOD, each keyed by its `gml:id`.
+    fn child_surface_xpath(&self, lod: &str) -> String;
+}
+
+#[derive(thiserror::Error, Debug)]
+pub(crate) enum Error {
+    #[error("reearth flow common error: {0}")]
+    InvalidUri(#[from] reearth_flow_common::Error),
+    #[error("Transportation XLink Detector Error: {0}")]
+    TransportationXlinkDetector(String),
+    #[error("Failed to convert bytes to string")]
+    FromUtf8(#[from] std::string::FromUtf8Error),
+    #[error("Storage Error: {0}")]
+    Storage(#[from] reearth_flow_storage::Error),
+    #[error("Object Store Error: {0}")]
+    ObjectStore(#[from] object_store::Error),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TransportationXlinkDetectorFactory {
+    name: String,
+    strategy: &'static dyn TransportationXlinkStrategy,
+}
+
+impl TransportationXlinkDetectorFactory {
+    pub(crate) fn new(
+        profile: &PlateauProfile,
+        strategy: &'static dyn TransportationXlinkStrategy,
+    ) -> Self {
+        Self {
+            name: profile.action_name("TransportationXlinkDetector"),
+            strategy,
+        }
+    }
+}
+
+impl ProcessorFactory for TransportationXlinkDetectorFactory {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn description(&self) -> &str {
+        "Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)"
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(TransportationXlinkDetectorParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["PLATEAU"]
+    }
+
+    fn get_input_ports(&self) -> Vec<Port> {
+        vec![FEATURES_PORT.clone()]
+    }
+
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![PASSED_PORT.clone(), FAILED_PORT.clone()]
+    }
+
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        let params: TransportationXlinkDetectorParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                PlateauProcessorError::TransportationXlinkDetectorFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                PlateauProcessorError::TransportationXlinkDetectorFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            return Err(PlateauProcessorError::TransportationXlinkDetectorFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
+        };
+
+        let city_gml_path = params.city_gml_path.compile().map_err(|e| {
+            PlateauProcessorError::TransportationXlinkDetectorFactory(format!(
+                "Failed to compile city_gml_path: {e}"
+            ))
+        })?;
+
+        let process = TransportationXlinkDetector {
+            city_gml_path,
+            strategy: self.strategy,
+        };
+        Ok(Box::new(process))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TransportationXlinkDetectorParam {
+    city_gml_path: Code,
+}
+
+#[derive(Debug, Clone)]
+pub struct TransportationXlinkDetector {
+    city_gml_path: CompiledCode,
+    strategy: &'static dyn TransportationXlinkStrategy,
+}
+
+impl Processor for TransportationXlinkDetector {
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        self.process_impl(ctx, fw).map_err(Into::into)
+    }
+
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "TransportationXlinkDetector"
+    }
+}
+
+impl TransportationXlinkDetector {
+    fn process_impl(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), Error> {
+        let feature = &ctx.feature;
+        let city_gml_path = self
+            .city_gml_path
+            .eval_string(feature, ctx.variables.clone())
+            .map_err(|e| {
+                Error::TransportationXlinkDetector(format!(
+                    "Failed to evaluate cityGmlPath expression: {e:?}"
+                ))
+            })?;
+        let uri = Uri::from_str(&city_gml_path)?;
+        let storage = ctx.storage_resolver.resolve(&uri)?;
+        let content = storage.get_sync(uri.path().as_path())?;
+        let xml_content = String::from_utf8(content.to_vec())?;
+
+        let stream_error: Rc<RefCell<Option<Error>>> = Rc::new(RefCell::new(None));
+
+        let transformer = Transformer::from(xml_content.as_str())
+            .with_root_namespaces()
+            .map_err(|e| Error::TransportationXlinkDetector(format!("{e:?}")))?;
+
+        let strategy = self.strategy;
+        let ctx = &ctx;
+
+        let mut t = transformer;
+        for container in strategy.containers() {
+            // The reported feature type is the container's local name (`Road`).
+            let feature_type = container
+                .rsplit(':')
+                .next()
+                .unwrap_or(container)
+                .to_string();
+            let xpath = format!("//{container}");
+            let stream_error = Rc::clone(&stream_error);
+
+            t = t.on(&xpath, move |node| {
+                if stream_error.borrow().is_some() {
+                    return;
+                }
+
+                // Gate: the container must carry at least one aggregate LOD surface.
+                let has_lod = node.children().iter().any(|c| {
+                    let qname = c.qname();
+                    strategy
+                        .lods()
+                        .iter()
+                        .any(|(lod, _)| qname == strategy.aggregate_tag(lod))
+                });
+                if !has_lod {
+                    return;
+                }
+
+                let doc = node.document();
+                let mut xml_ctx = match xml::create_context(doc) {
+                    Ok(ctx) => ctx,
+                    Err(e) => {
+                        *stream_error.borrow_mut() =
+                            Some(Error::TransportationXlinkDetector(format!("{e:?}")));
+                        return;
+                    }
+                };
+                for (prefix, uri) in node.namespaces() {
+                    let _ = xml_ctx.register_namespace(prefix, uri);
+                }
+                let root_node = match xml::get_root_readonly_node(doc) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        *stream_error.borrow_mut() =
+                            Some(Error::TransportationXlinkDetector(format!("{e:?}")));
+                        return;
+                    }
+                };
+
+                match extract_unreferenced_surfaces(strategy, &xml_ctx, &root_node) {
+                    Ok(Some(result)) => {
+                        for (lod, surface_id) in result.unreferenced_surfaces {
+                            let mut feature = feature.clone();
+                            feature.refresh_id();
+
+                            feature.attributes_mut().insert(
+                                Attribute::new("gmlId"),
+                                AttributeValue::String(result.road_id.clone()),
+                            );
+                            feature.attributes_mut().insert(
+                                Attribute::new("featureType"),
+                                AttributeValue::String(feature_type.clone()),
+                            );
+                            feature
+                                .attributes_mut()
+                                .insert(Attribute::new("lod"), AttributeValue::String(lod));
+                            feature.attributes_mut().insert(
+                                Attribute::new("unreferenced"),
+                                AttributeValue::String(surface_id),
+                            );
+
+                            fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+                        }
+                    }
+                    Ok(None) => {
+                        let feature = feature.clone();
+                        fw.send(ctx.new_with_feature_and_port(feature, PASSED_PORT.clone()));
+                    }
+                    Err(e) => {
+                        *stream_error.borrow_mut() = Some(e);
+                    }
+                }
+            });
+        }
+
+        t.for_each()
+            .map_err(|e| Error::TransportationXlinkDetector(format!("{e:?}")))?;
+
+        if let Some(err) = Rc::try_unwrap(stream_error)
+            .expect("all callback references should be dropped after for_each()")
+            .into_inner()
+        {
+            return Err(err);
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct UnreferencedSurfacesResult {
+    road_id: String,
+    unreferenced_surfaces: Vec<(String, String)>, // (lod, surface_id)
+}
+
+fn extract_unreferenced_surfaces(
+    strategy: &'static dyn TransportationXlinkStrategy,
+    xml_ctx: &XmlContext,
+    road_node: &XmlRoNode,
+) -> Result<Option<UnreferencedSurfacesResult>, Error> {
+    let road_id = road_node
+        .get_attribute_ns("id", strategy.gml_namespace())
+        .ok_or(Error::TransportationXlinkDetector(
+            "Failed to get Road gml:id".to_string(),
+        ))?;
+
+    let mut all_unreferenced = Vec::new();
+
+    for (lod_tag, lod_number) in strategy.lods() {
+        if let Some(unreferenced) =
+            check_lod_surfaces(strategy, xml_ctx, road_node, lod_tag, lod_number)?
+        {
+            all_unreferenced.extend(unreferenced);
+        }
+    }
+
+    if all_unreferenced.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(UnreferencedSurfacesResult {
+            road_id,
+            unreferenced_surfaces: all_unreferenced,
+        }))
+    }
+}
+
+fn check_lod_surfaces(
+    strategy: &'static dyn TransportationXlinkStrategy,
+    xml_ctx: &XmlContext,
+    road_node: &XmlRoNode,
+    lod_tag: &str,
+    lod_number: &str,
+) -> Result<Option<Vec<(String, String)>>, Error> {
+    // All XLink references from the Road's aggregate lodXMultiSurface.
+    let xlink_refs = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        &strategy.aggregate_xlink_xpath(lod_tag),
+        road_node,
+    )
+    .map_err(|e| Error::TransportationXlinkDetector(format!("{e:?}")))?;
+
+    let referenced_surfaces: HashSet<String> = xlink_refs
+        .iter()
+        .filter_map(|node| {
+            let href = node.get_attribute_ns("href", XLINK_NS)?;
+            Some(href.trim_start_matches('#').to_string())
+        })
+        .collect();
+
+    // All child boundary surface IDs from TrafficArea and AuxiliaryTrafficArea.
+    let child_surface_nodes = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        &strategy.child_surface_xpath(lod_tag),
+        road_node,
+    )
+    .map_err(|e| Error::TransportationXlinkDetector(format!("{e:?}")))?;
+
+    let mut child_surfaces = Vec::new();
+    for surface_node in child_surface_nodes {
+        if let Some(surface_id) = surface_node.get_attribute_ns("id", strategy.gml_namespace()) {
+            child_surfaces.push(surface_id);
+        }
+    }
+
+    // Surfaces defined on the boundaries but not referenced by the aggregate.
+    let unreferenced: Vec<(String, String)> = child_surfaces
+        .into_iter()
+        .filter(|surface_id| !referenced_surfaces.contains(surface_id))
+        .map(|surface_id| (lod_number.to_string(), surface_id))
+        .collect();
+
+    if unreferenced.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(unreferenced))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plateau4::transportation_xlink_strategy::Plateau4TransportationXlinkStrategy;
+    use crate::plateau6::transportation_xlink_strategy::Plateau6TransportationXlinkStrategy;
+
+    /// `tran:Road` whose traffic spaces are nested two levels deep in
+    /// `tran:section/tran:Section`, as real PLATEAU 6 data is. Each boundary
+    /// carries two LOD3 polygons, of which the aggregate references only one.
+    const NESTED_SECTION_ROAD: &str = r##"<?xml version="1.0" encoding="UTF-8"?>
+<tran:Road xmlns:core="http://www.opengis.net/citygml/3.0"
+    xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
+    xmlns:gml="http://www.opengis.net/gml/3.2"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    gml:id="road-1">
+  <core:lod3MultiSurface>
+    <gml:MultiSurface>
+      <gml:surfaceMember>
+        <gml:CompositeSurface>
+          <gml:surfaceMember xlink:href="#traffic-referenced"/>
+          <gml:surfaceMember xlink:href="#auxiliary-referenced"/>
+        </gml:CompositeSurface>
+      </gml:surfaceMember>
+    </gml:MultiSurface>
+  </core:lod3MultiSurface>
+  <tran:section>
+    <tran:Section>
+      <tran:section>
+        <tran:Section>
+          <tran:trafficSpace>
+            <tran:TrafficSpace>
+              <core:boundary>
+                <tran:TrafficArea>
+                  <core:lod3MultiSurface>
+                    <gml:MultiSurface>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="traffic-referenced"/>
+                      </gml:surfaceMember>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="traffic-unreferenced"/>
+                      </gml:surfaceMember>
+                    </gml:MultiSurface>
+                  </core:lod3MultiSurface>
+                </tran:TrafficArea>
+              </core:boundary>
+            </tran:TrafficSpace>
+          </tran:trafficSpace>
+          <tran:auxiliaryTrafficSpace>
+            <tran:AuxiliaryTrafficSpace>
+              <core:boundary>
+                <tran:AuxiliaryTrafficArea>
+                  <core:lod3MultiSurface>
+                    <gml:MultiSurface>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="auxiliary-referenced"/>
+                      </gml:surfaceMember>
+                      <gml:surfaceMember>
+                        <gml:Polygon gml:id="auxiliary-unreferenced"/>
+                      </gml:surfaceMember>
+                    </gml:MultiSurface>
+                  </core:lod3MultiSurface>
+                </tran:AuxiliaryTrafficArea>
+              </core:boundary>
+            </tran:AuxiliaryTrafficSpace>
+          </tran:auxiliaryTrafficSpace>
+        </tran:Section>
+      </tran:section>
+    </tran:Section>
+  </tran:section>
+</tran:Road>
+"##;
+
+    fn extract_from(
+        strategy: &'static dyn TransportationXlinkStrategy,
+        gml: &str,
+    ) -> Option<UnreferencedSurfacesResult> {
+        let document = xml::parse(gml).expect("the test GML should parse");
+        let ctx = xml::create_context(&document).expect("the xpath context should build");
+        let road = xml::get_root_readonly_node(&document).expect("the root node should exist");
+        extract_unreferenced_surfaces(strategy, &ctx, &road).expect("extraction should succeed")
+    }
+
+    #[test]
+    fn boundary_surfaces_nested_under_tran_section_are_still_checked() {
+        let result = extract_from(&Plateau6TransportationXlinkStrategy, NESTED_SECTION_ROAD)
+            .expect("the two unreferenced polygons should be reported");
+
+        assert_eq!(result.road_id, "road-1");
+        assert_eq!(
+            result.unreferenced_surfaces,
+            vec![
+                ("3".to_string(), "traffic-unreferenced".to_string()),
+                ("3".to_string(), "auxiliary-unreferenced".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_road_whose_aggregate_references_every_nested_boundary_surface_passes() {
+        let gml = NESTED_SECTION_ROAD.replace(
+            r##"<gml:surfaceMember xlink:href="#auxiliary-referenced"/>"##,
+            r##"<gml:surfaceMember xlink:href="#auxiliary-referenced"/>
+          <gml:surfaceMember xlink:href="#traffic-unreferenced"/>
+          <gml:surfaceMember xlink:href="#auxiliary-unreferenced"/>"##,
+        );
+
+        assert!(extract_from(&Plateau6TransportationXlinkStrategy, &gml).is_none());
+    }
+
+    /// CityGML 2.0 `tran:Road`: boundaries hang directly off `tran:trafficArea`
+    /// / `tran:auxiliaryTrafficArea` and the aggregate surface belongs to
+    /// `tran`. LOD2 and LOD3 each carry two boundary polygons, of which the
+    /// aggregate references only one.
+    const CITYGML2_ROAD: &str = r##"<?xml version="1.0" encoding="UTF-8"?>
+<tran:Road xmlns:tran="http://www.opengis.net/citygml/transportation/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    gml:id="road-1">
+  <tran:lod2MultiSurface>
+    <gml:MultiSurface>
+      <gml:surfaceMember xlink:href="#lod2-traffic-referenced"/>
+    </gml:MultiSurface>
+  </tran:lod2MultiSurface>
+  <tran:lod3MultiSurface>
+    <gml:MultiSurface>
+      <gml:surfaceMember xlink:href="#lod3-auxiliary-referenced"/>
+    </gml:MultiSurface>
+  </tran:lod3MultiSurface>
+  <tran:trafficArea>
+    <tran:TrafficArea>
+      <tran:lod2MultiSurface>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod2-traffic-referenced"/>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod2-traffic-unreferenced"/>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </tran:lod2MultiSurface>
+    </tran:TrafficArea>
+  </tran:trafficArea>
+  <tran:auxiliaryTrafficArea>
+    <tran:AuxiliaryTrafficArea>
+      <tran:lod3MultiSurface>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod3-auxiliary-referenced"/>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon gml:id="lod3-auxiliary-unreferenced"/>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </tran:lod3MultiSurface>
+    </tran:AuxiliaryTrafficArea>
+  </tran:auxiliaryTrafficArea>
+</tran:Road>
+"##;
+
+    #[test]
+    fn a_citygml2_road_reports_unreferenced_surfaces_of_every_lod() {
+        let result = extract_from(&Plateau4TransportationXlinkStrategy, CITYGML2_ROAD)
+            .expect("the two unreferenced polygons should be reported");
+
+        assert_eq!(result.road_id, "road-1");
+        assert_eq!(
+            result.unreferenced_surfaces,
+            vec![
+                ("2".to_string(), "lod2-traffic-unreferenced".to_string()),
+                ("3".to_string(), "lod3-auxiliary-unreferenced".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_citygml2_road_whose_aggregates_reference_every_boundary_surface_passes() {
+        let gml = CITYGML2_ROAD
+            .replace(
+                r##"<gml:surfaceMember xlink:href="#lod2-traffic-referenced"/>"##,
+                r##"<gml:surfaceMember xlink:href="#lod2-traffic-referenced"/>
+      <gml:surfaceMember xlink:href="#lod2-traffic-unreferenced"/>"##,
+            )
+            .replace(
+                r##"<gml:surfaceMember xlink:href="#lod3-auxiliary-referenced"/>"##,
+                r##"<gml:surfaceMember xlink:href="#lod3-auxiliary-referenced"/>
+      <gml:surfaceMember xlink:href="#lod3-auxiliary-unreferenced"/>"##,
+            );
+
+        assert!(extract_from(&Plateau4TransportationXlinkStrategy, &gml).is_none());
+    }
+}

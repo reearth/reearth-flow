@@ -12,8 +12,8 @@ with:
   prcs:
   targetPackages: ["frn", "veg"]
 graphs:
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/surface_validator.yml
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
