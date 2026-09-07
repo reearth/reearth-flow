@@ -978,6 +978,7 @@
     },
     {
       "name": "Coordinate Frame Reprojector",
+      "description": "Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.",
       "parameterI18n": {
         "": {
           "title": "Coordinate Frame Reprojector Parameters",
@@ -1831,6 +1832,7 @@
     },
     {
       "name": "Geometry Identifier",
+      "description": "Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance.",
       "parameterI18n": {
         "": {
           "title": "Geometry Identifier Parameters",
@@ -3096,6 +3098,7 @@
     },
     {
       "name": "PLATEAU4.TransitiveLinkResolver",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
       "parameterI18n": {
         "": {
           "title": "TransitiveLinkResolver Parameters",
@@ -3207,6 +3210,7 @@
     },
     {
       "name": "PLATEAU6.MissingAttributeDetector",
+      "description": "Detect missing attributes in PLATEAU features",
       "parameterI18n": {
         "": {
           "title": "MissingAttributeDetector Parameters",
@@ -3217,6 +3221,7 @@
     },
     {
       "name": "PLATEAU6.ObjectListExtractor",
+      "description": "Extract object list",
       "parameterI18n": {
         "": {
           "title": "ObjectListExtractor Parameters",
@@ -3245,6 +3250,7 @@
     },
     {
       "name": "PLATEAU6.TransitiveLinkResolver",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
       "parameterI18n": {
         "": {
           "title": "TransitiveLinkResolver Parameters",
@@ -3266,6 +3272,7 @@
     },
     {
       "name": "PLATEAU6.TransportationXlinkDetector",
+      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)",
       "parameterI18n": {
         "": {
           "title": "TransportationXlinkDetectorParam"

@@ -978,6 +978,7 @@
     },
     {
       "name": "Coordinate Frame Reprojector",
+      "description": "Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.",
       "parameterI18n": {
         "": {
           "title": "Coordinate Frame Reprojector Parameters",
@@ -1831,6 +1832,7 @@
     },
     {
       "name": "Geometry Identifier",
+      "description": "Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance.",
       "parameterI18n": {
         "": {
           "title": "Geometry Identifier Parameters",
@@ -3096,6 +3098,7 @@
     },
     {
       "name": "PLATEAU4.TransitiveLinkResolver",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
       "parameterI18n": {
         "": {
           "title": "TransitiveLinkResolver Parameters",
@@ -3160,6 +3163,7 @@
     },
     {
       "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
       "parameterI18n": {
         "": {
           "title": "BuildingUsageAttributeValidator Parameters"
@@ -3171,6 +3175,7 @@
     },
     {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
       "parameterI18n": {
         "": {
           "title": "PLATEAU Destination MeshCode Extractor Parameters",
@@ -3205,6 +3210,7 @@
     },
     {
       "name": "PLATEAU6.MissingAttributeDetector",
+      "description": "Detect missing attributes in PLATEAU features",
       "parameterI18n": {
         "": {
           "title": "MissingAttributeDetector Parameters",
@@ -3215,6 +3221,7 @@
     },
     {
       "name": "PLATEAU6.ObjectListExtractor",
+      "description": "Extract object list",
       "parameterI18n": {
         "": {
           "title": "ObjectListExtractor Parameters",
@@ -3225,6 +3232,7 @@
     },
     {
       "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "description": "Creates pairs of features from Area On Area Overlayer output for solid intersection testing",
       "parameterI18n": {
         "": {
           "title": "SolidIntersectionTestPairCreatorParam"
@@ -3242,6 +3250,7 @@
     },
     {
       "name": "PLATEAU6.TransitiveLinkResolver",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute whose value the linked features share. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
       "parameterI18n": {
         "": {
           "title": "TransitiveLinkResolver Parameters",
@@ -3263,6 +3272,7 @@
     },
     {
       "name": "PLATEAU6.TransportationXlinkDetector",
+      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)",
       "parameterI18n": {
         "": {
           "title": "TransportationXlinkDetectorParam"
@@ -3284,7 +3294,8 @@
       }
     },
     {
-      "name": "PLATEAU6.UnmatchedXlinkDetector"
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "description": "Detect unmatched Xlinks for PLATEAU"
     },
     {
       "name": "Planarity Filter",

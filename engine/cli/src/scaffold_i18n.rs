@@ -103,10 +103,17 @@ fn collect_definitions(
 }
 
 /// Reconciles a single `I18nSchema` entry against the current action schema.
+/// - Seeds the action-level `description` from the base schema when absent.
 /// - Adds missing `parameterI18n` / `definitionI18n` keys, seeding title/description from the base schema.
 /// - Removes stale keys that no longer exist in the schema.
 /// - Preserves existing values (never overwrites what a translator has already filled in).
 fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
+    // Seed the action's own description, the sibling of `name`, so a new action
+    // arrives with the English text to translate rather than with the key missing.
+    if existing.description.is_none() && !action.description.is_empty() {
+        existing.description = Some(action.description.clone());
+    }
+
     if action.parameter.is_null() {
         existing.parameter_i18n = None;
         existing.definition_i18n = None;
