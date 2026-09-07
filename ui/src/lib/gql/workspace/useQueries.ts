@@ -19,15 +19,27 @@ export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
-  const invalidateWorkspace = (workspaceId?: string) =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
-      }),
-    ]);
+  const invalidateWorkspace = async (
+    workspaceId?: string,
+    invalidateList = true,
+  ) => {
+    const tasks: Promise<unknown>[] = [];
+    if (invalidateList) {
+      tasks.push(
+        queryClient.invalidateQueries({
+          queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+        }),
+      );
+    }
+    if (workspaceId) {
+      tasks.push(
+        queryClient.invalidateQueries({
+          queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
+        }),
+      );
+    }
+    await Promise.all(tasks);
+  };
 
   const createWorkspaceMutation = useMutation({
     mutationFn: async (name: string) => {
@@ -86,6 +98,7 @@ export const useQueries = () => {
       return data?.deleteWorkspace?.workspaceId;
     },
     onSuccess: (deletedWorkspaceId) => {
+      if (!deletedWorkspaceId) return;
       queryClient.removeQueries({
         queryKey: [WorkspaceQueryKeys.GetWorkspace, deletedWorkspaceId],
       });
@@ -104,7 +117,8 @@ export const useQueries = () => {
       if (!data?.addMemberToWorkspace) return;
       return toWorkspace(data.addMemberToWorkspace.workspace);
     },
-    onSuccess: (_workspace, input) => invalidateWorkspace(input.workspaceId),
+    onSuccess: (_workspace, input) =>
+      invalidateWorkspace(input.workspaceId, false),
   });
 
   const removeMemberFromWorkspaceMutation = useMutation({
@@ -116,7 +130,8 @@ export const useQueries = () => {
 
       return toWorkspace(data.removeMemberFromWorkspace.workspace);
     },
-    onSuccess: (_workspace, input) => invalidateWorkspace(input.workspaceId),
+    onSuccess: (_workspace, input) =>
+      invalidateWorkspace(input.workspaceId, false),
   });
 
   const updateMemberOfWorkspaceMutation = useMutation({
@@ -128,7 +143,8 @@ export const useQueries = () => {
 
       return toWorkspace(data.updateMemberOfWorkspace.workspace);
     },
-    onSuccess: (_workspace, input) => invalidateWorkspace(input.workspaceId),
+    onSuccess: (_workspace, input) =>
+      invalidateWorkspace(input.workspaceId, false),
   });
 
   return {
