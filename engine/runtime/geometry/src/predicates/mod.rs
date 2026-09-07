@@ -70,7 +70,7 @@ pub mod view3d;
 pub use contains::{contains, covers};
 pub use distance::distance;
 #[cfg(feature = "new-geometry")]
-pub use equal::{Equal, Tolerance};
+pub use equal::Equal;
 pub use intersects::intersects;
 pub use intersects3d::intersects_3d;
 pub use kernel::CoordPos;

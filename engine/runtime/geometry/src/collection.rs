@@ -166,11 +166,7 @@ impl BoundingBox for Collection2D {
 
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for Collection2D {
-    fn equal(
-        &self,
-        rhs: &Self,
-        tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
         use crate::predicates::equal::single_of_members_2d;
         match (
             single_of_members_2d(self.members())?,
@@ -185,11 +181,7 @@ impl crate::predicates::Equal for Collection2D {
 
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for Collection3D {
-    fn equal(
-        &self,
-        rhs: &Self,
-        tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
         use crate::predicates::equal::single_of_members_3d;
         match (
             single_of_members_3d(self.members())?,

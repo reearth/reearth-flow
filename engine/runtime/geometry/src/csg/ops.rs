@@ -62,11 +62,7 @@ fn translate_operand(operand: &mut ThreeDimensional, delta: [f64; 3]) -> crate::
 
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for Csg {
-    fn equal(
-        &self,
-        _rhs: &Self,
-        _tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
+    fn equal(&self, _rhs: &Self, _tolerance: f64) -> crate::predicates::Result<bool> {
         // A boolean tree has no point set until it is evaluated, and "not
         // known" is not "different".
         Err(crate::predicates::PredicateError::Unsupported { geometry: "Csg" })

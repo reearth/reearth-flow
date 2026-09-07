@@ -20,11 +20,8 @@
 //! than guessed at — see [`denoted`] for why neither reading of such a
 //! collection is faithful here.
 
-use std::collections::HashMap;
-
 use super::{PredicateError, Result};
 use crate::ops::{Boundary, ExtractBoundary};
-use crate::predicates::view3d::TriangleSet;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
@@ -39,20 +36,6 @@ const INDEX_THRESHOLD: usize = 64;
 /// hugs the tolerance along its whole length.
 const REFINEMENT_BUDGET: usize = 4096;
 
-/// How much slack the comparison allows.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Tolerance {
-    /// Greatest distance, in the units the coordinates are expressed in, that
-    /// two geometries may stray from one another and still occupy the same
-    /// space. Zero admits only coordinates that coincide exactly, which leaves
-    /// no room for rounding; prefer a small positive distance.
-    pub distance: f64,
-    /// Greatest angle, in radians, between two adjacent faces still counted as
-    /// lying in one flat facet. This is what lets a mesh be compared
-    /// independently of how it was cut into triangles.
-    pub coplanarity: f64,
-}
-
 /// Whether two geometries occupy the same space.
 ///
 /// Reflexive and symmetric, but **not transitive** above a zero distance: `a`
@@ -60,7 +43,7 @@ pub struct Tolerance {
 /// tolerance. A caller wanting an equivalence — one identifier per shape —
 /// must take the transitive closure itself.
 pub trait Equal {
-    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> Result<bool>;
+    fn equal(&self, rhs: &Self, tolerance: f64) -> Result<bool>;
 }
 
 // The boxed enum variants (`Box<Polygon3D>`, `Box<Solid>`, …) need no blanket
@@ -204,6 +187,43 @@ fn augment(member: usize, adjacency: &[Vec<bool>], owner: &mut [usize], seen: &m
     false
 }
 
+/// One face reduced to the curves its rings trace, exterior kept apart from
+/// holes.
+///
+/// Weighing all of a face's rings together as one bag would make a face equal to
+/// its ring-inverted twin — the invalid face whose exterior is the other's hole
+/// — because the two trace the very same curves.
+pub(crate) struct FaceCurves {
+    exterior: Curves,
+    holes: Vec<Curves>,
+}
+
+impl FaceCurves {
+    pub(crate) fn new<'a>(
+        exterior: &[[f64; 3]],
+        holes: impl IntoIterator<Item = &'a [[f64; 3]]>,
+    ) -> Self {
+        Self {
+            exterior: Curves::from_ring(exterior),
+            holes: holes.into_iter().map(Curves::from_ring).collect(),
+        }
+    }
+
+    /// Whether the two faces occupy the same space.
+    pub(crate) fn within(&self, other: &Self, distance: f64) -> Result<bool> {
+        if !self.exterior.may_reach(&other.exterior, distance)
+            || !self.exterior.within(&other.exterior, distance)
+        {
+            return Ok(false);
+        }
+        // The supporting planes need no separate test: exteriors that stay
+        // within `distance` of one another already pin the planes together.
+        pair_off(&self.holes, &other.holes, |a, b| {
+            Ok(a.may_reach(b, distance) && a.within(b, distance))
+        })
+    }
+}
+
 /// A point set expressed as the straight pieces it is the union of: the
 /// segments of every curve, plus each isolated position as a piece of zero
 /// length.
@@ -307,6 +327,17 @@ impl Curves {
         self
     }
 
+    /// Whether the two sets are near enough to be worth weighing: their boxes
+    /// come within `distance` of one another. A cheap reject before the real
+    /// test, which matters when faces are paired off and every pair would
+    /// otherwise be measured.
+    pub(crate) fn may_reach(&self, other: &Self, distance: f64) -> bool {
+        (0..3).all(|axis| {
+            self.min[axis] - distance <= other.max[axis]
+                && other.min[axis] - distance <= self.max[axis]
+        })
+    }
+
     /// Whether the two sets occupy the same space: neither strays further than
     /// `distance` from the other.
     pub(crate) fn within(&self, other: &Self, distance: f64) -> bool {
@@ -395,102 +426,29 @@ impl Curves {
     }
 }
 
-/// Face edges accumulated so the ones that merely cut a flat region can be
-/// dropped.
-///
-/// Which edges to drop is the whole question. Dropping none leaves the answer at
-/// the mercy of how a flat region happened to be cut up — two triangulations of
-/// one square would compare as different shapes. Dropping every edge two faces
-/// share goes too far the other way: a closed shell has no such edge left over
-/// and would reduce to nothing at all, and a flat square would come out equal to
-/// a tent pitched over it. Dropping only the coplanar ones keeps every crease and
-/// every boundary, which is what carries the shape, and discards only the cuts.
-pub(crate) struct FacetEdges {
-    faces_on_edge: HashMap<[u32; 2], Vec<usize>>,
-    normals: Vec<[f64; 3]>,
+/// Squared distance from a point to the nearest point of a piece.
+fn piece_distance_2(point: [f64; 3], piece: &Piece) -> f64 {
+    let (a, b) = (piece.a, piece.b);
+    let along = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    let length_2 = along[0] * along[0] + along[1] * along[1] + along[2] * along[2];
+    let to_point = [point[0] - a[0], point[1] - a[1], point[2] - a[2]];
+    let projection = if length_2 <= 0.0 {
+        0.0
+    } else {
+        ((to_point[0] * along[0] + to_point[1] * along[1] + to_point[2] * along[2]) / length_2)
+            .clamp(0.0, 1.0)
+    };
+    let offset = [
+        to_point[0] - projection * along[0],
+        to_point[1] - projection * along[1],
+        to_point[2] - projection * along[2],
+    ];
+    offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2]
 }
 
-impl FacetEdges {
-    pub(crate) fn new() -> Self {
-        Self {
-            faces_on_edge: HashMap::new(),
-            normals: Vec::new(),
-        }
-    }
-
-    /// Add one face by its welded corner indices and its unit normal. A face
-    /// with no normal has no area, so it is no surface and is left out; that can
-    /// only turn a shared edge into a boundary one, which is the cautious way to
-    /// be wrong.
-    pub(crate) fn push_face(&mut self, corners: &[u32], normal: Option<[f64; 3]>) {
-        let Some(normal) = normal else {
-            return;
-        };
-        let face = self.normals.len();
-        self.normals.push(normal);
-        for pair in corners.windows(2) {
-            self.add_edge(pair[0], pair[1], face);
-        }
-        // A ring stored open still closes; one stored closed adds nothing here.
-        if let (Some(&first), Some(&last)) = (corners.first(), corners.last()) {
-            if first != last {
-                self.add_edge(last, first, face);
-            }
-        }
-    }
-
-    fn add_edge(&mut self, from: u32, to: u32, face: usize) {
-        if from == to {
-            return;
-        }
-        let edge = if from <= to { [from, to] } else { [to, from] };
-        self.faces_on_edge.entry(edge).or_default().push(face);
-    }
-
-    /// The curves the surviving edges trace, in the coordinates `position`
-    /// gives for each welded index.
-    pub(crate) fn into_curves(
-        self,
-        position: impl Fn(u32) -> [f64; 3],
-        coplanarity: f64,
-    ) -> Curves {
-        let limit = coplanarity.cos();
-        let mut curves = Curves::new();
-        for (edge, faces) in self.faces_on_edge {
-            // Exactly two faces lying in one plane: the edge is an artefact of
-            // how the surface was cut up, not a feature of the shape. Anything
-            // else — a boundary edge, a crease, a non-manifold junction — is kept.
-            if let [one, other] = faces[..] {
-                // Unsigned: two faces wound against one another still lie flat.
-                if cosine(self.normals[one], self.normals[other]).abs() >= limit {
-                    continue;
-                }
-            }
-            curves.push_piece(position(edge[0]), position(edge[1]));
-        }
-        curves.finish()
-    }
-}
-
-/// The curves a triangle set's flat facets are bounded by.
-///
-/// Every surface-bearing 3D leaf reaches this through
-/// [`TriangleSet`](crate::predicates::view3d::TriangleSet), so a mesh, a face
-/// and a solid's shell are all read the same way.
-pub(crate) fn facet_curves(triangles: &TriangleSet<'_>, coplanarity: f64) -> Curves {
-    let pool = triangles.pool();
-    let welded = weld(pool);
-    let mut edges = FacetEdges::new();
-    for i in 0..triangles.len() {
-        let corners = triangles.indices(i).map(|index| welded[index as usize]);
-        let normal = unit_normal(
-            pool[corners[0] as usize],
-            pool[corners[1] as usize],
-            pool[corners[2] as usize],
-        );
-        edges.push_face(&corners, normal);
-    }
-    edges.into_curves(|index| pool[index as usize], coplanarity)
+fn span(a: [f64; 3], b: [f64; 3]) -> f64 {
+    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
 }
 
 /// Lift a 2D coordinate to the elevation its leaf sits at. A leaf without one
@@ -614,68 +572,4 @@ fn gather_curves(geometry: &Geometry, curves: &mut Curves) -> Result<()> {
             .iter()
             .try_for_each(|m| gather_curves(m, curves)),
     }
-}
-
-/// Squared distance from a point to the nearest point of a piece.
-fn piece_distance_2(point: [f64; 3], piece: &Piece) -> f64 {
-    let (a, b) = (piece.a, piece.b);
-    let along = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let length_2 = along[0] * along[0] + along[1] * along[1] + along[2] * along[2];
-    let to_point = [point[0] - a[0], point[1] - a[1], point[2] - a[2]];
-    let projection = if length_2 <= 0.0 {
-        0.0
-    } else {
-        ((to_point[0] * along[0] + to_point[1] * along[1] + to_point[2] * along[2]) / length_2)
-            .clamp(0.0, 1.0)
-    };
-    let offset = [
-        to_point[0] - projection * along[0],
-        to_point[1] - projection * along[1],
-        to_point[2] - projection * along[2],
-    ];
-    offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2]
-}
-
-fn span(a: [f64; 3], b: [f64; 3]) -> f64 {
-    let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt()
-}
-
-/// Map each vertex index to the first index carrying the same position, so that
-/// faces meeting at a coordinate but written with separate indices still count
-/// as neighbours.
-///
-/// Welding is exact. A near-miss between two positions of *one* mesh is a defect
-/// in that mesh, not a difference between two of them, and repairing it is not
-/// this operation's job.
-pub(crate) fn weld(vertices: &[[f64; 3]]) -> Vec<u32> {
-    fn bits(value: f64) -> u64 {
-        // `-0.0` and `0.0` are one position written two ways.
-        let value = if value == 0.0 { 0.0 } else { value };
-        value.to_bits()
-    }
-    let mut first: HashMap<[u64; 3], u32> = HashMap::new();
-    vertices
-        .iter()
-        .enumerate()
-        .map(|(index, position)| *first.entry(position.map(bits)).or_insert(index as u32))
-        .collect()
-}
-
-/// The unit normal of a triangle, or `None` when it has no area to have one.
-pub(crate) fn unit_normal(a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> Option<[f64; 3]> {
-    let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-    let normal = [
-        u[1] * v[2] - u[2] * v[1],
-        u[2] * v[0] - u[0] * v[2],
-        u[0] * v[1] - u[1] * v[0],
-    ];
-    let length = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-    (length > 0.0).then(|| [normal[0] / length, normal[1] / length, normal[2] / length])
-}
-
-/// Cosine of the angle between two unit vectors.
-pub(crate) fn cosine(a: [f64; 3], b: [f64; 3]) -> f64 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }

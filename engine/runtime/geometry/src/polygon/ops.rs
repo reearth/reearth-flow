@@ -549,52 +549,32 @@ impl Elevation for Polygon3D {
 
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for Polygon2D {
-    fn equal(
-        &self,
-        rhs: &Self,
-        tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
         use crate::predicates::equal::{pair_off, ring_curves_2d};
 
         crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
         // Exterior against exterior, holes against holes; see `Polygon3D`.
         let (here, there) = (self.elevation(), rhs.elevation());
         if !ring_curves_2d(self.exterior(), here)
-            .within(&ring_curves_2d(rhs.exterior(), there), tolerance.distance)
+            .within(&ring_curves_2d(rhs.exterior(), there), tolerance)
         {
             return Ok(false);
         }
         let ours: Vec<_> = self.interiors().map(|r| ring_curves_2d(r, here)).collect();
         let theirs: Vec<_> = rhs.interiors().map(|r| ring_curves_2d(r, there)).collect();
-        pair_off(&ours, &theirs, |a, b| Ok(a.within(b, tolerance.distance)))
+        pair_off(&ours, &theirs, |a, b| Ok(a.within(b, tolerance)))
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for Polygon3D {
-    fn equal(
-        &self,
-        rhs: &Self,
-        tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
-        use crate::predicates::equal::{pair_off, Curves};
+    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
+        use crate::predicates::equal::FaceCurves;
 
         // Reprojection stays the caller's explicit step.
         crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
-        // Exterior against exterior, holes against holes. Weighing all the rings
-        // together as one bag of curves would make a face equal to its
-        // ring-inverted twin — the invalid face whose exterior is the other's
-        // hole — because the two trace the very same curves.
-        if !Curves::from_ring(self.exterior())
-            .within(&Curves::from_ring(rhs.exterior()), tolerance.distance)
-        {
-            return Ok(false);
-        }
-        // The supporting planes need no separate test: exteriors that stay
-        // within `distance` of one another already pin the planes together.
-        let ours: Vec<Curves> = self.interiors().map(Curves::from_ring).collect();
-        let theirs: Vec<Curves> = rhs.interiors().map(Curves::from_ring).collect();
-        pair_off(&ours, &theirs, |a, b| Ok(a.within(b, tolerance.distance)))
+        FaceCurves::new(self.exterior(), self.interiors())
+            .within(&FaceCurves::new(rhs.exterior(), rhs.interiors()), tolerance)
     }
 }
 
@@ -602,14 +582,11 @@ impl crate::predicates::Equal for Polygon3D {
 mod equal_tests {
     use super::*;
     use crate::collection::Collection3D;
-    use crate::predicates::{Equal, PredicateError, Tolerance};
+    use crate::predicates::{Equal, PredicateError};
     use crate::GeometryCollection;
 
-    fn tolerance() -> Tolerance {
-        Tolerance {
-            distance: 1e-9,
-            coplanarity: 1e-6,
-        }
+    fn tolerance() -> f64 {
+        1e-9
     }
 
     fn ring(lo: f64, hi: f64) -> Vec<[f64; 3]> {

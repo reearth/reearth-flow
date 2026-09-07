@@ -70,7 +70,7 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{Area, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
-use predicates::{Equal, PredicateError, Tolerance};
+use predicates::{Equal, PredicateError};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -358,7 +358,7 @@ impl Area for GeometryCollection {
 
 #[cfg(feature = "new-geometry")]
 impl Equal for Geometry {
-    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use predicates::equal::{denoted, Denoted};
         match (denoted(self)?, denoted(rhs)?) {
             // Two geometries that denote nothing occupy the same nothing.
@@ -379,7 +379,7 @@ impl Equal for Geometry {
 
 #[cfg(feature = "new-geometry")]
 impl Equal for Euclidean2DGeometry {
-    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use predicates::equal::single_leaf_2d;
         use Euclidean2DGeometry as G;
         match (single_leaf_2d(self)?, single_leaf_2d(rhs)?) {
@@ -402,7 +402,7 @@ impl Equal for Euclidean2DGeometry {
 
 #[cfg(feature = "new-geometry")]
 impl Equal for Euclidean3DGeometry {
-    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use predicates::equal::single_leaf_3d;
         use Euclidean3DGeometry as G;
         match (single_leaf_3d(self)?, single_leaf_3d(rhs)?) {
@@ -425,7 +425,7 @@ impl Equal for Euclidean3DGeometry {
 
 #[cfg(feature = "new-geometry")]
 impl Equal for GeometryCollection {
-    fn equal(&self, rhs: &Self, tolerance: Tolerance) -> predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use predicates::equal::{denoted_members, Denoted};
         match (
             denoted_members(self.members())?,

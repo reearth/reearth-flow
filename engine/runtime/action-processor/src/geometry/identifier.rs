@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_geometry::ops::{Aabb, BoundingBox};
-use reearth_flow_geometry::predicates::{Equal, Tolerance};
+use reearth_flow_geometry::predicates::Equal;
 use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -30,13 +30,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
-
-/// Greatest angle between two adjacent faces still counted as lying in one flat
-/// facet, which is what lets a mesh be weighed independently of how it was cut
-/// into triangles. Not a knob: it is here to absorb the rounding in a computed
-/// normal, not to merge shallow creases, so it stays far below any angle a real
-/// surface turns through.
-const COPLANARITY_TOLERANCE: f64 = 1e-9;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct GeometryIdentifierFactory;
@@ -157,8 +150,11 @@ pub(super) struct GeometryIdentifier {
     params: GeometryIdentifierParam,
     /// Buffered features in arrival order; the output preserves that order.
     buffer: Vec<BufferedFeature>,
-    /// Group key -> indices into `buffer`, each in arrival order.
-    groups: HashMap<String, Vec<usize>>,
+    /// Group key -> indices into `buffer`, each in arrival order. The key holds
+    /// the attribute values themselves: joining them into a string would let
+    /// `["a|b", "c"]` and `["a", "b|c"]` name one group, and would make an
+    /// absent attribute indistinguishable from an empty one.
+    groups: HashMap<Vec<Option<AttributeValue>>, Vec<usize>>,
 }
 
 impl Processor for GeometryIdentifier {
@@ -185,15 +181,8 @@ impl Processor for GeometryIdentifier {
             .as_deref()
             .unwrap_or_default()
             .iter()
-            .map(|attribute| {
-                feature
-                    .attributes
-                    .get(attribute)
-                    .map(|value| value.to_string())
-                    .unwrap_or_default()
-            })
-            .collect::<Vec<_>>()
-            .join("|");
+            .map(|attribute| feature.attributes.get(attribute).cloned())
+            .collect::<Vec<_>>();
 
         let index = self.buffer.len();
         self.buffer.push(BufferedFeature {
@@ -245,11 +234,6 @@ impl GeometryIdentifier {
     /// `None` where the feature's geometry occupies nowhere and so shares its
     /// space with nothing.
     fn resolve(&self) -> Result<Vec<Option<usize>>, BoxedError> {
-        let tolerance = Tolerance {
-            distance: self.params.tolerance,
-            coplanarity: COPLANARITY_TOLERANCE,
-        };
-
         // Feature index -> the index representing the space it shares. Roots are
         // buffer positions, so they stay distinct across groups.
         let mut root_of: HashMap<usize, usize> = HashMap::new();
@@ -258,10 +242,12 @@ impl GeometryIdentifier {
             // A 2D and a 3D geometry are not a pair `Equal` will weigh — there is
             // no implicit promotion between the embeddings — so they are binned
             // apart and never put to it.
-            let mut bins: HashMap<u8, Vec<usize>> = HashMap::new();
+            let mut bins: HashMap<u8, Vec<(usize, &Aabb)>> = HashMap::new();
             for &index in indices {
                 if let Some(envelope) = &self.buffer[index].envelope {
-                    bins.entry(embedding(envelope)).or_default().push(index);
+                    bins.entry(embedding(envelope))
+                        .or_default()
+                        .push((index, envelope));
                 }
             }
 
@@ -271,28 +257,28 @@ impl GeometryIdentifier {
                     members
                         .iter()
                         .enumerate()
-                        .map(|(slot, &index)| BoxEntry {
-                            envelope: box_of(self.envelope(index), 0.0),
+                        .map(|(slot, &(_, envelope))| BoxEntry {
+                            envelope: box_of(envelope, 0.0),
                             slot,
                         })
                         .collect(),
                 );
-                for (slot, &index) in members.iter().enumerate() {
+                for (slot, &(index, envelope)) in members.iter().enumerate() {
                     // Only geometries whose boxes come within the tolerance of
                     // one another can occupy the same space, so the rest are
                     // never weighed.
-                    let reach = box_of(self.envelope(index), self.params.tolerance);
+                    let reach = box_of(envelope, self.params.tolerance);
                     for candidate in tree.locate_in_envelope_intersecting(&reach) {
                         // Each unordered pair is enough, and a geometry need not
                         // be weighed against itself.
                         if candidate.slot <= slot {
                             continue;
                         }
-                        let other = members[candidate.slot];
+                        let (other, _) = members[candidate.slot];
                         let same = self.buffer[index]
                             .feature
                             .geometry
-                            .equal(&self.buffer[other].feature.geometry, tolerance)
+                            .equal(&self.buffer[other].feature.geometry, self.params.tolerance)
                             .map_err(|e| {
                                 GeometryProcessorError::GeometryIdentifier(format!(
                                     "Cannot tell whether two geometries occupy the same space: {e}"
@@ -303,8 +289,9 @@ impl GeometryIdentifier {
                         }
                     }
                 }
-                for (slot, &index) in members.iter().enumerate() {
-                    root_of.insert(index, members[union_find.find(slot)]);
+                for (slot, &(index, _)) in members.iter().enumerate() {
+                    let (root, _) = members[union_find.find(slot)];
+                    root_of.insert(index, root);
                 }
             }
         }

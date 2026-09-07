@@ -797,43 +797,31 @@ impl PolygonMesh3DData {
         Some(self.vertices()[i as usize][2])
     }
 }
-
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for PolygonMesh2D {
-    fn equal(
-        &self,
-        rhs: &Self,
-        tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
         use crate::predicates::equal::surface_curves_2d;
 
         crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
-        Ok(surface_curves_2d(self)?.within(&surface_curves_2d(rhs)?, tolerance.distance))
+        Ok(surface_curves_2d(self)?.within(&surface_curves_2d(rhs)?, tolerance))
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::predicates::Equal for PolygonMesh3D {
-    fn equal(
-        &self,
-        rhs: &Self,
-        tolerance: crate::predicates::Tolerance,
-    ) -> crate::predicates::Result<bool> {
-        use crate::ops::triangulation::Cache;
-        use crate::predicates::equal::facet_curves;
-        use crate::predicates::view3d::TriangleSet;
-
-        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
-        let mut cache = Cache::new();
-        let ours = facet_curves(
-            &TriangleSet::from_polygon_mesh_data(self.data(), &mut cache),
-            tolerance.coplanarity,
-        );
-        let theirs = facet_curves(
-            &TriangleSet::from_polygon_mesh_data(rhs.data(), &mut cache),
-            tolerance.coplanarity,
-        );
-        Ok(ours.within(&theirs, tolerance.distance))
+    fn equal(&self, _rhs: &Self, _tolerance: f64) -> crate::predicates::Result<bool> {
+        // TODO: replace with a topology-blind comparison — neither the triangles
+        // nor the faces are believed. For every vertex of either surface, find
+        // the closest point of the other (a point of the point set, so triangle
+        // interiors count), through an rstar prefilter over the triangle boxes
+        // and an exact point-to-triangle distance after it, returning as soon as
+        // one vertex is further than the tolerance; then match the boundary
+        // loops, if any, as 3D curves. Note vertex sampling alone is unsound on
+        // closed surfaces: a cube and the same cube with a tunnel drilled
+        // through it have every vertex of each lying on the other.
+        Err(crate::predicates::PredicateError::Unsupported {
+            geometry: "PolygonMesh3D",
+        })
     }
 }
 
