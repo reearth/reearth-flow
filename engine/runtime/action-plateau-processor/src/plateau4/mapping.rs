@@ -12,21 +12,21 @@ use super::{
     face_extractor::FaceExtractorFactory,
     flooding_area_surface_generator::FloodingAreaSurfaceGeneratorFactory,
     gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory,
-    max_lod_extractor::MaxLodExtractorFactory,
-    tran_xlink_detector::TransportationXlinkDetectorFactory,
-    unshared_edge_detector::UnsharedEdgeDetectorFactory,
+    max_lod_extractor::MaxLodExtractorFactory, unshared_edge_detector::UnsharedEdgeDetectorFactory,
 };
-use crate::common::building_part_connectivity_checker::BuildingPartConnectivityCheckerFactory;
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
 use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
 use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
+use crate::common::transitive_link_resolver::TransitiveLinkResolverFactory;
+use crate::common::transportation_xlink_detector::TransportationXlinkDetectorFactory;
 use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 
 use super::building_usage_attribute_strategy::Plateau4BuildingUsageStrategy;
+use super::transportation_xlink_strategy::Plateau4TransportationXlinkStrategy;
 use super::unmatched_xlink_strategy::Plateau4XlinkStrategy;
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -35,7 +35,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<MaxLodExtractorFactory>::default(),
         Box::<AttributeFlattenerFactory>::default(),
         Box::<BuildingInstallationGeometryTypeCheckerFactory>::default(),
-        Box::new(BuildingPartConnectivityCheckerFactory::new(&PLATEAU4)),
+        Box::new(TransitiveLinkResolverFactory::new(&PLATEAU4)),
         Box::new(BuildingUsageAttributeValidatorFactory::new(
             &PLATEAU4,
             &Plateau4BuildingUsageStrategy,
@@ -53,7 +53,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
             &Plateau4XlinkStrategy,
         )),
         Box::new(SolidIntersectionTestPairCreatorFactory::new(&PLATEAU4)),
-        Box::<TransportationXlinkDetectorFactory>::default(),
+        Box::new(TransportationXlinkDetectorFactory::new(
+            &PLATEAU4,
+            &Plateau4TransportationXlinkStrategy,
+        )),
         Box::<FaceExtractorFactory>::default(),
         Box::<UnsharedEdgeDetectorFactory>::default(),
         Box::<CompositeSurfaceContinuityFilterFactory>::default(),
