@@ -62,6 +62,7 @@ impl XmlNode {
 pub enum XmlChild {
     Element(Arc<XmlNode>),
     Text(String),
+    Geometry(Option<u8>, Arc<super::resolver::GeomNode>),
 }
 
 /// Interns namespace URIs as u32 IDs, avoiding repeated allocation of long URI strings.

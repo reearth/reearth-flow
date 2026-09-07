@@ -64,7 +64,12 @@ pub fn build_features(
         } else {
             let root_gml_id = gml_id_attr(&feature_root.attrs);
 
-            for (node, parent_id) in flatten::extract(&feature_root, extract_tags, &ns_registry) {
+            for flatten::Extracted {
+                node,
+                parent_gml_id,
+                ..
+            } in flatten::extract(&feature_root, extract_tags, &ns_registry)
+            {
                 let mut feature = build_feature(
                     &node,
                     citygml_attribute_key,
@@ -72,7 +77,7 @@ pub fn build_features(
                     flatten_single_child_objects,
                     flatten_leaf_attributes,
                 );
-                if let Some(id) = parent_id {
+                if let Some(id) = parent_gml_id {
                     feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
                 }
                 if let Some(ref id) = root_gml_id {
@@ -178,7 +183,7 @@ mod build_next {
 
     use crate::citygml_parser::{
         appearance::{self, AppearanceIndex},
-        codespace, flatten, geometry,
+        codespace, flatten,
         parser::{self, Parser, ParserOutput, RawRegistry},
         resolver::{self, GeomRegistry},
         utils::{gml_id_attr, NamespaceRegistry},
@@ -229,7 +234,7 @@ mod build_next {
     /// merged into every feature parsed from that file.
     #[allow(clippy::too_many_arguments)]
     fn assemble_features(
-        pending: Vec<parser::PendingFeature>,
+        pending: Vec<Arc<parser::RawNode>>,
         raw_registry: &RawRegistry,
         geom_registry: &GeomRegistry,
         appearance: &AppearanceIndex,
@@ -245,7 +250,7 @@ mod build_next {
         let mut codelist_resolver = codespace::CodelistResolver::new();
         let mut xlink_cache = xlink::ResolveCache::new();
 
-        for parser::PendingFeature { root, geoms } in pending {
+        for root in pending {
             let Some(resolved_root) = xlink::resolve_one(&root, raw_registry, &mut xlink_cache)
             else {
                 continue;
@@ -263,56 +268,38 @@ mod build_next {
                     keep_attributes,
                     flatten_leaf_attributes,
                 );
-                attach_geometry(&mut feature, &geoms, geom_registry, appearance, srs_by_file);
+                attach_geometry(
+                    &mut feature,
+                    &flatten::collect_all_geometry(&feature_root),
+                    geom_registry,
+                    appearance,
+                    srs_by_file,
+                );
                 if let Some(base) = base {
                     feature.extend(base.clone());
                 }
                 out.push(feature);
             } else {
                 let root_gml_id = gml_id_attr(&feature_root.attrs);
-                let extracted = flatten::extract(&feature_root, extract_tags, ns_registry);
-                let emitted_ids: HashSet<String> = extracted
-                    .iter()
-                    .filter_map(|(n, _)| gml_id_attr(&n.attrs))
-                    .collect();
-                // Attach each carved geometry to its nearest emitted (hoisted) ancestor.
-                let mut by_owner: HashMap<&str, Vec<&geometry::PendingGeom>> = HashMap::new();
-                for g in &geoms {
-                    if let Some(target) = g
-                        .owners
-                        .iter()
-                        .find(|o| emitted_ids.contains(o.gml_id.as_str()))
-                    {
-                        by_owner.entry(target.gml_id.as_str()).or_default().push(g);
-                    }
-                }
-                for (node, parent_id) in &extracted {
+                for flatten::Extracted {
+                    node,
+                    parent_gml_id,
+                    geometry,
+                } in flatten::extract(&feature_root, extract_tags, ns_registry)
+                {
                     let mut feature = parser::to_feature(
-                        node,
+                        &node,
                         citygml_attribute_key,
                         keep_attributes,
                         flatten_leaf_attributes,
                     );
-                    if let Some(id) = parent_id {
-                        feature.insert(
-                            CITYGML_PARENT_GML_ID_KEY,
-                            AttributeValue::String(id.clone()),
-                        );
+                    if let Some(id) = parent_gml_id {
+                        feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
                     }
                     if let Some(ref id) = root_gml_id {
                         feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
                     }
-                    if let Some(gs) =
-                        gml_id_attr(&node.attrs).and_then(|id| by_owner.get(id.as_str()))
-                    {
-                        attach_geometry(
-                            &mut feature,
-                            gs.iter().copied(),
-                            geom_registry,
-                            appearance,
-                            srs_by_file,
-                        );
-                    }
+                    attach_geometry(&mut feature, &geometry, geom_registry, appearance, srs_by_file);
                     if let Some(base) = base {
                         feature.extend(base.clone());
                     }
@@ -323,11 +310,11 @@ mod build_next {
         out
     }
 
-    /// Resolve each carved geometry and set the feature's geometry to a collection of the results,
+    /// Resolve each found geometry and set the feature's geometry to a collection of the results,
     /// one member per geometry. Leaves the geometry unset when none resolve.
     fn attach_geometry<'a>(
         feature: &mut Feature,
-        geoms: impl IntoIterator<Item = &'a geometry::PendingGeom>,
+        geoms: impl IntoIterator<Item = &'a flatten::FoundGeometry>,
         registry: &GeomRegistry,
         appearance: &AppearanceIndex,
         srs_by_file: &HashMap<String, EpsgCode>,
@@ -351,14 +338,14 @@ mod build_next {
                     AttributeValue::Number(lod.into()),
                 );
             }
-            if let Some(owner) = pending.owners.first() {
+            if let Some(owner_gml_id) = &pending.owner_gml_id {
                 member_attrs.insert(
                     Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY),
-                    AttributeValue::String(owner.gml_id.clone()),
+                    AttributeValue::String(owner_gml_id.clone()),
                 );
                 member_attrs.insert(
                     Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
-                    AttributeValue::String(owner.feature_type.clone()),
+                    AttributeValue::String(pending.owner_feature_type.clone()),
                 );
             }
             members.push(member);

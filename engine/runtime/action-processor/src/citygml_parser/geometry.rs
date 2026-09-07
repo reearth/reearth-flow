@@ -517,7 +517,7 @@ fn find_child<'a>(node: &'a XmlNode, local: &str) -> Option<&'a XmlNode> {
 fn element_children(node: &XmlNode) -> impl Iterator<Item = &XmlNode> {
     node.children.iter().filter_map(|c| match c {
         XmlChild::Element(e) => Some(e.as_ref()),
-        XmlChild::Text(_) => None,
+        XmlChild::Text(_) | XmlChild::Geometry(..) => None,
     })
 }
 
@@ -910,7 +910,7 @@ mod tests {
             .iter()
             .filter_map(|c| match c {
                 XmlChild::Element(e) => Some(local_name(&e.name.0)),
-                XmlChild::Text(_) => None,
+                XmlChild::Text(_) | XmlChild::Geometry(..) => None,
             })
             .collect();
         assert_eq!(

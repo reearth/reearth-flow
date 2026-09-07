@@ -1,9 +1,51 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use super::resolver::GeomNode;
 use super::utils::{
     gml_id_attr, local_name, NamespaceRegistry, NsId, XmlChild, XmlNode, EMPTY_NS_ID,
 };
+
+/// One feature discovered by [`extract`], ready to become an output `Feature`.
+pub(super) struct Extracted {
+    pub(super) node: Arc<XmlNode>,
+    pub(super) parent_gml_id: Option<String>,
+    /// Geometry found on this node or on its own non-extracted descendants, stopping at any
+    /// deeper extracted feature (which collects its own).
+    pub(super) geometry: Vec<FoundGeometry>,
+}
+
+/// A geometry found while walking, tagged with the LOD of the property it came from (`None` for
+/// `tin`) and the node it was a direct child of, used to name the object a surface belongs to.
+pub(super) struct FoundGeometry {
+    pub(super) lod: Option<u8>,
+    pub(super) node: Arc<GeomNode>,
+    pub(super) owner_gml_id: Option<String>,
+    pub(super) owner_feature_type: String,
+}
+
+/// Collect every geometry in `node`'s subtree, with no stopping condition — used when
+/// `extract_tags` is empty and the whole tree becomes a single feature.
+pub(super) fn collect_all_geometry(node: &Arc<XmlNode>) -> Vec<FoundGeometry> {
+    let mut out = Vec::new();
+    collect_all_geometry_inner(node, &mut out);
+    out
+}
+
+fn collect_all_geometry_inner(node: &Arc<XmlNode>, out: &mut Vec<FoundGeometry>) {
+    for child in &node.children {
+        match child {
+            XmlChild::Element(e) => collect_all_geometry_inner(e, out),
+            XmlChild::Geometry(lod, g) => out.push(FoundGeometry {
+                lod: *lod,
+                node: Arc::clone(g),
+                owner_gml_id: gml_id_attr(&node.attrs),
+                owner_feature_type: node.name.0.clone(),
+            }),
+            XmlChild::Text(_) => {}
+        }
+    }
+}
 
 /// Pre-processed form of the `included` tag set that avoids per-node allocation.
 /// Clark-notation entries (`{ns}local`) are resolved to `(NsId, local)` pairs once at the
@@ -59,7 +101,7 @@ pub(super) fn extract(
     node: &Arc<XmlNode>,
     included: &HashSet<String>,
     ns_registry: &NamespaceRegistry,
-) -> Vec<(Arc<XmlNode>, Option<String>)> {
+) -> Vec<Extracted> {
     if included.is_empty() {
         return Vec::new();
     }
@@ -72,12 +114,17 @@ pub(super) fn extract(
 fn extract_inner(
     node: &Arc<XmlNode>,
     sets: &MatchSets,
-    out: &mut Vec<(Arc<XmlNode>, Option<String>)>,
+    out: &mut Vec<Extracted>,
     parent_gml_id: Option<&str>,
 ) {
     if tag_matches(node, sets) {
-        let stripped = extract_recursive(node, sets, out, parent_gml_id, true);
-        out.push((stripped, parent_gml_id.map(str::to_string)));
+        let mut geometry = Vec::new();
+        let stripped = extract_recursive(node, sets, out, parent_gml_id, true, &mut geometry);
+        out.push(Extracted {
+            node: stripped,
+            parent_gml_id: parent_gml_id.map(str::to_string),
+            geometry,
+        });
     } else {
         // Not extracted: never adopt this node's own gml:id as a parent baseline, even if it
         // has one — only extracted ancestors may become parent references.
@@ -92,9 +139,10 @@ fn extract_inner(
 fn extract_recursive(
     node: &Arc<XmlNode>,
     sets: &MatchSets,
-    out: &mut Vec<(Arc<XmlNode>, Option<String>)>,
+    out: &mut Vec<Extracted>,
     parent_gml_id: Option<&str>,
     matched: bool,
+    geometry: &mut Vec<FoundGeometry>,
 ) -> Arc<XmlNode> {
     // Only a node that is itself extracted may hand its own gml:id down as the parent
     // baseline for its descendants; an unmatched wrapper passes `parent_gml_id` through as-is.
@@ -111,15 +159,28 @@ fn extract_recursive(
         match child {
             XmlChild::Element(e) => {
                 if tag_matches(e, sets) {
-                    let stripped_child = extract_recursive(e, sets, out, child_parent, true);
-                    out.push((stripped_child, child_parent.map(str::to_string)));
+                    let mut child_geometry = Vec::new();
+                    let stripped_child = extract_recursive(
+                        e,
+                        sets,
+                        out,
+                        child_parent,
+                        true,
+                        &mut child_geometry,
+                    );
+                    out.push(Extracted {
+                        node: stripped_child,
+                        parent_gml_id: child_parent.map(str::to_string),
+                        geometry: child_geometry,
+                    });
 
                     if new_children.is_none() {
                         new_children = Some(node.children[..i].to_vec());
                     }
                     // deliberately not pushed into new_children — it is extracted
                 } else {
-                    let stripped_child = extract_recursive(e, sets, out, child_parent, false);
+                    let stripped_child =
+                        extract_recursive(e, sets, out, child_parent, false, geometry);
                     match new_children {
                         None => {
                             if !Arc::ptr_eq(&stripped_child, e) {
@@ -137,6 +198,17 @@ fn extract_recursive(
             XmlChild::Text(_) => {
                 if let Some(ref mut nc) = new_children {
                     nc.push(child.clone());
+                }
+            }
+            XmlChild::Geometry(lod, g) => {
+                geometry.push(FoundGeometry {
+                    lod: *lod,
+                    node: Arc::clone(g),
+                    owner_gml_id: gml_id_attr(&node.attrs),
+                    owner_feature_type: node.name.0.clone(),
+                });
+                if new_children.is_none() {
+                    new_children = Some(node.children[..i].to_vec());
                 }
             }
         }
@@ -188,7 +260,7 @@ mod tests {
         let root = node("bldg:Building", vec![elem(Arc::clone(&part))]);
         let extracted = extract(&root, &included(&["bldg:BuildingPart"]), &ns_reg);
         assert_eq!(extracted.len(), 1);
-        assert!(Arc::ptr_eq(&extracted[0].0, &part));
+        assert!(Arc::ptr_eq(&extracted[0].node, &part));
     }
 
     #[test]
@@ -205,9 +277,9 @@ mod tests {
         );
 
         assert_eq!(extracted.len(), 2);
-        assert_eq!(extracted[0].0.name.0, "bldg:Room");
-        assert_eq!(extracted[1].0.name.0, "bldg:BuildingPart");
-        assert!(extracted[1].0.children.is_empty());
+        assert_eq!(extracted[0].node.name.0, "bldg:Room");
+        assert_eq!(extracted[1].node.name.0, "bldg:BuildingPart");
+        assert!(extracted[1].node.children.is_empty());
     }
 
     #[test]
@@ -256,8 +328,8 @@ mod tests {
         assert_eq!(extracted.len(), 4);
         let unit_parents: Vec<_> = extracted
             .iter()
-            .filter(|(n, _)| n.name.0 == "bldg:Unit")
-            .map(|(_, p)| p.as_deref())
+            .filter(|e| e.node.name.0 == "bldg:Unit")
+            .map(|e| e.parent_gml_id.as_deref())
             .collect();
         assert!(
             unit_parents.contains(&Some("a")),
@@ -288,8 +360,75 @@ mod tests {
         assert_eq!(extracted.len(), 2);
         let area_parent = extracted
             .iter()
-            .find(|(n, _)| n.name.0 == "bldg:TrafficArea")
-            .and_then(|(_, p)| p.as_deref());
+            .find(|e| e.node.name.0 == "bldg:TrafficArea")
+            .and_then(|e| e.parent_gml_id.as_deref());
         assert_eq!(area_parent, Some("root"));
+    }
+
+    fn geom_ref(id: &str) -> Arc<GeomNode> {
+        Arc::new(GeomNode::Ref(("file:///t.gml".to_string(), id.to_string())))
+    }
+
+    #[test]
+    fn geometry_collected_from_own_node() {
+        let ns_reg = NamespaceRegistry::new();
+        let root = gml_id(
+            "bldg:Building",
+            "b1",
+            vec![XmlChild::Geometry(Some(2), geom_ref("g1"))],
+        );
+        let extracted = extract(&root, &included(&["bldg:Building"]), &ns_reg);
+        assert_eq!(extracted.len(), 1);
+        assert_eq!(extracted[0].geometry.len(), 1);
+        assert_eq!(extracted[0].geometry[0].lod, Some(2));
+        assert_eq!(extracted[0].geometry[0].owner_gml_id.as_deref(), Some("b1"));
+    }
+
+    #[test]
+    fn geometry_rolls_up_past_unmatched_descendant() {
+        let ns_reg = NamespaceRegistry::new();
+        let wall = gml_id(
+            "con:WallSurface",
+            "wall1",
+            vec![XmlChild::Geometry(Some(2), geom_ref("g1"))],
+        );
+        let root = gml_id("bldg:Building", "b1", vec![elem(wall)]);
+        let extracted = extract(&root, &included(&["bldg:Building"]), &ns_reg);
+        assert_eq!(extracted.len(), 1);
+        assert_eq!(extracted[0].geometry.len(), 1);
+        assert_eq!(
+            extracted[0].geometry[0].owner_gml_id.as_deref(),
+            Some("wall1")
+        );
+    }
+
+    #[test]
+    fn geometry_stops_at_deeper_extracted_descendant() {
+        let ns_reg = NamespaceRegistry::new();
+        let part = gml_id(
+            "bldg:BuildingPart",
+            "part1",
+            vec![XmlChild::Geometry(Some(2), geom_ref("g1"))],
+        );
+        let root = gml_id("bldg:Building", "b1", vec![elem(part)]);
+        let extracted = extract(
+            &root,
+            &included(&["bldg:Building", "bldg:BuildingPart"]),
+            &ns_reg,
+        );
+        assert_eq!(extracted.len(), 2);
+        let building = extracted
+            .iter()
+            .find(|e| e.node.name.0 == "bldg:Building")
+            .unwrap();
+        let part_extracted = extracted
+            .iter()
+            .find(|e| e.node.name.0 == "bldg:BuildingPart")
+            .unwrap();
+        assert!(
+            building.geometry.is_empty(),
+            "geometry belongs to the extracted BuildingPart, not the Building"
+        );
+        assert_eq!(part_extracted.geometry.len(), 1);
     }
 }

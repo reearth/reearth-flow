@@ -80,9 +80,8 @@ impl Parser {
     }
 
     /// Same shape as the new-geometry `Parser`'s constructor, ignored here: this
-    /// legacy parser doesn't do owner-tracking or `gml:id` synthesis.
-    pub(crate) fn with_owner_tracking(
-        _track_owners: bool,
+    /// legacy parser doesn't do `gml:id` synthesis.
+    pub(crate) fn with_extract_tags(
         version: CityGmlVersion,
         _extract_tags: std::collections::HashSet<String>,
     ) -> Self {
@@ -199,6 +198,7 @@ fn single_object_child(node: &XmlNode) -> Option<&XmlNode> {
             }
             XmlChild::Text(t) if !t.trim().is_empty() => return None,
             XmlChild::Text(_) => {}
+            XmlChild::Geometry(..) => {}
         }
     }
     sole
@@ -299,6 +299,7 @@ pub fn node_to_attribute_value(
                 elem_groups.entry(key).or_default().push(val);
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
+            XmlChild::Geometry(..) => {}
         }
     }
 

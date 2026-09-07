@@ -84,7 +84,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
-        let parser = Parser::with_owner_tracking(true, CityGmlVersion::V3, extract_tags.clone());
+        let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone());
 
         Ok(Box::new(FeatureCityGml3Reader {
             dataset,
@@ -185,11 +185,7 @@ impl Clone for FeatureCityGml3Reader {
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             inherit_input_attributes: self.inherit_input_attributes,
-            parser: Parser::with_owner_tracking(
-                true,
-                CityGmlVersion::V3,
-                self.extract_tags.clone(),
-            ),
+            parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
         }
     }
@@ -242,7 +238,7 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let next_parser =
-            Parser::with_owner_tracking(true, CityGmlVersion::V3, self.extract_tags.clone());
+            Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone());
         for feature in build_features(
             std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,
