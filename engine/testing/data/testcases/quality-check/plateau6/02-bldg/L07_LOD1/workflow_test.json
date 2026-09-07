@@ -1,6 +1,5 @@
 {
   "description": "Test L07 for LOD1 on plateau6. A lod1Solid face with near-duplicate consecutive points, reported as DuplicateConsecutivePoints under 'LOD1 境界面のエラー'.",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -39,7 +38,11 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_LOD1境界面のエラー.csv"
+    "expectedFile": [
+      "02_建築物_LOD1境界面のエラー.csv",
+      "error_geometry/02_建築物_LOD1境界面のエラー.geojson",
+      "error_geometry/02_建築物_LOD1境界面のエラー位置.geojson"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {

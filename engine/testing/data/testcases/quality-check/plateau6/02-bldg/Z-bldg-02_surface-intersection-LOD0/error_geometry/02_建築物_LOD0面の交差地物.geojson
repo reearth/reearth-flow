@@ -1,0 +1,105 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                -10191.82325448642,
+                71804.33079118759,
+                0.0
+              ],
+              [
+                -10190.929129983168,
+                71804.32972948803,
+                0.0
+              ],
+              [
+                -10190.927812482574,
+                71805.4393295593,
+                0.0
+              ],
+              [
+                -10191.821936870232,
+                71805.44039125888,
+                0.0
+              ],
+              [
+                -10191.82325448642,
+                71804.33079118759,
+                0.0
+              ]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の交差地物",
+        "issue": "Surface Intersection",
+        "filename": "54370053_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_4d583b00-4ce9-49b5-9540-9d1bbca48e46",
+        "relatedGmlId": "bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47",
+        "rootGmlId": "bldg_4d583b00-4ce9-49b5-9540-9d1bbca48e46",
+        "lod": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                -10191.375533456761,
+                71804.88506036249,
+                0.0
+              ],
+              [
+                -10190.481409013633,
+                71804.8839987103,
+                0.0
+              ],
+              [
+                -10190.480091570682,
+                71805.99359878086,
+                0.0
+              ],
+              [
+                -10191.374215898219,
+                71805.99466043447,
+                0.0
+              ],
+              [
+                -10191.375533456761,
+                71804.88506036249,
+                0.0
+              ]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の交差地物",
+        "issue": "Surface Intersection",
+        "filename": "54370053_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47",
+        "relatedGmlId": "bldg_4d583b00-4ce9-49b5-9540-9d1bbca48e46",
+        "rootGmlId": "bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47",
+        "lod": 0
+      }
+    }
+  ]
+}
