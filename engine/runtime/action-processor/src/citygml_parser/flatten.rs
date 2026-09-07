@@ -47,8 +47,12 @@ fn tag_matches(node: &XmlNode, sets: &MatchSets) -> bool {
 
 /// Extracts all nodes whose tag is in `included` from `node`'s subtree (including `node` itself),
 /// deepest-first. Each extracted node has its own matching descendants stripped out.
-/// Returns `(node, nearest_ancestor_gml_id)` pairs; the parent ID is correct even when the same
-/// node is reached via multiple paths (e.g. shared xlink targets).
+/// Returns `(node, nearest_extracted_ancestor_gml_id)` pairs: the parent id is the nearest
+/// ancestor that is *itself* extracted (i.e. also tag-matched), not merely the nearest ancestor
+/// that happens to carry a `gml:id` — an unmatched wrapper element (e.g. a `Section` or
+/// `TrafficSpace` not in `included`) never becomes a parent reference, even though it has its own
+/// `gml:id`. The parent ID is correct even when the same node is reached via multiple paths (e.g.
+/// shared xlink targets).
 /// Note: if a parent and a descendant tag both appear in `included`, the descendant's geometry
 /// and attributes are stripped from the parent and emitted separately.
 pub(super) fn extract(
@@ -72,14 +76,14 @@ fn extract_inner(
     parent_gml_id: Option<&str>,
 ) {
     if tag_matches(node, sets) {
-        let stripped = extract_recursive(node, sets, out, parent_gml_id);
+        let stripped = extract_recursive(node, sets, out, parent_gml_id, true);
         out.push((stripped, parent_gml_id.map(str::to_string)));
     } else {
-        let my_id = gml_id_attr(&node.attrs);
-        let next_parent = my_id.as_deref().or(parent_gml_id);
+        // Not extracted: never adopt this node's own gml:id as a parent baseline, even if it
+        // has one — only extracted ancestors may become parent references.
         for child in &node.children {
             if let XmlChild::Element(e) = child {
-                extract_inner(e, sets, out, next_parent);
+                extract_inner(e, sets, out, parent_gml_id);
             }
         }
     }
@@ -90,8 +94,15 @@ fn extract_recursive(
     sets: &MatchSets,
     out: &mut Vec<(Arc<XmlNode>, Option<String>)>,
     parent_gml_id: Option<&str>,
+    matched: bool,
 ) -> Arc<XmlNode> {
-    let my_id = gml_id_attr(&node.attrs);
+    // Only a node that is itself extracted may hand its own gml:id down as the parent
+    // baseline for its descendants; an unmatched wrapper passes `parent_gml_id` through as-is.
+    let my_id = if matched {
+        gml_id_attr(&node.attrs)
+    } else {
+        None
+    };
     let child_parent = my_id.as_deref().or(parent_gml_id);
 
     let mut new_children: Option<Vec<XmlChild>> = None;
@@ -100,7 +111,7 @@ fn extract_recursive(
         match child {
             XmlChild::Element(e) => {
                 if tag_matches(e, sets) {
-                    let stripped_child = extract_recursive(e, sets, out, child_parent);
+                    let stripped_child = extract_recursive(e, sets, out, child_parent, true);
                     out.push((stripped_child, child_parent.map(str::to_string)));
 
                     if new_children.is_none() {
@@ -108,7 +119,7 @@ fn extract_recursive(
                     }
                     // deliberately not pushed into new_children — it is extracted
                 } else {
-                    let stripped_child = extract_recursive(e, sets, out, child_parent);
+                    let stripped_child = extract_recursive(e, sets, out, child_parent, false);
                     match new_children {
                         None => {
                             if !Arc::ptr_eq(&stripped_child, e) {
@@ -229,23 +240,56 @@ mod tests {
     fn shared_node_gets_correct_parent_per_occurrence() {
         // C is referenced under both A and B (same Arc, simulating xlink resolution).
         // Each emission of C must carry the parent from its own traversal position.
+        // A and B must themselves be extracted to legitimately serve as parents.
         let ns_reg = NamespaceRegistry::new();
         let c = gml_id("bldg:Unit", "c", vec![]);
         let a = gml_id("bldg:Building", "a", vec![elem(Arc::clone(&c))]);
         let b = gml_id("bldg:Building", "b", vec![elem(Arc::clone(&c))]);
         let root = node("root", vec![elem(Arc::clone(&a)), elem(Arc::clone(&b))]);
 
-        let extracted = extract(&root, &included(&["bldg:Unit"]), &ns_reg);
+        let extracted = extract(
+            &root,
+            &included(&["bldg:Unit", "bldg:Building"]),
+            &ns_reg,
+        );
 
-        assert_eq!(extracted.len(), 2);
-        let parents: Vec<_> = extracted.iter().map(|(_, p)| p.as_deref()).collect();
+        assert_eq!(extracted.len(), 4);
+        let unit_parents: Vec<_> = extracted
+            .iter()
+            .filter(|(n, _)| n.name.0 == "bldg:Unit")
+            .map(|(_, p)| p.as_deref())
+            .collect();
         assert!(
-            parents.contains(&Some("a")),
+            unit_parents.contains(&Some("a")),
             "first emission should have parent a"
         );
         assert!(
-            parents.contains(&Some("b")),
+            unit_parents.contains(&Some("b")),
             "second emission should have parent b"
         );
+    }
+
+    #[test]
+    fn unmatched_wrapper_with_gml_id_is_not_a_parent() {
+        // `bldg:Section` carries a gml:id but is not itself in `included`; the extracted
+        // descendant beneath it must skip past it and report the nearest *extracted*
+        // ancestor instead of the unmatched wrapper's id.
+        let ns_reg = NamespaceRegistry::new();
+        let area = node("bldg:TrafficArea", vec![]);
+        let wrapper = gml_id("bldg:Section", "wrapper", vec![elem(Arc::clone(&area))]);
+        let root = gml_id("bldg:Track", "root", vec![elem(Arc::clone(&wrapper))]);
+
+        let extracted = extract(
+            &root,
+            &included(&["bldg:Track", "bldg:TrafficArea"]),
+            &ns_reg,
+        );
+
+        assert_eq!(extracted.len(), 2);
+        let area_parent = extracted
+            .iter()
+            .find(|(n, _)| n.name.0 == "bldg:TrafficArea")
+            .and_then(|(_, p)| p.as_deref());
+        assert_eq!(area_parent, Some("root"));
     }
 }

@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use indexmap::{map::Entry as RequestorEntry, IndexMap};
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
@@ -123,7 +124,7 @@ impl ProcessorFactory for FeatureMergerFactory {
                 supplier_attribute: params.supplier_attribute,
                 complete_grouped: params.complete_grouped.unwrap_or(false),
             },
-            requestor_key_map: HashMap::new(),
+            requestor_key_map: IndexMap::new(),
             supplier_key_map: HashMap::new(),
             requestor_complete: HashMap::new(),
             supplier_complete: HashMap::new(),
@@ -167,7 +168,10 @@ pub struct FeatureMergerParam {
 pub struct FeatureMerger {
     params: CompiledParam,
     // Disk-backed state
-    requestor_key_map: HashMap<String, usize>,
+    // IndexMap so `finish()` emits merged features in requestor-arrival order rather than
+    // arbitrary hash-bucket order, preserving any grouping (e.g. by root feature id) present
+    // in the input stream.
+    requestor_key_map: IndexMap<String, usize>,
     supplier_key_map: HashMap<String, usize>,
     requestor_complete: HashMap<String, bool>,
     supplier_complete: HashMap<String, bool>,
@@ -197,7 +201,7 @@ impl Clone for FeatureMerger {
     fn clone(&self) -> Self {
         Self {
             params: self.params.clone(),
-            requestor_key_map: HashMap::new(),
+            requestor_key_map: IndexMap::new(),
             supplier_key_map: HashMap::new(),
             requestor_complete: HashMap::new(),
             supplier_complete: HashMap::new(),
@@ -357,7 +361,7 @@ impl FeatureMerger {
             complete_keys.push(attribute.clone());
         }
         for attribute_value in complete_keys.iter() {
-            let requestor_idx = match self.requestor_key_map.remove(attribute_value) {
+            let requestor_idx = match self.requestor_key_map.shift_remove(attribute_value) {
                 Some(idx) => idx,
                 None => return Ok(()),
             };
@@ -433,11 +437,11 @@ impl Processor for FeatureMerger {
                     .requestor_key_map
                     .entry(requestor_attribute_value.clone())
                 {
-                    Entry::Occupied(entry) => {
+                    RequestorEntry::Occupied(entry) => {
                         self.requestor_before_value = Some(requestor_attribute_value.clone());
                         *entry.get()
                     }
-                    Entry::Vacant(entry) => {
+                    RequestorEntry::Vacant(entry) => {
                         let idx = self.next_requestor_idx;
                         self.next_requestor_idx += 1;
                         entry.insert(idx);
