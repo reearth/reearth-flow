@@ -12,7 +12,7 @@ with:
     - unf
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
 
   - id: b8d2e9f3-4c5a-6b7d-0e1f-a2345678901b
     name: entry_point

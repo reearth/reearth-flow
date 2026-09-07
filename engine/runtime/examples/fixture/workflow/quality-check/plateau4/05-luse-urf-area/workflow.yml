@@ -12,8 +12,8 @@ with:
   objectListsPath:
   objectLists:
 graphs:
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/surface_validator.yml
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
