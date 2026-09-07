@@ -369,9 +369,10 @@ mod tests {
         )
         .unwrap()
         .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, 0.0, &mut TextureCache::default())
-            .unwrap()
-            .unwrap();
+        let half_atlas =
+            build_atlas_multipage(&[half], 4096, 1, 1, 0.0, &mut TextureCache::default())
+                .unwrap()
+                .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
         assert!(half_atlas.pages[0].width() < full_atlas.pages[0].width());
     }
@@ -427,10 +428,16 @@ mod tests {
             vec![(0.0, 0.0), (8.0, 0.0), (8.0, 6.0), (0.0, 6.0)],
             1.0,
         );
-        let built =
-            build_atlas_multipage(&[packed, tiled], 4096, 1, 1, 0.0, &mut TextureCache::default())
-                .unwrap()
-                .expect("atlas built");
+        let built = build_atlas_multipage(
+            &[packed, tiled],
+            4096,
+            1,
+            1,
+            0.0,
+            &mut TextureCache::default(),
+        )
+        .unwrap()
+        .expect("atlas built");
 
         let packed_page = built.remapped[0][0].page;
         let tiled_page = built.remapped[1][0].page;

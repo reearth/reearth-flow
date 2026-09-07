@@ -237,8 +237,7 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let next_parser =
-            Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone());
+        let next_parser = Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone());
         for feature in build_features(
             std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,

@@ -760,9 +760,9 @@ mod tests {
         let ParserOutput { pending, .. } = parser.finish();
 
         assert_eq!(pending.len(), 2);
-        assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
-        assert_eq!(raw_gml_id(&pending[1].root), Some("bldg002".to_string()));
-        assert_eq!(pending[0].root.name.0, "bldg:Building");
+        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
+        assert_eq!(raw_gml_id(&pending[1]), Some("bldg002".to_string()));
+        assert_eq!(pending[0].name.0, "bldg:Building");
     }
 
     #[test]
@@ -784,7 +784,7 @@ mod tests {
             raw_registry: raw_reg,
             ..
         } = parser.finish();
-        assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
+        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
 
@@ -990,11 +990,10 @@ mod tests {
 
         assert_eq!(
             pending[0]
-                .root
                 .attrs
                 .iter()
                 .find(|((q, _), _)| q == "codeSpace")
-                .map(|(_, v)| v.as_str()),
+                .map(|(_, v): &(QName, String)| v.as_str()),
             Some("A & B <test>")
         );
     }

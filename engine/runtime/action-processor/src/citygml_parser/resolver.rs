@@ -23,7 +23,7 @@ use super::utils::frame_for;
 /// built in pass 1, a reference still to be looked up, or a container still to be
 /// assembled from its members.
 #[derive(Debug)]
-pub(super) enum GeomNode {
+pub enum GeomNode {
     /// A geometry fully parsed in pass 1: an inline leaf, or a container that
     /// turned out to be reference-free and was assembled eagerly. Carries the
     /// per-face gml:ids captured from the source, for binding appearance later.
@@ -50,7 +50,7 @@ pub(super) struct FaceIds {
 /// the source file every id belongs to. An appearance targeting these ids must be
 /// declared in the same file.
 #[derive(Debug)]
-pub(super) struct LeafIds {
+pub struct LeafIds {
     /// The source file URL the face ids are scoped to.
     pub(super) file: String,
     /// One entry per face, in the leaf's face order; empty for leaves with no faces
@@ -61,7 +61,7 @@ pub(super) struct LeafIds {
 /// A geometry container held until pass 2, when its members are resolved and
 /// folded into a single [`Euclidean3DGeometry`].
 #[derive(Debug)]
-pub(super) struct Unresolved {
+pub struct Unresolved {
     /// The CityGML type, selecting which construction site assembles this node.
     pub(super) ty: GmlGeometryType,
     /// The `gml:id`, if any, under which this node is registered as a reference

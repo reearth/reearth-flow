@@ -65,7 +65,7 @@ impl Parser {
             if let Some(lod) = lod {
                 let nc = new_children.get_or_insert_with(|| node.children[..i].to_vec());
                 if let Some(gnode) = self.property_geometry(e) {
-                    nc.push(RawChild::Geometry(lod, gnode));
+                    nc.push(RawChild::Geometry(lod, Arc::new(gnode)));
                 }
             } else {
                 let stripped_child = self.strip(e);

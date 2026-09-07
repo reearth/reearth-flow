@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use super::resolver::GeomNode;
 use super::utils::{
-    gml_id_attr, local_name, NamespaceRegistry, NsId, XmlChild, XmlNode, EMPTY_NS_ID,
+    gml_id_attr, local_name, GeomNode, NamespaceRegistry, NsId, XmlChild, XmlNode, EMPTY_NS_ID,
 };
 
 /// One feature discovered by [`extract`], ready to become an output `Feature`.
@@ -11,12 +10,15 @@ pub(super) struct Extracted {
     pub(super) node: Arc<XmlNode>,
     pub(super) parent_gml_id: Option<String>,
     /// Geometry found on this node or on its own non-extracted descendants, stopping at any
-    /// deeper extracted feature (which collects its own).
+    /// deeper extracted feature (which collects its own). Unused under legacy, which attaches
+    /// geometry via its own separate mechanism instead.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     pub(super) geometry: Vec<FoundGeometry>,
 }
 
 /// A geometry found while walking, tagged with the LOD of the property it came from (`None` for
 /// `tin`) and the node it was a direct child of, used to name the object a surface belongs to.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(super) struct FoundGeometry {
     pub(super) lod: Option<u8>,
     pub(super) node: Arc<GeomNode>,
@@ -26,12 +28,14 @@ pub(super) struct FoundGeometry {
 
 /// Collect every geometry in `node`'s subtree, with no stopping condition — used when
 /// `extract_tags` is empty and the whole tree becomes a single feature.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(super) fn collect_all_geometry(node: &Arc<XmlNode>) -> Vec<FoundGeometry> {
     let mut out = Vec::new();
     collect_all_geometry_inner(node, &mut out);
     out
 }
 
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 fn collect_all_geometry_inner(node: &Arc<XmlNode>, out: &mut Vec<FoundGeometry>) {
     for child in &node.children {
         match child {
@@ -160,14 +164,8 @@ fn extract_recursive(
             XmlChild::Element(e) => {
                 if tag_matches(e, sets) {
                     let mut child_geometry = Vec::new();
-                    let stripped_child = extract_recursive(
-                        e,
-                        sets,
-                        out,
-                        child_parent,
-                        true,
-                        &mut child_geometry,
-                    );
+                    let stripped_child =
+                        extract_recursive(e, sets, out, child_parent, true, &mut child_geometry);
                     out.push(Extracted {
                         node: stripped_child,
                         parent_gml_id: child_parent.map(str::to_string),
@@ -319,11 +317,7 @@ mod tests {
         let b = gml_id("bldg:Building", "b", vec![elem(Arc::clone(&c))]);
         let root = node("root", vec![elem(Arc::clone(&a)), elem(Arc::clone(&b))]);
 
-        let extracted = extract(
-            &root,
-            &included(&["bldg:Unit", "bldg:Building"]),
-            &ns_reg,
-        );
+        let extracted = extract(&root, &included(&["bldg:Unit", "bldg:Building"]), &ns_reg);
 
         assert_eq!(extracted.len(), 4);
         let unit_parents: Vec<_> = extracted
@@ -365,10 +359,12 @@ mod tests {
         assert_eq!(area_parent, Some("root"));
     }
 
+    #[cfg(feature = "new-geometry")]
     fn geom_ref(id: &str) -> Arc<GeomNode> {
         Arc::new(GeomNode::Ref(("file:///t.gml".to_string(), id.to_string())))
     }
 
+    #[cfg(feature = "new-geometry")]
     #[test]
     fn geometry_collected_from_own_node() {
         let ns_reg = NamespaceRegistry::new();
@@ -384,6 +380,7 @@ mod tests {
         assert_eq!(extracted[0].geometry[0].owner_gml_id.as_deref(), Some("b1"));
     }
 
+    #[cfg(feature = "new-geometry")]
     #[test]
     fn geometry_rolls_up_past_unmatched_descendant() {
         let ns_reg = NamespaceRegistry::new();
@@ -402,6 +399,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "new-geometry")]
     #[test]
     fn geometry_stops_at_deeper_extracted_descendant() {
         let ns_reg = NamespaceRegistry::new();

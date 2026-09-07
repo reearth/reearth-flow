@@ -83,10 +83,7 @@ impl Cesium3DTilesWriter {
                 .params
                 .atlas_extrusion
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
-            wrap_tolerance: self
-                .params
-                .wrap_tolerance
-                .unwrap_or(DEFAULT_WRAP_TOLERANCE),
+            wrap_tolerance: self.params.wrap_tolerance.unwrap_or(DEFAULT_WRAP_TOLERANCE),
             texture_codec: self.params.texture_codec,
         };
         for (output, features) in &self.buffer {

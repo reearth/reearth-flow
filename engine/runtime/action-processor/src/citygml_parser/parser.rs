@@ -198,7 +198,7 @@ fn single_object_child(node: &XmlNode) -> Option<&XmlNode> {
             }
             XmlChild::Text(t) if !t.trim().is_empty() => return None,
             XmlChild::Text(_) => {}
-            XmlChild::Geometry(..) => {}
+            XmlChild::Geometry(..) => return None,
         }
     }
     sole

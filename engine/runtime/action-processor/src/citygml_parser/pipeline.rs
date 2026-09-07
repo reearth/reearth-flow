@@ -171,6 +171,7 @@ pub use build_next::build_features;
 #[cfg(feature = "new-geometry")]
 mod build_next {
     use std::collections::{HashMap, HashSet};
+    use std::sync::Arc;
 
     use reearth_flow_geometry::coordinate::EpsgCode;
     use reearth_flow_geometry::{Geometry, GeometryCollection};
@@ -299,7 +300,13 @@ mod build_next {
                     if let Some(ref id) = root_gml_id {
                         feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
                     }
-                    attach_geometry(&mut feature, &geometry, geom_registry, appearance, srs_by_file);
+                    attach_geometry(
+                        &mut feature,
+                        &geometry,
+                        geom_registry,
+                        appearance,
+                        srs_by_file,
+                    );
                     if let Some(base) = base {
                         feature.extend(base.clone());
                     }
