@@ -23,6 +23,8 @@ export type WorkflowVarAwareness = {
 
 export type EditorContextType = {
   isLocked: boolean;
+  isReaderRestricted: boolean;
+  canViewIntermediateData: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onNodeSettings?: (_e: MouseEvent | undefined, nodeId: string) => void;
   currentYWorkflow?: YWorkflow;
@@ -51,6 +53,15 @@ export const useEditorContext = (): EditorContextType => {
   }
 
   return ctx;
+};
+
+/**
+ * Editing is disabled either because the project is locked or because the
+ * current user only has read access.
+ */
+export const useIsReadOnly = (): boolean => {
+  const { isLocked, isReaderRestricted } = useEditorContext();
+  return isLocked || isReaderRestricted;
 };
 
 export const useAwarenessNodeSelections = (

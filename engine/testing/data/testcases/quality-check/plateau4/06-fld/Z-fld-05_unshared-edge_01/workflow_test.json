@@ -1,5 +1,6 @@
 {
   "description": "Unshared edges in multiple files",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {

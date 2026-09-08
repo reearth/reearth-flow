@@ -7,7 +7,7 @@ mod simplicity;
 pub(crate) use containment::{check_holes_in_exterior_2d, check_holes_in_exterior_3d};
 pub(crate) use measure::{
     check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
-    check_degenerate_ring_3d, check_planarity_3d,
+    check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
 pub(crate) use simplicity::{
     check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
@@ -16,7 +16,7 @@ pub(crate) use simplicity::{
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use kiddo::{KdTree, SquaredEuclidean};
+use kiddo::{ImmutableKdTree, SquaredEuclidean};
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::{CoordinateFrame, UnitKind};
@@ -29,7 +29,8 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 /// [validation matrix](validate#default-validation-per-leaf-type).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum ValidationType {
-    /// Whether every coordinate component is finite (non-NaN, non-infinite).
+    /// Whether every coordinate component is finite (non-NaN, non-infinite),
+    /// including a 2D leaf's elevation.
     Finite,
     /// Whether a line or ring has fewer points than its type requires (line ≥ 2,
     /// closed ring ≥ 4).
@@ -60,8 +61,11 @@ pub enum ValidationType {
     /// A 3D mesh or solid means coherent winding across shared edges (each shared
     /// edge traversed in opposite directions by its two faces).
     Orientation,
-    /// Whether a solid's boundary is not a closed 2-manifold (watertight). Solid only.
+    /// Whether a solid's shell is a closed 2-manifold (watertight: every edge shared
+    /// by exactly two faces). Solid only.
     ShellManifold,
+    /// Whether a solid's shell is a single connected component. Solid only.
+    ShellConnected,
     /// Whether a solid's shell normals face the correct way: the exterior shell must enclose
     /// positive volume (outward normals) and each void shell negative volume
     /// (normals into the void). Defined on a closed, consistently-oriented solid.
@@ -77,7 +81,7 @@ impl ValidationType {
     pub fn dependencies(&self) -> &'static [ValidationType] {
         use ValidationType::*;
         match self {
-            Finite | TooFewPoints | Orientable | ShellManifold => &[],
+            Finite | TooFewPoints | Orientable | ShellManifold | ShellConnected => &[],
             UnclosedRing | DuplicatePoints | Degenerate | Planarity => &[Finite],
             SelfIntersection => &[Finite, TooFewPoints, UnclosedRing],
             InteriorRingContainment => &[Finite, SelfIntersection],
@@ -482,6 +486,8 @@ validation_checks! {
     check_orientation => Orientation,
     /// [`ShellManifold`](ValidationType::ShellManifold).
     check_shell_manifold => ShellManifold,
+    /// [`ShellConnected`](ValidationType::ShellConnected).
+    check_shell_connected => ShellConnected,
     /// [`ShellOrientation`](ValidationType::ShellOrientation).
     check_shell_orientation => ShellOrientation,
 }
@@ -517,6 +523,7 @@ validation_checks! {
 /// | Orientation             |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellManifold           |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | ShellConnected          |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellOrientation        |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 ///
 /// # Check dependencies
@@ -540,6 +547,7 @@ validation_checks! {
 /// | `Orientable`                 | (none) |
 /// | `Orientation`                | `Finite`, `Orientable` |
 /// | `ShellManifold`              | (none) |
+/// | `ShellConnected`             | (none) |
 /// | `ShellOrientation`           | `Orientation`, `ShellManifold` |
 pub fn validate(geometry: &Geometry) -> ValidationResults {
     validate_with(geometry, &ValidationParams::default())
@@ -741,32 +749,35 @@ pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     }
 }
 
-/// Scan a 2D coordinate buffer (with an optional parallel elevation buffer) for
-/// non-finite values, pushing one [`ValidationType::Finite`] problem per
-/// offending coordinate into `report`, positioned at a 2D point leaf in `frame`.
+/// Scan a 2D coordinate buffer for non-finite values, pushing one
+/// [`ValidationType::Finite`] problem per offending coordinate into `report`,
+/// positioned at a 2D point leaf in `frame`.
+///
+/// The leaf's elevation is not scanned here; see [`check_finite_elevation`].
 pub(crate) fn check_finite_2d(
     frame: &CoordinateFrame,
     coords: &[[f64; 2]],
-    z: Option<&[f64]>,
     report: &mut ValidationReport,
 ) {
-    for (i, c) in coords.iter().enumerate() {
-        let zi = z.and_then(|zs| zs.get(i)).copied();
-        let z_not_finite = zi.is_some_and(|v| !v.is_finite());
-        if !c[0].is_finite() || !c[1].is_finite() || z_not_finite {
-            // When the elevation is the offending component, report a 3D point
-            // carrying it so the non-finite value is visible in the position;
-            // otherwise the finite [x, y] alone would hide where the fault is.
-            if z_not_finite {
-                report.push(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
-                    Point3D::new(frame.clone(), [c[0], c[1], zi.unwrap()]),
-                )));
-            } else {
-                report.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
-                    Point2D::new(frame.clone(), *c),
-                )));
-            }
+    for c in coords.iter() {
+        if !c[0].is_finite() || !c[1].is_finite() {
+            report.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                Point2D::new(frame.clone(), *c),
+            )));
         }
+    }
+}
+
+/// Check a 2D leaf's single elevation for a non-finite value, pushing one
+/// [`ValidationType::Finite`] problem into `report` positioned at the whole leaf
+/// that `position` builds. `position` is called only on failure.
+pub(crate) fn check_finite_elevation(
+    z: Option<f64>,
+    position: impl FnOnce() -> Geometry,
+    report: &mut ValidationReport,
+) {
+    if z.is_some_and(|v| !v.is_finite()) {
+        report.push(position());
     }
 }
 
@@ -888,16 +899,21 @@ impl DuplicateCoord for [f64; 3] {
 /// point. Exact bit-equality when `tolerance` is `None`; otherwise two coords are
 /// coincident when within `tolerance` distance.
 ///
+/// The tolerant path indexes the coordinates in a k-d tree; see
+/// [`duplicates_within`].
+///
+/// A tolerance that is not a positive finite number carries no usable radius and
+/// is treated as exact equality.
+///
 /// # Precondition
 ///
 /// Every coordinate must be finite. `DuplicatePoints` depends on
 /// [`Finite`](ValidationType::Finite) (see
 /// [`dependencies`](ValidationType::dependencies)), so the gated driver never
 /// reaches this check until finiteness has passed, and this routine relies on
-/// that rather than re-checking. A non-finite coordinate would corrupt
-/// detection: [`norm_bits`] collides distinct NaNs into a false duplicate, and a
-/// NaN poisons the k-d tree, so any caller outside the gated driver must uphold
-/// it.
+/// that rather than re-checking. A non-finite coordinate would corrupt detection:
+/// [`norm_bits`] collides distinct NaNs into a false duplicate, and a NaN poisons
+/// the k-d tree, so any caller outside the gated driver must uphold it.
 pub(crate) fn check_duplicate_points<const N: usize>(
     frame: &CoordinateFrame,
     coords: impl IntoIterator<Item = [f64; N]>,
@@ -907,7 +923,7 @@ pub(crate) fn check_duplicate_points<const N: usize>(
     [f64; N]: DuplicateCoord,
 {
     let mut push = |c: [f64; N]| report.push(c.into_point(frame));
-    match tolerance {
+    match tolerance.filter(|t| t.is_finite() && *t > 0.0) {
         None => {
             let mut seen = HashSet::new();
             for c in coords {
@@ -918,19 +934,48 @@ pub(crate) fn check_duplicate_points<const N: usize>(
             }
         }
         Some(t) => {
-            let radius = t * t;
-            let mut tree: KdTree<f64, N> = KdTree::new();
-            let mut n: u64 = 0;
-            for c in coords {
-                if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
-                    push(c);
-                } else {
-                    tree.add(&c, n);
-                    n += 1;
+            let coords: Vec<[f64; N]> = coords.into_iter().collect();
+            for (c, duplicate) in coords.iter().zip(duplicates_within(&coords, t)) {
+                if duplicate {
+                    push(*c);
                 }
             }
         }
     }
+}
+
+/// Which of `coords` coincide with an earlier coordinate, within `tolerance`.
+///
+/// Scanning in index order, a coordinate that is not already flagged claims every
+/// later coordinate within `tolerance` of it, so a cluster of coincident
+/// coordinates is reported against its first member alone.
+///
+/// # Precondition
+///
+/// Every coordinate must be finite; a NaN poisons the k-d tree.
+fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec<bool> {
+    let mut duplicate = vec![false; coords.len()];
+    if coords.len() < 2 {
+        return duplicate;
+    }
+    // The mutable KdTree panics on degenerate point distributions;
+    // ImmutableKdTree does not.
+    let tree: ImmutableKdTree<f64, N> = ImmutableKdTree::new_from_slice(coords);
+    // `within_unsorted` excludes the radius itself, so step it up to keep a pair
+    // exactly `tolerance` apart coincident.
+    let radius = (tolerance * tolerance).next_up();
+    for i in 0..coords.len() {
+        if duplicate[i] {
+            continue;
+        }
+        for neighbour in tree.within_unsorted::<SquaredEuclidean>(&coords[i], radius) {
+            let j = neighbour.item as usize;
+            if j > i {
+                duplicate[j] = true;
+            }
+        }
+    }
+    duplicate
 }
 
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
@@ -1202,8 +1247,16 @@ impl FaceTopology {
     /// wraps to the first). Self-loop edges (`a == b`) are skipped. Lets faces be
     /// fed one at a time (e.g. streamed from a decoder into a reused buffer).
     pub(crate) fn add_face(&mut self, ring: &[u32]) {
-        let f = self.n_faces;
-        self.n_faces += 1;
+        self.add_ring(self.n_faces, ring);
+    }
+
+    /// Add one ring of face `face` (closure optional; the last vertex wraps to the
+    /// first). A face with holes feeds its exterior and every hole ring under the
+    /// same `face`, so they count as one face for connectivity and orientability.
+    /// Self-loop edges (`a == b`) are skipped.
+    pub(crate) fn add_ring(&mut self, face: usize, ring: &[u32]) {
+        let f = face;
+        self.n_faces = self.n_faces.max(face + 1);
         let n = ring.len();
         if n < 2 {
             return;
@@ -1354,6 +1407,45 @@ mod tests {
     }
 
     #[test]
+    fn non_finite_elevation_reports_the_leaf_once() {
+        let ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
+            f64::NAN,
+        );
+        let positions = failures(&validate_leaf(&ls, &params()), ValidationType::Finite);
+        assert_eq!(positions.len(), 1);
+        assert!(matches!(
+            positions[0],
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(_))
+        ));
+    }
+
+    #[test]
+    fn non_finite_elevation_is_reported_without_coordinates() {
+        let ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            Vec::<[f64; 2]>::new(),
+            f64::INFINITY,
+        );
+        let positions = failures(&validate_leaf(&ls, &params()), ValidationType::Finite);
+        assert_eq!(positions.len(), 1);
+    }
+
+    #[test]
+    fn finite_elevation_passes() {
+        let ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [1.0, 0.0]],
+            10.0,
+        );
+        assert_eq!(
+            validate_leaf(&ls, &params())[&ValidationType::Finite],
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
     fn too_few_points_flags_single_point_line() {
         let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
         let positions = one_failure(validate_one(&ls, ValidationType::TooFewPoints, &params()));
@@ -1411,6 +1503,52 @@ mod tests {
         let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
         assert_eq!(positions.len(), 1);
         assert_eq!(offending_point(&positions[0]), [0.001, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn duplicate_tolerance_handles_many_coordinates_on_one_axis_value() {
+        // Hundreds of vertices sharing an axis value, spaced wider than the
+        // tolerance: none coincide.
+        let coords: Vec<[f64; 3]> = (0..500).map(|i| [0.0, i as f64, 0.0]).collect();
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &lenient),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_many_coordinates_on_one_position() {
+        // All coordinates exactly coincident: every vertex past the first is a
+        // duplicate.
+        let coords: Vec<[f64; 3]> = vec![[1.0, 2.0, 3.0]; 500];
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 499);
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_a_non_adjacent_pair() {
+        // The coincident pair is 0.0002 apart but not adjacent in the list.
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.9999, 0.0, 0.0], [5.0, 0.0, 0.0], [1.0001, 0.0, 0.0]],
+        );
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.001),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 1);
+        assert_eq!(offending_point(&positions[0]), [1.0001, 0.0, 0.0]);
     }
 
     #[test]
@@ -1533,6 +1671,7 @@ mod tests {
             ValidationType::InteriorRingContainment,
             ValidationType::Degenerate,
             ValidationType::ShellManifold,
+            ValidationType::ShellConnected,
         ] {
             assert!(!core.is_optional(), "{core:?} should be core");
         }
@@ -1540,7 +1679,7 @@ mod tests {
 
     /// Every `ValidationType` variant, so the dependency graph can be walked in
     /// full.
-    const ALL_TYPES: [ValidationType; 12] = [
+    const ALL_TYPES: [ValidationType; 13] = [
         ValidationType::Finite,
         ValidationType::TooFewPoints,
         ValidationType::DuplicatePoints,
@@ -1552,6 +1691,7 @@ mod tests {
         ValidationType::Orientable,
         ValidationType::Orientation,
         ValidationType::ShellManifold,
+        ValidationType::ShellConnected,
         ValidationType::ShellOrientation,
     ];
 

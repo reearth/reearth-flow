@@ -184,9 +184,22 @@ export default ({
     return probes;
   }, [rawWorkflows]);
 
-  const readerAttributeSuggestions = useMemo(
+  // `rawWorkflows` is rebuilt from the yjs doc on every render, so this memo
+  // always recomputes. Key on the resulting attribute list instead, so
+  // consumers see a stable identity while the attributes themselves are
+  // unchanged — otherwise every unrelated Editor render resets the FlowExpr
+  // autocomplete.
+  const computedAttributeSuggestions = useMemo(
     () => buildReaderAttributeSuggestions(rawWorkflows, openNodeId),
     [rawWorkflows, openNodeId],
+  );
+  const attributeSuggestionsKey = computedAttributeSuggestions
+    .map((suggestion) => `${suggestion.label}:${suggestion.detail ?? ""}`)
+    .join("|");
+  const readerAttributeSuggestions = useMemo(
+    () => computedAttributeSuggestions,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [attributeSuggestionsKey],
   );
 
   return {

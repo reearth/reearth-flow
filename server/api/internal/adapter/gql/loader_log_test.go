@@ -22,6 +22,14 @@ func (m *MockLogUsecase) GetLogs(ctx context.Context, since time.Time, jobID id.
 	return args.Get(0).([]*log.Log), args.Error(1)
 }
 
+func (m *MockLogUsecase) GetLogsBatch(ctx context.Context, since time.Time, jobIDs []id.JobID) (map[id.JobID][]*log.Log, error) {
+	args := m.Called(ctx, since, jobIDs)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(map[id.JobID][]*log.Log), args.Error(1)
+}
+
 func (m *MockLogUsecase) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {
 	ch := make(chan *log.Log)
 	close(ch)

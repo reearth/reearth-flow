@@ -30,8 +30,15 @@ import {
 } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
-import { useCurrentProject } from "@flow/stores";
-import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import { useCurrentProject, useCurrentUserRole } from "@flow/stores";
+import {
+  Role,
+  type Algorithm,
+  type Direction,
+  type Edge,
+  type Node,
+} from "@flow/types";
+import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -56,7 +63,7 @@ export default ({
   ) => void;
 }) => {
   const { fitView } = useReactFlow();
-
+  const [currentUserRole] = useCurrentUserRole();
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
   );
@@ -123,6 +130,9 @@ export default ({
       Object.values(rawNodes)
         .map((node) => ({
           ...node,
+          // A non-finite position persisted in the doc would give ReactFlow a
+          // NaN viewport and crash the canvas (React #185). Sanitize on read.
+          position: toFinitePosition(node.position),
           selected:
             selectedNodeIds.includes(node.id) && !node.selected
               ? true
@@ -211,10 +221,14 @@ export default ({
     yWorkflows,
   });
 
+  const isReaderRestricted = currentUserRole === Role.Reader;
+
   const { isLocked, handleProjectLockChange } = useProjectLock({
     currentProject,
     yDoc,
   });
+
+  const isReadOnly = isLocked || isReaderRestricted;
 
   const { sharingUrl, handleProjectShare } = useProjectShare({
     currentProject,
@@ -232,11 +246,12 @@ export default ({
 
   const {
     customDebugRunWorkflowVariables,
+    workflowVariableDefaults,
     refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
-    handleDebugRunVariableValueChange,
+    handleResetDebugRunWorkflowVariables,
     loadExternalDebugJob,
     activeUsersDebugRuns,
   } = useDebugRun({
@@ -354,13 +369,14 @@ export default ({
 
       switch (handler.keys?.join("")) {
         case "s":
-          if (hasModifier && !isSaving && !hasShift && !isLocked)
+          if (hasModifier && !isSaving && !hasShift && !isReadOnly)
             handleProjectSnapshotSave?.();
-          if (hasModifier && hasShift && !isLocked)
+          if (hasModifier && hasShift && !isReadOnly)
             handleYWorkflowAddFromSelection(nodes, edges);
           break;
         case "l":
-          if (hasModifier) handleProjectLockChange?.(!isLocked);
+          if (hasModifier && !isReaderRestricted)
+            handleProjectLockChange?.(!isLocked);
           break;
         case "k":
           if (hasModifier && !showSearchPanel) handleShowSearchPanel(true);
@@ -368,8 +384,8 @@ export default ({
 
           break;
         case "z":
-          if (hasModifier && hasShift && !isLocked) handleYWorkflowRedo?.();
-          if (hasModifier && !hasShift && !isLocked) handleYWorkflowUndo?.();
+          if (hasModifier && hasShift && !isReadOnly) handleYWorkflowRedo?.();
+          if (hasModifier && !hasShift && !isReadOnly) handleYWorkflowUndo?.();
           break;
       }
     },
@@ -474,6 +490,8 @@ export default ({
     isMainWorkflow,
     deferredDeleteRef,
     isSaving,
+    isLocked,
+    isReaderRestricted,
     showBeforeDeleteDialog,
     spotlightUserClientId,
     spotlightUser,
@@ -483,7 +501,7 @@ export default ({
     refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
-    handleDebugRunVariableValueChange,
+    workflowVariableDefaults,
     loadExternalDebugJob,
     handleWorkflowDeployment,
     sharingUrl,
@@ -513,6 +531,7 @@ export default ({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    handleResetDebugRunWorkflowVariables,
     schemaProbes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
@@ -524,7 +543,6 @@ export default ({
     handleProjectSnapshotSave,
     staleNodeIds,
     handleProjectLockChange,
-    isLocked,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,

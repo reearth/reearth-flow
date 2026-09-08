@@ -53,7 +53,7 @@ nodes:
     type: action
     action: XML Fragmenter
     with:
-      source: url
+      source: file
       elementsToMatch:
         type: flowExpr
         value: attributes["featureTypes"][attributes["package"]]

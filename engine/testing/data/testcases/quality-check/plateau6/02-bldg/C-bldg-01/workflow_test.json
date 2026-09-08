@@ -38,7 +38,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_C-bldg-01エラー.csv",
+    "expectedFile": [
+      "02_建築物_C-bldg-01エラー.csv",
+      "02_建築物_建物ID書式不正.csv"
+    ],
     "except": [
       "Index"
     ]
@@ -47,13 +50,15 @@
     "errorCountSummary": {
       "expectedFile": "summary_bldg.json",
       "includeFields": [
-        "C-bldg-01 エラー"
+        "C-bldg-01 エラー",
+        "不正な建物ID"
       ]
     },
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
       "includeColumns": [
-        "C-bldg-01 エラー"
+        "C-bldg-01 エラー",
+        "不正な建物ID"
       ]
     }
   },

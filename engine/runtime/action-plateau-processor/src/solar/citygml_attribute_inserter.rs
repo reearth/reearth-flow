@@ -83,7 +83,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
             .into());
         };
 
-        let vars = ctx.env_vars.clone();
+        let vars = ctx.variables.clone();
 
         let output_dir = params
             .output_dir
@@ -91,7 +91,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
             .map_err(|e| {
                 CityGmlAttributeInserterError::Factory(format!("Failed to compile outputDir: {e}"))
             })?
-            .eval_string_env_only(vars.clone())
+            .eval_string_variables_only(vars.clone())
             .map_err(|e| {
                 CityGmlAttributeInserterError::Factory(format!("Failed to evaluate outputDir: {e}"))
             })?;
@@ -105,7 +105,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
                             "Failed to compile textureImagePath: {e}"
                         ))
                     })?
-                    .eval_string_env_only(vars.clone())
+                    .eval_string_variables_only(vars.clone())
                     .map_err(|e| {
                         CityGmlAttributeInserterError::Factory(format!(
                             "Failed to evaluate textureImagePath: {e}"
@@ -124,7 +124,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
                             "Failed to compile sourceEpsg: {e}"
                         ))
                     })?
-                    .eval_env_only(vars.clone())
+                    .eval_variables_only(vars.clone())
                     .map_err(|e| {
                         CityGmlAttributeInserterError::Factory(format!(
                             "Failed to evaluate sourceEpsg: {e}"

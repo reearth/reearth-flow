@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for surface-not-closed errors",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/11-wtr/workflow.yml",
   "workflowVariables": [
     {

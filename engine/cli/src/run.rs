@@ -1,6 +1,7 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -250,7 +251,6 @@ impl RunCliCommand {
             State::new(&feature_state_uri, &storage_resolver)
                 .map_err(crate::errors::Error::init)?,
         );
-        let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
@@ -275,15 +275,16 @@ impl RunCliCommand {
             let start_node_id =
                 uuid::Uuid::parse_str(start_node_str).map_err(crate::errors::Error::init)?;
 
-            let (previous_feature_state, available_edge_ids) = prepare_incremental_feature_store(
-                "engine",
-                &workflow,
-                job_id,
-                storage_resolver.as_ref(),
-                prev_job_id,
-                start_node_id,
-                feature_state.as_ref(),
-            )?;
+            let (previous_feature_state, available_port_file_ids) =
+                prepare_incremental_feature_store(
+                    "engine",
+                    &workflow,
+                    job_id,
+                    storage_resolver.as_ref(),
+                    prev_job_id,
+                    start_node_id,
+                    feature_state.as_ref(),
+                )?;
 
             prepare_incremental_artifacts(
                 "engine",
@@ -305,7 +306,7 @@ impl RunCliCommand {
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
                 previous_feature_state,
-                available_edge_ids,
+                available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
@@ -317,17 +318,53 @@ impl RunCliCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Runner::run_with_sandbox_root(
+        let result = Runner::run_with_sandbox_root_returning_summary(
             job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver,
-            ingress_state,
             feature_state,
             incremental_run_config,
             artifact_uri,
-        )
-        .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+        );
+
+        if let Ok(summary) = &result {
+            Self::print_run_summary(summary);
+        }
+
+        result
+            .and_then(Self::summary_into_unit_result)
+            .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+    }
+
+    /// Turns a non-empty `failed_nodes` (reachable under `onFatal: continue`) back into `Err`.
+    fn summary_into_unit_result(
+        summary: RunSummary,
+    ) -> Result<(), reearth_flow_runner::errors::Error> {
+        match summary.failed_nodes.first() {
+            None => Ok(()),
+            Some(first) => Err(reearth_flow_runner::errors::Error::FailedNodes(format!(
+                "{} node(s) failed; first: {}",
+                summary.failed_nodes.len(),
+                first.message
+            ))),
+        }
+    }
+
+    /// The failed-node list only ever prints under `onFatal: continue`.
+    fn print_run_summary(summary: &RunSummary) {
+        for diagnostic in &summary.aggregated_diagnostics {
+            println!("warning: {}", diagnostic.message);
+        }
+        if !summary.failed_nodes.is_empty() {
+            println!("failed nodes:");
+            for diagnostic in &summary.failed_nodes {
+                println!("  {}", diagnostic.message);
+            }
+        }
+        if summary.dropped_event_count > 0 {
+            println!("dropped events: {}", summary.dropped_event_count);
+        }
     }
 }

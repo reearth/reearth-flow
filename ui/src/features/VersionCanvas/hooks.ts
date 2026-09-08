@@ -8,6 +8,7 @@ import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { Edge, Node } from "@flow/types";
+import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
   const { fitView } = useReactFlow();
@@ -36,6 +37,9 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     () =>
       Object.values(rawNodes).map((node) => ({
         ...node,
+        // Sanitize non-finite positions so a poisoned doc cannot crash the
+        // canvas with a NaN viewport (React #185).
+        position: toFinitePosition(node.position),
         selected:
           selectedNodeIds.includes(node.id) && !node.selected
             ? true

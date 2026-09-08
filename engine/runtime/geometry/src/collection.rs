@@ -12,27 +12,52 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
+use crate::ops::coerce::unchanged;
+use crate::ops::triangulation::Cache;
 use crate::ops::union_results;
-use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::ops::{
+    Aabb, BoundingBox, Coerce, CoercionTarget, ForceTwoDimension, ForceTwoDimensionError,
+    Reproject, ReprojectionCache, UnsupportedOperation,
+};
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Elevation, Footprint, FootprintError, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
-use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "schema", schemars(title = "2D collection"))]
 pub struct Collection2D {
+    #[cfg_attr(feature = "schema", schemars(title = "Members"))]
     members: Vec<Euclidean2DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
+    #[cfg_attr(feature = "schema", schemars(title = "Per-member attributes"))]
     attrs: Vec<Attributes>,
 }
 
 /// A `Multi*` collection of 3D geometries; members may differ in coordinate frame.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "schema", schemars(title = "3D collection"))]
 pub struct Collection3D {
+    #[cfg_attr(feature = "schema", schemars(title = "Members"))]
     members: Vec<Euclidean3DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
+    #[cfg_attr(feature = "schema", schemars(title = "Per-member attributes"))]
     attrs: Vec<Attributes>,
 }
 
@@ -148,16 +173,60 @@ impl BoundingBox for Collection3D {
     }
 }
 
+impl Collection2D {
+    /// The 3D counterpart of this collection: members carrying no elevation are
+    /// placed at `0.0`.
+    pub(crate) fn into_3d(self) -> Collection3D {
+        Collection3D {
+            members: self.members.into_iter().map(|m| m.into_3d()).collect(),
+            attrs: self.attrs,
+        }
+    }
+}
+
+impl Collection2D {
+    /// Whether any member lies at an elevation.
+    fn carries_elevation(&self) -> bool {
+        self.members
+            .iter()
+            .any(Euclidean2DGeometry::carries_elevation)
+    }
+}
+
+/// Unwrap a member's converted result back to a 2D geometry.
+fn expect_2d(g: Geometry) -> Result<Euclidean2DGeometry, Error> {
+    match g {
+        Geometry::Euclidean2D(g) => Ok(g),
+        other => Err(Error::projection(format!(
+            "a member of a pure 2D collection did not stay 2D: {other:?}"
+        ))),
+    }
+}
+
+/// Unwrap a member's converted result back to a 3D geometry.
+fn expect_3d(g: Geometry) -> Result<Euclidean3DGeometry, Error> {
+    match g {
+        Geometry::Euclidean3D(g) => Ok(g),
+        other => Err(Error::projection(format!(
+            "a member of a 3D collection did not stay 3D: {other:?}"
+        ))),
+    }
+}
+
 impl Reproject for Collection2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        if self.carries_elevation() {
+            return std::mem::take(self).into_3d().reproject(target, cache);
         }
-        Ok(())
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_2d(member.reproject(target, cache)?)?;
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(out)))
     }
 }
 
@@ -166,11 +235,12 @@ impl Reproject for Collection3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_3d(member.reproject(target, cache)?)?;
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(out)))
     }
 }
 
@@ -184,11 +254,21 @@ impl crate::ops::ConvertFrame for Collection2D {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut reprojects = false;
+        for member in self.members.iter() {
+            reprojects |= member.reprojects_to(target, base_point)?;
         }
-        Ok(())
+        if reprojects && self.carries_elevation() {
+            return std::mem::take(self)
+                .into_3d()
+                .convert_frame(target, base_point, cache);
+        }
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_2d(member.convert_frame(target, base_point, cache)?)?;
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(out)))
     }
 }
 
@@ -198,11 +278,12 @@ impl crate::ops::ConvertFrame for Collection3D {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_3d(member.convert_frame(target, base_point, cache)?)?;
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(out)))
     }
 }
 
@@ -219,6 +300,105 @@ impl crate::ops::Translate for Collection3D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         for member in self.members_mut() {
             member.translate(delta)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::RemoveAppearance for Collection2D {
+    fn remove_appearance(&mut self) {
+        for member in self.members_mut() {
+            member.remove_appearance();
+        }
+    }
+}
+
+impl crate::ops::RemoveAppearance for Collection3D {
+    fn remove_appearance(&mut self) {
+        for member in self.members_mut() {
+            member.remove_appearance();
+        }
+    }
+}
+
+impl crate::ops::CountHoles for Collection2D {
+    fn count_holes(&self) -> usize {
+        self.members()
+            .iter()
+            .map(Euclidean2DGeometry::count_holes)
+            .sum()
+    }
+}
+
+impl crate::ops::CountHoles for Collection3D {
+    fn count_holes(&self) -> usize {
+        self.members()
+            .iter()
+            .map(Euclidean3DGeometry::count_holes)
+            .sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection2D {
+    /// The measurable members' areas, summed. An unmeasurable member is skipped
+    /// rather than failing its siblings; [`area_report`](crate::ops::area::area_report)
+    /// counts the skips so a caller can say how many there were. An empty
+    /// collection measures zero.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection3D {
+    /// See [`Collection2D`]'s impl: measurable members summed, unmeasurable
+    /// ones skipped, empty is zero.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
+// Deaggregate: a member that is not area geometry is handed back as `Rejected`
+// rather than failing the whole collection, so one curve among the surfaces does
+// not discard the surfaces.
+impl crate::ops::ExtractHoles for Collection2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(crate::Geometry, crate::ops::ExtractedPart),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members() {
+            if member.extract_holes(emit).is_err() {
+                emit(
+                    crate::Geometry::Euclidean2D(member.clone()),
+                    crate::ops::ExtractedPart::Rejected,
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::ExtractHoles for Collection3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(crate::Geometry, crate::ops::ExtractedPart),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members() {
+            if member.extract_holes(emit).is_err() {
+                emit(
+                    crate::Geometry::Euclidean3D(member.clone()),
+                    crate::ops::ExtractedPart::Rejected,
+                );
+            }
         }
         Ok(())
     }
@@ -250,6 +430,63 @@ impl crate::ops::Split for Collection3D {
     }
 }
 
+impl ForceTwoDimension for Collection2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
+    }
+}
+
+impl ForceTwoDimension for Collection3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+// A collection reports the first member that has an elevation, rather than only
+// its head: a member with none (an absent geometry, a 2D point, an empty leaf) is
+// ordinary and must not hide the ones behind it.
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection2D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection3D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.
@@ -258,6 +495,126 @@ impl Validate for Collection2D {}
 
 #[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
+
+impl Coerce for Collection2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean2D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                // A 2D leaf coerces to a 2D geometry, so the other `Ok` shapes
+                // do not arise; an `Err` left the member untouched.
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
+
+impl Coerce for Collection3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean3D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
+
+impl crate::ops::ExtractBoundary for Collection2D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean2D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_2d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
+    }
+}
+
+impl crate::ops::ExtractBoundary for Collection3D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean3D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_3d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
+    }
+}
+
+/// Gather members into a collection, keeping their attributes when the source
+/// carried any. A collection's boundary stays a collection even when one member
+/// gave it, so the shape does not turn on how many members contributed.
+fn wrap_members_2d(members: Vec<Euclidean2DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D {
+        members,
+        attrs,
+    }))
+}
+
+/// The 3D counterpart of [`wrap_members_2d`].
+fn wrap_members_3d(members: Vec<Euclidean3DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D {
+        members,
+        attrs,
+    }))
+}
 
 #[cfg(test)]
 mod tests {

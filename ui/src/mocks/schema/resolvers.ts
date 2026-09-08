@@ -1,3 +1,5 @@
+import * as Y from "yjs";
+
 import {
   type AssetFragment,
   type CmsItemFragment,
@@ -485,21 +487,6 @@ export const resolvers = {
 
     job: (_: any, args: { id: string }) => jobs.find((j) => j.id === args.id),
 
-    nodeExecution: (_: any, args: { jobId: string; nodeId: string }) => {
-      // Mock node execution data
-      return {
-        id: `exec-${args.jobId}-${args.nodeId}`,
-        nodeId: args.nodeId,
-        jobId: args.jobId,
-        status: "COMPLETED",
-        startedAt: "2024-01-28T10:00:00Z",
-        completedAt: "2024-01-28T10:05:00Z",
-        logs: logs.filter(
-          (l) => l.jobId === args.jobId && l.nodeId === args.nodeId,
-        ),
-      };
-    },
-
     latestProjectSnapshot: (_: any, args: { projectId: string }) => {
       // Mock project document
       return {
@@ -538,6 +525,52 @@ export const resolvers = {
         },
       ];
       return paginateResults(history, args.pagination).nodes;
+    },
+
+    projectNamedSnapshots: (_: any, _args: { projectId: string }) => {
+      // Several distinct, labelled snapshots so local dev reflects real
+      // behaviour: auto-versioning keeps appending entries, not just one.
+      return [
+        {
+          snapshotNumber: 3,
+          label: "before migration",
+          timestamp: "2024-01-28T12:00:00Z",
+          size: 4096,
+        },
+        {
+          snapshotNumber: 2,
+          label: "auto",
+          timestamp: "2024-01-15T09:30:00Z",
+          size: 3072,
+        },
+        {
+          snapshotNumber: 1,
+          label: "initial import",
+          timestamp: "2024-01-01T10:00:00Z",
+          size: 2048,
+        },
+      ];
+    },
+
+    projectNamedSnapshot: (
+      _: any,
+      args: { projectId: string; snapshotNumber: number },
+    ) => {
+      // A real Y.Doc update, not random bytes: the panel applies this to build a
+      // preview, so anything undecodable would fail in a way production would not.
+      const doc = new Y.Doc();
+      const workflows = doc.getMap("workflows");
+      const workflow = new Y.Map();
+      workflow.set("id", new Y.Text("mock-entry-graph"));
+      workflow.set("name", new Y.Text(`snapshot ${args.snapshotNumber}`));
+      workflow.set("nodes", new Y.Map());
+      workflow.set("edges", new Y.Map());
+      workflows.set("mock-entry-graph", workflow);
+
+      return {
+        snapshotNumber: args.snapshotNumber,
+        updates: Array.from(Y.encodeStateAsUpdate(doc)),
+      };
     },
 
     triggers: (_: any, args: { workspaceId: string; pagination: any }) => {
@@ -641,6 +674,16 @@ export const resolvers = {
 
   // Mutation resolvers
   Mutation: {
+    saveNamedSnapshot: (
+      _: any,
+      args: { projectId: string; label: string },
+    ) => ({
+      snapshotNumber: 4,
+      label: args.label,
+      timestamp: new Date().toISOString(),
+      size: 5120,
+    }),
+
     // User mutations
     signup: () => {
       const newUser: MockUser = {

@@ -33,7 +33,7 @@ impl ProcessorFactory for ClipperFactory {
     }
 
     fn description(&self) -> &str {
-        "Clip Features Using Boundary Shapes"
+        "Clips candidate features to the boundary geometry, separating the results into inside and outside portions."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -45,7 +45,7 @@ impl ProcessorFactory for ClipperFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["2d"]
+        &["spatial"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

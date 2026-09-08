@@ -188,9 +188,9 @@ impl Processor for Rotator3D {
             return Ok(());
         }
 
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let eval_f64 = |code: &CompiledCode| -> Result<f64, BoxedError> {
-            code.eval_float(feature, env_vars.clone())
+            code.eval_float(feature, variables.clone())
                 .map_err(|e| GeometryProcessorError::Rotator3D(format!("{e:?}")).into())
         };
         let rotation_matrix = match &self.rotation {

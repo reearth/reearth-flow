@@ -1,0 +1,124 @@
+id: b2000000-0000-4000-8000-000000000000
+name: SurfaceChecks
+# Validates every face of the incoming geometry (solid shells are decomposed into
+# their faces, multi-surfaces into their polygons). Emits each face on `faces`, and
+# one feature per failed check per face on `invalidSurface` with the check name in
+# `issue`.
+nodes:
+  - id: b2000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: b2000000-0000-4000-8000-000000000002
+    name: GeometryCoercerFaces
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: b2000000-0000-4000-8000-000000000003
+    name: GeometrySplitterFaces
+    type: action
+    action: Geometry Splitter
+
+  - id: b2000000-0000-4000-8000-000000000004
+    name: FacesRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: faces
+
+  - id: b2000000-0000-4000-8000-000000000005
+    name: GeometryValidatorFace
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+      planarityThreshold:
+        maxHeight: 0.03
+
+  - id: b2000000-0000-4000-8000-000000000006
+    name: AttributeManagerIssues
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _issues
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {
+                "DuplicatePoints": "DuplicateConsecutivePoints",
+                "InteriorRingContainment": "InteriorRingNotContainedInExteriorRing",
+                "Planarity": "NonPlanarSurface",
+                "Orientation": "IncorrectInteriorOrientation",
+                "UnclosedRing": "RingNotClosed",
+                "Degenerate": "DegenerateSurface",
+                "Finite": "NonFiniteCoordinate",
+              };
+              checks = attributes["validationResult"]["checks"];
+              itertools.map(itertools.sorted(checks.keys()), fn(k) { {"issue": names.get(k, k)} })
+
+  - id: b2000000-0000-4000-8000-000000000007
+    name: ListExploderIssues
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: _issues
+
+  - id: b2000000-0000-4000-8000-000000000008
+    name: InvalidSurfaceRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: invalidSurface
+
+edges:
+  - id: b2000000-0000-4000-8000-000000000101
+    from: b2000000-0000-4000-8000-000000000001
+    to: b2000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: b2000000-0000-4000-8000-000000000102
+    from: b2000000-0000-4000-8000-000000000002
+    to: b2000000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: b2000000-0000-4000-8000-000000000103
+    from: b2000000-0000-4000-8000-000000000003
+    to: b2000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: b2000000-0000-4000-8000-000000000104
+    from: b2000000-0000-4000-8000-000000000003
+    to: b2000000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+  - id: b2000000-0000-4000-8000-000000000105
+    from: b2000000-0000-4000-8000-000000000005
+    to: b2000000-0000-4000-8000-000000000006
+    fromPort: failed
+    toPort: features
+  - id: b2000000-0000-4000-8000-000000000106
+    from: b2000000-0000-4000-8000-000000000006
+    to: b2000000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: b2000000-0000-4000-8000-000000000107
+    from: b2000000-0000-4000-8000-000000000007
+    to: b2000000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+
+ports:
+  outputs:
+    - id: faces
+      nodeId: b2000000-0000-4000-8000-000000000004
+      port: features
+    - id: invalidSurface
+      nodeId: b2000000-0000-4000-8000-000000000008
+      port: features

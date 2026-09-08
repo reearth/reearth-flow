@@ -23,7 +23,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["outputFilePath"]'
+            value: 'variables["outputFilePath"]'
           prettyPrint: true
     edges:
       - id: f4f94483-de11-7f4d-dde8-71f575d541fe

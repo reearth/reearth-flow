@@ -1,7 +1,3 @@
-// Several imports here are only used by the `Feature`-geometry conversions that
-// are gated off under `new-geometry`.
-#![cfg_attr(feature = "new-geometry", allow(unused_imports))]
-
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -15,8 +11,26 @@ use crate::{
     Attribute, AttributeValue, Feature, GeometryValue, GmlGeometry,
 };
 
-// TODO(new-geometry): port to new geometry; gated off until then.
-#[cfg(not(feature = "new-geometry"))]
+pub use super::geojson_shared::{CrsCoverage, WrittenFeature};
+
+/// What `feature` writes to as GeoJSON.
+///
+/// One EPSG code covers a whole feature here, so its coordinates are all in that
+/// code or in none: a feature carrying no code says nothing about the CRS rather
+/// than placing its coordinates outside every one.
+pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
+    let features: Vec<geojson::Feature> = feature.clone().try_into()?;
+    let crs = match feature.geometry.epsg {
+        // A feature can write a row without coordinates, which the code it
+        // carries does not describe.
+        Some(code) if features.iter().any(|f| f.geometry.is_some()) => {
+            CrsCoverage::Single(code.into())
+        }
+        _ => CrsCoverage::NoCoordinates,
+    };
+    Ok(WrittenFeature { features, crs })
+}
+
 impl TryFrom<Feature> for Vec<geojson::Feature> {
     type Error = Error;
 
@@ -76,7 +90,6 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
     }
 }
 
-#[cfg(not(feature = "new-geometry"))]
 fn from_attribute_value_map_to_geojson_object(
     map: &IndexMap<Attribute, AttributeValue>,
 ) -> geojson::JsonObject {
@@ -119,8 +132,6 @@ impl From<GmlGeometry> for Vec<geojson::Value> {
     }
 }
 
-// TODO(new-geometry): port to new geometry; gated off until then.
-#[cfg(not(feature = "new-geometry"))]
 impl TryFrom<geojson::Feature> for Feature {
     type Error = Error;
 
@@ -158,7 +169,6 @@ impl TryFrom<geojson::Feature> for Feature {
     }
 }
 
-#[cfg(not(feature = "new-geometry"))]
 fn from_geojson_object_to_attribute_value_map(
     obj: &geojson::JsonObject,
 ) -> IndexMap<Attribute, AttributeValue> {
@@ -167,8 +177,9 @@ fn from_geojson_object_to_attribute_value_map(
         .collect()
 }
 
-#[cfg(all(test, not(feature = "new-geometry")))]
+#[cfg(test)]
 mod tests {
+    use reearth_flow_geometry::coordinate::EpsgCode;
     use reearth_flow_geometry::types::coordinate::Coordinate3D;
     use reearth_flow_geometry::types::line_string::LineString3D;
     use reearth_flow_geometry::types::polygon::Polygon3D;
@@ -230,19 +241,26 @@ mod tests {
         assert_eq!(values[2], geojson::Value::Point(vec![2.0, 3.0, 4.0]));
     }
 
-    // A feature whose CityGML geometry contains only points converts to a
-    // GeoJSON feature with a Point geometry.
-    #[test]
-    fn feature_with_only_points_yields_at_least_one_geojson_feature() {
+    fn point_geometry_value() -> GeometryValue {
         let gml_geometry = GmlGeometry {
             points: vec![Coordinate3D::new__(137.32, 34.68, 12.5)],
             len: 1,
             ..GmlGeometry::new(GeometryType::Point, Some(0))
         };
-        let citygml_geometry = CityGmlGeometry::new(vec![gml_geometry], Vec::new(), Vec::new());
+        GeometryValue::CityGmlGeometry(CityGmlGeometry::new(
+            vec![gml_geometry],
+            Vec::new(),
+            Vec::new(),
+        ))
+    }
+
+    // A feature whose CityGML geometry contains only points converts to a
+    // GeoJSON feature with a Point geometry.
+    #[test]
+    fn feature_with_only_points_yields_at_least_one_geojson_feature() {
         let feature = Feature::new_with_attributes_and_geometry(
             Attributes::new(),
-            Geometry::with_value(GeometryValue::CityGmlGeometry(citygml_geometry)),
+            Geometry::with_value(point_geometry_value()),
         );
 
         let geojson_features: Vec<geojson::Feature> = feature.try_into().unwrap();
@@ -252,5 +270,34 @@ mod tests {
             geojson_features[0].geometry.as_ref().map(|g| &g.value),
             Some(geojson::Value::Point(_))
         ));
+    }
+
+    // The feature's EPSG code covers the coordinates it writes.
+    #[test]
+    fn written_coordinates_are_covered_by_the_features_epsg_code() {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::new_with(6675, point_geometry_value()),
+        );
+
+        assert_eq!(
+            write_feature(&feature).unwrap().crs,
+            CrsCoverage::Single(EpsgCode::new(6675))
+        );
+    }
+
+    // A feature without geometry still writes a row, which its EPSG code does not
+    // describe: the file carries no coordinate in that CRS.
+    #[test]
+    fn a_row_without_coordinates_is_covered_by_no_crs() {
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::new_with(6675, GeometryValue::None),
+        );
+
+        let written = write_feature(&feature).unwrap();
+
+        assert_eq!(written.features.len(), 1);
+        assert_eq!(written.crs, CrsCoverage::NoCoordinates);
     }
 }

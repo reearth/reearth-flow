@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use crate::citygml_parser::parser::Parser;
+use crate::citygml_parser::parser::{CityGmlVersion, Parser};
 use crate::citygml_parser::pipeline::build_features;
 use crate::feature::errors::FeatureProcessorError;
 
@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across files"
+        "Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,7 +36,11 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -86,7 +90,8 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            parser: Parser::new(),
+            inherit_input_attributes: params.inherit_input_attributes,
+            parser: Parser::new(CityGmlVersion::V2),
             base_attributes: HashMap::new(),
         }))
     }
@@ -126,9 +131,18 @@ pub struct FeatureCityGml2ReaderParam {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     city_gml_attributes_key: Option<String>,
+    /// # Inherit Input Attributes
+    /// When true, the input feature's attributes are merged into every feature parsed from its
+    /// file. Defaults to true.
+    #[serde(default = "default_inherit_input_attributes")]
+    inherit_input_attributes: bool,
 }
 
 fn default_keep_attributes() -> bool {
+    true
+}
+
+fn default_inherit_input_attributes() -> bool {
     true
 }
 
@@ -139,8 +153,10 @@ pub struct FeatureCityGml2Reader {
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
     city_gml_attributes_key: Option<String>,
+    inherit_input_attributes: bool,
     parser: Parser,
-    /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
+    /// Input feature attributes keyed by resolved source file URL, merged into parsed features
+    /// when `inherit_input_attributes` is set.
     base_attributes: HashMap<String, Attributes>,
 }
 
@@ -161,7 +177,8 @@ impl Clone for FeatureCityGml2Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            parser: Parser::new(),
+            inherit_input_attributes: self.inherit_input_attributes,
+            parser: Parser::new(CityGmlVersion::V2),
             base_attributes: HashMap::new(),
         }
     }
@@ -179,7 +196,7 @@ impl Processor for FeatureCityGml2Reader {
     ) -> Result<(), BoxedError> {
         let path = self
             .dataset
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| {
                 FeatureProcessorError::FileCityGml2Reader(format!("Failed to eval dataset: {e:?}"))
             })?;
@@ -188,10 +205,12 @@ impl Processor for FeatureCityGml2Reader {
             FeatureProcessorError::FileCityGml2Reader(format!("Invalid URI `{path}`: {e}"))
         })?;
         let source_url: Url = uri.clone().into();
-        self.base_attributes.insert(
-            source_url.as_str().to_string(),
-            (*ctx.feature.attributes).clone(),
-        );
+        if self.inherit_input_attributes {
+            self.base_attributes.insert(
+                source_url.as_str().to_string(),
+                (*ctx.feature.attributes).clone(),
+            );
+        }
 
         let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
             FeatureProcessorError::FileCityGml2Reader(format!("Storage resolve error: {e}"))
@@ -211,14 +230,22 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // This reader's own param stays a simple bool; the shared pipeline
+        // function takes a caller-declared attribute-name list, so translate
+        // at the boundary rather than changing this reader's exposed shape.
+        let flatten_leaf_attributes: Vec<String> = if self.flatten_measure_types {
+            vec!["uom".to_string()]
+        } else {
+            Vec::new()
+        };
         for feature in build_features(
-            std::mem::take(&mut self.parser),
+            std::mem::replace(&mut self.parser, Parser::new(CityGmlVersion::V2)),
             &self.extract_tags,
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
             self.flatten_single_child_objects,
-            self.flatten_measure_types,
+            &flatten_leaf_attributes,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

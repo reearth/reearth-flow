@@ -1,5 +1,9 @@
+#[cfg(feature = "new-geometry")]
+pub mod next;
+#[cfg(not(feature = "new-geometry"))]
 pub(crate) mod pipeline;
 pub(crate) mod sink;
+#[cfg(not(feature = "new-geometry"))]
 pub(crate) mod slice;
 pub(crate) mod tags;
 pub(crate) mod tileid;

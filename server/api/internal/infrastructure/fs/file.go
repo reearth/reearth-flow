@@ -347,7 +347,7 @@ func (f *fileRepo) validateURL(u *url.URL, base *url.URL) bool {
 }
 
 func (f *fileRepo) IssueUploadAssetLink(_ context.Context, _ gateway.IssueUploadAssetParam) (*gateway.UploadAssetLink, error) {
-	return nil, gateway.ErrUnsupportedOperation
+	return nil, gateway.ErrAssetUploadNotConfigured
 }
 
 func (f *fileRepo) WriteCancelFlag(_ context.Context, jobID string) error {

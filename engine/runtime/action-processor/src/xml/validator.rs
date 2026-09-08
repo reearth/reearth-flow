@@ -184,7 +184,7 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validates XML documents against XSD schemas with success/failure routing"
+        "Validates XML documents for well-formed syntax, namespace declarations, or compliance with the XSD schemas they reference. Details of any errors found are added to an `xmlError` attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -196,7 +196,7 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["xml", "validate"]
+        &["xml", "validation"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -874,13 +874,13 @@ mod tests {
             let factory = XmlValidatorFactory {};
 
             // Create required dependencies for NodeContext
-            let env_vars = Arc::new(serde_json::Map::new());
+            let variables = Arc::new(serde_json::Map::new());
             let storage_resolver = Arc::new(StorageResolver::new());
             let kv_store = Arc::new(create_kv_store());
             let event_hub = EventHub::new(1024);
 
             let ctx = NodeContext::new(
-                env_vars.clone(),
+                variables.clone(),
                 storage_resolver.clone(),
                 kv_store.clone(),
                 event_hub.clone(),
@@ -933,7 +933,7 @@ mod tests {
                 let exec_ctx = ExecutorContext::new(
                     feature,
                     FEATURES_PORT.clone(),
-                    env_vars,
+                    variables,
                     storage_resolver,
                     kv_store,
                     EventHub::new(1024),

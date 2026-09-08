@@ -5,7 +5,7 @@
 //! with occupied descendants past that window chains to another `.subtree`
 //! file rooted at itself, so no single file scales with dataset depth.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use serde_json::{json, Value};
 
@@ -19,18 +19,39 @@ const VERSION: u32 = 1;
 pub(super) const SUBTREE_LEVELS: u32 = 4;
 
 /// Every `.subtree` file needed to describe `occupied`, as (root cell, bytes)
-/// pairs — one per chain hop.
-pub(super) fn build_all(occupied: &BTreeSet<Cell>) -> Vec<(Cell, Vec<u8>)> {
+/// pairs — one per chain hop. `content_counts` gives each cell's same-tile
+/// content count (default 1); `max_contents` is the dataset-wide maximum,
+/// since `contentAvailability`'s array length must match `tileset.json`'s
+/// `contents` array everywhere, not just where a cell actually splits.
+pub(super) fn build_all(
+    occupied: &BTreeSet<Cell>,
+    content_counts: &HashMap<Cell, usize>,
+    max_contents: usize,
+) -> Vec<(Cell, Vec<u8>)> {
     let mut out = Vec::new();
-    build_one(Cell::root(), occupied, &mut out);
+    build_one(
+        Cell::root(),
+        occupied,
+        content_counts,
+        max_contents.max(1),
+        &mut out,
+    );
     out
 }
 
-fn build_one(root: Cell, occupied: &BTreeSet<Cell>, out: &mut Vec<(Cell, Vec<u8>)>) {
+fn build_one(
+    root: Cell,
+    occupied: &BTreeSet<Cell>,
+    content_counts: &HashMap<Cell, usize>,
+    max_contents: usize,
+    out: &mut Vec<(Cell, Vec<u8>)>,
+) {
     let boundary_level = root.level + SUBTREE_LEVELS - 1;
     let total_tiles = level_offset(SUBTREE_LEVELS) as usize;
     let mut tile_availability = BitSet::new(total_tiles);
-    let mut content_availability = BitSet::new(total_tiles);
+    let mut content_availability: Vec<BitSet> = (0..max_contents)
+        .map(|_| BitSet::new(total_tiles))
+        .collect();
     let mut chained: BTreeSet<Cell> = BTreeSet::new();
 
     for cell in occupied
@@ -52,7 +73,10 @@ fn build_one(root: Cell, occupied: &BTreeSet<Cell>, out: &mut Vec<(Cell, Vec<u8>
                     .expect("cell is deeper than boundary_level + 1"),
             );
         } else {
-            content_availability.set(rel_bit_index(root, cell));
+            let count = content_counts.get(&cell).copied().unwrap_or(1);
+            for slot in content_availability.iter_mut().take(count) {
+                slot.set(rel_bit_index(root, cell));
+            }
         }
         let mut ancestor = Some(mark_from);
         while let Some(c) = ancestor {
@@ -62,11 +86,12 @@ fn build_one(root: Cell, occupied: &BTreeSet<Cell>, out: &mut Vec<(Cell, Vec<u8>
     }
 
     let tile_available_count = tile_availability.count_ones();
-    let content_available_count = content_availability.count_ones();
-    let mut buffers = vec![
-        tile_availability.into_bytes(),
-        content_availability.into_bytes(),
-    ];
+    let content_available_counts: Vec<usize> = content_availability
+        .iter()
+        .map(|b| b.count_ones())
+        .collect();
+    let mut buffers = vec![tile_availability.into_bytes()];
+    buffers.extend(content_availability.into_iter().map(BitSet::into_bytes));
 
     // childSubtreeAvailability is indexed over the level one past the boundary
     // (where a chained subtree's root would sit), not the boundary level itself.
@@ -90,19 +115,19 @@ fn build_one(root: Cell, occupied: &BTreeSet<Cell>, out: &mut Vec<(Cell, Vec<u8>
         encode(
             buffers,
             tile_available_count,
-            content_available_count,
+            &content_available_counts,
             child_json,
         ),
     ));
     for child_root in chained {
-        build_one(child_root, occupied, out);
+        build_one(child_root, occupied, content_counts, max_contents, out);
     }
 }
 
 fn encode(
     buffers: Vec<Vec<u8>>,
     tile_available_count: usize,
-    content_available_count: usize,
+    content_available_counts: &[usize],
     child_json: Value,
 ) -> Vec<u8> {
     let mut buffer_views = Vec::with_capacity(buffers.len());
@@ -112,11 +137,19 @@ fn encode(
         offset += b.len();
     }
 
+    // Bitstream 0 is tileAvailability; bitstreams 1..=content_available_counts.len()
+    // are the content slots, in the same order as tileset.json's `contents` array.
+    let content_availability: Vec<Value> = content_available_counts
+        .iter()
+        .enumerate()
+        .map(|(n, &count)| json!({"bitstream": 1 + n, "availableCount": count}))
+        .collect();
+
     let json = json!({
         "buffers": [{"byteLength": offset}],
         "bufferViews": buffer_views,
         "tileAvailability": {"bitstream": 0, "availableCount": tile_available_count},
-        "contentAvailability": [{"bitstream": 1, "availableCount": content_available_count}],
+        "contentAvailability": content_availability,
         "childSubtreeAvailability": child_json,
     });
 
@@ -240,7 +273,7 @@ mod tests {
             x: 0,
             y: 0,
         }]);
-        let files = build_all(&occupied);
+        let files = build_all(&occupied, &HashMap::new(), 1);
         assert_eq!(files.len(), 1);
         let bytes = &files[0].1;
         let (json_len, binary_len) = header_lengths(bytes);
@@ -257,7 +290,7 @@ mod tests {
             x: 1,
             y: 0,
         }]);
-        let files = build_all(&occupied);
+        let files = build_all(&occupied, &HashMap::new(), 1);
         assert_eq!(files.len(), 1);
         let bytes = &files[0].1;
         let (json_len, _) = header_lengths(bytes);
@@ -295,7 +328,7 @@ mod tests {
             y: 0,
         };
         let occupied = BTreeSet::from([deep]);
-        let files = build_all(&occupied);
+        let files = build_all(&occupied, &HashMap::new(), 1);
 
         // One file for the root window, one chained file rooted one level past
         // the boundary, on the path down to `deep`.

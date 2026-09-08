@@ -1,0 +1,46 @@
+id: de894b14-b58a-48ee-aab8-b47a6e58709c
+name: "Fatal Override Test"
+entryGraphId: 8ebbe523-edfa-45b4-9845-88059f4c0905
+with:
+graphs:
+  - id: 8ebbe523-edfa-45b4-9845-88059f4c0905
+    name: main_graph
+    nodes:
+      - id: 01133d10-5904-43a7-9d20-9c5670725618
+        name: Feature Creator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              let features = [];
+              for i in range(1, 4) {
+                features.append({
+                  "id": i,
+                  "name": "item_{}".format(i),
+                  "value": i * 10
+                });
+              }
+              features
+      - id: cbd5f624-b7cd-4a11-b6dd-181063c314d4
+        name: Cesium 3D Tiles Writer
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          output:
+            type: string
+            value: cesium_output
+          minZoom: 15
+          maxZoom: 18
+    edges:
+      - id: ef355ab5-01c8-4e08-aa1e-ef1aac5eb618
+        from: 01133d10-5904-43a7-9d20-9c5670725618
+        to: cbd5f624-b7cd-4a11-b6dd-181063c314d4
+        fromPort: features
+        toPort: features
+errorPolicy:
+  overrides:
+    - node: cbd5f624-b7cd-4a11-b6dd-181063c314d4
+      code: cesium3dtiles.empty_geometry
+      disposition: fatal

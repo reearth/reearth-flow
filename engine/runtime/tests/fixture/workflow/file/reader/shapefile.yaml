@@ -25,7 +25,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["outputFilePath"]'
+            value: 'variables["outputFilePath"]'
 
     edges:
       - id: 01234567-0000-0000-0000-000000000005

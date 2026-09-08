@@ -34,12 +34,19 @@ impl Shell {
         }
     }
 
-    /// Whether this shell is a watertight closed 2-manifold (single connected
-    /// component, every edge shared by exactly two faces).
-    fn is_closed_connected_manifold(&self) -> bool {
+    /// Whether this shell is a watertight closed 2-manifold (every edge shared by
+    /// exactly two faces).
+    fn is_closed_manifold(&self) -> bool {
         match self {
-            Shell::PolygonMesh(data) => data.is_closed_connected_manifold(),
-            Shell::TriangularMesh(data) => data.is_closed_connected_manifold(),
+            Shell::PolygonMesh(data) => data.is_closed_manifold(),
+            Shell::TriangularMesh(data) => data.is_closed_manifold(),
+        }
+    }
+    /// Whether this shell is a single connected component through shared edges.
+    fn is_connected(&self) -> bool {
+        match self {
+            Shell::PolygonMesh(data) => data.is_connected(),
+            Shell::TriangularMesh(data) => data.is_connected(),
         }
     }
 
@@ -71,7 +78,7 @@ impl Shell {
 /// solid's interiors are void *shells*, not interior rings. `Orientable` and
 /// `Orientation` are checked per shell; they are also the prerequisites that make
 /// `ShellOrientation`'s signed-volume test meaningful.
-const SOLID_CHECKS: [ValidationType; 10] = [
+const SOLID_CHECKS: [ValidationType; 11] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
     ValidationType::UnclosedRing,
@@ -81,6 +88,7 @@ const SOLID_CHECKS: [ValidationType; 10] = [
     ValidationType::Orientation,
     ValidationType::Orientable,
     ValidationType::ShellManifold,
+    ValidationType::ShellConnected,
     ValidationType::ShellOrientation,
 ];
 
@@ -168,10 +176,21 @@ impl Validate for Solid {
     }
 
     fn check_shell_manifold(&self, _params: &ValidationParams) -> ValidationReport {
-        // Each shell must be a watertight closed connected 2-manifold.
+        // Each shell must be a watertight closed 2-manifold.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
-                if !shell.is_closed_connected_manifold() {
+                if !shell.is_closed_manifold() {
+                    r.push(shell.to_geometry(&self.frame));
+                }
+            }
+        })
+    }
+
+    fn check_shell_connected(&self, _params: &ValidationParams) -> ValidationReport {
+        // Each shell must be a single connected component.
+        ValidationReport::ran(|r| {
+            for shell in self.shells() {
+                if !shell.is_connected() {
                     r.push(shell.to_geometry(&self.frame));
                 }
             }
@@ -319,6 +338,28 @@ mod tests {
         let open = TriangularMesh3DData::from_parts(tetra_verts(), [0u32, 1, 2]).unwrap();
         let s = Solid::from_exterior(CoordinateFrame::Euclidean, open);
         assert_eq!(failure_count(&s, ValidationType::ShellManifold), 1);
+    }
+
+    #[test]
+    fn closed_tetra_is_a_connected_shell() {
+        let s = Solid::from_exterior(CoordinateFrame::Euclidean, tetra_outward());
+        assert!(is_success(&s, ValidationType::ShellConnected));
+    }
+
+    #[test]
+    fn two_disjoint_tetras_are_closed_but_not_connected() {
+        let mut verts = tetra_verts();
+        verts.extend(tetra_verts().into_iter().map(|[x, y, z]| [x + 10.0, y, z]));
+        let shell = TriangularMesh3DData::from_parts(
+            verts,
+            [
+                1u32, 2, 3, 0, 3, 2, 0, 1, 3, 0, 2, 1, 5, 6, 7, 4, 7, 6, 4, 5, 7, 4, 6, 5,
+            ],
+        )
+        .unwrap();
+        let s = Solid::from_exterior(CoordinateFrame::Euclidean, shell);
+        assert!(is_success(&s, ValidationType::ShellManifold));
+        assert_eq!(failure_count(&s, ValidationType::ShellConnected), 1);
     }
 
     #[test]

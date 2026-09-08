@@ -1,25 +1,28 @@
 import { ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { ProjectDocument, ProjectSnapshotMeta } from "@flow/types";
+import { AUTO_SNAPSHOT_LABEL } from "@flow/types";
+import type { NamedSnapshot, ProjectDocument } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
-  history?: ProjectSnapshotMeta[];
-  onVersionSelection: (version: number) => void;
-  selectedProjectSnapshotVersion: number | null;
+  snapshots?: NamedSnapshot[];
+  isError?: boolean;
+  selectedSnapshotNumber?: number | null;
+  onSnapshotSelect?: (snapshotNumber: number) => void;
 };
 
 const VersionHistoryList: React.FC<Props> = ({
   latestProjectSnapshotVersion,
-  history,
-  selectedProjectSnapshotVersion,
-  onVersionSelection,
+  snapshots,
+  isError,
+  selectedSnapshotNumber,
+  onSnapshotSelect,
 }) => {
   const t = useT();
-  const previousVersions = history?.filter(
-    (version) => version.version !== latestProjectSnapshotVersion?.version,
-  );
+  const sortedSnapshots = snapshots
+    ? [...snapshots].sort((a, b) => b.snapshotNumber - a.snapshotNumber)
+    : snapshots;
 
   return (
     <ScrollArea className="h-full w-full overflow-y-auto">
@@ -41,32 +44,66 @@ const VersionHistoryList: React.FC<Props> = ({
         </div>
       )}
 
-      {previousVersions && previousVersions.length > 0 ? (
+      {sortedSnapshots && sortedSnapshots.length > 0 ? (
         <div className="flex flex-col overflow-auto">
-          {previousVersions?.map((version) => (
-            <div>
-              <div
-                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${version.version === selectedProjectSnapshotVersion ? "bg-border/40 dark:bg-primary" : "hover:bg-border/40 dark:hover:bg-primary"}`}
-                onClick={() => onVersionSelection(version.version)}
-                style={{ height: "100%" }}>
-                <p className="flex-2 self-center text-xs font-light dark:font-thin">
-                  {formatDate(version.timestamp)}
-                </p>
-                <div className="flex justify-end">
-                  <p className="rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
-                    <span className="font-light">
-                      {" "}
-                      {t("Version ")}
-                      {version.version}
-                    </span>
-                  </p>
+          {sortedSnapshots.map((snapshot) => {
+            const isSelected =
+              selectedSnapshotNumber === snapshot.snapshotNumber;
+            return (
+              <div key={snapshot.snapshotNumber}>
+                <div
+                  className={`flex cursor-pointer justify-between gap-2 px-2 py-2 hover:bg-accent/50 ${isSelected ? "bg-accent" : ""}`}
+                  style={{ height: "100%" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  onClick={() => onSnapshotSelect?.(snapshot.snapshotNumber)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSnapshotSelect?.(snapshot.snapshotNumber);
+                    }
+                  }}>
+                  <div className="flex flex-col gap-1">
+                    <p className="flex-2 self-start text-xs font-light dark:font-thin">
+                      {snapshot.label &&
+                      snapshot.label !== AUTO_SNAPSHOT_LABEL ? (
+                        snapshot.label
+                      ) : (
+                        <span className="opacity-70">{t("Autosaved")}</span>
+                      )}
+                    </p>
+                    <p className="text-xs font-thin">
+                      {formatDate(snapshot.timestamp)}
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    <p className="h-fit rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
+                      <span className="font-light">
+                        {t("Snapshot ")}
+                        {snapshot.snapshotNumber}
+                      </span>
+                    </p>
+                  </div>
                 </div>
+                <div className="h-px bg-border" />
               </div>
-              <div className="h-px bg-border" />
-            </div>
-          ))}
+            );
+          })}
         </div>
-      ) : null}
+      ) : isError ? (
+        // Distinct from the empty state on purpose. A failed query used to render
+        // "No versions yet", which tells the user their history does not exist
+        // when in fact we could not load it — the worst possible reading on a
+        // version-history panel.
+        <p className="p-2 text-xs font-light select-none">
+          {t("Could not load version history")}
+        </p>
+      ) : (
+        <p className="p-2 text-xs font-light select-none">
+          {t("No versions yet")}
+        </p>
+      )}
     </ScrollArea>
   );
 };

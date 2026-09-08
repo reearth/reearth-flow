@@ -1,5 +1,6 @@
 {
   "description": "L04 #2 for plateau6 (CityGML 3.0): bldg:class codeSpace points at a nonexistent codelist (invalid_codespace.xml) that cannot be resolved → 不正なcodeSpace数=1, L04エラー=0 (value 3003 itself is valid).",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

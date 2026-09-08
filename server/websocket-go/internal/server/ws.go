@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/reearth/ygo/crdt"
+	"github.com/reearth/ygo/persistence"
 	ygws "github.com/reearth/ygo/provider/websocket"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
@@ -23,6 +24,10 @@ type Server struct {
 	cfg *config.Config
 	ws  *ygws.Server
 	log *slog.Logger
+
+	// adapter is the persistence adapter when built via NewWithPersistence, kept
+	// only so retention wiring can be asserted in tests (nil for New()).
+	adapter *persistence.LegacyAdapter
 
 	// onPeriodicSync, if set, is invoked once per re-sync tick (tests only).
 	onPeriodicSync func()

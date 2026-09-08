@@ -4,11 +4,10 @@ package pgtest
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	flowdb "github.com/reearth/reearth-flow/db"
 	"github.com/reearth/reearthx/pgxx/pgxtest"
 )
 
@@ -25,31 +24,12 @@ func Connect(t *testing.T) func(*testing.T) *pgxpool.Pool {
 	return func(t *testing.T) *pgxpool.Pool {
 		t.Helper()
 		pool := base(t)
-		if err := pgxtest.ApplyFS(context.Background(), pool, os.DirFS(migrationsDir(t))); err != nil {
+		// The embedded migrations are used rather than a path resolved from the
+		// test's working directory, which only worked while the schema sat inside
+		// this module.
+		if err := pgxtest.ApplyFS(context.Background(), pool, flowdb.MigrationsFS); err != nil {
 			t.Fatalf("pgtest: apply migrations: %v", err)
 		}
 		return pool
 	}
-}
-
-func migrationsDir(t *testing.T) string {
-	t.Helper()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("pgtest: getwd: %v", err)
-	}
-	candidate := filepath.Join(wd, "db", "migrations")
-	if _, err := os.Stat(candidate); err == nil {
-		return candidate
-	}
-	d := wd
-	for i := 0; i < 5; i++ {
-		c := filepath.Join(d, "internal", "infrastructure", "postgres", "db", "migrations")
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-		d = filepath.Dir(d)
-	}
-	t.Fatalf("pgtest: could not locate db/migrations from %s", wd)
-	return ""
 }

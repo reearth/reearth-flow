@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
@@ -10,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{
     material::Texture, Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
@@ -22,19 +23,31 @@ use url::Url;
 
 use super::errors::GeometryProcessorError;
 
-static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("texture-coordinates"));
 static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
-static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureBounds"));
+static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("texture-bounds"));
 
 /// Overlap resolution strategy for rasterized pixels
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum OnOverlap {
+    /// # Take Last
+    /// Keeps the colour of the last polygon drawn over the pixel.
     TakeLast,
+    /// # Take First
+    /// Keeps the colour of the first polygon drawn over the pixel.
     TakeFirst,
+    /// # Maximum
+    /// Keeps the colour of the overlapping polygon whose expression evaluates
+    /// highest.
     Max(Code<{ CodeType::FlowExpr as u32 }>),
+    /// # Minimum
+    /// Keeps the colour of the overlapping polygon whose expression evaluates
+    /// lowest.
     Min(Code<{ CodeType::FlowExpr as u32 }>),
-    /// Saturating-add RGB channels of all overlapping polygons.
+    /// # Sum
+    /// Adds the RGB channels of every overlapping polygon, saturating at full
+    /// intensity.
     Sum,
 }
 
@@ -73,7 +86,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn description(&self) -> &str {
-        "Convert vector geometries to raster image format"
+        "Converts vector geometries to a raster image using configurable overlap resolution."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -85,7 +98,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["raster", "image", "texture"]
+        &["raster"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -97,6 +110,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
             FEATURES_PORT.clone(),
             TEXTURED_PORT.clone(),
             BOUNDS_PORT.clone(),
+            REJECTED_PORT.clone(),
         ]
     }
 
@@ -119,10 +133,8 @@ impl ProcessorFactory for ImageRasterizerFactory {
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ImageRasterizerFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
+            // Every parameter is optional, so an absent `with` block is valid.
+            ImageRasterizerParam::default()
         };
 
         let evaluated_save_path = params
@@ -134,7 +146,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
                             "Failed to compile save_to: {e:?}"
                         ))
                     })?
-                    .eval_string_env_only(ctx.env_vars.clone())
+                    .eval_string_variables_only(ctx.variables.clone())
                     .map_err(|e| {
                         GeometryProcessorError::ImageRasterizerFactory(format!(
                             "Failed to evaluate save_to: {e:?}"
@@ -167,21 +179,26 @@ impl ProcessorFactory for ImageRasterizerFactory {
 }
 
 /// # Image Rasterizer Parameters
-/// Configure how to convert vector geometries to raster images
+/// Configure the size of the rendered image, where it is written, and how
+/// overlapping geometries are resolved.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ImageRasterizerParam {
-    /// The width of image
+    /// # Image Width
+    /// Width of the output image in pixels. The height follows from the extent
+    /// of the input geometries, preserving their aspect ratio.
     #[serde(default = "default_image_width")]
     image_width: u32,
 
     /// # Save To
-    /// Optional path expression to save the generated image. If not provided, uses default cache directory.
+    /// Path to write the generated image to. When omitted, the image is written
+    /// to the cache directory.
     #[serde(default)]
     save_to: Option<Code>,
 
     /// # On Overlap
-    /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.
+    /// How to colour a pixel covered by more than one geometry. When omitted,
+    /// overlapping geometries are drawn in the order they arrive.
     #[serde(default)]
     on_overlap: Option<OnOverlap>,
 }
@@ -268,26 +285,36 @@ impl Processor for ImageRasterizer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
         // Check which port the feature came from
         if ctx.port == *TEXTURE_COORDS_PORT {
-            // Features from textureCoords port are collected for UV assignment
+            // Features from the texture-coordinates port are collected for UV assignment
             self.texture_coord_features.push(feature.clone());
         } else {
-            // Features from default port are used to build the rasterized image
+            // Features from the features port are used to build the rasterized image
             // Extract color and geometry to accumulate in GeometryPolygons
-            if let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) {
+            let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) else {
+                // Nothing to draw from this feature. Dropping it silently would
+                // leave it unaccounted for, so it goes to `rejected`.
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    "rasterize rejected: feature has no drawable polygon geometry".to_string(),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            };
+            {
                 // Evaluate overlap expression if configured
                 if matches!(
                     self.on_overlap,
                     Some(OnOverlap::Max(_)) | Some(OnOverlap::Min(_))
                 ) {
                     if let Some(ref ast) = self.overlap_value_ast {
-                        let env_vars = ctx.env_vars.clone();
-                        if let Ok(attr_val) = ast.eval(feature, env_vars) {
+                        let variables = ctx.variables.clone();
+                        if let Ok(attr_val) = ast.eval(feature, variables) {
                             if let Some(n) = attr_val.as_f64() {
                                 polygon.overlap_value = Some(OverlapValue::Number(n));
                             } else if let Some(s) = attr_val.as_string() {
@@ -419,12 +446,21 @@ impl Processor for ImageRasterizer {
                                 ));
                             }
                             Err(e) => {
-                                ctx.event_hub.warn_log(
-                                    None,
-                                    format!(
-                                        "Failed to assign texture coordinates to feature: {}",
-                                        e
-                                    ),
+                                // Per-feature failure; the feature itself was already
+                                // forwarded unchanged above, so this only affects the
+                                // textured-port copy. warn-and-continue: the run and
+                                // the feature both keep flowing.
+                                let fctx = ExecutorContext::new_with_node_context_feature_and_port(
+                                    &ctx,
+                                    feature.clone(),
+                                    TEXTURED_PORT.clone(),
+                                );
+                                fctx.warn(
+                                    DiagnosticDraft::new(ErrorCode::RasterTextureAssignmentFailed)
+                                        .with_message(format!(
+                                            "Failed to assign texture coordinates to feature: {}",
+                                            e
+                                        )),
                                 );
                             }
                         }
@@ -443,9 +479,14 @@ impl Processor for ImageRasterizer {
                     ));
                 }
             }
-            Err(e) => {
-                ctx.event_hub
-                    .warn_log(None, format!("Failed to save image: {}", e));
+            Err(_e) => {
+                // finish()-time drop with no single feature to attribute it to,
+                // so this goes through report_drop directly (report()/warn()
+                // need the per-feature ExecutorContext, not this NodeContext).
+                // has_geometry: None since no single feature's geometry applies.
+                if let Some(diagnostics) = ctx.diagnostics.as_deref() {
+                    diagnostics.report_drop(ErrorCode::RasterImageSaveFailed, None, None);
+                }
             }
         }
 
@@ -1389,5 +1430,152 @@ mod tests {
 
         img.save(&dest_path).expect("Failed to save test image");
         println!("Successfully generated and saved image to: {:?}", dest_path);
+    }
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use reearth_flow_diagnostics::Disposition;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
+    use reearth_flow_runtime::node::NodeHandle;
+    use tempfile::tempdir;
+
+    use super::*;
+
+    fn make_handle() -> Arc<NodeDiagnosticsHandle> {
+        Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "processor".into(),
+            "Image Rasterizer".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            false,
+        ))
+    }
+
+    fn square_polygon() -> GeometryPolygon {
+        GeometryPolygon {
+            exterior_coordinates: vec![(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)],
+            interior_coordinates: vec![],
+            color_r: 255,
+            color_g: 0,
+            color_b: 0,
+            overlap_value: None,
+        }
+    }
+
+    fn noop_forwarder() -> ProcessorChannelForwarder {
+        ProcessorChannelForwarder::Noop(NoopChannelForwarder::default())
+    }
+
+    #[test]
+    fn texture_assignment_failure_is_warned_and_the_feature_keeps_flowing() {
+        let tmp = tempdir().unwrap();
+        let save_path = tmp.path().join("out.png");
+
+        let handle = make_handle();
+        let node_ctx = NodeContext {
+            diagnostics: Some(handle.clone()),
+            ..Default::default()
+        };
+
+        // No CityGmlGeometry -> assign_texture_coordinates deterministically
+        // errors ("Feature does not have CityGmlGeometry").
+        let non_citygml_feature = Feature::new_with_attributes(Attributes::default());
+
+        let mut geometry_polygons = GeometryPolygons::new();
+        geometry_polygons.add_polygon(square_polygon());
+
+        let mut processor = ImageRasterizer {
+            width: 10,
+            on_overlap: None,
+            evaluated_save_path: Some(save_path.to_string_lossy().to_string()),
+            overlap_value_ast: None,
+            geometry_polygons,
+            texture_coord_features: vec![non_citygml_feature],
+        };
+
+        let fw = noop_forwarder();
+        processor
+            .finish(node_ctx, &fw)
+            .expect("finish must still return Ok despite the per-feature failure");
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        // warn-and-continue never resolves an effective disposition.
+        assert!(summaries[0].effective_disposition.is_none());
+        assert!(summaries[0]
+            .message
+            .contains("raster.texture_assignment_failed"));
+
+        // control-flow preservation: the feature was still forwarded to the
+        // default port (alongside the unrelated bounds-feature send on
+        // BOUNDS_PORT) even though its textured-port copy failed.
+        let ProcessorChannelForwarder::Noop(noop) = &fw else {
+            unreachable!()
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        assert!(
+            ports.contains(&FEATURES_PORT.clone()),
+            "the original feature must still be forwarded to the default port"
+        );
+        assert!(
+            !ports.contains(&TEXTURED_PORT.clone()),
+            "no textured copy should be forwarded when texture-coordinate assignment failed"
+        );
+    }
+
+    #[test]
+    fn image_save_failure_is_reported_not_silently_dropped_and_the_run_continues() {
+        let tmp = tempdir().unwrap();
+
+        let handle = make_handle();
+        let node_ctx = NodeContext {
+            diagnostics: Some(handle.clone()),
+            ..Default::default()
+        };
+
+        let mut geometry_polygons = GeometryPolygons::new();
+        geometry_polygons.add_polygon(square_polygon());
+
+        let mut processor = ImageRasterizer {
+            width: 10,
+            on_overlap: None,
+            // A directory path (no filename) is not writable as an image
+            // file, so `img.save(..)` deterministically errors.
+            evaluated_save_path: Some(tmp.path().to_string_lossy().to_string()),
+            overlap_value_ast: None,
+            geometry_polygons,
+            texture_coord_features: vec![],
+        };
+
+        let fw = noop_forwarder();
+        let result = processor.finish(node_ctx, &fw);
+        assert!(
+            result.is_ok(),
+            "finish() must still return Ok despite the save failure: {:?}",
+            result.err()
+        );
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop)
+        );
+        assert!(summaries[0].message.contains("raster.image_save_failed"));
+
+        // control-flow preservation: nothing downstream when the image itself
+        // could not be saved.
+        let ProcessorChannelForwarder::Noop(noop) = &fw else {
+            unreachable!()
+        };
+        assert!(noop.send_features.lock().unwrap().is_empty());
     }
 }

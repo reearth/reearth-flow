@@ -46,6 +46,7 @@ type Parameter interface {
 	DeclareParameter(context.Context, DeclareParameterParam) (*parameter.Parameter, error)
 	Fetch(context.Context, id.ParameterIDList) (*parameter.ParameterList, error)
 	FetchByProject(context.Context, id.ProjectID) (*parameter.ParameterList, error)
+	FetchByProjects(context.Context, []id.ProjectID) (map[id.ProjectID]*parameter.ParameterList, error)
 	RemoveParameter(context.Context, id.ParameterID) (id.ParameterID, error)
 	RemoveParameters(context.Context, id.ParameterIDList) (id.ParameterIDList, error)
 	UpdateParameterOrder(context.Context, UpdateParameterOrderParam) (*parameter.ParameterList, error)

@@ -8,6 +8,10 @@ use crate::errors::Error;
 use crate::pubsub::backend::PubSubBackend;
 pub use crate::user_facing_log_handler::{UserFacingLogHandler, UserFacingLogLayer};
 use once_cell::sync::{Lazy, OnceCell};
+use opentelemetry_sdk::{
+    metrics::SdkMeterProvider,
+    trace::{SdkTracerProvider, Tracer},
+};
 use tokio::runtime::Handle;
 use tracing::Level;
 use tracing::{Event, Subscriber};
@@ -24,6 +28,13 @@ static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_WORKER_ENABLE_JSON_LOG")
         .ok()
         .map(|s| s.to_lowercase() == "true")
+        .unwrap_or(false)
+});
+
+/// Empty/whitespace `OTEL_COLLECTOR_ENDPOINT` counts as unset (deployment templating often leaves optional env vars blank rather than omitting them).
+static OTEL_ENABLED: Lazy<bool> = Lazy::new(|| {
+    env::var("OTEL_COLLECTOR_ENDPOINT")
+        .map(|v| !v.trim().is_empty())
         .unwrap_or(false)
 });
 
@@ -141,7 +152,45 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for DynamicUserFacingLogFileWri
     }
 }
 
-pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
+/// No `Drop` impl: every caller exits via `std::process::exit` (skips destructors), so `shutdown()` MUST be called explicitly before exiting.
+pub struct OtelGuard {
+    tracer_provider: SdkTracerProvider,
+    meter_provider: SdkMeterProvider,
+}
+
+impl OtelGuard {
+    pub fn shutdown(&self) {
+        if let Err(err) = self.tracer_provider.shutdown() {
+            tracing::warn!("failed to shut down OTel tracer provider: {err}");
+        }
+        if let Err(err) = self.meter_provider.shutdown() {
+            tracing::warn!("failed to shut down OTel meter provider: {err}");
+        }
+    }
+}
+
+/// Takes `enabled` as a param rather than reading `OTEL_ENABLED` directly so tests can exercise the gate without the process-global `try_init()` call.
+fn init_otel_providers(
+    enabled: bool,
+    service_name: &str,
+) -> crate::errors::Result<Option<(Tracer, OtelGuard)>> {
+    if !enabled {
+        return Ok(None);
+    }
+    let (tracer, tracer_provider) =
+        reearth_flow_telemetry::init_tracing(service_name.to_string()).map_err(Error::init)?;
+    let meter_provider =
+        reearth_flow_telemetry::init_metrics(service_name.to_string()).map_err(Error::init)?;
+    Ok(Some((
+        tracer,
+        OtelGuard {
+            tracer_provider,
+            meter_provider,
+        },
+    )))
+}
+
+pub fn setup_logging_and_tracing() -> crate::errors::Result<Option<OtelGuard>> {
     let log_level = env::var("RUST_LOG")
         .ok()
         .and_then(|s| s.parse::<Level>().ok())
@@ -159,6 +208,16 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
     let registry = tracing_subscriber::registry().with(env_filter);
     let user_facing_layer = GlobalUserFacingLogLayer;
 
+    // Absent OTEL_COLLECTOR_ENDPOINT => otel_layer is `None` — byte-identical to pre-OTel behavior.
+    let otel = init_otel_providers(*OTEL_ENABLED, env!("CARGO_PKG_NAME"))?;
+    let (otel_layer, otel_guard) = match otel {
+        Some((tracer, guard)) => (
+            Some(tracing_opentelemetry::layer().with_tracer(tracer)),
+            Some(guard),
+        ),
+        None => (None, None),
+    };
+
     if *ENABLE_JSON_LOG {
         let mut console_layer = json_subscriber::JsonLayer::stdout();
         console_layer.with_flattened_event();
@@ -173,11 +232,12 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
         file_layer.with_timer("time", time_format);
 
         registry
+            .with(otel_layer)
             .with(console_layer)
             .with(file_layer)
             .with(user_facing_layer)
             .try_init()
-            .map_err(Error::init)
+            .map_err(Error::init)?;
     } else {
         let file_event_format = tracing_subscriber::fmt::format()
             .with_target(true)
@@ -194,12 +254,15 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
             .with_writer(DynamicFileWriter);
 
         registry
+            .with(otel_layer)
             .with(console_layer)
             .with(file_layer)
             .with(user_facing_layer)
             .try_init()
-            .map_err(Error::init)
+            .map_err(Error::init)?;
     }
+
+    Ok(otel_guard)
 }
 
 pub fn enable_file_logging(job_id: uuid::Uuid) -> crate::errors::Result<()> {
@@ -226,7 +289,6 @@ pub fn enable_file_logging(job_id: uuid::Uuid) -> crate::errors::Result<()> {
         guard_lock.replace(guard);
     }
 
-    // Also create user-facing log file
     enable_user_facing_log_file(job_id)?;
 
     tracing::info!("File logging enabled: {}", log_path.to_string_lossy());
@@ -265,4 +327,26 @@ pub fn enable_user_facing_log_file(job_id: uuid::Uuid) -> crate::errors::Result<
         log_file_path.to_string_lossy()
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod otel_gate_tests {
+    use super::init_otel_providers;
+
+    // `setup_logging_and_tracing`'s `try_init()` only succeeds once per process, so these tests exercise `init_otel_providers` instead.
+
+    #[test]
+    fn disabled_gate_never_touches_otel() {
+        let result = init_otel_providers(false, "reearth-flow-worker-test");
+        assert!(matches!(result, Ok(None)));
+    }
+
+    #[test]
+    fn enabled_gate_builds_tracer_and_guard() {
+        let result = init_otel_providers(true, "reearth-flow-worker-test");
+        let (_tracer, guard) = result
+            .expect("init_otel_providers should not error")
+            .expect("enabled gate should produce a tracer + guard");
+        guard.shutdown();
+    }
 }

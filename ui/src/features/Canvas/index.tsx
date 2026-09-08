@@ -12,7 +12,7 @@ import {
 import { MouseEvent, memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { DEFAULT_GRID_SIZE } from "@flow/global-constants";
 import {
   isValidConnection,
@@ -95,7 +95,7 @@ const Canvas: React.FC<Props> = ({
   onConnectEnd,
   onPointerDown,
 }) => {
-  const { isLocked: readonly } = useEditorContext();
+  const readonly = useIsReadOnly();
   const {
     handleNodesDeleteCleanup,
     handleNodeDragOver,

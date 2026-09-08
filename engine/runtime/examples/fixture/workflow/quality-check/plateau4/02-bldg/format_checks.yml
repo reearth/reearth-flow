@@ -251,17 +251,18 @@ nodes:
             type: flowExpr
             value: |
               attrs = attributes.get("cityGmlAttributes", {});
-              building_id_attr = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attr = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               building_id = building_id_attr.get("uro:buildingID", "");
               branch_id = building_id_attr.get("uro:branchID", "");
               part_id = building_id_attr.get("uro:partID", "");
               gml_name = attributes.get("gmlName", "");
               building_id_valid = Regex(r"^\d{5}-bldg-\d+$").find(building_id) != null;
-              branch_id_valid = branch_id == "" or type(branch_id) == int;
+              is_int = fn(v) { type(v) == int or Regex(r"^\d+$").find(str(v)) != null };
+              branch_id_valid = branch_id == "" or is_int(branch_id);
               if gml_name == "bldg:Building" {
                 part_id_valid = part_id == "";
               } else if gml_name == "bldg:BuildingPart" {
-                part_id_valid = type(part_id) == int;
+                part_id_valid = part_id != "" and is_int(part_id);
               } else {
                 part_id_valid = false;
               }
@@ -285,21 +286,21 @@ nodes:
             type: flowExpr
             value: |
               city_gml = attributes.get("cityGmlAttributes", {});
-              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               bldg_id_attr.get("uro:buildingID", "")
         - attribute: "uro:branchID"
           expr:
             type: flowExpr
             value: |
               city_gml = attributes.get("cityGmlAttributes", {});
-              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               bldg_id_attr.get("uro:branchID", "（なし）")
         - attribute: "uro:partID"
           expr:
             type: flowExpr
             value: |
               city_gml = attributes.get("cityGmlAttributes", {});
-              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               bldg_id_attr.get("uro:partID", "（なし）")
 
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
@@ -322,21 +323,21 @@ nodes:
             type: flowExpr
             value: |
               attrs = attributes.get("cityGmlAttributes", {});
-              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               building_id_attribute.get("uro:buildingID", "")
         - newAttribute: uroBranchId
           attributeValue:
             type: flowExpr
             value: |
               attrs = attributes.get("cityGmlAttributes", {});
-              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               building_id_attribute.get("uro:branchID", "")
         - newAttribute: uroPartId
           attributeValue:
             type: flowExpr
             value: |
               attrs = attributes.get("cityGmlAttributes", {});
-              building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+              building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               building_id_attribute.get("uro:partID", "")
       calculation:
         type: flowExpr
@@ -353,7 +354,7 @@ nodes:
         type: flowExpr
         value: |
           attrs = attributes.get("cityGmlAttributes", {});
-          building_id_attribute = attrs.get("uro:BuildingIDAttribute", []).get(0, {});
+          building_id_attribute = attrs.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
           building_id_attribute.get("uro:buildingID", "") + "-" + building_id_attribute.get("uro:branchID", "") + "-" + building_id_attribute.get("uro:partID", "")
       supplierAttributeValue:
         type: flowExpr
@@ -388,14 +389,14 @@ nodes:
             type: flowExpr
             value: |
               city_gml = attributes.get("cityGmlAttributes", {});
-              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               bldg_id_attr.get("uro:buildingID", "")
         - attribute: UroBranchId
           expr:
             type: flowExpr
             value: |
               city_gml = attributes.get("cityGmlAttributes", {});
-              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               branch_id = bldg_id_attr.get("uro:branchID", "");
               if branch_id == "" { "（なし）" } else { branch_id }
         - attribute: UroPartId
@@ -403,7 +404,7 @@ nodes:
             type: flowExpr
             value: |
               city_gml = attributes.get("cityGmlAttributes", {});
-              bldg_id_attr = city_gml.get("uro:BuildingIDAttribute", []).get(0, {});
+              bldg_id_attr = city_gml.get("uro:buildingIDAttribute", {}).get("uro:BuildingIDAttribute", {});
               part_id = bldg_id_attr.get("uro:partID", "");
               if part_id == "" { "（なし）" } else { part_id }
 

@@ -8,7 +8,6 @@ type (
 	Deployment    struct{}
 	EdgeExecution struct{}
 	Integration   struct{}
-	NodeExecution struct{}
 	Parameter     struct{}
 	Project       struct{}
 	ProjectAccess struct{}
@@ -23,7 +22,6 @@ func (AuthRequest) Type() string   { return "authRequest" }
 func (Deployment) Type() string    { return "deployment" }
 func (EdgeExecution) Type() string { return "edgeExecution" }
 func (Integration) Type() string   { return "integration" }
-func (NodeExecution) Type() string { return "nodeExecution" }
 func (Parameter) Type() string     { return "parameter" }
 func (Project) Type() string       { return "project" }
 func (ProjectAccess) Type() string { return "projectAccess" }
@@ -38,7 +36,6 @@ type (
 	DeploymentID    = idx.ID[Deployment]
 	EdgeExecutionID = idx.ID[EdgeExecution]
 	IntegrationID   = idx.ID[Integration]
-	NodeExecutionID = idx.ID[NodeExecution]
 	ParameterID     = idx.ID[Parameter]
 	ProjectID       = idx.ID[Project]
 	ProjectAccessID = idx.ID[ProjectAccess]
@@ -54,7 +51,6 @@ var (
 	NewDeploymentID    = idx.New[Deployment]
 	NewEdgeExecutionID = idx.New[EdgeExecution]
 	NewIntegrationID   = idx.New[Integration]
-	NewNodeExecutionID = idx.New[NodeExecution]
 	NewParameterID     = idx.New[Parameter]
 	NewProjectID       = idx.New[Project]
 	NewProjectAccessID = idx.New[ProjectAccess]
@@ -70,7 +66,6 @@ var (
 	MustDeploymentID    = idx.Must[Deployment]
 	MustEdgeExecutionID = idx.Must[EdgeExecution]
 	MustIntegrationID   = idx.Must[Integration]
-	MustNodeExecutionID = idx.Must[NodeExecution]
 	MustParameterID     = idx.Must[Parameter]
 	MustProjectID       = idx.Must[Project]
 	MustProjectAccessID = idx.Must[ProjectAccess]
@@ -86,7 +81,6 @@ var (
 	DeploymentIDFrom    = idx.From[Deployment]
 	EdgeExecutionIDFrom = idx.From[EdgeExecution]
 	IntegrationIDFrom   = idx.From[Integration]
-	NodeExecutionIDFrom = idx.From[NodeExecution]
 	ParameterIDFrom     = idx.From[Parameter]
 	ProjectIDFrom       = idx.From[Project]
 	ProjectAccessIDFrom = idx.From[ProjectAccess]
@@ -102,7 +96,6 @@ var (
 	DeploymentIDFromRef    = idx.FromRef[Deployment]
 	EdgeExecutionIDFromRef = idx.FromRef[EdgeExecution]
 	IntegrationIDFromRef   = idx.FromRef[Integration]
-	NodeExecutionIDFromRef = idx.FromRef[NodeExecution]
 	ParameterIDFromRef     = idx.FromRef[Parameter]
 	ProjectIDFromRef       = idx.FromRef[Project]
 	ProjectAccessIDFromRef = idx.FromRef[ProjectAccess]
@@ -117,7 +110,6 @@ type (
 	AuthRequestIDList   = idx.List[AuthRequest]
 	DeploymentIDList    = idx.List[Deployment]
 	EdgeExecutionIDList = idx.List[EdgeExecution]
-	NodeExecutionIDList = idx.List[NodeExecution]
 	ParameterIDList     = idx.List[Parameter]
 	ProjectIDList       = idx.List[Project]
 	ProjectAccessIDList = idx.List[ProjectAccess]
@@ -129,7 +121,6 @@ var (
 	AuthRequestIDListFrom   = idx.ListFrom[AuthRequest]
 	DeploymentIDListFrom    = idx.ListFrom[Deployment]
 	EdgeExecutionIDListFrom = idx.ListFrom[EdgeExecution]
-	NodeExecutionIDListFrom = idx.ListFrom[NodeExecution]
 	ParameterIDListFrom     = idx.ListFrom[Parameter]
 	ProjectIDListFrom       = idx.ListFrom[Project]
 	ProjectAccessIDListFrom = idx.ListFrom[ProjectAccess]
@@ -141,7 +132,6 @@ type (
 	AuthRequestIDSet   = idx.Set[AuthRequest]
 	DeploymentIDSet    = idx.Set[Deployment]
 	EdgeExecutionIDSet = idx.Set[EdgeExecution]
-	NodeExecutionIDSet = idx.Set[NodeExecution]
 	ParameterIDSet     = idx.Set[Parameter]
 	ProjectIDSet       = idx.Set[Project]
 	ProjectAccessIDSet = idx.Set[ProjectAccess]
@@ -153,7 +143,6 @@ var (
 	NewAuthRequestIDSet   = idx.NewSet[AuthRequest]
 	NewDeploymentIDSet    = idx.NewSet[Deployment]
 	NewEdgeExecutionIDSet = idx.NewSet[EdgeExecution]
-	NewNodeExecutionIDSet = idx.NewSet[NodeExecution]
 	NewParameterIDSet     = idx.NewSet[Parameter]
 	NewProjectIDSet       = idx.NewSet[Project]
 	NewProjectAccessIDSet = idx.NewSet[ProjectAccess]

@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for L01. Intentionally malformed XML with unclosed tag causes null pointer errors and workflow failure.",
+  "skipNewGeometry": true,
   "skip": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [

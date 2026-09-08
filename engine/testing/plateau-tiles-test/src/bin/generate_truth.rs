@@ -2,7 +2,8 @@ use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::cesium_statistics;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
-use plateau_tiles_test::file::{extract_zip_to_tmp, zip_dir};
+use plateau_tiles_test::conv::raster3d;
+use plateau_tiles_test::file::{decompress_glbs, extract_zip_to_tmp, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
 use std::fs;
@@ -78,6 +79,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             w,
             h,
             entry.stroke,
+            entry.mode,
         );
         fs::remove_dir_all(&tmp_mvt_dir).ok();
 
@@ -103,6 +105,7 @@ fn run(profile_path: &Path) -> Result<(), String> {
             .expect("convs.cesium_attributes path must have a file name");
         let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
+        decompress_glbs(&tmp_dir);
         let output_path = truth_dir.join(&entry.truth_path);
         let result = conv_cesium::write_cesium_json(&tmp_dir, &output_path, entry.casts.as_ref());
         fs::remove_dir_all(&tmp_dir).ok();
@@ -112,6 +115,30 @@ fn run(profile_path: &Path) -> Result<(), String> {
             id,
             output_path.display()
         );
+    }
+
+    for (id, entry) in &profile.convs.raster3d {
+        if !entry.generate_truth {
+            continue;
+        }
+        let stem = Path::new(&entry.path)
+            .file_name()
+            .expect("convs.raster3d path must have a file name");
+        let zip_path = truth_dir.join(stem).with_extension("zip");
+        let tmp_dir = extract_zip_to_tmp(&zip_path)?;
+        decompress_glbs(&tmp_dir);
+
+        let png_dir = truth_dir.join(&entry.truth_path);
+        let _ = fs::remove_dir_all(&png_dir);
+        fs::create_dir_all(&png_dir)
+            .map_err(|e| format!("Failed to create {:?}: {}", png_dir, e))?;
+
+        let (w, h) = entry.size.dimensions();
+        let result = raster3d::render_cameras_to_pngs(&tmp_dir, &png_dir, &entry.cameras, w, h);
+        fs::remove_dir_all(&tmp_dir).ok();
+        result?;
+
+        println!("wrote raster3d/{} -> {}", id, png_dir.display());
     }
 
     for (id, entry) in &profile.convs.cesium_statistics {

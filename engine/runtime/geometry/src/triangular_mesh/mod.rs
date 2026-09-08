@@ -5,9 +5,10 @@
 //! `vertices.len() - 1` at construction.
 //!
 //! Comes in 2D and 3D variants. The 2D variant carries `vertices: Vec<[f64; 2]>`
-//! plus an optional per-vertex elevation buffer parallel to `vertices`, matching
-//! the 2D leaf convention.
+//! plus the one optional elevation the whole surface lies at, matching the 2D leaf
+//! convention.
 
+#[cfg(feature = "debug-geom-feature-write")]
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::Appearance;
@@ -15,19 +16,21 @@ use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
 mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
-/// A triangle mesh in 2D space, with optional per-vertex elevation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+/// A triangle mesh in 2D space, lying at a single optional elevation.
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
     vertices: Vec<[f64; 2]>,
-    /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
-    /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
-    z: Option<Box<[f64]>>,
+    /// The elevation the whole mesh lies at. `None` = pure 2D.
+    z: Option<f64>,
     /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle is
     /// wound counter-clockwise in canonical orientation (see [`crate::coordinate`]:
     /// judged after applying the frame's orientation sign, not by the raw signed
@@ -47,7 +50,8 @@ pub struct TriangularMesh2D {
 /// frame from the enclosing `Solid` — so a solid and its boundaries cannot
 /// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
 /// [`RasterData`](crate::appearance::RasterData) split.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TriangularMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle's
@@ -61,7 +65,8 @@ pub struct TriangularMesh3DData {
 
 /// A triangle mesh in 3D space: coordinate-free mesh data plus the frame it is
 /// expressed in.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TriangularMesh3D {
     /// Coordinate frame the mesh data is expressed in.
     frame: CoordinateFrame,
@@ -90,6 +95,12 @@ impl TriangularMesh2D {
     #[inline]
     pub fn vertices(&self) -> &[[f64; 2]] {
         &self.vertices
+    }
+
+    /// The elevation the mesh lies at, or `None` when it is pure 2D.
+    #[inline]
+    pub fn elevation(&self) -> Option<f64> {
+        self.z
     }
 
     /// The number of triangles in the mesh.
@@ -191,6 +202,11 @@ impl TriangularMesh3DData {
         self.indices.iter_u32()
     }
 
+    /// Drop the appearance.
+    pub(crate) fn remove_appearance(&mut self) {
+        self.appearance = None;
+    }
+
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {
@@ -201,6 +217,10 @@ impl TriangularMesh3DData {
 // Tessellation is defined only for `Polygon` / `PolygonMesh`.
 crate::unsupported!(TriangularMesh2D: Triangulate);
 crate::unsupported!(TriangularMesh3D: Triangulate);
+
+// Triangles carry no interior rings, so the hole count is always zero.
+crate::unsupported!(TriangularMesh2D: CountHoles);
+crate::unsupported!(TriangularMesh3D: CountHoles);
 
 #[cfg(test)]
 mod tests {

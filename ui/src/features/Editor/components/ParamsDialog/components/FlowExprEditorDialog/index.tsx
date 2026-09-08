@@ -5,7 +5,7 @@ import {
   FileIcon,
   CircleIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -38,6 +38,7 @@ import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "../ValueEditorDialog/components/FlowExprCodeEditor";
 import { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
+import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 
 export type CodeValue = {
   type: "flowExpr" | "string";
@@ -90,6 +91,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const variableSuggestions = useMemo(
+    () => toVariableAutocompleteSuggestions(workflowVariables),
+    [workflowVariables],
+  );
 
   const insertAtCursor = useCallback(
     (text: string) => {
@@ -104,27 +109,23 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleAssetSelect = useCallback(
     (asset: Asset) => {
-      // In FlowExpr, wrap asset URLs with Url(...) in expression mode
-      const snippet =
-        codeType === "flowExpr" ? `Url("${asset.url}")` : asset.url;
-      insertAtCursor(snippet);
+      insertAtCursor(asset.url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleCmsItemValue = useCallback(
     (url: string) => {
-      const snippet = codeType === "flowExpr" ? `Url("${url}")` : url;
-      insertAtCursor(snippet);
+      insertAtCursor(url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleVariableSelect = useCallback(
     (variableName: string) => {
-      insertAtCursor(`env["${variableName}"]`);
+      insertAtCursor(`variables["${variableName}"]`);
     },
     [insertAtCursor],
   );
@@ -248,7 +249,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 value={codeValue}
                 onChange={setCodeValue}
                 attributeSuggestions={attributeSuggestions}
-                placeholder={t('e.g. Url(env.get("BASE_DIR")) / "filename"')}
+                variableSuggestions={variableSuggestions}
+                placeholder={t(
+                  'e.g. Url(variables.get("BASE_DIR")) / "filename"',
+                )}
               />
             </TabsContent>
             <TabsContent
@@ -268,7 +272,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'FlowExpr: env["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
+                    'FlowExpr: variables["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
                   )}
                 </span>
               ) : (

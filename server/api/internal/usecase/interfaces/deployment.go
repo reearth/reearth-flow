@@ -38,6 +38,7 @@ var (
 type Deployment interface {
 	Fetch(context.Context, []id.DeploymentID) ([]*deployment.Deployment, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
+	FindByProjects(context.Context, []id.ProjectID) (map[id.ProjectID]*deployment.Deployment, error)
 	FindByVersion(context.Context, accountsid.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*deployment.Deployment, *PageBasedInfo, error)
 	FindHead(context.Context, accountsid.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)

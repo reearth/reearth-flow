@@ -77,40 +77,6 @@ func (r *subscriptionResolver) Logs(ctx context.Context, jobID gqlmodel.ID) (<-c
 	return resultCh, nil
 }
 
-func (r *subscriptionResolver) NodeStatus(ctx context.Context, jobID gqlmodel.ID, nodeId string) (<-chan gqlmodel.NodeStatus, error) {
-	jid, err := id.JobIDFrom(string(jobID))
-	if err != nil {
-		return nil, err
-	}
-
-	nodeExCh, err := usecases(ctx).NodeExecution.SubscribeToNode(ctx, jid, nodeId)
-	if err != nil {
-		return nil, err
-	}
-
-	resultCh := make(chan gqlmodel.NodeStatus)
-
-	go func() {
-		defer close(resultCh)
-		defer usecases(ctx).NodeExecution.UnsubscribeFromNode(jid, string(nodeId), nodeExCh)
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case nodeEx, ok := <-nodeExCh:
-				if !ok {
-					return
-				}
-				res := gqlmodel.NodeStatus(nodeEx.Status())
-				resultCh <- res
-			}
-		}
-	}()
-
-	return resultCh, nil
-}
-
 func (r *subscriptionResolver) UserFacingLogs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.UserFacingLog, error) {
 	jid, err := id.JobIDFrom(string(jobID))
 	if err != nil {

@@ -17,6 +17,7 @@ type RedisClient interface {
 	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
 	LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd
 	Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd
+	XAdd(ctx context.Context, a *redis.XAddArgs) *redis.StringCmd
 }
 
 type RedisStorage struct {
@@ -85,6 +86,26 @@ func (r *RedisStorage) tracedExpire(ctx context.Context, key string, expiration 
 	defer span.End()
 
 	if err := r.client.Expire(ctx, key, expiration).Err(); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+		return err
+	}
+	span.SetStatus(codes.Ok, "")
+	return nil
+}
+
+func (r *RedisStorage) tracedXAdd(ctx context.Context, a *redis.XAddArgs) error {
+	ctx, span := r.tracer.Start(ctx, "redis.XADD",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("db.system", "redis"),
+			attribute.String("db.operation", "XADD"),
+			attribute.String("db.redis.key", a.Stream),
+		),
+	)
+	defer span.End()
+
+	if err := r.client.XAdd(ctx, a).Err(); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
 		return err

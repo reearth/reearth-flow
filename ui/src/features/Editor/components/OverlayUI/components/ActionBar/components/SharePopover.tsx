@@ -5,11 +5,17 @@ import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
+  /** Readers may copy an existing link, but not start or stop sharing. */
+  readonly?: boolean;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
 };
 
-const SharePopover: React.FC<Props> = ({ sharingUrl, onProjectShare }) => {
+const SharePopover: React.FC<Props> = ({
+  readonly,
+  sharingUrl,
+  onProjectShare,
+}) => {
   const t = useT();
   const { toast } = useToast();
 
@@ -56,7 +62,11 @@ const SharePopover: React.FC<Props> = ({ sharingUrl, onProjectShare }) => {
           )}
         </p>
         <div className="flex items-center gap-2">
-          <Switch checked={isSharing} onCheckedChange={onProjectShare} />
+          <Switch
+            checked={isSharing}
+            disabled={readonly}
+            onCheckedChange={onProjectShare}
+          />
           <span className="text-sm dark:font-light">{t("Sharing")}</span>
         </div>
       </div>

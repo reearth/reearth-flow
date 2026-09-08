@@ -77,8 +77,6 @@ pub(super) enum GeometryProcessorError {
     LineOnLineOverlayer(String),
     #[error("Bufferer Factory error: {0}")]
     BuffererFactory(String),
-    #[error("Bufferer error: {0}")]
-    Bufferer(String),
     #[error("AreaOnAreaOverlayer Factory error: {0}")]
     AreaOnAreaOverlayerFactory(String),
     #[error("AreaOnAreaOverlayer error: {0}")]

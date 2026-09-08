@@ -16,6 +16,8 @@
 //! `Option<Appearance>`. `Solid` and `Csg` carry none of their own; their meshes
 //! carry theirs. `Point`, `LineString` and `PointCloud` carry no appearance.
 
+#[cfg(not(feature = "debug-geom-feature-write"))]
+pub(crate) mod feature_write;
 pub mod material;
 pub mod texture;
 pub mod uv;
@@ -35,11 +37,13 @@ use crate::error::Error;
 /// A dataset-global, stable theme name. Switching to a theme selects the same
 /// theme across every feature, so this is an identity (a name), not a per-mesh
 /// index (contrast [`ChannelId`]).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ThemeId(pub Arc<str>);
+pub struct ThemeId(#[cfg_attr(feature = "schema", schemars(with = "String"))] pub Arc<str>);
 
 /// A material-local UV channel index. Carries no cross-theme meaning: channel 0
 /// under one theme and channel 0 under another are different UV sets.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(
     Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
@@ -95,6 +99,25 @@ impl<'de> Deserialize<'de> for MaterialIndex {
         let index = u32::deserialize(deserializer)?;
         Self::new(index)
             .ok_or_else(|| serde::de::Error::custom("material index u32::MAX is reserved"))
+    }
+}
+
+// Delegating to `u32` drops this type's own docs, so the description is restated.
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for MaterialIndex {
+    fn schema_name() -> String {
+        "MaterialIndex".to_string()
+    }
+
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        let mut schema = <u32 as schemars::JsonSchema>::json_schema(generator).into_object();
+        schema.metadata().title = Some("Material index".to_string());
+        schema.metadata().description = Some(
+            "Position of a material in the enclosing appearance's `materials` palette, \
+             counting from zero."
+                .to_string(),
+        );
+        schema.into()
     }
 }
 
@@ -181,6 +204,7 @@ pub struct ThemeBinding {
 /// faces along the surface normal (from its winding). Side is a simultaneous
 /// axis (both sides exist at once), distinct from a theme (mutually-exclusive
 /// styling variants).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Side {
     #[default]
@@ -189,7 +213,9 @@ pub enum Side {
 }
 
 /// How a theme's faces map to the material palette.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "schema", schemars(title = "Face-to-material index binding"))]
 pub enum FaceBinding {
     /// One material for every face; the common case, and the only form a
     /// single-material theme or a `Polygon` ever needs. Indexes the material

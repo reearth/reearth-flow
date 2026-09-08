@@ -1,10 +1,18 @@
 package gcs
 
 import (
+	"bytes"
+	"context"
 	"net/url"
+	"os"
 	"testing"
+	"time"
 
+	"cloud.google.com/go/storage"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearthx/log"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/api/option"
 )
 
 func TestGetGCSObjectURL(t *testing.T) {
@@ -106,6 +114,54 @@ func TestGetGCSObjectURL_WithUnderscores(t *testing.T) {
 			assert.Equal(t, expected, result)
 		})
 	}
+}
+
+func TestIssueUploadAssetLink_SignedURLFailureHidesCauseFromClient(t *testing.T) {
+	client, err := storage.NewClient(context.Background(), option.WithoutAuthentication())
+	assert.NoError(t, err)
+
+	baseURL, _ := url.Parse("https://storage.googleapis.com/mybucket")
+	repo := &fileRepo{
+		bucketName: "mybucket",
+		base:       baseURL,
+		client:     client,
+	}
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	link, err := repo.IssueUploadAssetLink(context.Background(), gateway.IssueUploadAssetParam{
+		UUID:      "test-uuid",
+		Filename:  "test.txt",
+		ExpiresAt: time.Now().Add(time.Hour),
+		Workspace: "ws",
+	})
+
+	assert.Nil(t, link)
+	assert.ErrorIs(t, err, gateway.ErrSignedURLFailed)
+	assert.Equal(t, gateway.ErrSignedURLFailed.Error(), err.Error(), "client-visible error must not carry the upstream provider detail")
+	assert.Contains(t, buf.String(), "SignedURL failed", "underlying cause must still be logged server-side")
+}
+
+func TestProbeSignedURL_LogsOnFailure(t *testing.T) {
+	client, err := storage.NewClient(context.Background(), option.WithoutAuthentication())
+	assert.NoError(t, err)
+
+	baseURL, _ := url.Parse("https://storage.googleapis.com/mybucket")
+	repo := &fileRepo{
+		bucketName: "mybucket",
+		base:       baseURL,
+		client:     client,
+	}
+
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	repo.probeSignedURL(context.Background())
+
+	assert.Contains(t, buf.String(), "startup SignedURL probe failed")
 }
 
 func TestGetJobLogURL(t *testing.T) {

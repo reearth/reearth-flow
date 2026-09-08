@@ -1,5 +1,6 @@
 {
   "description": "L04 #1 for plateau6 (CityGML 3.0): bldg:class codeSpace resolves (absolute https URL via filename fallback) but value 100 is undefined in Building_class → L04エラー=1, 不正なcodeSpace数=0.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

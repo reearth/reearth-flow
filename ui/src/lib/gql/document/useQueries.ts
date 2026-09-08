@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ProjectSnapshotMeta } from "@flow/types";
+import type { NamedSnapshot, ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import {
@@ -14,6 +14,7 @@ export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
   GetProjectSnapshot = "getProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
+  GetProjectNamedSnapshots = "getProjectNamedSnapshots",
 }
 
 export const useQueries = () => {
@@ -68,6 +69,24 @@ export const useQueries = () => {
       refetchOnWindowFocus: false,
     });
 
+  // Version history is snapshot-backed. The raw CRDT update log (projectHistory
+  // above) is a durability concern and is deliberately not surfaced in the
+  // panel: it has one entry per flush.
+  const useProjectSnapshotsQuery = (projectId?: string) => {
+    const { data, ...rest } = useQuery({
+      queryKey: [DocumentQueryKeys.GetProjectNamedSnapshots, projectId],
+      queryFn: async (): Promise<NamedSnapshot[]> => {
+        if (!projectId) return [];
+        const data = await graphQLContext?.GetProjectNamedSnapshots({
+          projectId,
+        });
+        return data?.projectNamedSnapshots ?? [];
+      },
+      enabled: !!projectId,
+    });
+    return { snapshots: data ?? [], ...rest };
+  };
+
   const usePreviewSnapshot = useMutation({
     mutationFn: async ({
       projectId,
@@ -119,6 +138,46 @@ export const useQueries = () => {
     },
   });
 
+  // Fetched on demand rather than as a hook: a snapshot's state is only wanted
+  // once a row is clicked, and it is the full document, not list metadata.
+  const fetchProjectNamedSnapshot = async (
+    projectId: string,
+    snapshotNumber: number,
+  ): Promise<Uint8Array | undefined> => {
+    const data = await graphQLContext?.GetProjectNamedSnapshot({
+      projectId,
+      snapshotNumber,
+    });
+    const updates = data?.projectSnapshot?.updates;
+    if (!updates?.length) return undefined;
+    return new Uint8Array(updates);
+  };
+
+  // Used before a restore so the pre-restore state is recoverable. Auto-versioning
+  // only runs every 15 minutes, so without this the state being replaced might
+  // have no snapshot of its own to come back to.
+  const saveNamedSnapshotMutation = useMutation({
+    mutationFn: async ({
+      projectId,
+      label,
+    }: {
+      projectId: string;
+      label: string;
+    }) => {
+      const data = await graphQLContext?.SaveNamedSnapshot({
+        projectId,
+        label,
+      });
+      return data?.saveNamedSnapshot;
+    },
+    onSuccess: (_data, { projectId }) => {
+      // The new snapshot must appear in the panel that triggered it.
+      queryClient.invalidateQueries({
+        queryKey: [DocumentQueryKeys.GetProjectNamedSnapshots, projectId],
+      });
+    },
+  });
+
   const snapshotSaveMutation = useMutation({
     mutationFn: async ({ projectId }: { projectId: string }) => {
       const data = await graphQLContext?.SaveSnapshot({
@@ -135,8 +194,11 @@ export const useQueries = () => {
     useLatestProjectSnapshotQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
+    useProjectSnapshotsQuery,
     usePreviewSnapshot,
     rollbackProjectMutation,
     snapshotSaveMutation,
+    fetchProjectNamedSnapshot,
+    saveNamedSnapshotMutation,
   };
 };

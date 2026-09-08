@@ -139,7 +139,7 @@ When features have `czml.timeseries` attributes (from `preserveRaw` reading), th
 ```yaml
 action: "CZML Writer"
 with:
-  output: "env.get(\"outputFilePath\")"
+  output: "variables.get(\"outputFilePath\")"
 ```
 
 No additional parameters needed — the writer reads everything from `czml.*` attributes.
@@ -151,7 +151,7 @@ When both `timeField` and `groupTimeseriesBy` are set, features with the same gr
 ```yaml
 action: "CZML Writer"
 with:
-  output: "env.get(\"outputFilePath\")"
+  output: "variables.get(\"outputFilePath\")"
   timeField: "czml.timestamp"
   epoch: "2024-01-01T00:00:00Z"
   interpolationAlgorithm: "LAGRANGE"
@@ -216,7 +216,7 @@ graphs:
       - name: "Write CZML"
         action: "CZML Writer"
         with:
-          output: "env.get(\"outputFilePath\")"
+          output: "variables.get(\"outputFilePath\")"
     edges:
       - from: "Read CZML"
         to: "Write CZML"
@@ -239,7 +239,7 @@ graphs:
       - name: "Write JSON"
         action: "Feature Writer"
         with:
-          output: "env.get(\"outputFilePath\")"
+          output: "variables.get(\"outputFilePath\")"
           format: "json"
     edges:
       - from: "Read CZML"
@@ -271,7 +271,7 @@ graphs:
       - name: "Write CZML"
         action: "CZML Writer"
         with:
-          output: "env.get(\"outputFilePath\")"
+          output: "variables.get(\"outputFilePath\")"
           timeField: "czml.timestamp"
           epoch: "2024-01-01T00:00:00Z"
           interpolationAlgorithm: "LAGRANGE"

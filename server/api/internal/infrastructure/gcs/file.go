@@ -63,13 +63,51 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 		return nil, fmt.Errorf("failed to create GCS client: %w", err)
 	}
 
-	return &fileRepo{
+	repo := &fileRepo{
 		bucketName:       bucketName,
 		base:             u,
 		cacheControl:     cacheControl,
 		replaceUploadURL: replaceUploadURL,
 		client:           client,
-	}, nil
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		repo.probeSignedURL(ctx)
+	}()
+
+	return repo, nil
+}
+
+// probeSignedURL issues a throwaway signed URL at startup to catch signing
+// misconfiguration (e.g. missing iam.serviceAccounts.signBlob on the runtime
+// service account) at deploy time rather than on a user's first upload. It
+// never creates an object and must not fail boot. ctx only bounds how long we
+// wait: the signing RPC runs in its own goroutine and cloud.google.com/go/storage
+// hardcodes its own context for the ADC signing path, so it is not itself bounded.
+func (f *fileRepo) probeSignedURL(ctx context.Context) {
+	done := make(chan error, 1)
+	go func() { done <- f.signProbeURL() }()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Errorfc(ctx, "gcs: startup SignedURL probe failed (bucket=%s): %v -- asset uploads will fail until signing is fixed (check IAM Credentials API and iam.serviceAccounts.signBlob on the runtime service account)", f.bucketName, err)
+		}
+	case <-ctx.Done():
+		log.Errorfc(ctx, "gcs: startup SignedURL probe did not complete before timeout (bucket=%s) -- check IAM Credentials API connectivity", f.bucketName)
+	}
+}
+
+func (f *fileRepo) signProbeURL() error {
+	p := path.Join(gcsAssetBasePath, "___signed_url_probe___")
+	_, err := f.bucket().SignedURL(p, &storage.SignedURLOptions{
+		Scheme:  storage.SigningSchemeV4,
+		Method:  http.MethodPut,
+		Expires: time.Now().Add(time.Minute),
+	})
+	return err
 }
 
 func (f *fileRepo) ReadAsset(ctx context.Context, name string) (io.ReadCloser, error) {
@@ -541,8 +579,11 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	}
 	uploadURL, err := bucket.SignedURL(p, opt)
 	if err != nil {
+		// The underlying cause (e.g. IAM signBlob denial) can embed the
+		// runtime service account email and project ID, so it's logged
+		// here rather than returned to the caller.
 		log.Errorfc(ctx, "gcs: SignedURL failed (path=%s, bucket=%s): %v", p, f.bucketName, err)
-		return nil, gateway.ErrUnsupportedOperation
+		return nil, gateway.ErrSignedURLFailed
 	}
 
 	return &gateway.UploadAssetLink{

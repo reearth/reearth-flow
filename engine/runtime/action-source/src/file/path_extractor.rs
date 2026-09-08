@@ -81,7 +81,7 @@ impl SourceFactory for FilePathExtractorFactory {
             .map_err(|e| {
                 SourceError::FilePathExtractorFactory(format!("Failed to compile params: {e:?}"))
             })?
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
                 SourceError::FilePathExtractorFactory(format!(
                     "Failed to evaluate source_dataset: {e:?}"

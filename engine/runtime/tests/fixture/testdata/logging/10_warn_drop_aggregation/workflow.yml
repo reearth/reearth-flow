@@ -1,0 +1,41 @@
+id: eb9d3d6a-4494-4d5c-8e63-7471ec326cea
+name: "Warn Drop Aggregation Test"
+entryGraphId: a123c2b9-01eb-4e7c-bcfc-33fa77269b05
+with:
+graphs:
+  - id: a123c2b9-01eb-4e7c-bcfc-33fa77269b05
+    name: main_graph
+    nodes:
+      - id: 526da974-3f1e-4e94-80ae-e287efe5bd45
+        name: Feature Creator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              let features = [];
+              for i in range(1, 4) {
+                features.append({
+                  "id": i,
+                  "name": "item_{}".format(i),
+                  "value": i * 10
+                });
+              }
+              features
+      - id: 42a900a6-0f2a-4364-a4d2-dd8fa63d3dd0
+        name: Cesium 3D Tiles Writer
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          output:
+            type: string
+            value: cesium_output
+          minZoom: 15
+          maxZoom: 18
+    edges:
+      - id: 58b026e0-9160-45a4-85e7-be51534eb4ec
+        from: 526da974-3f1e-4e94-80ae-e287efe5bd45
+        to: 42a900a6-0f2a-4364-a4d2-dd8fa63d3dd0
+        fromPort: features
+        toPort: features

@@ -100,6 +100,13 @@ fn generate_test_code(
                 .as_deref()
                 .unwrap_or("Skipped");
             quote! { #[ignore = #reason] }
+        } else if test_case.profile.skip_new_geometry {
+            quote! {
+                #[cfg_attr(
+                    feature = "new-geometry",
+                    ignore = "Workflow not yet migrated to new-geometry"
+                )]
+            }
         } else {
             quote! {}
         };

@@ -101,8 +101,6 @@ fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool
     let logger_factory = Arc::new(LoggerFactory::new(root_logger, action_log_dir.clone()));
 
     let storage_resolver = Arc::new(StorageResolver::new());
-    let ingress_state =
-        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
     let feature_state_dir = folder_path.join("feature-state");
     fs::create_dir_all(&feature_state_dir).unwrap();
     let feature_state_uri = format!("file://{}/", feature_state_dir.to_str().unwrap());
@@ -176,7 +174,6 @@ fn execute_workflow(fixture_dir: &str, workflow_name: &str, expect_success: bool
                     BUILTIN_ACTION_FACTORIES.clone(),
                     logger_factory,
                     storage_resolver,
-                    ingress_state,
                     feature_state,
                     None,
                     sandbox_root,
@@ -308,6 +305,7 @@ pub enum ActionLogLevel {
     Info,
     Warning,
     Error,
+    Critical,
 }
 
 #[derive(Debug, Deserialize, Eq)]
@@ -353,7 +351,7 @@ impl Ord for ActionLogEntry {
 fn normalize_action_msg(msg: &str) -> String {
     static RE: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r#"elapsed = [^,"]+|avg = [^,"]+|stddev = [^,"]+|features = \d+|hash: \d+|feature id = [a-f0-9-]+"#,
+            r#"elapsed = [^,"]+|avg = [^,"]+|stddev = [^,"]+|features = \d+|hash: \d+|feature id = [a-f0-9-]+|Sample ids: [0-9a-f, -]+"#,
         )
         .unwrap()
     });

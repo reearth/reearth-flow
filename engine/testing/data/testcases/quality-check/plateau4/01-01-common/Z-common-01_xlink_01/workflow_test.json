@@ -1,5 +1,6 @@
 {
   "description": "CityObjectGroup cross-member xlink refs should not be false-positive XLink_NoReference (valid refs)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {

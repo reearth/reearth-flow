@@ -4,9 +4,23 @@ export type ProjectSnapshotMeta = {
   timestamp: string;
   version: number;
 };
+
+// A labelled, named snapshot in a project's version history (distinct from
+// ProjectSnapshot, which is a raw update-vector snapshot keyed by version).
+// The label ygo stamps on an automatically captured version. Rows carrying it
+// are not user-named, so the UI shows their timestamp instead.
+export const AUTO_SNAPSHOT_LABEL = "auto";
+
+export type NamedSnapshot = {
+  snapshotNumber: number;
+  label: string;
+  timestamp: string;
+  size: number;
+};
 export type ProjectSnapshot = {
   timestamp: string;
-  version: number;
+  // Absent on a snapshot-addressed read, which has no update-log clock.
+  version?: number;
   updates: number[];
 };
 

@@ -1,7 +1,7 @@
 import { Color } from "cesium";
 import { useCallback, useEffect, useRef } from "react";
 
-import type { CityGmlTypeConfig } from "./cityGmlGeometryToPrimitives";
+import { coordZ, type CityGmlTypeConfig } from "./cityGmlGeometryToPrimitives";
 import type { PolygonInput, WorkerOutput } from "./lodGeometryWorker";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -10,7 +10,9 @@ type CityGmlFeature = {
   id?: string;
   type: "Feature";
   properties: Record<string, any>;
-  geometry: { type: "CityGmlGeometry"; [key: string]: any };
+  geometry: { type: string; [key: string]: any };
+  /** New-geometry only: the finer level held for this upgrade. */
+  lodDetail?: { lod: number; geometry: Record<string, any> };
 };
 
 export type LodGeometryResult = WorkerOutput;
@@ -50,7 +52,7 @@ function getSurfaceTypeColorTuple(
   let minZ = Infinity;
   let maxZ = -Infinity;
   for (const coord of exterior) {
-    const z = coord.z || 0;
+    const z = coordZ(coord);
     if (z < minZ) minZ = z;
     if (z > maxZ) maxZ = z;
   }
@@ -86,53 +88,97 @@ function resolveAppearanceColorTuple(
 
 // ── Prepare worker input from a feature ──────────────────────────────────────
 
+/**
+ * The surfaces of the finer level to swap in, from either format.
+ *
+ * Legacy holds every level under `gmlGeometries` and picks LOD3, else LOD2.
+ * The new-geometry transform has already chosen the finer level and put it on
+ * `lodDetail` — see `LodDetail` in `transformNextFeature` — because holding
+ * every level of every feature is what exhausts the tab.
+ *
+ * Null when there is nothing finer than what is already drawn; `upgradeLod`
+ * treats that as "leave it as it is".
+ *
+ * Returns the geometry the bindings belong to alongside the surfaces: for the
+ * new format that is the finer level's own geometry, not the feature's, and
+ * colouring from the wrong one indexes a palette that does not match.
+ */
+export function upgradeSurfaces(feature: CityGmlFeature): {
+  polygons: { polygon: any; globalIndex: number }[];
+  shaded: Record<string, any>;
+} | null {
+  const { geometry } = feature;
+  const gmlGeometries =
+    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
+
+  if (Array.isArray(gmlGeometries)) {
+    // LOD3 first, fallback to LOD2
+    let lodGeometries = gmlGeometries.filter(
+      (geom: any) =>
+        geom.lod === 3 ||
+        geom.gml_trait?.property?.includes("Lod3") ||
+        geom.gml_trait?.property?.includes("LOD3"),
+    );
+    if (lodGeometries.length === 0) {
+      lodGeometries = gmlGeometries.filter(
+        (geom: any) =>
+          geom.lod === 2 ||
+          geom.gml_trait?.property?.includes("Lod2") ||
+          geom.gml_trait?.property?.includes("LOD2"),
+      );
+    }
+    if (lodGeometries.length === 0) return null;
+
+    // Collect polygons with global indices
+    const allPolygons: { polygon: any; globalIndex: number }[] = [];
+    for (const geom of lodGeometries) {
+      if (geom.polygons && Array.isArray(geom.polygons)) {
+        const baseIndex: number = geom.pos ?? 0;
+        for (let i = 0; i < geom.polygons.length; i++) {
+          allPolygons.push({
+            polygon: geom.polygons[i],
+            globalIndex: baseIndex + i,
+          });
+        }
+      }
+    }
+    return allPolygons.length > 0
+      ? { polygons: allPolygons, shaded: geometry }
+      : null;
+  }
+
+  const detail = feature.lodDetail?.geometry;
+  if (!detail || !Array.isArray(detail.coordinates)) return null;
+
+  // One entry per surface, each `[exterior, ...holes]`; the worker triangulates
+  // the outer ring, as the legacy path does.
+  const surfaces =
+    detail.type === "MultiPolygon" ? detail.coordinates : [detail.coordinates];
+
+  const polygons = surfaces
+    .filter((rings: any) => Array.isArray(rings?.[0]))
+    .map((rings: any, index: number) => ({
+      polygon: { exterior: rings[0] },
+      globalIndex: index,
+    }));
+
+  return polygons.length > 0 ? { polygons, shaded: detail } : null;
+}
+
 function prepareWorkerInput(
   feature: CityGmlFeature,
   typeConfig: CityGmlTypeConfig | undefined,
   requestId: number,
 ): { input: import("./lodGeometryWorker").WorkerInput } | null {
-  const { geometry } = feature;
-  const gmlGeometries =
-    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-  if (!gmlGeometries || !Array.isArray(gmlGeometries)) return null;
-
-  // LOD3 first, fallback to LOD2
-  let lodGeometries = gmlGeometries.filter(
-    (geom: any) =>
-      geom.lod === 3 ||
-      geom.gml_trait?.property?.includes("Lod3") ||
-      geom.gml_trait?.property?.includes("LOD3"),
-  );
-  if (lodGeometries.length === 0) {
-    lodGeometries = gmlGeometries.filter(
-      (geom: any) =>
-        geom.lod === 2 ||
-        geom.gml_trait?.property?.includes("Lod2") ||
-        geom.gml_trait?.property?.includes("LOD2"),
-    );
-  }
-  if (lodGeometries.length === 0) return null;
-
-  // Collect polygons with global indices
-  const allPolygons: { polygon: any; globalIndex: number }[] = [];
-  for (const geom of lodGeometries) {
-    if (geom.polygons && Array.isArray(geom.polygons)) {
-      const baseIndex: number = geom.pos ?? 0;
-      for (let i = 0; i < geom.polygons.length; i++) {
-        allPolygons.push({
-          polygon: geom.polygons[i],
-          globalIndex: baseIndex + i,
-        });
-      }
-    }
-  }
-  if (allPolygons.length === 0) return null;
+  const upgrade = upgradeSurfaces(feature);
+  if (!upgrade) return null;
+  const { polygons: allPolygons, shaded } = upgrade;
 
   // Compute globalMinZ
   let globalMinZ = Infinity;
   for (const { polygon } of allPolygons) {
     for (const c of polygon.exterior || []) {
-      const z = c.z || 0;
+      const z = coordZ(c);
       if (z < globalMinZ) globalMinZ = z;
     }
   }
@@ -159,7 +205,7 @@ function prepareWorkerInput(
 
     const color =
       typeConfig?.displayName === "Building"
-        ? resolveAppearanceColorTuple(globalIndex, geometry, defaultColor)
+        ? resolveAppearanceColorTuple(globalIndex, shaded, defaultColor)
         : defaultColor;
 
     workerPolygons.push({

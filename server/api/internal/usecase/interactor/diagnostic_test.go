@@ -1,0 +1,639 @@
+package interactor
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
+	"github.com/reearth/reearthx/rerror"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type mockDiagnosticsRedis struct {
+	nodeDiagnosticsErr error
+	jobDiagnosticsErr  error
+	nodeDiagnostics    []*diagnostic.Diagnostic
+	jobDiagnostics     []*diagnostic.Diagnostic
+}
+
+func (m *mockDiagnosticsRedis) GetLogs(ctx context.Context, since, until time.Time, jobID id.JobID) ([]*log.Log, error) {
+	return nil, nil
+}
+
+func (m *mockDiagnosticsRedis) GetUserFacingLogs(ctx context.Context, since, until time.Time, jobID id.JobID) ([]*userfacinglog.UserFacingLog, error) {
+	return nil, nil
+}
+
+func (m *mockDiagnosticsRedis) GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*gateway.JobCompleteEvent, error) {
+	return nil, nil
+}
+
+func (m *mockDiagnosticsRedis) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
+	return nil
+}
+
+func (m *mockDiagnosticsRedis) GetNodeDiagnostics(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
+	return m.nodeDiagnostics, m.nodeDiagnosticsErr
+}
+
+func (m *mockDiagnosticsRedis) GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return m.jobDiagnostics, m.jobDiagnosticsErr
+}
+
+// Also used by job_test.go's merge tests.
+type mockDiagnosticsRepo struct {
+	lastTimestamp   time.Time
+	byNodeErr       error
+	byJobErr        error
+	saveErr         error
+	summaryErr      error
+	lastDropped     *uint64
+	summary         *uint64
+	lastWorkflowID  string
+	byNode          []*diagnostic.Diagnostic
+	lastFailedNodes []*diagnostic.Diagnostic
+	lastAggregated  []*diagnostic.Diagnostic
+	byJob           []*diagnostic.Diagnostic
+	saveCalls       int
+	lastJobID       id.JobID
+}
+
+func (m *mockDiagnosticsRepo) FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
+	return m.byNode, m.byNodeErr
+}
+
+func (m *mockDiagnosticsRepo) FindByJobID(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
+	return m.byJob, m.byJobErr
+}
+
+func (m *mockDiagnosticsRepo) FindJobSummary(ctx context.Context, jobID id.JobID) (*uint64, error) {
+	return m.summary, m.summaryErr
+}
+
+func (m *mockDiagnosticsRepo) SaveTerminalDiagnostics(
+	ctx context.Context,
+	jobID id.JobID,
+	workflowID string,
+	timestamp time.Time,
+	failedNodes []*diagnostic.Diagnostic,
+	aggregated []*diagnostic.Diagnostic,
+	droppedEventCount *uint64,
+) error {
+	m.saveCalls++
+	m.lastJobID = jobID
+	m.lastWorkflowID = workflowID
+	m.lastTimestamp = timestamp
+	m.lastFailedNodes = failedNodes
+	m.lastAggregated = aggregated
+	m.lastDropped = droppedEventCount
+	return m.saveErr
+}
+
+func newTestDiagnostic(t *testing.T, jobID id.JobID, code string) *diagnostic.Diagnostic {
+	t.Helper()
+	d, err := diagnostic.NewBuilder().
+		JobID(jobID).
+		Timestamp(time.Now()).
+		Code(code).
+		Category("internal").
+		Severity("warn").
+		Message("test diagnostic").
+		Build()
+	require.NoError(t, err)
+	return d
+}
+
+func alwaysAllowPermissionChecker() *mockPermissionChecker {
+	return NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+		return true, nil
+	})
+}
+
+func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+
+	t.Run("Redis and Mongo rows are merged, not short-circuited", func(t *testing.T) {
+		// A Mongo-only terminal row must not be hidden by a non-empty Redis result.
+		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
+		redisMock := &mockDiagnosticsRedis{nodeDiagnostics: redisRows}
+		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
+		assert.NoError(t, err)
+		require.Len(t, got, 2)
+		codes := []string{got[0].Code(), got[1].Code()}
+		assert.ElementsMatch(t, []string{"redis.code", "mongo.code"}, codes)
+	})
+
+	t.Run("an aggregated summary that rode both the live and terminal paths dedupes to its terminal copy", func(t *testing.T) {
+		// The same summary arrives live and again at completion; it must dedupe to one row.
+		nodeID := "node-1"
+		warnDrop := "warn_drop"
+		olderTimestamp := time.Now().Add(-time.Hour)
+		newerTimestamp := time.Now()
+
+		liveRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(olderTimestamp).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Message("live copy").
+			Build()
+		require.NoError(t, err)
+
+		terminalRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(newerTimestamp).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Terminal(true).
+			Message("terminal copy").
+			Build()
+		require.NoError(t, err)
+
+		redisMock := &mockDiagnosticsRedis{nodeDiagnostics: []*diagnostic.Diagnostic{liveRow}}
+		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{terminalRow}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetNodeDiagnostics(ctx, jobID, nodeID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.True(t, got[0].Terminal())
+		assert.Equal(t, "terminal copy", got[0].Message())
+	})
+
+	t.Run("Redis empty: falls back to Mongo", func(t *testing.T) {
+		redisMock := &mockDiagnosticsRedis{}
+		mongoRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}
+		repoMock := &mockDiagnosticsRepo{byNode: mongoRows}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "mongo.code", got[0].Code())
+	})
+
+	t.Run("Redis errors: falls back to Mongo instead of failing", func(t *testing.T) {
+		redisMock := &mockDiagnosticsRedis{nodeDiagnosticsErr: errors.New("redis down")}
+		mongoRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}
+		repoMock := &mockDiagnosticsRepo{byNode: mongoRows}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "mongo.code", got[0].Code())
+	})
+
+	t.Run("both empty: empty, not error", func(t *testing.T) {
+		redisMock := &mockDiagnosticsRedis{}
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("permission denied", func(t *testing.T) {
+		redisMock := &mockDiagnosticsRedis{}
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+		denyChecker := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return false, nil
+		})
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, denyChecker)
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+}
+
+func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+
+	t.Run("Redis and Mongo rows are merged, not short-circuited", func(t *testing.T) {
+		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
+		redisMock := &mockDiagnosticsRedis{jobDiagnostics: redisRows}
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 2)
+		codes := []string{got[0].Code(), got[1].Code()}
+		assert.ElementsMatch(t, []string{"redis.code", "mongo.code"}, codes)
+	})
+
+	t.Run("Redis empty: falls back to Mongo", func(t *testing.T) {
+		redisMock := &mockDiagnosticsRedis{}
+		mongoRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}
+		repoMock := &mockDiagnosticsRepo{byJob: mongoRows}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "mongo.code", got[0].Code())
+	})
+
+	t.Run("Mongo repo is nil: Redis result still returned", func(t *testing.T) {
+		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
+		redisMock := &mockDiagnosticsRedis{jobDiagnostics: redisRows}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(nil, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+	})
+
+	t.Run("both nil gateways: empty, not error", func(t *testing.T) {
+		jobRepo := &mockJobRepo{}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("job repo lookup fails", func(t *testing.T) {
+		redisMock := &mockDiagnosticsRedis{}
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{err: errors.New("job lookup failed")}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+}
+
+func fatalDiagnostic(t *testing.T, jobID id.JobID, code string) *diagnostic.Diagnostic {
+	t.Helper()
+	fatal := fatalEffectiveDisposition
+	d, err := diagnostic.NewBuilder().
+		JobID(jobID).
+		Timestamp(time.Now()).
+		Code(code).
+		Category("internal").
+		Severity("fatal").
+		EffectiveDisposition(&fatal).
+		Message("fatal test diagnostic").
+		Build()
+	require.NoError(t, err)
+	return d
+}
+
+func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+
+	t.Run("filters to fatal effectiveDisposition rows only, excluding non-fatal aggregated rows", func(t *testing.T) {
+		fatalRow := fatalDiagnostic(t, jobID, "internal.invariant_violation")
+		nonFatalRow := newTestDiagnostic(t, jobID, "gltf.zero_face_solid")
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{fatalRow, nonFatalRow}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "internal.invariant_violation", got[0].Code())
+	})
+
+	t.Run("two fatal rows sharing a key still dedupe to one, preferring terminal", func(t *testing.T) {
+		// Unreachable in production; pins that same-key collisions resolve deterministically.
+		nodeID := "node-1"
+		fatal := fatalEffectiveDisposition
+
+		liveRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Message("live copy").
+			Build()
+		require.NoError(t, err)
+
+		terminalRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Terminal(true).
+			Message("terminal copy").
+			Build()
+		require.NoError(t, err)
+
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{liveRow, terminalRow}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.True(t, got[0].Terminal())
+	})
+
+	t.Run("no rows: empty, not error", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("nil repo: empty slice, not nil, not error", func(t *testing.T) {
+		// Must be non-nil empty, not nil, so GraphQL renders [].
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(nil, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
+	})
+
+	t.Run("repo error propagates", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{byJobErr: errors.New("mongo down")}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("permission denied", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+		denyChecker := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return false, nil
+		})
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, denyChecker)
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+}
+
+// Covers a case only FindByJobID can produce; GetFailedNodes filters it out first.
+func TestDedupeDiagnostics(t *testing.T) {
+	jobID := id.NewJobID()
+	nodeID := "node-1"
+
+	t.Run("same node/code/disposition collapses to the terminal copy", func(t *testing.T) {
+		warnDrop := "warn_drop"
+
+		liveRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now().Add(-time.Hour)).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Message("live copy").
+			Build()
+		require.NoError(t, err)
+
+		terminalRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Terminal(true).
+			Message("terminal copy").
+			Build()
+		require.NoError(t, err)
+
+		got := dedupeDiagnostics([]*diagnostic.Diagnostic{liveRow, terminalRow})
+		require.Len(t, got, 1)
+		assert.True(t, got[0].Terminal())
+		assert.Equal(t, "terminal copy", got[0].Message())
+	})
+
+	t.Run("a failedNodes row and an aggregatedDiagnostics row sharing (nodeId, code) both survive", func(t *testing.T) {
+		// Regression guard: a (nodeID, code)-only key collapsed these two nondeterministically.
+		fatal := fatalEffectiveDisposition
+		warnDrop := "warn_drop"
+
+		failedRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.unclassified").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Terminal(true).
+			Message("node failed").
+			Build()
+		require.NoError(t, err)
+
+		aggregatedRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.unclassified").
+			Category("internal").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Terminal(true).
+			Message("features dropped").
+			Build()
+		require.NoError(t, err)
+
+		got := dedupeDiagnostics([]*diagnostic.Diagnostic{failedRow, aggregatedRow})
+		require.Len(t, got, 2)
+		messages := []string{got[0].Message(), got[1].Message()}
+		assert.ElementsMatch(t, []string{"node failed", "features dropped"}, messages)
+	})
+}
+
+func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+
+	t.Run("returns the persisted count", func(t *testing.T) {
+		dropped := uint64(4)
+		repoMock := &mockDiagnosticsRepo{summary: &dropped}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, uint64(4), *got)
+	})
+
+	t.Run("no summary row: nil, not error", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("nil repo: nil, not error", func(t *testing.T) {
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(nil, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("repo error propagates", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{summaryErr: errors.New("mongo down")}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("permission denied", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+		denyChecker := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return false, nil
+		})
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, nil, denyChecker)
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+}
+
+type artifactFileMock struct {
+	mockCheckStatusFile
+	lastName  string
+	payload   []byte
+	readCalls int
+}
+
+func (m *artifactFileMock) ReadArtifact(ctx context.Context, name string) (io.ReadCloser, error) {
+	m.readCalls++
+	m.lastName = name
+	if m.payload == nil {
+		return nil, rerror.ErrNotFound
+	}
+	return io.NopCloser(bytes.NewReader(m.payload)), nil
+}
+
+func TestNodeDiagnostics_ArtifactFallback(t *testing.T) {
+	ctx := context.Background()
+	raw, err := os.ReadFile(jobCompleteDiagnosticsFixturePath)
+	require.NoError(t, err)
+	var event gateway.JobCompleteEvent
+	require.NoError(t, json.Unmarshal(raw, &event))
+	jobID := id.MustJobID(event.JobID)
+	jobRepo := &mockJobRepo{}
+
+	t.Run("failed nodes come from the artifact when the repo has no rows", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "internal.invariant_violation", got[0].Code())
+		assert.Equal(t, "internal.unclassified", got[1].Code())
+		assert.Equal(t, jobID.String()+"/diagnostics.json", file.lastName)
+	})
+
+	t.Run("job diagnostics include artifact rows when the repo has no rows", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(&mockDiagnosticsRepo{}, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 3)
+	})
+
+	t.Run("node diagnostics filter artifact rows by node", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetNodeDiagnostics(ctx, jobID, "subgraph-a.sink-writer-2")
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "internal.unclassified", got[0].Code())
+	})
+
+	t.Run("dropped event count falls back to the artifact", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, uint64(2), *got)
+	})
+
+	t.Run("repo rows suppress the artifact read", func(t *testing.T) {
+		file := &artifactFileMock{payload: raw}
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, 0, file.readCalls)
+	})
+
+	t.Run("missing artifact yields empty results, not an error", func(t *testing.T) {
+		file := &artifactFileMock{}
+		i := NewNodeDiagnostics(nil, jobRepo, nil, file, alwaysAllowPermissionChecker())
+
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}

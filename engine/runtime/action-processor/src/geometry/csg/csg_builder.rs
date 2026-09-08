@@ -1,7 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
+use std::sync::Arc;
 
+#[cfg(not(feature = "new-geometry"))]
 use earcut::{utils3d::project3d_to_2d, Earcut};
 use once_cell::sync::Lazy;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::{
     coordinate::Coordinate3D,
     csg::{CSGChild, CSGOperation, CSG},
@@ -9,6 +13,11 @@ use reearth_flow_geometry::types::{
     geometry::Geometry3D as FlowGeometry3D,
     polygon::Polygon3D,
     solid::Solid3D,
+};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{
+    csg::{Csg, ThreeDimensional},
+    Euclidean3DGeometry, Geometry,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -18,9 +27,10 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature, Geometry,
-    GeometryType, GeometryValue,
+    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
 };
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Geometry, GeometryType, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -42,8 +52,10 @@ impl ProcessorFactory for CSGBuilderFactory {
     }
 
     fn description(&self) -> &str {
-        "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). \
-        It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSG Evaluator."
+        "Pairs each left solid with the right solid that shares its pair value and emits the \
+         union, the intersection and the difference of the pair as unevaluated Constructive \
+         Solid Geometry trees. The trees describe the boolean without computing it, so a \
+         CSG Evaluator downstream turns the branch you keep into a solid."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -52,6 +64,10 @@ impl ProcessorFactory for CSGBuilderFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Geometry"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -91,55 +107,49 @@ impl ProcessorFactory for CSGBuilderFactory {
             .into());
         };
 
-        let pair_id_attribute = param
-            .pair_id_attribute
-            .map(|expr| {
-                expr.compile().map_err(|e| {
-                    GeometryProcessorError::CSGBuilderFactory(format!(
-                        "Failed to compile pair_id_attribute expression: {e:?}"
-                    ))
-                })
-            })
-            .transpose()?;
+        let pair_id = param.pair_id.compile().map_err(|e| {
+            GeometryProcessorError::CSGBuilderFactory(format!(
+                "Failed to compile pairId expression: {e:?}"
+            ))
+        })?;
 
         let processor = CSGBuilder {
-            pair_id_attribute,
+            pair_id,
             left_buffer: HashMap::new(),
             right_buffer: HashMap::new(),
-            create_list: param.create_list,
-            list_attribute_name: param.list_attribute_name,
+            list_attribute: param.list_attribute,
         };
         Ok(Box::new(processor))
     }
 }
 
 /// # CSG Builder Parameters
-/// Configure how the CSG builder pairs features from left and right ports
+/// Sets how the two input streams are paired up and what the resulting trees
+/// record about the solids they were built from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct CSGBuilderParam {
-    /// # Pair ID Attribute
-    /// Expression to evaluate the pair ID used to match features from left and right ports
-    pair_id_attribute: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    /// # Pair ID
+    /// Expression evaluated on every feature to produce the value that pairs
+    /// it up: a left feature and a right feature that evaluate to the same
+    /// value are combined. A feature whose partner never arrives is rejected.
+    pair_id: Code<{ CodeType::FlowExpr as u32 }>,
 
-    /// # Create List
-    /// When enabled, creates a list of attribute values from both children (left and right)
-    create_list: Option<bool>,
-
-    /// # List Attribute Name
-    /// Name of the attribute to create the list from (required when create_list is true)
-    list_attribute_name: Option<String>,
+    /// # List Attribute
+    /// Attribute that receives one entry for the left solid and one for the
+    /// right, each holding that feature's own attributes. When omitted, no
+    /// list is written and the resulting trees carry no attributes at all.
+    list_attribute: Option<String>,
 }
 
 /// # CSG Builder
-/// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSG Evaluator.
+/// Builds the boolean trees of a paired left and right solid.
 #[derive(Debug, Clone)]
 pub struct CSGBuilder {
-    pair_id_attribute: Option<CompiledCode>,
+    pair_id: CompiledCode,
     left_buffer: HashMap<AttributeValue, Feature>,
     right_buffer: HashMap<AttributeValue, Feature>,
-    create_list: Option<bool>,
-    list_attribute_name: Option<String>,
+    list_attribute: Option<String>,
 }
 
 impl Processor for CSGBuilder {
@@ -151,7 +161,6 @@ impl Processor for CSGBuilder {
         2
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -160,16 +169,8 @@ impl Processor for CSGBuilder {
         let feature = ctx.feature.clone();
         let port = ctx.port.clone();
 
-        // Get the pair ID from the feature by evaluating the expression
-        let pair_id = if let Some(expr) = &self.pair_id_attribute {
-            match expr.eval(&feature, ctx.env_vars.clone()) {
-                Ok(attr_value) => attr_value,
-                Err(_) => {
-                    fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
-                    return Ok(());
-                }
-            }
-        } else {
+        // The value that pairs this feature with one from the other side.
+        let Ok(pair_id) = self.pair_id.eval(&feature, ctx.variables.clone()) else {
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
             return Ok(());
         };
@@ -201,7 +202,6 @@ impl Processor for CSGBuilder {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -316,37 +316,7 @@ impl CSGBuilder {
         let left_csg_child = CSGChild::Solid(left_solid);
         let right_csg_child = CSGChild::Solid(right_solid);
 
-        // Create list attribute if enabled
-        let list_attribute = if self.create_list.unwrap_or(false) {
-            if let Some(ref attr_name) = self.list_attribute_name {
-                // Create a list containing the entire attributes object from both features
-                let mut attribute_objects = Vec::new();
-
-                // Convert left feature's entire attributes to AttributeValue::Map
-                let left_attrs: std::collections::HashMap<String, AttributeValue> = left_feature
-                    .attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect();
-                attribute_objects.push(AttributeValue::Map(left_attrs));
-
-                // Convert right feature's entire attributes to AttributeValue::Map
-                let right_attrs: std::collections::HashMap<String, AttributeValue> = right_feature
-                    .attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect();
-                attribute_objects.push(AttributeValue::Map(right_attrs));
-
-                // Create the attribute with the list of attribute objects
-                let attr_key = Attribute::new(attr_name.clone());
-                Some((attr_key, AttributeValue::Array(attribute_objects)))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        let list_attribute = self.build_list_attribute(&left_feature, &right_feature);
 
         // Create and send intersection CSG
         let intersection_csg = CSG::new(
@@ -411,9 +381,94 @@ impl CSGBuilder {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl CSGBuilder {
+    /// Combine the paired features into the three boolean trees and send one
+    /// feature per operation port. A pair whose members are not both solids or
+    /// boolean trees is rejected.
+    fn create_and_send_csg(
+        &self,
+        left_feature: Feature,
+        right_feature: Feature,
+        fw: &ProcessorChannelForwarder,
+        ctx: &ExecutorContext,
+    ) -> Result<(), BoxedError> {
+        let (Some(left), Some(right)) = (
+            csg_operand(left_feature.geometry.as_ref()),
+            csg_operand(right_feature.geometry.as_ref()),
+        ) else {
+            fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(right_feature, REJECTED_PORT.clone()));
+            return Ok(());
+        };
+
+        let list_attribute = self.build_list_attribute(&left_feature, &right_feature);
+
+        let outputs = [
+            (
+                Csg::intersection(left.clone(), right.clone()),
+                INTERSECTION_PORT.clone(),
+            ),
+            (Csg::union(left.clone(), right.clone()), UNION_PORT.clone()),
+            (Csg::difference(left, right), DIFFERENCE_PORT.clone()),
+        ];
+        for (csg, port) in outputs {
+            let mut feature = Feature::new_with_attributes(Attributes::new());
+            *feature.geometry_mut() = Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg));
+            if let Some((attr_key, attr_value)) = &list_attribute {
+                feature
+                    .attributes_mut()
+                    .insert(attr_key.clone(), attr_value.clone());
+            }
+            fw.send(ctx.new_with_feature_and_port(feature, port));
+        }
+
+        Ok(())
+    }
+}
+
+impl CSGBuilder {
+    /// The list attribute holding both source features' attribute maps, when
+    /// one was named.
+    fn build_list_attribute(
+        &self,
+        left: &Feature,
+        right: &Feature,
+    ) -> Option<(Attribute, AttributeValue)> {
+        let attr_name = self.list_attribute.as_ref()?;
+        let attribute_objects = [left, right]
+            .into_iter()
+            .map(|feature| {
+                let attrs: HashMap<String, AttributeValue> = feature
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect();
+                AttributeValue::Map(attrs)
+            })
+            .collect();
+        Some((
+            Attribute::new(attr_name.clone()),
+            AttributeValue::Array(attribute_objects),
+        ))
+    }
+}
+
+/// The geometry as a CSG operand: a solid, or an already-built boolean tree
+/// (allowing trees to nest across builders).
+#[cfg(feature = "new-geometry")]
+fn csg_operand(geometry: &Geometry) -> Option<ThreeDimensional> {
+    match geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Solid(solid)) => Some((**solid).clone().into()),
+        Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg)) => Some(csg.clone().into()),
+        _ => None,
+    }
+}
+
 /// Convert CityGML polygons (which may have interior rings/holes) to Face objects.
 /// Polygons without holes are converted directly from their exterior ring.
 /// Polygons with holes are triangulated using earcut so the holes are respected.
+#[cfg(not(feature = "new-geometry"))]
 fn polygons_to_faces(polygons: &[Polygon3D<f64>]) -> Vec<Face> {
     let mut faces = Vec::new();
     let mut earcutter = Earcut::new();

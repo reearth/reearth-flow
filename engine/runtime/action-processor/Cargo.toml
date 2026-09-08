@@ -25,6 +25,7 @@ new-geometry = [
 reearth-flow-action-log.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-common.workspace = true
+reearth-flow-diagnostics.workspace = true
 reearth-flow-geometry.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-sevenz.workspace = true

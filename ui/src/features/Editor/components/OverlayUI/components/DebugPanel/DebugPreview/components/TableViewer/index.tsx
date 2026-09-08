@@ -3,7 +3,7 @@ import { memo, useCallback, useMemo } from "react";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
-import { useT } from "@flow/lib/i18n";
+import { useLang, useT } from "@flow/lib/i18n";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
 
@@ -34,6 +34,9 @@ const TableViewer: React.FC<Props> = memo(
     onShowFeatureDetailsOverlay,
   }) => {
     const t = useT();
+    // Counts are grouped for the UI language, not the browser's: `1.234` and
+    // `1,234` are different numbers depending on where you read them.
+    const lang = useLang();
     // Handle row single click - select feature and show details
     const handleRowSingleClick = useCallback(
       (feature: any) => {
@@ -99,10 +102,10 @@ const TableViewer: React.FC<Props> = memo(
             <div className="flex items-center gap-4">
               <span>
                 {t("Rows")}:{" "}
-                {(formattedData.tableData || []).length.toLocaleString()}
+                {(formattedData.tableData || []).length.toLocaleString(lang)}
                 {totalFeatures !== undefined &&
                   totalFeatures > 0 &&
-                  ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
+                  ` / ${totalFeatures.toLocaleString(lang)} ${t("total")}`}
               </span>
               {detectedGeometryType && (
                 <span className="rounded px-2 text-xs">
@@ -110,7 +113,8 @@ const TableViewer: React.FC<Props> = memo(
                 </span>
               )}
               <span>
-                {t("Columns")}: {(formattedData.tableColumns || []).length}
+                {t("Columns")}:{" "}
+                {(formattedData.tableColumns || []).length.toLocaleString(lang)}
               </span>
             </div>
           </div>
@@ -121,7 +125,6 @@ const TableViewer: React.FC<Props> = memo(
         {detailsOverlayOpen && (
           <FeatureDetailsOverlay
             feature={detailsFeature}
-            detectedGeometryType={detectedGeometryType}
             onClose={() => onShowFeatureDetailsOverlay(false)}
           />
         )}

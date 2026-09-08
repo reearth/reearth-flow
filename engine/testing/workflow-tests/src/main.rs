@@ -334,7 +334,6 @@ impl TestContext {
         let feature_state_uri = format!("file://{}", feature_state_path.display());
         let feature_state_uri = reearth_flow_common::uri::Uri::from_str(&feature_state_uri)?;
         let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
-        let ingress_state = Arc::clone(&feature_state);
 
         // Build sandbox_root from temp_dir so relative sink paths resolve there
         let sandbox_root_str = format!("file://{}/", self.temp_dir.display());
@@ -342,19 +341,42 @@ impl TestContext {
             .context("failed to build sandbox_root URI")?;
 
         // Run workflow
-        Runner::run_with_sandbox_root(
+        let result = Runner::run_with_sandbox_root(
             job_id,
             workflow,
             action_factories,
             logger_factory,
             storage_resolver,
-            ingress_state,
             feature_state,
             None,
             sandbox_root,
-        )?;
+        );
 
-        Ok(())
+        match result {
+            Ok(()) if self.profile.expect_failed_nodes => Err(anyhow::anyhow!(
+                "test profile declares expectFailedNodes: true, but the workflow run \
+                 succeeded (Ok(())) with no failed node reported; this looks like a \
+                 regression in node-failure reporting (e.g. a per-feature process() \
+                 error no longer converging into RunSummary.failed_nodes) rather than \
+                 a genuine fix, since verify_output/verify_summary_output still expect \
+                 the original malformed-input behavior. If the workflow legitimately no \
+                 longer fails, remove expectFailedNodes from this test's workflow_test.json."
+            )),
+            Ok(()) => Ok(()),
+            // Only these two error variants are tolerated here -- never widen to a broader `Err(e) => Ok(())`, or real failures get silently swallowed.
+            Err(
+                e @ (reearth_flow_runner::errors::Error::ExecutionError(_)
+                | reearth_flow_runner::errors::Error::FailedNodes(_)),
+            ) if self.profile.expect_failed_nodes => {
+                tracing::info!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "workflow completed with expected failed node(s); proceeding to output verification"
+                );
+                Ok(())
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub fn verify_output(&mut self) -> Result<()> {
@@ -1519,6 +1541,7 @@ mod tests {
             description: None,
             skip: false,
             skip_reason: None,
+            skip_new_geometry: false,
             workflow_path: "dummy".to_string(),
             workflow_variables: vec![],
             zip_before_test: vec![],
@@ -1527,6 +1550,7 @@ mod tests {
             summary_output: None,
             expect_result_ok_file: None,
             unexpected_output_validation: None,
+            expect_failed_nodes: false,
         }
     }
 

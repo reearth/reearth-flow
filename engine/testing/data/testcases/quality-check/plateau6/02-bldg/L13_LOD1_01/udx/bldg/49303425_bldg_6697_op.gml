@@ -43,12 +43,12 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 								<gml:Polygon>
 									<gml:exterior>
 										<gml:LinearRing>
-											<gml:posList>0.0 0.0 0.0 1.0 0.0 0.0 1.0 1.0 0.0 0.0 1.0 0.0</gml:posList>
+											<gml:posList>0.0 0.0 0.0 1.0 0.0 0.0 1.0 1.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0</gml:posList>
 										</gml:LinearRing>
 									</gml:exterior>
 									<gml:interior>
 										<gml:LinearRing>
-											<gml:posList>0.1 0.1 0.0 1.1 0.1 0.0 1.1 1.1 0.0 0.1 1.1 0.0</gml:posList>
+											<gml:posList>0.1 0.1 0.0 1.1 0.1 0.0 1.1 1.1 0.0 0.1 1.1 0.0 0.1 0.1 0.0</gml:posList>
 										</gml:LinearRing>
 									</gml:interior>
 								</gml:Polygon>

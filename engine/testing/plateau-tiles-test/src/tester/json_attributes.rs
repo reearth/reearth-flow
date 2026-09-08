@@ -11,8 +11,6 @@ pub struct JsonFileConfig {
     pub path: String,
     #[serde(default)]
     pub extracted: bool,
-    #[serde(default)]
-    pub must_not_exist: bool,
     pub casts: Option<HashMap<String, CastConfigValue>>,
     pub values: Option<HashMap<String, Value>>,
 }
@@ -33,16 +31,6 @@ pub fn test_json_attributes(
         };
         let truth_file = truth_base.join(file_path);
         let flow_file = flow_base.join(file_path);
-
-        if file_cfg.must_not_exist {
-            assert!(
-                !flow_file.exists(),
-                "flow file should not exist: {:?}",
-                flow_file
-            );
-            tracing::debug!("Verified files do not exist: {} ({})", name, file_path);
-            continue;
-        }
 
         assert!(truth_file.exists(), "missing truth file {:?}", truth_file);
         assert!(flow_file.exists(), "missing flow file {:?}", flow_file);

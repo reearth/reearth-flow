@@ -19,6 +19,21 @@ Stages:
 - `r` - Run: Pack runtime zip (if not exists) and execute workflow
 - `e` - Evaluate: Compare flow output with truth reference
 
+Truth files live under a testcase's `truth/` dir. Some are hand-maintained directly (`generate_truth: false`); others (`generate_truth: true`) are derived from a raw source also checked into `truth/` (e.g. a raw 3D Tiles zip), and regenerated with:
+
+```sh
+cargo run -p plateau-tiles-test --bin generate-truth -- <toml_path>
+```
+
+## Test types
+
+- `json_attributes(_v2)` - Attribute comparison for JSON/GeoJSON output
+- `mvt_polygons` / `mvt_lines` / `mvt_points` - Geometry comparison for MVT tile output
+- `raster` - Pixel comparison of rasterized MVT geometry (`convs.mvt_png` renders MVT to PNG; antialiased coverage in `[0, 1]`, subpixel diffs ignored via a `0.5` dead-zone)
+- `cesium` - Attribute comparison for 3D Tiles/glTF output
+- `cesium_statistics` - Per-feature geometric fingerprint (bbox, centroid, average winding, texture presence) for 3D Tiles/glTF output — catches gross regressions but not subtle shape distortions
+- `raster3d` - Depth-buffer comparison of rendered 3D Tiles/glTF output (`convs.raster3d` renders named cameras, configured in `profile.toml` with ECEF xyz `position`/`look_at`, into lossless-f32 depth PNGs; see `render3d/` for the renderer and `Canvas::compare_depth` for the comparison)
+
 ## Directory structure
 
 - `../data/testcases/{workflow-path}/{category}/` - Test-specific data (tracked in git, located in `testing/data/testcases/`)

@@ -10,11 +10,15 @@ use crate::{
         csv::CsvWriterFactory, czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory,
         geojson::GeoJsonWriterFactory, geopackage::GeoPackageWriterFactory,
         gltf::GltfWriterSinkFactory, json::JsonWriterFactory, mvt::sink::MVTSinkFactory,
-        obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, xml::XmlWriterFactory,
-        zip::ZipFileWriterFactory,
+        obj::ObjWriterFactory, xml::XmlWriterFactory, zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
 };
+
+#[cfg(not(feature = "new-geometry"))]
+use crate::file::shapefile::ShapefileWriterFactory;
+#[cfg(feature = "new-geometry")]
+use crate::file::shapefile_next::ShapefileWriterFactory;
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn SinkFactory>> = vec![

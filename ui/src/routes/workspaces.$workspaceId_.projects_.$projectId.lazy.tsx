@@ -8,7 +8,7 @@ import BasicBoiler from "@flow/components/BasicBoiler";
 import ErrorPage from "@flow/components/errors/ErrorPage";
 import { ProjectCorruptionError } from "@flow/errors";
 import Editor from "@flow/features/Editor";
-import { VersionDialog } from "@flow/features/Editor/components/OverlayUI/components";
+import { ProjectRecoveryDialog } from "@flow/features/Editor/components/OverlayUI/components";
 import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
@@ -165,7 +165,7 @@ const ErrorComponent = ({
             </Button>
           </div>
           {openVersionDialog && (
-            <VersionDialog
+            <ProjectRecoveryDialog
               yDoc={yDocState}
               project={currentProject}
               onDialogClose={handleCloseDialog}

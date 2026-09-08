@@ -36,7 +36,7 @@ export const FLOWEXPR_BUILTIN_FUNCTIONS = [
   "list",
   "dict",
   "attributes",
-  "env",
+  "variables",
   "print",
   "len",
   "type",
@@ -162,11 +162,11 @@ export const getFlowExprAutocompleteSuggestions = (
     detail: 'attributes.get("key"[, fallback]) → any',
   },
   {
-    label: "env",
-    insertText: 'env["{{cursor}}"]',
+    label: "variables",
+    insertText: 'variables["{{cursor}}"]',
     type: "function",
     description: t("Read a workflow variable"),
-    detail: 'env["VAR_NAME"] → any',
+    detail: 'variables["VAR_NAME"] → any',
   },
   {
     label: "str",

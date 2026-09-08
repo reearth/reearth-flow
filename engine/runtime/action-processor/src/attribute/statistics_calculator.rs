@@ -382,7 +382,7 @@ impl Processor for StatisticsCalculator {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let feature = &ctx.feature;
         let aggregate_key = self
             .group_by
@@ -410,7 +410,7 @@ impl Processor for StatisticsCalculator {
                 // Count is the only method without a value expression.
                 None => acc.ingest_count(),
                 Some(expr) => {
-                    let attr_val = expr.eval(feature, Arc::clone(&env_vars)).map_err(|e| {
+                    let attr_val = expr.eval(feature, Arc::clone(&variables)).map_err(|e| {
                         AttributeProcessorError::StatisticsCalculator(format!(
                             "Failed to evaluate expression for attribute '{}': {e}",
                             calculation.new_attribute

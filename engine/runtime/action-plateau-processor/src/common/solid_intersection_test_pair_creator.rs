@@ -166,7 +166,7 @@ impl Processor for SolidIntersectionTestPairCreator {
             .get(&Attribute::new(&self.list_attribute))
             .ok_or_else(|| {
                 PlateauProcessorError::SolidIntersectionTestPairCreator(format!(
-                    "Missing '{}' attribute. This processor expects input from Area On Area Overlayer with generateList configured.",
+                    "Missing '{}' attribute. This processor expects input from Area On Area Overlayer with listAttribute configured.",
                     self.list_attribute
                 ))
             })?;

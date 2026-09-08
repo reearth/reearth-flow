@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -28,6 +29,10 @@ type Layout interface {
 	DocV2Name(d DocID) string
 	CheckpointName(d DocID) string
 	UpdatePrefix(d DocID, oid uint32) string // for List/PruneAfter/Compact
+	SnapVersionName(d DocID, id int64) string
+	SnapVersionPrefix(d DocID) string
+	SnapNextIDName(d DocID) string
+	SnapVersionIDFromName(name string) (int64, bool) // parse id from a snapshot object name
 }
 
 func hexb(b []byte) string { return hex.EncodeToString(b) }
@@ -108,6 +113,46 @@ func (LegacyRootLayout) UpdatePrefix(_ DocID, oid uint32) string {
 	return hexb(updatePrefixBytes(oid))
 }
 
+// snapver objects hold the caller's state bytes brotli-compressed and otherwise
+// untouched: the store does no CRDT decode/re-encode, so whatever goes in comes
+// back out byte-for-byte (this is deliberate — ygo's SnapshotStore contract
+// requires exact round-tripping of arbitrary, not-necessarily-CRDT bytes). This
+// is NOT the doc_v2 payload format. Objects live under a per-room prefix so
+// ListSnapshots is a single prefix listing. The counter lives OUTSIDE that
+// prefix so it is never mistaken for a snapshot.
+func (LegacyRootLayout) SnapVersionPrefix(d DocID) string {
+	return hexb([]byte("snapver:" + hexb([]byte(d)) + ":"))
+}
+
+func (LegacyRootLayout) SnapVersionName(d DocID, id int64) string {
+	return hexb([]byte("snapver:" + hexb([]byte(d)) + ":" + strconv.FormatInt(id, 10)))
+}
+
+func (LegacyRootLayout) SnapNextIDName(d DocID) string {
+	return hexb([]byte("snapnextid:" + hexb([]byte(d))))
+}
+
+// SnapVersionIDFromName recovers the snapshot id, reporting false for anything
+// that is not a snapshot record. The marker check matters: without it any
+// all-decimal tail parses as an id, so a room's own counter object would too.
+func (LegacyRootLayout) SnapVersionIDFromName(name string) (int64, bool) {
+	b, err := hexDecode(name)
+	if err != nil {
+		return 0, false
+	}
+	// The name encodes "snapver:" + hex(docid) + ":" + decimal_id. hex(docid) can
+	// never contain a colon, so exactly three fields is the valid shape.
+	parts := strings.Split(string(b), ":")
+	if len(parts) != 3 || parts[0] != "snapver" {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
 func updatePrefixBytes(oid uint32) []byte {
 	k := make([]byte, 0, 7)
 	k = append(k, rsV1, rsKeyspaceDoc)
@@ -142,6 +187,46 @@ func (ProjectFolderLayout) CheckpointName(d DocID) string { return string(d) + "
 
 func (ProjectFolderLayout) UpdatePrefix(d DocID, _ uint32) string {
 	return string(d) + "/" + hexb(updatePrefixBytes(FolderOID))
+}
+
+func (ProjectFolderLayout) SnapVersionPrefix(d DocID) string {
+	return ProjectPrefix(d) + "snapver/"
+}
+
+func (ProjectFolderLayout) SnapVersionName(d DocID, id int64) string {
+	return ProjectPrefix(d) + "snapver/" + strconv.FormatInt(id, 10)
+}
+
+func (ProjectFolderLayout) SnapNextIDName(d DocID) string {
+	return ProjectPrefix(d) + "snapnextid"
+}
+
+// SnapVersionIDFromName recovers the snapshot id from "{docid}/snapver/{id}",
+// reporting false for anything else. The segment check stops any path ending in
+// digits parsing as an id.
+func (ProjectFolderLayout) SnapVersionIDFromName(name string) (int64, bool) {
+	rest, idStr, ok := cutLast(name, "/")
+	if !ok {
+		return 0, false
+	}
+	// The segment immediately before the id must be exactly "snapver".
+	if _, dir, ok := cutLast(rest, "/"); !ok || dir != "snapver" {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
+// cutLast splits s around the last sep; false when sep is absent.
+func cutLast(s, sep string) (before, after string, found bool) {
+	i := strings.LastIndex(s, sep)
+	if i < 0 {
+		return "", "", false
+	}
+	return s[:i], s[i+len(sep):], true
 }
 
 // ProjectPrefix is the {D}/ prefix scoping every list/delete to one project.

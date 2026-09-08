@@ -8,4 +8,7 @@ pub(super) mod json;
 pub(super) mod obj;
 pub mod path_extractor;
 pub mod reader;
+#[cfg(not(feature = "new-geometry"))]
 pub(super) mod shapefile;
+#[cfg(feature = "new-geometry")]
+pub(super) mod shapefile_next;

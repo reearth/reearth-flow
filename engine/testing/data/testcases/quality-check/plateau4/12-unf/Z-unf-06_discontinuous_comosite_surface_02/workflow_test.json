@@ -1,5 +1,6 @@
 {
   "description": "Discontinuous MultiSurface should not be flagged as an error (CompositeSurface continuity is still checked)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/12-unf/workflow.yml",
   "workflowVariables": [
     {

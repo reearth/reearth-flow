@@ -154,7 +154,7 @@ export const toProjectSnapShot = (
   projectSnapshot: ProjectSnapshotFragment,
 ): ProjectSnapshot => ({
   timestamp: projectSnapshot.timestamp,
-  version: projectSnapshot.version,
+  version: projectSnapshot.version ?? undefined,
   updates: projectSnapshot.updates,
 });
 

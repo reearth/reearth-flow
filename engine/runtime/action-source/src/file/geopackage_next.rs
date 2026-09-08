@@ -41,10 +41,8 @@ pub(super) async fn read(
     super::verify_geopackage(&adapter).await?;
 
     match params.read_mode {
-        GeoPackageReadMode::Features | GeoPackageReadMode::Tiles | GeoPackageReadMode::All => {
-            read_features(&adapter, params).await
-        }
-        GeoPackageReadMode::MetadataOnly => super::read_metadata(&adapter, params).await,
+        GeoPackageReadMode::Features => read_features(&adapter, params).await,
+        GeoPackageReadMode::MetadataOnly => super::read_metadata(&adapter).await,
     }
 }
 

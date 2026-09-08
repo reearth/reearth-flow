@@ -21,7 +21,9 @@ use super::ChannelId;
 
 /// One self-contained shading description: exactly one of the two shading
 /// models.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Material"))]
 pub enum Material {
     /// CityGML X3DMaterial, OBJ illumination models 1-2.
     Phong(PhongMaterial),
@@ -30,25 +32,36 @@ pub enum Material {
 }
 
 /// Classic Phong / Blinn-Phong material.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Phong material"))]
 pub struct PhongMaterial {
     /// Kd / diffuseColor.
+    #[cfg_attr(feature = "schema", schemars(title = "Diffuse color"))]
     pub diffuse: [f32; 3],
     /// Ks / specularColor.
+    #[cfg_attr(feature = "schema", schemars(title = "Specular color"))]
     pub specular: [f32; 3],
     /// Ke / emissiveColor.
+    #[cfg_attr(feature = "schema", schemars(title = "Emissive color"))]
     pub emissive: [f32; 3],
     /// Ka / ambientIntensity.
+    #[cfg_attr(feature = "schema", schemars(title = "Ambient intensity"))]
     pub ambient_intensity: f32,
     /// Ns / shininess.
+    #[cfg_attr(feature = "schema", schemars(title = "Shininess"))]
     pub shininess: f32,
     /// 0 = opaque (CityGML transparency / OBJ d, Tr).
+    #[cfg_attr(feature = "schema", schemars(title = "Transparency"))]
     pub transparency: f32,
     /// ParameterizedTexture / map_Kd.
+    #[cfg_attr(feature = "schema", schemars(title = "Diffuse map"))]
     pub diffuse_map: Option<Texture>,
     /// map_Ke.
+    #[cfg_attr(feature = "schema", schemars(title = "Emissive map"))]
     pub emissive_map: Option<Texture>,
     /// OBJ norm / map_bump (CityGML carries none).
+    #[cfg_attr(feature = "schema", schemars(title = "Normal map"))]
     pub normal_map: Option<Texture>,
 }
 
@@ -100,26 +113,40 @@ impl Material {
 }
 
 /// glTF metallic-roughness PBR material.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "PBR material"))]
 pub struct PbrMaterial {
     /// baseColorFactor, including alpha.
+    #[cfg_attr(feature = "schema", schemars(title = "Base color"))]
     pub base_color: [f32; 4],
     /// metallicFactor.
+    #[cfg_attr(feature = "schema", schemars(title = "Metallic"))]
     pub metallic: f32,
     /// roughnessFactor.
+    #[cfg_attr(feature = "schema", schemars(title = "Roughness"))]
     pub roughness: f32,
     /// emissiveFactor.
+    #[cfg_attr(feature = "schema", schemars(title = "Emissive color"))]
     pub emissive: [f32; 3],
+    #[cfg_attr(feature = "schema", schemars(title = "Base color map"))]
     pub base_color_map: Option<Texture>,
+    #[cfg_attr(feature = "schema", schemars(title = "Metallic-roughness map"))]
     pub metallic_roughness_map: Option<Texture>,
+    #[cfg_attr(feature = "schema", schemars(title = "Normal map"))]
     pub normal_map: Option<Texture>,
+    #[cfg_attr(feature = "schema", schemars(title = "Occlusion map"))]
     pub occlusion_map: Option<Texture>,
+    #[cfg_attr(feature = "schema", schemars(title = "Emissive map"))]
     pub emissive_map: Option<Texture>,
+    #[cfg_attr(feature = "schema", schemars(title = "Alpha mode"))]
     pub alpha_mode: AlphaMode,
+    #[cfg_attr(feature = "schema", schemars(title = "Double sided"))]
     pub double_sided: bool,
 }
 
 /// How a material's alpha channel is interpreted.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub enum AlphaMode {
     Opaque,

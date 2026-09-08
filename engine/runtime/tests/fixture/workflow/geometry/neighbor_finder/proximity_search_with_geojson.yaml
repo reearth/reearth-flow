@@ -58,7 +58,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["outputPath"]'
+            value: 'variables["outputPath"]'
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

@@ -13,7 +13,8 @@ import {
 } from "@flow/components";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
-import type { Deployment } from "@flow/types";
+import { useCurrentUserRole } from "@flow/stores";
+import { Role, type Deployment } from "@flow/types";
 import { formatTimestamp } from "@flow/utils/timestamp";
 
 import {
@@ -27,6 +28,8 @@ import useHooks from "./hooks";
 
 const DeploymentManager: React.FC = () => {
   const t = useT();
+  const [currentUserRole] = useCurrentUserRole();
+  const readonly = currentUserRole === Role.Reader;
   const {
     deployments,
     selectedDeployment,
@@ -79,6 +82,7 @@ const DeploymentManager: React.FC = () => {
           <ButtonWithTooltip
             variant="default"
             size="icon"
+            disabled={readonly}
             tooltipText={t("Run Deployment")}
             onClick={() => handleDeploymentRun(row.row.original)}>
             <PlayIcon />
@@ -86,6 +90,7 @@ const DeploymentManager: React.FC = () => {
           <ButtonWithTooltip
             variant="outline"
             size="icon"
+            disabled={readonly}
             tooltipText={t("Edit Deployment")}
             onClick={() => setDeploymentToBeEdited(row.row.original)}>
             <PencilLineIcon />
@@ -93,6 +98,7 @@ const DeploymentManager: React.FC = () => {
           <ButtonWithTooltip
             variant="destructive"
             size="icon"
+            disabled={readonly}
             tooltipText={t("Delete Deployment")}
             onClick={() => setDeploymentToBeDeleted(row.row.original)}>
             <TrashIcon />
@@ -108,6 +114,7 @@ const DeploymentManager: React.FC = () => {
         <div className="flex flex-1">
           <DeploymentDetails
             selectedDeployment={selectedDeployment}
+            readonly={readonly}
             setDeploymentToBeDeleted={setDeploymentToBeDeleted}
             onDeploymentRun={handleDeploymentRun}
           />
@@ -121,7 +128,8 @@ const DeploymentManager: React.FC = () => {
               </p>
               <Button
                 className="flex gap-2"
-                onClick={() => setOpenDeploymentAddDialog(true)}>
+                onClick={() => setOpenDeploymentAddDialog(true)}
+                disabled={readonly}>
                 <PlusIcon weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
               </Button>

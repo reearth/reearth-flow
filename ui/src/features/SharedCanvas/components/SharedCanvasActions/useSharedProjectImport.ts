@@ -5,9 +5,10 @@ import { Doc } from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectImport } from "@flow/hooks";
-import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import type { Project, Workspace } from "@flow/types";
+
+import useSharedWorkflowVariables from "../../useSharedWorkflowVariables";
 
 type Props = {
   sharedYdoc: Doc | null;
@@ -27,8 +28,7 @@ export default ({
   const navigate = useNavigate();
 
   const { isProjectImporting, handleProjectImport } = useProjectImport();
-  const { useGetWorkflowVariables } = useWorkflowVariables();
-  const { workflowVariables } = useGetWorkflowVariables(
+  const { workflowVariables } = useSharedWorkflowVariables(
     sharedProject?.id || "",
   );
   const handleSharedProjectImport = useCallback(async () => {

@@ -31,10 +31,10 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
-                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                  "objectListsPath": variables.get("objectListsPath") or variables.get("objectLists"),
                 },
               ]
 
@@ -100,7 +100,7 @@ graphs:
           conditions:
           - expr:
               type: flowExpr
-              value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+              value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
             outputPort: features
 
       # Extract _fld_scale (l1 or l2) from filename using pattern matching
@@ -190,7 +190,7 @@ graphs:
         with:
           targetEpsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       # GeometryValidator: Validate geometry for degenerate triangles and duplicate consecutive points
       - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
@@ -432,7 +432,7 @@ graphs:
             value: '[]'
           output:
             type: flowExpr
-            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
@@ -442,7 +442,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # Input processing chain

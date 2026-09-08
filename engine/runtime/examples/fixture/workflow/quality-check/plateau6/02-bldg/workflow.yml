@@ -18,8 +18,8 @@ graphs:
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include building_checks.yml
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau6/surface_checks.yml
   - id: 028be94c-4528-4349-908c-ecf2b319a67a
     name: entry_point
     nodes:
@@ -33,12 +33,12 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": variables.get("objectListsPath") or variables.get("objectLists"),
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 
@@ -73,7 +73,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
       - id: 47639a83-eb27-47d6-93a7-7393542aca1a
         name: StatisticsCalculatorTotalErrors
@@ -107,7 +107,7 @@ graphs:
             value: '[]'
           output:
             type: flowExpr
-            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
     edges:
       - id: ca53a8b9-377c-460e-9076-368cdb2a8911

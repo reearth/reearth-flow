@@ -12,23 +12,23 @@ graphs:
       - id: 84c5508a-68f0-4726-a868-411c90dd44e7
         name: Download City Archive
         type: action
-        action: FilePathExtractor
+        action: File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
-            value: env.get("cityGmlPath")
+            value: variables.get("cityGmlPath")
           extractArchive: true
 
       - id: 8d830d0f-8f5c-4bac-9c5a-0a4f0c68c697
         name: Keep GML Files
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["extension"] == "gml"
-              outputPort: default
+              outputPort: features
 
       - id: b8bd3903-c1f2-4c66-8c98-54085f1ecc1d
         name: Extract UDX Folders
@@ -37,32 +37,32 @@ graphs:
         with:
           cityGmlPath:
             type: flowExpr
-            value: env.get("__value")["path"]
+            value: variables.get("__value")["path"]
 
       - id: abd47145-383b-4703-8710-e5becfdc055a
         name: Keep Building Package
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["package"] in env["targetPackages"]
-              outputPort: default
+                value: attributes["package"] in variables["targetPackages"]
+              outputPort: features
 
       - id: 30a2626c-886c-4bd5-96d4-30e4c9c26f07
         name: Read Building CityGML
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           dataset:
             type: flowExpr
-            value: env.get("__value")["path"]
+            value: variables.get("__value")["path"]
 
       - id: 5f5f1dbd-7891-40db-8e4d-629cd5586b0a
         name: Keep Core Attributes
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: gmlId
@@ -79,7 +79,7 @@ graphs:
       - id: 7c438ee6-ef16-4462-a7a7-05752e1550ec
         name: Write Buildings GeoJSON
         type: action
-        action: GeoJsonWriter
+        action: GeoJSON Writer
         with:
           # Sink outputs must be relative paths; the engine resolves them
           # against the job's artifact sandbox and rejects absolute URIs.
@@ -91,30 +91,30 @@ graphs:
       - id: a16b6de3-4262-4270-828e-5396dc58ada2
         from: 84c5508a-68f0-4726-a868-411c90dd44e7
         to: 8d830d0f-8f5c-4bac-9c5a-0a4f0c68c697
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 015df6a0-8383-48bc-8c4d-6653d48e0856
         from: 8d830d0f-8f5c-4bac-9c5a-0a4f0c68c697
         to: b8bd3903-c1f2-4c66-8c98-54085f1ecc1d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 7327e079-b453-4016-97a1-15c6ab763687
         from: b8bd3903-c1f2-4c66-8c98-54085f1ecc1d
         to: abd47145-383b-4703-8710-e5becfdc055a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 1448f49f-5aa3-4dd7-a0ee-189c4a0e5c04
         from: abd47145-383b-4703-8710-e5becfdc055a
         to: 30a2626c-886c-4bd5-96d4-30e4c9c26f07
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 920dce8f-dae7-4d78-9457-c0b44837b571
         from: 30a2626c-886c-4bd5-96d4-30e4c9c26f07
         to: 5f5f1dbd-7891-40db-8e4d-629cd5586b0a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e6493d04-4e01-4a2c-b3a0-67ca07faf298
         from: 5f5f1dbd-7891-40db-8e4d-629cd5586b0a
         to: 7c438ee6-ef16-4462-a7a7-05752e1550ec
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

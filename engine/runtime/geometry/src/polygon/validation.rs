@@ -2,14 +2,16 @@ use super::{Polygon2D, Polygon3D};
 use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_duplicate_points, check_face_orientation_3d, check_finite_2d,
-    check_finite_3d, check_holes_in_exterior_2d, check_holes_in_exterior_3d, check_planarity_3d,
-    check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
-    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, Validate,
-    ValidationParams, ValidationReport, ValidationType,
+    check_finite_3d, check_finite_elevation, check_holes_in_exterior_2d,
+    check_holes_in_exterior_3d, check_planarity_3d, check_ring_orientation_2d, check_ring_pair_2d,
+    check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
+    check_unclosed_ring_3d, open_ring, Validate, ValidationParams, ValidationReport,
+    ValidationType,
 };
+use crate::{Euclidean2DGeometry, Geometry};
 
 /// The checks that apply to a 2D polygon face. Planarity is omitted: a 2D face
-/// lies in the coordinate plane by construction, so it is trivially planar.
+/// is trivially planar.
 const POLYGON_2D_CHECKS: [ValidationType; 8] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
@@ -44,7 +46,14 @@ impl Validate for Polygon2D {
         // `coords` holds the exterior ring then all interior rings concatenated;
         // finiteness is a per-coordinate property, so scanning the whole buffer
         // covers every ring at once.
-        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
+        ValidationReport::ran(|r| {
+            check_finite_elevation(
+                self.z,
+                || Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(self.clone()))),
+                r,
+            );
+            check_finite_2d(&self.frame, &self.coords, r);
+        })
     }
 
     fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {

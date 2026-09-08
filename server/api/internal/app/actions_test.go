@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const testActionsJSON = `{"actions":[{"name":"CSV Reader","type":"source","description":"Reads features from a CSV file","inputPorts":[],"outputPorts":["output"],"categories":["File"],"tags":[],"parameter":{},"builtin":false}]}`
+const testActionsJSON = `{"actions":[{"name":"GeoJSON Reader","type":"source","description":"Reads features from a GeoJSON file","inputPorts":[],"outputPorts":["output"],"categories":["Input"],"tags":[],"parameter":{},"builtin":false}]}`
 
 // fakeActionsReader serves testActionsJSON, or err if set.
 type fakeActionsReader struct{ err error }
@@ -37,7 +37,7 @@ func TestLoadActionsData_FromBucket(t *testing.T) {
 	resetTestData()
 	data, err := loadActionsData("")
 	assert.NoError(t, err)
-	assert.Equal(t, "CSV Reader", data.Actions[0].Name)
+	assert.Equal(t, "GeoJSON Reader", data.Actions[0].Name)
 }
 
 func TestLoadActionsData_FallbackToHTTP(t *testing.T) {
@@ -135,9 +135,9 @@ func TestListActions(t *testing.T) {
 }
 
 func TestListActionsHiddenFilter(t *testing.T) {
-	// "CSV Reader" is in baseActions; "PLATEAU4.SolarPositionCalculator" is not.
+	// "GeoJSON Reader" is in baseActions; "PLATEAU4.SolarPositionCalculator" is not.
 	testActions := []Action{
-		{Name: "CSV Reader", Type: ActionTypeSource, Description: "visible", Categories: []string{"File"}},
+		{Name: "GeoJSON Reader", Type: ActionTypeSource, Description: "visible", Categories: []string{"Input"}},
 		{Name: "PLATEAU4.SolarPositionCalculator", Type: ActionTypeProcessor, Description: "not in allow-list", Categories: []string{"PLATEAU"}},
 	}
 
@@ -157,7 +157,7 @@ func TestListActionsHiddenFilter(t *testing.T) {
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Len(t, response, 1)
-	assert.Equal(t, "CSV Reader", response[0].Name)
+	assert.Equal(t, "GeoJSON Reader", response[0].Name)
 }
 
 func TestGetSegregatedActions(t *testing.T) {
@@ -222,7 +222,7 @@ func TestGetSegregatedActions(t *testing.T) {
 
 func TestGetActionDetails(t *testing.T) {
 	testAction := Action{
-		Name:        "CSV Reader",
+		Name:        "GeoJSON Reader",
 		Type:        ActionTypeSource,
 		Description: "Test action description",
 		Categories:  []string{"File"},
@@ -317,7 +317,7 @@ func TestGetActionDetailsPreservesParameterOrder(t *testing.T) {
 
 	resetTestData()
 	actionsDataMap[""] = ActionsData{Actions: []Action{{
-		Name:      "CSV Reader",
+		Name:      "GeoJSON Reader",
 		Type:      ActionTypeSource,
 		Parameter: json.RawMessage(parameter),
 	}}}
@@ -328,7 +328,7 @@ func TestGetActionDetailsPreservesParameterOrder(t *testing.T) {
 	c := e.NewContext(req, rec)
 	c.SetPath("/actions/:id")
 	c.SetParamNames("id")
-	c.SetParamValues("CSV Reader")
+	c.SetParamValues("GeoJSON Reader")
 
 	assert.NoError(t, getActionDetails(c))
 	assert.Equal(t, http.StatusOK, rec.Code)

@@ -20,7 +20,7 @@
 //!   named predicate (touches, crosses, overlaps, ...) and arbitrary DE-9IM
 //!   patterns can be read; meshes relate as their dissolved face union.
 //!
-//! The 2D leaves' optional per-vertex elevation is ignored throughout. The
+//! The 2D leaves' optional elevation is ignored throughout. The
 //! constructed counterparts, boolean overlay, line clipping, segment
 //! intersection points, live in [`overlay`](crate::overlay) over the same
 //! views and kernel.
@@ -115,6 +115,11 @@ pub enum PredicateError {
     /// [`relate_coplanar`] is defined only for mutually coplanar 3D
     /// geometries; there is no volumetric DE-9IM to fall back to.
     NotCoplanar,
+    /// A 3D face handed to an in-plane construction is not planar within the
+    /// tolerance given, or is too degenerate to fit a plane to.
+    NotPlanar,
+    /// A hole of an areal operand winds the same way as its exterior ring.
+    InvalidHoleWinding,
 }
 
 impl core::fmt::Display for PredicateError {
@@ -137,6 +142,12 @@ impl core::fmt::Display for PredicateError {
             }
             PredicateError::NotCoplanar => {
                 write!(f, "operands do not lie in one common plane")
+            }
+            PredicateError::NotPlanar => {
+                write!(f, "face is not planar")
+            }
+            PredicateError::InvalidHoleWinding => {
+                write!(f, "hole winds the same way as its exterior")
             }
         }
     }

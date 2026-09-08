@@ -1,0 +1,13 @@
+[[codes]]
+code = "citygml.non_citygml_geometry"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with non-CityGML geometry"
+help = "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
+
+[[codes]]
+code = "citygml.empty_geometry"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with no geometry for the configured LOD mask"
+help = "Check the feature's LODs against the writer's LOD configuration."

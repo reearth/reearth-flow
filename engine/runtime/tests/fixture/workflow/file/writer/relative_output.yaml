@@ -16,7 +16,7 @@ graphs:
           dataset:
             type: string
             value: ram:///fixture/testdata/file/writer/relative_output/test_geopackage.gpkg
-          readMode: all
+          readMode: features
 
       - id: 01234567-0000-0000-0000-000000000204
         name: WriteGeoPackage

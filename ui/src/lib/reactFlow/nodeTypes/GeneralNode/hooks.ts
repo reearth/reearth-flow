@@ -76,7 +76,6 @@ export default ({
     officialName,
     inputs,
     outputs,
-    // status: nodeStatus,
     backgroundColor,
     borderColor,
     selectedColor,

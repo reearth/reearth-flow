@@ -65,7 +65,7 @@ impl ProcessorFactory for BoundsExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extract Bounding Box Coordinates from Feature Geometry"
+        "Extracts the bounding box coordinates of a feature's geometry and stores them as named attributes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -103,37 +103,40 @@ impl ProcessorFactory for BoundsExtractorFactory {
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::BoundsExtractorFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
+            // Every parameter is optional, so an absent `with` block is valid:
+            // each bound falls back to its default attribute name.
+            BoundsExtractorParam::default()
         };
         let process = BoundsExtractor { params };
         Ok(Box::new(process))
     }
 }
 
-/// # BoundsExtractor Parameters
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+/// # Bounds Extractor Parameters
+///
+/// Configure the attribute names each bound is stored under. Every parameter is
+/// optional; a bound left unset is stored under its default name. The z bounds
+/// are written only when the geometry has an elevation.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BoundsExtractorParam {
     /// # Minimum X Attribute
-    /// Attribute name for storing the minimum X coordinate (defaults to "xmin")
+    /// Attribute to store the minimum X coordinate in. Defaults to `xmin`.
     xmin: Option<Attribute>,
     /// # Maximum X Attribute
-    /// Attribute name for storing the maximum X coordinate (defaults to "xmax")
+    /// Attribute to store the maximum X coordinate in. Defaults to `xmax`.
     xmax: Option<Attribute>,
     /// # Minimum Y Attribute
-    /// Attribute name for storing the minimum Y coordinate (defaults to "ymin")
+    /// Attribute to store the minimum Y coordinate in. Defaults to `ymin`.
     ymin: Option<Attribute>,
     /// # Maximum Y Attribute
-    /// Attribute name for storing the maximum Y coordinate (defaults to "ymax")
+    /// Attribute to store the maximum Y coordinate in. Defaults to `ymax`.
     ymax: Option<Attribute>,
     /// # Minimum Z Attribute
-    /// Attribute name for storing the minimum Z coordinate (defaults to "zmin")
+    /// Attribute to store the minimum Z coordinate in. Defaults to `zmin`.
     zmin: Option<Attribute>,
     /// # Maximum Z Attribute
-    /// Attribute name for storing the maximum Z coordinate (defaults to "zmax")
+    /// Attribute to store the maximum Z coordinate in. Defaults to `zmax`.
     zmax: Option<Attribute>,
 }
 
@@ -225,8 +228,7 @@ impl BoundsExtractor {
     }
 
     /// Write the box onto the feature as one attribute per bound. A 2D box
-    /// writes no z attributes: the optional per-vertex elevation of a
-    /// 2D-embedded geometry is not part of its box.
+    /// writes no z attributes.
     #[cfg(feature = "new-geometry")]
     fn insert_bounds(&self, feature: &mut Feature, aabb: Aabb) {
         let (min, max, z) = match aabb {
@@ -478,9 +480,10 @@ mod tests {
 
     #[test]
     fn elevation_of_a_two_dimensional_geometry_is_not_folded_in() {
-        let line = LineString2D::from_coords_with_elevation(
+        let line = LineString2D::from_coords_at_elevation(
             CoordinateFrame::Euclidean,
-            [[1.0, 2.0, 10.0], [3.0, 4.0, 20.0]],
+            [[1.0, 2.0], [3.0, 4.0]],
+            10.0,
         );
         let feature = extract(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)));
         assert!(feature.attributes.get(&Attribute::new("zmin")).is_none());

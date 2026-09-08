@@ -1,0 +1,127 @@
+id: b1000000-0000-4000-8000-000000000000
+name: LodSplitter
+# Splits each feature's geometry collection into one feature per LOD member and
+# routes the members by their `lod` attribute. Features without geometry are dropped.
+nodes:
+  - id: b1000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: b1000000-0000-4000-8000-000000000002
+    name: GeometryFilter
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: none
+
+  - id: b1000000-0000-4000-8000-000000000003
+    name: GeometrySplitter
+    type: action
+    action: Geometry Splitter
+
+  - id: b1000000-0000-4000-8000-000000000004
+    name: FeatureFilterByLod
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 0
+          outputPort: lod0
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 1
+          outputPort: lod1
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 2
+          outputPort: lod2
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 3
+          outputPort: lod3
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 4
+          outputPort: lod4
+
+  - id: b1000000-0000-4000-8000-000000000010
+    name: Lod0Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod0
+
+  - id: b1000000-0000-4000-8000-000000000011
+    name: Lod1Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod1
+
+  - id: b1000000-0000-4000-8000-000000000012
+    name: Lod2Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod2
+
+  - id: b1000000-0000-4000-8000-000000000013
+    name: Lod3Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod3
+
+  - id: b1000000-0000-4000-8000-000000000014
+    name: Lod4Router
+    type: action
+    action: Output Router
+    with:
+      routingPort: lod4
+
+edges:
+  - id: b1000000-0000-4000-8000-000000000101
+    from: b1000000-0000-4000-8000-000000000001
+    to: b1000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000102
+    from: b1000000-0000-4000-8000-000000000002
+    to: b1000000-0000-4000-8000-000000000003
+    fromPort: unfiltered
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000103
+    from: b1000000-0000-4000-8000-000000000003
+    to: b1000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000110
+    from: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000010
+    fromPort: lod0
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000111
+    from: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000011
+    fromPort: lod1
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000112
+    from: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000012
+    fromPort: lod2
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000113
+    from: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000013
+    fromPort: lod3
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000114
+    from: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000014
+    fromPort: lod4
+    toPort: features

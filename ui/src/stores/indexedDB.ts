@@ -1,5 +1,5 @@
 import { CLIPBOARD_EXPIRATION_TIME } from "@flow/global-constants";
-import { JobStatus } from "@flow/types";
+import { AnyWorkflowVariable, JobStatus } from "@flow/types";
 
 export type GeneralState = {
   clipboard: any | undefined;
@@ -28,6 +28,7 @@ export type JobState = {
   projectId: string;
   jobId: string;
   status: JobStatus;
+  variables?: AnyWorkflowVariable[];
   focusedIntermediateData?: string;
   selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
   availableIntermediateData?: AvailableIntermediateData[];

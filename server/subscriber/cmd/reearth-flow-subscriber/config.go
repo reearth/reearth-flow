@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp/v3"
@@ -16,14 +17,15 @@ func init() {
 }
 
 type Config struct {
-	AssetBaseURL                string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
-	DB                          string `default:"mongodb://localhost"`
-	Dev                         bool   `pp:",omitempty"`
+	AssetBaseURL string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
+	DB           string `default:"mongodb://localhost"`
+	Dev          bool   `pp:",omitempty"`
+	// No default: a defaulted value would crash-loop the whole subscriber.
+	DiagnosticSubscriptionID    string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`
 	JobCompleteSubscriptionID   string `envconfig:"JOB_COMPLETE_SUBSCRIPTION_ID" default:"flow-job-complete-main"`
 	LogSubscriptionID           string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
-	NodeSubscriptionID          string `envconfig:"NODE_STATUS_SUBSCRIPTION_ID" default:"flow-node-status-main"`
 	Port                        string `envconfig:"PORT" default:"8080"`
 	RedisURL                    string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
 	UserFacingLogSubscriptionID string `envconfig:"USER_FACING_LOG_SUBSCRIPTION_ID" default:"flow-user-facing-log-main"`
@@ -56,5 +58,17 @@ func ReadConfig(debug bool) (*Config, error) {
 
 func (c *Config) Print() string {
 	s := pp.Sprint(c)
+	for _, secret := range c.secrets() {
+		if secret == "" {
+			continue
+		}
+		s = strings.ReplaceAll(s, secret, "***")
+	}
 	return s
+}
+
+// secrets lists the values Print must not emit. pp dumps every field, so a
+// credential-bearing field added without being listed here is logged verbatim.
+func (c *Config) secrets() []string {
+	return []string{c.DB, c.RedisURL, c.HealthCheckPassword}
 }

@@ -58,7 +58,7 @@ describe("convertNodes", () => {
     expect(convertNodes(input)).toEqual(expected);
   });
 
-  it("should omit empty-valued params from the `with` block", () => {
+  it("should pass params through to the `with` block as saved", () => {
     const input: Node[] = [
       {
         id: "1",
@@ -68,10 +68,7 @@ describe("convertNodes", () => {
           officialName: "GeoJSON Reader",
           params: {
             dataset: { value: "https://example.com/a.geojson", type: "string" },
-            inline: { value: "", type: "string" },
             format: "geojson",
-            prefix: "",
-            nullish: null,
           },
         },
       },

@@ -66,7 +66,7 @@ impl SourceFactory for SqlReaderFactory {
             .into());
         };
 
-        let vars = ctx.env_vars.clone();
+        let vars = ctx.variables.clone();
         let compiled = SqlReaderCompiledParam {
             sql: param
                 .sql
@@ -74,7 +74,7 @@ impl SourceFactory for SqlReaderFactory {
                 .map_err(|e| {
                     SourceError::SqlReaderFactory(format!("Failed to compile sql: {e:?}"))
                 })?
-                .eval_string_env_only(vars.clone())
+                .eval_string_variables_only(vars.clone())
                 .map_err(|e| {
                     SourceError::SqlReaderFactory(format!("Failed to evaluate sql: {e:?}"))
                 })?,
@@ -84,7 +84,7 @@ impl SourceFactory for SqlReaderFactory {
                 .map_err(|e| {
                     SourceError::SqlReaderFactory(format!("Failed to compile database_url: {e:?}"))
                 })?
-                .eval_string_env_only(vars)
+                .eval_string_variables_only(vars)
                 .map_err(|e| {
                     SourceError::SqlReaderFactory(format!("Failed to evaluate database_url: {e:?}"))
                 })?,

@@ -98,16 +98,17 @@ pub(crate) fn for_each_face_coords<const N: usize>(
 impl PolygonMesh2D {
     /// Invoke `f` once per face with that face rebuilt as a standalone bare
     /// [`Polygon2D`] in the mesh's frame. Faces are streamed rather than
-    /// collected. Per-vertex elevation and appearance are not carried onto them.
+    /// collected. Appearance is not carried onto them; the mesh's elevation is.
     pub(crate) fn for_each_face_polygon(&self, mut f: impl FnMut(Polygon2D)) {
         let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         let frame = self.frame();
+        let elevation = self.elevation();
         for_each_face_coords(
             self.vertices(),
             face_indices,
             face_offsets,
             interior_offsets,
-            |rings| f(polygon_2d_from_rings(frame, rings)),
+            |rings| f(polygon_2d_from_rings(frame, rings, elevation)),
         );
     }
 }
@@ -116,12 +117,23 @@ impl PolygonMesh3D {
     /// Invoke `f` once per face with that face rebuilt as a standalone bare
     /// [`Polygon3D`] in the mesh's frame. Faces are streamed rather than
     /// collected. Appearance is not carried onto them.
-    pub(crate) fn for_each_face_polygon(&self, mut f: impl FnMut(Polygon3D)) {
-        let data = self.data();
-        let (face_indices, face_offsets, interior_offsets) = data.csr_buffers();
-        let frame = self.frame();
+    pub(crate) fn for_each_face_polygon(&self, f: impl FnMut(Polygon3D)) {
+        self.data().for_each_face_polygon(self.frame(), f);
+    }
+}
+
+impl super::PolygonMesh3DData {
+    /// As [`PolygonMesh3D::for_each_face_polygon`], but with the frame supplied
+    /// by the caller — the form a [`Solid`](crate::solid::Solid) shell needs,
+    /// since a shell holds mesh data and takes its frame from the solid.
+    pub(crate) fn for_each_face_polygon(
+        &self,
+        frame: &CoordinateFrame,
+        mut f: impl FnMut(Polygon3D),
+    ) {
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         for_each_face_coords(
-            data.vertices(),
+            self.vertices(),
             face_indices,
             face_offsets,
             interior_offsets,
@@ -130,8 +142,13 @@ impl PolygonMesh3D {
     }
 }
 
-/// Build a [`Polygon2D`] from a face's rings (exterior first, then holes).
-fn polygon_2d_from_rings(frame: &CoordinateFrame, rings: &[Vec<[f64; 2]>]) -> Polygon2D {
+/// Build a [`Polygon2D`] from a face's rings (exterior first, then holes), at the
+/// host mesh's `elevation`.
+fn polygon_2d_from_rings(
+    frame: &CoordinateFrame,
+    rings: &[Vec<[f64; 2]>],
+    elevation: Option<f64>,
+) -> Polygon2D {
     let exterior = rings
         .first()
         .map(Vec::as_slice)
@@ -139,7 +156,12 @@ fn polygon_2d_from_rings(frame: &CoordinateFrame, rings: &[Vec<[f64; 2]>]) -> Po
         .iter()
         .copied();
     let interiors = rings.iter().skip(1).map(|hole| hole.iter().copied());
-    Polygon2D::from_rings(frame.clone(), exterior, interiors)
+    match elevation {
+        None => Polygon2D::from_rings(frame.clone(), exterior, interiors),
+        Some(elevation) => {
+            Polygon2D::from_rings_at_elevation(frame.clone(), exterior, interiors, elevation)
+        }
+    }
 }
 
 /// Build a [`Polygon3D`] from a face's rings (exterior first, then holes).

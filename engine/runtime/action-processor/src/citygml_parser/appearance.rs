@@ -790,7 +790,7 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 
 #[cfg(test)]
 mod tests {
-    use crate::citygml_parser::parser::{Parser, ParserOutput};
+    use crate::citygml_parser::parser::{CityGmlVersion, Parser, ParserOutput};
     use crate::citygml_parser::resolver::resolve_root;
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
@@ -817,7 +817,7 @@ mod tests {
     /// The sole `Polygon` of a feature whose geometry is a one-member collection of
     /// one polygon.
     fn resolve_only_polygon(xml: &str) -> Polygon3DOut {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
@@ -1471,7 +1471,7 @@ mod tests {
     /// The `TriangularMesh` of a feature whose sole geometry is a
     /// `TriangulatedSurface` leaf (resolved directly, not wrapped in a collection).
     fn resolve_only_mesh(xml: &str) -> reearth_flow_geometry::triangular_mesh::TriangularMesh3D {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
@@ -1715,7 +1715,7 @@ mod tests {
     /// The welded `PolygonMesh` of a feature whose sole geometry is an inline
     /// `Surface` of polygon patches.
     fn resolve_only_polygon_mesh(xml: &str) -> reearth_flow_geometry::polygon_mesh::PolygonMesh3D {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
@@ -1815,7 +1815,7 @@ mod tests {
             };
             m.diffuse
         }
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser
             .parse(
                 doc("1 0 0").as_bytes(),

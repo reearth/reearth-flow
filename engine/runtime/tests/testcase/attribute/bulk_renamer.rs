@@ -1,4 +1,4 @@
-use crate::helper::execute_with_test_assert;
+use crate::helper::{execute_expect_err, execute_with_test_assert};
 
 #[test]
 fn test_all_add_prefix() {
@@ -12,9 +12,10 @@ fn test_all_add_suffix() {
 
 #[test]
 fn test_all_remove_prefix_error() {
-    execute_with_test_assert(
-        "attribute/bulk_renamer/all_remove_prefix_error",
-        "expect.json",
+    let rendered = execute_expect_err("attribute/bulk_renamer/all_remove_prefix_error", vec![]);
+    assert!(
+        rendered.contains("does not start with prefix"),
+        "unexpected error text: {rendered}"
     );
 }
 
@@ -25,9 +26,10 @@ fn test_all_remove_prefix() {
 
 #[test]
 fn test_all_remove_suffix_error() {
-    execute_with_test_assert(
-        "attribute/bulk_renamer/all_remove_suffix_error",
-        "expect.json",
+    let rendered = execute_expect_err("attribute/bulk_renamer/all_remove_suffix_error", vec![]);
+    assert!(
+        rendered.contains("does not end with suffix"),
+        "unexpected error text: {rendered}"
     );
 }
 
@@ -38,9 +40,10 @@ fn test_all_remove_suffix() {
 
 #[test]
 fn test_all_string_replace_error() {
-    execute_with_test_assert(
-        "attribute/bulk_renamer/all_string_replace_error",
-        "expect.json",
+    let rendered = execute_expect_err("attribute/bulk_renamer/all_string_replace_error", vec![]);
+    assert!(
+        rendered.contains("does not match the regex pattern"),
+        "unexpected error text: {rendered}"
     );
 }
 
@@ -66,9 +69,13 @@ fn test_selected_add_suffix() {
 
 #[test]
 fn test_selected_remove_prefix_error() {
-    execute_with_test_assert(
+    let rendered = execute_expect_err(
         "attribute/bulk_renamer/selected_remove_prefix_error",
-        "expect.json",
+        vec![],
+    );
+    assert!(
+        rendered.contains("does not start with prefix"),
+        "unexpected error text: {rendered}"
     );
 }
 
@@ -82,9 +89,13 @@ fn test_selected_remove_prefix() {
 
 #[test]
 fn test_selected_remove_suffix_error() {
-    execute_with_test_assert(
+    let rendered = execute_expect_err(
         "attribute/bulk_renamer/selected_remove_suffix_error",
-        "expect.json",
+        vec![],
+    );
+    assert!(
+        rendered.contains("does not end with suffix"),
+        "unexpected error text: {rendered}"
     );
 }
 
@@ -98,9 +109,13 @@ fn test_selected_remove_suffix() {
 
 #[test]
 fn test_selected_string_replace_error() {
-    execute_with_test_assert(
+    let rendered = execute_expect_err(
         "attribute/bulk_renamer/selected_string_replace_error",
-        "expect.json",
+        vec![],
+    );
+    assert!(
+        rendered.contains("does not match the regex pattern"),
+        "unexpected error text: {rendered}"
     );
 }
 

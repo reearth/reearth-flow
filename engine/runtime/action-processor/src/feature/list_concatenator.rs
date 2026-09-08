@@ -23,7 +23,9 @@ impl ProcessorFactory for ListConcatenatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts a specific attribute from each element in a list and concatenates them into a single string"
+        "Joins one attribute's value from every element of a list attribute into a single \
+         string. Elements that are not key-value pairs, or that lack the attribute, are \
+         skipped."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -31,7 +33,11 @@ impl ProcessorFactory for ListConcatenatorFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Attribute"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["list"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -72,18 +78,29 @@ impl ProcessorFactory for ListConcatenatorFactory {
 
 /// # List Concatenator Parameters
 ///
-/// Configuration for concatenating a specific attribute from list elements.
+/// Which list to read, which attribute to take from its elements, and where the result goes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ListConcatenator {
-    /// List attribute to read from
+    /// # List
+    /// Attribute holding the list to read. A feature whose attribute is missing, or is not a
+    /// list, passes through unchanged.
     list: Attribute,
-    /// Attribute name to extract from each list element
-    attribute: Attribute,
-    /// Character(s) to use as separator between concatenated values
-    separate_character: String,
-    /// Name of the attribute to store the concatenated result
-    output_attribute_name: Attribute,
+    /// # Element Attribute
+    /// Attribute to take from each element of the list. An element that is not a set of
+    /// key-value pairs, or that does not carry this attribute, contributes nothing.
+    element_attribute: Attribute,
+    /// # Output Attribute
+    /// Attribute the joined string is written to.
+    output_attribute: Attribute,
+    /// # Separator
+    /// Text placed between consecutive values. Defaults to a comma.
+    #[serde(default = "default_separator")]
+    separator: String,
+}
+
+fn default_separator() -> String {
+    ",".to_string()
 }
 
 impl Processor for ListConcatenator {
@@ -103,7 +120,7 @@ impl Processor for ListConcatenator {
 
         // Collect values from each list element
         let mut values = Vec::new();
-        let attribute_key = self.attribute.inner();
+        let attribute_key = self.element_attribute.inner();
         for element in list {
             // Each element should be a Map containing attributes
             if let AttributeValue::Map(element_attributes) = element {
@@ -116,11 +133,11 @@ impl Processor for ListConcatenator {
         }
 
         // Concatenate all values with the separator
-        let concatenated = values.join(&self.separate_character);
+        let concatenated = values.join(&self.separator);
 
         // Add the result as a new attribute
         feature.attributes_mut().insert(
-            self.output_attribute_name.clone(),
+            self.output_attribute.clone(),
             AttributeValue::String(concatenated),
         );
 

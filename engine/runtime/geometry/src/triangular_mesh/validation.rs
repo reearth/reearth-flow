@@ -10,8 +10,9 @@ use crate::predicates::view::AreaView;
 use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
     check_degenerate_ring_2d, check_degenerate_ring_3d, check_duplicate_points,
-    check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
-    tetra_volume_6x, FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
+    check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_finite_elevation,
+    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationParams,
+    ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -27,11 +28,15 @@ impl TriangularMesh3DData {
         self.topology().is_orientable()
     }
 
-    /// Whether the mesh is a single connected component whose every edge is
-    /// shared by exactly two triangles: a watertight closed 2-manifold.
-    pub(crate) fn is_closed_connected_manifold(&self) -> bool {
-        let topo = self.topology();
-        topo.is_closed_manifold() && topo.is_connected()
+    /// Whether every edge is shared by exactly two triangles: a watertight closed
+    /// 2-manifold.
+    pub(crate) fn is_closed_manifold(&self) -> bool {
+        self.topology().is_closed_manifold()
+    }
+
+    /// Whether the triangles form a single connected component through shared edges.
+    pub(crate) fn is_connected(&self) -> bool {
+        self.topology().is_connected()
     }
 
     /// The signed volume enclosed by this mesh, taken as a closed surface.
@@ -74,7 +79,16 @@ impl Validate for TriangularMesh2D {
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
+            check_finite_elevation(
+                self.z,
+                || {
+                    Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(
+                        self.clone(),
+                    )))
+                },
+                r,
+            );
+            check_finite_2d(&self.frame, &self.vertices, r);
         })
     }
 

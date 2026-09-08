@@ -22,6 +22,7 @@ type Props = {
   collapsible?: boolean;
   toggle?: boolean;
   toggleValue?: boolean;
+  disableToggle?: boolean;
   onToggleChange?: (checked: boolean) => void;
 };
 
@@ -31,6 +32,7 @@ const DetailsBox: React.FC<Props> = ({
   collapsible,
   toggle,
   toggleValue,
+  disableToggle,
   onToggleChange,
 }) => {
   const t = useT();
@@ -89,7 +91,11 @@ const DetailsBox: React.FC<Props> = ({
           {!collapsible && toggle && (
             <div className="flex gap-2">
               <span className="text-sm font-thin">{t("Is Enabled?")}</span>
-              <Switch checked={toggleValue} onCheckedChange={onToggleChange} />
+              <Switch
+                checked={toggleValue}
+                onCheckedChange={onToggleChange}
+                disabled={disableToggle}
+              />
             </div>
           )}
           {!collapsed &&

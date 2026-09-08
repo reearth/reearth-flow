@@ -150,7 +150,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env.get("exceptSplit", false)
+          value: variables.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -292,10 +292,10 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env["cityGmlPath"],
-              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables["cityGmlPath"],
+              "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: e3a0b07a-6850-4942-9745-0a07d0da713d
@@ -322,7 +322,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+          value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
   - id: ea263dcf-70c9-42a2-8385-07eb1d76270f
     name: VegPackageFilterDict
@@ -521,7 +521,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
           lod = attributes["lod"];
           stem + "_frn_3dtiles_lod" + lod + ".zip"
   - id: 1137c768-ea24-4cf2-bd16-b8f82d9a67d0
@@ -651,7 +651,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_frn");
           stem + "_frn_dm_geometric_attributes.zip"
       colonToUnderscore: true
   - id: bd4ff879-8448-434d-9c47-ef85722b40cb
@@ -765,7 +765,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
           lod = attributes["lod"];
           stem + "_veg_SolitaryVegetationObject_3dtiles_lod" + lod + ".zip"
   - id: 591050d4-8284-4708-a3e3-0bcb99bbd83c
@@ -913,7 +913,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
           stem + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip"
       colonToUnderscore: true
   - id: 2233fddd-fdc3-44a1-93e2-86805de13a3a
@@ -998,7 +998,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
           lod = attributes["lod"];
           stem + "_veg_PlantCover_3dtiles_lod" + lod + ".zip"
   - id: aa9b681b-0cc1-4445-bff6-be41bb9c764f
@@ -1138,7 +1138,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_veg");
           stem + "_veg_PlantCover_dm_geometric_attributes.zip"
       colonToUnderscore: true
   edges:

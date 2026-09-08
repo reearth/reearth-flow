@@ -10,6 +10,7 @@ import (
 
 type Log interface {
 	GetLogs(context.Context, time.Time, id.JobID) ([]*log.Log, error)
+	GetLogsBatch(context.Context, time.Time, []id.JobID) (map[id.JobID][]*log.Log, error)
 	Subscribe(context.Context, id.JobID) (chan *log.Log, error)
 	Unsubscribe(id.JobID, chan *log.Log)
 }

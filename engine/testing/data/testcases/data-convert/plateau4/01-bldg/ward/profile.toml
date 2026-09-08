@@ -1,5 +1,5 @@
 # to test:
-# - gml containing other districts should be properly filtered (non-政令指定都市 case)
+# - gml containing other districts should be properly filtered (non-政令指定都市 case) (not tested)
 # - empty string in value is preserved (not filtered by NODATA)
 # - lod created as actual lod (not attribute.lod which is max lod)
 

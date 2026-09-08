@@ -1,6 +1,6 @@
 # CSV Writer Examples
 
-This directory contains example workflows demonstrating how to use the CsvWriter action with geometry export support.
+This directory contains example workflows demonstrating how to use the CSV Writer action with geometry export support.
 
 ## Examples
 
@@ -18,12 +18,11 @@ id,name,population,geometry
 
 **Configuration:**
 ```yaml
-action: CsvWriter
+action: CSV Writer
 with:
   format: csv
   output: ./output-roundtrip-wkt.csv
   geometry:
-    geometryMode: wkt
     column: geometry
 ```
 
@@ -56,12 +55,11 @@ id,name,temperature,longitude,latitude,elevation
 
 **Configuration:**
 ```yaml
-action: CsvWriter
+action: CSV Writer
 with:
   format: csv
   output: ./output-roundtrip-coords.csv
   geometry:
-    geometryMode: coordinates
     xColumn: longitude
     yColumn: latitude
     zColumn: elevation  # optional
@@ -90,16 +88,14 @@ The `geometry` parameter is optional. If omitted, no geometry export is performe
 #### WKT Mode
 ```yaml
 geometry:
-  geometryMode: wkt
   column: <column_name>    # Name of column to write WKT
 ```
 
-Works with all geometry types supported by CsvReader.
+Works with all geometry types supported by CSV Reader.
 
 #### Coordinates Mode
 ```yaml
 geometry:
-  geometryMode: coordinates
   xColumn: <column_name>   # X coordinate (longitude)
   yColumn: <column_name>   # Y coordinate (latitude)
   zColumn: <column_name>   # Optional: Z coordinate (elevation)
@@ -134,4 +130,4 @@ Geometry columns are always placed at the END of the CSV (after all attribute co
 
 ## Backward Compatibility
 
-If no `geometry` parameter is provided, CsvWriter behaves exactly as before - geometry data is not exported to the CSV file. This ensures existing workflows continue to work without modification.
+If no `geometry` parameter is provided, CSV Writer behaves exactly as before - geometry data is not exported to the CSV file. This ensures existing workflows continue to work without modification.

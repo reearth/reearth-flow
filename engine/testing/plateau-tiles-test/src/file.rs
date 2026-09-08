@@ -5,6 +5,40 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
+pub fn decompress_glbs(dir: &Path) {
+    let glb_files: Vec<_> = WalkDir::new(dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.is_file() && path.extension().is_some_and(|e| e == "glb") {
+                Some(path.to_path_buf())
+            } else {
+                None
+            }
+        })
+        .collect();
+    if glb_files.is_empty() {
+        return;
+    }
+
+    let mut cmd = std::process::Command::new("glb-decompress");
+    for glb_file in &glb_files {
+        cmd.arg(glb_file.as_os_str());
+    }
+
+    let output = cmd
+        .output()
+        .expect("Failed to execute glb-decompress command");
+    if !output.status.success() {
+        panic!(
+            "glb-decompress failed (status: {}): {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
 fn perr(p: &Path, err: impl std::fmt::Display) -> String {
     format!("{:?}: {}", p, err)
 }
@@ -15,7 +49,13 @@ pub fn zip_dir(src_dir: &Path, zip_path: &Path) -> Result<(), String> {
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|r| r.ok()) {
+    // Follow symlinks so a citymodel dir whose codelists/schemas are symlinked
+    // into shared fixtures is archived with their contents, not skipped.
+    for entry in WalkDir::new(src_dir)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|r| r.ok())
+    {
         let path = entry.path();
         if path.is_file() {
             let rel = path.strip_prefix(src_dir).map_err(|e| perr(path, e))?;

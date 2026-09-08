@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for discontinuous composite surface",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/12-unf/workflow.yml",
   "workflowVariables": [
     {

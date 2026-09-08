@@ -56,6 +56,12 @@ pub struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skip_reason: Option<String>,
 
+    /// Whether to skip this test in the `new-geometry` build. Drop it once the
+    /// workflow has been migrated.
+    /// TODO: Remove after the new-geometry migration.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub skip_new_geometry: bool,
+
     /// Path to the workflow file (relative to fixture/workflow/)
     pub workflow_path: String,
     
@@ -93,6 +99,10 @@ pub struct WorkflowTestProfile {
     /// Validation settings for unexpected output files
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unexpected_output_validation: Option<UnexpectedOutputValidation>,
+
+    /// Tolerates only ExecutionError/FailedNodes-shaped Err; default false fails loudly on any Err.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub expect_failed_nodes: bool,
 }
 
 fn is_false(b: &bool) -> bool {

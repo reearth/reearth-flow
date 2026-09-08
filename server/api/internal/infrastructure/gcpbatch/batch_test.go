@@ -87,6 +87,37 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
+func TestBatchRepo_SubmitJob_DiagnosticsEnv(t *testing.T) {
+	ctx := context.Background()
+	mockClient := new(mockBatchClient)
+	batchRepo := &BatchRepo{
+		client: mockClient,
+		config: BatchConfig{
+			ProjectID:             "test-project",
+			Region:                "us-central1",
+			ImageURI:              "gcr.io/test-project/reearth-flow:latest",
+			PubSubDiagnosticTopic: "flow-diagnostic",
+			EnableDiagnostics:     true,
+		},
+	}
+
+	jobID, _ := id.JobIDFrom("test-job-id")
+	projectID, _ := id.ProjectIDFrom("test-project-id")
+	workspaceID, _ := accountsid.WorkspaceIDFrom("test-workspace-id")
+
+	var captured *batchpb.CreateJobRequest
+	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).
+		Run(func(args mock.Arguments) { captured = args.Get(1).(*batchpb.CreateJobRequest) }).
+		Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/test-job-id"}, nil)
+
+	_, err := batchRepo.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, accountsid.WorkspaceID(workspaceID), nil, nil)
+	assert.NoError(t, err)
+
+	vars := captured.Job.TaskGroups[0].TaskSpec.Environment.Variables
+	assert.Equal(t, "flow-diagnostic", vars["FLOW_WORKER_DIAGNOSTIC_TOPIC"])
+	assert.Equal(t, "true", vars["FLOW_WORKER_ENABLE_DIAGNOSTICS"])
+}
+
 func TestBatchRepo_SubmitJob_SpotVM(t *testing.T) {
 	ctx := context.Background()
 

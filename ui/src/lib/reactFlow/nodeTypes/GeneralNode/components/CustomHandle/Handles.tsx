@@ -19,7 +19,6 @@ import { getBreakClass } from "./utils";
 
 type Props = {
   id: string;
-  readonly: boolean;
   nodeType?: string;
   nodeData: NodeData;
   inputs?: string[];
@@ -32,7 +31,6 @@ const MIN_HANDLES_FOR_COLLAPSE = 5;
 
 const Handles: React.FC<Props> = ({
   id,
-  readonly,
   nodeType,
   nodeData,
   inputs,
@@ -181,7 +179,6 @@ const Handles: React.FC<Props> = ({
                       nodeId={id}
                       nodeData={nodeData}
                       portName={output}
-                      readonly={readonly}
                     />
                   ))}
                 </div>
@@ -197,7 +194,6 @@ const Handles: React.FC<Props> = ({
                 nodeId={id}
                 nodeData={nodeData}
                 portName={output}
-                readonly={readonly}
               />
             ))}
           </div>

@@ -104,5 +104,5 @@ jobs:
           sqlc generate
           git diff --exit-code gen/ || (echo "sqlc drift: run 'make sqlc' and commit gen/"; exit 1)
       - name: atlas migrate validate
-        working-directory: server/api/internal/infrastructure/postgres/db
+        working-directory: server/db
         run: atlas migrate validate --env local

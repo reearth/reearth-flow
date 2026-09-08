@@ -1,0 +1,15 @@
+"A structured diagnostic from the engine. Enum-like fields are Strings so new engine values do not break clients."
+type Diagnostic {
+  code: String!
+  category: String!
+  severity: String!
+  "The authoritative fatality signal; severity is display-only."
+  effectiveDisposition: String
+  nodeId: String
+  actionType: String
+  featureId: ID
+  message: String!
+  help: String
+  aggregatedCount: Int
+  sampleFeatureIds: [ID!]
+}

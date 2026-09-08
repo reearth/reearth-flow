@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Button, Input, Label } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentWorkspace } from "@flow/stores";
+import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
+import { Role } from "@flow/types";
 
 import { WorkspaceDeletionDialog } from "./components";
 
@@ -13,6 +14,7 @@ type Errors = "delete" | "update";
 const GeneralSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
+  const [currentUserRole] = useCurrentUserRole();
   const { deleteWorkspace, updateWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const [showError, setShowError] = useState<Errors | undefined>(undefined);
@@ -52,7 +54,8 @@ const GeneralSettings: React.FC = () => {
   useEffect(() => {
     setWorkspaceName(currentWorkspace?.name);
   }, [currentWorkspace]);
-
+  const disabled =
+    currentWorkspace?.personal || currentUserRole !== Role.Owner || loading;
   return (
     <>
       <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
@@ -61,7 +64,7 @@ const GeneralSettings: React.FC = () => {
         </p>
 
         <WorkspaceDeletionDialog
-          disabled={currentWorkspace?.personal || loading}
+          disabled={disabled || loading}
           onWorkspaceDelete={handleDeleteWorkspace}
         />
       </div>
@@ -71,14 +74,14 @@ const GeneralSettings: React.FC = () => {
           <Input
             id="workspace-name"
             placeholder={t("Workspace Name")}
-            disabled={currentWorkspace?.personal || loading}
+            disabled={disabled}
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
           />
         </div>
         <Button
           className="self-end"
-          disabled={loading || !workspaceName || currentWorkspace?.personal}
+          disabled={disabled || !workspaceName}
           onClick={handleUpdateWorkspace}>
           {t("Save")}
         </Button>

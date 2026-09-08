@@ -1,5 +1,6 @@
 {
   "description": "Non-CityObjectGroup member with missing xlink ref should still be detected as XLink_NoReference",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {

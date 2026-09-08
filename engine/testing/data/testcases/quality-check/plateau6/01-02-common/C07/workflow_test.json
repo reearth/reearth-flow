@@ -1,5 +1,6 @@
 {
   "description": "quality-check C07 (quality attribute missing for an existing LOD) for plateau6. The first bldg:Building has LOD1 geometry but omits urc:geometrySrcDescLod1, so C07 is detected.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

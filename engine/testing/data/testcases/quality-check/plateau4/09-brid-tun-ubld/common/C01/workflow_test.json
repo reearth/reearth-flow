@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for C01. checks for 不正な穴 is excluded as it is innebitable in this case.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/09-brid-tun-ubld/workflow.yml",
   "workflowVariables": [
     {

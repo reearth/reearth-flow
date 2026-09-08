@@ -1,3 +1,5 @@
+use std::io::Read;
+use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::blocking::Client;
@@ -5,6 +7,7 @@ use reqwest::header::HeaderMap;
 use reqwest::Method;
 
 use super::body::BodyContent;
+use super::egress::{redirect_policy, EgressGuardedDnsResolver};
 use super::errors::{HttpProcessorError, Result};
 
 pub(crate) trait HttpClient: Send + Sync {
@@ -28,6 +31,7 @@ pub(crate) struct HttpResponse {
 #[derive(Clone)]
 pub(crate) struct ReqwestHttpClient {
     client: Client,
+    max_response_size: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -38,6 +42,7 @@ pub(crate) struct ClientConfig {
     pub verify_ssl: bool,
     pub follow_redirects: bool,
     pub max_redirects: u8,
+    pub max_response_size: Option<u64>,
 }
 
 impl Default for ClientConfig {
@@ -49,30 +54,21 @@ impl Default for ClientConfig {
             verify_ssl: true,
             follow_redirects: true,
             max_redirects: 10,
+            max_response_size: None,
         }
     }
 }
 
 impl ReqwestHttpClient {
-    #[allow(dead_code)]
-    pub fn new(connection_timeout: u64, transfer_timeout: u64) -> Result<Self> {
-        Self::with_config(ClientConfig {
-            connection_timeout,
-            transfer_timeout,
-            ..Default::default()
-        })
-    }
-
     pub fn with_config(config: ClientConfig) -> Result<Self> {
         let mut builder = Client::builder()
             .timeout(Duration::from_secs(config.transfer_timeout))
             .connect_timeout(Duration::from_secs(config.connection_timeout))
-            .danger_accept_invalid_certs(!config.verify_ssl);
+            .danger_accept_invalid_certs(!config.verify_ssl)
+            .dns_resolver(Arc::new(EgressGuardedDnsResolver));
 
         if config.follow_redirects {
-            builder = builder.redirect(reqwest::redirect::Policy::limited(
-                config.max_redirects as usize,
-            ));
+            builder = builder.redirect(redirect_policy(config.max_redirects as usize));
         } else {
             builder = builder.redirect(reqwest::redirect::Policy::none());
         }
@@ -86,13 +82,10 @@ impl ReqwestHttpClient {
             HttpProcessorError::CallerFactory(format!("Failed to create HTTP client: {e}"))
         })?;
 
-        Ok(Self { client })
-    }
-
-    #[cfg(test)]
-    #[allow(dead_code)]
-    pub fn with_client(client: Client) -> Self {
-        Self { client }
+        Ok(Self {
+            client,
+            max_response_size: config.max_response_size,
+        })
     }
 }
 
@@ -134,12 +127,8 @@ impl HttpClient for ReqwestHttpClient {
             .filter_map(|(k, v)| v.to_str().ok().map(|v| (k.to_string(), v.to_string())))
             .collect();
 
-        let body = response
-            .bytes()
-            .map_err(|e| {
-                HttpProcessorError::Response(format!("Failed to read response body: {e}"))
-            })?
-            .to_vec();
+        let content_length = response.content_length();
+        let body = read_body_capped(response, content_length, self.max_response_size)?;
 
         Ok(HttpResponse {
             status_code,
@@ -147,6 +136,45 @@ impl HttpClient for ReqwestHttpClient {
             body,
         })
     }
+}
+
+/// Read the response body, aborting the download as soon as `max_size` is
+/// exceeded rather than buffering the whole body first.
+fn read_body_capped(
+    mut reader: impl Read,
+    content_length: Option<u64>,
+    max_size: Option<u64>,
+) -> Result<Vec<u8>> {
+    let Some(max_size) = max_size else {
+        let mut body = Vec::new();
+        reader.read_to_end(&mut body).map_err(|e| {
+            HttpProcessorError::Response(format!("Failed to read response body: {e}"))
+        })?;
+        return Ok(body);
+    };
+
+    if let Some(len) = content_length {
+        if len > max_size {
+            return Err(size_exceeded(len, max_size));
+        }
+    }
+
+    let mut body = Vec::new();
+    reader
+        .take(max_size.saturating_add(1))
+        .read_to_end(&mut body)
+        .map_err(|e| HttpProcessorError::Response(format!("Failed to read response body: {e}")))?;
+
+    if body.len() as u64 > max_size {
+        return Err(size_exceeded(body.len() as u64, max_size));
+    }
+    Ok(body)
+}
+
+fn size_exceeded(size: u64, max_size: u64) -> HttpProcessorError {
+    HttpProcessorError::Response(format!(
+        "Response body size ({size} bytes) exceeds maximum allowed size ({max_size} bytes)"
+    ))
 }
 
 /// Mock HTTP client for testing
@@ -233,5 +261,42 @@ mod tests {
         );
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_read_body_uncapped() {
+        let data = vec![b'a'; 1000];
+        let body = read_body_capped(data.as_slice(), None, None).unwrap();
+        assert_eq!(body.len(), 1000);
+    }
+
+    #[test]
+    fn test_read_body_rejected_by_content_length() {
+        let data = vec![b'a'; 1000];
+        let err = read_body_capped(data.as_slice(), Some(1000), Some(500)).unwrap_err();
+        assert!(err.to_string().contains("exceeds maximum"));
+    }
+
+    #[test]
+    fn test_read_body_stops_at_cap_without_content_length() {
+        // No Content-Length (e.g. chunked encoding): the read itself must stop
+        // shortly past the cap instead of buffering the full body.
+        let data = vec![b'a'; 10_000];
+        let err = read_body_capped(data.as_slice(), None, Some(500)).unwrap_err();
+        assert!(err.to_string().contains("exceeds maximum"));
+    }
+
+    #[test]
+    fn test_read_body_within_cap() {
+        let data = vec![b'a'; 400];
+        let body = read_body_capped(data.as_slice(), Some(400), Some(500)).unwrap();
+        assert_eq!(body.len(), 400);
+    }
+
+    #[test]
+    fn test_read_body_max_cap_does_not_overflow() {
+        let data = vec![b'a'; 400];
+        let body = read_body_capped(data.as_slice(), None, Some(u64::MAX)).unwrap();
+        assert_eq!(body.len(), 400);
     }
 }

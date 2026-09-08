@@ -77,7 +77,7 @@ impl SinkFactory for GeoPackageWriterFactory {
             .map_err(|e| {
                 SinkError::GeoPackageWriterFactory(format!("Failed to compile `output`: {e:?}"))
             })?
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
                 SinkError::GeoPackageWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
             })?;

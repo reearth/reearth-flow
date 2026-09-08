@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for solid issues (Face Wrong Orientation) in generic city object. A closed solid with one face having wrong normal direction causing solid error detection.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/13-gen/workflow.yml",
   "workflowVariables": [
     {

@@ -4,18 +4,17 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/gen"
-	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/graph"
-	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/pgxx"
 	"github.com/reearth/reearthx/rerror"
 )
 
+// EdgeExecution writes edge_executions rows. Kept for cmd/dbmigrate's
+// Mongo->Postgres ETL; there is no read path (nothing in the API reads
+// this table).
 type EdgeExecution struct {
 	c *pgxx.Client
 }
-
-var _ repo.EdgeExecution = (*EdgeExecution)(nil)
 
 func NewEdgeExecution(c *pgxx.Client) *EdgeExecution {
 	return &EdgeExecution{c: c}
@@ -23,17 +22,6 @@ func NewEdgeExecution(c *pgxx.Client) *EdgeExecution {
 
 func (r *EdgeExecution) q(ctx context.Context) *gen.Queries {
 	return gen.New(r.c.DB(ctx))
-}
-
-func (r *EdgeExecution) FindByJobEdgeID(ctx context.Context, jobID id.JobID, edgeID string) (*graph.EdgeExecution, error) {
-	row, err := r.q(ctx).GetEdgeExecutionByJobEdgeID(ctx, gen.GetEdgeExecutionByJobEdgeIDParams{
-		JobID:  jobID.String(),
-		EdgeID: edgeID,
-	})
-	if err != nil {
-		return nil, pgxx.MapError(err)
-	}
-	return edgeExecutionFromRow(row)
 }
 
 func (r *EdgeExecution) Save(ctx context.Context, e *graph.EdgeExecution) error {
@@ -46,21 +34,4 @@ func (r *EdgeExecution) Save(ctx context.Context, e *graph.EdgeExecution) error 
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil
-}
-
-func edgeExecutionFromRow(row gen.EdgeExecution) (*graph.EdgeExecution, error) {
-	eid, err := id.EdgeExecutionIDFrom(row.ID)
-	if err != nil {
-		return nil, err
-	}
-	jid, err := id.JobIDFrom(row.JobID)
-	if err != nil {
-		return nil, err
-	}
-	return graph.NewEdgeExecutionBuilder().
-		ID(eid).
-		EdgeID(row.EdgeID).
-		JobID(jid).
-		IntermediateDataURL(row.IntermediateDataUrl).
-		Build()
 }

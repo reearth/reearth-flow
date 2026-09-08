@@ -115,7 +115,7 @@ impl Sink for JsonWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| SinkError::JsonWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();
@@ -135,13 +135,13 @@ impl Sink for JsonWriter {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         for (out, features) in self.buffer.values() {
             write_json(
                 out,
                 &self.compiled_converter,
                 features,
-                Arc::clone(&env_vars),
+                Arc::clone(&variables),
             )?;
         }
         Ok(())
@@ -152,12 +152,12 @@ fn write_json(
     out: &SinkOutput,
     converter: &Option<CompiledCode>,
     features: &[Feature],
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<(), crate::errors::SinkError> {
     let json_value: serde_json::Value = if let Some(converter) = converter {
         let synthetic = create_batch_feature(features);
         converter
-            .eval(&synthetic, env_vars)
+            .eval(&synthetic, variables)
             .map_err(|e| {
                 crate::errors::SinkError::JsonWriter(format!("Failed to evaluate converter: {e:?}"))
             })?

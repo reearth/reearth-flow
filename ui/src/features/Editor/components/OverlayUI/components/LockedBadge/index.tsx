@@ -11,13 +11,19 @@ import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 
 type Props = {
-  onUnlock: () => void;
+  /**
+   * Why the canvas is read only. A reader has no unlock affordance at all —
+   * the badge just explains why editing is unavailable.
+   */
+  reason: "locked" | "reader";
+  onUnlock?: () => void;
 };
 
 const UNLOCK_HOVER_DELAY = 1000;
 
-const LockedBadge: React.FC<Props> = ({ onUnlock }) => {
+const LockedBadge: React.FC<Props> = ({ reason, onUnlock }) => {
   const t = useT();
+  const canUnlock = reason === "locked";
   const [isUnlockReady, setIsUnlockReady] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -33,11 +39,12 @@ const LockedBadge: React.FC<Props> = ({ onUnlock }) => {
   }, [isUnlockReady, t]);
 
   const handleMouseEnter = useCallback(() => {
+    if (!canUnlock) return;
     timerRef.current = setTimeout(
       () => setIsUnlockReady(true),
       UNLOCK_HOVER_DELAY,
     );
-  }, []);
+  }, [canUnlock]);
 
   const handleMouseLeave = useCallback(() => {
     if (timerRef.current) {
@@ -91,7 +98,7 @@ const LockedBadge: React.FC<Props> = ({ onUnlock }) => {
             "col-start-1 row-start-1 w-fit justify-self-start transition-opacity duration-300",
             isUnlockReady ? "opacity-0" : "opacity-100",
           )}>
-          {t("Locked")}
+          {canUnlock ? t("Locked") : t("Read only")}
         </span>
         <span
           ref={unlockLabelRef}

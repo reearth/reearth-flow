@@ -22,12 +22,12 @@ pub(crate) fn create_default_execute_context(feature: Feature) -> ExecutorContex
 }
 
 pub(crate) fn create_default_node_context() -> NodeContext {
-    let env_vars = Arc::new(serde_json::Map::new());
+    let variables = Arc::new(serde_json::Map::new());
     let storage_resolver = Arc::new(StorageResolver::new());
     let kv_store = Arc::new(create_kv_store());
     let event_hub = EventHub::new(1024);
     NodeContext::new(
-        env_vars,
+        variables,
         storage_resolver,
         kv_store,
         event_hub,

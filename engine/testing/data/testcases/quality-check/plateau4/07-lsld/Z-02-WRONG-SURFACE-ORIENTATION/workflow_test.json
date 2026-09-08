@@ -1,5 +1,6 @@
 {
   "description": "Test for plateau4 07 surface orientation error.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
   "workflowVariables": [
     {

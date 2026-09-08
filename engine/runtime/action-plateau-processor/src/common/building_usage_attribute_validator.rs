@@ -216,7 +216,7 @@ impl Processor for BuildingUsageAttributeValidator {
             self.city_code_to_name = Some(build_city_code_to_name(
                 &ctx.feature,
                 &self.codelists_path_expr,
-                ctx.env_vars.clone(),
+                ctx.variables.clone(),
                 &ctx.storage_resolver,
             )?);
         }
@@ -332,11 +332,11 @@ pub(crate) fn classify_city_code(
 fn build_city_code_to_name(
     feature: &Feature,
     codelists_path_expr: &CompiledCode,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<HashMap<String, String>, BoxedError> {
     let codelists_path = codelists_path_expr
-        .eval_string(feature, env_vars)
+        .eval_string(feature, variables)
         .map_err(|e| {
             PlateauProcessorError::BuildingUsageAttributeValidator(format!(
                 "Failed to evaluate codelists_path expression: {e:?}"

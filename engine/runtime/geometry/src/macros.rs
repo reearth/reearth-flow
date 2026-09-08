@@ -1,6 +1,7 @@
 /// Stamp the mandatory empty `impl Trait for Type {}` blocks for operations a
-/// leaf does not support, so the default `UnsupportedOperation` body fires
-/// through `enum_dispatch`.
+/// leaf leaves to the trait default, so that default body fires through
+/// `enum_dispatch`. The default is an `UnsupportedOperation` error for most
+/// operations and a no-op for the ones that are vacuous on a leaf.
 ///
 /// ```ignore
 /// unsupported!(Csg: Reproject, WriteGltf);
@@ -10,6 +11,27 @@ macro_rules! unsupported {
     ($ty:ty : $($tr:ident),+ $(,)?) => {
         $( impl $crate::ops::$tr for $ty {} )+
     };
+}
+
+/// Stamps [`Area`](crate::ops::Area) on a type that encloses no area — a point,
+/// a curve, a point cloud — measuring `0.0` rather than refusing. Unlike
+/// [`unsupported!`](crate::unsupported), which leaves the refusing default in
+/// place, this records a real answer.
+///
+/// Unlike `unsupported!`, which takes the trait to stamp as a parameter, this
+/// macro's body names `$crate::ops::Area` directly, and that trait exists only
+/// under `new-geometry`. So the macro itself is gated to match, rather than
+/// relying on every call site to gate around it.
+#[cfg(feature = "new-geometry")]
+#[macro_export]
+macro_rules! no_area {
+    ($($ty:ty),+ $(,)?) => { $(
+        impl $crate::ops::Area for $ty {
+            fn surface_area(&self) -> Result<f64, $crate::ops::UnsupportedOperation> {
+                Ok(0.0)
+            }
+        }
+    )+ };
 }
 
 #[macro_export]

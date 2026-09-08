@@ -316,6 +316,21 @@ impl Feature {
         self.id = uuid::Uuid::new_v4();
     }
 
+    /// Whether this feature carries geometry, independent of which geometry
+    /// world (`new-geometry` feature) is active — callers outside this crate
+    /// don't carry that feature flag themselves, so the two worlds'
+    /// differently-shaped "absent geometry" states are branched once, here.
+    #[cfg(not(feature = "new-geometry"))]
+    pub fn has_geometry(&self) -> bool {
+        !self.geometry.is_empty()
+    }
+
+    /// See the `not(feature = "new-geometry")` overload's doc comment.
+    #[cfg(feature = "new-geometry")]
+    pub fn has_geometry(&self) -> bool {
+        !matches!(*self.geometry, Geometry::None)
+    }
+
     /// Replace attributes, keeping other fields. Wraps in new Arc.
     pub fn with_attributes(&self, attributes: Attributes) -> Self {
         Self {

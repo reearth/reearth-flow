@@ -163,6 +163,39 @@ describe("convertNodes", () => {
     });
   });
 
+  it("should drop empty params from an imported workflow", async () => {
+    const engineNode: EngineReadyNode = {
+      id: "node1",
+      name: "Test Node",
+      type: "regular",
+      action: "test-action",
+      with: {
+        keep: "value1",
+        blank: "",
+        emptyExpr: { type: "flowExpr", value: "" },
+        aggregateAttributes: [
+          {
+            attribute: "we",
+            attributeValue: { type: "flowExpr", value: "" },
+            newAttribute: "2",
+          },
+        ],
+      },
+    };
+
+    (fetcher as any).mockResolvedValueOnce(mockAction);
+
+    const result = await convertNodes(
+      [engineNode],
+      mockGetSubworkflowPseudoPorts,
+    );
+
+    expect(result[0]?.data.params).toEqual({
+      keep: "value1",
+      aggregateAttributes: [{ attribute: "we", newAttribute: "2" }],
+    });
+  });
+
   it("should handle multiple nodes of different types", async () => {
     const engineNodes: EngineReadyNode[] = [
       {

@@ -24,7 +24,7 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts file system properties (type, size, timestamps) from files"
+        "Inspects the file or directory at a path held in a feature attribute and adds its type, size, and access, modification, and creation timestamps as attributes. Directory size is the total size of the files it contains, counted recursively."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,7 +36,7 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system"]
+        &["file", "attribute"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -135,13 +135,15 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
     }
 }
 
-/// # FilePropertyExtractor Parameters
+/// # File Property Extractor Parameters
 ///
-/// Configuration for extracting file system properties from files.
+/// Configures which attribute holds the path to inspect.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FilePropertyExtractor {
-    /// Attribute name containing the file path to analyze for properties
+    /// # File Path Attribute
+    /// Name of the attribute holding the path of the file or directory to inspect. Paths that do
+    /// not exist, and symbolic links, are not inspected.
     file_path_attribute: String,
 }
 

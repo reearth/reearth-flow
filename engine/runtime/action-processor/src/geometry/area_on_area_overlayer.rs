@@ -7,13 +7,8 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use reearth_flow_geometry::{
-    algorithm::{area2d::Area2D, bool_ops::BooleanOps},
-    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D},
-};
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
     errors::BoxedError,
@@ -22,17 +17,46 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use rstar::{RTree, AABB};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(not(feature = "new-geometry"))]
+use nusamai_projection::crs::EpsgCode;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::{
+    algorithm::{area2d::Area2D, bool_ops::BooleanOps},
+    types::{geometry::Geometry2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D},
+};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Geometry, GeometryValue};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{
+    collection::Collection2D,
+    coordinate::CoordinateFrame,
+    line_string::LineString2D,
+    ops::{Aabb, BoundingBox},
+    overlay::{overlay_2d, snap_areal_operands_2d, OverlayOp},
+    polygon::Polygon2D,
+    predicates::view::{flatten_2d, Leaf2D},
+    Euclidean2DGeometry, Geometry,
+};
+
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
-static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
+static OVERLAPS_PORT: Lazy<Port> = Lazy::new(|| Port::new("overlaps"));
 static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
+
+/// The attribute the overlap count lands in when the parameter is omitted.
+const DEFAULT_OVERLAP_COUNT_ATTRIBUTE: &str = "overlayCount";
+
+fn default_overlap_count_attribute() -> String {
+    DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string()
+}
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AreaOnAreaOverlayerFactory;
@@ -43,7 +67,10 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     }
 
     fn description(&self) -> &str {
-        "Perform Area Overlay Analysis"
+        "Subdivides overlapping areas into non-overlapping pieces and records how many input \
+         features cover each piece. Inputs must be flat 2D geometries sharing one coordinate \
+         frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to \
+         flatten or unify them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -54,13 +81,17 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["spatial", "aggregation"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            AREA_PORT.clone(),
+            OVERLAPS_PORT.clone(),
             REMNANTS_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
@@ -93,11 +124,11 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
         let process = AreaOnAreaOverlayer {
             group_by: param.group_by,
             output_attribute: param.output_attribute,
-            generate_list: param.generate_list,
-            accumulation_mode: param.accumulation_mode,
-            tolerance: param.tolerance.unwrap_or(0.0),
+            list_attribute: param.list_attribute,
+            attribute_accumulation: param.attribute_accumulation,
+            tolerance: param.tolerance,
             group_map: HashMap::new(),
-            group_epsg: HashMap::new(),
+            group_crs: HashMap::new(),
             group_count: 0,
             temp_dir: None,
             buffer: HashMap::new(),
@@ -110,44 +141,67 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 }
 
 /// # Area On Area Overlayer Parameters
-/// Configure how area overlay analysis is performed
+/// Sets which features are overlaid together, how small a piece of geometry has
+/// to be before it counts as noise, and what the resulting pieces record about
+/// the features they came from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaOnAreaOverlayerParam {
     /// # Group By Attributes
-    /// Optional attributes to group features by during overlay analysis
+    /// Attributes whose values decide which features are overlaid against each
+    /// other — only features matching on all of them are compared. When
+    /// omitted, every feature is overlaid against every other.
     group_by: Option<Vec<Attribute>>,
 
-    /// # Accumulation Mode
-    /// Controls how attributes from input features are handled in output features
-    #[serde(default)]
-    accumulation_mode: AccumulationMode,
-
-    /// # Generate List
-    /// Name of the list attribute to store source feature attributes
-    generate_list: Option<String>,
-
-    /// # Output Attribute
-    /// Name of the attribute to store overlap count
-    output_attribute: Option<String>,
-
     /// # Tolerance
-    /// Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.
-    tolerance: Option<f64>,
+    /// The size below which geometry is treated as noise rather than shape, in
+    /// the unit of the input's coordinate frame: vertices closer together than
+    /// this are merged before the overlay, so boundaries meant to coincide do,
+    /// and an overlap covering less than its square is then discarded. Detail
+    /// finer than the tolerance may therefore not survive the overlay intact.
+    /// Defaults to zero, which merges and discards nothing.
+    #[serde(default)]
+    tolerance: f64,
+
+    /// # Attribute Accumulation
+    /// Which attributes the resulting pieces keep.
+    #[serde(default)]
+    attribute_accumulation: AttributeAccumulation,
+
+    /// # Overlap Count Attribute
+    /// Attribute that receives the number of input features covering the
+    /// piece — two or more on `overlaps`, always one on `remnants`.
+    /// Defaults to `overlayCount`.
+    #[serde(default = "default_overlap_count_attribute")]
+    output_attribute: String,
+
+    /// # List Attribute
+    /// Attribute that receives one entry per covering feature, each holding
+    /// that feature's own attributes. When omitted, no list is written.
+    list_attribute: Option<String>,
 }
+
+/// Per-group CRS bookkeeping: the EPSG folded across the group's inputs and
+/// carried onto its outputs.
+#[cfg(not(feature = "new-geometry"))]
+type GroupCrs = GroupEpsg;
+
+/// Per-group CRS bookkeeping: the coordinate frame every member of the group
+/// must share.
+#[cfg(feature = "new-geometry")]
+type GroupCrs = CoordinateFrame;
 
 struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
-    output_attribute: Option<String>,
-    generate_list: Option<String>,
-    accumulation_mode: AccumulationMode,
+    output_attribute: String,
+    list_attribute: Option<String>,
+    attribute_accumulation: AttributeAccumulation,
     tolerance: f64,
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
-    /// Per-group CRS carried over from the inputs onto the overlay outputs.
-    /// A missing EPSG means unknown, not conflicting; only differing known
-    /// EPSGs drop the CRS.
-    group_epsg: HashMap<usize, GroupEpsg>,
+    /// Per-group CRS state keeping the overlay inputs and outputs in one
+    /// coordinate reference.
+    group_crs: HashMap<usize, GroupCrs>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
     // In-memory buffer: group_idx -> Vec<(aabb_json, feature_json)>
@@ -158,6 +212,7 @@ struct AreaOnAreaOverlayer {
 }
 
 /// Tracks the CRS of the features accumulated into a single overlay group.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Clone, Copy)]
 enum GroupEpsg {
     /// The single EPSG known so far (`None` while only EPSG-less features
@@ -167,6 +222,7 @@ enum GroupEpsg {
     Mixed,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl GroupEpsg {
     /// Fold another feature's EPSG into the group's running state.
     fn observe(&mut self, epsg: Option<EpsgCode>) {
@@ -201,11 +257,11 @@ impl Clone for AreaOnAreaOverlayer {
         Self {
             group_by: self.group_by.clone(),
             output_attribute: self.output_attribute.clone(),
-            generate_list: self.generate_list.clone(),
-            accumulation_mode: self.accumulation_mode.clone(),
+            list_attribute: self.list_attribute.clone(),
+            attribute_accumulation: self.attribute_accumulation.clone(),
             tolerance: self.tolerance,
             group_map: HashMap::new(),
-            group_epsg: HashMap::new(),
+            group_crs: HashMap::new(),
             group_count: 0,
             temp_dir: None,
             buffer: HashMap::new(),
@@ -215,12 +271,19 @@ impl Clone for AreaOnAreaOverlayer {
     }
 }
 
+/// # Attribute Accumulation
+/// Which attributes a resulting piece keeps.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
-pub enum AccumulationMode {
+pub enum AttributeAccumulation {
+    /// # Use Attributes From One Feature
+    /// Keeps the attributes of a single covering feature and discards the rest.
     #[default]
-    UseAttributesFromOneFeature,
-    DropIncomingAttributes,
+    UseOneFeature,
+    /// # Drop Incoming Attributes
+    /// Keeps no incoming attribute, so a piece carries only its overlap count
+    /// and list attribute. The grouping attributes are dropped too.
+    DropAttributes,
 }
 
 /// Executor-specific engine cache folder for accumulating processors
@@ -305,6 +368,31 @@ impl AreaOnAreaOverlayer {
         self.buffer_bytes = 0;
         Ok(())
     }
+
+    /// Fold `epsg` into the group's CRS state; every accepted feature joins
+    /// its group.
+    #[cfg(not(feature = "new-geometry"))]
+    fn admit_crs(&mut self, group_idx: usize, epsg: Option<EpsgCode>) -> bool {
+        self.group_crs
+            .entry(group_idx)
+            .or_insert(GroupEpsg::Uniform(epsg))
+            .observe(epsg);
+        true
+    }
+
+    /// Whether `frame` matches the group's coordinate frame, which the first
+    /// feature of the group fixes. Overlay operands must share one frame.
+    #[cfg(feature = "new-geometry")]
+    fn admit_crs(&mut self, group_idx: usize, frame: &CoordinateFrame) -> bool {
+        use std::collections::hash_map::Entry;
+        match self.group_crs.entry(group_idx) {
+            Entry::Occupied(entry) => entry.get() == frame,
+            Entry::Vacant(entry) => {
+                entry.insert(frame.clone());
+                true
+            }
+        }
+    }
 }
 
 impl Drop for AreaOnAreaOverlayer {
@@ -320,7 +408,6 @@ impl Processor for AreaOnAreaOverlayer {
         true
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -332,62 +419,41 @@ impl Processor for AreaOnAreaOverlayer {
         }
 
         let feature = &ctx.feature;
-        let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+        let Some((aabb, crs)) = intake(feature.geometry.as_ref()) else {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            return Ok(());
+        };
+
+        let key = if let Some(group_by) = &self.group_by {
+            AttributeValue::Array(
+                group_by
+                    .iter()
+                    .filter_map(|attr| feature.attributes.get(attr).cloned())
+                    .collect(),
+            )
+        } else {
+            AttributeValue::Null
+        };
+
+        let group_idx = if let Some(&idx) = self.group_map.get(&key) {
+            idx
+        } else {
+            let idx = self.group_count;
+            self.group_map.insert(key, idx);
+            self.group_count += 1;
+            idx
+        };
+
+        if !self.admit_crs(group_idx, crs) {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         }
-        match &geometry.value {
-            GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
-            GeometryValue::FlowGeometry2D(geom_2d) => {
-                let key = if let Some(group_by) = &self.group_by {
-                    AttributeValue::Array(
-                        group_by
-                            .iter()
-                            .filter_map(|attr| feature.attributes.get(attr).cloned())
-                            .collect(),
-                    )
-                } else {
-                    AttributeValue::Null
-                };
 
-                let group_idx = if let Some(&idx) = self.group_map.get(&key) {
-                    idx
-                } else {
-                    let idx = self.group_count;
-                    self.group_map.insert(key, idx);
-                    self.group_count += 1;
-                    idx
-                };
-
-                // Carry the input CRS forward: the overlay output lives in the
-                // same plane as its inputs.
-                self.group_epsg
-                    .entry(group_idx)
-                    .or_insert(GroupEpsg::Uniform(geometry.epsg))
-                    .observe(geometry.epsg);
-
-                // Compute AABB from geometry (convert closed LineStrings to Polygon first)
-                let mp = geom_to_multipolygon(geom_2d);
-                let aabb = mp.bounding_box();
-                let aabb = match aabb {
-                    Some(rect) => [rect.min().x, rect.min().y, rect.max().x, rect.max().y],
-                    None => [0.0, 0.0, 0.0, 0.0],
-                };
-
-                let feature_json = serde_json::to_string(&ctx.feature)?;
-                self.append_to_group(group_idx, &aabb, &feature_json)?;
-            }
-            _ => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
-        }
+        let feature_json = serde_json::to_string(&ctx.feature)?;
+        self.append_to_group(group_idx, &aabb, &feature_json)?;
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -404,12 +470,13 @@ impl Processor for AreaOnAreaOverlayer {
         // Output files are placed in temp_dir. send_file() will move them to the
         // channel buffer directory before this processor's Drop cleans up temp_dir.
         let output_id = uuid::Uuid::new_v4();
-        let area_path = temp_dir.join(format!("aoa-area-{output_id}.jsonl.zst"));
+        let overlaps_path = temp_dir.join(format!("aoa-overlaps-{output_id}.jsonl.zst"));
         let remnants_path = temp_dir.join(format!("aoa-remnants-{output_id}.jsonl.zst"));
-        let mut area_writer = BufWriter::new(zstd::Encoder::new(File::create(&area_path)?, 1)?);
+        let mut overlaps_writer =
+            BufWriter::new(zstd::Encoder::new(File::create(&overlaps_path)?, 1)?);
         let mut remnants_writer =
             BufWriter::new(zstd::Encoder::new(File::create(&remnants_path)?, 1)?);
-        let mut area_count: usize = 0;
+        let mut overlaps_count: usize = 0;
         let mut remnants_count: usize = 0;
 
         for group_idx in 0..self.group_count {
@@ -440,26 +507,31 @@ impl Processor for AreaOnAreaOverlayer {
             overlay_2d_disk(&aabbs, &disk_feats, self.tolerance, &midpolygons_path)?;
 
             // Stream midpolygons from disk, build features, write directly to output files
-            let group_epsg = self
-                .group_epsg
-                .get(&group_idx)
-                .copied()
-                .and_then(GroupEpsg::resolve);
-            let (ac, rc) = from_midpolygons_disk(
+            #[cfg(not(feature = "new-geometry"))]
+            let shaper = OutputShaper {
+                epsg: self
+                    .group_crs
+                    .get(&group_idx)
+                    .copied()
+                    .and_then(GroupEpsg::resolve),
+            };
+            #[cfg(feature = "new-geometry")]
+            let shaper = OutputShaper;
+            let (oc, rc) = from_midpolygons_disk(
                 &midpolygons_path,
                 &disk_feats,
                 &self.output_attribute,
-                &self.generate_list,
-                &self.accumulation_mode,
-                group_epsg,
-                &mut area_writer,
+                &self.list_attribute,
+                &self.attribute_accumulation,
+                shaper,
+                &mut overlaps_writer,
                 &mut remnants_writer,
             )?;
-            area_count += ac;
+            overlaps_count += oc;
             remnants_count += rc;
         }
 
-        area_writer
+        overlaps_writer
             .into_inner()
             .map_err(|e| e.into_error())?
             .finish()?;
@@ -470,8 +542,8 @@ impl Processor for AreaOnAreaOverlayer {
 
         let context = ctx.as_context();
 
-        if area_count > 0 {
-            fw.send_file(area_path, AREA_PORT.clone(), context.clone());
+        if overlaps_count > 0 {
+            fw.send_file(overlaps_path, OVERLAPS_PORT.clone(), context.clone());
         }
         if remnants_count > 0 {
             fw.send_file(remnants_path, REMNANTS_PORT.clone(), context);
@@ -532,26 +604,19 @@ impl DiskBackedFeatures {
             .expect("failed to read feature from disk");
         serde_json::from_slice(&buf).expect("failed to deserialize feature")
     }
-
-    /// Read and extract only the geometry from a feature at the given index.
-    #[cfg(not(feature = "new-geometry"))]
-    fn read_geometry(&self, i: usize) -> Arc<Geometry> {
-        let feature = self.read_feature(i);
-        feature.geometry
-    }
 }
 
 /// Polygon that is created in the middle of the overlay process.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct MiddlePolygon {
-    polygon: MultiPolygon2D<f64>,
+    polygon: WorkingArea,
     parents: Vec<usize>,
 }
 
 /// Type of the subpolygon and its parents.
 enum MiddlePolygonType {
     None,
-    Area(Vec<usize>),
+    Overlap(Vec<usize>),
     Remnant(usize),
 }
 
@@ -560,21 +625,25 @@ impl MiddlePolygon {
         match self.parents.len() {
             0 => MiddlePolygonType::None,
             1 => MiddlePolygonType::Remnant(self.parents[0]),
-            _ => MiddlePolygonType::Area(self.parents.clone()),
+            _ => MiddlePolygonType::Overlap(self.parents.clone()),
         }
     }
 }
 
-/// Extract Geometry2D reference from Arc<Geometry>, or None if not FlowGeometry2D
-fn as_geometry_2d(geom: &Arc<Geometry>) -> Option<&Geometry2D<f64>> {
-    match &geom.value {
-        GeometryValue::FlowGeometry2D(flow_geom) => Some(flow_geom),
-        _ => None,
-    }
-}
+// --- world-specific geometry kernel -----------------------------------------
+
+/// The areal value carried through the overlay subdivision.
+#[cfg(not(feature = "new-geometry"))]
+type WorkingArea = MultiPolygon2D<f64>;
+
+/// The areal value carried through the overlay subdivision: a feature's own 2D
+/// geometry, or the constructed faces cut out of one.
+#[cfg(feature = "new-geometry")]
+type WorkingArea = Euclidean2DGeometry;
 
 /// Convert Geometry2D to MultiPolygon2D.
 /// Handles Polygon, MultiPolygon, and closed LineStrings (converted to Polygon).
+#[cfg(not(feature = "new-geometry"))]
 fn geom_to_multipolygon(geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
     match geom {
         Geometry2D::Polygon(poly) => MultiPolygon2D::new(vec![poly.clone()]),
@@ -592,22 +661,289 @@ fn geom_to_multipolygon(geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
     }
 }
 
-/// Perform intersection between MultiPolygon2D and Geometry2D
-fn bool_op_intersection(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
-    let other = geom_to_multipolygon(geom);
-    if other.0.is_empty() {
-        return MultiPolygon2D::new(vec![]);
+/// Accept an incoming geometry into the overlay: any 2D geometry. Returns its
+/// bounding box and EPSG, or `None` when the feature must be rejected.
+#[cfg(not(feature = "new-geometry"))]
+fn intake(geometry: &Geometry) -> Option<([f64; 4], Option<EpsgCode>)> {
+    if geometry.is_empty() {
+        return None;
     }
-    mp.intersection(&other)
+    let GeometryValue::FlowGeometry2D(geom_2d) = &geometry.value else {
+        return None;
+    };
+    // Compute AABB from geometry (convert closed LineStrings to Polygon first)
+    let mp = geom_to_multipolygon(geom_2d);
+    let aabb = match mp.bounding_box() {
+        Some(rect) => [rect.min().x, rect.min().y, rect.max().x, rect.max().y],
+        None => [0.0, 0.0, 0.0, 0.0],
+    };
+    Some((aabb, geometry.epsg))
 }
 
-/// Perform difference between MultiPolygon2D and Geometry2D
-fn bool_op_difference(mp: &MultiPolygon2D<f64>, geom: &Geometry2D<f64>) -> MultiPolygon2D<f64> {
-    let other = geom_to_multipolygon(geom);
-    if other.0.is_empty() {
-        return mp.clone();
+/// Accept an incoming geometry into the overlay: a planar areal geometry
+/// (polygons, meshes, or closed line strings) whose leaves share one
+/// coordinate frame. Returns its bounding box and frame, or `None` when the
+/// feature must be rejected.
+///
+/// The overlay reasons about the plane alone, so a leaf placed at an elevation
+/// is refused rather than silently overlaid with one at a different height.
+#[cfg(feature = "new-geometry")]
+fn intake(geometry: &Geometry) -> Option<([f64; 4], &CoordinateFrame)> {
+    let Geometry::Euclidean2D(geom_2d) = geometry else {
+        return None;
+    };
+    let mut leaves = Vec::new();
+    flatten_2d(geom_2d, &mut leaves);
+    let frame = leaves.first()?.frame();
+    for leaf in &leaves {
+        if leaf.frame() != frame || leaf_elevation(leaf).is_some() {
+            return None;
+        }
+        match leaf {
+            Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => {}
+            Leaf2D::Line(line) if is_closed_ring(line) => {}
+            _ => return None,
+        }
     }
-    mp.difference(&other)
+    let Ok(Aabb::D2 { min, max }) = geom_2d.bounding_box() else {
+        return None;
+    };
+    Some(([min[0], min[1], max[0], max[1]], frame))
+}
+
+/// Whether the line string traces a closed ring that can enclose area.
+#[cfg(feature = "new-geometry")]
+fn is_closed_ring(line: &LineString2D) -> bool {
+    let coords = line.coords();
+    coords.len() >= 4 && coords.first() == coords.last()
+}
+
+/// The stored feature `i`'s geometry as a working area, or `None` when it is
+/// not a 2D geometry.
+#[cfg(not(feature = "new-geometry"))]
+fn read_working_area(disk_feats: &DiskBackedFeatures, i: usize) -> Option<WorkingArea> {
+    let geometry = disk_feats.read_feature(i).geometry;
+    match &geometry.value {
+        GeometryValue::FlowGeometry2D(geom_2d) => Some(geom_to_multipolygon(geom_2d)),
+        _ => None,
+    }
+}
+
+/// The stored feature `i`'s geometry as a working area, or `None` when it is
+/// not a 2D geometry.
+#[cfg(feature = "new-geometry")]
+fn read_working_area(disk_feats: &DiskBackedFeatures, i: usize) -> Option<WorkingArea> {
+    let geometry = disk_feats.read_feature(i).geometry;
+    let Geometry::Euclidean2D(geom_2d) = geometry.as_ref() else {
+        return None;
+    };
+    Some(normalize_area(geom_2d))
+}
+
+/// The geometry with closed line strings replaced by the polygon faces they
+/// trace; every other member is kept verbatim.
+#[cfg(feature = "new-geometry")]
+fn normalize_area(geom: &Euclidean2DGeometry) -> Euclidean2DGeometry {
+    match geom {
+        Euclidean2DGeometry::LineString(line) if is_closed_ring(line) => {
+            Euclidean2DGeometry::Polygon(Box::new(ring_face(line)))
+        }
+        Euclidean2DGeometry::Collection(collection) => {
+            let members: Vec<_> = collection.members().iter().map(normalize_area).collect();
+            let attrs = collection.member_attributes().to_vec();
+            Euclidean2DGeometry::Collection(
+                Collection2D::with_attributes(members, attrs)
+                    .expect("member count is unchanged by normalization"),
+            )
+        }
+        other => other.clone(),
+    }
+}
+
+/// The polygon face a closed line string traces.
+#[cfg(feature = "new-geometry")]
+fn ring_face(line: &LineString2D) -> Polygon2D {
+    Polygon2D::from_rings(
+        line.frame().clone(),
+        line.coords().iter().copied(),
+        Vec::<Vec<[f64; 2]>>::new(),
+    )
+}
+
+/// Constructed polygons as one working area.
+#[cfg(feature = "new-geometry")]
+fn wrap_polygons(mut polygons: Vec<Polygon2D>) -> WorkingArea {
+    if polygons.len() == 1 {
+        Euclidean2DGeometry::Polygon(Box::new(polygons.remove(0)))
+    } else {
+        Euclidean2DGeometry::Collection(Collection2D::new(
+            polygons
+                .into_iter()
+                .map(|p| Euclidean2DGeometry::Polygon(Box::new(p))),
+        ))
+    }
+}
+
+/// The group's working areas with near-coincident vertices pulled onto shared
+/// positions, so a boundary that two features were meant to share is shared
+/// before the subdivision cuts along it. The whole group is snapped in one
+/// pass: snapping each pair as it is compared would anchor the shared boundary
+/// of three neighbours in three places, and the pieces cut from either side
+/// would no longer meet.
+#[cfg(feature = "new-geometry")]
+fn snap_group(
+    areas: Vec<Option<WorkingArea>>,
+    tolerance: f64,
+) -> Result<Vec<Option<WorkingArea>>, BoxedError> {
+    if tolerance <= 0.0 {
+        return Ok(areas);
+    }
+    let operands: Vec<&Euclidean2DGeometry> = areas.iter().flatten().collect();
+    if operands.is_empty() {
+        return Ok(areas);
+    }
+    let snapped = snap_areal_operands_2d(&operands, tolerance).map_err(|e| {
+        GeometryProcessorError::AreaOnAreaOverlayer(format!("vertex snapping failed: {e}"))
+    })?;
+    let mut snapped = snapped.into_iter();
+    Ok(areas
+        .into_iter()
+        .map(|area| {
+            area.map(|area| {
+                let snapped = snapped
+                    .next()
+                    .expect("snapping returns one result per operand");
+                // An operand nothing was close enough to move is left exactly as
+                // it was read, so a feature the overlay never touches still
+                // comes out with the geometry it arrived with rather than the
+                // polygons it dissolves to.
+                if snapped.moved {
+                    wrap_polygons(snapped.polygons)
+                } else {
+                    area
+                }
+            })
+        })
+        .collect())
+}
+
+/// Legacy geometry's overlay has no vertex snapping to drive, so the group is
+/// subdivided as it was read.
+#[cfg(not(feature = "new-geometry"))]
+fn snap_group(
+    areas: Vec<Option<WorkingArea>>,
+    _tolerance: f64,
+) -> Result<Vec<Option<WorkingArea>>, BoxedError> {
+    Ok(areas)
+}
+
+/// The points of `a` not in `b`.
+#[cfg(not(feature = "new-geometry"))]
+fn area_difference(a: &WorkingArea, b: &WorkingArea) -> Result<WorkingArea, BoxedError> {
+    if b.0.is_empty() {
+        return Ok(a.clone());
+    }
+    Ok(a.difference(b))
+}
+
+/// The points of `a` not in `b`, as constructed faces.
+#[cfg(feature = "new-geometry")]
+fn area_difference(a: &WorkingArea, b: &WorkingArea) -> Result<WorkingArea, BoxedError> {
+    let polygons = overlay_2d(a, b, OverlayOp::Difference)
+        .map_err(|e| GeometryProcessorError::AreaOnAreaOverlayer(format!("overlay failed: {e}")))?;
+    Ok(wrap_polygons(polygons))
+}
+
+/// The points in both `a` and `b`.
+#[cfg(not(feature = "new-geometry"))]
+fn area_intersection(a: &WorkingArea, b: &WorkingArea) -> Result<WorkingArea, BoxedError> {
+    if b.0.is_empty() {
+        return Ok(MultiPolygon2D::new(vec![]));
+    }
+    Ok(a.intersection(b))
+}
+
+/// The points in both `a` and `b`, as constructed faces.
+#[cfg(feature = "new-geometry")]
+fn area_intersection(a: &WorkingArea, b: &WorkingArea) -> Result<WorkingArea, BoxedError> {
+    let polygons = overlay_2d(a, b, OverlayOp::Intersection)
+        .map_err(|e| GeometryProcessorError::AreaOnAreaOverlayer(format!("overlay failed: {e}")))?;
+    Ok(wrap_polygons(polygons))
+}
+
+/// The total planar area of `a`.
+#[cfg(not(feature = "new-geometry"))]
+fn area_measure(a: &WorkingArea) -> f64 {
+    a.unsigned_area2d()
+}
+
+/// The total planar area of `a`'s polygon faces; `a` must be a constructed
+/// working area (polygons only).
+#[cfg(feature = "new-geometry")]
+fn area_measure(a: &WorkingArea) -> f64 {
+    let mut leaves = Vec::new();
+    flatten_2d(a, &mut leaves);
+    leaves
+        .iter()
+        .filter_map(|leaf| match leaf {
+            Leaf2D::Polygon(p) => Some(p.area()),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Whether `a` covers no area.
+#[cfg(not(feature = "new-geometry"))]
+fn area_is_empty(a: &WorkingArea) -> bool {
+    a.is_empty()
+}
+
+/// Whether `a` covers no area.
+#[cfg(feature = "new-geometry")]
+fn area_is_empty(a: &WorkingArea) -> bool {
+    let mut leaves = Vec::new();
+    flatten_2d(a, &mut leaves);
+    leaves.is_empty()
+}
+
+/// Shapes each subdivision piece into an output feature's geometry.
+#[cfg(not(feature = "new-geometry"))]
+struct OutputShaper {
+    /// The EPSG stamped onto outputs, when the group's inputs agree on one.
+    epsg: Option<EpsgCode>,
+}
+
+#[cfg(not(feature = "new-geometry"))]
+impl OutputShaper {
+    /// Install `area` as `feature`'s geometry.
+    fn apply(&mut self, feature: &mut Feature, area: WorkingArea) {
+        feature.geometry_mut().value = GeometryValue::FlowGeometry2D(area.into());
+        feature.geometry_mut().epsg = self.epsg;
+    }
+}
+
+/// Shapes each subdivision piece into an output feature's geometry.
+#[cfg(feature = "new-geometry")]
+struct OutputShaper;
+
+#[cfg(feature = "new-geometry")]
+impl OutputShaper {
+    /// Install `area` as `feature`'s geometry.
+    fn apply(&mut self, feature: &mut Feature, area: WorkingArea) {
+        *feature.geometry_mut() = Geometry::Euclidean2D(area);
+    }
+}
+
+/// The elevation a 2D leaf lies at, or `None` when it is planar.
+#[cfg(feature = "new-geometry")]
+fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
+    match leaf {
+        Leaf2D::Polygon(p) => p.elevation(),
+        Leaf2D::PolygonMesh(m) => m.elevation(),
+        Leaf2D::TriangularMesh(m) => m.elevation(),
+        Leaf2D::Line(l) => l.elevation(),
+        Leaf2D::Point(_) => None,
+    }
 }
 
 /// An AABB entry for the RTree built from pre-computed bounding boxes stored on disk.
@@ -665,9 +1001,9 @@ impl AabbIndex {
     }
 }
 
-/// Disk-backed version of overlay_2d that reads geometries from disk on demand
-/// and writes MiddlePolygons to a JSONL file instead of collecting in memory.
-#[cfg(not(feature = "new-geometry"))]
+/// Disk-backed subdivision: reads each stored feature's areal geometry, cuts
+/// it against its bounding-box neighbours, and writes the resulting
+/// MiddlePolygons to a JSONL file instead of collecting in memory.
 fn overlay_2d_disk(
     aabbs: &[[f64; 4]],
     disk_feats: &DiskBackedFeatures,
@@ -680,84 +1016,81 @@ fn overlay_2d_disk(
     let aabb_index = AabbIndex::build(aabbs);
     let num = disk_feats.offsets.len();
 
-    // Load all geometries upfront to avoid disk I/O inside parallel iteration
-    let geometries: Vec<Arc<Geometry>> = (0..num).map(|i| disk_feats.read_geometry(i)).collect();
+    // Load all working areas upfront to avoid disk I/O inside parallel iteration
+    let areas: Vec<Option<WorkingArea>> =
+        (0..num).map(|i| read_working_area(disk_feats, i)).collect();
+    let areas = snap_group(areas, tolerance)?;
 
-    // Parallel iteration with flat_map to collect all results
-    let results: Vec<MiddlePolygon> = (0..num)
+    let results: Vec<Vec<MiddlePolygon>> = (0..num)
         .into_par_iter()
-        .flat_map(|i| {
-            let geom_i = &geometries[i];
-            let geom_i_2d = match as_geometry_2d(geom_i) {
-                Some(g) => g,
-                None => return Vec::new(),
+        .map(|i| -> Result<Vec<MiddlePolygon>, BoxedError> {
+            let Some(area_i) = &areas[i] else {
+                return Ok(Vec::new());
             };
-
-            let mut polygon_target = geom_to_multipolygon(geom_i_2d);
 
             // Collect overlapping indices once (the iterator is consumed on use)
             let overlapping: Vec<usize> = aabb_index.overlapping_indices(i).collect();
 
-            // cut off the target polygon by upper polygons
+            // cut off the target area by upper areas
+            let mut target = area_i.clone();
             for &j in &overlapping {
                 if i < j {
-                    let geom_j = &geometries[j];
-                    if let Some(geom_j_2d) = as_geometry_2d(geom_j) {
-                        polygon_target = bool_op_difference(&polygon_target, geom_j_2d);
+                    if let Some(area_j) = &areas[j] {
+                        target = area_difference(&target, area_j)?;
                     }
                 }
             }
 
             let mut queue = vec![MiddlePolygon {
-                polygon: polygon_target,
+                polygon: target,
                 parents: vec![i],
             }];
 
-            // divide the target polygon by lower polygons
+            // divide the target area by lower areas
             for &j in &overlapping {
                 if i > j {
-                    let geom_j = &geometries[j];
-                    if let Some(geom_j_2d) = as_geometry_2d(geom_j) {
-                        let mut new_queue = Vec::new();
-                        for subpolygon in queue {
-                            let intersection = bool_op_intersection(&subpolygon.polygon, geom_j_2d);
+                    let Some(area_j) = &areas[j] else {
+                        continue;
+                    };
+                    let mut new_queue = Vec::new();
+                    for subpolygon in queue {
+                        let intersection = area_intersection(&subpolygon.polygon, area_j)?;
 
-                            let min_area = tolerance * tolerance;
-                            let intersection_area = intersection.unsigned_area2d();
-                            let is_significant_intersection = intersection_area > min_area;
+                        // The tolerance's second role, and the same idea as its
+                        // first: an overlap this small is noise rather than
+                        // shape. Snapping removes the near-coincident
+                        // boundaries that produce most slivers; this catches
+                        // what the backend still constructs near zero area,
+                        // where its own grid snapping is least trustworthy.
+                        let min_area = tolerance * tolerance;
+                        let is_significant_intersection = area_measure(&intersection) > min_area;
 
-                            if !intersection.is_empty() && is_significant_intersection {
-                                new_queue.push(MiddlePolygon {
-                                    polygon: intersection,
-                                    parents: subpolygon
-                                        .parents
-                                        .clone()
-                                        .into_iter()
-                                        .chain(vec![j])
-                                        .collect(),
-                                });
-                            }
-
-                            let difference = bool_op_difference(&subpolygon.polygon, geom_j_2d);
-                            if !difference.is_empty() {
-                                new_queue.push(MiddlePolygon {
-                                    polygon: difference,
-                                    parents: subpolygon.parents.clone(),
-                                });
-                            }
+                        if !area_is_empty(&intersection) && is_significant_intersection {
+                            new_queue.push(MiddlePolygon {
+                                polygon: intersection,
+                                parents: subpolygon.parents.iter().copied().chain([j]).collect(),
+                            });
                         }
-                        queue = new_queue;
+
+                        let difference = area_difference(&subpolygon.polygon, area_j)?;
+                        if !area_is_empty(&difference) {
+                            new_queue.push(MiddlePolygon {
+                                polygon: difference,
+                                parents: subpolygon.parents.clone(),
+                            });
+                        }
                     }
+                    queue = new_queue;
                 }
             }
 
-            queue
+            Ok(queue)
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     // Write all results from a single thread
     let mut writer = BufWriter::new(File::create(output_path)?);
-    for mp in results {
+    for mp in results.into_iter().flatten() {
         let line = serde_json::to_string(&mp)?;
         writer.write_all(line.as_bytes())?;
         writer.write_all(b"\n")?;
@@ -768,18 +1101,17 @@ fn overlay_2d_disk(
 }
 
 /// Stream MiddlePolygons from a JSONL file, convert to Features, and write
-/// directly to area/remnants output files without collecting in memory.
-/// Returns (area_count, remnants_count).
-#[cfg(not(feature = "new-geometry"))]
+/// directly to the overlaps/remnants output files without collecting in memory.
+/// Returns (overlaps_count, remnants_count).
 #[allow(clippy::too_many_arguments)]
 fn from_midpolygons_disk<W: Write>(
     midpolygons_path: &Path,
     disk_feats: &DiskBackedFeatures,
-    output_attribute: &Option<String>,
-    generate_list: &Option<String>,
-    accumulation_mode: &AccumulationMode,
-    epsg: Option<EpsgCode>,
-    area_writer: &mut W,
+    output_attribute: &str,
+    list_attribute: &Option<String>,
+    attribute_accumulation: &AttributeAccumulation,
+    mut shaper: OutputShaper,
+    overlaps_writer: &mut W,
     remnants_writer: &mut W,
 ) -> Result<(usize, usize), BoxedError> {
     let file = File::open(midpolygons_path)?;
@@ -789,7 +1121,7 @@ fn from_midpolygons_disk<W: Write>(
     let mut attributes_cache: HashMap<usize, Arc<IndexMap<Attribute, AttributeValue>>> =
         HashMap::new();
 
-    let mut area_count = 0usize;
+    let mut overlaps_count = 0usize;
     let mut remnants_count = 0usize;
 
     for line in reader.lines() {
@@ -801,7 +1133,7 @@ fn from_midpolygons_disk<W: Write>(
 
         match subpolygon.get_type() {
             MiddlePolygonType::None => {}
-            MiddlePolygonType::Area(parents) => {
+            MiddlePolygonType::Overlap(parents) => {
                 // Ensure all parent attributes are cached
                 for &p in &parents {
                     attributes_cache.entry(p).or_insert_with(|| {
@@ -810,24 +1142,21 @@ fn from_midpolygons_disk<W: Write>(
                     });
                 }
 
-                let attrs = match accumulation_mode {
-                    AccumulationMode::DropIncomingAttributes => IndexMap::new(),
-                    AccumulationMode::UseAttributesFromOneFeature => {
+                let attrs = match attribute_accumulation {
+                    AttributeAccumulation::DropAttributes => IndexMap::new(),
+                    AttributeAccumulation::UseOneFeature => {
                         let first_feature = &attributes_cache[&parents[0]];
                         (**first_feature).clone()
                     }
                 };
                 let mut feature = Feature::new_with_attributes(attrs);
 
-                if let Some(attr_name) = output_attribute {
-                    let overlap_count = parents.len();
-                    feature.attributes_mut().insert(
-                        Attribute::new(attr_name.clone()),
-                        AttributeValue::Number(overlap_count.into()),
-                    );
-                }
+                feature.attributes_mut().insert(
+                    Attribute::new(output_attribute),
+                    AttributeValue::Number(parents.len().into()),
+                );
 
-                if let Some(list_name) = generate_list {
+                if let Some(list_name) = list_attribute {
                     let list_items: Vec<AttributeValue> = parents
                         .iter()
                         .map(|&parent_index| {
@@ -845,12 +1174,10 @@ fn from_midpolygons_disk<W: Write>(
                     );
                 }
 
-                feature.geometry_mut().value =
-                    GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
-                feature.geometry_mut().epsg = epsg;
-                serde_json::to_writer(&mut *area_writer, &feature)?;
-                area_writer.write_all(b"\n")?;
-                area_count += 1;
+                shaper.apply(&mut feature, subpolygon.polygon);
+                serde_json::to_writer(&mut *overlaps_writer, &feature)?;
+                overlaps_writer.write_all(b"\n")?;
+                overlaps_count += 1;
             }
             MiddlePolygonType::Remnant(parent) => {
                 attributes_cache.entry(parent).or_insert_with(|| {
@@ -858,22 +1185,18 @@ fn from_midpolygons_disk<W: Write>(
                     feature.attributes
                 });
 
-                let attrs = match accumulation_mode {
-                    AccumulationMode::DropIncomingAttributes => IndexMap::new(),
-                    AccumulationMode::UseAttributesFromOneFeature => {
-                        (*attributes_cache[&parent]).clone()
-                    }
+                let attrs = match attribute_accumulation {
+                    AttributeAccumulation::DropAttributes => IndexMap::new(),
+                    AttributeAccumulation::UseOneFeature => (*attributes_cache[&parent]).clone(),
                 };
                 let mut feature = Feature::new_with_attributes(attrs);
 
-                if let Some(attr_name) = output_attribute {
-                    feature.attributes_mut().insert(
-                        Attribute::new(attr_name.clone()),
-                        AttributeValue::Number(1.into()),
-                    );
-                }
+                feature.attributes_mut().insert(
+                    Attribute::new(output_attribute),
+                    AttributeValue::Number(1.into()),
+                );
 
-                if let Some(list_name) = generate_list {
+                if let Some(list_name) = list_attribute {
                     let mut map = HashMap::new();
                     for (attr, value) in &*attributes_cache[&parent] {
                         map.insert(attr.as_ref().to_string(), value.clone());
@@ -886,9 +1209,7 @@ fn from_midpolygons_disk<W: Write>(
                     );
                 }
 
-                feature.geometry_mut().value =
-                    GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
-                feature.geometry_mut().epsg = epsg;
+                shaper.apply(&mut feature, subpolygon.polygon);
                 serde_json::to_writer(&mut *remnants_writer, &feature)?;
                 remnants_writer.write_all(b"\n")?;
                 remnants_count += 1;
@@ -896,10 +1217,10 @@ fn from_midpolygons_disk<W: Write>(
         }
     }
 
-    Ok((area_count, remnants_count))
+    Ok((overlaps_count, remnants_count))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use reearth_flow_geometry::types::{
         coordinate::Coordinate2D, line_string::LineString2D, polygon::Polygon2D,
@@ -919,7 +1240,6 @@ mod tests {
         )))
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn make_feature(coords: Vec<(f64, f64)>) -> Feature {
         let geom = make_geom(coords);
         let mut f = Feature::new_with_attributes(IndexMap::new());
@@ -962,7 +1282,6 @@ mod tests {
         assert_eq!(state.resolve(), Some(6675));
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_overlay_two_squares_disk() {
         // Create temp dir and write features to disk
@@ -1014,7 +1333,6 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_overlay_triangles_sharing_an_edge_disk() {
         let dir =
@@ -1048,6 +1366,331 @@ mod tests {
             .filter(|l| l.as_ref().map(|s| !s.is_empty()).unwrap_or(false))
             .count();
         assert_eq!(count, 2);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::triangular_mesh::TriangularMesh2D;
+
+    use super::*;
+
+    fn square_ring(min: [f64; 2], max: [f64; 2]) -> Vec<[f64; 2]> {
+        vec![
+            [min[0], min[1]],
+            [max[0], min[1]],
+            [max[0], max[1]],
+            [min[0], max[1]],
+            [min[0], min[1]],
+        ]
+    }
+
+    fn square(min: [f64; 2], max: [f64; 2]) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                square_ring(min, max),
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )))
+    }
+
+    fn square_at(min: [f64; 2], max: [f64; 2], z: f64) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings_at_elevation(
+                CoordinateFrame::Euclidean,
+                square_ring(min, max),
+                Vec::<Vec<[f64; 2]>>::new(),
+                z,
+            ),
+        )))
+    }
+
+    fn triangle(coords: [[f64; 2]; 3]) -> Geometry {
+        let ring = vec![coords[0], coords[1], coords[2], coords[0]];
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                ring,
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )))
+    }
+
+    /// Two triangles forming the square [0,2] x [0,2], as one triangular mesh.
+    fn square_mesh() -> Geometry {
+        let mesh = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap();
+        Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(mesh)))
+    }
+
+    /// Write `features` as one group on disk, returning its directory and the
+    /// scanned features file.
+    fn setup_group(features: &[Feature]) -> (PathBuf, DiskBackedFeatures) {
+        let dir =
+            engine_cache_dir(uuid::Uuid::nil()).join(format!("test-aoa-{}", uuid::Uuid::new_v4()));
+        let group_dir = dir.join("group_000000");
+        std::fs::create_dir_all(&group_dir).unwrap();
+        let features_path = group_dir.join("features.jsonl");
+        {
+            let mut writer = BufWriter::new(File::create(&features_path).unwrap());
+            for f in features {
+                serde_json::to_writer(&mut writer, f).unwrap();
+                writer.write_all(b"\n").unwrap();
+            }
+            writer.flush().unwrap();
+        }
+        let disk_feats = DiskBackedFeatures::scan(&features_path).unwrap();
+        (dir, disk_feats)
+    }
+
+    fn run_overlay(geometries: Vec<Geometry>, tolerance: f64) -> (PathBuf, Vec<MiddlePolygon>) {
+        let features: Vec<Feature> = geometries.into_iter().map(Feature::from).collect();
+        let aabbs: Vec<[f64; 4]> = features
+            .iter()
+            .map(|f| intake(f.geometry.as_ref()).unwrap().0)
+            .collect();
+        let (dir, disk_feats) = setup_group(&features);
+        let midpolygons_path = dir.join("group_000000").join("midpolygons.jsonl");
+        overlay_2d_disk(&aabbs, &disk_feats, tolerance, &midpolygons_path).unwrap();
+        let pieces = BufReader::new(File::open(&midpolygons_path).unwrap())
+            .lines()
+            .map(|l| l.unwrap())
+            .filter(|l| !l.is_empty())
+            .map(|l| serde_json::from_str(&l).unwrap())
+            .collect();
+        (dir, pieces)
+    }
+
+    #[test]
+    fn two_overlapping_squares_subdivide_into_three_pieces() {
+        let (dir, pieces) = run_overlay(
+            vec![
+                square([0.0, 0.0], [2.0, 2.0]),
+                square([1.0, 1.0], [3.0, 3.0]),
+            ],
+            0.01,
+        );
+        assert_eq!(pieces.len(), 3);
+        let areas = pieces.iter().filter(|p| p.parents.len() == 2).count();
+        let remnants = pieces.iter().filter(|p| p.parents.len() == 1).count();
+        assert_eq!((areas, remnants), (1, 2));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_triangle_atop_the_shared_base_of_another_yields_two_pieces() {
+        let (dir, pieces) = run_overlay(
+            vec![
+                triangle([[0.0, 0.0], [2.0, 0.0], [1.0, 2.0]]),
+                triangle([[0.0, 0.0], [2.0, 0.0], [1.0, 1.0]]),
+            ],
+            0.01,
+        );
+        assert_eq!(pieces.len(), 2);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_mesh_overlaps_a_polygon_like_the_polygon_it_dissolves_to() {
+        let (dir, pieces) = run_overlay(vec![square_mesh(), square([1.0, 1.0], [3.0, 3.0])], 0.01);
+        assert_eq!(pieces.len(), 3);
+        let areas = pieces.iter().filter(|p| p.parents.len() == 2).count();
+        assert_eq!(areas, 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_untouched_feature_keeps_its_geometry_verbatim() {
+        let (dir, pieces) = run_overlay(vec![square_mesh()], 0.01);
+        assert_eq!(pieces.len(), 1);
+        let Geometry::Euclidean2D(expected) = square_mesh() else {
+            unreachable!();
+        };
+        assert_eq!(pieces[0].polygon, expected);
+        assert_eq!(pieces[0].parents, vec![0]);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_tolerance_pulls_boundaries_that_nearly_coincide_together() {
+        // Two squares meant to share the edge at x = 2, overlapping past it by
+        // 0.001. The strip they share has area 0.002, which clears the
+        // sub-tolerance area filter (0.01^2 = 0.0001), so without snapping it
+        // survives as a spurious overlap piece alongside the two remnants.
+        let inputs = vec![
+            square([0.0, 0.0], [2.0, 2.0]),
+            square([1.999, 0.0], [4.0, 2.0]),
+        ];
+
+        let (dir, pieces) = run_overlay(inputs.clone(), 0.0);
+        assert_eq!(pieces.len(), 3);
+        assert_eq!(pieces.iter().filter(|p| p.parents.len() == 2).count(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+
+        // Snapping shares the boundary before the subdivision runs, so there is
+        // no overlap left to find and each square is simply its own remnant.
+        let (dir, pieces) = run_overlay(inputs, 0.01);
+        assert_eq!(pieces.len(), 2);
+        assert!(pieces.iter().all(|p| p.parents.len() == 1));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_thin_overlap_below_the_tolerance_is_dropped() {
+        let (dir, pieces) = run_overlay(
+            vec![
+                square([0.0, 0.0], [2.0, 2.0]),
+                square([1.95, 0.0], [3.95, 2.0]),
+            ],
+            0.5,
+        );
+        assert!(pieces.iter().all(|p| p.parents.len() == 1));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn intake_accepts_a_closed_line_string_as_areal() {
+        let line = LineString2D::from_coords(
+            CoordinateFrame::Euclidean,
+            square_ring([0.0, 0.0], [2.0, 2.0]),
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line));
+        let (aabb, frame) = intake(&geometry).unwrap();
+        assert_eq!(aabb, [0.0, 0.0, 2.0, 2.0]);
+        assert_eq!(frame, &CoordinateFrame::Euclidean);
+    }
+
+    #[test]
+    fn intake_rejects_an_open_line_string() {
+        let line = LineString2D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [2.0, 0.0], [2.0, 2.0]],
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_a_three_dimensional_geometry() {
+        let line = reearth_flow_geometry::line_string::LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+        );
+        let geometry =
+            Geometry::Euclidean3D(reearth_flow_geometry::Euclidean3DGeometry::LineString(line));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_members_in_different_frames() {
+        let in_euclidean = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square_ring([0.0, 0.0], [1.0, 1.0]),
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
+        let in_crs = Polygon2D::from_rings(
+            CoordinateFrame::Crs(reearth_flow_geometry::coordinate::EpsgCode::new(6677)),
+            square_ring([0.0, 0.0], [1.0, 1.0]),
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new([
+            Euclidean2DGeometry::Polygon(Box::new(in_euclidean)),
+            Euclidean2DGeometry::Polygon(Box::new(in_crs)),
+        ])));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn a_group_admits_only_the_frame_its_first_feature_fixes() {
+        let mut overlayer = AreaOnAreaOverlayer {
+            group_by: None,
+            output_attribute: DEFAULT_OVERLAP_COUNT_ATTRIBUTE.to_string(),
+            list_attribute: None,
+            attribute_accumulation: AttributeAccumulation::default(),
+            tolerance: 0.0,
+            group_map: HashMap::new(),
+            group_crs: HashMap::new(),
+            group_count: 0,
+            temp_dir: None,
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: None,
+        };
+        let euclidean = CoordinateFrame::Euclidean;
+        let crs = CoordinateFrame::Crs(reearth_flow_geometry::coordinate::EpsgCode::new(6677));
+
+        assert!(overlayer.admit_crs(0, &euclidean));
+        assert!(overlayer.admit_crs(0, &euclidean));
+        assert!(!overlayer.admit_crs(0, &crs));
+        // A different group is free to fix a different frame.
+        assert!(overlayer.admit_crs(1, &crs));
+    }
+
+    #[test]
+    fn intake_rejects_an_elevated_polygon() {
+        assert!(intake(&square_at([0.0, 0.0], [2.0, 2.0], 5.0)).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_a_geometry_whose_members_are_partly_elevated() {
+        let Geometry::Euclidean2D(planar) = square([0.0, 0.0], [1.0, 1.0]) else {
+            unreachable!();
+        };
+        let Geometry::Euclidean2D(elevated) = square_at([2.0, 2.0], [3.0, 3.0], 5.0) else {
+            unreachable!();
+        };
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new([
+            planar, elevated,
+        ])));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_an_elevated_closed_line_string() {
+        let line = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            square_ring([0.0, 0.0], [2.0, 2.0]),
+            5.0,
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn pieces_of_planar_parents_stay_planar() {
+        let features = vec![
+            Feature::from(square([0.0, 0.0], [2.0, 2.0])),
+            Feature::from(square([1.0, 1.0], [3.0, 3.0])),
+        ];
+        let (dir, disk_feats) = setup_group(&features);
+        let mut shaper = OutputShaper;
+
+        let area_0 = read_working_area(&disk_feats, 0).unwrap();
+        let area_1 = read_working_area(&disk_feats, 1).unwrap();
+        let piece = area_intersection(&area_0, &area_1).unwrap();
+
+        let mut feature = Feature::new_with_attributes(IndexMap::new());
+        shaper.apply(&mut feature, piece);
+        let Geometry::Euclidean2D(geom) = feature.geometry.as_ref() else {
+            panic!("expected a 2D geometry");
+        };
+        let mut leaves = Vec::new();
+        flatten_2d(geom, &mut leaves);
+        assert!(!leaves.is_empty());
+        assert!(leaves.iter().all(|l| leaf_elevation(l).is_none()));
 
         let _ = std::fs::remove_dir_all(&dir);
     }

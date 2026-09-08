@@ -7,7 +7,23 @@ use tracing::info;
 use walkdir::WalkDir;
 
 use reearth_flow_worker::errors::{self, Error};
+use reearth_flow_worker::types::job_complete_event::JobCompleteEvent;
 use reearth_flow_worker::types::metadata::Metadata;
+
+/// Writes the run's diagnostics into the local job root so `upload_artifact`
+/// sweeps it to GCS alongside the logs, giving completed jobs a durable copy
+/// independent of the database driver.
+pub(crate) fn write_diagnostics_artifact(
+    job_id: uuid::Uuid,
+    event: &JobCompleteEvent,
+) -> errors::Result<()> {
+    let root = dir::get_job_root_dir_path("workers", job_id).map_err(|e| {
+        Error::failed_to_upload_artifact(format!("Failed to get job root dir: {e}"))
+    })?;
+    std::fs::create_dir_all(&root).map_err(Error::failed_to_upload_artifact)?;
+    let json = serde_json::to_vec(event).map_err(Error::failed_to_upload_artifact)?;
+    std::fs::write(root.join("diagnostics.json"), json).map_err(Error::failed_to_upload_artifact)
+}
 
 pub(crate) async fn upload_artifact(
     storage_resolver: &Arc<StorageResolver>,
@@ -120,4 +136,24 @@ pub(crate) fn artifact_job_subdir_root_uri(
     job_root
         .join(subdir)
         .map_err(Error::failed_to_upload_artifact)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_worker::types::job_complete_event::JobResult;
+
+    #[test]
+    fn write_diagnostics_artifact_lands_in_the_job_root() {
+        let job_id = uuid::Uuid::new_v4();
+        let event = JobCompleteEvent::new(uuid::Uuid::new_v4(), job_id, JobResult::Success);
+
+        write_diagnostics_artifact(job_id, &event).unwrap();
+
+        let root = dir::get_job_root_dir_path("workers", job_id).unwrap();
+        let raw = std::fs::read(root.join("diagnostics.json")).unwrap();
+        let back: JobCompleteEvent = serde_json::from_slice(&raw).unwrap();
+        assert_eq!(back.job_id, job_id);
+        let _ = std::fs::remove_dir_all(root);
+    }
 }

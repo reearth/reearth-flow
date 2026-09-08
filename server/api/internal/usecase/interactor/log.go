@@ -16,6 +16,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	reearth_log "github.com/reearth/reearthx/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type LogInteractor struct {
@@ -41,7 +43,16 @@ func (li *LogInteractor) checkPermission(ctx context.Context, action string, wor
 	return checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action, workspaceID...)
 }
 
-func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) ([]*log.Log, error) {
+func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) (_ []*log.Log, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.LogInteractor.GetLogs")
+	span.SetAttributes(attribute.String("job.id", jobID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	j, err := li.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
 		return nil, err
@@ -66,6 +77,56 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 		return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
 	}
 	return logs, nil
+}
+
+// GetLogsBatch batches GetLogs for a dataloader: one job lookup and one
+// permission check per distinct workspace instead of one of each per job.
+// Jobs in a workspace the caller can't see are simply omitted from the result.
+func (li *LogInteractor) GetLogsBatch(ctx context.Context, since time.Time, jobIDs []id.JobID) (map[id.JobID][]*log.Log, error) {
+	if len(jobIDs) == 0 {
+		if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+			return nil, err
+		}
+		return map[id.JobID][]*log.Log{}, nil
+	}
+
+	jobs, err := li.jobRepo.FindByIDs(ctx, jobIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	byWorkspace := map[accountsid.WorkspaceID][]id.JobID{}
+	for _, j := range jobs {
+		if j == nil { // some repo implementations pad not-found/unreadable entries with nil
+			continue
+		}
+		byWorkspace[j.Workspace()] = append(byWorkspace[j.Workspace()], j.ID())
+	}
+
+	if li.logsGatewayRedis == nil {
+		reearth_log.Error("logsGatewayRedis is nil: unable to get logs from Redis")
+		return nil, fmt.Errorf("logsGatewayRedis is nil: unable to get logs from Redis")
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	until := time.Now().UTC()
+
+	result := make(map[id.JobID][]*log.Log, len(jobs))
+	for ws, jids := range byWorkspace {
+		if err := li.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
+			continue // caller can't see this workspace; omit its jobs' logs
+		}
+		for _, jid := range jids {
+			logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, jid)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
+			}
+			result[jid] = logs
+		}
+	}
+
+	return result, nil
 }
 
 func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {

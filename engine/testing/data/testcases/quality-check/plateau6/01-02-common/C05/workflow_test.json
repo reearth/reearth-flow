@@ -1,5 +1,6 @@
 {
   "description": "quality-check C05 (required attribute missing on a feature) for plateau6. The first bldg:Building omits the required core:creationDate, so one C05 error is detected.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 )
 
@@ -38,6 +40,45 @@ func (s kv) put(ctx context.Context, name string, data []byte) error {
 		return err
 	}
 	return w.Close()
+}
+
+// putWithMeta writes data and attaches custom object metadata, so listAttrs can
+// return a snapshot's label and uncompressed size without reading its payload.
+func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[string]string) error {
+	w := s.bucket.Object(name).NewWriter(ctx)
+	w.Metadata = meta
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return err
+	}
+	return w.Close()
+}
+
+// errObjectExists reports that a create-only write lost to an existing object.
+var errObjectExists = errors.New("gcs: object already exists")
+
+// putWithMetaIfAbsent refuses to overwrite, returning errObjectExists. Snapshot
+// records are write-once, so a collision must error rather than destroy data.
+func (s kv) putWithMetaIfAbsent(ctx context.Context, name string, data []byte, meta map[string]string) error {
+	w := s.bucket.Object(name).If(storage.Conditions{DoesNotExist: true}).NewWriter(ctx)
+	w.Metadata = meta
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return asObjectExists(err)
+	}
+	return asObjectExists(w.Close())
+}
+
+// asObjectExists maps a failed DoesNotExist precondition (412) to errObjectExists.
+func asObjectExists(err error) error {
+	if err == nil {
+		return nil
+	}
+	var gerr *googleapi.Error
+	if errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed {
+		return errObjectExists
+	}
+	return err
 }
 
 func (s kv) delete(ctx context.Context, name string) error {

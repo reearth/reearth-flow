@@ -30,6 +30,7 @@ Each testdata is a folder consisting of a test profile named `workflow_test.json
   - Set to `false`: Verify that the workflow does NOT generate a result OK marker file
   - Used primarily for testing no-error scenarios (`true`) or error detection scenarios (`false`)
 - **skip**: Skip this test (useful for debugging)
+- **skipNewGeometry**: Skip this test under `new-geometry`, which is how `cargo make test-qc` runs the suite. Every profile carries it today; drop it once the workflow has been migrated and the test starts running.
 
 ## JSON Filtering System
 

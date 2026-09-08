@@ -372,6 +372,7 @@ pub(super) fn tile_writing_stage(
     tile_id_conv: TileIdMethod,
     schema: &Schema,
     draco_compression: bool,
+    zip_sink: Option<Arc<reearth_flow_common::zip::StreamingZipWriter<std::io::Cursor<Vec<u8>>>>>,
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
@@ -486,14 +487,20 @@ pub(super) fn tile_writing_stage(
             )
             .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
-            let tile_rel = format!("{}/{}", output_rel, content_path);
-            crate::SinkOutput::new(
-                &node_ctx.sandbox_root,
-                &tile_rel,
-                &node_ctx.storage_resolver,
-            )
-            .and_then(|tile_out| tile_out.write(bytes::Bytes::from(buffer)))
-            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            if let Some(zip_sink) = &zip_sink {
+                zip_sink
+                    .write_entry(&content_path, &buffer)
+                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            } else {
+                let tile_rel = format!("{}/{}", output_rel, content_path);
+                crate::SinkOutput::new(
+                    &node_ctx.sandbox_root,
+                    &tile_rel,
+                    &node_ctx.storage_resolver,
+                )
+                .and_then(|tile_out| tile_out.write(bytes::Bytes::from(buffer)))
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            }
 
             Ok::<(), crate::errors::SinkError>(())
         })?;
@@ -550,14 +557,20 @@ pub(super) fn tile_writing_stage(
 
     let tileset_json = serde_json::to_string_pretty(&tileset)
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
-    let tileset_rel = format!("{}/tileset.json", output_rel);
-    crate::SinkOutput::new(
-        &node_ctx.sandbox_root,
-        &tileset_rel,
-        &node_ctx.storage_resolver,
-    )
-    .and_then(|manifest_out| manifest_out.write(tileset_json.into()))
-    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    if let Some(zip_sink) = &zip_sink {
+        zip_sink
+            .write_entry("tileset.json", tileset_json.as_bytes())
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    } else {
+        let tileset_rel = format!("{}/tileset.json", output_rel);
+        crate::SinkOutput::new(
+            &node_ctx.sandbox_root,
+            &tileset_rel,
+            &node_ctx.storage_resolver,
+        )
+        .and_then(|manifest_out| manifest_out.write(tileset_json.into()))
+        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+    }
 
     Ok(())
 }

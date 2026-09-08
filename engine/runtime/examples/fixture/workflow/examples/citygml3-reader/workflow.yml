@@ -20,9 +20,9 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "codelists": env["codelistsPath"],
-                  "schemas": env["schemasPath"],
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "codelists": variables["codelistsPath"],
+                  "schemas": variables["schemasPath"],
                 },
               ]
 
