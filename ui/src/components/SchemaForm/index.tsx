@@ -32,6 +32,44 @@ type SchemaFormProps = {
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
+// A schema that admits exactly one value: schemars writes the tag of an
+// internally tagged Rust enum this way, either as `const` or a single-member
+// `enum`. patchSchemaTypes normalizes these to `const` so RJSF fills them in.
+const isConstantSchema = (schemaObj: any): boolean =>
+  !!schemaObj &&
+  typeof schemaObj === "object" &&
+  (typeof schemaObj.const !== "undefined" ||
+    (Array.isArray(schemaObj.enum) && schemaObj.enum.length === 1));
+
+const resolveRef = (schemaObj: any, defs: Record<string, any>): any => {
+  if (schemaObj?.$ref) {
+    return defs[(schemaObj.$ref as string).replace("#/definitions/", "")];
+  }
+  return schemaObj;
+};
+
+// The tag of a tagged-union variant is decided by the variant the user picked in
+// the xxxOf selector, so rendering it as its own one-option select shows a
+// control with nothing to choose — and, until picked, an empty required field.
+// The value comes from the schema's `const`; hide the control that would ask for
+// it. Keyed by property name, so it can only ever hide a member of a variant,
+// never a selector.
+const buildConstantUiSchema = (
+  subSchema: any,
+  defs: Record<string, any>,
+): Record<string, any> => {
+  const resolved = resolveRef(subSchema, defs);
+  if (!resolved?.properties) return {};
+
+  const uiSchema: Record<string, any> = {};
+  for (const [key, value] of Object.entries<any>(resolved.properties)) {
+    if (isConstantSchema(value)) {
+      uiSchema[key] = { "ui:widget": "hidden" };
+    }
+  }
+  return uiSchema;
+};
+
 // Function to recursively scan schema for Expr/Code types and build UI schema.
 // rootDefinitions is threaded through recursion so $ref can be resolved at any depth.
 const buildExprUiSchema = (
@@ -123,6 +161,7 @@ const buildExprUiSchema = (
           defs,
         );
         Object.assign(uiSchema, childUiSchema);
+        Object.assign(uiSchema, buildConstantUiSchema(subSchema, defs));
       }
     }
   }
