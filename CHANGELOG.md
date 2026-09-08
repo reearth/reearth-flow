@@ -2,6 +2,247 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.31 - 2026-09-08
+
+### Server
+
+#### 🚀 Features
+
+- Ingest and expose engine diagnostics ([#2271](https://github.com/reearth/reearth-flow/pull/2271)) [`ac06fc`](https://github.com/reearth/reearth-flow/commit/ac06fc)
+
+### Misc
+
+#### 🚀 Features
+
+- Bufferer in new geometry ([#2370](https://github.com/reearth/reearth-flow/pull/2370)) [`754b13`](https://github.com/reearth/reearth-flow/commit/754b13)
+
+### api
+
+#### 🚀 Features
+
+- OpenTelemetry tracing with OTLP exporters and dependency instrumentation ([#2371](https://github.com/reearth/reearth-flow/pull/2371)) [`c5fd9e`](https://github.com/reearth/reearth-flow/commit/c5fd9e)
+- Add nine actions to the base action palette ([#2356](https://github.com/reearth/reearth-flow/pull/2356)) [`5b14ab`](https://github.com/reearth/reearth-flow/commit/5b14ab)
+- Enable self-seeded Postgres bootstrap for Flow ([#2252](https://github.com/reearth/reearth-flow/pull/2252)) [`a4669f`](https://github.com/reearth/reearth-flow/commit/a4669f)
+
+#### 🔧 Bug Fixes
+
+- Forward the diagnostics topic and enable flag to batch workers ([#2427](https://github.com/reearth/reearth-flow/pull/2427)) [`554564`](https://github.com/reearth/reearth-flow/commit/554564)
+- Report RUNNING for jobs executing on the cloud run worker ([#2424](https://github.com/reearth/reearth-flow/pull/2424)) [`d78237`](https://github.com/reearth/reearth-flow/commit/d78237)
+- Let anyone fetch a shared project by its token ([#2423](https://github.com/reearth/reearth-flow/pull/2423)) [`7a87cc`](https://github.com/reearth/reearth-flow/commit/7a87cc)
+- Let readers and writers trigger a debug run ([#2414](https://github.com/reearth/reearth-flow/pull/2414)) [`762ef1`](https://github.com/reearth/reearth-flow/commit/762ef1)
+- Make the workspace-role guard&[#39](https://github.com/reearth/reearth-flow/pull/39);s blind spots visible and safe ([#2408](https://github.com/reearth/reearth-flow/pull/2408)) [`9d0782`](https://github.com/reearth/reearth-flow/commit/9d0782)
+- Authorize workspace update, delete and member changes ([#2407](https://github.com/reearth/reearth-flow/pull/2407)) [`5a3235`](https://github.com/reearth/reearth-flow/commit/5a3235)
+- Enforce the caller&[#39](https://github.com/reearth/reearth-flow/pull/39);s workspace role on permission checks ([#2406](https://github.com/reearth/reearth-flow/pull/2406)) [`7390b2`](https://github.com/reearth/reearth-flow/commit/7390b2)
+- Stop readers from persisting writes to project documents ([#2402](https://github.com/reearth/reearth-flow/pull/2402)) [`cc53b5`](https://github.com/reearth/reearth-flow/commit/cc53b5)
+- Stop batched Fetch from crashing on a nil-padded first element ([#2400](https://github.com/reearth/reearth-flow/pull/2400)) [`d9aa44`](https://github.com/reearth/reearth-flow/commit/d9aa44)
+- Give initEcho test the client the boot-time container needs ([#2399](https://github.com/reearth/reearth-flow/pull/2399)) [`7cc06e`](https://github.com/reearth/reearth-flow/commit/7cc06e)
+- Make deployment pagination test independent of build timing ([#2393](https://github.com/reearth/reearth-flow/pull/2393)) [`cb3413`](https://github.com/reearth/reearth-flow/commit/cb3413)
+- Bound request body sizes on graphql and other routes ([#2380](https://github.com/reearth/reearth-flow/pull/2380)) [`40b932`](https://github.com/reearth/reearth-flow/commit/40b932)
+- Scope cms permission checks to the owning workspace ([#2379](https://github.com/reearth/reearth-flow/pull/2379)) [`30b252`](https://github.com/reearth/reearth-flow/commit/30b252)
+- Surface asset upload signing and config errors instead of a generic error ([#2381](https://github.com/reearth/reearth-flow/pull/2381)) [`913d2c`](https://github.com/reearth/reearth-flow/commit/913d2c)
+- Detach failJob recovery write from a cancelled context ([#2377](https://github.com/reearth/reearth-flow/pull/2377)) [`5a2146`](https://github.com/reearth/reearth-flow/commit/5a2146)
+- Delete asset object only after commit ([#2376](https://github.com/reearth/reearth-flow/pull/2376)) [`9b3080`](https://github.com/reearth/reearth-flow/commit/9b3080)
+- Delete websocket document only after project delete commits ([#2375](https://github.com/reearth/reearth-flow/pull/2375)) [`52bd66`](https://github.com/reearth/reearth-flow/commit/52bd66)
+- Scope PreviewSchema authorization to the project&[#39](https://github.com/reearth/reearth-flow/pull/39);s workspace ([#2374](https://github.com/reearth/reearth-flow/pull/2374)) [`23b50c`](https://github.com/reearth/reearth-flow/commit/23b50c)
+- Authorize document operations against the deployed policy ([#2359](https://github.com/reearth/reearth-flow/pull/2359)) [`246880`](https://github.com/reearth/reearth-flow/commit/246880)
+- Authorize the document&#x2F;websocket GraphQL operations ([#2341](https://github.com/reearth/reearth-flow/pull/2341)) [`6465e9`](https://github.com/reearth/reearth-flow/commit/6465e9)
+- Move cloud dispatch and object deletion out of retried transactions ([#2323](https://github.com/reearth/reearth-flow/pull/2323)) [`d2fd9a`](https://github.com/reearth/reearth-flow/commit/d2fd9a)
+- Stop the documented dbmigrate seed recipe from silently doing nothing ([#2322](https://github.com/reearth/reearth-flow/pull/2322)) [`f63505`](https://github.com/reearth/reearth-flow/commit/f63505)
+
+#### ⚡️ Performance
+
+- Batch project and job field resolvers through dataloaders ([#2391](https://github.com/reearth/reearth-flow/pull/2391)) [`12725c`](https://github.com/reearth/reearth-flow/commit/12725c)
+- Cache workspace alias and memoize permission verdicts per operation ([#2389](https://github.com/reearth/reearth-flow/pull/2389)) [`8755ea`](https://github.com/reearth/reearth-flow/commit/8755ea)
+- Add composite indexes for workspace list query sort shapes ([#2387](https://github.com/reearth/reearth-flow/pull/2387)) [`f69c9c`](https://github.com/reearth/reearth-flow/commit/f69c9c)
+
+#### ✨ Refactor
+
+- Build usecase container once at boot ([#2386](https://github.com/reearth/reearth-flow/pull/2386)) [`06d82c`](https://github.com/reearth/reearth-flow/commit/06d82c)
+
+#### Miscellaneous Tasks
+
+- Drop the node status topic and dead propagation delay plumbing ([#2441](https://github.com/reearth/reearth-flow/pull/2441)) [`3c758f`](https://github.com/reearth/reearth-flow/commit/3c758f)
+- Remove dead edge_executions read path and gen-thrift target ([#2388](https://github.com/reearth/reearth-flow/pull/2388)) [`d17f5e`](https://github.com/reearth/reearth-flow/commit/d17f5e)
+
+### api, subscriber
+
+#### 🚀 Features
+
+- PostgreSQL support, with the schema moved to a shared db module ([#2324](https://github.com/reearth/reearth-flow/pull/2324)) [`66accc`](https://github.com/reearth/reearth-flow/commit/66accc)
+
+### api, websocket
+
+#### 🚀 Features
+
+- Snapshot-backed version history (backend) ([#2338](https://github.com/reearth/reearth-flow/pull/2338)) [`2f9ae6`](https://github.com/reearth/reearth-flow/commit/2f9ae6)
+
+### api,subscriber
+
+#### 🔧 Bug Fixes
+
+- Stop logging database credentials in the config dump ([#2328](https://github.com/reearth/reearth-flow/pull/2328)) [`531f05`](https://github.com/reearth/reearth-flow/commit/531f05)
+
+### engine
+
+#### 🚀 Features
+
+- Remove building part connectivity checker and implement transitive link resolver ([#2448](https://github.com/reearth/reearth-flow/pull/2448)) [`5d22c6`](https://github.com/reearth/reearth-flow/commit/5d22c6)
+- Run plateau6 qc(bldg) on new geometry ([#2447](https://github.com/reearth/reearth-flow/pull/2447)) [`21fdbc`](https://github.com/reearth/reearth-flow/commit/21fdbc)
+- Add plateau6 03-tran quality check workflow ([#2445](https://github.com/reearth/reearth-flow/pull/2445)) [`57cbb5`](https://github.com/reearth/reearth-flow/commit/57cbb5)
+- Add network egress control and audit HTTP Caller ([#2425](https://github.com/reearth/reearth-flow/pull/2425)) [`e9d0bb`](https://github.com/reearth/reearth-flow/commit/e9d0bb)
+- Carry node identity on synthesized failure diagnostics ([#2434](https://github.com/reearth/reearth-flow/pull/2434)) [`48b929`](https://github.com/reearth/reearth-flow/commit/48b929)
+- Run plateau4 qc(tran) on new geometry ([#2421](https://github.com/reearth/reearth-flow/pull/2421)) [`23b96d`](https://github.com/reearth/reearth-flow/commit/23b96d)
+- Csv reader in new geometry ([#2405](https://github.com/reearth/reearth-flow/pull/2405)) [`713bf8`](https://github.com/reearth/reearth-flow/commit/713bf8)
+- Area calculator in new geometry ([#2385](https://github.com/reearth/reearth-flow/pull/2385)) [`8d70a1`](https://github.com/reearth/reearth-flow/commit/8d70a1)
+- Migrate Spatial Filter to new geometry ([#2410](https://github.com/reearth/reearth-flow/pull/2410)) [`b31a48`](https://github.com/reearth/reearth-flow/commit/b31a48)
+- Migrate plateau4 qc bldg to new geometry ([#2404](https://github.com/reearth/reearth-flow/pull/2404)) [`5f5419`](https://github.com/reearth/reearth-flow/commit/5f5419)
+- PLATEAU6 data-convert 02-tran workflow (road) ([#2382](https://github.com/reearth/reearth-flow/pull/2382)) [`052d76`](https://github.com/reearth/reearth-flow/commit/052d76)
+- Port Elevation Extractor to new geometry ([#2384](https://github.com/reearth/reearth-flow/pull/2384)) [`b3fa2b`](https://github.com/reearth/reearth-flow/commit/b3fa2b)
+- Boundary extractor in new geometry ([#2369](https://github.com/reearth/reearth-flow/pull/2369)) [`3e7803`](https://github.com/reearth/reearth-flow/commit/3e7803)
+- Structured diagnostics, disposition policy, and run summary ([#2270](https://github.com/reearth/reearth-flow/pull/2270)) [`99ec20`](https://github.com/reearth/reearth-flow/commit/99ec20)
+- MVTWriter new-geometry implementation with PLATEAU6 dc&#x2F;02-tran init ([#2360](https://github.com/reearth/reearth-flow/pull/2360)) [`018993`](https://github.com/reearth/reearth-flow/commit/018993)
+- Feature writer in new geometry ([#2372](https://github.com/reearth/reearth-flow/pull/2372)) [`5e6b73`](https://github.com/reearth/reearth-flow/commit/5e6b73)
+- Port Dissolver to new geometry ([#2368](https://github.com/reearth/reearth-flow/pull/2368)) [`ac532f`](https://github.com/reearth/reearth-flow/commit/ac532f)
+- Port CSV Writer to new geometry ([#2357](https://github.com/reearth/reearth-flow/pull/2357)) [`3ad73e`](https://github.com/reearth/reearth-flow/commit/3ad73e)
+- Shapefile reader and writer in new geometry ([#2361](https://github.com/reearth/reearth-flow/pull/2361)) [`06ac50`](https://github.com/reearth/reearth-flow/commit/06ac50)
+- Footprint replacer for new geometry ([#2364](https://github.com/reearth/reearth-flow/pull/2364)) [`dfb15d`](https://github.com/reearth/reearth-flow/commit/dfb15d)
+- Add new-geometry support to GeometryCoercer ([#2362](https://github.com/reearth/reearth-flow/pull/2362)) [`60cb0f`](https://github.com/reearth/reearth-flow/commit/60cb0f)
+- PLATEAU6 data-convert 01-bldg flattened attributes ([#2353](https://github.com/reearth/reearth-flow/pull/2353)) [`9bb71b`](https://github.com/reearth/reearth-flow/commit/9bb71b)
+- Csg in new geometry ([#2342](https://github.com/reearth/reearth-flow/pull/2342)) [`36ae8d`](https://github.com/reearth/reearth-flow/commit/36ae8d)
+- Supplying geoid models ([#2346](https://github.com/reearth/reearth-flow/pull/2346)) [`186c45`](https://github.com/reearth/reearth-flow/commit/186c45)
+- Port GeoJSON writers to new geometry ([#2339](https://github.com/reearth/reearth-flow/pull/2339)) [`6fae75`](https://github.com/reearth/reearth-flow/commit/6fae75)
+- Cesium writer targetTileSize and sub-tile splitting ([#2330](https://github.com/reearth/reearth-flow/pull/2330)) [`ff5896`](https://github.com/reearth/reearth-flow/commit/ff5896)
+- PLATEAU6 data-convert 01-bldg basic attributes ([#2327](https://github.com/reearth/reearth-flow/pull/2327)) [`e2bd2b`](https://github.com/reearth/reearth-flow/commit/e2bd2b)
+- Overlays for new geometry ([#2329](https://github.com/reearth/reearth-flow/pull/2329)) [`37b245`](https://github.com/reearth/reearth-flow/commit/37b245)
+- Migrarte workflow tests ([#2331](https://github.com/reearth/reearth-flow/pull/2331)) [`dcb0ed`](https://github.com/reearth/reearth-flow/commit/dcb0ed)
+- Generating 3D views for intermediate data ([#2326](https://github.com/reearth/reearth-flow/pull/2326)) [`146c67`](https://github.com/reearth/reearth-flow/commit/146c67)
+- Consume glTF extensions in new-geometry reader (structural metadata, mesh features, PBR maps, Draco detection) ([#2316](https://github.com/reearth/reearth-flow/pull/2316)) [`f3dd21`](https://github.com/reearth/reearth-flow/commit/f3dd21)
+- Interdata with new geometry ([#2303](https://github.com/reearth/reearth-flow/pull/2303)) [`35d9ad`](https://github.com/reearth/reearth-flow/commit/35d9ad)
+- Support Hole Counter and Hole Extractor in new-geometry ([#2321](https://github.com/reearth/reearth-flow/pull/2321)) [`b79d53`](https://github.com/reearth/reearth-flow/commit/b79d53)
+- 3D rasterization test for PLATEAU6 01-bldg data-convert workflow ([#2320](https://github.com/reearth/reearth-flow/pull/2320)) [`31a9ee`](https://github.com/reearth/reearth-flow/commit/31a9ee)
+- Support Geometry Filter in new-geometry with detailed type mode ([#2310](https://github.com/reearth/reearth-flow/pull/2310)) [`1b0e0a`](https://github.com/reearth/reearth-flow/commit/1b0e0a)
+- PLATEAU6 data-convert 01-bldg workflow initialization ([#2307](https://github.com/reearth/reearth-flow/pull/2307)) [`ef235a`](https://github.com/reearth/reearth-flow/commit/ef235a)
+- Port OBJ Reader to new-geometry (PolygonMesh3D + MTL Phong appearances) ([#2296](https://github.com/reearth/reearth-flow/pull/2296)) [`ebb42c`](https://github.com/reearth/reearth-flow/commit/ebb42c)
+- Extractor and replacer in new geometry ([#2308](https://github.com/reearth/reearth-flow/pull/2308)) [`708623`](https://github.com/reearth/reearth-flow/commit/708623)
+- Offsetter in new-geometry ([#2301](https://github.com/reearth/reearth-flow/pull/2301)) [`e7906a`](https://github.com/reearth/reearth-flow/commit/e7906a)
+- Remover in new geometry ([#2306](https://github.com/reearth/reearth-flow/pull/2306)) [`bfb6f0`](https://github.com/reearth/reearth-flow/commit/bfb6f0)
+- Migrate Two Dimension Forcer to new geometry ([#2294](https://github.com/reearth/reearth-flow/pull/2294)) [`7352af`](https://github.com/reearth/reearth-flow/commit/7352af)
+
+#### 🔧 Bug Fixes
+
+- Remove redundant source intermediate ([#2439](https://github.com/reearth/reearth-flow/pull/2439)) [`6856b1`](https://github.com/reearth/reearth-flow/commit/6856b1)
+- Citygml parser axis order ([#2446](https://github.com/reearth/reearth-flow/pull/2446)) [`1549e2`](https://github.com/reearth/reearth-flow/commit/1549e2)
+- Clean up codelist error logs in plateau4 bldg QC tests ([#2443](https://github.com/reearth/reearth-flow/pull/2443)) [`f6e722`](https://github.com/reearth/reearth-flow/commit/f6e722)
+- Stop publishing node status events entirely ([#2440](https://github.com/reearth/reearth-flow/pull/2440)) [`ee2d16`](https://github.com/reearth/reearth-flow/commit/ee2d16)
+- Give the mapper actions&[#39](https://github.com/reearth/reearth-flow/pull/39); value parameters a renderable type ([#2426](https://github.com/reearth/reearth-flow/pull/2426)) [`44a42c`](https://github.com/reearth/reearth-flow/commit/44a42c)
+- Ship terminal diagnostics for runs whose runner errored out ([#2432](https://github.com/reearth/reearth-flow/pull/2432)) [`13b975`](https://github.com/reearth/reearth-flow/commit/13b975)
+- Normalise glTF Y-up positions to Z-up in the reader ([#2354](https://github.com/reearth/reearth-flow/pull/2354)) [`2ebe65`](https://github.com/reearth/reearth-flow/commit/2ebe65)
+- Bind-mount schema&#x2F; in worker and cli Docker builds ([#2383](https://github.com/reearth/reearth-flow/pull/2383)) [`c40961`](https://github.com/reearth/reearth-flow/commit/c40961)
+- Keep proj.db reachable when grid search paths are set ([#2366](https://github.com/reearth/reearth-flow/pull/2366)) [`5d7fe6`](https://github.com/reearth/reearth-flow/commit/5d7fe6)
+- New-geom single elevation ([#2299](https://github.com/reearth/reearth-flow/pull/2299)) [`2b4cfc`](https://github.com/reearth/reearth-flow/commit/2b4cfc)
+
+#### 📖 Documentation
+
+- FlowExpr extension spec for flow attributes&#x2F;env ([#2314](https://github.com/reearth/reearth-flow/pull/2314)) [`fbdfab`](https://github.com/reearth/reearth-flow/commit/fbdfab)
+
+#### ✨ Refactor
+
+- Audit Spatial Filter and expose it in the base palette ([#2437](https://github.com/reearth/reearth-flow/pull/2437)) [`e3e5e7`](https://github.com/reearth/reearth-flow/commit/e3e5e7)
+- Apply action standard to CSV Reader and expose it ([#2438](https://github.com/reearth/reearth-flow/pull/2438)) [`528af6`](https://github.com/reearth/reearth-flow/commit/528af6)
+- Audit Area Calculator and expose it in the base palette ([#2428](https://github.com/reearth/reearth-flow/pull/2428)) [`7e6efd`](https://github.com/reearth/reearth-flow/commit/7e6efd)
+- Audit the Elevation Extractor and Shapefile actions ([#2413](https://github.com/reearth/reearth-flow/pull/2413)) [`b05f56`](https://github.com/reearth/reearth-flow/commit/b05f56)
+- Re-check Bufferer and expose it in the base palette ([#2422](https://github.com/reearth/reearth-flow/pull/2422)) [`d5e0e7`](https://github.com/reearth/reearth-flow/commit/d5e0e7)
+- Audit the overlay, CSG and Excel actions ([#2396](https://github.com/reearth/reearth-flow/pull/2396)) [`512804`](https://github.com/reearth/reearth-flow/commit/512804)
+- Audit the list and feature utility actions ([#2397](https://github.com/reearth/reearth-flow/pull/2397)) [`056135`](https://github.com/reearth/reearth-flow/commit/056135)
+- Audit the geometry extractor actions ([#2395](https://github.com/reearth/reearth-flow/pull/2395)) [`165c0d`](https://github.com/reearth/reearth-flow/commit/165c0d)
+- Action audit and base_actions adjustment ([#2394](https://github.com/reearth/reearth-flow/pull/2394)) [`c671e4`](https://github.com/reearth/reearth-flow/commit/c671e4)
+- Apply action standard to four reader actions ([#2365](https://github.com/reearth/reearth-flow/pull/2365)) [`b29348`](https://github.com/reearth/reearth-flow/commit/b29348)
+- Apply action standard to Geometry B actions ([#2315](https://github.com/reearth/reearth-flow/pull/2315)) [`e755da`](https://github.com/reearth/reearth-flow/commit/e755da)
+- Apply action standard to Geometry A actions ([#2317](https://github.com/reearth/reearth-flow/pull/2317)) [`5d86da`](https://github.com/reearth/reearth-flow/commit/5d86da)
+- Apply action standard to Feature, File and Transform groups ([#2297](https://github.com/reearth/reearth-flow/pull/2297)) [`0bf90f`](https://github.com/reearth/reearth-flow/commit/0bf90f)
+
+#### Miscellaneous Tasks
+
+- New geometry new-geometry for UI migration ([#2343](https://github.com/reearth/reearth-flow/pull/2343)) [`cd4cf4`](https://github.com/reearth/reearth-flow/commit/cd4cf4)
+- Unit tests ci for new geometry ([#2300](https://github.com/reearth/reearth-flow/pull/2300)) [`75e33b`](https://github.com/reearth/reearth-flow/commit/75e33b)
+
+### engine,api
+
+#### 🚀 Features
+
+- Persist run diagnostics to GCS with the job artifacts ([#2429](https://github.com/reearth/reearth-flow/pull/2429)) [`294439`](https://github.com/reearth/reearth-flow/commit/294439)
+- Revise the action standard, expose 23 hidden actions ([#2373](https://github.com/reearth/reearth-flow/pull/2373)) [`ead8e7`](https://github.com/reearth/reearth-flow/commit/ead8e7)
+
+### engine,ui
+
+#### 🚀 Features
+
+- Rename FlowExpr &#x60;env&#x60; to &#x60;variables&#x60; ([#2351](https://github.com/reearth/reearth-flow/pull/2351)) [`fce65f`](https://github.com/reearth/reearth-flow/commit/fce65f)
+
+### subscriber
+
+#### 🚀 Features
+
+- Dual-write job log streams and node status hash to redis ([#2390](https://github.com/reearth/reearth-flow/pull/2390)) [`3aabc9`](https://github.com/reearth/reearth-flow/commit/3aabc9)
+
+#### 🔧 Bug Fixes
+
+- Nack node event on node execution save failure ([#2378](https://github.com/reearth/reearth-flow/pull/2378)) [`1c3d56`](https://github.com/reearth/reearth-flow/commit/1c3d56)
+
+### ui
+
+#### 🚀 Features
+
+- Validate WGS84 coordinates and handle unsupported CRS in GeoJson and CityGML features [FLOW-DEV-230] ([#2302](https://github.com/reearth/reearth-flow/pull/2302)) [`43d373`](https://github.com/reearth/reearth-flow/commit/43d373)
+- Add roles &amp; permissions enforcement in workspaces and editor [FLOW-DEV-75] ([#2090](https://github.com/reearth/reearth-flow/pull/2090)) [`969657`](https://github.com/reearth/reearth-flow/commit/969657)
+- Persist Custom Workflow Variables For Users Until Clearing&#x2F;Starting Debug Run [FLOW-DEV-227] ([#2266](https://github.com/reearth/reearth-flow/pull/2266)) [`a1fafd`](https://github.com/reearth/reearth-flow/commit/a1fafd)
+- Add loading bar for larger asset uploads [FLOW-DEV-236] ([#2367](https://github.com/reearth/reearth-flow/pull/2367)) [`3ae2c9`](https://github.com/reearth/reearth-flow/commit/3ae2c9)
+- Add New Geometry JSONL Intermediate Data [FLOW-DEV-174] ([#2352](https://github.com/reearth/reearth-flow/pull/2352)) [`2de10f`](https://github.com/reearth/reearth-flow/commit/2de10f)
+
+#### 🔧 Bug Fixes
+
+- Invalidate stale members page when mutation fires [FLOW-DEV-245] ([#2450](https://github.com/reearth/reearth-flow/pull/2450)) [`a99a9d`](https://github.com/reearth/reearth-flow/commit/a99a9d)
+- Enhance context menu data handling for selected nodes when selected via cmd&#x2F;ctrl ([#2451](https://github.com/reearth/reearth-flow/pull/2451)) [`9e07a5`](https://github.com/reearth/reearth-flow/commit/9e07a5)
+- NormalizeParams for empty strings to prevent workflow crashing [FLOW-DEV-231] ([#2309](https://github.com/reearth/reearth-flow/pull/2309)) [`211fe2`](https://github.com/reearth/reearth-flow/commit/211fe2)
+- Add cesium support for updated migrated citygml [FLOW-DEV-235] ([#2363](https://github.com/reearth/reearth-flow/pull/2363)) [`3df156`](https://github.com/reearth/reearth-flow/commit/3df156)
+- Autocomplete fix and Intermediate Data Viewable on Locked Projects [FLOW-DEV-233] ([#2340](https://github.com/reearth/reearth-flow/pull/2340)) [`40f586`](https://github.com/reearth/reearth-flow/commit/40f586)
+- Sanitize non-finite node positions to prevent canvas crash on open ([#2304](https://github.com/reearth/reearth-flow/pull/2304)) [`5c48c5`](https://github.com/reearth/reearth-flow/commit/5c48c5)
+
+#### 🧪 Testing
+
+- Align e2e suite with renamed engine actions, ports, and form labels ([#2319](https://github.com/reearth/reearth-flow/pull/2319)) [`16ebc2`](https://github.com/reearth/reearth-flow/commit/16ebc2)
+
+#### Miscellaneous Tasks
+
+- Drop the unused node status and node execution documents ([#2419](https://github.com/reearth/reearth-flow/pull/2419)) [`bc403d`](https://github.com/reearth/reearth-flow/commit/bc403d)
+
+### ui, api
+
+#### 🚀 Features
+
+- Snapshot-backed version history with preview and restore ([#2358](https://github.com/reearth/reearth-flow/pull/2358)) [`4393cf`](https://github.com/reearth/reearth-flow/commit/4393cf)
+
+### websocket-go
+
+#### 🔧 Bug Fixes
+
+- Refuse to serve a partially-decoded doc_v2 ([#2416](https://github.com/reearth/reearth-flow/pull/2416)) [`ddfe4b`](https://github.com/reearth/reearth-flow/commit/ddfe4b)
+
+#### 🧪 Testing
+
+- Guard nested position map through gcs store&#x2F;load ([#2305](https://github.com/reearth/reearth-flow/pull/2305)) [`9ae906`](https://github.com/reearth/reearth-flow/commit/9ae906)
+
+#### Miscellaneous Tasks
+
+- Bump ygo to v1.49.1 ([#2415](https://github.com/reearth/reearth-flow/pull/2415)) [`0eff84`](https://github.com/reearth/reearth-flow/commit/0eff84)
+- Bump grpc (GO-2026-6061) and ygo to v1.39.0 ([#2313](https://github.com/reearth/reearth-flow/pull/2313)) [`5ccca1`](https://github.com/reearth/reearth-flow/commit/5ccca1)
+
+### 
+
+#### 🚀 Features
+
+- Bufferer in new geometry ([#2370](https://github.com/reearth/reearth-flow/pull/2370)) [`754b13`](https://github.com/reearth/reearth-flow/commit/754b13)
+
 ## 0.1.0-alpha.29 - 2026-07-28
 
 ### Misc
