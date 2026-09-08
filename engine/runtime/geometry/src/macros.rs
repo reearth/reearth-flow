@@ -3,13 +3,20 @@
 /// `enum_dispatch`. The default is an `UnsupportedOperation` error for most
 /// operations and a no-op for the ones that are vacuous on a leaf.
 ///
+/// A bare trait name is taken from [`ops`](crate::ops); a trait living
+/// elsewhere is named by its path.
+///
 /// ```ignore
 /// unsupported!(Csg: Reproject, WriteGltf);
+/// unsupported!(Csg: crate::predicates::Equal);
 /// ```
 #[macro_export]
 macro_rules! unsupported {
     ($ty:ty : $($tr:ident),+ $(,)?) => {
         $( impl $crate::ops::$tr for $ty {} )+
+    };
+    ($ty:ty : $($tr:path),+ $(,)?) => {
+        $( impl $tr for $ty {} )+
     };
 }
 

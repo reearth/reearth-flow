@@ -6,22 +6,12 @@
 //! that distance, and the other way round. That is the Hausdorff distance
 //! between the two point sets, so a shape stays itself under a re-wound ring, a
 //! different starting vertex, or an extra vertex sitting on an edge.
-//!
-//! Unlike the neighbouring predicates, which are free functions that match the
-//! operand pair internally, this one is a trait: what "the same space" means is
-//! genuinely leaf-specific — a face weighs its exterior against exteriors and
-//! its holes against holes, a mesh first has to decide which of its edges are
-//! real — so each leaf answers for itself. That rules out `#[enum_dispatch]`,
-//! which dispatches on the receiver only and has no way to match `rhs` in
-//! lockstep, so every enum level dispatches by hand instead.
-//!
-//! A collection is answered for only when it denotes exactly one geometry;
-//! nesting is descended to reach it. Two or more members are refused rather
-//! than guessed at — see [`denoted`] for why neither reading of such a
-//! collection is faithful here.
 
 use super::{PredicateError, Result};
+use crate::collection::{Collection2D, Collection3D};
+use crate::csg::Csg;
 use crate::ops::{Boundary, ExtractBoundary};
+use crate::point_cloud::PointCloud;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
@@ -37,108 +27,25 @@ const INDEX_THRESHOLD: usize = 64;
 const REFINEMENT_BUDGET: usize = 4096;
 
 /// Whether two geometries occupy the same space.
-///
-/// Reflexive and symmetric, but **not transitive** above a zero distance: `a`
-/// may reach `b` and `b` reach `c` with `a` and `c` further apart than the
-/// tolerance. A caller wanting an equivalence — one identifier per shape —
-/// must take the transitive closure itself.
 pub trait Equal {
-    fn equal(&self, rhs: &Self, tolerance: f64) -> Result<bool>;
+    /// Whether `self` and `rhs` occupy the same space, to `tolerance`.
+    fn equal(&self, rhs: &Self, tolerance: f64) -> Result<bool> {
+        let _ = (rhs, tolerance);
+        Err(PredicateError::Unsupported {
+            geometry: core::any::type_name::<Self>(),
+        })
+    }
 }
+
+crate::unsupported!(Csg: self::Equal);
+crate::unsupported!(PointCloud: self::Equal);
+crate::unsupported!(Collection2D: self::Equal);
+crate::unsupported!(Collection3D: self::Equal);
+crate::unsupported!(crate::GeometryCollection: self::Equal);
 
 // The boxed enum variants (`Box<Polygon3D>`, `Box<Solid>`, …) need no blanket
 // impl: the hand-written arms call the leaf method directly, and deref coercion
 // reaches through the box on both the receiver and `rhs`.
-
-/// What a geometry denotes once single-member collections have been descended.
-pub(crate) enum Denoted<'a> {
-    /// Nothing at all: an absent geometry, or a collection with no members.
-    Nothing,
-    TwoD(&'a Euclidean2DGeometry),
-    ThreeD(&'a Euclidean3DGeometry),
-}
-
-/// Descend single-member collections to the one geometry this denotes.
-///
-/// A collection of two or more members is refused. The two readings of what
-/// such a collection means disagree, and on a point set built from boundary
-/// curves neither is faithful: taking the union dissolves a face's exterior and
-/// its holes into one bag of rings, which is what makes a face equal to its
-/// ring-inverted twin, while pairing the members off makes a curve split across
-/// two members a different shape from the same curve given whole. A collection
-/// denoting exactly one geometry carries no such ambiguity — both readings
-/// agree there — so that much is answered.
-pub(crate) fn denoted(geometry: &Geometry) -> Result<Denoted<'_>> {
-    match geometry {
-        Geometry::None => Ok(Denoted::Nothing),
-        Geometry::Euclidean2D(g) => Ok(match single_leaf_2d(g)? {
-            None => Denoted::Nothing,
-            Some(leaf) => Denoted::TwoD(leaf),
-        }),
-        Geometry::Euclidean3D(g) => Ok(match single_leaf_3d(g)? {
-            None => Denoted::Nothing,
-            Some(leaf) => Denoted::ThreeD(leaf),
-        }),
-        Geometry::GeometryCollection(c) => denoted_members(c.members()),
-    }
-}
-
-/// The one geometry a heterogeneous collection's members denote.
-pub(crate) fn denoted_members(members: &[Geometry]) -> Result<Denoted<'_>> {
-    match members {
-        [] => Ok(Denoted::Nothing),
-        [only] => denoted(only),
-        _ => Err(PredicateError::Unsupported {
-            geometry: "GeometryCollection",
-        }),
-    }
-}
-
-/// Descend single-member collections to the one 2D leaf this denotes.
-pub(crate) fn single_leaf_2d(
-    geometry: &Euclidean2DGeometry,
-) -> Result<Option<&Euclidean2DGeometry>> {
-    match geometry {
-        Euclidean2DGeometry::Collection(c) => single_of_members_2d(c.members()),
-        leaf => Ok(Some(leaf)),
-    }
-}
-
-/// The one 2D leaf a collection's members denote.
-pub(crate) fn single_of_members_2d(
-    members: &[Euclidean2DGeometry],
-) -> Result<Option<&Euclidean2DGeometry>> {
-    match members {
-        [] => Ok(None),
-        [only] => single_leaf_2d(only),
-        _ => Err(PredicateError::Unsupported {
-            geometry: "Collection2D",
-        }),
-    }
-}
-
-/// Descend single-member collections to the one 3D leaf this denotes.
-pub(crate) fn single_leaf_3d(
-    geometry: &Euclidean3DGeometry,
-) -> Result<Option<&Euclidean3DGeometry>> {
-    match geometry {
-        Euclidean3DGeometry::Collection(c) => single_of_members_3d(c.members()),
-        leaf => Ok(Some(leaf)),
-    }
-}
-
-/// The one 3D leaf a collection's members denote.
-pub(crate) fn single_of_members_3d(
-    members: &[Euclidean3DGeometry],
-) -> Result<Option<&Euclidean3DGeometry>> {
-    match members {
-        [] => Ok(None),
-        [only] => single_leaf_3d(only),
-        _ => Err(PredicateError::Unsupported {
-            geometry: "Collection3D",
-        }),
-    }
-}
 
 /// Whether two bags pair off one-to-one under `matches`.
 ///
@@ -227,10 +134,6 @@ impl FaceCurves {
 /// A point set expressed as the straight pieces it is the union of: the
 /// segments of every curve, plus each isolated position as a piece of zero
 /// length.
-///
-/// This is what a leaf reduces itself to before comparing. Reducing to *which*
-/// curves is the leaf's decision — a face gives one ring at a time, a mesh
-/// gives the edges that survive its facet merging.
 #[derive(Debug, Clone)]
 pub(crate) struct Curves {
     pieces: Vec<Piece>,
@@ -457,40 +360,6 @@ pub(crate) fn lift([x, y]: [f64; 2], elevation: Option<f64>) -> [f64; 3] {
     [x, y, elevation.unwrap_or(0.0)]
 }
 
-/// A leaf's concrete type name, for reporting a refusal.
-pub(crate) trait NameOf {
-    fn name_of(&self) -> &'static str;
-}
-
-impl NameOf for Euclidean2DGeometry {
-    fn name_of(&self) -> &'static str {
-        match self {
-            Euclidean2DGeometry::Point(_) => "Point2D",
-            Euclidean2DGeometry::LineString(_) => "LineString2D",
-            Euclidean2DGeometry::Polygon(_) => "Polygon2D",
-            Euclidean2DGeometry::PolygonMesh(_) => "PolygonMesh2D",
-            Euclidean2DGeometry::TriangularMesh(_) => "TriangularMesh2D",
-            Euclidean2DGeometry::Collection(_) => "Collection2D",
-        }
-    }
-}
-
-impl NameOf for Euclidean3DGeometry {
-    fn name_of(&self) -> &'static str {
-        match self {
-            Euclidean3DGeometry::Point(_) => "Point3D",
-            Euclidean3DGeometry::PointCloud(_) => "PointCloud",
-            Euclidean3DGeometry::LineString(_) => "LineString3D",
-            Euclidean3DGeometry::Polygon(_) => "Polygon3D",
-            Euclidean3DGeometry::PolygonMesh(_) => "PolygonMesh3D",
-            Euclidean3DGeometry::TriangularMesh(_) => "TriangularMesh3D",
-            Euclidean3DGeometry::Solid(_) => "Solid",
-            Euclidean3DGeometry::Csg(_) => "Csg",
-            Euclidean3DGeometry::Collection(_) => "Collection3D",
-        }
-    }
-}
-
 /// The curves one 2D chain traces, at the elevation its leaf sits at.
 pub(crate) fn chain_curves_2d(coords: &[[f64; 2]], elevation: Option<f64>) -> Curves {
     let mut curves = Curves::new();
@@ -541,7 +410,7 @@ fn gather_curves(geometry: &Geometry, curves: &mut Curves) -> Result<()> {
                 c.members().iter().try_for_each(|m| from_2d(m, curves))
             }
             other => Err(PredicateError::Unsupported {
-                geometry: other.name_of(),
+                geometry: other.type_name(),
             }),
         }
     }
@@ -559,7 +428,7 @@ fn gather_curves(geometry: &Geometry, curves: &mut Curves) -> Result<()> {
                 c.members().iter().try_for_each(|m| from_3d(m, curves))
             }
             other => Err(PredicateError::Unsupported {
-                geometry: other.name_of(),
+                geometry: other.type_name(),
             }),
         }
     }

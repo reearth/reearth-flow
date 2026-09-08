@@ -359,20 +359,27 @@ impl Area for GeometryCollection {
 #[cfg(feature = "new-geometry")]
 impl Equal for Geometry {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
-        use predicates::equal::{denoted, Denoted};
-        match (denoted(self)?, denoted(rhs)?) {
-            // Two geometries that denote nothing occupy the same nothing.
-            (Denoted::Nothing, Denoted::Nothing) => Ok(true),
-            (Denoted::TwoD(a), Denoted::TwoD(b)) => a.equal(b, tolerance),
-            (Denoted::ThreeD(a), Denoted::ThreeD(b)) => a.equal(b, tolerance),
+        use Geometry as G;
+        match (self, rhs) {
+            // Two absent geometries occupy the same nothing.
+            (G::None, G::None) => Ok(true),
+            (G::Euclidean2D(a), G::Euclidean2D(b)) => a.equal(b, tolerance),
+            (G::Euclidean3D(a), G::Euclidean3D(b)) => a.equal(b, tolerance),
+            // A collection is refused whatever it is weighed against, on either
+            // side; see the `unsupported!` invocations in `predicates::equal`.
+            (G::GeometryCollection(_), _) | (_, G::GeometryCollection(_)) => {
+                Err(PredicateError::Unsupported {
+                    geometry: core::any::type_name::<GeometryCollection>(),
+                })
+            }
             // There is no implicit promotion between the embeddings, so the same
             // numbers in 2D and in 3D are not a question this can answer; the
             // caller settles it by projecting or lifting first.
-            (Denoted::TwoD(_), Denoted::ThreeD(_)) | (Denoted::ThreeD(_), Denoted::TwoD(_)) => {
+            (G::Euclidean2D(_), G::Euclidean3D(_)) | (G::Euclidean3D(_), G::Euclidean2D(_)) => {
                 Err(PredicateError::CrossDimension)
             }
-            // One denotes a geometry, the other denotes none.
-            (Denoted::Nothing, _) | (_, Denoted::Nothing) => Ok(false),
+            // One is a geometry, the other is absent.
+            (G::None, _) | (_, G::None) => Ok(false),
         }
     }
 }
@@ -380,21 +387,19 @@ impl Equal for Geometry {
 #[cfg(feature = "new-geometry")]
 impl Equal for Euclidean2DGeometry {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
-        use predicates::equal::single_leaf_2d;
         use Euclidean2DGeometry as G;
-        match (single_leaf_2d(self)?, single_leaf_2d(rhs)?) {
-            (None, None) => Ok(true),
-            (Some(a), Some(b)) => match (a, b) {
-                (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
-                (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
-                (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
-                (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
-                (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
-                // A face and the curve bounding it cover different point sets;
-                // neither is the other.
-                _ => Ok(false),
-            },
-            // One denotes a geometry, the other denotes none.
+        match (self, rhs) {
+            (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
+            (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
+            (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
+            (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
+            (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
+            // A collection is refused rather than descended, on either side.
+            (G::Collection(_), _) | (_, G::Collection(_)) => Err(PredicateError::Unsupported {
+                geometry: core::any::type_name::<Collection2D>(),
+            }),
+            // A face and the curve bounding it cover different point sets;
+            // neither is the other.
             _ => Ok(false),
         }
     }
@@ -403,41 +408,21 @@ impl Equal for Euclidean2DGeometry {
 #[cfg(feature = "new-geometry")]
 impl Equal for Euclidean3DGeometry {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
-        use predicates::equal::single_leaf_3d;
         use Euclidean3DGeometry as G;
-        match (single_leaf_3d(self)?, single_leaf_3d(rhs)?) {
-            (None, None) => Ok(true),
-            (Some(a), Some(b)) => match (a, b) {
-                (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
-                (G::PointCloud(a), G::PointCloud(b)) => a.equal(b, tolerance),
-                (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
-                (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
-                (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
-                (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
-                (G::Solid(a), G::Solid(b)) => a.equal(b, tolerance),
-                (G::Csg(a), G::Csg(b)) => a.equal(b, tolerance),
-                _ => Ok(false),
-            },
+        match (self, rhs) {
+            (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
+            (G::PointCloud(a), G::PointCloud(b)) => a.equal(b, tolerance),
+            (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
+            (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
+            (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
+            (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
+            (G::Solid(a), G::Solid(b)) => a.equal(b, tolerance),
+            (G::Csg(a), G::Csg(b)) => a.equal(b, tolerance),
+            // A collection is refused rather than descended, on either side.
+            (G::Collection(_), _) | (_, G::Collection(_)) => Err(PredicateError::Unsupported {
+                geometry: core::any::type_name::<Collection3D>(),
+            }),
             _ => Ok(false),
-        }
-    }
-}
-
-#[cfg(feature = "new-geometry")]
-impl Equal for GeometryCollection {
-    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
-        use predicates::equal::{denoted_members, Denoted};
-        match (
-            denoted_members(self.members())?,
-            denoted_members(rhs.members())?,
-        ) {
-            (Denoted::Nothing, Denoted::Nothing) => Ok(true),
-            (Denoted::TwoD(a), Denoted::TwoD(b)) => a.equal(b, tolerance),
-            (Denoted::ThreeD(a), Denoted::ThreeD(b)) => a.equal(b, tolerance),
-            (Denoted::TwoD(_), Denoted::ThreeD(_)) | (Denoted::ThreeD(_), Denoted::TwoD(_)) => {
-                Err(PredicateError::CrossDimension)
-            }
-            (Denoted::Nothing, _) | (_, Denoted::Nothing) => Ok(false),
         }
     }
 }
@@ -465,7 +450,40 @@ impl Triangulate for GeometryCollection {
     }
 }
 
+impl Euclidean3DGeometry {
+    /// The concrete type name of this variant, for diagnostics.
+    pub(crate) fn type_name(&self) -> &'static str {
+        match self {
+            Self::Point(_) => "Point3D",
+            Self::PointCloud(_) => "PointCloud",
+            Self::LineString(_) => "LineString3D",
+            Self::Polygon(_) => "Polygon3D",
+            Self::PolygonMesh(_) => "PolygonMesh3D",
+            Self::TriangularMesh(_) => "TriangularMesh3D",
+            Self::Solid(_) => "Solid",
+            Self::Csg(_) => "Csg",
+            Self::Collection(_) => "Collection3D",
+        }
+    }
+}
+
 impl Euclidean2DGeometry {
+    /// The concrete type name of this variant, for diagnostics.
+    ///
+    /// Only the `new-geometry` predicates need the 2D half; its 3D counterpart
+    /// is reached from `contains` on every build.
+    #[cfg(feature = "new-geometry")]
+    pub(crate) fn type_name(&self) -> &'static str {
+        match self {
+            Self::Point(_) => "Point2D",
+            Self::LineString(_) => "LineString2D",
+            Self::Polygon(_) => "Polygon2D",
+            Self::PolygonMesh(_) => "PolygonMesh2D",
+            Self::TriangularMesh(_) => "TriangularMesh2D",
+            Self::Collection(_) => "Collection2D",
+        }
+    }
+
     /// Whether any part of this geometry lies at an elevation (2.5D).
     pub(crate) fn carries_elevation(&self) -> bool {
         match self {

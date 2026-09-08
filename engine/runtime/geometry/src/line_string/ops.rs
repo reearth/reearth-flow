@@ -324,33 +324,6 @@ impl Elevation for LineString3D {
     }
 }
 
-#[cfg(feature = "new-geometry")]
-impl crate::predicates::Equal for LineString2D {
-    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
-        use crate::predicates::equal::chain_curves_2d;
-
-        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
-        let ours = chain_curves_2d(self.coords(), self.elevation());
-        let theirs = chain_curves_2d(rhs.coords(), rhs.elevation());
-        Ok(ours.within(&theirs, tolerance))
-    }
-}
-
-#[cfg(feature = "new-geometry")]
-impl crate::predicates::Equal for LineString3D {
-    fn equal(&self, rhs: &Self, tolerance: f64) -> crate::predicates::Result<bool> {
-        use crate::predicates::equal::Curves;
-
-        crate::predicates::require_same_frame(self.frame(), rhs.frame())?;
-        let chain = |line: &Self| {
-            let mut curves = Curves::new();
-            curves.push_chain(line.coords().iter().copied());
-            curves.finish()
-        };
-        Ok(chain(self).within(&chain(rhs), tolerance))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
