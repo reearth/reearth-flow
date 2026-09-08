@@ -23,7 +23,7 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
     <bldg:Building gml:id="bldg_4d583b00-4ce9-49b5-9540-9d1bbca48e46">
       <gml:name>Building A</gml:name>
       <core:creationDate>2024-01-01</core:creationDate>
-      <bldg:class codeSpace="http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml">1000</bldg:class>
+      <bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
       <bldg:measuredHeight uom="m">5.0</bldg:measuredHeight>
 
       <!-- LOD0 FootPrint（建物フットプリント） -->
@@ -55,7 +55,7 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
     <bldg:Building gml:id="bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47">
       <gml:name>Building B</gml:name>
       <core:creationDate>2024-01-01</core:creationDate>
-      <bldg:class codeSpace="http://www.sig3d.org/codelists/standard/building/2.0/_AbstractBuilding_class.xml">1000</bldg:class>
+      <bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
       <bldg:measuredHeight uom="m">5.0</bldg:measuredHeight>
 
       <!-- LOD0 FootPrint（建物フットプリント） -->

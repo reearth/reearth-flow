@@ -13,7 +13,7 @@ with:
     - wtr
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
 
   - id: 649c73df-d38a-4732-a779-45b58e7d0a46
     name: entry_point

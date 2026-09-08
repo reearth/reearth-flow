@@ -133,6 +133,13 @@
     "help": "Split the geometry, or force it to a single dimension upstream."
   },
   {
+    "code": "geometry.no_usable_filter",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "failed every candidate because no supplied filter geometry could be prepared",
+    "help": "Every feature supplied as a filter was rejected, so there was nothing left to test against; the preceding warnings name the cause. Reproject all inputs of the node to one coordinate frame in linear units upstream."
+  },
+  {
     "code": "geometry.non_linear_frame",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

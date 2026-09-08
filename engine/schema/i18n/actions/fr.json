@@ -588,10 +588,10 @@
     },
     {
       "name": "CSV Reader",
-      "description": "Read Features from CSV or TSV File",
+      "description": "Lit des entités depuis des fichiers CSV et TSV",
       "parameterI18n": {
         "": {
-          "title": "CsvReader Parameters",
+          "title": "CSV Reader Parameters",
           "description": "Configure how CSV and TSV files are processed and read"
         },
         "dataset": {
@@ -608,7 +608,7 @@
         },
         "geometry": {
           "title": "Geometry Configuration",
-          "description": "Optional configuration for parsing geometry from CSV columns"
+          "description": "Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted."
         },
         "headerRows": {
           "title": "Header Row Count",
@@ -627,7 +627,7 @@
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG Code",
-            "description": "Coordinate Reference System code (e.g., 4326 for WGS84)"
+            "description": "Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted."
           }
         }
       },
@@ -2829,32 +2829,6 @@
       "description": "Vérifie le type de géométrie de BuildingInstallation"
     },
     {
-      "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "description": "Vérifie la connectivité entre les BuildingParts au sein du même bâtiment par la correspondance des surfaces limites 3D",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker Parameters",
-          "description": "Configure how to check connectivity between BuildingParts"
-        },
-        "buildingIdAttribute": {
-          "title": "Building ID Attribute",
-          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
-        },
-        "fileIndexAttribute": {
-          "title": "File Index Attribute",
-          "description": "Attribute containing the file index (default: \"fileIndex\")"
-        },
-        "lodAttribute": {
-          "title": "LOD Attribute",
-          "description": "Attribute containing the Level of Detail (default: \"lod\")"
-        },
-        "partIdAttribute": {
-          "title": "Part ID Attribute",
-          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
-        }
-      }
-    },
-    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "description": "Valide les attributs d'utilisation des bâtiments en vérifiant la présence des attributs requis et l'exactitude des codes de ville. Les erreurs sont émises via les ports lBldgError et codeError.",
       "parameterI18n": {
@@ -3100,6 +3074,27 @@
       }
     },
     {
+      "name": "PLATEAU4.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+        }
+      }
+    },
+    {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "description": "Détecte les surfaces non référencées dans les modèles de transport PLATEAU (L-TRAN-03)",
       "parameterI18n": {
@@ -3139,31 +3134,6 @@
         },
         "tolerance": {
           "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge"
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.BuildingPartConnectivityChecker",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker Parameters",
-          "description": "Configure how to check connectivity between BuildingParts"
-        },
-        "buildingIdAttribute": {
-          "title": "Building ID Attribute",
-          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
-        },
-        "fileIndexAttribute": {
-          "title": "File Index Attribute",
-          "description": "Attribute containing the file index (default: \"fileIndex\")"
-        },
-        "lodAttribute": {
-          "title": "LOD Attribute",
-          "description": "Attribute containing the Level of Detail (default: \"lod\")"
-        },
-        "partIdAttribute": {
-          "title": "Part ID Attribute",
-          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
         }
       }
     },
@@ -3247,6 +3217,36 @@
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
         }
+      }
+    },
+    {
+      "name": "PLATEAU6.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.TransportationXlinkDetector",
+      "parameterI18n": {
+        "": {
+          "title": "TransportationXlinkDetectorParam"
+        },
+        "cityGmlPath": {}
       }
     },
     {
@@ -3504,11 +3504,11 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "Filtre les entités candidates selon leur relation spatiale avec des géométries de filtre, évaluée dans le plan horizontal : une géométrie 3D est comparée par son emprise et doit être dans un référentiel de coordonnées en unités linéaires.",
+      "description": "Filtre les entités candidates selon leur relation spatiale avec des géométries de filtre, évaluée dans le plan horizontal : une géométrie 3D est comparée par son emprise et doit être dans un référentiel de coordonnées en unités linéaires. Toutes les candidates passent lorsqu'aucune géométrie de filtre n'est fournie.",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter Parameters",
-          "description": "Configure spatial relationship testing between filter and candidate geometries"
+          "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter."
         },
         "matchMode": {
           "title": "Match Mode",
@@ -3516,19 +3516,19 @@
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins."
+          "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
-          "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\"."
+          "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged."
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of filter features the candidate matched."
+          "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike."
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one."
+          "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object."
         }
       },
       "enumI18n": {
@@ -3544,31 +3544,40 @@
         },
         "SpatialPredicate": {
           "contains": {
-            "description": "Candidate completely contains the filter geometry"
+            "title": "Contains",
+            "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that."
           },
           "coveredBy": {
-            "description": "Candidate is covered by filter geometry"
+            "title": "Covered By",
+            "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary."
           },
           "covers": {
-            "description": "Candidate covers the filter geometry"
+            "title": "Covers",
+            "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary."
           },
           "crosses": {
-            "description": "Geometries cross each other"
+            "title": "Crosses",
+            "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon."
           },
           "disjoint": {
-            "description": "Geometries have no spatial relationship"
+            "title": "Disjoint",
+            "description": "Passes a candidate that shares no point at all with the filter geometry."
           },
           "intersects": {
-            "description": "Geometries have any intersection"
+            "title": "Intersects",
+            "description": "Passes a candidate that shares at least one point with the filter geometry."
           },
           "overlaps": {
-            "description": "Geometries overlap partially"
+            "title": "Overlaps",
+            "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other."
           },
           "touches": {
-            "description": "Geometries touch at boundaries but don't overlap"
+            "title": "Touches",
+            "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior."
           },
           "within": {
-            "description": "Candidate completely within filter geometry"
+            "title": "Within",
+            "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that."
           }
         }
       }

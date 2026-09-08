@@ -1570,10 +1570,10 @@
     {
       "name": "CSV Reader",
       "type": "source",
-      "description": "从CSV文件读取要素",
+      "description": "从CSV和TSV文件读取要素",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CsvReader Parameters",
+        "title": "CSV Reader Parameters",
         "description": "Configure how CSV and TSV files are processed and read",
         "type": "object",
         "required": [
@@ -1669,7 +1669,7 @@
           },
           "geometry": {
             "title": "Geometry Configuration",
-            "description": "Optional configuration for parsing geometry from CSV columns",
+            "description": "Names the columns that hold geometry, either as Well-Known Text or as separate coordinate columns. Those columns are read as the feature's geometry instead of as attributes. Rows become attribute-only features when omitted.",
             "anyOf": [
               {
                 "$ref": "#/definitions/GeometryConfig"
@@ -1754,7 +1754,7 @@
             "properties": {
               "epsg": {
                 "title": "EPSG Code",
-                "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+                "description": "Coordinate reference system of the values in the file, such as 4326 for WGS 84. When the referenced system declares latitude first, the two horizontal ordinates are stored in that order; elevation is never reordered. Values are read as plain coordinates when omitted.",
                 "type": [
                   "integer",
                   "null"
@@ -6289,6 +6289,7 @@
       "outputPorts": [
         "success",
         "failed",
+        "issue-locations",
         "rejected"
       ],
       "categories": [
@@ -9676,76 +9677,6 @@
       "tags": []
     },
     {
-      "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "type": "processor",
-      "description": "使用3D边界面匹配检查同一建筑内BuildingPart之间的连通性",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BuildingPartConnectivityChecker Parameters",
-        "description": "Configure how to check connectivity between BuildingParts",
-        "type": "object",
-        "properties": {
-          "buildingIdAttribute": {
-            "title": "Building ID Attribute",
-            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
-            "default": "gmlId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "partIdAttribute": {
-            "title": "Part ID Attribute",
-            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-            "default": "featureId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "lodAttribute": {
-            "title": "LOD Attribute",
-            "description": "Attribute containing the Level of Detail (default: \"lod\")",
-            "default": "lod",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "fileIndexAttribute": {
-            "title": "File Index Attribute",
-            "description": "Attribute containing the file index (default: \"fileIndex\")",
-            "default": "fileIndex",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": false,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature",
-        "PLATEAU"
-      ],
-      "tags": []
-    },
-    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "通过检查必要属性的存在性和城市代码的正确性来验证建筑用途属性。如发现问题，通过lBldgError和codeError端口输出错误。",
@@ -10796,6 +10727,68 @@
       "tags": []
     },
     {
+      "name": "PLATEAU4.TransitiveLinkResolver",
+      "type": "processor",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransitiveLinkResolver Parameters",
+        "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+        "type": "object",
+        "required": [
+          "idAttribute",
+          "linkedIdsAttribute"
+        ],
+        "properties": {
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "linkedIdsAttribute": {
+            "title": "Linked IDs Attribute",
+            "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "type": "processor",
       "description": "检测PLATEAU交通模型中的未引用面（L-TRAN-03）",
@@ -10976,76 +10969,6 @@
         "unshared"
       ],
       "categories": [
-        "PLATEAU"
-      ],
-      "tags": []
-    },
-    {
-      "name": "PLATEAU6.BuildingPartConnectivityChecker",
-      "type": "processor",
-      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BuildingPartConnectivityChecker Parameters",
-        "description": "Configure how to check connectivity between BuildingParts",
-        "type": "object",
-        "properties": {
-          "buildingIdAttribute": {
-            "title": "Building ID Attribute",
-            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
-            "default": "gmlId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "partIdAttribute": {
-            "title": "Part ID Attribute",
-            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
-            "default": "featureId",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "lodAttribute": {
-            "title": "LOD Attribute",
-            "description": "Attribute containing the Level of Detail (default: \"lod\")",
-            "default": "lod",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "fileIndexAttribute": {
-            "title": "File Index Attribute",
-            "description": "Attribute containing the file index (default: \"fileIndex\")",
-            "default": "fileIndex",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": false,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature",
         "PLATEAU"
       ],
       "tags": []
@@ -11320,6 +11243,115 @@
       "outputPorts": [
         "A",
         "B"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.TransitiveLinkResolver",
+      "type": "processor",
+      "description": "Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransitiveLinkResolver Parameters",
+        "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
+        "type": "object",
+        "required": [
+          "idAttribute",
+          "linkedIdsAttribute"
+        ],
+        "properties": {
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "linkedIdsAttribute": {
+            "title": "Linked IDs Attribute",
+            "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.TransportationXlinkDetector",
+      "type": "processor",
+      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransportationXlinkDetectorParam",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed"
       ],
       "categories": [
         "PLATEAU"
@@ -12440,16 +12472,16 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "按候选要素与过滤几何之间的空间关系进行过滤，关系在水平面上测试：三维几何按其平面投影比较，且必须位于使用线性单位的坐标系中。",
+      "description": "按候选要素与过滤几何之间的空间关系进行过滤，关系在水平面上测试：三维几何按其平面投影比较，且必须位于使用线性单位的坐标系中。未提供任何过滤几何时，所有候选要素均通过。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Spatial Filter Parameters",
-        "description": "Configure spatial relationship testing between filter and candidate geometries",
+        "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter.",
         "type": "object",
         "properties": {
           "predicate": {
             "title": "Spatial Predicate",
-            "description": "The spatial relationship to test, with the candidate as the subject: `within` passes candidates lying inside a filter geometry, `contains` passes candidates that contain one.",
+            "description": "The spatial relationship to test, read with the candidate as the subject and the filter geometry as the object.",
             "default": "intersects",
             "allOf": [
               {
@@ -12469,13 +12501,13 @@
           },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
-            "description": "If true, copies attributes from every matched filter feature onto passing candidates. When multiple matched filters share an attribute, the last matching filter's value wins.",
+            "description": "Copies attributes from every matched filter feature onto passing candidates, overwriting a candidate's own attribute of the same name. When several matched filters share an attribute, the last one wins.",
             "default": false,
             "type": "boolean"
           },
           "mergedAttributesPrefix": {
             "title": "Merged Attributes Prefix",
-            "description": "Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\".",
+            "description": "Prefix applied to merged attribute names so they cannot collide with the candidate's own. A prefix of \"filter_\" turns a filter attribute \"zone\" into \"filter_zone\". Ignored unless attributes are merged.",
             "default": null,
             "type": [
               "string",
@@ -12484,7 +12516,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of filter features the candidate matched.",
+            "description": "Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike.",
             "default": null,
             "anyOf": [
               {
@@ -12498,65 +12530,76 @@
         },
         "definitions": {
           "SpatialPredicate": {
+            "title": "Spatial Predicate",
+            "description": "The relationship each candidate is tested for against a filter geometry.",
             "oneOf": [
               {
-                "description": "Candidate completely contains the filter geometry",
+                "title": "Contains",
+                "description": "Passes a candidate that holds the filter geometry inside it, sharing interior with it. A filter lying wholly on the candidate's boundary does not count; use Covers for that.",
                 "type": "string",
                 "enum": [
                   "contains"
                 ]
               },
               {
-                "description": "Candidate completely within filter geometry",
+                "title": "Within",
+                "description": "Passes a candidate that lies inside the filter geometry, sharing interior with it. A candidate lying wholly on the filter's boundary does not count; use Covered By for that.",
                 "type": "string",
                 "enum": [
                   "within"
                 ]
               },
               {
-                "description": "Geometries have any intersection",
+                "title": "Intersects",
+                "description": "Passes a candidate that shares at least one point with the filter geometry.",
                 "type": "string",
                 "enum": [
                   "intersects"
                 ]
               },
               {
-                "description": "Geometries have no spatial relationship",
+                "title": "Disjoint",
+                "description": "Passes a candidate that shares no point at all with the filter geometry.",
                 "type": "string",
                 "enum": [
                   "disjoint"
                 ]
               },
               {
-                "description": "Geometries touch at boundaries but don't overlap",
+                "title": "Touches",
+                "description": "Passes a candidate that meets the filter geometry only along a boundary, with no shared interior.",
                 "type": "string",
                 "enum": [
                   "touches"
                 ]
               },
               {
-                "description": "Geometries cross each other",
+                "title": "Crosses",
+                "description": "Passes a candidate that cuts through the filter geometry, meeting its interior in a lower-dimensional overlap such as a line across a polygon.",
                 "type": "string",
                 "enum": [
                   "crosses"
                 ]
               },
               {
-                "description": "Geometries overlap partially",
+                "title": "Overlaps",
+                "description": "Passes a candidate of the same dimension as the filter geometry that shares interior with it while each keeps points outside the other.",
                 "type": "string",
                 "enum": [
                   "overlaps"
                 ]
               },
               {
-                "description": "Candidate is covered by filter geometry",
+                "title": "Covered By",
+                "description": "Passes a candidate whose every point lies in the filter geometry, including one lying wholly on its boundary.",
                 "type": "string",
                 "enum": [
                   "coveredBy"
                 ]
               },
               {
-                "description": "Candidate covers the filter geometry",
+                "title": "Covers",
+                "description": "Passes a candidate that holds every point of the filter geometry, including a filter lying wholly on its boundary.",
                 "type": "string",
                 "enum": [
                   "covers"

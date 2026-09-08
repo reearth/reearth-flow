@@ -121,12 +121,16 @@ export default ({
       if (!position) return;
       const { styles } = position;
 
+      const selectedNodes = nodes.filter((n) => n.selected);
+      const isPartOfSelection =
+        selectedNodes.length > 1 && selectedNodes.some((n) => n.id === node.id);
+
       setContextMenu({
-        data: node,
+        data: isPartOfSelection ? selectedNodes : node,
         styles,
       });
     },
-    [setContextMenu],
+    [nodes, setContextMenu],
   );
 
   const handleSelectionContextMenu = useCallback(

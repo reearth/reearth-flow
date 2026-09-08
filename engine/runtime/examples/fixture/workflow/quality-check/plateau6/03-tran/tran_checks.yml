@@ -1,0 +1,1355 @@
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 03-tran sub-graph.
+# Runs three transportation checks over every GML in the archive: unreferenced
+# xlink targets (L-tran-03), adjacent surface overlaps (L-tran-01/02), and the
+# per-face geometric validity and orientation checks.
+# The overlap count is recorded in the result CSV but kept out of totalErrorCount,
+# so an input whose only finding is an adjacent overlap still yields qc_result_ok.
+id: 451df0d7-4248-4bb0-a6eb-ce2645424e8d
+name: PLATEAU6.TransportationQualityCheck-03-tran
+nodes:
+  - id: d5000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: d5000000-0000-4000-8000-000000000002
+    name: FeatureFilePathExtractor
+    type: action
+    action: Feature File Path Extractor
+    with:
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
+      extractArchive: true
+      destPrefix: udx
+
+  - id: d5000000-0000-4000-8000-000000000003
+    name: FeatureFilterByGml
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["extension"] == "gml"
+          outputPort: features
+
+  - id: d5000000-0000-4000-8000-000000000004
+    name: FeatureCounterFileIndex
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      outputAttribute: fileIndex
+
+  # Places `codelists` and `schemas` next to `udx` so the reader can resolve
+  # every codeSpace and schemaLocation the GML points at.
+  - id: d5000000-0000-4000-8000-000000000005
+    name: PLATEAU6.UDXFolderExtractor
+    type: action
+    action: PLATEAU6.UDXFolderExtractor
+    with:
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+
+  - id: d5000000-0000-4000-8000-000000000006
+    name: FeatureFilterByPackage
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
+          outputPort: features
+
+  # --- L-tran-03: unreferenced xlink detection ---
+  # Reads the raw GML per file and reports the boundary polygons of a road that
+  # its own aggregate lodXMultiSurface does not reference by xlink:href.
+  - id: d5000000-0000-4000-8000-000000000007
+    name: TransportationXlinkDetector
+    type: action
+    action: PLATEAU6.TransportationXlinkDetector
+    with:
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+
+  - id: d5000000-0000-4000-8000-000000000008
+    name: XlinkAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
+        - attribute: Index
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
+        - attribute: Filename
+          expr:
+            type: flowExpr
+            value: attributes.get("name", "")
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: attributes.get("featureType", "")
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
+        - attribute: "gml:id"
+          expr:
+            type: flowExpr
+            value: attributes.get("gmlId", "")
+        - attribute: "未参照"
+          expr:
+            type: flowExpr
+            value: attributes.get("unreferenced", "")
+
+  - id: d5000000-0000-4000-8000-000000000009
+    name: XlinkCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 03_交通_xlink参照エラー.csv
+
+  # --- Reading ---
+  # `extractTags` stays empty: one feature per top-level city object, with each
+  # geometry naming the object it belongs to. Hoisting the traffic areas out
+  # would break the per-road grouping the overlap check depends on.
+  - id: d5000000-0000-4000-8000-00000000000a
+    name: FeatureCityGml3Reader
+    type: action
+    action: Feature CityGML 3 Reader
+    with:
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
+
+  # Reprojected before any check: planarity and the absolute winding of a face
+  # are only defined in a linear-unit frame.
+  - id: d5000000-0000-4000-8000-00000000000b
+    name: CoordinateFrameReprojector
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  - id: d5000000-0000-4000-8000-00000000000c
+    name: LodSplitter
+    type: subGraph
+    subGraphId: b1000000-0000-4000-8000-000000000000
+
+  - id: d5000000-0000-4000-8000-00000000000d
+    name: SurfaceChecks
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+
+  # A city object the reprojection could not convert takes part in no check at
+  # all, so it is reported as a surface error rather than dropped.
+  - id: d5000000-0000-4000-8000-00000000000e
+    name: AttributeManagerReprojectionRejected
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: GeometryRejected
+
+  - id: d5000000-0000-4000-8000-00000000000f
+    name: SurfaceValidationAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
+        - attribute: Index
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
+        - attribute: Filename
+          expr:
+            type: flowExpr
+            value: attributes.get("name", "")
+        # A face belongs to the innermost city object that encloses it, which
+        # is not the feature the reader emitted it on.
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
+        - attribute: "gml:id"
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: d5000000-0000-4000-8000-000000000010
+    name: SurfaceValidationCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 03_交通_面のエラー.csv
+
+  - id: d5000000-0000-4000-8000-000000000011
+    name: OrientationAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
+        - attribute: Index
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
+        - attribute: Filename
+          expr:
+            type: flowExpr
+            value: attributes.get("name", "")
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
+        - attribute: "gml:id"
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+
+        # Reaching this mapper already means the face is wound the wrong way, so
+        # the count and the two labels are fixed.
+        - attribute: "エラー数"
+          expr:
+            type: flowExpr
+            value: "1"
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: Incorrect Orientation
+        - attribute: "面の向き"
+          expr:
+            type: string
+            value: right_hand_rule
+
+  - id: d5000000-0000-4000-8000-000000000012
+    name: OrientationCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 03_交通_面の向き不正.csv
+
+  # --- Error detail GeoJSON for the surface checks ---
+  # Fed from the sub-graph's ports only. City objects the reprojection could not
+  # convert reach the CSV on their own branch and are deliberately left out
+  # here: they are still in the input CRS, and mixing frames in one file forces
+  # the `crs` member to null.
+  #
+  # Coordinates stay in the inspection CRS (variable "prcs"); the `crs` member
+  # names it. A face belongs to the innermost city object that encloses it, so
+  # `gmlId` prefers the geometry's owner and `rootGmlId` names the city object
+  # the reader emitted.
+  - id: d5000000-0000-4000-8000-000000000039
+    name: SurfaceValidationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000003a
+    name: SurfaceValidationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_面のエラー.geojson
+      writeCrs: true
+
+  # One feature per flagged position rather than per face, so `issue` names the
+  # single check that flagged this spot and no count attribute is needed.
+  - id: d5000000-0000-4000-8000-00000000003b
+    name: IssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 面のエラー位置
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000003c
+    name: IssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_面のエラー位置.geojson
+      writeCrs: true
+
+  - id: d5000000-0000-4000-8000-00000000003d
+    name: OrientationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 面の向き不正
+        # Reaching this mapper already means the face is wound the wrong way, so
+        # both labels are fixed.
+        - attribute: issue
+          expr:
+            type: string
+            value: Incorrect Orientation
+        - attribute: orientation
+          expr:
+            type: string
+            value: right_hand_rule
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000003e
+    name: OrientationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_面の向き不正.geojson
+      writeCrs: true
+
+  # --- L-tran-01/02: adjacent surface overlap detection ---
+  # Railway (rwy) is excluded: its surfaces legitimately abut one another.
+  - id: d5000000-0000-4000-8000-000000000013
+    name: FeatureFilterExcludeRwy
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["package"] != "rwy"
+          outputPort: notRwy
+
+  # Keep the original 3D surface aside before it is flattened, so the GeoJSON
+  # error detail can report the surface itself rather than the overlap region.
+  - id: d5000000-0000-4000-8000-000000000014
+    name: GeometryExtractorOriginal
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: original_geometry
+
+  - id: d5000000-0000-4000-8000-000000000015
+    name: TwoDimensionForcer
+    type: action
+    action: Two Dimension Forcer
+
+  # One footprint per road per LOD, so the overlap test compares roads rather
+  # than the individual traffic areas inside them.
+  - id: d5000000-0000-4000-8000-000000000016
+    name: Dissolver
+    type: action
+    action: Dissolver
+    with:
+      groupBy:
+        - lod
+        - fileIndex
+        - __citygml_gml_id
+        - package
+      tolerance: 0.01
+
+  - id: d5000000-0000-4000-8000-000000000017
+    name: FeatureSorter
+    type: action
+    action: Feature Sorter
+    with:
+      attributes: ["package"]
+      order: ascending
+
+  - id: d5000000-0000-4000-8000-000000000018
+    name: GeometryExtractor2d
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: 2d_geometry
+
+  - id: d5000000-0000-4000-8000-000000000019
+    name: GeometryCoercer
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: lineString
+
+  - id: d5000000-0000-4000-8000-00000000001a
+    name: FeatureFilterLOD
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 1
+          outputPort: lod1
+        - expr:
+            type: flowExpr
+            value: attributes.get("lod") == 2 or attributes.get("lod") == 3
+          outputPort: lod23
+
+  # Roads whose outlines run along one another share an edge, which makes them
+  # candidates for the area test below.
+  - id: d5000000-0000-4000-8000-00000000001b
+    name: LineOnLineOverlayerLOD1
+    type: action
+    action: Line On Line Overlayer
+    with:
+      groupBy:
+        - lod
+        - package
+      tolerance: 0.01
+      listAttribute: overlaidLists
+
+  - id: d5000000-0000-4000-8000-00000000001c
+    name: LineOnLineOverlayerLOD23
+    type: action
+    action: Line On Line Overlayer
+    with:
+      groupBy:
+        - lod
+        - package
+      tolerance: 0.01
+      listAttribute: overlaidLists
+
+  - id: d5000000-0000-4000-8000-00000000001d
+    name: FilterOverlaps
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["overlayCount"] > 1
+          outputPort: hasLineOverlap
+
+  - id: d5000000-0000-4000-8000-00000000001e
+    name: OverlapCounter
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      outputAttribute: overlapIndex
+
+  - id: d5000000-0000-4000-8000-00000000001f
+    name: ListExploderForLineOverlaps
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: overlaidLists
+
+  - id: d5000000-0000-4000-8000-000000000020
+    name: GeometryReplacer2d
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: 2d_geometry
+
+  # Sharing an edge is not yet an error; only roads whose footprints also
+  # overlap in area are reported. The `remnants` port carries the parts of each
+  # footprint that no other road covers, which is exactly what the check
+  # tolerates, so it is left unwired on purpose.
+  - id: d5000000-0000-4000-8000-000000000021
+    name: AreaOnAreaOverlayer
+    type: action
+    action: Area On Area Overlayer
+    with:
+      groupBy:
+        - overlapIndex
+        - lod
+        - package
+      listAttribute: areaOverlapList
+      tolerance: 0.01
+
+  - id: d5000000-0000-4000-8000-000000000022
+    name: FilterAreaOverlaps
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["overlayCount"] > 1
+          outputPort: hasAreaOverlap
+
+  - id: d5000000-0000-4000-8000-000000000023
+    name: AreaOverlapCounter
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 0
+      outputAttribute: areaOverlapIndex
+
+  # Collapse each overlap region to one row per distinct set of roads. The ids
+  # are sorted because the set is what identifies the overlap: the order they
+  # arrive in is an artifact of upstream scheduling and varies between runs.
+  - id: d5000000-0000-4000-8000-000000000024
+    name: OverlapKeyBuilder
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: concatenatedGmlIds
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              ",".join(itertools.sorted(itertools.map(
+                attributes.get("areaOverlapList", []),
+                fn(element) { element.get("__citygml_gml_id", "") }
+              )))
+
+  # `lod` is part of the key because the same pair of roads can overlap
+  # independently at more than one LOD, and each is a separate finding.
+  - id: d5000000-0000-4000-8000-000000000025
+    name: DuplicateFilter
+    type: action
+    action: Attribute Duplicate Filter
+    with:
+      filterBy: ["concatenatedGmlIds", "lod"]
+
+  - id: d5000000-0000-4000-8000-000000000026
+    name: ListExploderForAreaOverlaps
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: areaOverlapList
+
+  - id: d5000000-0000-4000-8000-000000000027
+    name: OverlapAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
+        - attribute: Index
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
+        - attribute: Filename
+          expr:
+            type: flowExpr
+            value: attributes.get("name", "")
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_feature_type", "")
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
+        - attribute: "gml:id"
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_gml_id", "")
+        - attribute: 隣接ID
+          expr:
+            type: flowExpr
+            value: attributes.get("areaOverlapIndex", "")
+
+  - id: d5000000-0000-4000-8000-000000000028
+    name: OverlapCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 03_交通_隣接面重複.csv
+
+  # Restore the road's own 3D surface for the GeoJSON error detail. The overlap
+  # region itself is not what a reviewer needs to look at.
+  - id: d5000000-0000-4000-8000-000000000029
+    name: GeometryReplacerOriginal
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: original_geometry
+
+  - id: d5000000-0000-4000-8000-00000000002a
+    name: OverlapAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 隣接面重複
+        - attribute: issue
+          expr:
+            type: string
+            value: Adjacent Surface Overlap
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        # Canonicalize the overlapping-id set: the overlayer emits the list in a
+        # non-deterministic order, so sort before joining.
+        - attribute: relatedGmlId
+          expr:
+            type: flowExpr
+            value: |
+              ",".join(itertools.sorted(attributes["concatenatedGmlIds"].split(",")))
+        - attribute: rootGmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: d5000000-0000-4000-8000-00000000002b
+    name: OverlapGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/03_交通_隣接面重複.geojson
+      writeCrs: true
+
+  # Geometry that cannot take part in overlap detection — not an area, or not
+  # in the group's coordinate frame. It is not a surface error: the surface
+  # checks see the same geometry on their own branch, so counting it here
+  # would double-report. Collected rather than left unwired so it is not
+  # dropped silently.
+  - id: d5000000-0000-4000-8000-00000000002c
+    name: UnusableForOverlapSink
+    type: action
+    action: Noop Sink
+
+  # --- Per-file result row and summary ---
+  - id: d5000000-0000-4000-8000-00000000002d
+    name: FileInfoExtractor
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Filename
+          valueAttribute: name
+
+  - id: d5000000-0000-4000-8000-00000000002e
+    name: XlinkErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _num_unreferenced_surface
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d5000000-0000-4000-8000-00000000002f
+    name: OrientationErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _num_incorrect_orientation
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d5000000-0000-4000-8000-000000000030
+    name: OverlapErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _num_overlaps
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d5000000-0000-4000-8000-000000000031
+    name: SurfaceValidationErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Filename
+      calculations:
+        - newAttribute: _surface_issues
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d5000000-0000-4000-8000-000000000032
+    name: ErrorSummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["Filename"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["Filename"]
+
+  # One row per file. Each error column reads a `_num_*` / `_surface_*`
+  # attribute and falls back to 0 when that check reported nothing.
+  - id: d5000000-0000-4000-8000-000000000033
+    name: SummaryAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: Index
+        - attribute: Filename
+          valueAttribute: Filename
+        - attribute: "xlink参照エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_unreferenced_surface", 0)
+        - attribute: "面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_incorrect_orientation", 0)
+        - attribute: "隣接面重複"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_overlaps", 0)
+        - attribute: "面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_surface_issues", 0)
+
+  - id: d5000000-0000-4000-8000-000000000034
+    name: CSVSummaryWriter
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 03_交通_検査結果一覧.csv
+
+  # Each newAttribute name becomes a "name" entry in summary_tran.json.
+  # "隣接面重複" and "面の向き不正" are deliberately absent: neither takes part
+  # in the automatic pass/fail decision.
+  - id: d5000000-0000-4000-8000-000000000035
+    name: StatisticsCalculator
+    type: action
+    action: Statistics Calculator
+    with:
+      calculations:
+        - newAttribute: "xlink参照エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("xlink参照エラー", 0)
+        - newAttribute: "面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("面のエラー", 0)
+        # totalErrorCount drives qc_result_ok suppression at the entry graph.
+        - newAttribute: totalErrorCount
+          expr:
+            type: flowExpr
+            value: |
+              itertools.sum([
+                attributes.get("xlink参照エラー", 0),
+                attributes.get("面のエラー", 0),
+              ])
+
+  - id: d5000000-0000-4000-8000-000000000036
+    name: JSONSummaryWriter
+    type: action
+    action: Feature Writer
+    with:
+      format: json
+      converter:
+        type: flowExpr
+        value: |
+          if len(attributes["__features"]) == 0 {
+            []
+          } else {
+            feature = attributes["__features"][0];
+            itertools.map(feature.keys(), fn(key) {
+              {"name": key, "count": feature[key]}
+            })
+          }
+      output:
+        type: string
+        value: summary_tran.json
+
+  - id: d5000000-0000-4000-8000-000000000037
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+  - id: d5000000-0000-4000-8000-000000000038
+    name: OutputRouterSummary
+    type: action
+    action: Output Router
+    with:
+      routingPort: summaryOutput
+
+edges:
+  # File enumeration
+  - id: d5000000-0000-4000-8000-000100000001
+    from: d5000000-0000-4000-8000-000000000001
+    to: d5000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000002
+    from: d5000000-0000-4000-8000-000000000002
+    to: d5000000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000003
+    from: d5000000-0000-4000-8000-000000000003
+    to: d5000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000004
+    from: d5000000-0000-4000-8000-000000000004
+    to: d5000000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000005
+    from: d5000000-0000-4000-8000-000000000005
+    to: d5000000-0000-4000-8000-000000000006
+    fromPort: features
+    toPort: features
+
+  # L-tran-03
+  - id: d5000000-0000-4000-8000-000100000006
+    from: d5000000-0000-4000-8000-000000000006
+    to: d5000000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000007
+    from: d5000000-0000-4000-8000-000000000007
+    to: d5000000-0000-4000-8000-000000000008
+    fromPort: failed
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000008
+    from: d5000000-0000-4000-8000-000000000008
+    to: d5000000-0000-4000-8000-000000000009
+    fromPort: features
+    toPort: features
+
+  # Reading chain
+  - id: d5000000-0000-4000-8000-000100000009
+    from: d5000000-0000-4000-8000-000000000006
+    to: d5000000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000000a
+    from: d5000000-0000-4000-8000-00000000000a
+    to: d5000000-0000-4000-8000-00000000000b
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000000b
+    from: d5000000-0000-4000-8000-00000000000b
+    to: d5000000-0000-4000-8000-00000000000c
+    fromPort: features
+    toPort: features
+
+  # Reprojection rejects are reported as surface errors
+  - id: d5000000-0000-4000-8000-00010000000c
+    from: d5000000-0000-4000-8000-00000000000b
+    to: d5000000-0000-4000-8000-00000000000e
+    fromPort: rejected
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000000d
+    from: d5000000-0000-4000-8000-00000000000e
+    to: d5000000-0000-4000-8000-00000000000f
+    fromPort: features
+    toPort: features
+
+  # LOD splitter -> surface checks
+  # `lod0` and `lod4` stay unwired: at LOD0 a traffic area is a curve
+  # (lod0MultiCurve), not a face, and CityGML 3.0 has no LOD4.
+  - id: d5000000-0000-4000-8000-00010000000e
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000000d
+    fromPort: lod1
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000000f
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000000d
+    fromPort: lod2
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000010
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000000d
+    fromPort: lod3
+    toPort: features
+
+  - id: d5000000-0000-4000-8000-000100000011
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000000f
+    fromPort: invalidSurface
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000012
+    from: d5000000-0000-4000-8000-00000000000f
+    to: d5000000-0000-4000-8000-000000000010
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000013
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-000000000011
+    fromPort: inCorrectOrientation
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000014
+    from: d5000000-0000-4000-8000-000000000011
+    to: d5000000-0000-4000-8000-000000000012
+    fromPort: features
+    toPort: features
+
+  # Surface checks -> error detail GeoJSON
+  - id: d5000000-0000-4000-8000-00010000004d
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-000000000039
+    fromPort: invalidSurface
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004e
+    from: d5000000-0000-4000-8000-000000000039
+    to: d5000000-0000-4000-8000-00000000003a
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004f
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000003b
+    fromPort: issueLocation
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000050
+    from: d5000000-0000-4000-8000-00000000003b
+    to: d5000000-0000-4000-8000-00000000003c
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000051
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000003d
+    fromPort: inCorrectOrientation
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000052
+    from: d5000000-0000-4000-8000-00000000003d
+    to: d5000000-0000-4000-8000-00000000003e
+    fromPort: features
+    toPort: features
+
+  # LOD splitter -> overlap detection
+  - id: d5000000-0000-4000-8000-000100000015
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-000000000013
+    fromPort: lod1
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000016
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-000000000013
+    fromPort: lod2
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000017
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-000000000013
+    fromPort: lod3
+    toPort: features
+
+  - id: d5000000-0000-4000-8000-000100000018
+    from: d5000000-0000-4000-8000-000000000013
+    to: d5000000-0000-4000-8000-000000000014
+    fromPort: notRwy
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000019
+    from: d5000000-0000-4000-8000-000000000014
+    to: d5000000-0000-4000-8000-000000000015
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000001a
+    from: d5000000-0000-4000-8000-000000000015
+    to: d5000000-0000-4000-8000-000000000016
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000001b
+    from: d5000000-0000-4000-8000-000000000016
+    to: d5000000-0000-4000-8000-000000000017
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000001c
+    from: d5000000-0000-4000-8000-000000000017
+    to: d5000000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000001d
+    from: d5000000-0000-4000-8000-000000000018
+    to: d5000000-0000-4000-8000-000000000019
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000001e
+    from: d5000000-0000-4000-8000-000000000019
+    to: d5000000-0000-4000-8000-00000000001a
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000001f
+    from: d5000000-0000-4000-8000-00000000001a
+    to: d5000000-0000-4000-8000-00000000001b
+    fromPort: lod1
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000020
+    from: d5000000-0000-4000-8000-00000000001a
+    to: d5000000-0000-4000-8000-00000000001c
+    fromPort: lod23
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000021
+    from: d5000000-0000-4000-8000-00000000001b
+    to: d5000000-0000-4000-8000-00000000001d
+    fromPort: line
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000022
+    from: d5000000-0000-4000-8000-00000000001c
+    to: d5000000-0000-4000-8000-00000000001d
+    fromPort: line
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000023
+    from: d5000000-0000-4000-8000-00000000001d
+    to: d5000000-0000-4000-8000-00000000001e
+    fromPort: hasLineOverlap
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000024
+    from: d5000000-0000-4000-8000-00000000001e
+    to: d5000000-0000-4000-8000-00000000001f
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000025
+    from: d5000000-0000-4000-8000-00000000001f
+    to: d5000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000026
+    from: d5000000-0000-4000-8000-000000000020
+    to: d5000000-0000-4000-8000-000000000021
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000027
+    from: d5000000-0000-4000-8000-000000000021
+    to: d5000000-0000-4000-8000-000000000022
+    fromPort: overlaps
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000028
+    from: d5000000-0000-4000-8000-000000000022
+    to: d5000000-0000-4000-8000-000000000023
+    fromPort: hasAreaOverlap
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000029
+    from: d5000000-0000-4000-8000-000000000023
+    to: d5000000-0000-4000-8000-000000000024
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000002a
+    from: d5000000-0000-4000-8000-000000000024
+    to: d5000000-0000-4000-8000-000000000025
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000002b
+    from: d5000000-0000-4000-8000-000000000025
+    to: d5000000-0000-4000-8000-000000000026
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000002c
+    from: d5000000-0000-4000-8000-000000000026
+    to: d5000000-0000-4000-8000-000000000027
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000002d
+    from: d5000000-0000-4000-8000-000000000027
+    to: d5000000-0000-4000-8000-000000000028
+    fromPort: features
+    toPort: features
+
+  # GeoJSON error detail: restore each road's own 3D surface
+  - id: d5000000-0000-4000-8000-00010000002e
+    from: d5000000-0000-4000-8000-000000000026
+    to: d5000000-0000-4000-8000-000000000029
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000002f
+    from: d5000000-0000-4000-8000-000000000029
+    to: d5000000-0000-4000-8000-00000000002a
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000030
+    from: d5000000-0000-4000-8000-00000000002a
+    to: d5000000-0000-4000-8000-00000000002b
+    fromPort: features
+    toPort: features
+
+  # Everything the overlap pipeline could not use
+  - id: d5000000-0000-4000-8000-000100000031
+    from: d5000000-0000-4000-8000-000000000015
+    to: d5000000-0000-4000-8000-00000000002c
+    fromPort: rejected
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000032
+    from: d5000000-0000-4000-8000-000000000016
+    to: d5000000-0000-4000-8000-00000000002c
+    fromPort: rejected
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000033
+    from: d5000000-0000-4000-8000-00000000001b
+    to: d5000000-0000-4000-8000-00000000002c
+    fromPort: rejected
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000034
+    from: d5000000-0000-4000-8000-00000000001c
+    to: d5000000-0000-4000-8000-00000000002c
+    fromPort: rejected
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000035
+    from: d5000000-0000-4000-8000-000000000021
+    to: d5000000-0000-4000-8000-00000000002c
+    fromPort: rejected
+    toPort: features
+
+  # Per-file result row
+  - id: d5000000-0000-4000-8000-000100000036
+    from: d5000000-0000-4000-8000-000000000006
+    to: d5000000-0000-4000-8000-00000000002d
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000037
+    from: d5000000-0000-4000-8000-000000000008
+    to: d5000000-0000-4000-8000-00000000002e
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000038
+    from: d5000000-0000-4000-8000-000000000011
+    to: d5000000-0000-4000-8000-00000000002f
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000039
+    from: d5000000-0000-4000-8000-000000000027
+    to: d5000000-0000-4000-8000-000000000030
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000003a
+    from: d5000000-0000-4000-8000-00000000000f
+    to: d5000000-0000-4000-8000-000000000031
+    fromPort: features
+    toPort: features
+
+  - id: d5000000-0000-4000-8000-00010000003b
+    from: d5000000-0000-4000-8000-00000000002d
+    to: d5000000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: requestor
+  - id: d5000000-0000-4000-8000-00010000003c
+    from: d5000000-0000-4000-8000-00000000002e
+    to: d5000000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: supplier
+  - id: d5000000-0000-4000-8000-00010000003d
+    from: d5000000-0000-4000-8000-00000000002f
+    to: d5000000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: supplier
+  - id: d5000000-0000-4000-8000-00010000003e
+    from: d5000000-0000-4000-8000-000000000030
+    to: d5000000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: supplier
+  - id: d5000000-0000-4000-8000-00010000003f
+    from: d5000000-0000-4000-8000-000000000031
+    to: d5000000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: supplier
+
+  - id: d5000000-0000-4000-8000-000100000040
+    from: d5000000-0000-4000-8000-000000000032
+    to: d5000000-0000-4000-8000-000000000033
+    fromPort: merged
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000041
+    from: d5000000-0000-4000-8000-000000000032
+    to: d5000000-0000-4000-8000-000000000033
+    fromPort: unmerged
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000042
+    from: d5000000-0000-4000-8000-000000000033
+    to: d5000000-0000-4000-8000-000000000034
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000043
+    from: d5000000-0000-4000-8000-000000000033
+    to: d5000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000044
+    from: d5000000-0000-4000-8000-000000000035
+    to: d5000000-0000-4000-8000-000000000036
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000045
+    from: d5000000-0000-4000-8000-000000000035
+    to: d5000000-0000-4000-8000-000000000038
+    fromPort: features
+    toPort: features
+
+  # Every written file is routed on so the entry graph can zip it
+  - id: d5000000-0000-4000-8000-000100000046
+    from: d5000000-0000-4000-8000-000000000009
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000047
+    from: d5000000-0000-4000-8000-000000000010
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000048
+    from: d5000000-0000-4000-8000-000000000012
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000049
+    from: d5000000-0000-4000-8000-000000000028
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004a
+    from: d5000000-0000-4000-8000-00000000002b
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004b
+    from: d5000000-0000-4000-8000-000000000034
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000004c
+    from: d5000000-0000-4000-8000-000000000036
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000053
+    from: d5000000-0000-4000-8000-00000000003a
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000054
+    from: d5000000-0000-4000-8000-00000000003c
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000055
+    from: d5000000-0000-4000-8000-00000000003e
+    to: d5000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features

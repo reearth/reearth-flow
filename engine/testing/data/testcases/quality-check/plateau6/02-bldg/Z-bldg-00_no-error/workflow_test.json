@@ -1,6 +1,5 @@
 {
   "description": "No-error reference for plateau6 02-bldg (CityGML 3.0 + i-UR 4.0). A single valid bldg:Building is expected to produce zero building/common errors.",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

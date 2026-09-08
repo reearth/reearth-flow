@@ -591,7 +591,7 @@
       "description": "CSV および TSV ファイルから地物を読み取る",
       "parameterI18n": {
         "": {
-          "title": "CsvReader パラメータ",
+          "title": "CSV Reader パラメータ",
           "description": "CSV / TSV ファイルの処理方法を設定する"
         },
         "dataset": {
@@ -608,7 +608,7 @@
         },
         "geometry": {
           "title": "ジオメトリ設定",
-          "description": "CSV 列からジオメトリを解析するための設定（任意）"
+          "description": "ジオメトリを保持する列を指定する。Well-Known Text の単一列か、座標を分けた複数の列を指定できる。指定した列は属性ではなく地物のジオメトリとして読み取られる。省略時は各行が属性のみの地物になる"
         },
         "headerRows": {
           "title": "ヘッダー行数",
@@ -627,7 +627,7 @@
         "GeometryConfig": {
           "epsg": {
             "title": "EPSG コード",
-            "description": "座標参照系コード（例: WGS84 の場合は 4326）"
+            "description": "ファイル内の値が従う座標参照系。たとえば WGS 84 は 4326。参照先が緯度を先に定義する場合、水平方向の2つの座標値はその順序で格納され、標高の順序は変わらない。省略時は通常の座標として読み取る"
           }
         }
       },
@@ -2829,32 +2829,6 @@
       "description": "BuildingInstallationのジオメトリタイプを確認する"
     },
     {
-      "name": "PLATEAU4.BuildingPartConnectivityChecker",
-      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker パラメータ",
-          "description": "BuildingPart 間の接続性チェック方法を設定する"
-        },
-        "buildingIdAttribute": {
-          "title": "建物 ID 属性",
-          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
-        },
-        "fileIndexAttribute": {
-          "title": "ファイルインデックス属性",
-          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
-        },
-        "lodAttribute": {
-          "title": "LOD 属性",
-          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
-        },
-        "partIdAttribute": {
-          "title": "パーツ ID 属性",
-          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
-        }
-      }
-    },
-    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "description": "必須属性の存在と都市コードの正確性を確認して建物用途属性を検証する。問題が見つかった場合はlBldgErrorおよびcodeErrorポートからエラーを出力する。",
       "parameterI18n": {
@@ -3100,6 +3074,27 @@
       }
     },
     {
+      "name": "PLATEAU4.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+        }
+      }
+    },
+    {
       "name": "PLATEAU4.TransportationXlinkDetector",
       "description": "PLATEAU交通モデルの未参照サーフェスを検出する（L-TRAN-03）",
       "parameterI18n": {
@@ -3139,32 +3134,6 @@
         },
         "tolerance": {
           "description": "エッジ照合の許容誤差（メートル）（デフォルト: 0.1）。この距離内のエッジは同一エッジとみなされる。"
-        }
-      }
-    },
-    {
-      "name": "PLATEAU6.BuildingPartConnectivityChecker",
-      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
-      "parameterI18n": {
-        "": {
-          "title": "BuildingPartConnectivityChecker パラメータ",
-          "description": "BuildingPart 間の接続性チェック方法を設定する"
-        },
-        "buildingIdAttribute": {
-          "title": "建物 ID 属性",
-          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
-        },
-        "fileIndexAttribute": {
-          "title": "ファイルインデックス属性",
-          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
-        },
-        "lodAttribute": {
-          "title": "LOD 属性",
-          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
-        },
-        "partIdAttribute": {
-          "title": "パーツ ID 属性",
-          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
         }
       }
     },
@@ -3251,6 +3220,36 @@
         "pairIdAttribute": {
           "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）"
         }
+      }
+    },
+    {
+      "name": "PLATEAU6.TransitiveLinkResolver",
+      "parameterI18n": {
+        "": {
+          "title": "TransitiveLinkResolver Parameters",
+          "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored."
+        },
+        "idAttribute": {
+          "title": "ID Attribute",
+          "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value."
+        },
+        "linkedIdsAttribute": {
+          "title": "Linked IDs Attribute",
+          "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.TransportationXlinkDetector",
+      "parameterI18n": {
+        "": {
+          "title": "TransportationXlinkDetectorParam"
+        },
+        "cityGmlPath": {}
       }
     },
     {
@@ -3509,11 +3508,11 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）",
+      "description": "候補の地物をフィルタージオメトリとの空間関係でフィルタリングする。関係は水平面上でテストされ、3D ジオメトリはそのフットプリントで比較される（3D 入力には線形単位の座標系が必要）。フィルタージオメトリが 1 つも渡されない場合はすべての候補が通過する",
       "parameterI18n": {
         "": {
           "title": "Spatial Filter パラメータ",
-          "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する"
+          "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する"
         },
         "matchMode": {
           "title": "マッチモード",
@@ -3521,19 +3520,19 @@
         },
         "mergeFilterAttributes": {
           "title": "フィルター属性をマージ",
-          "description": "true の場合、一致したすべてのフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後に一致したフィルターの値が優先される"
+          "description": "一致したすべてのフィルター地物の属性を通過した候補にコピーする。候補が同名の属性を持つ場合は上書きされ、一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される"
         },
         "mergedAttributesPrefix": {
           "title": "マージ属性プレフィックス",
-          "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる"
+          "description": "マージする属性名に付加するプレフィックス。候補自身の属性名との衝突を防ぐ。\"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。属性をマージしない場合は無視される"
         },
         "outputMatchCountAttribute": {
           "title": "マッチ数出力属性",
-          "description": "候補が一致したフィルター地物の数を格納する属性名（任意）"
+          "description": "候補が一致したフィルター地物の数を格納する属性。通過した候補と失敗した候補の両方に書き込まれる"
         },
         "predicate": {
           "title": "空間述語",
-          "description": "テストする空間関係。候補が主語となる: within は候補がフィルタージオメトリの内部にある場合に通過し、contains は候補がフィルタージオメトリを含む場合に通過する"
+          "description": "テストする空間関係。候補を主語、フィルタージオメトリを目的語として読む"
         }
       },
       "enumI18n": {
@@ -3549,31 +3548,40 @@
         },
         "SpatialPredicate": {
           "contains": {
-            "description": "候補がフィルタージオメトリを完全に含む"
+            "title": "含む",
+            "description": "候補がフィルタージオメトリを内部に含み、内部を共有する。フィルターが候補の境界上のみにある場合は該当しない（その場合は Covers を使用）"
           },
           "coveredBy": {
-            "description": "候補がフィルタージオメトリに覆われている"
+            "title": "覆われる",
+            "description": "候補のすべての点がフィルタージオメトリ内にある。境界上のみにある場合も含む"
           },
           "covers": {
-            "description": "候補がフィルタージオメトリを覆う"
+            "title": "覆う",
+            "description": "候補がフィルタージオメトリのすべての点を含む。フィルターが境界上のみにある場合も含む"
           },
           "crosses": {
-            "description": "ジオメトリが互いに交差する"
+            "title": "横断する",
+            "description": "候補がフィルタージオメトリを横切り、ポリゴンを横断する線のように次元の低い重なりで内部と交わる"
           },
           "disjoint": {
-            "description": "ジオメトリに空間的な関係がない"
+            "title": "交差しない",
+            "description": "候補がフィルタージオメトリと 1 点も共有しない"
           },
           "intersects": {
-            "description": "ジオメトリが何らかの交差を持つ"
+            "title": "交差する",
+            "description": "候補がフィルタージオメトリと少なくとも 1 点を共有する"
           },
           "overlaps": {
-            "description": "ジオメトリが部分的に重なる"
+            "title": "重なる",
+            "description": "候補がフィルタージオメトリと同じ次元を持ち、内部を共有しつつ互いに外側の点も持つ"
           },
           "touches": {
-            "description": "ジオメトリが境界で接しているが重なっていない"
+            "title": "接する",
+            "description": "候補がフィルタージオメトリと境界のみで接し、内部を共有しない"
           },
           "within": {
-            "description": "候補がフィルタージオメトリの内部に完全に含まれる"
+            "title": "含まれる",
+            "description": "候補がフィルタージオメトリの内部にあり、内部を共有する。候補がフィルターの境界上のみにある場合は該当しない（その場合は Covered By を使用）"
           }
         }
       }

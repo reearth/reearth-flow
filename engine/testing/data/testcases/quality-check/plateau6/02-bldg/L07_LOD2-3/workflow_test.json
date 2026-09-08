@@ -1,6 +1,5 @@
 {
   "description": "Test quality check L07 (boundary-surface errors) for LOD2/LOD3 on plateau6 (CityGML 3.0 + i-UR 4.0).",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -41,7 +40,8 @@
   "expectedOutput": {
     "expectedFile": [
       "02_建築物_LOD2以上境界面のエラー.csv",
-      "error_geometry/02_建築物_LOD2以上境界面のエラー.geojson"
+      "error_geometry/02_建築物_LOD2以上境界面のエラー.geojson",
+      "error_geometry/02_建築物_LOD2以上境界面のエラー位置.geojson"
     ]
   },
   "summaryOutput": {

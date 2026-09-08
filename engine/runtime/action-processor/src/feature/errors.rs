@@ -61,10 +61,6 @@ pub(super) enum FeatureProcessorError {
     FeatureGeoJsonWriterFactory(String),
     #[error("FeatureGeoJsonWriter error: {0}")]
     FeatureGeoJsonWriter(String),
-    #[error("BuildingPartConnectivityCheckerFactory error: {0}")]
-    BuildingPartConnectivityCheckerFactory(String),
-    #[error("BuildingPartConnectivityChecker error: {0}")]
-    BuildingPartConnectivityChecker(String),
     #[error("Feature Joiner Factory error: {0}")]
     JoinerFactory(String),
     #[error("Feature Joiner error: {0}")]
