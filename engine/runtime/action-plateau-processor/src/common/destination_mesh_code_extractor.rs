@@ -749,13 +749,22 @@ fn areal_operand(
 
 /// A projected bounding box carried back to the mesh grid's geographic space,
 /// as the `(longitude, latitude)` rectangle [`JPMeshCode`] expects.
+///
+/// All four corners are transformed: the projection is not axis-aligned with
+/// the graticule, so two opposite corners alone would leave out the extremes
+/// reached by the other two.
 #[cfg(feature = "new-geometry")]
 fn geographic_bounds(
     min: [f64; 2],
     max: [f64; 2],
     epsg: EpsgCode,
 ) -> Result<Rect2D<f64>, BoxedError> {
-    let mut corners = [[min[0], min[1], 0.0], [max[0], max[1], 0.0]];
+    let mut corners = [
+        [min[0], min[1], 0.0],
+        [min[0], max[1], 0.0],
+        [max[0], min[1], 0.0],
+        [max[0], max[1], 0.0],
+    ];
     TO_GEOGRAPHIC
         .with(|cache| {
             transform_coords_3d(&mut cache.borrow_mut(), epsg, GEOGRAPHIC_EPSG, &mut corners)
@@ -765,9 +774,19 @@ fn geographic_bounds(
                 "Failed to transform the footprint bounds from EPSG:{epsg} to EPSG:{GEOGRAPHIC_EPSG}: {e}"
             ))
         })?;
+    let mut min_lng = f64::INFINITY;
+    let mut min_lat = f64::INFINITY;
+    let mut max_lng = f64::NEG_INFINITY;
+    let mut max_lat = f64::NEG_INFINITY;
+    for [lat, lng, _] in corners {
+        min_lng = min_lng.min(lng);
+        max_lng = max_lng.max(lng);
+        min_lat = min_lat.min(lat);
+        max_lat = max_lat.max(lat);
+    }
     Ok(Rect2D::new(
-        Coordinate2D::new_(corners[0][1], corners[0][0]),
-        Coordinate2D::new_(corners[1][1], corners[1][0]),
+        Coordinate2D::new_(min_lng, min_lat),
+        Coordinate2D::new_(max_lng, max_lat),
     ))
 }
 
