@@ -792,6 +792,12 @@ graphs:
         fromPort: errorCountCityCode
         toPort: features
 
+      - id: e9f0a1b2-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: 4712539b-5103-41ee-9359-0333eefb82ef
+        fromPort: errorCountLbldg02
+        toPort: features
+
       - id: a3b4c5d6-8e9f-0a1b-2c3d-4e5f6a7b8c9d
         from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
         to: 4712539b-5103-41ee-9359-0333eefb82ef

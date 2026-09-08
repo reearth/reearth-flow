@@ -5798,6 +5798,89 @@ Filter Features by Geometry Type
 ### Category
 * Geometry
 
+## Geometry Identifier
+### Type
+* processor
+### Description
+Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Geometry Identifier Parameters",
+  "description": "How close two geometries must stay to count as one shape, which features are compared against which, and where the results are written.",
+  "type": "object",
+  "required": [
+    "tolerance"
+  ],
+  "properties": {
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Greatest distance, in the units the coordinates are expressed in, that two geometries may stray from one another and still count as the same shape. Zero admits only geometries whose coordinates coincide exactly, which leaves no room for rounding; prefer a small positive distance.",
+      "type": "number",
+      "format": "double"
+    },
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes delimiting the set a geometry is compared against, such as a parent feature or a source file. Geometries in different groups are never identified with one another. When omitted, all input features form a single group.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Attribute the identifier is written to. Features whose geometries occupy the same space carry the same value. Identifiers are counted across the whole input rather than restarted per group, so the same value always names the same set of features however they are grouped again downstream.",
+      "default": "_equivalence_id",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "idAttribute": {
+      "title": "ID Attribute",
+      "description": "Attribute holding the identifier of the feature, such as its gml:id. Read only to write the matched IDs attribute, and required when that is set.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "matchedIdsAttribute": {
+      "title": "Matched IDs Attribute",
+      "description": "Attribute the identifiers of the features sharing this feature's shape are written to, as an array. Every feature carrying one identifier value lists the whole set, itself included, in arrival order and without repeats. Left unwritten when omitted.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
 ## Geometry Part Extractor
 ### Type
 * processor

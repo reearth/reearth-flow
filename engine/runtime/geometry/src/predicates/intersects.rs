@@ -18,7 +18,7 @@ use super::kernel::CoordPos;
 use super::position::{face_position, line_position};
 use super::view::{require_common_frame, AreaView, Leaf2D, Operand2D, PreparedLeaf};
 use super::{PredicateError, Result};
-use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+use crate::{Euclidean2DGeometry, Geometry};
 
 /// Whether `a` and `b` share at least one point.
 pub fn intersects(a: &Geometry, b: &Geometry) -> Result<bool> {
@@ -118,21 +118,6 @@ fn intersects_indexed(a: &Operand2D<'_>, b: &Operand2D<'_>, index_b: bool) -> bo
         }
     }
     false
-}
-
-/// The concrete 3D leaf name, for `UnsupportedPair` diagnostics.
-pub(crate) fn type_name_3d(g: &Euclidean3DGeometry) -> &'static str {
-    match g {
-        Euclidean3DGeometry::Point(_) => "Point3D",
-        Euclidean3DGeometry::PointCloud(_) => "PointCloud",
-        Euclidean3DGeometry::LineString(_) => "LineString3D",
-        Euclidean3DGeometry::Polygon(_) => "Polygon3D",
-        Euclidean3DGeometry::PolygonMesh(_) => "PolygonMesh3D",
-        Euclidean3DGeometry::TriangularMesh(_) => "TriangularMesh3D",
-        Euclidean3DGeometry::Solid(_) => "Solid",
-        Euclidean3DGeometry::Csg(_) => "Csg",
-        Euclidean3DGeometry::Collection(_) => "Collection3D",
-    }
 }
 
 /// Whether two prepared leaves intersect, after a bounding-box quick reject.

@@ -7,6 +7,8 @@ use super::coordinate::CoordinateFrame;
 mod constructor;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A single position in 2D space.

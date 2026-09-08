@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use kiddo::{ImmutableKdTree, SquaredEuclidean};
+use reearth_flow_common::union_find::{Parity, UnionFind};
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::{CoordinateFrame, UnitKind};
@@ -1167,62 +1168,6 @@ pub(crate) fn tetra_volume_6x(a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> f64 {
     a[0] * cross[0] + a[1] * cross[1] + a[2] * cross[2]
 }
 
-/// Union-find with edge parity: each element carries a bit relative to its set
-/// representative, so a "same" (`0`) or "different" (`1`) constraint between two
-/// elements can be recorded and contradictions detected. Backs the connectivity
-/// and orientability checks.
-struct ParityUnionFind {
-    parent: Vec<usize>,
-    /// Parity of each element relative to its parent.
-    parity: Vec<u8>,
-    rank: Vec<u8>,
-}
-
-impl ParityUnionFind {
-    fn new(n: usize) -> Self {
-        Self {
-            parent: (0..n).collect(),
-            parity: vec![0; n],
-            rank: vec![0; n],
-        }
-    }
-
-    /// The set root of `x` and `x`'s parity relative to that root, compressing
-    /// the path on the way out.
-    fn find(&mut self, x: usize) -> (usize, u8) {
-        if self.parent[x] == x {
-            return (x, 0);
-        }
-        let (root, p) = self.find(self.parent[x]);
-        self.parent[x] = root;
-        self.parity[x] ^= p;
-        (root, self.parity[x])
-    }
-
-    /// Record that `x` and `y` differ by `rel` (`0` = same, `1` = opposite),
-    /// merging their sets. Returns `false` if this contradicts an existing
-    /// constraint (they are already related with the other parity).
-    fn union(&mut self, x: usize, y: usize, rel: u8) -> bool {
-        let (rx, px) = self.find(x);
-        let (ry, py) = self.find(y);
-        if rx == ry {
-            return px ^ py == rel;
-        }
-        let new_parity = px ^ py ^ rel;
-        if self.rank[rx] < self.rank[ry] {
-            self.parent[rx] = ry;
-            self.parity[rx] = new_parity;
-        } else {
-            self.parent[ry] = rx;
-            self.parity[ry] = new_parity;
-            if self.rank[rx] == self.rank[ry] {
-                self.rank[rx] += 1;
-            }
-        }
-        true
-    }
-}
-
 /// Face-adjacency topology of a surface: which faces meet at each undirected edge
 /// and in which direction, plus the face count. Built from the faces' vertex-index
 /// rings and shared by the mesh modules' `pub(crate)` connectivity, `Orientable`,
@@ -1296,20 +1241,20 @@ impl FaceTopology {
         if self.n_faces == 0 {
             return false;
         }
-        let mut uf = ParityUnionFind::new(self.n_faces);
+        let mut uf: UnionFind = UnionFind::new(self.n_faces);
         for inc in self.edges.values() {
             for w in inc.windows(2) {
-                uf.union(w[0].0, w[1].0, 0);
+                uf.merge(w[0].0, w[1].0);
             }
         }
-        let root = uf.find(0).0;
-        (1..self.n_faces).all(|f| uf.find(f).0 == root)
+        let root = uf.root(0);
+        (1..self.n_faces).all(|f| uf.root(f) == root)
     }
 
     /// Whether a consistent orientation exists: no edge is shared by more than two
     /// faces, and the per-face flip constraints have no contradiction.
     pub(crate) fn is_orientable(&self) -> bool {
-        let mut uf = ParityUnionFind::new(self.n_faces);
+        let mut uf: UnionFind<Parity> = UnionFind::new(self.n_faces);
         for inc in self.edges.values() {
             if inc.len() > 2 {
                 return false;
@@ -1317,8 +1262,14 @@ impl FaceTopology {
             if inc.len() == 2 {
                 let (f1, forward1) = inc[0];
                 let (f2, forward2) = inc[1];
-                let rel = (forward1 == forward2) as u8;
-                if !uf.union(f1, f2, rel) {
+                // Two faces that traverse a shared edge the same way disagree
+                // on which side is out.
+                let relation = if forward1 == forward2 {
+                    Parity::Opposite
+                } else {
+                    Parity::Same
+                };
+                if !uf.union(f1, f2, relation) {
                     return false;
                 }
             }
