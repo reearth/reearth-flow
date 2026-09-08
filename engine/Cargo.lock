@@ -5166,6 +5166,7 @@ name = "reearth-flow-feature-view"
 version = "0.0.548"
 dependencies = [
  "bytes",
+ "prost",
  "reearth-flow-action-sink",
  "reearth-flow-common",
  "reearth-flow-expr",
@@ -5175,6 +5176,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
+ "tinymvt",
  "zstd",
 ]
 

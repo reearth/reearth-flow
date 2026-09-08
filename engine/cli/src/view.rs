@@ -15,12 +15,12 @@ use reearth_flow_storage::resolve::StorageResolver;
 /// out of the table for a glb, a filter narrows a whole edge for a tileset.
 pub fn build_view_command() -> Command {
     Command::new("view")
-        .about("Render intermediate data into a viewable 3D form.")
+        .about("Render intermediate data into a viewable form.")
         .long_about(
             "Read the intermediate-data JSONL a run left on an edge and render its features for \
-             a 3D viewer. `gltf` renders one row into a glb, which is what showing a single \
-             feature wants; `3dtiles` renders a whole edge into a tiled tileset for looking at \
-             all of it at once.",
+             a viewer. `gltf` renders one row into a glb, which is what showing a single \
+             feature wants; `tiles` renders a whole edge into a tiled tileset for looking at \
+             all of it at once, as 3D Tiles for 3D geometry and vector tiles for 2D.",
         )
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -42,8 +42,11 @@ pub fn build_view_command() -> Command {
                 .display_order(1),
         )
         .subcommand(
-            shared_args(Command::new("3dtiles"))
-                .about("Render a whole edge into a tiled 3D Tiles tileset.")
+            shared_args(Command::new("tiles"))
+                .about(
+                    "Render a whole edge into a tiled tileset: 3D Tiles for 3D geometry, \
+                     vector tiles for 2D.",
+                )
                 .arg(
                     Arg::new("filter")
                         .long("filter")
@@ -57,10 +60,45 @@ pub fn build_view_command() -> Command {
                 .arg(
                     Arg::new("target-tile-size")
                         .long("target-tile-size")
-                        .help("Target content size per tile, in bytes.")
+                        .help("3D only. Target content size per tile, in bytes.")
                         .value_parser(clap::value_parser!(u64))
                         .default_value("1048576")
                         .display_order(5),
+                )
+                .arg(
+                    Arg::new("min-zoom")
+                        .long("min-zoom")
+                        .help("2D only. Lowest zoom the tile pyramid is sliced at.")
+                        .value_parser(clap::value_parser!(u8))
+                        .default_value("0")
+                        .display_order(10),
+                )
+                .arg(
+                    Arg::new("max-zoom")
+                        .long("max-zoom")
+                        .help("2D only. Highest zoom the tile pyramid is sliced at, inclusive.")
+                        .value_parser(clap::value_parser!(u8))
+                        .default_value("15")
+                        .display_order(11),
+                )
+                .arg(
+                    Arg::new("extent")
+                        .long("extent")
+                        .help("2D only. Coordinate grid resolution within a tile.")
+                        .value_parser(clap::value_parser!(i32))
+                        .default_value("4096")
+                        .display_order(12),
+                )
+                .arg(
+                    Arg::new("max-tile-bytes")
+                        .long("max-tile-bytes")
+                        .help(
+                            "2D only. Size cap per tile, in bytes. The visually smallest \
+                             features are dropped until a tile fits under it.",
+                        )
+                        .value_parser(clap::value_parser!(u64))
+                        .default_value("500000")
+                        .display_order(13),
                 )
                 .display_order(2),
         )
@@ -91,7 +129,8 @@ fn shared_args(command: Command) -> Command {
                 .long("name")
                 .help(
                     "Base name for the output. A glTF view writes <name>.glb; a tileset writes \
-                     <name>/tileset.json. Defaults to the input file's name.",
+                     <name>/tileset.json for 3D and <name>/tilejson.json for 2D. Defaults to \
+                     the input file's name.",
                 )
                 .display_order(3),
         )
@@ -146,9 +185,15 @@ enum Shape {
     Gltf {
         row: usize,
     },
-    Cesium3DTiles {
+    /// A whole edge, tiled. What it renders into follows the geometry: 3D Tiles
+    /// for 3D, vector tiles for 2D.
+    Tiles {
         filter: Option<String>,
         target_tile_size: u64,
+        min_zoom: u8,
+        max_zoom: u8,
+        extent: i32,
+        max_tile_bytes: u64,
     },
 }
 
@@ -163,11 +208,17 @@ impl ViewCliCommand {
                     .remove_one::<usize>("row")
                     .ok_or(crate::errors::Error::init("No row provided"))?,
             },
-            "3dtiles" => Shape::Cesium3DTiles {
+            "tiles" => Shape::Tiles {
                 filter: matches.remove_one::<String>("filter"),
                 target_tile_size: matches
                     .remove_one::<u64>("target-tile-size")
                     .unwrap_or(1_048_576),
+                min_zoom: matches.remove_one::<u8>("min-zoom").unwrap_or(0),
+                max_zoom: matches.remove_one::<u8>("max-zoom").unwrap_or(15),
+                extent: matches.remove_one::<i32>("extent").unwrap_or(4096),
+                max_tile_bytes: matches
+                    .remove_one::<u64>("max-tile-bytes")
+                    .unwrap_or(500_000),
             },
             other => return Err(crate::errors::Error::unknown_command(other)),
         };
@@ -205,12 +256,27 @@ impl ViewCliCommand {
         let input = Uri::from_str(self.input.as_str()).map_err(crate::errors::Error::init)?;
         let output = Uri::from_str(self.output.as_str()).map_err(crate::errors::Error::init)?;
 
-        let options = ViewOptions {
+        let mut options = ViewOptions {
             draco: self.draco,
             texel_size: self.texel_size,
             texture_codec: self.texture_codec,
             ..ViewOptions::default()
         };
+        if let Shape::Tiles {
+            target_tile_size,
+            min_zoom,
+            max_zoom,
+            extent,
+            max_tile_bytes,
+            ..
+        } = &self.shape
+        {
+            options.target_tile_size = *target_tile_size;
+            options.min_zoom = *min_zoom;
+            options.max_zoom = *max_zoom;
+            options.extent = *extent;
+            options.max_tile_bytes = *max_tile_bytes;
+        }
         let name = self.name(&input)?;
         let destination = Destination {
             root: &output,
@@ -240,10 +306,7 @@ impl ViewCliCommand {
                     }
                 }
             }
-            Shape::Cesium3DTiles {
-                filter,
-                target_tile_size,
-            } => {
+            Shape::Tiles { filter, .. } => {
                 let selection = match filter {
                     Some(expr) => Selection::Filter {
                         expr,
@@ -254,9 +317,8 @@ impl ViewCliCommand {
                 let loaded = load_selected(&input, selection, &storage_resolver)
                     .map_err(crate::errors::Error::run)?;
                 let selected = loaded.selection.len();
-                let view =
-                    render_tileset(&loaded.selection, *target_tile_size, &options, &destination)
-                        .map_err(crate::errors::Error::run)?;
+                let view = render_tileset(&loaded.selection, &options, &destination)
+                    .map_err(crate::errors::Error::run)?;
                 match view.entry_point {
                     Some(entry_point) => println!(
                         "Rendered {} of {selected} selected features ({} scanned) into {} \
@@ -303,11 +365,11 @@ mod tests {
     #[test]
     fn a_shape_takes_only_its_own_selection() {
         assert!(parse(&["gltf", "--row", "1"]).is_ok());
-        assert!(parse(&["3dtiles", "--filter", "true"]).is_ok());
-        assert!(parse(&["3dtiles"]).is_ok(), "a tileset may take every row");
+        assert!(parse(&["tiles", "--filter", "true"]).is_ok());
+        assert!(parse(&["tiles"]).is_ok(), "a tileset may take every row");
 
         assert!(parse(&["gltf", "--filter", "true"]).is_err());
-        assert!(parse(&["3dtiles", "--row", "1"]).is_err());
+        assert!(parse(&["tiles", "--row", "1"]).is_err());
         assert!(parse(&["gltf"]).is_err(), "a glb needs the rows to render");
     }
 
