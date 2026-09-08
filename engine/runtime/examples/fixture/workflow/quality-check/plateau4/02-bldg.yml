@@ -4963,7 +4963,6 @@ graphs:
         expr:
           type: flowExpr
           value: attributes.get("LOD0-1のBuildingPart", 0)
-      # 図郭不正 is kept out of totalErrorCount, matching the original implementation.
       - newAttribute: totalErrorCount
         expr:
           type: flowExpr
