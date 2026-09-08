@@ -1,12 +1,14 @@
 import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
 
+import {
+  DEFAULT_BATCH_MIN_SIZE,
+  DEFAULT_BATCH_PADDING,
+} from "@flow/global-constants";
 import { Node, NodeData } from "@flow/types";
 
 import useBatch from "../../useBatch";
 import { convertHextoRgba } from "../utils";
-
-const minSize = { width: 250, height: 150 };
 
 export default ({ id, data }: { id: string; data: NodeData }) => {
   const { getNodes, updateNode } = useReactFlow<Node>();
@@ -30,9 +32,15 @@ export default ({ id, data }: { id: string; data: NodeData }) => {
     });
 
     return {
-      // Add 8px padding to the maxX and maxY to show that node cannot be resized beyond the placement of child nodes
-      width: Math.max(minSize.width, maxX + 8),
-      height: Math.max(minSize.height, maxY + 8),
+      // Add padding to the maxX and maxY to show that node cannot be resized beyond the placement of child nodes
+      width: Math.max(
+        DEFAULT_BATCH_MIN_SIZE.width,
+        maxX + DEFAULT_BATCH_PADDING,
+      ),
+      height: Math.max(
+        DEFAULT_BATCH_MIN_SIZE.height,
+        maxY + DEFAULT_BATCH_PADDING,
+      ),
     };
   }, [getNodes, id]);
 
