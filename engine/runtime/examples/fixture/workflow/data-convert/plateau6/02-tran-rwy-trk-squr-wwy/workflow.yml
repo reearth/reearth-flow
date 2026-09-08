@@ -122,6 +122,8 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes.get("attributes") or {}
+            - attribute: __city_gml_attributes
+              method: remove
 
       - id: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
         name: AttributeFlattener
