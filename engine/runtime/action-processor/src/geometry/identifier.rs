@@ -163,13 +163,9 @@ fn default_output_attribute() -> Attribute {
 /// One buffered input feature and the box its geometry sits in.
 #[derive(Debug, Clone)]
 struct BufferedFeature {
-    /// `None` for a feature whose geometry occupies nowhere — absent, or an
-    /// empty container. Such a feature shares its space with nothing and is
-    /// left unlabelled.
+    /// `None` for a feature whose geometry occupies nowhere.
     envelope: Option<Aabb>,
-    /// Whether the geometry is one this action cannot weigh. Such a feature is
-    /// never binned, and leaves by the rejected port rather than failing the
-    /// run for every other feature in the batch.
+    /// Whether the geometry is one this action cannot weigh.
     rejected: bool,
     feature: Feature,
 }
@@ -179,10 +175,7 @@ pub(super) struct GeometryIdentifier {
     params: GeometryIdentifierParam,
     /// Buffered features in arrival order; the output preserves that order.
     buffer: Vec<BufferedFeature>,
-    /// Group key -> indices into `buffer`, each in arrival order. The key holds
-    /// the attribute values themselves: joining them into a string would let
-    /// `["a|b", "c"]` and `["a", "b|c"]` name one group, and would make an
-    /// absent attribute indistinguishable from an empty one.
+    /// Group key -> indices into `buffer`, each in arrival order.
     groups: HashMap<Vec<Option<AttributeValue>>, Vec<usize>>,
 }
 
@@ -197,11 +190,7 @@ impl Processor for GeometryIdentifier {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        // Asked before anything is weighed: a geometry `Equal` cannot answer for
-        // is set aside here rather than failing the batch part-way through.
         let rejected = !is_comparable(&feature.geometry);
-        // A geometry that bounds nothing occupies nowhere. `Equal` is what
-        // decides whether two geometries match; the box only pairs candidates up.
         let envelope = match &*feature.geometry {
             _ if rejected => None,
             Geometry::None => None,
@@ -284,9 +273,6 @@ impl GeometryIdentifier {
         let mut root_of: HashMap<usize, usize> = HashMap::new();
 
         for indices in self.groups.values() {
-            // A 2D and a 3D geometry are not a pair `Equal` will weigh — there is
-            // no implicit promotion between the embeddings — so they are binned
-            // apart and never put to it.
             let mut bins: HashMap<std::mem::Discriminant<Aabb>, Vec<(usize, &Aabb)>> =
                 HashMap::new();
             for &index in indices {
@@ -310,13 +296,8 @@ impl GeometryIdentifier {
                         .collect(),
                 );
                 for (slot, &(index, envelope)) in members.iter().enumerate() {
-                    // Only geometries whose boxes come within the tolerance of
-                    // one another can occupy the same space, so the rest are
-                    // never weighed.
                     let reach = box_of(envelope, self.params.tolerance);
                     for candidate in tree.locate_in_envelope_intersecting(&reach) {
-                        // Each unordered pair is enough, and a geometry need not
-                        // be weighed against itself.
                         if candidate.slot <= slot {
                             continue;
                         }
@@ -342,10 +323,6 @@ impl GeometryIdentifier {
             }
         }
 
-        // Number the shapes by the arrival of their first feature, so the
-        // identifiers do not depend on iteration order — and across the whole
-        // input rather than restarting per group, so one value always names one
-        // set of features however they are grouped again downstream.
         let mut identifier_of_root: HashMap<usize, usize> = HashMap::new();
         let mut identifiers = vec![None; self.buffer.len()];
         for (index, identifier) in identifiers.iter_mut().enumerate() {

@@ -43,22 +43,14 @@ crate::unsupported!(Collection2D: self::Equal);
 crate::unsupported!(Collection3D: self::Equal);
 crate::unsupported!(crate::GeometryCollection: self::Equal);
 
-// The boxed enum variants (`Box<Polygon3D>`, `Box<Solid>`, …) need no blanket
-// impl: the hand-written arms call the leaf method directly, and deref coercion
+// The boxed enum variants (`Box<Polygon3D>`, `Box<Solid>`, etc.) need no blanket
+// impl. The hand-written arms call the leaf method directly, and deref coercion
 // reaches through the box on both the receiver and `rhs`.
 
 /// Whether [`Equal`] is defined for `geometry`, without comparing it to
 /// anything.
 ///
-/// A caller that must not fail part-way through a batch of mixed input sets the
-/// geometries this refuses aside before pairing anything up. Two families are
-/// refused: the ones equality is not defined for at all — a collection has no
-/// point set of its own, and `Csg` and `PointCloud` have no comparison — and
-/// the 3D surfaces whose comparison is not written yet. Both are kept here,
-/// beside the `unsupported!` invocations and the leaf impls, so the list cannot
-/// drift from what the impls actually do.
-///
-/// An absent geometry is comparable: it occupies nowhere, which is an answer.
+/// An absent geometry is comparable by convention.
 pub fn is_comparable(geometry: &Geometry) -> bool {
     match geometry {
         Geometry::None => true,
