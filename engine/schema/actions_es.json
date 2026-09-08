@@ -4213,6 +4213,71 @@
       ]
     },
     {
+      "name": "Feature Group Mapper",
+      "type": "processor",
+      "description": "Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de Feature Group Mapper",
+        "type": "object",
+        "required": [
+          "attribute",
+          "expr"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "Atributo de agrupación",
+            "description": "Atributo cuyo valor agrupa entidades consecutivas.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "expr": {
+            "title": "Expresión",
+            "description": "Expresión sobre `features` (una entrada de atributos por cada entidad del grupo) y `variables`, que devuelve una lista de la misma longitud que `features`. Cada mapa devuelto reemplaza los atributos de la entidad correspondiente.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "scripting",
+        "attribute"
+      ]
+    },
+    {
       "name": "Feature Joiner",
       "type": "processor",
       "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",

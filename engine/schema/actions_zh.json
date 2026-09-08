@@ -4213,6 +4213,71 @@
       ]
     },
     {
+      "name": "Feature Group Mapper",
+      "type": "processor",
+      "description": "Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Group Mapper 参数",
+        "type": "object",
+        "required": [
+          "attribute",
+          "expr"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "分组属性",
+            "description": "用于对连续要素进行分组的属性",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "expr": {
+            "title": "表达式",
+            "description": "基于`features`（组内每个要素的属性条目）和`variables`的表达式，返回与`features`长度相同的列表。每个返回的映射将替换对应要素的属性",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "scripting",
+        "attribute"
+      ]
+    },
+    {
       "name": "Feature Joiner",
       "type": "processor",
       "description": "基于匹配的属性值，以可配置的连接类型连接请求要素和供给要素",

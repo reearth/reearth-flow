@@ -1405,6 +1405,22 @@
       }
     },
     {
+      "name": "Feature Group Mapper",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Group Mapper パラメータ"
+        },
+        "attribute": {
+          "title": "グループ化属性",
+          "description": "この属性の値によって連続する地物をグループ化する"
+        },
+        "expr": {
+          "title": "変換式",
+          "description": "`features`（グループ内の各地物の属性エントリ）と`variables`を対象とし、`features`と同じ長さのリストを返す式。返された各マップが対応する地物の属性を置き換える"
+        }
+      }
+    },
+    {
       "name": "Feature Joiner",
       "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する",
       "parameterI18n": {

@@ -1405,6 +1405,22 @@
       }
     },
     {
+      "name": "Feature Group Mapper",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres de Feature Group Mapper"
+        },
+        "attribute": {
+          "title": "Attribut de regroupement",
+          "description": "Attribut dont la valeur regroupe les entités consécutives."
+        },
+        "expr": {
+          "title": "Expression",
+          "description": "Expression portant sur `features` (une entrée d'attributs par entité du groupe) et `variables`, renvoyant une liste de même longueur que `features`. Chaque carte renvoyée remplace les attributs de l'entité correspondante."
+        }
+      }
+    },
+    {
       "name": "Feature Joiner",
       "description": "Joint des entités requérantes et fournisseuses basées sur des valeurs d'attributs correspondantes avec des types de jointure configurables",
       "parameterI18n": {

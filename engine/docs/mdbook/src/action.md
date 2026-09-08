@@ -4075,6 +4075,67 @@ Writes the features it receives to a GeoJSON file per resolved output path, then
 ### Category
 * Feature
 
+## Feature Group Mapper
+### Type
+* processor
+### Description
+Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature Group Mapper Parameters",
+  "type": "object",
+  "required": [
+    "attribute",
+    "expr"
+  ],
+  "properties": {
+    "attribute": {
+      "title": "Group By Attribute",
+      "description": "Attribute whose value groups consecutive features together.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "expr": {
+      "title": "Expression",
+      "description": "Expression over `features` (one attributes entry per feature in the group) and `variables`, returning a list the same length as `features`. Each returned map replaces the corresponding feature's attributes.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Transform
+
 ## Feature Joiner
 ### Type
 * processor
