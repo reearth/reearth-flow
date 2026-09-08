@@ -121,7 +121,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: attributes.get("attributes") or {}
+                value: attributes.get("attributes", {})
             - attribute: __city_gml_attributes
               method: remove
 
@@ -148,12 +148,12 @@ graphs:
               }
               results = [];
               for f in features {
-                chain = [f.get("attributes") or {}];
+                chain = [f.get("attributes", {})];
                 current = f;
                 pid = current.get("__citygml_parent_gml_id");
                 while pid != null {
                   parent = by_id[pid];
-                  chain.append(parent.get("attributes") or {});
+                  chain.append(parent.get("attributes", {}));
                   current = parent;
                   pid = current.get("__citygml_parent_gml_id");
                 }
@@ -176,7 +176,7 @@ graphs:
               method: convert
               value:
                 type: flowExpr
-                value: json.dumps(attributes.get("attributes") or [])
+                value: json.dumps(attributes.get("attributes", []))
             - attribute: __citygml_feature_type
               method: rename
               value:
