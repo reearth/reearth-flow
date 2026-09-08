@@ -111,23 +111,25 @@ graphs:
         with:
           inline: !include ../../../../config/plateau6_tran_flatten_attributes.json
 
+      - id: 0c8f1576-9071-4222-aafe-ef266e7b1490
+        name: AttributeDuplicatorForFlatten
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __flatten_attributes
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("attributes") or {}
+
       - id: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
         name: AttributeFlattener
         type: action
         action: Attribute Flattener
         with:
           attributes:
-            - attributes
-
-      - id: 3a4b5c6d-7e8f-4901-8a2b-3c4d5e6f7a8b
-        name: FeatureMergerForFlattenedAttributes
-        type: action
-        action: Feature Merger
-        with:
-          requestorAttribute:
-            - __citygml_gml_id
-          supplierAttribute:
-            - __citygml_gml_id
+            - __flatten_attributes
 
       - id: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
         name: AttributeChainMapper
@@ -417,25 +419,20 @@ graphs:
         to: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         fromPort: features
         toPort: features
-      - id: 2f3e4d5c-6b7a-4890-9d1e-2f3a4b5c6d7e
+      - id: 9cd0e8c7-7a4c-47c7-b031-92b63afdab87
         from: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
-        to: 3a4b5c6d-7e8f-4901-8a2b-3c4d5e6f7a8b
+        to: 0c8f1576-9071-4222-aafe-ef266e7b1490
         fromPort: features
-        toPort: requestor
-      - id: 4b5c6d7e-8f90-4a12-8b3c-4d5e6f7a8b9c
-        from: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
+        toPort: features
+      - id: 81c13067-2da9-4c83-a281-8754e5cd3ced
+        from: 0c8f1576-9071-4222-aafe-ef266e7b1490
         to: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
         fromPort: features
         toPort: features
-      - id: 5c6d7e8f-9a01-4b23-8c4d-5e6f7a8b9c0d
+      - id: 1400b1c9-6e98-4b67-bf0e-2bf5ecd01f83
         from: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
-        to: 3a4b5c6d-7e8f-4901-8a2b-3c4d5e6f7a8b
-        fromPort: features
-        toPort: supplier
-      - id: fd361741-bc46-4ec2-bad9-63e451cbdc8c
-        from: 3a4b5c6d-7e8f-4901-8a2b-3c4d5e6f7a8b
         to: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
-        fromPort: merged
+        fromPort: features
         toPort: features
       - id: 00a71875-cf41-4b82-9261-5eaf18ac2473
         from: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
