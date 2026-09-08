@@ -534,7 +534,7 @@ impl Euclidean2DGeometry {
 
     /// The 3D counterpart of this geometry, with every coordinate placed at the
     /// elevation its leaf lies at, or at `0.0` where there is none.
-    pub(crate) fn into_3d(self) -> Euclidean3DGeometry {
+    pub fn into_3d(self) -> Euclidean3DGeometry {
         match self {
             Self::Point(g) => Euclidean3DGeometry::Point(g.into_3d()),
             Self::LineString(g) => Euclidean3DGeometry::LineString(g.into_3d()),
@@ -917,6 +917,88 @@ impl Geometry {
             Geometry::Euclidean3D(g) => Ok(Geometry::Euclidean2D(g.force_2d()?)),
             Geometry::GeometryCollection(c) => Ok(Geometry::GeometryCollection(c.force_2d()?)),
         }
+    }
+}
+
+impl Geometry {
+    /// Lift every 2D-embedded leaf into 3D, recursing into collection members.
+    /// A 3D leaf, and an absent geometry, pass through unchanged, so a
+    /// cross-dimensional collection comes back wholly 3D.
+    ///
+    /// See [`Euclidean2DGeometry::into_3d`] for the elevation each lifted
+    /// coordinate takes. The frame is untouched: a leaf in a 2D CRS keeps that
+    /// CRS, with its heights read as that CRS's ellipsoidal heights.
+    pub fn into_3d(self) -> Geometry {
+        match self {
+            Geometry::None => Geometry::None,
+            Geometry::Euclidean2D(g) => Geometry::Euclidean3D(g.into_3d()),
+            Geometry::Euclidean3D(g) => Geometry::Euclidean3D(g),
+            Geometry::GeometryCollection(c) => Geometry::GeometryCollection(c.into_3d()),
+        }
+    }
+}
+
+impl GeometryCollection {
+    /// Lift every member into 3D. Members may differ in coordinate frame, so
+    /// each is lifted on its own.
+    fn into_3d(self) -> GeometryCollection {
+        GeometryCollection {
+            members: self.members.into_iter().map(Geometry::into_3d).collect(),
+            attrs: self.attrs,
+        }
+    }
+}
+
+#[cfg(test)]
+mod into_3d_tests {
+    use super::*;
+    use coordinate::{CoordinateFrame, EpsgCode};
+    use line_string::{LineString2D, LineString3D};
+    use point::{Point2D, Point3D};
+
+    fn crs() -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(4326))
+    }
+
+    /// A cross-dimensional collection comes back wholly 3D: the 2.5D member at
+    /// the elevation it lay at, the pure-2D member at 0, the 3D member as it was.
+    #[test]
+    fn a_cross_dimensional_collection_lifts_every_2d_member() {
+        let already_3d = Point3D::new(crs(), [35.0, 139.0, 7.0]);
+        let collection = Geometry::GeometryCollection(GeometryCollection::new([
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+                LineString2D::from_coords_at_elevation(crs(), [[35.0, 139.0], [36.0, 140.0]], 25.0),
+            )),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                crs(),
+                [35.0, 139.0],
+            ))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(already_3d.clone())),
+        ]));
+
+        let Geometry::GeometryCollection(lifted) = collection.into_3d() else {
+            panic!("a collection stays a collection");
+        };
+
+        assert_eq!(
+            lifted.members(),
+            [
+                Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                    crs(),
+                    [[35.0, 139.0, 25.0], [36.0, 140.0, 25.0]],
+                ))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                    crs(),
+                    [35.0, 139.0, 0.0]
+                ))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(already_3d)),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_absent_geometry_lifts_to_itself() {
+        assert_eq!(Geometry::None.into_3d(), Geometry::None);
     }
 }
 

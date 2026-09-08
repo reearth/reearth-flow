@@ -20,7 +20,8 @@ pub fn build_view_command() -> Command {
             "Read the intermediate-data JSONL a run left on an edge and render its features for \
              a viewer. `gltf` renders one row into a glb, which is what showing a single \
              feature wants; `tiles` renders a whole edge into a tiled tileset for looking at \
-             all of it at once, as 3D Tiles for 3D geometry and vector tiles for 2D.",
+             all of it at once, as 3D Tiles once any 3D geometry is present and vector tiles \
+             for an all-2D edge.",
         )
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -44,8 +45,9 @@ pub fn build_view_command() -> Command {
         .subcommand(
             shared_args(Command::new("tiles"))
                 .about(
-                    "Render a whole edge into a tiled tileset: 3D Tiles for 3D geometry, \
-                     vector tiles for 2D.",
+                    "Render a whole edge into a tiled tileset: 3D Tiles once any 3D geometry \
+                     is present, with 2D geometry lifted to the elevation it lies at; vector \
+                     tiles for an all-2D edge.",
                 )
                 .arg(
                     Arg::new("filter")

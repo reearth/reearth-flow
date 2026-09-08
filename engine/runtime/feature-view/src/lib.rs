@@ -1,8 +1,9 @@
 //! Renders a viewable form of the features a run leaves on an edge.
 //!
 //! The input is one JSONL file. The output is either a glb holding one picked
-//! feature, or a tileset for streaming a whole edge: 3D Tiles for 3D geometry,
-//! vector tiles for 2D. Rendered features carry no attributes, only
+//! feature, or a tileset for streaming a whole edge: 3D Tiles once any 3D
+//! geometry is present, vector tiles for an all-2D edge. Rendered features
+//! carry no attributes, only
 //! [`ROW_INDEX_PROPERTY`], so a click in a viewer resolves to a row in the table
 //! the file came from.
 
@@ -81,8 +82,6 @@ pub enum Error {
     Render(#[from] SinkError),
     #[error("A glTF view needs 3D geometry, and this row holds 2D geometry")]
     TwoDimensional,
-    #[error("A view renders one embedding, and this selection mixes 2D and 3D geometry")]
-    MixedDimensions,
     #[error("A 2D view is positioned in WGS84, so its geometry needs a CRS; found {frame}")]
     NonCrs { frame: String },
     #[error("Failed to write {path}: {source}")]
@@ -437,9 +436,7 @@ pub fn render_feature(
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
     reject_two_dimensional(std::slice::from_ref(selected))?;
-    let feature = selected
-        .feature
-        .with_attributes(row_index_attributes(selected.row));
+    let feature = lifted_feature(selected);
 
     let Some(glb) = build_glb(
         &feature,
@@ -465,30 +462,32 @@ pub fn render_feature(
 /// Render a whole selection into a tileset under `{prefix}/`: the view of an
 /// entire edge.
 ///
-/// The shape follows the geometry: 3D renders 3D Tiles, entered at
-/// `tileset.json`; 2D renders vector tiles, entered at `tilejson.json`. A
-/// selection mixing the two has no single shape and is rejected.
+/// The shape follows the geometry: any 3D geometry at all renders 3D Tiles,
+/// entered at `tileset.json`, with the selection's 2D geometry lifted into 3D;
+/// an all-2D selection renders vector tiles, entered at `tilejson.json`.
+///
+/// The 3D Tiles writer draws surfaces only, so a lifted point or line string is
+/// skipped rather than drawn; `rendered_features` counts what reached the
+/// output.
 pub fn render_tileset(
     selection: &[Selected],
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
-    match embedding(selection)? {
+    match embedding(selection) {
         Embedding::ThreeDimensional => render_3d_tiles(selection, options, destination),
         Embedding::TwoDimensional => render_vector_tiles(selection, options, destination),
     }
 }
 
-/// Render a 3D selection into a 3D Tiles tileset.
+/// Render a selection into a 3D Tiles tileset, lifting any 2D geometry it
+/// holds.
 fn render_3d_tiles(
     selection: &[Selected],
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
-    let features: Vec<Feature> = selection
-        .iter()
-        .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
-        .collect();
+    let features: Vec<Feature> = selection.iter().map(lifted_feature).collect();
 
     // Content glbs are handed over as they are built, so peak memory stays at
     // one tile rather than the whole tileset; collect only their paths.
@@ -577,6 +576,18 @@ fn render_vector_tiles(
     })
 }
 
+/// The feature as a 3D view renders it: the row index for its attributes, and
+/// any 2D geometry lifted into 3D at the elevation it lies at.
+fn lifted_feature(selected: &Selected) -> Feature {
+    let mut feature = selected
+        .feature
+        .with_attributes(row_index_attributes(selected.row));
+    if Seen::of(&feature.geometry).two_dimensional {
+        feature.set_geometry((*feature.geometry).clone().into_3d());
+    }
+    feature
+}
+
 /// The single-entry attribute set a rendered feature carries.
 fn row_index_attributes(row: usize) -> Attributes {
     let mut attributes = Attributes::new();
@@ -595,17 +606,18 @@ enum Embedding {
     ThreeDimensional,
 }
 
-/// The embedding every feature in `selection` shares. A selection carrying no
-/// geometry at all reads as 3D, which renders an empty 3D tileset.
-fn embedding(selection: &[Selected]) -> Result<Embedding> {
+/// The shape a global view of `selection` takes. Only an all-2D selection
+/// renders vector tiles: one 3D feature makes the whole selection a 3D tileset,
+/// with its 2D geometry lifted. A selection carrying no geometry at all reads as
+/// 3D, which renders an empty 3D tileset.
+fn embedding(selection: &[Selected]) -> Embedding {
     let mut seen = Seen::default();
     for selected in selection {
         seen.note(&selected.feature.geometry);
     }
     match (seen.two_dimensional, seen.three_dimensional) {
-        (true, true) => Err(Error::MixedDimensions),
-        (true, false) => Ok(Embedding::TwoDimensional),
-        (false, _) => Ok(Embedding::ThreeDimensional),
+        (true, false) => Embedding::TwoDimensional,
+        _ => Embedding::ThreeDimensional,
     }
 }
 
@@ -617,6 +629,12 @@ struct Seen {
 }
 
 impl Seen {
+    fn of(geometry: &Geometry) -> Self {
+        let mut seen = Seen::default();
+        seen.note(geometry);
+        seen
+    }
+
     fn note(&mut self, geometry: &Geometry) {
         match geometry {
             Geometry::None => {}
@@ -629,9 +647,10 @@ impl Seen {
     }
 }
 
-/// A glb holds one feature and renders 3D only, so 2D has no per-row view.
+/// A glb renders 3D only, so a purely 2D row has no per-row view. A row mixing
+/// the two renders, with its 2D geometry lifted.
 fn reject_two_dimensional(selection: &[Selected]) -> Result<()> {
-    match embedding(selection)? {
+    match embedding(selection) {
         Embedding::TwoDimensional => Err(Error::TwoDimensional),
         Embedding::ThreeDimensional => Ok(()),
     }
@@ -748,6 +767,26 @@ mod tests {
         render_tileset(selection, options, &destination(&root, &resolver)).expect("render")
     }
 
+    /// A closed square ring as 2D geometry, optionally at an elevation.
+    fn polygon_2d(elevation: Option<f64>) -> Geometry {
+        let [lat, lng] = TOKYO;
+        let ring = [
+            TOKYO,
+            [lat + 0.01, lng],
+            [lat + 0.01, lng + 0.01],
+            [lat, lng + 0.01],
+            TOKYO,
+        ];
+        let no_holes = Vec::<Vec<[f64; 2]>>::new();
+        let polygon = match elevation {
+            None => Polygon2D::from_rings(crs_2d(), ring, no_holes),
+            Some(elevation) => {
+                Polygon2D::from_rings_at_elevation(crs_2d(), ring, no_holes, elevation)
+            }
+        };
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(polygon)))
+    }
+
     fn point_feature(frame: CoordinateFrame) -> Feature {
         feature(
             "k",
@@ -762,23 +801,10 @@ mod tests {
             crs_2d(),
             [TOKYO, [lat + 0.01, lng + 0.01]],
         ));
-        let ring = [
-            TOKYO,
-            [lat + 0.01, lng],
-            [lat + 0.01, lng + 0.01],
-            [lat, lng + 0.01],
-            TOKYO,
-        ];
-        let polygon = Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
-            crs_2d(),
-            ring,
-            Vec::<Vec<[f64; 2]>>::new(),
-        )));
-
         [
             Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(crs_2d(), TOKYO))),
             Geometry::Euclidean2D(line),
-            Geometry::Euclidean2D(polygon),
+            polygon_2d(None),
         ]
         .into_iter()
         .enumerate()
@@ -937,32 +963,70 @@ mod tests {
         assert_eq!(ids, BTreeSet::from([0, 1, 2]));
     }
 
-    /// A mixed selection has no single shape, so it is refused rather than
-    /// silently rendering half of it.
+    /// One 3D feature makes the whole selection a 3D tileset, and the 2D
+    /// polygon alongside it is lifted rather than dropped or refused.
     #[test]
-    fn a_mixed_selection_is_rejected() {
+    fn a_mixed_selection_lifts_its_2d_geometry_into_the_3d_tileset() {
         let dir = tempfile::tempdir().expect("temp dir");
-        let root = Uri::for_test(&format!("file://{}", dir.path().display()));
-        let resolver = StorageResolver::new();
         let selection = [
             Selected {
                 row: 0,
-                feature: point_feature(crs_2d()),
+                feature: feature("k", polygon_2d(None)),
             },
             Selected {
                 row: 1,
                 feature: mesh_feature("k", 35.0),
             },
         ];
+        let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
-        let error = render_tileset(
-            &selection,
-            &ViewOptions::default(),
-            &destination(&root, &resolver),
-        )
-        .expect_err("one view holds one embedding");
+        assert!(dir.path().join("out/tileset.json").exists());
+        assert!(!dir.path().join("out/tilejson.json").exists());
+        assert_eq!(
+            view.rendered_features, 2,
+            "the lifted polygon renders alongside the mesh"
+        );
+    }
 
-        assert!(matches!(error, Error::MixedDimensions));
+    /// A lifted polygon sits at the elevation its 2D leaf lies at, not at 0.
+    #[test]
+    fn a_lifted_polygon_keeps_its_elevation() {
+        let heights = |elevation: Option<f64>| {
+            let dir = tempfile::tempdir().expect("temp dir");
+            let selection = [
+                Selected {
+                    row: 0,
+                    feature: feature("k", polygon_2d(elevation)),
+                },
+                Selected {
+                    row: 1,
+                    feature: mesh_feature("k", 35.0),
+                },
+            ];
+            tileset_to(dir.path(), &selection, &ViewOptions::default());
+
+            let tileset: serde_json::Value = serde_json::from_slice(
+                &std::fs::read(dir.path().join("out/tileset.json")).expect("a tileset"),
+            )
+            .expect("the tileset parses");
+            let region = tileset["root"]["boundingVolume"]["region"]
+                .as_array()
+                .expect("a bounding region")
+                .clone();
+            (
+                region[4].as_f64().expect("a min height"),
+                region[5].as_f64().expect("a max height"),
+            )
+        };
+
+        // The mesh fixture sits at 10 m, so a polygon lifted to 250 m has to
+        // widen the region's top; one lifted to 0 has to widen its bottom.
+        let (_, high_max) = heights(Some(250.0));
+        assert!(high_max > 200.0, "the elevation reached the tileset");
+
+        let (flat_min, flat_max) = heights(None);
+        assert!(flat_min < 1.0, "an elevationless leaf lifts to 0");
+        assert!(flat_max < 200.0);
     }
 
     /// A vector tile is positioned in WGS84, so geometry with no CRS cannot be
