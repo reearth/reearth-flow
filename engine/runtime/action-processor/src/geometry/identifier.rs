@@ -14,6 +14,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+use reearth_flow_common::union_find::UnionFind;
 use reearth_flow_geometry::ops::{Aabb, BoundingBox};
 use reearth_flow_geometry::predicates::{is_comparable, Equal};
 use reearth_flow_geometry::Geometry;
@@ -284,7 +285,7 @@ impl GeometryIdentifier {
             }
 
             for members in bins.values() {
-                let mut union_find = UnionFind::new(members.len());
+                let mut union_find: UnionFind = UnionFind::new(members.len());
                 let tree = RTree::bulk_load(
                     members
                         .iter()
@@ -312,12 +313,12 @@ impl GeometryIdentifier {
                                 ))
                             })?;
                         if same {
-                            union_find.union(slot, candidate.slot);
+                            union_find.merge(slot, candidate.slot);
                         }
                     }
                 }
                 for (slot, &(index, _)) in members.iter().enumerate() {
-                    let (root, _) = members[union_find.find(slot)];
+                    let (root, _) = members[union_find.root(slot)];
                     root_of.insert(index, root);
                 }
             }
@@ -384,51 +385,6 @@ impl RTreeObject for BoxEntry {
 fn box_of(aabb: &Aabb, distance: f64) -> AABB<[f64; 3]> {
     let (min, max) = aabb.expanded(distance).corners_3d();
     AABB::from_corners(min, max)
-}
-
-/// Union-find over the shapes of one bin, indexed by position within it.
-#[derive(Debug)]
-struct UnionFind {
-    parent: Vec<usize>,
-    rank: Vec<u32>,
-}
-
-impl UnionFind {
-    fn new(nodes: usize) -> Self {
-        Self {
-            parent: (0..nodes).collect(),
-            rank: vec![0; nodes],
-        }
-    }
-
-    fn find(&mut self, node: usize) -> usize {
-        let mut root = node;
-        while self.parent[root] != root {
-            root = self.parent[root];
-        }
-        let mut current = node;
-        while self.parent[current] != root {
-            let next = self.parent[current];
-            self.parent[current] = root;
-            current = next;
-        }
-        root
-    }
-
-    fn union(&mut self, a: usize, b: usize) {
-        let (root_a, root_b) = (self.find(a), self.find(b));
-        if root_a == root_b {
-            return;
-        }
-        match self.rank[root_a].cmp(&self.rank[root_b]) {
-            std::cmp::Ordering::Less => self.parent[root_a] = root_b,
-            std::cmp::Ordering::Greater => self.parent[root_b] = root_a,
-            std::cmp::Ordering::Equal => {
-                self.parent[root_b] = root_a;
-                self.rank[root_a] += 1;
-            }
-        }
-    }
 }
 
 #[cfg(test)]

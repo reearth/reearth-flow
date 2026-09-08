@@ -5086,6 +5086,7 @@ dependencies = [
  "nutype",
  "once_cell",
  "parking_lot",
+ "pretty_assertions",
  "rayon",
  "regex",
  "schemars",
