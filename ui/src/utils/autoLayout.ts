@@ -91,10 +91,12 @@ export const autoLayout = (
   nodes.forEach((node) => {
     const parentId = parentIdOf(node);
     if (!parentId) return;
-    childrenByParentId.set(parentId, [
-      ...(childrenByParentId.get(parentId) ?? []),
-      node,
-    ]);
+    const siblings = childrenByParentId.get(parentId);
+    if (siblings) {
+      siblings.push(node);
+    } else {
+      childrenByParentId.set(parentId, [node]);
+    }
   });
 
   const sizes = new Map(nodes.map((node) => [node.id, getNodeSize(node)]));
@@ -154,12 +156,13 @@ export const autoLayout = (
     return undefined;
   };
 
-  const rootEdges = edges.reduce<GraphEdge[]>((acc, edge) => {
+  const rootEdges: GraphEdge[] = [];
+  edges.forEach((edge) => {
     const source = rootIdOf(edge.source);
     const target = rootIdOf(edge.target);
-    if (!source || !target || source === target) return acc;
-    return [...acc, { source, target }];
-  }, []);
+    if (!source || !target || source === target) return;
+    rootEdges.push({ source, target });
+  });
 
   layoutWithDagre(rootNodes, rootEdges, sizes, direction).forEach(
     (position, nodeId) => positions.set(nodeId, position),
