@@ -186,12 +186,6 @@ pub(crate) fn push_face_lines_3d(face: &Polygon3D, out: &mut Vec<Euclidean3DGeom
     }
 }
 
-/// Whether a chain closes a ring. A chain of three or fewer encloses no area
-/// even when its ends meet.
-pub(crate) fn closes_a_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
-    coords.len() >= 4 && coords.first() == coords.last()
-}
-
 /// One triangle as a ring, closed by repeating its first vertex — the form the
 /// polygon constructors expect.
 pub(crate) fn triangle_ring<const N: usize>(
