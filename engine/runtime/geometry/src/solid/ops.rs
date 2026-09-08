@@ -328,6 +328,19 @@ impl Elevation for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Solid {
+    /// The `[x, y, z]` of the exterior shell's first face's first vertex; the
+    /// voids are inside it and are not reached. `None` when the shell has no
+    /// face.
+    pub fn first_vertex(&self) -> Option<[f64; 3]> {
+        match &self.exterior {
+            Shell::PolygonMesh(data) => data.first_face_vertex(),
+            Shell::TriangularMesh(data) => data.first_triangle_vertex(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

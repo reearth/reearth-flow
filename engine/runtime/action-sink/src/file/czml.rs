@@ -1,3 +1,19 @@
+#[cfg(feature = "new-geometry")]
+mod next;
+
+#[cfg(feature = "new-geometry")]
+use next::coords::{to_wgs84, FrameError};
+#[cfg(feature = "new-geometry")]
+use next::extract::{faces_of, position_of, ArealError, MAX_FACES_PER_FEATURE};
+#[cfg(feature = "new-geometry")]
+use next::packet::{face_packet, polyline_packet};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::coordinate::CoordinateFrame;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::ReprojectionCache;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry as NewGeometry};
+
 use std::collections::HashMap;
 use std::io::Write;
 use std::vec;
@@ -419,6 +435,1124 @@ impl Sink for CzmlWriter {
         }
         Ok(())
     }
+
+    // `process` is the cheap half: it just buffers by `groupBy` key, exactly
+    // like the old-world body above (no geometry access happens here).
+    #[cfg(feature = "new-geometry")]
+    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        let feature = &ctx.feature;
+        let key = match &self.params.group_by {
+            Some(group_by) if !group_by.is_empty() => AttributeValue::Array(
+                group_by
+                    .iter()
+                    .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
+                    .collect(),
+            ),
+            _ => AttributeValue::Null,
+        };
+        self.buffer.entry(key).or_default().push(feature.clone());
+        Ok(())
+    }
+
+    // Dispatch stays three-way, as in the old world:
+    //
+    //   1. grouped timeseries (`timeField` + `groupTimeseriesBy`)
+    //   2. Embedded Mode (`czml.*`-bearing features, or `timeField` alone —
+    //      see `is_embedded_mode`), the `preserveRaw` round-trip path
+    //   3. otherwise, per-feature geometry packets
+    //
+    // Only the discriminator between (2) and (3) changed. Old-world `finish`
+    // asked `has_citygml` and fell through to Embedded Mode; there is no
+    // `CityGmlGeometry` in the new model, so that batch-level question (which
+    // used to reject every non-CityGML feature in a batch containing one
+    // CityGML sibling) has nothing left to trigger on. Embedded Mode is now
+    // selected positively and (3) is the default, deciding every feature on
+    // its own geometry in `feature_to_packets_next`: areal geometry writes
+    // face packets, lines write polyline packets, anything else with a
+    // position writes a position packet.
+    //
+    // `finish` takes `&self`, not `&mut self`, so the `ReprojectionCache`
+    // `to_wgs84` needs can't live on `self`; it is created locally instead —
+    // one per output group in grouped-timeseries mode, and one per rayon
+    // worker (via `try_for_each_init`, not `try_for_each_with`) in the
+    // per-feature fan-out, since `ReprojectionCache` holds raw PROJ handles
+    // and is not `Send`.
+    #[cfg(feature = "new-geometry")]
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let path = self.params.output.clone();
+        for (key, features) in self.buffer.iter() {
+            let out_path = if *key == AttributeValue::Null {
+                path.clone()
+            } else {
+                format!("{}/{}.json", path, to_hash(key.to_string().as_str()))
+            };
+            let out = crate::SinkOutput::new(&ctx.sandbox_root, &out_path, &ctx.storage_resolver)
+                .map_err(crate::errors::SinkError::czml_writer)?;
+
+            let is_grouped_timeseries =
+                self.params.group_timeseries_by.is_some() && self.params.time_field.is_some();
+
+            if is_grouped_timeseries {
+                let mut cache = ReprojectionCache::default();
+                let buffer = build_timeseries_czml_next(features, &self.params, &mut cache)?;
+                out.write(Bytes::from(buffer))
+                    .map_err(crate::errors::SinkError::czml_writer)?;
+            } else if is_embedded_mode(features, &self.params) {
+                let mut cache = ReprojectionCache::default();
+                let buffer = build_embedded_czml_next(features, &self.params, &mut cache)?;
+                out.write(Bytes::from(buffer))
+                    .map_err(crate::errors::SinkError::czml_writer)?;
+            } else {
+                let gctx = ctx.as_context();
+                let (sender, receiver) = std::sync::mpsc::sync_channel(1000);
+
+                let (ra, rb) = rayon::join(
+                    || {
+                        features.iter().par_bridge().try_for_each_init(
+                            // `sender` is moved wholesale into this `init`, so once
+                            // `try_for_each_init` returns, dropping `init` drops the
+                            // last handle to it and the channel actually closes.
+                            move || (sender.clone(), ReprojectionCache::default()),
+                            |(sender, cache), feature| {
+                                let packets = feature_to_packets_next(&gctx, feature, cache);
+                                for packet in packets {
+                                    let bytes = serde_json::to_vec(&packet).unwrap();
+                                    if sender.send(bytes).is_err() {
+                                        return Err(SinkError::czml_writer(
+                                            "Failed to send packet".to_string(),
+                                        ));
+                                    };
+                                }
+                                Ok(())
+                            },
+                        )
+                    },
+                    || {
+                        let doc = Packet {
+                            id: Some("document".into()),
+                            version: Some("1.0".into()),
+                            ..Default::default()
+                        };
+                        // The separator is emitted *before* each subsequent
+                        // packet, not seeded as a trailing comma after the
+                        // document packet: with zero feature packets (every
+                        // feature skipped -- an all-Euclidean-frame batch is
+                        // the likely production case) a seeded trailing comma
+                        // would produce `[{...},]`, which is invalid JSON.
+                        // This way a zero-packet batch still closes as a
+                        // valid, document-only array.
+                        let mut buffer =
+                            Vec::from(format!("[{}", serde_json::to_string(&doc).unwrap()));
+
+                        for bytes in receiver.into_iter() {
+                            buffer
+                                .write(b",")
+                                .map_err(crate::errors::SinkError::czml_writer)?;
+                            buffer
+                                .write(&bytes)
+                                .map_err(crate::errors::SinkError::czml_writer)?;
+                        }
+
+                        buffer
+                            .write(b"]\n")
+                            .map_err(crate::errors::SinkError::czml_writer)?;
+                        out.write(Bytes::from(buffer))
+                            .map_err(crate::errors::SinkError::czml_writer)
+                    },
+                );
+                ra?;
+                rb?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Turn a [`FrameError`] into the one diagnostic code the writer has for it,
+/// regardless of whether it came from a face, a polyline or a bare position —
+/// all three go through [`to_wgs84`] and can fail the same way.
+#[cfg(feature = "new-geometry")]
+fn frame_error_draft(err: FrameError, feature: &Feature) -> DiagnosticDraft {
+    let detail = match err {
+        FrameError::Unplaceable => "coordinate frame is not a concrete CRS".to_string(),
+        FrameError::Transform(msg) => msg,
+    };
+    DiagnosticDraft::new(ErrorCode::CzmlUnplaceableFrame)
+        .with_message(format!("{detail}: feature_id={}", feature.id))
+}
+
+/// A `description` value that references the properties packet's own
+/// description. Mirrors `next::packet`'s private helper of the same shape,
+/// which isn't reachable from here (this file may not modify that module).
+#[cfg(feature = "new-geometry")]
+fn description_reference_next(parent_id: &str) -> StringValueType {
+    StringValueType::Object(StringProperties {
+        reference: Some(format!("{parent_id}#description")),
+        ..Default::default()
+    })
+}
+
+/// Build a `{"position": {"cartographicDegrees": [...]}}` packet for a
+/// feature whose geometry is neither areal nor a line — the last of the three
+/// per-feature modes. Carries a minimal `point` graphic too, so the entity is
+/// actually visible in Cesium rather than being data-only.
+#[cfg(feature = "new-geometry")]
+fn position_packet(
+    cache: &mut ReprojectionCache,
+    pos: [f64; 3],
+    frame: &CoordinateFrame,
+    parent_id: &str,
+) -> Result<Packet, FrameError> {
+    let mut coords = vec![pos];
+    to_wgs84(cache, frame, &mut coords)?;
+    // `to_wgs84` returns [lat, lon, height] (EPSG:4979 authority order, see
+    // `next::coords`'s module docs); cartographicDegrees wants [lon, lat, height].
+    let [lat, lon, height] = coords[0];
+
+    let mut position: HashMap<String, Value> = HashMap::new();
+    position.insert(
+        "cartographicDegrees".to_string(),
+        serde_json::json!([lon, lat, height]),
+    );
+
+    let mut point: HashMap<String, Value> = HashMap::new();
+    point.insert("pixelSize".to_string(), serde_json::json!(10));
+    point.insert("heightReference".to_string(), serde_json::json!("NONE"));
+
+    Ok(Packet {
+        position: Some(position),
+        point: Some(point),
+        description: Some(description_reference_next(parent_id)),
+        parent: Some(parent_id.to_string()),
+        ..Default::default()
+    })
+}
+
+/// One line's vertex chain, paired with the frame it is expressed in.
+#[cfg(feature = "new-geometry")]
+type LineChain = (Vec<[f64; 3]>, CoordinateFrame);
+
+/// **Every** line a feature carries, each with its own frame. Mirrors
+/// `next::extract::faces_of`'s traversal shape rather than `position_of`'s:
+/// the walk collects all members instead of stopping at the first match,
+/// because a CityGML `MultiCurve` arrives as a `Collection` of `LineString`s
+/// and writing only its first line is the exact linear analogue of the
+/// MultiPolygon-writes-one-face defect this port exists to fix.
+///
+/// Each chain is returned in its own frame and its own coordinate order; the
+/// reprojection and the lat/lon swap happen later, in `polyline_packet`.
+#[cfg(feature = "new-geometry")]
+fn lines_of(geometry: &NewGeometry) -> Vec<LineChain> {
+    let mut out = Vec::new();
+    collect_lines(geometry, &mut out);
+    out
+}
+
+#[cfg(feature = "new-geometry")]
+fn collect_lines(geometry: &NewGeometry, out: &mut Vec<LineChain>) {
+    match geometry {
+        NewGeometry::None => {}
+        NewGeometry::Euclidean3D(g) => collect_lines_3d(g, out),
+        NewGeometry::Euclidean2D(g) => collect_lines_2d(g, out),
+        NewGeometry::GeometryCollection(c) => {
+            for member in c.members() {
+                collect_lines(member, out);
+            }
+        }
+    }
+}
+
+/// The non-linear arms are spelled out one by one rather than swept up by a
+/// `_ =>` wildcard: a wildcard is what let the "only the first line" defect
+/// hide, and it would silently drop a linear leaf variant added later. An
+/// exhaustive match forces that decision at compile time.
+#[cfg(feature = "new-geometry")]
+fn collect_lines_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<LineChain>) {
+    match geometry {
+        Euclidean3DGeometry::LineString(l) => out.push((l.coords().to_vec(), l.frame().clone())),
+        Euclidean3DGeometry::Collection(c) => {
+            for member in c.members() {
+                collect_lines_3d(member, out);
+            }
+        }
+        // Nothing linear: `Point`/`PointCloud` carry no chain, and the areal
+        // and volumetric leaves are drawn by `faces_of` instead. A `Csg` tree
+        // carries no coordinates of its own until evaluated.
+        Euclidean3DGeometry::Point(_)
+        | Euclidean3DGeometry::PointCloud(_)
+        | Euclidean3DGeometry::Polygon(_)
+        | Euclidean3DGeometry::PolygonMesh(_)
+        | Euclidean3DGeometry::TriangularMesh(_)
+        | Euclidean3DGeometry::Solid(_)
+        | Euclidean3DGeometry::Csg(_) => {}
+    }
+}
+
+/// As [`collect_lines_3d`], for a 2D-embedded geometry. Exhaustive for the
+/// same reason.
+#[cfg(feature = "new-geometry")]
+fn collect_lines_2d(geometry: &Euclidean2DGeometry, out: &mut Vec<LineChain>) {
+    match geometry {
+        Euclidean2DGeometry::LineString(l) => {
+            // Same 2D-leaf elevation fallback as `position_of`: an optional
+            // elevation becomes the height when present, `0.0` when absent.
+            let z = l.elevation().unwrap_or(0.0);
+            out.push((
+                l.coords().iter().map(|&[x, y]| [x, y, z]).collect(),
+                l.frame().clone(),
+            ));
+        }
+        Euclidean2DGeometry::Collection(c) => {
+            for member in c.members() {
+                collect_lines_2d(member, out);
+            }
+        }
+        Euclidean2DGeometry::Point(_)
+        | Euclidean2DGeometry::Polygon(_)
+        | Euclidean2DGeometry::PolygonMesh(_)
+        | Euclidean2DGeometry::TriangularMesh(_) => {}
+    }
+}
+
+/// A feature's representative position, reprojected to WGS84 and swapped into
+/// `cartographicDegrees` order (`[lon, lat, height]`). `None` covers both "no
+/// position" and "position present but unplaceable" — used only by the
+/// grouped-timeseries path (mode 1), which — like the old writer before it —
+/// silently drops a sample it cannot place rather than diagnosing it; the
+/// per-feature diagnostics table (mode 2) is what actually reports frame
+/// failures.
+#[cfg(feature = "new-geometry")]
+fn cartographic_position(
+    cache: &mut ReprojectionCache,
+    feature: &Feature,
+) -> Option<(f64, f64, f64)> {
+    let (pos, frame) = position_of(&feature.geometry)?;
+    let mut coords = vec![pos];
+    to_wgs84(cache, &frame, &mut coords).ok()?;
+    let [lat, lon, height] = coords[0];
+    Some((lon, lat, height))
+}
+
+/// Decide and build every CZML packet for one feature (mode 3: geometry-only
+/// features that are neither grouped-timeseries nor `czml.*`-bearing). Tries
+/// areal geometry first (every face becomes its own polygon packet), then
+/// lines (every line becomes its own polyline packet), then falls back to a
+/// bare position. A feature that is none of these — or whose frame can't be
+/// placed — is diagnosed and contributes nothing, per the error-routing table:
+///
+/// | Condition | Code |
+/// |---|---|
+/// | `FrameError::Unplaceable` / `FrameError::Transform` | `CzmlUnplaceableFrame` |
+/// | `ArealError::TooManyFaces(n)` | `CzmlTooManyFaces` |
+/// | `ArealError::NothingDrawable` and no position either | `CzmlEmptyGeometry` |
+///
+/// Every condition routes through `report()`, never `warn()`, matching the
+/// old-world path. `warn()` records `WarnContinue` and never calls
+/// `handle.resolve(code)`, so a *dropped* feature would be summarized as
+/// "warned about ... continue" and a `fatal` disposition override on the node
+/// would be ignored outright — an entire batch could vanish with the run
+/// still green. This is a sink: there is no downstream port, so `report()`'s
+/// disposition cannot drop the feature a second time. Its `Result` is
+/// discarded with `let _ =` (this fn returns `Vec<Packet>`, not a `Result`),
+/// which is still not a silent drop: a promoted `Fatal` reaches the node's
+/// fatal slot inside `report()` itself.
+#[cfg(feature = "new-geometry")]
+fn feature_to_packets_next(
+    gctx: &Context,
+    feature: &Feature,
+    cache: &mut ReprojectionCache,
+) -> Vec<Packet> {
+    let ectx = gctx.as_executor_context(feature.clone(), FEATURES_PORT.clone());
+    // The new model carries no CityGML `gml:id`-based `feature_id()`, and
+    // requiring one would resurrect the old CityGML-only assumption this task
+    // removes; `feature.id` (always present) parents every packet instead.
+    let parent_id = feature.id.to_string();
+    let properties_packet = Packet {
+        id: Some(parent_id.clone()),
+        description: Some(StringValueType::String(map_to_html_table(
+            &feature.attributes,
+        ))),
+        ..Default::default()
+    };
+
+    match faces_of(&feature.geometry) {
+        Ok(faces) => {
+            let mut packets = Vec::with_capacity(faces.len() + 1);
+            for face in &faces {
+                match face_packet(cache, face, &parent_id) {
+                    Ok(packet) => packets.push(packet),
+                    Err(err) => {
+                        // One face on an unplaceable frame means every other
+                        // face of this feature shares the same fate; skip the
+                        // whole feature rather than writing it half-drawn.
+                        let _ = ectx.report(frame_error_draft(err, feature));
+                        return vec![];
+                    }
+                }
+            }
+            packets.insert(0, properties_packet);
+            packets
+        }
+        Err(ArealError::TooManyFaces(n)) => {
+            let _ = ectx.report(
+                DiagnosticDraft::new(ErrorCode::CzmlTooManyFaces).with_message(format!(
+                    "feature has {n} faces, more than the {MAX_FACES_PER_FEATURE} the writer \
+                     will emit: feature_id={}",
+                    feature.id
+                )),
+            );
+            vec![]
+        }
+        Err(ArealError::NothingDrawable) => {
+            let lines = lines_of(&feature.geometry);
+            if !lines.is_empty() {
+                // Every line gets its own polyline packet, exactly as every
+                // face gets its own polygon packet above — a `MultiCurve`
+                // must not write only its first member.
+                let mut packets = Vec::with_capacity(lines.len() + 1);
+                for (vertices, frame) in &lines {
+                    match polyline_packet(cache, vertices, frame, &parent_id) {
+                        Ok(packet) => packets.push(packet),
+                        Err(err) => {
+                            let _ = ectx.report(frame_error_draft(err, feature));
+                            return vec![];
+                        }
+                    }
+                }
+                packets.insert(0, properties_packet);
+                packets
+            } else if let Some((pos, frame)) = position_of(&feature.geometry) {
+                match position_packet(cache, pos, &frame, &parent_id) {
+                    Ok(packet) => vec![properties_packet, packet],
+                    Err(err) => {
+                        let _ = ectx.report(frame_error_draft(err, feature));
+                        vec![]
+                    }
+                }
+            } else {
+                let _ = ectx.report(
+                    DiagnosticDraft::new(ErrorCode::CzmlEmptyGeometry).with_message(format!(
+                        "feature has no drawable geometry: feature_id={}",
+                        feature.id
+                    )),
+                );
+                vec![]
+            }
+        }
+    }
+}
+
+/// Build a CZML document with time-dynamic entities grouped by attribute —
+/// the new-geometry counterpart of `build_timeseries_czml`. Same shape;
+/// position extraction goes through `position_of` + `to_wgs84`
+/// (`cartographic_position`) instead of the old geometry-type match.
+#[cfg(feature = "new-geometry")]
+fn build_timeseries_czml_next(
+    features: &[Feature],
+    params: &CzmlWriterCompiledParam,
+    cache: &mut ReprojectionCache,
+) -> Result<Vec<u8>, BoxedError> {
+    let time_field = params
+        .time_field
+        .as_ref()
+        .ok_or_else(|| SinkError::czml_writer("time_field is required for timeseries output"))?;
+    let group_attr = params.group_timeseries_by.as_ref().ok_or_else(|| {
+        SinkError::czml_writer("group_timeseries_by is required for timeseries output")
+    })?;
+
+    let mut groups: IndexMap<String, Vec<&Feature>> = IndexMap::new();
+    for feature in features {
+        let key = feature
+            .get(group_attr)
+            .map(attribute_value_to_string)
+            .unwrap_or_else(|| "unknown".to_string());
+        groups.entry(key).or_default().push(feature);
+    }
+
+    let mut doc = serde_json::json!({
+        "id": "document",
+        "version": "1.0",
+    });
+
+    let mut all_timestamps: Vec<String> = Vec::new();
+    for feature in features {
+        if let Some(ts) = feature.get(time_field) {
+            all_timestamps.push(attribute_value_to_string(ts));
+        }
+    }
+    if all_timestamps.len() >= 2 {
+        let all_numeric = all_timestamps.iter().all(|ts| {
+            if let Ok(n) = ts.parse::<f64>() {
+                n.is_finite()
+            } else {
+                false
+            }
+        });
+
+        if all_numeric {
+            all_timestamps.sort_by(|a, b| {
+                let na = a.parse::<f64>().unwrap();
+                let nb = b.parse::<f64>().unwrap();
+                na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+            });
+        } else {
+            all_timestamps.sort();
+        }
+
+        let start = &all_timestamps[0];
+        let end = &all_timestamps[all_timestamps.len() - 1];
+
+        let (start_iso, end_iso) = if all_numeric && params.epoch.is_some() {
+            let start_iso = strip_epoch_offset_for_availability(start, params.epoch.as_deref());
+            let end_iso = strip_epoch_offset_for_availability(end, params.epoch.as_deref());
+            (start_iso, end_iso)
+        } else {
+            (start.clone(), end.clone())
+        };
+
+        let availability = format!("{start_iso}/{end_iso}");
+        doc["clock"] = serde_json::json!({
+            "interval": availability,
+            "currentTime": start_iso,
+            "multiplier": 1,
+            "range": "LOOP_STOP",
+            "step": "SYSTEM_CLOCK_MULTIPLIER",
+        });
+    }
+
+    let mut output_buffer = Vec::new();
+    output_buffer
+        .write(format!("[{}", serde_json::to_string(&doc).unwrap()).as_bytes())
+        .map_err(SinkError::czml_writer)?;
+
+    for (entity_id, group_features) in &groups {
+        let packet = build_entity_packet_next(entity_id, group_features, params, cache)?;
+        output_buffer.write(b",").map_err(SinkError::czml_writer)?;
+        output_buffer
+            .write(&serde_json::to_vec(&packet).map_err(SinkError::czml_writer)?)
+            .map_err(SinkError::czml_writer)?;
+    }
+
+    output_buffer
+        .write(b"]\n")
+        .map_err(SinkError::czml_writer)?;
+    Ok(output_buffer)
+}
+
+/// The first face's polygon JSON for `feature`, if its geometry is areal —
+/// restores `build_entity_packet`'s old "polygon for polygon features"
+/// behavior for the new model. Only the first face is used: a CZML entity
+/// carries exactly one graphic, unlike mode 2 (`feature_to_packets_next`)
+/// where every feature gets its own entity and every face its own packet.
+/// `None` on anything non-areal, on a too-many-faces feature, or on an
+/// unplaceable frame — every case falls back to the plain `point` graphic in
+/// the caller, silently, matching the old writer's non-polygon fallback.
+#[cfg(feature = "new-geometry")]
+fn polygon_value_for(
+    feature: &Feature,
+    entity_id: &str,
+    cache: &mut ReprojectionCache,
+) -> Option<Value> {
+    let faces = faces_of(&feature.geometry).ok()?;
+    let face = faces.first()?;
+    let packet = face_packet(cache, face, entity_id).ok()?;
+    serde_json::to_value(packet.polygon?).ok()
+}
+
+/// Build a single CZML packet for a time-dynamic entity from grouped
+/// features — the new-geometry counterpart of `build_entity_packet`. Same
+/// shape, including the polygon-vs-point graphic decision: position samples
+/// come from `cartographic_position` instead of `extract_point_coords`, and
+/// the polygon-or-point decision comes from `polygon_value_for` (first face
+/// of the group's first feature) instead of `feature_geometry_to_polygon_json`
+/// (old-geometry-specific), but the resulting shape is the same — a polygon
+/// feature still renders as a footprint, with `position` removed, not a dot.
+#[cfg(feature = "new-geometry")]
+fn build_entity_packet_next(
+    entity_id: &str,
+    features: &[&Feature],
+    params: &CzmlWriterCompiledParam,
+    cache: &mut ReprojectionCache,
+) -> Result<Value, BoxedError> {
+    let time_field = params.time_field.as_ref().unwrap();
+
+    let all_numeric_times = features.iter().all(|f| {
+        if let Some(time_val) = f.get(time_field) {
+            let time_str = attribute_value_to_string(time_val);
+            if time_str.is_empty() {
+                return false;
+            }
+            if let Ok(n) = time_str.parse::<f64>() {
+                n.is_finite()
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    });
+
+    let epoch = if params.epoch.is_some() {
+        params.epoch.clone()
+    } else if all_numeric_times {
+        Some("1970-01-01T00:00:00Z".to_string())
+    } else {
+        None
+    };
+
+    let mut sorted: Vec<&Feature> = features.to_vec();
+    sorted.sort_by(|a, b| {
+        let ta = a
+            .get(time_field)
+            .map(attribute_value_to_string)
+            .unwrap_or_default();
+        let tb = b
+            .get(time_field)
+            .map(attribute_value_to_string)
+            .unwrap_or_default();
+
+        if all_numeric_times {
+            let na = ta.parse::<f64>().unwrap();
+            let nb = tb.parse::<f64>().unwrap();
+            na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal)
+        } else {
+            ta.cmp(&tb)
+        }
+    });
+
+    let mut cartographic_degrees: Vec<Value> = Vec::new();
+    let mut first_time: Option<String> = None;
+    let mut last_time: Option<String> = None;
+
+    for feature in &sorted {
+        let time_str = feature
+            .get(time_field)
+            .map(attribute_value_to_string)
+            .unwrap_or_default();
+        let placed = cartographic_position(cache, feature);
+
+        if time_str.is_empty() {
+            if let Some((lon, lat, height)) = placed {
+                cartographic_degrees.push(serde_json::json!(lon));
+                cartographic_degrees.push(serde_json::json!(lat));
+                cartographic_degrees.push(serde_json::json!(height));
+            }
+            continue;
+        }
+
+        if first_time.is_none() {
+            first_time = Some(time_str.clone());
+        }
+        last_time = Some(time_str.clone());
+
+        let time_value: Value = if all_numeric_times {
+            if let Ok(n) = time_str.parse::<f64>() {
+                if !n.is_finite() {
+                    continue;
+                }
+                serde_json::json!(n)
+            } else if let Some(offset) = parse_epoch_offset_timestamp(&time_str) {
+                serde_json::json!(offset)
+            } else {
+                continue;
+            }
+        } else {
+            serde_json::json!(time_str)
+        };
+
+        if let Some((lon, lat, height)) = placed {
+            cartographic_degrees.push(time_value);
+            cartographic_degrees.push(serde_json::json!(lon));
+            cartographic_degrees.push(serde_json::json!(lat));
+            cartographic_degrees.push(serde_json::json!(height));
+        }
+    }
+
+    let is_time_dynamic = first_time.is_some();
+    let mut position = if is_time_dynamic {
+        serde_json::json!({
+            "cartographicDegrees": cartographic_degrees,
+            "interpolationAlgorithm": params.interpolation_algorithm.to_string(),
+            "interpolationDegree": params.interpolation_degree,
+        })
+    } else {
+        serde_json::json!({
+            "cartographicDegrees": cartographic_degrees,
+        })
+    };
+    if is_time_dynamic {
+        if let Some(epoch) = &epoch {
+            position["epoch"] = serde_json::json!(epoch);
+        }
+    }
+
+    let availability = match (&first_time, &last_time) {
+        (Some(start), Some(end)) if start != end => {
+            let start_iso = strip_epoch_offset_for_availability(start, epoch.as_deref());
+            let end_iso = strip_epoch_offset_for_availability(end, epoch.as_deref());
+            Some(format!("{start_iso}/{end_iso}"))
+        }
+        _ => None,
+    };
+
+    let name = sorted
+        .first()
+        .and_then(|f| f.get(Attribute::new("name")))
+        .map(attribute_value_to_string);
+
+    let description = sorted.first().map(|f| {
+        let filtered = filter_description_attributes(&f.attributes);
+        map_to_html_table(&filtered)
+    });
+
+    let mut packet = serde_json::json!({
+        "id": entity_id,
+        "position": position,
+    });
+
+    if let Some(avail) = availability {
+        packet["availability"] = serde_json::json!(avail);
+    }
+    if let Some(n) = name {
+        packet["name"] = serde_json::json!(n);
+    }
+    if let Some(d) = description {
+        packet["description"] = serde_json::json!(d);
+    }
+
+    // Add graphic based on geometry type: polygon for areal features, point
+    // for everything else — same decision `build_entity_packet` makes via
+    // `feature_geometry_to_polygon_json`, just sourced from `polygon_value_for`.
+    match sorted
+        .first()
+        .and_then(|f| polygon_value_for(f, entity_id, cache))
+    {
+        Some(polygon_val) => {
+            packet["polygon"] = polygon_val;
+            // Polygon positions are self-contained; remove redundant position.
+            if let Some(obj) = packet.as_object_mut() {
+                obj.remove("position");
+            }
+        }
+        None => {
+            packet["point"] = serde_json::json!({
+                "pixelSize": 10,
+                "heightReference": "NONE",
+            });
+        }
+    }
+
+    Ok(packet)
+}
+
+/// True when this batch should be written in Embedded Mode — the round-trip
+/// path documented in `docs/czml-timeseries.md` as the recommended one.
+///
+/// Two independent triggers, matching the old world:
+///
+/// * any feature carries a `czml.*` attribute, i.e. it came through the CZML
+///   Reader's `preserveRaw` strategy and is carrying a whole CZML packet
+///   (`czml.timeseries`, `czml.epoch`, `czml.point`, `czml.label`,
+///   `czml.path`, interpolation metadata, …) that only this mode writes back;
+/// * `per_entity_mode` — `timeField` set *without* `groupTimeseriesBy`. This
+///   is what makes `timeField` alone meaningful: it computes a per-entity
+///   `availability` window plus the document `clock`. Without this branch,
+///   `timeField` would be a no-op unless `groupTimeseriesBy` were set too.
+///
+/// Old-world `finish` reached Embedded Mode as the *default* (`else`) branch
+/// after `has_citygml`; the new model has no `CityGmlGeometry` to dispatch
+/// on, so the condition is stated positively here and the geometry-only
+/// per-feature path becomes the default instead.
+#[cfg(feature = "new-geometry")]
+fn is_embedded_mode(features: &[Feature], params: &CzmlWriterCompiledParam) -> bool {
+    let per_entity_mode = params.time_field.is_some() && params.group_timeseries_by.is_none();
+    per_entity_mode
+        || features.iter().any(|f| {
+            f.attributes
+                .keys()
+                .any(|k| k.to_string().starts_with("czml."))
+        })
+}
+
+/// A feature's first face as a *styled* CZML polygon JSON value — the
+/// new-geometry counterpart of `feature_geometry_to_polygon_json`.
+///
+/// The geometry half is delegated wholesale to [`polygon_value_for`], so this
+/// adds no new reprojection site and no new lat/lon swap: the coordinates
+/// come out of the same `faces_of` → `face_packet` path every other
+/// new-geometry writer branch uses. Only the `colorAttribute` / `opacity` /
+/// `heightAttribute` styling and the default outline are applied here, byte
+/// for byte as the old-world function applied them.
+#[cfg(feature = "new-geometry")]
+fn styled_polygon_value_for(
+    feature: &Feature,
+    params: &CzmlWriterCompiledParam,
+    entity_id: &str,
+    cache: &mut ReprojectionCache,
+) -> Option<Value> {
+    let mut polygon_val = polygon_value_for(feature, entity_id, cache)?;
+    let obj = polygon_val.as_object_mut()?;
+
+    // Apply color from attribute
+    if let Some(color_attr) = &params.color_attribute {
+        if let Some(AttributeValue::String(hex)) = feature.get(color_attr) {
+            if let Some(rgba) = hex_to_rgba(hex, params.opacity) {
+                obj.insert(
+                    "material".to_string(),
+                    serde_json::json!({
+                        "solidColor": {
+                            "color": {
+                                "rgba": rgba
+                            }
+                        }
+                    }),
+                );
+            }
+        }
+    }
+
+    // Apply extrusion height from attribute
+    if let Some(height_attr) = &params.height_attribute {
+        if let Some(height_val) = feature.get(height_attr) {
+            if let Some(h) = height_val.as_f64() {
+                obj.insert("extrudedHeight".to_string(), serde_json::json!(h));
+                obj.insert("closeBottom".to_string(), serde_json::json!(true));
+                obj.insert("closeTop".to_string(), serde_json::json!(true));
+            }
+        }
+    }
+
+    // Default outline
+    obj.insert("fill".to_string(), serde_json::json!(true));
+    obj.insert("outline".to_string(), serde_json::json!(true));
+    obj.insert(
+        "outlineColor".to_string(),
+        serde_json::json!({ "rgba": [80, 80, 80, 220] }),
+    );
+    obj.insert("outlineWidth".to_string(), serde_json::json!(1.0));
+
+    Some(polygon_val)
+}
+
+/// Build a CZML document from features with embedded `czml.*` attributes
+/// (produced by the reader's `PreserveRaw` strategy) — the new-geometry
+/// counterpart of [`build_embedded_czml`]. Identical attribute handling: the
+/// only thing geometry contributes to this mode is the static entity's
+/// position and the auto-converted polygon, so the port is confined to
+/// `build_embedded_packet_next`.
+#[cfg(feature = "new-geometry")]
+fn build_embedded_czml_next(
+    features: &[Feature],
+    params: &CzmlWriterCompiledParam,
+    cache: &mut ReprojectionCache,
+) -> Result<Vec<u8>, BoxedError> {
+    let per_entity_mode = params.time_field.is_some() && params.group_timeseries_by.is_none();
+
+    // Auto-detect epoch for numeric time values in per-entity mode
+    let effective_epoch: Option<String> = if per_entity_mode {
+        if params.epoch.is_some() {
+            params.epoch.clone()
+        } else {
+            let all_numeric = params.time_field.as_ref().is_some_and(|tf| {
+                features.iter().all(|f| {
+                    f.get(tf)
+                        .map(|v| {
+                            let s = attribute_value_to_string(v);
+                            s.parse::<f64>().is_ok()
+                        })
+                        .unwrap_or(true)
+                })
+            });
+            if all_numeric {
+                Some("1970-01-01T00:00:00Z".to_string())
+            } else {
+                None
+            }
+        }
+    } else {
+        params.epoch.clone()
+    };
+
+    let mut global_start: Option<String> = None;
+    let mut global_end: Option<String> = None;
+
+    // Pass 1: Collect time range
+    if per_entity_mode {
+        if let Some(time_field) = &params.time_field {
+            for feature in features {
+                if let Some(time_val) = feature.get(time_field) {
+                    let time_str = attribute_value_to_string(time_val);
+                    let start_iso =
+                        strip_epoch_offset_for_availability(&time_str, effective_epoch.as_deref());
+                    if global_start.is_none() || start_iso < *global_start.as_ref().unwrap() {
+                        global_start = Some(start_iso.clone());
+                    }
+                    if global_end.is_none() || start_iso > *global_end.as_ref().unwrap() {
+                        global_end = Some(start_iso);
+                    }
+                }
+            }
+        }
+    }
+    if !per_entity_mode {
+        for feature in features {
+            if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability"))
+            {
+                if let Some((s, e)) = avail.split_once('/') {
+                    if !s.is_empty() && !e.is_empty() {
+                        if global_start.is_none() || s < global_start.as_deref().unwrap_or("") {
+                            global_start = Some(s.to_string());
+                        }
+                        if global_end.is_none() || e > global_end.as_deref().unwrap_or("") {
+                            global_end = Some(e.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut doc = serde_json::json!({
+        "id": "document",
+        "version": "1.0",
+    });
+    if let (Some(start), Some(end)) = (&global_start, &global_end) {
+        let availability = format!("{start}/{end}");
+        doc["clock"] = serde_json::json!({
+            "interval": availability,
+            "currentTime": start,
+            "multiplier": 1,
+            "range": "LOOP_STOP",
+            "step": "SYSTEM_CLOCK_MULTIPLIER",
+        });
+    }
+
+    let mut output_buffer = Vec::new();
+    output_buffer
+        .write(format!("[{}", serde_json::to_string(&doc).unwrap()).as_bytes())
+        .map_err(SinkError::czml_writer)?;
+
+    // Pass 2: Build packets
+    for (idx, feature) in features.iter().enumerate() {
+        let mut packet = build_embedded_packet_next(
+            feature,
+            params,
+            global_end.as_deref(),
+            effective_epoch.as_deref(),
+            cache,
+        )?;
+        // Ensure every packet has an id (required by Cesium)
+        if let Some(obj) = packet.as_object_mut() {
+            if !obj.contains_key("id") {
+                obj.insert("id".to_string(), serde_json::json!(format!("entity_{idx}")));
+            }
+        }
+        output_buffer.write(b",").map_err(SinkError::czml_writer)?;
+        output_buffer
+            .write(&serde_json::to_vec(&packet).map_err(SinkError::czml_writer)?)
+            .map_err(SinkError::czml_writer)?;
+    }
+
+    output_buffer
+        .write(b"]\n")
+        .map_err(SinkError::czml_writer)?;
+    Ok(output_buffer)
+}
+
+/// Build a single CZML packet from a feature with embedded `czml.*`
+/// attributes — the new-geometry counterpart of [`build_embedded_packet`].
+///
+/// Every `czml.*` attribute, `availability`, `parent`, `description` and the
+/// `properties` bag are handled exactly as the old-world function handles
+/// them; the two geometry-touching lines are the only difference:
+/// `extract_point_coords` becomes `cartographic_position` (which reprojects
+/// and swaps once, via the shared `to_wgs84` path), and
+/// `feature_geometry_to_polygon_json` becomes `styled_polygon_value_for`.
+#[cfg(feature = "new-geometry")]
+fn build_embedded_packet_next(
+    feature: &Feature,
+    params: &CzmlWriterCompiledParam,
+    global_end: Option<&str>,
+    effective_epoch: Option<&str>,
+    cache: &mut ReprojectionCache,
+) -> Result<Value, BoxedError> {
+    let mut packet = serde_json::Map::new();
+
+    if let Some(AttributeValue::String(id)) = feature.get(Attribute::new("id")) {
+        packet.insert("id".to_string(), serde_json::json!(id));
+    } else if let Some(AttributeValue::String(name)) = feature.get(Attribute::new("name")) {
+        // Use name as fallback id
+        packet.insert("id".to_string(), serde_json::json!(name));
+    }
+    if let Some(AttributeValue::String(name)) = feature.get(Attribute::new("name")) {
+        packet.insert("name".to_string(), serde_json::json!(name));
+    }
+
+    // Per-entity availability from time_field + global_end
+    if let (Some(time_field), Some(end)) = (&params.time_field, global_end) {
+        if let Some(time_val) = feature.get(time_field) {
+            let time_str = attribute_value_to_string(time_val);
+            let start_iso = strip_epoch_offset_for_availability(&time_str, effective_epoch);
+            packet.insert(
+                "availability".to_string(),
+                serde_json::json!(format!("{start_iso}/{end}")),
+            );
+        }
+    } else if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability"))
+    {
+        if !avail.is_empty() && avail != "/" {
+            packet.insert("availability".to_string(), serde_json::json!(avail));
+        }
+    }
+
+    if let Some(AttributeValue::String(parent)) = feature.get(Attribute::new("parent")) {
+        packet.insert("parent".to_string(), serde_json::json!(parent));
+    }
+
+    let epoch = feature
+        .get(Attribute::new("czml.epoch"))
+        .and_then(|v| match v {
+            AttributeValue::String(s) => Some(s.clone()),
+            _ => None,
+        });
+    let interp_alg = feature
+        .get(Attribute::new("czml.interpolationAlgorithm"))
+        .and_then(|v| match v {
+            AttributeValue::String(s) => Some(s.clone()),
+            _ => None,
+        });
+    let interp_deg = feature
+        .get(Attribute::new("czml.interpolationDegree"))
+        .and_then(|v| match v {
+            AttributeValue::Number(n) => n.as_f64(),
+            _ => None,
+        });
+
+    if let Some(AttributeValue::String(ts_json)) = feature.get(Attribute::new("czml.timeseries")) {
+        if let Ok(samples) = serde_json::from_str::<Vec<Value>>(ts_json) {
+            let mut cartographic_degrees: Vec<Value> = Vec::new();
+
+            for sample in &samples {
+                let time_str = sample["time"].as_str().unwrap_or("");
+                // These samples are already WGS84 lon/lat/height as the CZML
+                // Reader parsed them out of `cartographicDegrees`; they are
+                // not geometry and must not be reprojected or swapped.
+                let lon = sample["lon"].as_f64().unwrap_or(0.0);
+                let lat = sample["lat"].as_f64().unwrap_or(0.0);
+                let height = sample["height"].as_f64().unwrap_or(0.0);
+
+                let time_value: Value = if let Some(offset) = parse_epoch_offset_timestamp(time_str)
+                {
+                    serde_json::json!(offset)
+                } else if let Ok(n) = time_str.parse::<f64>() {
+                    serde_json::json!(n)
+                } else if let Some(offset) = sample["timeOffset"].as_f64() {
+                    if offset == 0.0 && !time_str.is_empty() && time_str.contains('T') {
+                        serde_json::json!(time_str)
+                    } else {
+                        serde_json::json!(offset)
+                    }
+                } else {
+                    serde_json::json!(time_str)
+                };
+
+                cartographic_degrees.push(time_value);
+                cartographic_degrees.push(serde_json::json!(lon));
+                cartographic_degrees.push(serde_json::json!(lat));
+                cartographic_degrees.push(serde_json::json!(height));
+            }
+
+            let mut position = serde_json::json!({
+                "cartographicDegrees": cartographic_degrees,
+            });
+            if let Some(ep) = &epoch {
+                position["epoch"] = serde_json::json!(ep);
+            }
+            if let Some(alg) = &interp_alg {
+                position["interpolationAlgorithm"] = serde_json::json!(alg);
+            }
+            if let Some(deg) = interp_deg {
+                position["interpolationDegree"] = serde_json::json!(deg as u32);
+            }
+
+            packet.insert("position".to_string(), position);
+        }
+    } else {
+        // Static entity: position from geometry. `cartographic_position`
+        // already returns `(lon, lat, height)` in CZML order.
+        if let Some((lon, lat, height)) = cartographic_position(cache, feature) {
+            packet.insert(
+                "position".to_string(),
+                serde_json::json!({
+                    "cartographicDegrees": [lon, lat, height],
+                }),
+            );
+        }
+    }
+
+    let skip_czml_keys = [
+        "czml.timeseries",
+        "czml.epoch",
+        "czml.interpolationAlgorithm",
+        "czml.interpolationDegree",
+    ];
+    for (attr, value) in feature.attributes.iter() {
+        let key = attr.to_string();
+        if let Some(czml_key) = key.strip_prefix("czml.") {
+            if skip_czml_keys.contains(&key.as_str()) {
+                continue;
+            }
+            if let AttributeValue::String(json_str) = value {
+                if let Ok(parsed) = serde_json::from_str::<Value>(json_str.as_str()) {
+                    packet.insert(czml_key.to_string(), parsed);
+                }
+            }
+        }
+    }
+
+    // Auto-convert polygon geometry when no graphic property was set via czml.* attributes
+    if !packet.contains_key("point")
+        && !packet.contains_key("billboard")
+        && !packet.contains_key("model")
+        && !packet.contains_key("label")
+        && !packet.contains_key("polygon")
+        && !packet.contains_key("polyline")
+    {
+        let entity_id = packet
+            .get("id")
+            .and_then(|v| v.as_str())
+            .map(str::to_string)
+            .unwrap_or_else(|| feature.id.to_string());
+        if let Some(polygon_val) = styled_polygon_value_for(feature, params, &entity_id, cache) {
+            packet.insert("polygon".to_string(), polygon_val);
+            // Remove position for polygon entities (positions are in polygon.positions)
+            packet.remove("position");
+        }
+        // No fallback point — if the geometry cannot be converted, rely on the
+        // position that was already set (if any) or let the entity be data-only.
+    }
+
+    if !packet.contains_key("description") {
+        if let Some(AttributeValue::String(desc)) = feature.get(Attribute::new("description")) {
+            packet.insert("description".to_string(), serde_json::json!(desc));
+        } else {
+            // Auto-generate description from non-internal attributes
+            let filtered = filter_description_attributes(&feature.attributes);
+            let desc = map_to_html_table(&filtered);
+            if !desc.is_empty() && desc != "<table></table>" {
+                packet.insert("description".to_string(), serde_json::json!(desc));
+            }
+        }
+    }
+
+    // Add properties bag
+    if !packet.contains_key("properties") {
+        if let Some(props) = build_properties_bag(feature) {
+            packet.insert("properties".to_string(), props);
+        }
+    }
+
+    Ok(Value::Object(packet))
 }
 
 /// Build a CZML document from features with embedded `czml.*` attributes
@@ -1906,5 +3040,537 @@ mod diagnostics_tests {
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
         assert!(summaries[0].message.contains("czml.empty_geometry"));
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod new_geometry_tests {
+    use super::*;
+
+    /// Parse written CZML as JSON, so a test tells "correctly skipped" apart
+    /// from "wrote rubbish" — a substring check on the raw bytes cannot: it
+    /// passes over a malformed document (e.g. a stray trailing comma) just as
+    /// happily as over a genuinely valid one.
+    fn parse(out: &str) -> Vec<Value> {
+        serde_json::from_str(out).expect("written CZML must be valid JSON")
+    }
+
+    #[test]
+    fn a_mesh_feature_and_a_point_feature_both_write() {
+        // The old writer dispatched on `has_citygml` with an `.any()` over the
+        // whole batch, so one CityGML feature caused every non-CityGML sibling
+        // to be rejected. Deciding per feature is the fix.
+        let doc = parse(&fixture::write_batch(vec![
+            fixture::mesh_feature_in(6677),
+            fixture::point_feature_in(6677),
+        ]));
+        assert!(
+            doc.iter().any(|p| p.get("polygon").is_some()),
+            "the mesh wrote a polygon"
+        );
+        assert!(
+            doc.iter().any(|p| p.get("position").is_some()),
+            "the point wrote a position"
+        );
+    }
+
+    #[test]
+    fn a_multi_face_feature_writes_every_face() {
+        // Fixes the defect where only the first polygon was written.
+        let doc = parse(&fixture::write_batch(vec![fixture::three_face_mesh_in(
+            6677,
+        )]));
+        let polygon_count = doc.iter().filter(|p| p.get("polygon").is_some()).count();
+        assert_eq!(polygon_count, 3);
+    }
+
+    #[test]
+    fn a_line_feature_writes_a_polyline_not_a_point() {
+        let doc = parse(&fixture::write_batch(vec![fixture::line_feature_in(6677)]));
+        assert!(
+            doc.iter().any(|p| p.get("polyline").is_some()),
+            "a line must write a polyline"
+        );
+    }
+
+    #[test]
+    fn a_multi_line_feature_writes_every_line() {
+        // The linear analogue of `a_multi_face_feature_writes_every_face`: a
+        // CityGML `MultiCurve` arrives as a `Collection` of `LineString`s, and
+        // the first implementation's `find_map` wrote only the first one.
+        let doc = parse(&fixture::write_batch(vec![fixture::three_line_feature_in(
+            6677,
+        )]));
+        let polyline_count = doc.iter().filter(|p| p.get("polyline").is_some()).count();
+        assert_eq!(polyline_count, 3, "every line must write its own polyline");
+    }
+
+    #[test]
+    fn an_embedded_czml_feature_round_trips_its_properties() {
+        // Spec §8: Embedded Mode still round-trips its `czml.*` attributes
+        // unchanged. Without the Embedded Mode branch this feature falls into
+        // the per-feature geometry path, which writes a bare position plus a
+        // dot and discards every `czml.*` attribute.
+        let doc = parse(&fixture::write_batch(
+            vec![fixture::embedded_czml_feature()],
+        ));
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("vehicle-1".to_string())))
+            .expect("the vehicle-1 entity packet");
+
+        // Raw `czml.*` graphics come back verbatim, key by key.
+        assert_eq!(entity["point"], serde_json::json!({"pixelSize": 12}));
+        assert_eq!(entity["label"], serde_json::json!({"text": "V1"}));
+        assert_eq!(entity["path"], serde_json::json!({"width": 3}));
+
+        // Timeseries samples, epoch and interpolation metadata rebuild the
+        // time-dynamic position. The samples are already WGS84 lon/lat/height
+        // as the reader parsed them, so they must appear unswapped.
+        let position = &entity["position"];
+        assert_eq!(position["epoch"], "2024-01-01T00:00:00Z");
+        assert_eq!(position["interpolationAlgorithm"], "LAGRANGE");
+        assert_eq!(position["interpolationDegree"], 5);
+        assert_eq!(
+            position["cartographicDegrees"],
+            serde_json::json!([0.0, 139.69, 35.69, 50.0, 120.0, 139.70, 35.69, 52.0])
+        );
+
+        // Per-entity availability and the document clock survive too.
+        assert_eq!(
+            entity["availability"],
+            "2024-01-01T00:00:00Z/2024-01-02T00:00:00Z"
+        );
+        assert_eq!(entity["name"], "Vehicle 1");
+        assert_eq!(
+            doc[0]["clock"]["interval"],
+            "2024-01-01T00:00:00Z/2024-01-02T00:00:00Z"
+        );
+
+        // And the non-`czml.` attributes land in the properties bag.
+        assert_eq!(entity["properties"]["fleet"], "north");
+    }
+
+    #[test]
+    fn time_field_alone_takes_the_embedded_per_entity_path() {
+        // `timeField` without `groupTimeseriesBy` is the old `per_entity_mode`:
+        // it must still compute a per-entity availability window and a
+        // document clock. The per-feature geometry path never emits either,
+        // so `availability` is what tells the two apart.
+        let doc = parse(&fixture::write_batch_with_time_field(
+            vec![
+                fixture::timed_point_feature_in(4979, "2024-03-01T00:00:00Z"),
+                fixture::timed_point_feature_in(4979, "2024-03-02T00:00:00Z"),
+            ],
+            "timestamp",
+        ));
+        assert_eq!(
+            doc[0]["clock"]["interval"], "2024-03-01T00:00:00Z/2024-03-02T00:00:00Z",
+            "timeField alone must still produce a document clock: {:?}",
+            doc[0]
+        );
+        let first = &doc[1];
+        assert_eq!(
+            first["availability"], "2024-03-01T00:00:00Z/2024-03-02T00:00:00Z",
+            "timeField alone must still produce per-entity availability: {first:?}"
+        );
+        // The geometry still places the entity, reprojected and swapped
+        // exactly once: [lat, lon, h] in 4979 becomes [lon, lat, h] in CZML.
+        assert_eq!(
+            first["position"]["cartographicDegrees"],
+            serde_json::json!([139.76, 35.68, 10.0])
+        );
+    }
+
+    #[test]
+    fn an_unplaceable_feature_is_skipped_not_written_wrong() {
+        // `parse` alone pins the regression this test exists for: seeding the
+        // packet-array buffer with a trailing comma (`[{doc},`) produces
+        // `[{"id":"document","version":"1.0"},]` when every feature is
+        // skipped — exactly this fixture's case — which `serde_json` rejects.
+        // A plain `!out.contains("\"polygon\"")` is trivially true of that
+        // garbage too, so it can't catch the bug on its own.
+        let doc = parse(&fixture::write_batch(vec![
+            fixture::mesh_feature_euclidean(),
+        ]));
+        assert_eq!(doc.len(), 1, "only the document packet, nothing drawn");
+        assert_eq!(doc[0]["id"], "document");
+        assert!(
+            doc.iter().all(|p| p.get("polygon").is_none()),
+            "nothing should be drawn"
+        );
+    }
+
+    #[test]
+    fn a_grouped_timeseries_polygon_feature_still_renders_as_a_polygon() {
+        // The old `build_entity_packet` rendered a polygon feature's entity
+        // as a footprint (`polygon`, with `position` removed) rather than a
+        // point. Restored via `polygon_value_for` (the group's first
+        // feature's first face) rather than simplified away — losing this
+        // silently would shrink every such entity to an undifferentiated dot.
+        let doc = parse(&fixture::write_timeseries_batch(
+            vec![fixture::polygon_timeseries_feature_in(
+                6677,
+                "2024-01-01T00:00:00Z",
+                "v1",
+            )],
+            "timestamp",
+            "vehicleId",
+        ));
+        let entity = doc
+            .iter()
+            .find(|p| p.get("id") == Some(&Value::String("v1".to_string())))
+            .expect("the vehicleId=v1 entity packet");
+        assert!(
+            entity.get("polygon").is_some(),
+            "a polygon feature must render as a polygon, not a point: {entity:?}"
+        );
+        assert!(
+            entity.get("position").is_none(),
+            "position must be removed once polygon is set: {entity:?}"
+        );
+    }
+
+    /// Test-only helpers: build features directly against the new geometry
+    /// model, then drive a real `CzmlWriter` end to end (factory → `process`
+    /// → `finish` → file) and hand back what it wrote.
+    mod fixture {
+        use std::collections::HashMap;
+        use std::str::FromStr;
+
+        use reearth_flow_common::uri::Uri;
+        use reearth_flow_geometry::collection::Collection3D;
+        use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+        use reearth_flow_geometry::line_string::LineString3D;
+        use reearth_flow_geometry::point::Point3D;
+        use reearth_flow_geometry::polygon::Polygon3D;
+        use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
+        use reearth_flow_geometry::{Euclidean3DGeometry, Geometry as NewGeometry};
+        use reearth_flow_runtime::event::EventHub;
+        use reearth_flow_runtime::executor_operation::NodeContext;
+        use reearth_flow_runtime::node::{Sink, SinkFactory, FEATURES_PORT};
+        use reearth_flow_types::{Attribute, AttributeValue, Feature};
+
+        use super::super::CzmlWriterFactory;
+
+        fn frame(epsg: u16) -> CoordinateFrame {
+            CoordinateFrame::Crs(EpsgCode::new(epsg))
+        }
+
+        fn feature_with(geometry: NewGeometry) -> Feature {
+            Feature::new_with_attributes_and_geometry(indexmap::IndexMap::new(), geometry)
+        }
+
+        /// A single-face square, `frame`d as requested; one exterior ring, no
+        /// holes, closed.
+        fn single_face_mesh(frame: CoordinateFrame) -> NewGeometry {
+            NewGeometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+                Polygon3D::from_rings(
+                    frame,
+                    [
+                        [0.0, 0.0, 0.0],
+                        [100.0, 0.0, 0.0],
+                        [100.0, 100.0, 0.0],
+                        [0.0, 100.0, 0.0],
+                        [0.0, 0.0, 0.0],
+                    ],
+                    std::iter::empty::<Vec<[f64; 3]>>(),
+                ),
+            )))
+        }
+
+        pub(super) fn mesh_feature_in(epsg: u16) -> Feature {
+            feature_with(single_face_mesh(frame(epsg)))
+        }
+
+        /// Same mesh as [`mesh_feature_in`], but in the default (Euclidean,
+        /// not a concrete CRS) frame — unplaceable on the WGS84 globe.
+        pub(super) fn mesh_feature_euclidean() -> Feature {
+            feature_with(single_face_mesh(CoordinateFrame::default()))
+        }
+
+        pub(super) fn point_feature_in(epsg: u16) -> Feature {
+            feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Point(
+                Point3D::new(frame(epsg), [10.0, 20.0, 0.0]),
+            )))
+        }
+
+        /// A degenerate (but validly indexed) triangle repeated three times as
+        /// three distinct mesh faces — enough to exercise "every face writes",
+        /// without needing a real three-differently-shaped-faces surface.
+        pub(super) fn three_face_mesh_in(epsg: u16) -> Feature {
+            let vertices = vec![[0.0, 0.0, 0.0], [100.0, 0.0, 0.0], [0.0, 100.0, 0.0]];
+            let faces: Vec<Vec<u32>> = std::iter::repeat_n(vec![0u32, 1, 2], 3).collect();
+            let mesh =
+                PolygonMesh3D::from_parts(frame(epsg), vertices, faces).expect("three valid faces");
+            feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(
+                Box::new(mesh),
+            )))
+        }
+
+        pub(super) fn line_feature_in(epsg: u16) -> Feature {
+            feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::LineString(
+                LineString3D::from_coords(
+                    frame(epsg),
+                    vec![[0.0, 0.0, 0.0], [100.0, 0.0, 0.0], [100.0, 100.0, 0.0]],
+                ),
+            )))
+        }
+
+        /// Three distinct `LineString`s under one `Collection` — the shape a
+        /// CityGML `MultiCurve` takes in the new model.
+        pub(super) fn three_line_feature_in(epsg: u16) -> Feature {
+            let members = (0..3).map(|i| {
+                let offset = f64::from(i) * 200.0;
+                Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                    frame(epsg),
+                    vec![[0.0, offset, 0.0], [100.0, offset, 0.0]],
+                ))
+            });
+            feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Collection(
+                Collection3D::new(members),
+            )))
+        }
+
+        /// A `preserveRaw` round-trip feature: a whole CZML packet carried as
+        /// `czml.*` attributes, plus the standard `id`/`name`/`availability`
+        /// keys and one ordinary attribute for the properties bag.
+        pub(super) fn embedded_czml_feature() -> Feature {
+            let mut f = feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Point(
+                Point3D::new(frame(4979), [35.68, 139.76, 10.0]),
+            )));
+            let mut s = |k: &str, v: &str| {
+                f.insert(Attribute::new(k), AttributeValue::String(v.to_string()));
+            };
+            s("id", "vehicle-1");
+            s("name", "Vehicle 1");
+            s("availability", "2024-01-01T00:00:00Z/2024-01-02T00:00:00Z");
+            s("czml.epoch", "2024-01-01T00:00:00Z");
+            s("czml.interpolationAlgorithm", "LAGRANGE");
+            s(
+                "czml.timeseries",
+                r#"[{"time":"0","timeOffset":0,"lon":139.69,"lat":35.69,"height":50},
+                    {"time":"120","timeOffset":120,"lon":139.70,"lat":35.69,"height":52}]"#,
+            );
+            s("czml.point", r#"{"pixelSize":12}"#);
+            s("czml.label", r#"{"text":"V1"}"#);
+            s("czml.path", r#"{"width":3}"#);
+            s("fleet", "north");
+            f.insert(
+                Attribute::new("czml.interpolationDegree"),
+                AttributeValue::Number(serde_json::Number::from(5)),
+            );
+            f
+        }
+
+        /// A placeable point carrying only a plain time attribute — no
+        /// `czml.*` at all, so only `timeField` can route it to Embedded Mode.
+        pub(super) fn timed_point_feature_in(epsg: u16, time: &str) -> Feature {
+            let mut f = feature_with(NewGeometry::Euclidean3D(Euclidean3DGeometry::Point(
+                Point3D::new(frame(epsg), [35.68, 139.76, 10.0]),
+            )));
+            f.insert(
+                Attribute::new("timestamp"),
+                AttributeValue::String(time.to_string()),
+            );
+            f
+        }
+
+        /// A single-face mesh feature carrying the two attributes a
+        /// grouped-timeseries workflow needs: a time value and a group key.
+        pub(super) fn polygon_timeseries_feature_in(epsg: u16, time: &str, group: &str) -> Feature {
+            let mut f = feature_with(single_face_mesh(frame(epsg)));
+            f.insert(
+                Attribute::new("timestamp"),
+                AttributeValue::String(time.to_string()),
+            );
+            f.insert(
+                Attribute::new("vehicleId"),
+                AttributeValue::String(group.to_string()),
+            );
+            f
+        }
+
+        /// Build a `CzmlWriter` via its factory, feed `features` through
+        /// `process`, call `finish` against a real temp-dir `SinkOutput`, and
+        /// return what it wrote.
+        pub(super) fn write_batch(features: Vec<Feature>) -> String {
+            write_batch_with(features, HashMap::new())
+        }
+
+        /// As [`write_batch`], but with `timeField` set and
+        /// `groupTimeseriesBy` deliberately left unset — the old
+        /// `per_entity_mode` trigger for Embedded Mode.
+        pub(super) fn write_batch_with_time_field(
+            features: Vec<Feature>,
+            time_field: &str,
+        ) -> String {
+            let mut extra = HashMap::new();
+            extra.insert("timeField".to_string(), serde_json::json!(time_field));
+            write_batch_with(features, extra)
+        }
+
+        /// As [`write_batch`], but wired for grouped-timeseries mode
+        /// (`timeField` + `groupTimeseriesBy` both set).
+        pub(super) fn write_timeseries_batch(
+            features: Vec<Feature>,
+            time_field: &str,
+            group_timeseries_by: &str,
+        ) -> String {
+            // Unlike `output` (a `Code`, which deserializes from a
+            // `{"type", "value"}` struct), `timeField`/`groupTimeseriesBy` are
+            // plain `Attribute`s and deserialize straight from a bare string.
+            let mut extra = HashMap::new();
+            extra.insert("timeField".to_string(), serde_json::json!(time_field));
+            extra.insert(
+                "groupTimeseriesBy".to_string(),
+                serde_json::json!(group_timeseries_by),
+            );
+            write_batch_with(features, extra)
+        }
+
+        fn write_batch_with(
+            features: Vec<Feature>,
+            mut with: HashMap<String, serde_json::Value>,
+        ) -> String {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let root =
+                Uri::from_str(&format!("file://{}", tmp.path().display())).expect("valid file uri");
+            let node_ctx = NodeContext {
+                sandbox_root: root,
+                ..NodeContext::default()
+            };
+
+            with.insert(
+                "output".to_string(),
+                serde_json::json!({"type": "string", "value": "out.czml"}),
+            );
+
+            let mut sink = CzmlWriterFactory
+                .build(
+                    node_ctx.clone(),
+                    EventHub::new(30),
+                    "CZML Writer".to_string(),
+                    Some(with),
+                )
+                .expect("factory build");
+
+            let base_ctx = node_ctx.as_context();
+            for feature in features {
+                let ectx = base_ctx.as_executor_context(feature, FEATURES_PORT.clone());
+                sink.process(ectx).expect("process");
+            }
+
+            sink.finish(node_ctx).expect("finish");
+
+            std::fs::read_to_string(tmp.path().join("out.czml")).expect("read output")
+        }
+    }
+}
+
+/// The new-geometry counterpart of `diagnostics_tests`: pins that a skipped
+/// feature actually reaches the diagnostics handle, with the right code *and
+/// the right kind*.
+///
+/// The kind is the load-bearing half. `ctx.warn()` records
+/// `DiagnosticKind::WarnContinue` and never calls `handle.resolve(code)`, so
+/// the summary comes back with `effective_disposition: None` — a dropped
+/// feature reported as "warned about ... continue", and a `fatal` disposition
+/// override on the node silently ignored. `ctx.report()` resolves and records
+/// `WarnDrop`. Asserting only the code would pass either way, which is how
+/// the mis-routing survived review in the first place.
+#[cfg(all(test, feature = "new-geometry"))]
+mod new_geometry_diagnostics_tests {
+    use std::sync::Arc;
+
+    use reearth_flow_diagnostics::Disposition;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::point::Point3D;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry as NewGeometry};
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::node::NodeHandle;
+
+    use super::*;
+
+    fn make_handle() -> Arc<NodeDiagnosticsHandle> {
+        Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "CzmlWriter".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
+        ))
+    }
+
+    fn context_with_handle(handle: &Arc<NodeDiagnosticsHandle>) -> Context {
+        let node_ctx = NodeContext::default();
+        let mut ctx: Context = node_ctx.into();
+        ctx.diagnostics = Some(handle.clone());
+        ctx
+    }
+
+    #[test]
+    fn an_unplaceable_frame_is_reported_as_a_drop_not_a_warn_continue() {
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        // A point in the default (Euclidean, not a concrete CRS) frame: there
+        // is no way to know where on the globe it is, so it is dropped.
+        let feature = Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            NewGeometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::default(),
+                [1.0, 2.0, 3.0],
+            ))),
+        );
+        let mut cache = ReprojectionCache::default();
+
+        let packets = feature_to_packets_next(&ctx, &feature, &mut cache);
+
+        assert!(packets.is_empty(), "an unplaceable feature writes nothing");
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(
+            summaries[0].message.contains("czml.unplaceable_frame"),
+            "got {}",
+            summaries[0].message
+        );
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop),
+            "a dropped feature must be reported (WarnDrop), not warn()ed \
+             (which leaves effective_disposition None and skips resolve())"
+        );
+        assert!(
+            summaries[0].message.contains("dropped"),
+            "the summary must read as a drop, not \"warned about\": {}",
+            summaries[0].message
+        );
+    }
+
+    #[test]
+    fn a_feature_with_no_drawable_geometry_is_reported_as_a_drop() {
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let feature =
+            Feature::new_with_attributes_and_geometry(indexmap::IndexMap::new(), NewGeometry::None);
+        let mut cache = ReprojectionCache::default();
+
+        let packets = feature_to_packets_next(&ctx, &feature, &mut cache);
+
+        assert!(packets.is_empty());
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert!(
+            summaries[0].message.contains("czml.empty_geometry"),
+            "got {}",
+            summaries[0].message
+        );
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop)
+        );
     }
 }
