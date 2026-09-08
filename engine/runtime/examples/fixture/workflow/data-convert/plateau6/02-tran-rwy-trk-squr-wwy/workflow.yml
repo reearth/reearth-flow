@@ -182,7 +182,12 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: attributes["__citygml_gml_id"]
+                value: |
+                  if attributes["__citygml_feature_type"] == "urc:DmGeometricAttribute" {
+                    attributes["__citygml_parent_gml_id"]
+                  } else {
+                    attributes["__citygml_gml_id"]
+                  }
             - attribute: city_code
               method: create
               value:
