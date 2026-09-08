@@ -360,6 +360,9 @@ impl Area for GeometryCollection {
 impl Equal for Geometry {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use Geometry as G;
+        // Ahead of the match: the arms that answer without reaching a leaf
+        // would otherwise never see the tolerance at all.
+        predicates::require_tolerance(tolerance)?;
         match (self, rhs) {
             // Two absent geometries occupy the same nothing.
             (G::None, G::None) => Ok(true),
@@ -388,6 +391,7 @@ impl Equal for Geometry {
 impl Equal for Euclidean2DGeometry {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use Euclidean2DGeometry as G;
+        predicates::require_tolerance(tolerance)?;
         match (self, rhs) {
             (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
             (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
@@ -409,6 +413,7 @@ impl Equal for Euclidean2DGeometry {
 impl Equal for Euclidean3DGeometry {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use Euclidean3DGeometry as G;
+        predicates::require_tolerance(tolerance)?;
         match (self, rhs) {
             (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
             (G::PointCloud(a), G::PointCloud(b)) => a.equal(b, tolerance),

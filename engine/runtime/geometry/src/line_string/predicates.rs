@@ -7,6 +7,7 @@ impl Equal for LineString2D {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use crate::predicates::equal::chain_curves_2d;
 
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         let ours = chain_curves_2d(self.coords(), self.elevation());
         let theirs = chain_curves_2d(rhs.coords(), rhs.elevation());
@@ -18,6 +19,7 @@ impl Equal for LineString3D {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use crate::predicates::equal::Curves;
 
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         let chain = |line: &Self| {
             let mut curves = Curves::new();

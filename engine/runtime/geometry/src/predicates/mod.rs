@@ -124,6 +124,9 @@ pub enum PredicateError {
     NotPlanar,
     /// A hole of an areal operand winds the same way as its exterior ring.
     InvalidHoleWinding,
+    /// A tolerance-taking predicate was handed a distance that is not one:
+    /// negative, or `NaN`. Zero is a distance and is accepted.
+    InvalidTolerance,
 }
 
 impl core::fmt::Display for PredicateError {
@@ -153,6 +156,9 @@ impl core::fmt::Display for PredicateError {
             PredicateError::InvalidHoleWinding => {
                 write!(f, "hole winds the same way as its exterior")
             }
+            PredicateError::InvalidTolerance => {
+                write!(f, "tolerance is not a distance")
+            }
         }
     }
 }
@@ -170,6 +176,21 @@ pub fn require_same_frame(a: &CoordinateFrame, b: &CoordinateFrame) -> Result<()
         Ok(())
     } else {
         Err(PredicateError::MixedFrames)
+    }
+}
+
+/// Require a tolerance to be a distance, returning
+/// [`PredicateError::InvalidTolerance`] otherwise. Zero is a distance; a
+/// negative one is not, and neither is `NaN`, so the comparison is written to
+/// reject both rather than to pass whatever `NaN` compares as. Every
+/// tolerance-taking predicate runs this before touching coordinates: a
+/// negative tolerance would otherwise put every point out of reach and answer
+/// the question with a plausible-looking `false`.
+pub fn require_tolerance(tolerance: f64) -> Result<()> {
+    if tolerance >= 0.0 {
+        Ok(())
+    } else {
+        Err(PredicateError::InvalidTolerance)
     }
 }
 
@@ -225,5 +246,32 @@ mod tests {
         assert!(up.to_string().contains("Point2D") && up.to_string().contains("Solid"));
         let u = PredicateError::Unsupported { geometry: "Csg" };
         assert!(u.to_string().contains("Csg"));
+    }
+
+    #[test]
+    fn a_zero_tolerance_is_a_distance() {
+        assert!(require_tolerance(0.0).is_ok());
+        assert!(require_tolerance(1e-9).is_ok());
+        assert!(require_tolerance(f64::INFINITY).is_ok());
+    }
+
+    #[test]
+    fn a_negative_or_nan_tolerance_is_refused() {
+        for tolerance in [-0.0_f64, -1e-9, -1.0, f64::NEG_INFINITY, f64::NAN] {
+            // `-0.0` is zero, so it is the one negative-signed value accepted.
+            let expected = if tolerance == 0.0 {
+                Ok(())
+            } else {
+                Err(PredicateError::InvalidTolerance)
+            };
+            assert_eq!(require_tolerance(tolerance), expected, "{tolerance}");
+        }
+    }
+
+    #[test]
+    fn the_refusal_names_the_tolerance() {
+        assert!(PredicateError::InvalidTolerance
+            .to_string()
+            .contains("tolerance"));
     }
 }

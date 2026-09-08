@@ -7,6 +7,7 @@ impl Equal for Polygon2D {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
         use crate::predicates::equal::{pair_off, ring_curves_2d};
 
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         // Exterior against exterior, holes against holes; see `Polygon3D`.
         let (here, there) = (self.elevation(), rhs.elevation());
@@ -26,6 +27,7 @@ impl Equal for Polygon3D {
         use crate::predicates::equal::FaceCurves;
 
         // Reprojection stays the caller's explicit step.
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         FaceCurves::new(self.exterior(), self.interiors())
             .within(&FaceCurves::new(rhs.exterior(), rhs.interiors()), tolerance)
@@ -187,5 +189,36 @@ mod tests {
         // A collection outranks the absent geometry it is weighed against: the
         // answer is unknown, not `false`.
         assert_eq!(Geometry::None.equal(&wrapped, tolerance()), refused);
+    }
+
+    #[test]
+    fn a_negative_tolerance_is_refused_rather_than_answered() {
+        // A negative tolerance puts every point out of reach, so without the
+        // guard the answer would come back as a plausible-looking `false`.
+        let outline = ring(0.0, 10.0);
+        let here = face(outline.clone(), vec![]);
+        let same = face(outline, vec![]);
+
+        assert_eq!(
+            here.equal(&same, -1.0),
+            Err(PredicateError::InvalidTolerance)
+        );
+        assert_eq!(
+            here.equal(&same, f64::NAN),
+            Err(PredicateError::InvalidTolerance)
+        );
+        // Still the same shape once the tolerance is a distance.
+        assert!(here.equal(&same, 0.0).unwrap());
+    }
+
+    #[test]
+    fn a_negative_tolerance_is_refused_before_the_arms_that_need_no_leaf() {
+        // `(None, None)` answers without reaching a leaf, so only the guard on
+        // the dispatch itself catches this.
+        assert_eq!(
+            Geometry::None.equal(&Geometry::None, -1.0),
+            Err(PredicateError::InvalidTolerance)
+        );
+        assert!(Geometry::None.equal(&Geometry::None, 0.0).unwrap());
     }
 }

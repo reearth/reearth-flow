@@ -10,6 +10,7 @@ impl Equal for TriangularMesh2D {
         // and no crease can hide inside it.
         use crate::predicates::equal::surface_curves_2d;
 
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         Ok(surface_curves_2d(self)?.within(&surface_curves_2d(rhs)?, tolerance))
     }

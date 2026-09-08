@@ -5,6 +5,7 @@ use crate::predicates::{self, Equal};
 
 impl Equal for Point2D {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         let (a, b) = (self.position(), rhs.position());
         let d = [b[0] - a[0], b[1] - a[1]];
@@ -14,6 +15,7 @@ impl Equal for Point2D {
 
 impl Equal for Point3D {
     fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
+        predicates::require_tolerance(tolerance)?;
         predicates::require_same_frame(self.frame(), rhs.frame())?;
         let (a, b) = (self.position(), rhs.position());
         let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
