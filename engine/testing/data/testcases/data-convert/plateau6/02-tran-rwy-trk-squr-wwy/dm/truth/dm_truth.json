@@ -1,16 +1,27 @@
 {
   "_synid1": {
-    "urc:shapeType": "非区分（下記に該当しない全データ）",
-    "attributes": {
-      "urc:shapeType": "非区分（下記に該当しない全データ）",
-      "urc:geometryType": "線",
-      "urc:mapLevel": "地図情報レベル2500"
-    },
-    "urc:mapLevel": "地図情報レベル2500",
     "urc:geometryType": "線",
+    "attributes": [
+      {
+        "urc:mapLevel": "地図情報レベル2500",
+        "urc:shapeType": "非区分（下記に該当しない全データ）",
+        "urc:geometryType": "線"
+      },
+      {
+        "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。",
+        "core:creationDate": "2024-03-19T00:00:00",
+        "urc:geometrySrcDescLod1": [
+          "公共測量成果又は基本測量成果",
+          "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+        ],
+        "tran:function": "徒歩道",
+        "tran:class": "道路"
+      }
+    ],
+    "urc:mapLevel": "地図情報レベル2500",
+    "urc:shapeType": "非区分（下記に該当しない全データ）",
     "feature_type": "urc:DmGeometricAttribute",
     "gml_id": "_synid1",
-    "parent_gml_id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
     "city_code": "08220"
   }
 }
