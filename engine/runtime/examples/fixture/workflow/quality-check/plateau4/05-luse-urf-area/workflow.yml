@@ -12,8 +12,8 @@ with:
   objectListsPath:
   objectLists:
 graphs:
-  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/plateau4/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
@@ -112,42 +112,71 @@ graphs:
               value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
             outputPort: features
 
+      # `extractTags` stays empty: a luse/urf/area city object carries its geometry
+      # directly, so there is nothing to hoist out.
       - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["path"]
-      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
-        name: FilterNotCityModel
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["featureType"] != "CityModel"
-              outputPort: features
 
-      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        name: HorizontalReprojector
+      # Derives the identity attributes the instance count and the checks key on
+      # from the reader output.
+      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        name: AttributeManagerReaderAdapter
         type: action
-        action: Horizontal Reprojector
+        action: Attribute Manager
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          operations:
+            - attribute: featureType
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: gmlName
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: featureId
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_gml_id")
+
+      # Reprojected before any check: planarity and the absolute winding of a face
+      # are only defined in a linear-unit frame.
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: CoordinateFrameReprojector
+        type: action
+        action: Coordinate Frame Reprojector
+        with:
+          destinationFrame:
+            crs:
+              type: flowExpr
+              value: variables["prcs"]
+
+      # A city object the reprojection could not convert takes part in no check at
+      # all, so it is reported as a surface error rather than dropped.
+      - id: 05100000-0000-4000-8000-000000000001
+        name: AttributeManagerReprojectionRejected
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: issue
+              method: create
+              value:
+                type: string
+                value: GeometryRejected
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
-        name: PLATEAU3.LodSplitterWithDM
+        name: LodSplitter
         type: subGraph
-        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+        subGraphId: b1000000-0000-4000-8000-000000000000
 
       - id: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         name: FeatureSorter
@@ -236,9 +265,9 @@ graphs:
               valueAttribute: package
 
       - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
-        name: PLATEAU3.SurfaceValidator2D
+        name: SurfaceChecks
         type: subGraph
-        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+        subGraphId: d4000000-0000-4000-8000-000000000000
 
       - id: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
         name: AttributeMapperForSurfaceOrientationErrors
@@ -261,7 +290,7 @@ graphs:
             - attribute: FeatureType
               expr:
                 type: flowExpr
-                value: attributes.get("featureType", "")
+                value: attributes.get("__citygml_geometry_feature_type") or attributes.get("featureType", "")
             - attribute: エラー数
               expr:
                 type: string
@@ -269,7 +298,7 @@ graphs:
             - attribute: "gml:id"
               expr:
                 type: flowExpr
-                value: attributes.get("featureId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("featureId", "")
             - attribute: 面の向き
               # It is okay to hardcode here since this mapper is connected to the surface orientation error port of surface validator.
               expr:
@@ -330,7 +359,7 @@ graphs:
             - attribute: FeatureType
               expr:
                 type: flowExpr
-                value: attributes.get("featureType", "")
+                value: attributes.get("__citygml_geometry_feature_type") or attributes.get("featureType", "")
             - attribute: エラー数
               expr:
                 type: string
@@ -338,7 +367,7 @@ graphs:
             - attribute: "gml:id"
               expr:
                 type: flowExpr
-                value: attributes.get("featureId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("featureId", "")
             - attribute: エラー内容
               expr:
                 type: flowExpr
@@ -637,6 +666,21 @@ graphs:
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
         to: ba747af8-c4fb-4481-9406-e14f1d4c7f57
         fromPort: invalidSurface
+        toPort: features
+      - id: 05100000-0000-4000-8000-000000000101
+        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        to: 05100000-0000-4000-8000-000000000001
+        fromPort: rejected
+        toPort: features
+      - id: 05100000-0000-4000-8000-000000000102
+        from: 05100000-0000-4000-8000-000000000001
+        to: ba747af8-c4fb-4481-9406-e14f1d4c7f57
+        fromPort: features
+        toPort: features
+      - id: 05100000-0000-4000-8000-000000000103
+        from: 05100000-0000-4000-8000-000000000001
+        to: 667c37eb-2b19-4a86-8aa4-70679f7787b5
+        fromPort: features
         toPort: features
       - id: 03533a65-b64e-41a9-a8d7-8df66866f57b
         from: ba747af8-c4fb-4481-9406-e14f1d4c7f57

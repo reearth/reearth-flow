@@ -14,9 +14,9 @@ nodes:
 
   # LOD splitter
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    name: LodSplitterWithDM
+    name: LodSplitter
     type: subGraph
-    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+    subGraphId: b1000000-0000-4000-8000-000000000000
 
   # ===== Geometry Type Filters for LOD1-3 =====
   # GeometryFilter routes Surface→SurfaceValidator3D, Solid→SolidBoundaryValidator
@@ -44,27 +44,27 @@ nodes:
   # ===== Surface Validation for LOD0-3 =====
   # SurfaceValidator3D for LOD0
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
-    name: SurfaceValidator3D_LOD0
+    name: SurfaceChecksLod0
     type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   # SurfaceValidator3D for LOD1
   - id: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    name: SurfaceValidator3D_LOD1
+    name: SurfaceChecksLod1
     type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   # SurfaceValidator3D for LOD2
   - id: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    name: SurfaceValidator3D_LOD2
+    name: SurfaceChecksLod2
     type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   # SurfaceValidator3D for LOD3
   - id: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
-    name: SurfaceValidator3D_LOD3
+    name: SurfaceChecksLod3
     type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   # ===== AttributeMapper for surface errors =====
   - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
@@ -96,7 +96,7 @@ nodes:
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes.get("featureId", attributes.get("gmlId", ""))
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: エラー数
           expr:
             type: string
@@ -104,15 +104,7 @@ nodes:
         - attribute: エラー内容
           expr:
             type: flowExpr
-            value: |
-              vr = attributes.get("validationResult");
-              if vr != null and "details" in vr {
-                vr["details"][0][0]
-              } else if "issue" in attributes {
-                attributes["issue"]
-              } else {
-                "UnknownError"
-              }
+            value: attributes.get("issue", "UnknownError")
 
   # ===== CSV Writer for surface errors =====
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
@@ -150,15 +142,34 @@ nodes:
   # ===== Solid Boundary Validation (非水密立体検出) =====
   # SolidBoundaryValidator for LOD1,2,3
   - id: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    name: SolidBoundaryValidator
+    name: SolidValidator
     type: action
-    action: Solid Boundary Validator
+    action: Geometry Validator
     with:
-      tolerance:
-        type: flowExpr
-        value: "0.01"
+      duplicateTolerance: 0.01
 
-  # Filter for NotClosed errors (NotA2Manifold = non-watertight solid)
+  # Shell-level failures are classified here; face-level failures on the same
+  # solid are reported by the boundary surface checks.
+  - id: 10100000-0000-4000-8000-000000000002
+    name: AttributeManagerSolidIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _solid_issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              if "ShellManifold" in checks {
+                "NotClosed"
+              } else if "ShellConnected" in checks or "Orientable" in checks or "Orientation" in checks or "ShellOrientation" in checks or "SelfIntersection" in checks {
+                "Other"
+              } else {
+                ""
+              }
+
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FeatureFilterNotClosed
     type: action
@@ -167,8 +178,12 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
+            value: attributes["_solid_issue"] == "NotClosed"
           outputPort: notClosed
+        - expr:
+            type: flowExpr
+            value: attributes["_solid_issue"] == "Other"
+          outputPort: otherIssues
 
   # AttributeMapper for NotClosed errors (lowercase format like wtr/bldg)
   - id: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
@@ -186,7 +201,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: gml_id
-          valueAttribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: issue
           expr:
             type: string
@@ -242,7 +259,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: gml_id
-          valueAttribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: issue
           expr:
             type: string
@@ -304,7 +323,7 @@ nodes:
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes.get("gmlId", attributes.get("featureId", ""))
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: エラー数
           expr:
             type: string
@@ -509,11 +528,16 @@ edges:
     fromPort: solid
     toPort: features
 
-  # SolidBoundaryValidator (failed) → FeatureFilterNotClosed
+  # SolidValidator (failed) → AttributeManagerSolidIssue → FeatureFilterNotClosed
   - id: a113d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
     from: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    to: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    to: 10100000-0000-4000-8000-000000000002
     fromPort: failed
+    toPort: features
+  - id: 10100000-0000-4000-8000-000000000102
+    from: 10100000-0000-4000-8000-000000000002
+    to: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    fromPort: features
     toPort: features
 
   # FeatureFilterNotClosed (notClosed) → AttributeMapperNotClosed
@@ -556,7 +580,7 @@ edges:
   - id: a119e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
     from: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     to: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
-    fromPort: unfiltered
+    fromPort: otherIssues
     toPort: features
 
   # AttributeMapperSolidIssues → FeatureWriterSolidIssues

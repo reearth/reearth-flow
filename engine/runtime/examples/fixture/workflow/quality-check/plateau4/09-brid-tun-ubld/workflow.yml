@@ -12,8 +12,8 @@ with:
   prcs: null
   targetPackages: ["brid", "tun", "ubld"]
 graphs:
-- !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
-- !include ../../../../graphs/plateau4/surface_validator.yml
+- !include ../../../../graphs/lod_splitter.yml
+- !include ../../../../graphs/plateau4/surface_checks.yml
 - !include surface_validation.yml
 - !include ../../../../graphs/plateau4/xml_validator.yml
 - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
@@ -104,26 +104,88 @@ graphs:
           type: flowExpr
           value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
+  # The boundary surfaces and installations are hoisted into features of their
+  # own so each is counted under its own feature type.
   - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
     name: FeatureCityGmlReader
     type: action
-    action: Feature CityGML Reader
+    action: Feature CityGML 2 Reader
     with:
-      codelistsPath:
-        type: flowExpr
-        value: attributes["codelists"]
-      flatten: true
       dataset:
         type: flowExpr
         value: attributes["gmlPath"]
-  - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
-    name: HorizontalReprojector
+      extractTags:
+      - Bridge
+      - BridgePart
+      - BridgeConstructionElement
+      - BridgeInstallation
+      - IntBridgeInstallation
+      - BridgeRoom
+      - BridgeFurniture
+      - Tunnel
+      - TunnelPart
+      - TunnelConstructionElement
+      - TunnelInstallation
+      - IntTunnelInstallation
+      - HollowSpace
+      - TunnelFurniture
+      - Building
+      - BuildingPart
+      - BuildingInstallation
+      - IntBuildingInstallation
+      - Room
+      - BuildingFurniture
+      - RoofSurface
+      - GroundSurface
+      - WallSurface
+      - ClosureSurface
+      - OuterCeilingSurface
+      - OuterFloorSurface
+      - CeilingSurface
+      - InteriorWallSurface
+      - FloorSurface
+      - Door
+      - Window
+
+  # Derives the identity attributes the checks key on from the reader output.
+  - id: 09100000-0000-4000-8000-000000000001
+    name: AttributeManagerReaderAdapter
     type: action
-    action: Horizontal Reprojector
+    action: Attribute Manager
     with:
-      targetEpsgCode:
-        type: flowExpr
-        value: variables["prcs"]
+      operations:
+      - attribute: featureType
+        method: create
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_feature_type")
+      - attribute: gmlName
+        method: create
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_feature_type")
+      - attribute: gmlId
+        method: create
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id")
+      - attribute: featureId
+        method: create
+        value:
+          type: flowExpr
+          value: attributes.get("__citygml_gml_id")
+
+  # Reprojected before any check: planarity and the absolute winding of a face
+  # are only defined in a linear-unit frame.
+  - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+    name: CoordinateFrameReprojector
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
   - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
     name: AttributeManager
     type: action
@@ -606,6 +668,11 @@ graphs:
     toPort: features
   - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
     from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+    to: 09100000-0000-4000-8000-000000000001
+    fromPort: features
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000101
+    from: 09100000-0000-4000-8000-000000000001
     to: 10df06f3-cafa-4abd-ba94-04ac71dae467
     fromPort: features
     toPort: features

@@ -8,13 +8,13 @@ nodes:
   with:
     routingPort: features
 - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-  name: PLATEAU3.LodSplitterWithDM
+  name: LodSplitter
   type: subGraph
-  subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+  subGraphId: b1000000-0000-4000-8000-000000000000
 - id: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
-  name: PLATEAU3.SurfaceValidator2D
+  name: SurfaceChecksLod0
   type: subGraph
-  subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+  subGraphId: d4000000-0000-4000-8000-000000000000
 - id: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
   name: AttributeManagerLod0InvalidSurface
   type: action
@@ -40,12 +40,7 @@ nodes:
       method: create
       value:
         type: flowExpr
-        value: |
-          vr = attributes.get("validationResult");
-          if vr and vr.get("details") {
-            return vr["details"][0][0];
-          }
-          attributes.get("issue", "UnknownError")
+        value: attributes.get("issue", "UnknownError")
     - attribute: folder
       method: create
       value:
@@ -182,9 +177,9 @@ nodes:
   with:
     routingPort: errorCountLod0InvalidSurface
 - id: 950407af-eec5-49ee-902c-2b41f31150d3
-  name: PLATEAU3.SurfaceValidator3D_LOD1
+  name: SurfaceChecksLod1
   type: subGraph
-  subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+  subGraphId: d4000000-0000-4000-8000-000000000000
 - id: c2e8f4a6-9b3d-4e7c-8a5f-1d9b6e4c7f2a
   name: AttributeManagerLod1InvalidSurface
   type: action
@@ -210,12 +205,7 @@ nodes:
       method: create
       value:
         type: flowExpr
-        value: |
-          vr = attributes.get("validationResult");
-          if vr and vr.get("details") {
-            return vr["details"][0][0];
-          }
-          attributes.get("issue", "UnknownError")
+        value: attributes.get("issue", "UnknownError")
     - attribute: folder
       method: create
       value:
@@ -319,9 +309,9 @@ nodes:
   type: action
   action: Noop Processor
 - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
-  name: PLATEAU3.SurfaceValidator3D_LOD2-4
+  name: SurfaceChecksLod2-4
   type: subGraph
-  subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+  subGraphId: d4000000-0000-4000-8000-000000000000
 - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
   name: Lod2-4InvalidSurfaceCounter
   type: action
@@ -367,12 +357,7 @@ nodes:
       method: create
       value:
         type: flowExpr
-        value: |
-          vr = attributes.get("validationResult");
-          if vr and vr.get("details") {
-            return vr["details"][0][0];
-          }
-          attributes.get("issue", "UnknownError")
+        value: attributes.get("issue", "UnknownError")
     - attribute: folder
       method: create
       value:
@@ -534,14 +519,41 @@ nodes:
   action: Output Router
   with:
     routingPort: errorCountLod0SurfaceIntersection
-- id: ecaceb7b-ff98-4744-acf7-17e80829d6f3
-  name: SolidBoundaryValidator
+# Only a solid has shells to check; a LOD stream also carries bare surfaces,
+# which the boundary surface checks own.
+- id: 09100000-0000-4000-8000-000000000010
+  name: GeometryFilterSolid
   type: action
-  action: Solid Boundary Validator
+  action: Geometry Filter
   with:
-    tolerance:
-      type: flowExpr
-      value: "0.01"
+    filterType: geometryType
+- id: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  name: SolidValidator
+  type: action
+  action: Geometry Validator
+  with:
+    duplicateTolerance: 0.01
+# Shell-level failures are classified here; face-level failures on the same
+# solid are reported by the boundary surface checks.
+- id: 09100000-0000-4000-8000-000000000011
+  name: AttributeManagerSolidIssue
+  type: action
+  action: Attribute Manager
+  with:
+    operations:
+    - attribute: _solid_issue
+      method: create
+      value:
+        type: flowExpr
+        value: |
+          checks = attributes["validationResult"]["checks"];
+          if "ShellManifold" in checks {
+            "NotClosed"
+          } else if "ShellConnected" in checks or "Orientable" in checks or "Orientation" in checks or "ShellOrientation" in checks or "SelfIntersection" in checks {
+            "Other"
+          } else {
+            ""
+          }
 - id: d0132191-a81f-4647-896d-5db49e3fb734
   name: FeatureFilterInvalidSolidBoundary
   type: action
@@ -550,8 +562,12 @@ nodes:
     conditions:
     - expr:
         type: flowExpr
-        value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
+        value: attributes["_solid_issue"] == "NotClosed"
       outputPort: notClosed
+    - expr:
+        type: flowExpr
+        value: attributes["_solid_issue"] == "Other"
+      outputPort: otherIssues
 - id: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
   name: AttributeManagerSolidBoundaryInvalidNotClosed
   type: action
@@ -1023,27 +1039,37 @@ edges:
 - id: 1edf5ec7-a567-4ef6-9c70-92497d359ddf
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
   fromPort: lod1
-  to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  to: 09100000-0000-4000-8000-000000000010
   toPort: features
 - id: 2fef6fd8-b678-5fa7-0d81-a350ae46aeee
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
   fromPort: lod2
-  to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  to: 09100000-0000-4000-8000-000000000010
   toPort: features
 - id: 3ffa7ae9-c789-6fb8-1e92-b461bf57bfff
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
   fromPort: lod3
-  to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  to: 09100000-0000-4000-8000-000000000010
   toPort: features
 - id: 4ffb8bfa-d890-7fc9-2fa3-c572cf68cfff
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
   fromPort: lod4
+  to: 09100000-0000-4000-8000-000000000010
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000110
+  from: 09100000-0000-4000-8000-000000000010
   to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  fromPort: solid
   toPort: features
 - id: bf5d73d5-a6c6-4a06-bd22-52a02fdbd96f
   from: ecaceb7b-ff98-4744-acf7-17e80829d6f3
-  to: d0132191-a81f-4647-896d-5db49e3fb734
+  to: 09100000-0000-4000-8000-000000000011
   fromPort: failed
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000111
+  from: 09100000-0000-4000-8000-000000000011
+  to: d0132191-a81f-4647-896d-5db49e3fb734
+  fromPort: features
   toPort: features
 - id: 337a1460-27bf-4df9-8d8b-08c5c84509d1
   from: d0132191-a81f-4647-896d-5db49e3fb734
@@ -1058,7 +1084,7 @@ edges:
 - id: 9c6792d9-f844-42dd-aca4-eeb34f691c0e
   from: d0132191-a81f-4647-896d-5db49e3fb734
   to: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
-  fromPort: unfiltered
+  fromPort: otherIssues
   toPort: features
 - id: 819866a6-4e4d-44c5-a2df-2cb6b1645a0c
   from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
