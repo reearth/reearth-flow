@@ -6239,7 +6239,7 @@ Divides polygon geometries into a regular grid of equal-sized cells.
     },
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds.",
+      "description": "Attributes whose values group features together. Unless `origin` is set, each group is divided on its own grid, anchored at the corner of that group's combined bounds.",
       "type": [
         "array",
         "null"
@@ -6247,6 +6247,20 @@ Divides polygon geometries into a regular grid of equal-sized cells.
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "origin": {
+      "title": "Grid Origin",
+      "description": "The point the grid is anchored at, as `[x, y]` in the same coordinate system as the geometry. Anchoring the grid explicitly makes cells fall in the same places across groups and across runs, instead of shifting with each group's extent.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 2,
+      "minItems": 2
     }
   },
   "definitions": {
