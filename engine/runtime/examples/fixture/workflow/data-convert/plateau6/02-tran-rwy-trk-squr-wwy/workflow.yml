@@ -53,7 +53,7 @@ graphs:
             value: attributes["path"]
           keepAttributes: false
           inheritInputAttributes: true
-          cityGmlAttributesKey: cityGmlAttributes
+          cityGmlAttributesKey: city_gml_attributes
           extractTags:
             - tran:AuxiliaryTrafficArea
             # - tran:AuxiliaryTrafficSpace
@@ -86,6 +86,23 @@ graphs:
                   target_package = variables["cityGmlPath"].remove_suffix(".zip").rsplit("_", 1)[-1];
                   package == target_package
               outputPort: features
+
+      - id: a484f3f7-c960-436e-ab95-4958236088e6
+        name: AttributeMapperAfterTargetPackageFilter
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: __citygml_gml_id
+              valueAttribute: __citygml_gml_id
+            - attribute: __citygml_parent_gml_id
+              valueAttribute: __citygml_parent_gml_id
+            - attribute: __citygml_root_gml_id
+              valueAttribute: __citygml_root_gml_id
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
+            - attribute: city_gml_attributes
+              valueAttribute: city_gml_attributes
 
       - id: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         name: AttributeTableExtractor
@@ -166,11 +183,6 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes["__citygml_gml_id"]
-            - attribute: parent_gml_id
-              method: create
-              value:
-                type: flowExpr
-                value: attributes.get("__citygml_parent_gml_id")
             - attribute: city_code
               method: create
               value:
@@ -392,6 +404,11 @@ graphs:
         toPort: features
       - id: 614d1b67-9624-4b34-b931-0de586f1aa64
         from: 0a6bfd76-2b97-4b57-8ac5-3707c8526147
+        to: a484f3f7-c960-436e-ab95-4958236088e6
+        fromPort: features
+        toPort: features
+      - id: ee6e8c61-d3ec-4759-a062-145ea2b165e6
+        from: a484f3f7-c960-436e-ab95-4958236088e6
         to: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         fromPort: features
         toPort: features

@@ -53,7 +53,7 @@ graphs:
             value: attributes["path"]
           keepAttributes: false
           inheritInputAttributes: false
-          cityGmlAttributesKey: cityGmlAttributes
+          cityGmlAttributesKey: city_gml_attributes
           flattenLeafAttributes:
             - uom
 
