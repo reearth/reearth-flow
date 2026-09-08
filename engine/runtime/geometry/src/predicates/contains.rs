@@ -27,7 +27,6 @@
 //! rounding. Collections mixing 2D and 3D members error, as elsewhere.
 
 use super::edge_set::{operand_edges, operand_segment_count, Edge2, EdgeSet};
-use super::intersects::type_name_3d;
 use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
 use super::position::{areal_union_position, face_interior_point, union_position};
 use super::view::{flatten_2d, require_common_frame, Leaf2D, Operand2D};
@@ -68,7 +67,7 @@ pub(crate) fn flatten_geometry(geometry: &Geometry) -> (Vec<Leaf2D<'_>>, Option<
             Geometry::None => {}
             Geometry::Euclidean2D(g) => flatten_2d(g, leaves),
             Geometry::Euclidean3D(g) => {
-                first_3d.get_or_insert(type_name_3d(g));
+                first_3d.get_or_insert(g.type_name());
             }
             Geometry::GeometryCollection(c) => {
                 for member in c.members() {

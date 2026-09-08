@@ -106,6 +106,30 @@ impl Aabb {
         Aabb::D3 { min: p, max: p }
     }
 
+    /// This box grown by `distance` on every axis, keeping its embedding.
+    /// A negative distance shrinks it, and may invert it.
+    pub fn expanded(self, distance: f64) -> Aabb {
+        match self {
+            Aabb::D2 { min, max } => Aabb::D2 {
+                min: [min[0] - distance, min[1] - distance],
+                max: [max[0] + distance, max[1] + distance],
+            },
+            Aabb::D3 { min, max } => Aabb::D3 {
+                min: [min[0] - distance, min[1] - distance, min[2] - distance],
+                max: [max[0] + distance, max[1] + distance, max[2] + distance],
+            },
+        }
+    }
+
+    /// This box read as a 3D one, a 2D box lying at zero elevation. Only
+    /// meaningful between boxes of one embedding, which never mix here.
+    pub fn corners_3d(&self) -> ([f64; 3], [f64; 3]) {
+        match self {
+            Aabb::D2 { min, max } => ([min[0], min[1], 0.0], [max[0], max[1], 0.0]),
+            Aabb::D3 { min, max } => (*min, *max),
+        }
+    }
+
     /// The box of a set of 2D points, or `None` if the iterator is empty.
     ///
     /// `f64::min` / `f64::max` ignore `NaN`, so non-finite coordinates never
