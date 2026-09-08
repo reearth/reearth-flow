@@ -228,12 +228,12 @@
       "dataType": "int"
     },
     {
-      "destinationPath": "attributes uro:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes ancestors uro:DataQualityAttribute uro:geometrySrcDescLod1"
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes ancestors urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
-      "destinationPath": "attributes uro:lodType",
-      "sourcePath": "__city_gml_attributes ancestors uro:DataQualityAttribute uro:lodType"
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "__city_gml_attributes ancestors urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "attributes uro:operatorType",
@@ -705,12 +705,12 @@
       "dataType": "int"
     },
     {
-      "destinationPath": "attributes uro:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes ancestors uro:DataQualityAttribute uro:geometrySrcDescLod1"
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes ancestors urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
-      "destinationPath": "attributes uro:lodType",
-      "sourcePath": "__city_gml_attributes ancestors uro:DataQualityAttribute uro:lodType"
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "__city_gml_attributes ancestors urc:DataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "attributes uro:operatorType",
