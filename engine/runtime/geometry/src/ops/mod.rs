@@ -18,6 +18,8 @@ pub mod coerce;
 pub mod elevation;
 #[cfg(feature = "new-geometry")]
 pub mod footprint;
+#[cfg(feature = "new-geometry")]
+pub mod grid;
 pub mod hole;
 pub mod reproject;
 pub mod split;
@@ -35,6 +37,10 @@ pub use coerce::{Coerce, CoercionTarget};
 pub use elevation::Elevation;
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+#[cfg(feature = "new-geometry")]
+pub use grid::{
+    CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec, COVERAGE_TOLERANCE,
+};
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use reproject::{
@@ -104,6 +110,30 @@ impl Aabb {
     /// A degenerate box at a single 3D point.
     pub fn point_3d(p: [f64; 3]) -> Self {
         Aabb::D3 { min: p, max: p }
+    }
+
+    /// This box grown by `distance` on every axis, keeping its embedding.
+    /// A negative distance shrinks it, and may invert it.
+    pub fn expanded(self, distance: f64) -> Aabb {
+        match self {
+            Aabb::D2 { min, max } => Aabb::D2 {
+                min: [min[0] - distance, min[1] - distance],
+                max: [max[0] + distance, max[1] + distance],
+            },
+            Aabb::D3 { min, max } => Aabb::D3 {
+                min: [min[0] - distance, min[1] - distance, min[2] - distance],
+                max: [max[0] + distance, max[1] + distance, max[2] + distance],
+            },
+        }
+    }
+
+    /// This box read as a 3D one, a 2D box lying at zero elevation. Only
+    /// meaningful between boxes of one embedding, which never mix here.
+    pub fn corners_3d(&self) -> ([f64; 3], [f64; 3]) {
+        match self {
+            Aabb::D2 { min, max } => ([min[0], min[1], 0.0], [max[0], max[1], 0.0]),
+            Aabb::D3 { min, max } => (*min, *max),
+        }
     }
 
     /// The box of a set of 2D points, or `None` if the iterator is empty.

@@ -45,6 +45,10 @@ crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, ForceTwoDimension
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: Footprint);
 
+// The boolean tree is unevaluated, so it has no faces of its own to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: DivideByGrid);
+
 // The boolean tree is unevaluated, so it has no surface of its own yet; adding
 // up its operands' areas would describe a shape the tree does not have.
 #[cfg(feature = "new-geometry")]

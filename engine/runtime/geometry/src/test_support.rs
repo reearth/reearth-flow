@@ -97,3 +97,28 @@ pub(crate) fn uv(n: usize) -> UvSource {
 pub(crate) fn unit_quad_uv() -> UvSource {
     explicit_uv(&[[0., 0.], [1., 0.], [1., 1.], [0., 1.]])
 }
+
+/// A standalone, one-theme, front-only, textured [`Appearance`] whose UV is
+/// `Explicit(corners)` -- for a caller (grid-divide tests) that needs an
+/// appearance built independent of any one geometry's validated setters, to
+/// attach via the raw `appearance_mut` escape hatch.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn explicit_uv_appearance(corners: &[[f64; 2]]) -> crate::appearance::Appearance {
+    use crate::appearance::{FaceBinding, MaterialIndex, Side, ThemeBinding, UvSet};
+
+    let t = theme("t");
+    crate::appearance::Appearance::from_parts(
+        vec![textured()],
+        vec![ThemeBinding {
+            theme: t.clone(),
+            front: FaceBinding::Uniform(MaterialIndex::new(0).expect("0 is not u32::MAX")),
+            back: None,
+            uv_sets: vec![UvSet {
+                side: Side::Front,
+                channel: ChannelId::default(),
+                uv: explicit_uv(corners),
+            }],
+        }],
+        t,
+    )
+}

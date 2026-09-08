@@ -1988,6 +1988,111 @@ graphs:
     action: Output Router
     with:
       routingPort: errorCountLod01BuildingPart
+  - id: 1d2c3b4a-5f6e-7a8b-9c0d-1e2f3a4b5c6d
+    name: BuildingPartSurfaceCoercer
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+  - id: 2e3d4c5b-6a7f-8b9c-0d1e-2f3a4b5c6d7e
+    name: BuildingPartSurfaceSplitter
+    type: action
+    action: Geometry Splitter
+  - id: 3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    name: BuildingPartSurfaceIdentifier
+    type: action
+    action: Geometry Identifier
+    with:
+      tolerance: 0.001
+      groupBy:
+      - fileIndex
+      - gmlFilename
+      - gmlId
+      - lod
+      idAttribute: featureId
+      matchedIdsAttribute: _shared_part_ids
+  - id: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    name: PLATEAU4.TransitiveLinkResolver
+    type: action
+    action: PLATEAU4.TransitiveLinkResolver
+    with:
+      idAttribute: featureId
+      linkedIdsAttribute: _shared_part_ids
+      groupBy:
+      - fileIndex
+      - gmlFilename
+      - gmlId
+      - lod
+  - id: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    name: DeduplicateBuildingParts
+    type: action
+    action: Feature Duplicate Filter
+    with:
+      filterBy:
+      - fileIndex
+      - gmlFilename
+      - gmlId
+      - lod
+      - featureId
+  - id: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    name: FilterNonFullStatus
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+      - expr:
+          type: flowExpr
+          value: attributes["_status"] != "full"
+        outputPort: filtered
+  - id: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
+    name: CountLbldg02Errors
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+      - gmlFilename
+      calculations:
+      - newAttribute: _num_lbldg02_error
+        expr:
+          type: flowExpr
+          value: '1'
+  - id: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+    name: AttributeMapperLbldg02Output
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+      - attribute: Index
+        valueAttribute: fileIndex
+      - attribute: Filename
+        valueAttribute: gmlFilename
+      - attribute: Building.gml_id
+        valueAttribute: gmlId
+      - attribute: BuildingPart.gml_id
+        valueAttribute: featureId
+      - attribute: lod
+        valueAttribute: lod
+      - attribute: status
+        valueAttribute: _status
+      - attribute: connected_id
+        valueAttribute: _connected_id
+      - attribute: connected_parts
+        valueAttribute: _connected_parts
+  - id: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
+    name: CsvWriterLbldg02Errors
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_L-bldg-02エラー.csv
+  - id: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+    name: ErrorCount-Lbldg02
+    type: action
+    action: Output Router
+    with:
+      routingPort: errorCountLbldg02
   - id: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
     name: OutputRouter
     type: action
@@ -2030,8 +2135,76 @@ graphs:
     to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: features
     toPort: features
+  - id: e1f2a3b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b
+    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
+    to: 1d2c3b4a-5f6e-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: lod2
+    toPort: features
+  - id: f2a3b4c5-6d7e-8f9a-0b1c-2d3e4f5a6b7c
+    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
+    to: 1d2c3b4a-5f6e-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: lod3
+    toPort: features
+  - id: a3b4c5d6-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
+    to: 1d2c3b4a-5f6e-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: lod4
+    toPort: features
+  - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    from: 1d2c3b4a-5f6e-7a8b-9c0d-1e2f3a4b5c6d
+    to: 2e3d4c5b-6a7f-8b9c-0d1e-2f3a4b5c6d7e
+    fromPort: features
+    toPort: features
+  - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    from: 2e3d4c5b-6a7f-8b9c-0d1e-2f3a4b5c6d7e
+    to: 3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    fromPort: features
+    toPort: features
+  - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    from: 3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: features
+    toPort: features
+  - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    from: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    to: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    fromPort: features
+    toPort: features
+  - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    from: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    to: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    fromPort: features
+    toPort: features
+  - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+    from: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    to: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
+    fromPort: filtered
+    toPort: features
+  - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    from: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    to: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+    fromPort: filtered
+    toPort: features
+  - id: f3a4b5c6-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    from: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
+    to: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+    fromPort: features
+    toPort: features
+  - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    from: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+    to: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
+    fromPort: features
+    toPort: features
+  - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+    from: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
+    to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: features
+    toPort: features
   ports:
     outputs:
+    - id: errorCountLbldg02
+      nodeId: e2f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+      port: features
     - id: errorCountLod01BuildingPart
       nodeId: 88d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
       port: features
@@ -4883,6 +5056,11 @@ graphs:
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
     to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountCityCode
+    toPort: features
+  - id: e9f0a1b2-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+    from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
+    fromPort: errorCountLbldg02
     toPort: features
   - id: a3b4c5d6-8e9f-0a1b-2c3d-4e5f6a7b8c9d
     from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f

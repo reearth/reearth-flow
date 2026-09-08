@@ -178,6 +178,10 @@ impl fmt::Debug for PointCloud {
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PointCloud: Footprint);
 
+// A cloud of samples has no surface to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: DivideByGrid);
+
 // A cloud of samples has no surface between its points.
 #[cfg(feature = "new-geometry")]
 crate::no_area!(PointCloud);
