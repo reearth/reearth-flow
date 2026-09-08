@@ -1,6 +1,6 @@
 # CSV Reader Examples
 
-This directory contains example workflows demonstrating how to use the CsvReader action with geometry support.
+This directory contains example workflows demonstrating how to use the CSV Reader action with geometry support.
 
 ## Examples
 
@@ -17,12 +17,11 @@ id,name,population,geometry
 
 **Configuration:**
 ```yaml
-action: CsvReader
+action: CSV Reader
 with:
   format: csv
   dataset: ./sample-with-wkt.csv
   geometry:
-    geometryMode: wkt
     column: geometry
     epsg: 4326
 ```
@@ -48,12 +47,11 @@ id,name,temperature,longitude,latitude,elevation
 
 **Configuration:**
 ```yaml
-action: CsvReader
+action: CSV Reader
 with:
   format: csv
   dataset: ./sample-with-coords.csv
   geometry:
-    geometryMode: coordinates
     xColumn: longitude
     yColumn: latitude
     zColumn: elevation  # optional
@@ -66,17 +64,24 @@ with:
 
 - `format`: `csv` or `tsv` (tab-separated values)
 - `dataset`: Path to CSV file (can use expressions)
-- `inline`: Inline CSV content (alternative to `dataset`)
+- `inline`: Inline CSV content, as an alternative to `dataset`
 - `offset`: Number of rows to skip before header (default: 0)
+- `headerRows`: Number of consecutive rows making up the header (default: 1). `0` auto-generates `column1`, `column2`, …; values above 1 join each row's values with `_`
+- `encoding`: Character encoding of the input file, such as `Shift-JIS` (default: UTF-8)
+
+Supply exactly one of `dataset` or `inline`. Omitting both fails at run time with "Missing required parameter `dataset` or `inline`"; supplying both uses `inline` and ignores `dataset`. The schema marks neither as required, so nothing catches this before the workflow runs.
 
 ### Geometry Configuration
 
 The `geometry` parameter is optional. If omitted, no geometry parsing is performed.
 
+The mode is inferred from which columns you supply: `column` reads WKT, `xColumn` and `yColumn` read separate coordinate columns.
+
+A geometry cell that is empty, whitespace-only, or absent because the row is short yields no geometry and the feature is still emitted. A cell with content in it that will not parse fails the read, naming the column, the value and the row number.
+
 #### WKT Mode
 ```yaml
 geometry:
-  geometryMode: wkt
   column: <column_name>    # Name of column containing WKT
   epsg: <epsg_code>        # Optional: CRS code (e.g., 4326 for WGS84)
 ```
@@ -84,7 +89,6 @@ geometry:
 #### Coordinates Mode
 ```yaml
 geometry:
-  geometryMode: coordinates
   xColumn: <column_name>   # X coordinate (longitude)
   yColumn: <column_name>   # Y coordinate (latitude)
   zColumn: <column_name>   # Optional: Z coordinate (elevation)
@@ -107,7 +111,7 @@ cargo run --package reearth-flow-cli -- run --workflow ./coordinates-example.yml
 ## Output
 
 All examples output features that can be:
-- Written to GeoJSON with `GeoJsonWriter`
+- Written to GeoJSON with `GeoJSON Writer`
 - Written back to CSV with `Feature Writer`
 - Processed with other Flow actions (filters, transformers, etc.)
 
@@ -117,4 +121,4 @@ Features will have:
 - `geometry.epsg`: EPSG code if specified
 - `geometry.value`: Parsed geometry (if geometry config provided)
 
-**Note**: When geometry parsing is enabled, the columns used for geometry (WKT column, or X/Y/Z columns) are automatically excluded from the feature attributes to avoid redundancy. This follows GIS industry standards (similar to QGIS, PostGIS, ArcGIS).
+**Note**: When geometry parsing is enabled, the columns used for geometry (WKT column, or X/Y/Z columns) are automatically excluded from the feature attributes to avoid redundancy. This follows the convention used by PostGIS and GDAL/OGR.

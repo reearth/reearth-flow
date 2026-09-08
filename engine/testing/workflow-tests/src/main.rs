@@ -334,7 +334,6 @@ impl TestContext {
         let feature_state_uri = format!("file://{}", feature_state_path.display());
         let feature_state_uri = reearth_flow_common::uri::Uri::from_str(&feature_state_uri)?;
         let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
-        let ingress_state = Arc::clone(&feature_state);
 
         // Build sandbox_root from temp_dir so relative sink paths resolve there
         let sandbox_root_str = format!("file://{}/", self.temp_dir.display());
@@ -348,7 +347,6 @@ impl TestContext {
             action_factories,
             logger_factory,
             storage_resolver,
-            ingress_state,
             feature_state,
             None,
             sandbox_root,
