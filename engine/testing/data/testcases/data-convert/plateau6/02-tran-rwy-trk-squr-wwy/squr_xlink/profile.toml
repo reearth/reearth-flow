@@ -1,1 +1,31 @@
+# to test
+# - cross-file xlink:href geometry and attribute resolution
+
 citygml_zip_name = "11100_saitama-shi_city_2025_citygml_1_op_squr.zip"
+
+[convs.cesium_attributes.squr_lod3]
+path = "11100_saitama-shi_city_2025_citygml_1_op_squr_3dtiles_lod3"
+truth_path = "squr_lod3_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.squr_lod3.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.squr_lod3]
+path = "squr_lod3_truth.json"
+
+[convs.raster3d.lod3]
+path = "11100_saitama-shi_city_2025_citygml_1_op_squr_3dtiles_lod3"
+truth_path = "raster3d_lod3"
+generate_truth = true
+
+[convs.raster3d.lod3.cameras.cam1]
+position = [-3941470.77, 3350352.298, 3718690.111]
+look_at = [-3941402.82, 3350289.813, 3718734.388]
+up = [-0.33, 0.28, 0.902]
+fov_y_deg = 48.638
+near = 10.238
+far = 511.906
+
+[tests.raster3d.lod3]
+threshold = 1e-4
