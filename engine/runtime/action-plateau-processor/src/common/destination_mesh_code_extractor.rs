@@ -8,9 +8,11 @@ use reearth_flow_geometry::algorithm::{
 use reearth_flow_geometry::types::{geometry::Geometry2D, polygon::Polygon2D};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
-    collection::Collection2D,
     coordinate::{CoordinateFrame, EpsgCode},
-    ops::{reproject::transform_coords_3d, Aabb, BoundingBox, Elevation, ReprojectionCache},
+    ops::{
+        reproject::transform_coords_3d, rings_as_faces_2d, Aabb, BoundingBox, Elevation,
+        ReprojectionCache,
+    },
     overlay::{overlay_2d, OverlayOp},
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
@@ -742,27 +744,7 @@ fn areal_operand(
             _ => return None,
         }
     }
-    Some(as_faces(geometry))
-}
-
-/// The geometry with every closed line string replaced by the face it traces,
-/// leaving the other members as they are. Boolean overlay takes areal leaves
-/// only.
-#[cfg(feature = "new-geometry")]
-fn as_faces(geometry: &Euclidean2DGeometry) -> Euclidean2DGeometry {
-    match geometry {
-        Euclidean2DGeometry::LineString(line) => {
-            Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
-                line.frame().clone(),
-                line.coords().iter().copied(),
-                Vec::<Vec<[f64; 2]>>::new(),
-            )))
-        }
-        Euclidean2DGeometry::Collection(collection) => Euclidean2DGeometry::Collection(
-            Collection2D::new(collection.members().iter().map(as_faces)),
-        ),
-        other => other.clone(),
-    }
+    Some(rings_as_faces_2d(geometry))
 }
 
 /// A projected bounding box carried back to the mesh grid's geographic space,

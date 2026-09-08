@@ -32,7 +32,7 @@ pub(crate) use boundary::{
     container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
 };
 pub use boundary::{Boundary, ExtractBoundary};
-pub use coerce::{Coerce, CoercionTarget};
+pub use coerce::{rings_as_faces_2d, Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
 pub use elevation::Elevation;
 #[cfg(feature = "new-geometry")]

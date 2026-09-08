@@ -37,8 +37,7 @@ use reearth_flow_types::{Geometry, GeometryValue};
 use reearth_flow_geometry::{
     collection::Collection2D,
     coordinate::CoordinateFrame,
-    line_string::LineString2D,
-    ops::{Aabb, BoundingBox, Elevation},
+    ops::{rings_as_faces_2d, Aabb, BoundingBox, Elevation},
     overlay::{overlay_2d, snap_areal_operands_2d, OverlayOp},
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
@@ -730,37 +729,7 @@ fn read_working_area(disk_feats: &DiskBackedFeatures, i: usize) -> Option<Workin
     let Geometry::Euclidean2D(geom_2d) = geometry.as_ref() else {
         return None;
     };
-    Some(normalize_area(geom_2d))
-}
-
-/// The geometry with closed line strings replaced by the polygon faces they
-/// trace; every other member is kept verbatim.
-#[cfg(feature = "new-geometry")]
-fn normalize_area(geom: &Euclidean2DGeometry) -> Euclidean2DGeometry {
-    match geom {
-        Euclidean2DGeometry::LineString(line) if line.is_closed_ring() => {
-            Euclidean2DGeometry::Polygon(Box::new(ring_face(line)))
-        }
-        Euclidean2DGeometry::Collection(collection) => {
-            let members: Vec<_> = collection.members().iter().map(normalize_area).collect();
-            let attrs = collection.member_attributes().to_vec();
-            Euclidean2DGeometry::Collection(
-                Collection2D::with_attributes(members, attrs)
-                    .expect("member count is unchanged by normalization"),
-            )
-        }
-        other => other.clone(),
-    }
-}
-
-/// The polygon face a closed line string traces.
-#[cfg(feature = "new-geometry")]
-fn ring_face(line: &LineString2D) -> Polygon2D {
-    Polygon2D::from_rings(
-        line.frame().clone(),
-        line.coords().iter().copied(),
-        Vec::<Vec<[f64; 2]>>::new(),
-    )
+    Some(rings_as_faces_2d(geom_2d))
 }
 
 /// Constructed polygons as one working area.
@@ -1355,6 +1324,7 @@ mod tests {
 #[cfg(all(test, feature = "new-geometry"))]
 mod tests {
     use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::line_string::LineString2D;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh2D;
 
     use super::*;
