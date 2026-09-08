@@ -20,6 +20,11 @@
 //!   named predicate (touches, crosses, overlaps, ...) and arbitrary DE-9IM
 //!   patterns can be read; meshes relate as their dissolved face union.
 //!
+//! [`Equal`] stands apart from the list above: it is a trait rather than a free
+//! function, it takes both 2D and 3D pairs, and it answers a metric question
+//! (whether two geometries occupy the same space, to a tolerance) rather than a
+//! topological one. See [`equal`] for what "the same space" means per leaf type.
+//!
 //! The 2D leaves' optional elevation is ignored throughout. The
 //! constructed counterparts, boolean overlay, line clipping, segment
 //! intersection points, live in [`overlay`](crate::overlay) over the same
@@ -70,7 +75,7 @@ pub mod view3d;
 pub use contains::{contains, covers};
 pub use distance::distance;
 #[cfg(feature = "new-geometry")]
-pub use equal::Equal;
+pub use equal::{is_comparable, Equal};
 pub use intersects::intersects;
 pub use intersects3d::intersects_3d;
 pub use kernel::CoordPos;

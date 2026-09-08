@@ -797,6 +797,7 @@ impl PolygonMesh3DData {
         Some(self.vertices()[i as usize][2])
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

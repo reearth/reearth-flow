@@ -47,6 +47,42 @@ crate::unsupported!(crate::GeometryCollection: self::Equal);
 // impl: the hand-written arms call the leaf method directly, and deref coercion
 // reaches through the box on both the receiver and `rhs`.
 
+/// Whether [`Equal`] is defined for `geometry`, without comparing it to
+/// anything.
+///
+/// A caller that must not fail part-way through a batch of mixed input sets the
+/// geometries this refuses aside before pairing anything up. Two families are
+/// refused: the ones equality is not defined for at all — a collection has no
+/// point set of its own, and `Csg` and `PointCloud` have no comparison — and
+/// the 3D surfaces whose comparison is not written yet. Both are kept here,
+/// beside the `unsupported!` invocations and the leaf impls, so the list cannot
+/// drift from what the impls actually do.
+///
+/// An absent geometry is comparable: it occupies nowhere, which is an answer.
+pub fn is_comparable(geometry: &Geometry) -> bool {
+    match geometry {
+        Geometry::None => true,
+        Geometry::Euclidean2D(g) => matches!(
+            g,
+            Euclidean2DGeometry::Point(_)
+                | Euclidean2DGeometry::LineString(_)
+                | Euclidean2DGeometry::Polygon(_)
+                | Euclidean2DGeometry::PolygonMesh(_)
+                | Euclidean2DGeometry::TriangularMesh(_)
+        ),
+        // The 3D meshes and `Solid` are missing on purpose: their comparison is
+        // unwritten, and the leaf impls panic rather than refuse, so a caller
+        // that cannot afford that has to be told here instead.
+        Geometry::Euclidean3D(g) => matches!(
+            g,
+            Euclidean3DGeometry::Point(_)
+                | Euclidean3DGeometry::LineString(_)
+                | Euclidean3DGeometry::Polygon(_)
+        ),
+        Geometry::GeometryCollection(_) => false,
+    }
+}
+
 /// Whether two bags pair off one-to-one under `matches`.
 ///
 /// Greedy first-fit is not enough. Above a zero distance the relation is not
@@ -234,7 +270,16 @@ impl Curves {
     /// come within `distance` of one another. A cheap reject before the real
     /// test, which matters when faces are paired off and every pair would
     /// otherwise be measured.
+    ///
+    /// Only ever a reject: it has to admit every pair [`within`](Self::within)
+    /// would accept. An empty set has no box — its bounds are still the
+    /// infinities they were seeded with — so the box test would reject two
+    /// empty sets, which occupy the same nothing and do stay within any
+    /// distance of one another.
     pub(crate) fn may_reach(&self, other: &Self, distance: f64) -> bool {
+        if self.pieces.is_empty() || other.pieces.is_empty() {
+            return self.pieces.is_empty() == other.pieces.is_empty();
+        }
         (0..3).all(|axis| {
             self.min[axis] - distance <= other.max[axis]
                 && other.min[axis] - distance <= self.max[axis]
@@ -440,5 +485,61 @@ fn gather_curves(geometry: &Geometry, curves: &mut Curves) -> Result<()> {
             .members()
             .iter()
             .try_for_each(|m| gather_curves(m, curves)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SQUARE: [[f64; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ];
+
+    #[test]
+    fn an_empty_set_reaches_an_empty_set_and_nothing_else() {
+        // `may_reach` only ever rejects, so it has to admit every pair `within`
+        // accepts. An empty set has no box, which is the case the box test
+        // cannot decide on its own.
+        let empty = Curves::new().finish();
+        let square = Curves::from_ring(&SQUARE);
+
+        assert!(empty.may_reach(&empty, 0.0));
+        assert!(empty.within(&empty, 0.0));
+
+        assert!(!empty.may_reach(&square, 1e9));
+        assert!(!square.may_reach(&empty, 1e9));
+        assert!(!empty.within(&square, 1e9));
+    }
+
+    #[test]
+    fn faces_pair_off_their_empty_holes() {
+        // Reached through `FaceCurves` rather than `Polygon3D`, whose
+        // constructor discards an empty interior ring before it gets this far.
+        let hole: &[[f64; 3]] = &[];
+        let one = FaceCurves::new(&SQUARE, [hole]);
+        let other = FaceCurves::new(&SQUARE, [hole]);
+
+        assert!(one.within(&other, 1e-9).unwrap());
+    }
+
+    #[test]
+    fn a_face_with_an_empty_hole_is_not_one_with_a_real_hole() {
+        let hole: &[[f64; 3]] = &[];
+        let inner: &[[f64; 3]] = &[
+            [0.2, 0.2, 0.0],
+            [0.4, 0.2, 0.0],
+            [0.4, 0.4, 0.0],
+            [0.2, 0.2, 0.0],
+        ];
+        let empty_hole = FaceCurves::new(&SQUARE, [hole]);
+        let real_hole = FaceCurves::new(&SQUARE, [inner]);
+
+        assert!(!empty_hole.within(&real_hole, 1e-9).unwrap());
+        assert!(!real_hole.within(&empty_hole, 1e-9).unwrap());
     }
 }

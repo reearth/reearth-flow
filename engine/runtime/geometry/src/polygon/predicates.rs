@@ -221,4 +221,32 @@ mod tests {
         );
         assert!(Geometry::None.equal(&Geometry::None, 0.0).unwrap());
     }
+
+    #[test]
+    fn two_empty_faces_occupy_the_same_nothing() {
+        // The 2D and 3D answers have to agree: nothing about an empty ring is
+        // particular to the embedding it sits in.
+        let empty_3d = || face(vec![], vec![]);
+        let empty_2d = || {
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                Vec::<[f64; 2]>::new(),
+                Vec::<Vec<[f64; 2]>>::new(),
+            )
+        };
+
+        assert!(empty_3d().equal(&empty_3d(), tolerance()).unwrap());
+        assert!(empty_2d().equal(&empty_2d(), tolerance()).unwrap());
+    }
+
+    #[test]
+    fn an_empty_face_is_not_the_face_that_encloses_something() {
+        // The empty set is still told apart from a face with a ring, in both
+        // embeddings and from either side.
+        let empty = face(vec![], vec![]);
+        let square = face(ring(0.0, 10.0), vec![]);
+
+        assert!(!empty.equal(&square, tolerance()).unwrap());
+        assert!(!square.equal(&empty, tolerance()).unwrap());
+    }
 }

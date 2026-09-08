@@ -13,8 +13,9 @@
 
 use std::collections::HashMap;
 
+use once_cell::sync::Lazy;
 use reearth_flow_geometry::ops::{Aabb, BoundingBox};
-use reearth_flow_geometry::predicates::Equal;
+use reearth_flow_geometry::predicates::{is_comparable, Equal};
 use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -30,6 +31,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+
+/// Features whose geometry this action cannot weigh, kept out of the answer
+/// rather than out of the run.
+static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct GeometryIdentifierFactory;
@@ -57,7 +62,7 @@ impl ProcessorFactory for GeometryIdentifierFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -95,6 +100,15 @@ impl ProcessorFactory for GeometryIdentifierFactory {
             .into());
         }
 
+        // Writing the matched IDs means reading an ID off every feature, so the
+        // two parameters are only meaningful together.
+        if params.matched_ids_attribute.is_some() && params.id_attribute.is_none() {
+            return Err(GeometryProcessorError::GeometryIdentifierFactory(
+                "`matchedIdsAttribute` needs `idAttribute` to say what to list".to_string(),
+            )
+            .into());
+        }
+
         Ok(Box::new(GeometryIdentifier {
             params,
             buffer: Vec::new(),
@@ -129,6 +143,17 @@ pub struct GeometryIdentifierParam {
     /// again downstream.
     #[serde(default = "default_output_attribute")]
     pub output_attribute: Attribute,
+
+    /// # ID Attribute
+    /// Attribute holding the identifier of the feature, such as its gml:id. Read only to write
+    /// the matched IDs attribute, and required when that is set.
+    pub id_attribute: Option<Attribute>,
+
+    /// # Matched IDs Attribute
+    /// Attribute the identifiers of the features sharing this feature's shape are written to, as
+    /// an array. Every feature carrying one identifier value lists the whole set, itself included,
+    /// in arrival order and without repeats. Left unwritten when omitted.
+    pub matched_ids_attribute: Option<Attribute>,
 }
 
 fn default_output_attribute() -> Attribute {
@@ -142,6 +167,10 @@ struct BufferedFeature {
     /// empty container. Such a feature shares its space with nothing and is
     /// left unlabelled.
     envelope: Option<Aabb>,
+    /// Whether the geometry is one this action cannot weigh. Such a feature is
+    /// never binned, and leaves by the rejected port rather than failing the
+    /// run for every other feature in the batch.
+    rejected: bool,
     feature: Feature,
 }
 
@@ -168,9 +197,13 @@ impl Processor for GeometryIdentifier {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+        // Asked before anything is weighed: a geometry `Equal` cannot answer for
+        // is set aside here rather than failing the batch part-way through.
+        let rejected = !is_comparable(&feature.geometry);
         // A geometry that bounds nothing occupies nowhere. `Equal` is what
         // decides whether two geometries match; the box only pairs candidates up.
         let envelope = match &*feature.geometry {
+            _ if rejected => None,
             Geometry::None => None,
             geometry => geometry.bounding_box().ok(),
         };
@@ -187,7 +220,8 @@ impl Processor for GeometryIdentifier {
         let index = self.buffer.len();
         self.buffer.push(BufferedFeature {
             envelope,
-            feature: feature.clone(),
+            rejected,
+            feature: ctx.feature,
         });
         self.groups.entry(group_key).or_default().push(index);
 
@@ -200,6 +234,7 @@ impl Processor for GeometryIdentifier {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let identifiers = self.resolve()?;
+        let matched = self.matched_ids(&identifiers);
         let ctx: Context = ctx.as_context();
 
         self.groups.clear();
@@ -207,17 +242,27 @@ impl Processor for GeometryIdentifier {
             .into_iter()
             .zip(identifiers)
         {
+            let port = if buffered.rejected {
+                REJECTED_PORT.clone()
+            } else {
+                FEATURES_PORT.clone()
+            };
             let mut feature = buffered.feature;
             if let Some(identifier) = identifier {
                 feature.attributes_mut().insert(
                     self.params.output_attribute.clone(),
                     AttributeValue::Number(identifier.into()),
                 );
+                if let (Some(attribute), Some(ids)) =
+                    (&self.params.matched_ids_attribute, matched.get(&identifier))
+                {
+                    feature
+                        .attributes_mut()
+                        .insert(attribute.clone(), AttributeValue::Array(ids.clone()));
+                }
             }
             fw.send(ExecutorContext::new_with_context_feature_and_port(
-                &ctx,
-                feature,
-                FEATURES_PORT.clone(),
+                &ctx, feature, port,
             ));
         }
 
@@ -242,10 +287,11 @@ impl GeometryIdentifier {
             // A 2D and a 3D geometry are not a pair `Equal` will weigh — there is
             // no implicit promotion between the embeddings — so they are binned
             // apart and never put to it.
-            let mut bins: HashMap<u8, Vec<(usize, &Aabb)>> = HashMap::new();
+            let mut bins: HashMap<std::mem::Discriminant<Aabb>, Vec<(usize, &Aabb)>> =
+                HashMap::new();
             for &index in indices {
                 if let Some(envelope) = &self.buffer[index].envelope {
-                    bins.entry(embedding(envelope))
+                    bins.entry(std::mem::discriminant(envelope))
                         .or_default()
                         .push((index, envelope));
                 }
@@ -313,9 +359,30 @@ impl GeometryIdentifier {
         Ok(identifiers)
     }
 
-    /// The box one binned feature's geometry sits in.
-    fn envelope(&self, index: usize) -> &Aabb {
-        self.buffer[index].envelope.as_ref().expect("binned")
+    /// The identifiers the features of one shape carry, keyed by the shape's
+    /// own identifier. Empty unless the matched IDs were asked for.
+    fn matched_ids(&self, identifiers: &[Option<usize>]) -> HashMap<usize, Vec<AttributeValue>> {
+        let mut listed_by_shape: HashMap<usize, Vec<AttributeValue>> = HashMap::new();
+        if self.params.matched_ids_attribute.is_none() {
+            return listed_by_shape;
+        }
+        let Some(id_attribute) = self.params.id_attribute.as_ref() else {
+            return listed_by_shape;
+        };
+        for (buffered, identifier) in self.buffer.iter().zip(identifiers) {
+            let (Some(identifier), Some(value)) =
+                (identifier, buffered.feature.attributes.get(id_attribute))
+            else {
+                continue;
+            };
+            // Arrival order, without repeats: several features of one shape may
+            // carry one identifier, and the list names each of them once.
+            let listed = listed_by_shape.entry(*identifier).or_default();
+            if !listed.contains(value) {
+                listed.push(value.clone());
+            }
+        }
+        listed_by_shape
     }
 }
 
@@ -334,27 +401,12 @@ impl RTreeObject for BoxEntry {
     }
 }
 
-/// Which embedding a box came from: geometries of different embeddings are
-/// never weighed against one another.
-fn embedding(aabb: &Aabb) -> u8 {
-    match aabb {
-        Aabb::D2 { .. } => 2,
-        Aabb::D3 { .. } => 3,
-    }
-}
-
 /// One box grown by `distance` on every side, as a 3D box so both embeddings
 /// can share a tree. A 2D box is read at zero elevation, which is sound because
 /// only boxes of one embedding ever meet in a tree.
 fn box_of(aabb: &Aabb, distance: f64) -> AABB<[f64; 3]> {
-    let (min, max) = match aabb {
-        Aabb::D2 { min, max } => ([min[0], min[1], 0.0], [max[0], max[1], 0.0]),
-        Aabb::D3 { min, max } => (*min, *max),
-    };
-    AABB::from_corners(
-        [min[0] - distance, min[1] - distance, min[2] - distance],
-        [max[0] + distance, max[1] + distance, max[2] + distance],
-    )
+    let (min, max) = aabb.expanded(distance).corners_3d();
+    AABB::from_corners(min, max)
 }
 
 /// Union-find over the shapes of one bin, indexed by position within it.
@@ -451,6 +503,8 @@ mod tests {
             tolerance,
             group_by: group_by.map(|keys| keys.into_iter().map(Attribute::new).collect::<Vec<_>>()),
             output_attribute: default_output_attribute(),
+            id_attribute: None,
+            matched_ids_attribute: None,
         }
     }
 
@@ -662,5 +716,196 @@ mod tests {
         assert_eq!(out[0], Some(0));
         assert_eq!(out[1], Some(0));
         assert_eq!(out[2], Some(0));
+    }
+
+    /// Run the processor over `features`, returning the port each one left by
+    /// paired with the identifier it carried, in arrival order.
+    fn route(
+        params: GeometryIdentifierParam,
+        features: Vec<Feature>,
+    ) -> Vec<(String, Option<i64>)> {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = GeometryIdentifier {
+            params,
+            buffer: Vec::new(),
+            groups: HashMap::new(),
+        };
+        for feature in &features {
+            processor
+                .process(create_default_execute_context(feature), &fw)
+                .unwrap();
+        }
+        processor.finish(NodeContext::default(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        let sent = noop.send_features.lock().unwrap().clone();
+        assert_eq!(
+            sent.len(),
+            features.len(),
+            "one feature in, one feature out"
+        );
+        ports
+            .into_iter()
+            .zip(sent)
+            .map(|(port, feature)| {
+                let identifier = feature
+                    .attributes
+                    .get(&default_output_attribute())
+                    .and_then(|value| match value {
+                        AttributeValue::Number(number) => number.as_i64(),
+                        _ => None,
+                    });
+                (port.to_string(), identifier)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_geometry_that_cannot_be_weighed_leaves_by_the_rejected_port() {
+        // A collection has no point set of its own, so `Equal` refuses it. The
+        // run carries on and the polygons either side of it are still labelled.
+        let bag = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            reearth_flow_geometry::collection::Collection3D::new(vec![]),
+        ));
+        let out = route(
+            params(0.0, None),
+            vec![
+                feature("a", "g", face(SQUARE.to_vec())),
+                feature("b", "g", bag),
+                feature("c", "g", face(SQUARE.to_vec())),
+            ],
+        );
+
+        assert_eq!(out[0], ("features".to_string(), Some(0)));
+        assert_eq!(out[1], ("rejected".to_string(), None));
+        assert_eq!(out[2], ("features".to_string(), Some(0)));
+    }
+
+    #[test]
+    fn a_mesh_is_rejected_rather_than_bringing_the_run_down() {
+        // `Equal` is unwritten for the 3D surfaces and panics rather than
+        // refusing, so the action has to keep them away from it altogether.
+        use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
+        let polygon = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            SQUARE.to_vec(),
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let mesh = Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(
+            PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&polygon]).unwrap(),
+        )));
+        let out = route(
+            params(0.0, None),
+            vec![
+                feature("a", "g", mesh.clone()),
+                feature("b", "g", mesh),
+                feature("c", "g", face(SQUARE.to_vec())),
+            ],
+        );
+
+        assert_eq!(out[0], ("rejected".to_string(), None));
+        assert_eq!(out[1], ("rejected".to_string(), None));
+        assert_eq!(out[2], ("features".to_string(), Some(0)));
+    }
+
+    /// The identifiers each feature left with under `id`/`matchedIds`.
+    fn matched(
+        params: GeometryIdentifierParam,
+        features: Vec<Feature>,
+    ) -> Vec<Option<Vec<String>>> {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = GeometryIdentifier {
+            params,
+            buffer: Vec::new(),
+            groups: HashMap::new(),
+        };
+        for feature in &features {
+            processor
+                .process(create_default_execute_context(feature), &fw)
+                .unwrap();
+        }
+        processor.finish(NodeContext::default(), &fw).unwrap();
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let sent = noop.send_features.lock().unwrap().clone();
+        sent.into_iter()
+            .map(|feature| {
+                feature
+                    .attributes
+                    .get(&Attribute::new("_shared_ids"))
+                    .and_then(|value| match value {
+                        AttributeValue::Array(values) => Some(
+                            values
+                                .iter()
+                                .map(|value| match value {
+                                    AttributeValue::String(id) => id.clone(),
+                                    other => unreachable!("unexpected id {other:?}"),
+                                })
+                                .collect(),
+                        ),
+                        _ => None,
+                    })
+            })
+            .collect()
+    }
+
+    fn params_with_ids(tolerance: f64) -> GeometryIdentifierParam {
+        GeometryIdentifierParam {
+            id_attribute: Some(Attribute::new("id")),
+            matched_ids_attribute: Some(Attribute::new("_shared_ids")),
+            ..params(tolerance, None)
+        }
+    }
+
+    #[test]
+    fn every_feature_of_one_shape_lists_the_whole_set() {
+        // `a` and `b` occupy one space, `c` another; each names its own set, and
+        // the list is what the transitive link resolver reads.
+        let out = matched(
+            params_with_ids(0.0),
+            vec![
+                feature("a", "g", face(SQUARE.to_vec())),
+                feature("b", "g", face(SQUARE.to_vec())),
+                feature("c", "g", point([9.0, 9.0, 9.0])),
+            ],
+        );
+
+        assert_eq!(out[0], Some(vec!["a".to_string(), "b".to_string()]));
+        assert_eq!(out[1], Some(vec!["a".to_string(), "b".to_string()]));
+        assert_eq!(out[2], Some(vec!["c".to_string()]));
+    }
+
+    #[test]
+    fn one_id_carried_by_several_features_is_listed_once() {
+        // Several surfaces of one building part carry that part's ID, and the
+        // list names the part once however many surfaces landed on the shape.
+        let out = matched(
+            params_with_ids(0.0),
+            vec![
+                feature("part-1", "g", face(SQUARE.to_vec())),
+                feature("part-1", "g", face(SQUARE.to_vec())),
+                feature("part-2", "g", face(SQUARE.to_vec())),
+            ],
+        );
+
+        assert_eq!(
+            out[0],
+            Some(vec!["part-1".to_string(), "part-2".to_string()])
+        );
+        assert_eq!(out[2], out[0]);
+    }
+
+    #[test]
+    fn the_matched_ids_stay_unwritten_when_not_asked_for() {
+        let out = matched(
+            params(0.0, None),
+            vec![feature("a", "g", face(SQUARE.to_vec()))],
+        );
+
+        assert_eq!(out[0], None);
     }
 }

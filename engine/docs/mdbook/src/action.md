@@ -5840,6 +5840,30 @@ Labels every feature with an identifier shared by the features whose geometry oc
           "$ref": "#/definitions/Attribute"
         }
       ]
+    },
+    "idAttribute": {
+      "title": "ID Attribute",
+      "description": "Attribute holding the identifier of the feature, such as its gml:id. Read only to write the matched IDs attribute, and required when that is set.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "matchedIdsAttribute": {
+      "title": "Matched IDs Attribute",
+      "description": "Attribute the identifiers of the features sharing this feature's shape are written to, as an array. Every feature carrying one identifier value lists the whole set, itself included, in arrival order and without repeats. Left unwritten when omitted.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
@@ -5853,6 +5877,7 @@ Labels every feature with an identifier shared by the features whose geometry oc
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
