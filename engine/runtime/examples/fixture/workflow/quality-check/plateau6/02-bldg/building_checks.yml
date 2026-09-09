@@ -1175,8 +1175,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod3_solid_issues", 0)
-        # TODO: wire to the Z-bldg-03 mesh-code pipeline once
-        # DestinationMeshCodeExtractor supports this geometry model.
+        # Wired to the Z-bldg-03 mesh-code pipeline (IncorrectMeshCodeCounter).
         - attribute: "図郭不正"
           expr:
             type: flowExpr
@@ -1310,6 +1309,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD0-1のBuildingPart", 0)
+        # 図郭不正 is kept out of totalErrorCount, matching the original implementation.
         - newAttribute: "totalErrorCount"
           expr:
             type: flowExpr
@@ -1333,7 +1333,6 @@ nodes:
               + attributes.get("LOD3 非水密立体", 0)
               + attributes.get("LOD2 立体のエラー", 0)
               + attributes.get("LOD3 立体のエラー", 0)
-              + attributes.get("図郭不正", 0)
               + attributes.get("LOD0-1のBuildingPart", 0)
               + attributes.get("LOD1 立体の交差", 0)
               + attributes.get("LOD2 立体の交差", 0)
@@ -2995,8 +2994,136 @@ nodes:
   # BuildingPart, the gml:ids it shares a boundary polygon with.
   # PLATEAU6.TransitiveLinkResolver consumes that link list and reads no
   # geometry itself, so it is the producer that is still missing.
-  # TODO: add the destination mesh code check (図郭不正) once
-  # DestinationMeshCodeExtractor supports this geometry model.
+
+  # --- Z-bldg-03 mesh-code (figure boundary) pipeline ---
+  # Taps the reprojected LOD0 footprints (already forced to 2D by TwoDimensionForcer)
+  # and computes the Japanese standard 1km mesh code the building actually falls in.
+  # A building whose GML filename does not start with that mesh code is a figure
+  # boundary error (図郭不正). Mirrors the plateau4 surface_validation.yml wiring.
+  - id: c1b00070-0000-4000-8000-000000000070
+    name: DestinationMeshCodeExtractor
+    type: action
+    action: PLATEAU6.DestinationMeshCodeExtractor
+    with:
+      meshType: 3
+      epsgCode:
+        type: flowExpr
+        value: variables.get("prcs")
+      meshcodeAttr: "meshcode"
+
+  - id: c1b00071-0000-4000-8000-000000000071
+    name: MeshCodeTester
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not attributes["name"].starts_with(attributes["meshcode"])
+          outputPort: failed
+
+  - id: c1b00072-0000-4000-8000-000000000072
+    name: AttributeMapperIncorrectMeshCode
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: meshcount
+          valueAttribute: _mesh_count
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: meshcode
+          valueAttribute: meshcode
+        - attribute: filename
+          valueAttribute: name
+        - attribute: mesh2area
+          valueAttribute: _meshcode_to_area
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+
+  - id: c1b00073-0000-4000-8000-000000000073
+    name: FeatureWriterIncorrectMeshCode
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
+
+  # GeoJSON error-detail output for the same check. The geometry is the 2D LOD0
+  # footprint the mesh code was computed from.
+  - id: c1b00076-0000-4000-8000-000000000076
+    name: AttributeMapperIncorrectMeshCodeGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 図郭不正
+        - attribute: issue
+          expr:
+            type: string
+            value: IncorrectMeshCode
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: meshCode
+          valueAttribute: meshcode
+        - attribute: meshCount
+          valueAttribute: _mesh_count
+        - attribute: meshToArea
+          valueAttribute: _meshcode_to_area
+
+  - id: c1b00077-0000-4000-8000-000000000077
+    name: FeatureGeoJsonWriterIncorrectMeshCode
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_図郭不正.geojson
+      writeCrs: true
+
+  # Count 図郭不正 rows per file for the summary column.
+  - id: c1b00074-0000-4000-8000-000000000074
+    name: IncorrectMeshCodeCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_incorrect_meshcode
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file 図郭不正 count onto each file feature.
+  - id: c1b00075-0000-4000-8000-000000000075
+    name: IncorrectMeshCodeSummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
 
   # ========== Z-bldg-04: LOD0/LOD1 BuildingPart ==========
   # A BuildingPart is only allowed to carry LOD2+ geometry. LOD0/LOD1 BuildingParts
@@ -4436,15 +4563,15 @@ edges:
     to: c1b00057-0000-4000-8000-000000000057
     fromPort: features
     toPort: supplier
-  # Unmatched-xlink summary merger output -> Z-bldg-04 summary merger (requestor).
+  # Unmatched-xlink summary merger output -> mesh-code summary merger (requestor).
   - id: c1b0e05b-0000-4000-8000-00000000005b
     from: c1b00057-0000-4000-8000-000000000057
-    to: c1b00083-0000-4000-8000-000000000083
+    to: c1b00075-0000-4000-8000-000000000075
     fromPort: merged
     toPort: requestor
   - id: c1b0e05c-0000-4000-8000-00000000005c
     from: c1b00057-0000-4000-8000-000000000057
-    to: c1b00083-0000-4000-8000-000000000083
+    to: c1b00075-0000-4000-8000-000000000075
     fromPort: unmerged
     toPort: requestor
 
@@ -4461,6 +4588,74 @@ edges:
     to: c1b00061-0000-4000-8000-000000000061
     fromPort: buildingPart
     toPort: features
+
+  # --- Z-bldg-03 mesh-code pipeline edges ---
+  # Tap the reprojected 2D LOD0 footprints from TwoDimensionForcer.
+  - id: c1b0e070-0000-4000-8000-000000000070
+    from: d65886fc-2d62-448c-8b2e-16841e3c4887
+    to: c1b00070-0000-4000-8000-000000000070
+    fromPort: features
+    toPort: features
+  # Extractor -> mesh-code tester.
+  - id: c1b0e071-0000-4000-8000-000000000071
+    from: c1b00070-0000-4000-8000-000000000070
+    to: c1b00071-0000-4000-8000-000000000071
+    fromPort: features
+    toPort: features
+  # Filename/mesh-code mismatch -> attribute mapper -> CSV writer.
+  - id: c1b0e072-0000-4000-8000-000000000072
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00072-0000-4000-8000-000000000072
+    fromPort: failed
+    toPort: features
+  - id: c1b0e073-0000-4000-8000-000000000073
+    from: c1b00072-0000-4000-8000-000000000072
+    to: c1b00073-0000-4000-8000-000000000073
+    fromPort: features
+    toPort: features
+  - id: c1b0e074-0000-4000-8000-000000000074
+    from: c1b00073-0000-4000-8000-000000000073
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # The same mismatches -> GeoJSON mapper -> GeoJSON writer.
+  - id: c1b0e079-0000-4000-8000-000000000079
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00076-0000-4000-8000-000000000076
+    fromPort: failed
+    toPort: features
+  - id: c1b0e07a-0000-4000-8000-00000000007a
+    from: c1b00076-0000-4000-8000-000000000076
+    to: c1b00077-0000-4000-8000-000000000077
+    fromPort: features
+    toPort: features
+  - id: c1b0e07b-0000-4000-8000-00000000007b
+    from: c1b00077-0000-4000-8000-000000000077
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # Mismatched features -> counter -> mesh-code summary merger (supplier).
+  - id: c1b0e075-0000-4000-8000-000000000075
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00074-0000-4000-8000-000000000074
+    fromPort: failed
+    toPort: features
+  - id: c1b0e076-0000-4000-8000-000000000076
+    from: c1b00074-0000-4000-8000-000000000074
+    to: c1b00075-0000-4000-8000-000000000075
+    fromPort: features
+    toPort: supplier
+  # Mesh-code summary merger output -> Z-bldg-04 summary merger (requestor).
+  - id: c1b0e077-0000-4000-8000-000000000077
+    from: c1b00075-0000-4000-8000-000000000075
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e078-0000-4000-8000-000000000078
+    from: c1b00075-0000-4000-8000-000000000075
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: unmerged
+    toPort: requestor
 
   # --- Z-bldg-04 LOD0/LOD1 BuildingPart pipeline edges ---
   # LOD0 / LOD1 BuildingParts from the dedicated LodSplitter -> counter.

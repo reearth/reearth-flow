@@ -21,7 +21,7 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 	<!-- Building with exactly equal areas in two adjacent 1km meshes -->
 	<!-- Mesh boundary at 137.075 longitude (multiple of 0.0125 degree intervals) -->
 	<core:cityObjectMember>
-		<bldg:Building gml:id="bldg_equal_area_cross_mesh">
+		<bldg:Building gml:id="bldg_5a56023c-0e19-4333-b840-ac0647de7a9b">
 			<core:creationDate>2025-03-21</core:creationDate>
 			<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
 			<bldg:usage codeSpace="../../codelists/Building_usage.xml">422</bldg:usage>
@@ -49,12 +49,51 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</bldg:lod0RoofEdge>
+			<uro:buildingIDAttribute>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-1</uro:buildingID>
+					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</uro:buildingIDAttribute>
+			<uro:buildingDetailAttribute>
+				<uro:BuildingDetailAttribute>
+					<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
+					<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
+					<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
+					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
+					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
+					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">211</uro:landUseType>
+					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4111</uro:detailedUsage>
+					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>
+					<uro:surveyYear>2020</uro:surveyYear>
+				</uro:BuildingDetailAttribute>
+			</uro:buildingDetailAttribute>
+			<uro:bldgDataQualityAttribute>
+				<uro:DataQualityAttribute>
+					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
+					<uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">100</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
+					<uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
+					<uro:publicSurveyDataQualityAttribute>
+						<uro:PublicSurveyDataQualityAttribute>
+							<uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
+							<uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+							<uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
+						</uro:PublicSurveyDataQualityAttribute>
+					</uro:publicSurveyDataQualityAttribute>
+				</uro:DataQualityAttribute>
+			</uro:bldgDataQualityAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 
 	<!-- Circular building precisely centered on mesh boundary for perfect equal division -->
 	<core:cityObjectMember>
-		<bldg:Building gml:id="bldg_circular_equal_area">
+		<bldg:Building gml:id="bldg_0f775683-636e-4948-8aa8-bd8db6921f0b">
 			<core:creationDate>2025-03-21</core:creationDate>
 			<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
 			<bldg:usage codeSpace="../../codelists/Building_usage.xml">431</bldg:usage>
@@ -72,17 +111,17 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 									<!-- Approximated circle centered exactly on longitude boundary 137.075 -->
 									<gml:posList>
                                         36.660 137.0745 0
-                                        36.66025 137.07465 0
-                                        36.66041421 137.07480 0
-                                        36.66050 137.075 0
-                                        36.66041421 137.0752 0
-                                        36.66025 137.07535 0
-                                        36.660 137.0755 0
-                                        36.65975 137.07535 0
-                                        36.65958579 137.0752 0
-                                        36.6595 137.075 0
-                                        36.65958579 137.07480 0
                                         36.65975 137.07465 0
+                                        36.65958579 137.07480 0
+                                        36.6595 137.075 0
+                                        36.65958579 137.0752 0
+                                        36.65975 137.07535 0
+                                        36.660 137.0755 0
+                                        36.66025 137.07535 0
+                                        36.66041421 137.0752 0
+                                        36.66050 137.075 0
+                                        36.66041421 137.07480 0
+                                        36.66025 137.07465 0
                                         36.660 137.0745 0
                                     </gml:posList>
 								</gml:LinearRing>
@@ -91,13 +130,52 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</bldg:lod0RoofEdge>
+			<uro:buildingIDAttribute>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-2</uro:buildingID>
+					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</uro:buildingIDAttribute>
+			<uro:buildingDetailAttribute>
+				<uro:BuildingDetailAttribute>
+					<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
+					<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
+					<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
+					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
+					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
+					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">211</uro:landUseType>
+					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4111</uro:detailedUsage>
+					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>
+					<uro:surveyYear>2020</uro:surveyYear>
+				</uro:BuildingDetailAttribute>
+			</uro:buildingDetailAttribute>
+			<uro:bldgDataQualityAttribute>
+				<uro:DataQualityAttribute>
+					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
+					<uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">100</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
+					<uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
+					<uro:publicSurveyDataQualityAttribute>
+						<uro:PublicSurveyDataQualityAttribute>
+							<uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
+							<uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+							<uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
+						</uro:PublicSurveyDataQualityAttribute>
+					</uro:publicSurveyDataQualityAttribute>
+				</uro:DataQualityAttribute>
+			</uro:bldgDataQualityAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 
 	<!-- Rectangular building crossing latitude mesh boundary -->
 	<!-- Mesh boundary at 36.666666667 latitude (multiple of 0.008333333 degree intervals) -->
 	<core:cityObjectMember>
-		<bldg:Building gml:id="bldg_lat_boundary_equal">
+		<bldg:Building gml:id="bldg_3682cf30-a7cd-40f5-ba9f-7146698e1590">
 			<core:creationDate>2025-03-21</core:creationDate>
 			<bldg:class codeSpace="../../codelists/Building_class.xml">3002</bldg:class>
 			<bldg:usage codeSpace="../../codelists/Building_usage.xml">452</bldg:usage>
@@ -113,11 +191,11 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 							<gml:exterior>
 								<gml:LinearRing>
 									<gml:posList>
-                                        36.66625 137.0751 0
-                                        36.66708333333 137.0751 0
-                                        36.66708333333 137.0754 0
-                                        36.66625 137.0754 0
-                                        36.66625 137.0751 0
+                                        36.66625 137.0757 0
+                                        36.66625 137.0760 0
+                                        36.66708333333 137.0760 0
+                                        36.66708333333 137.0757 0
+                                        36.66625 137.0757 0
                                     </gml:posList>
 								</gml:LinearRing>
 							</gml:exterior>
@@ -125,6 +203,45 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</bldg:lod0RoofEdge>
+			<uro:buildingIDAttribute>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-3</uro:buildingID>
+					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</uro:buildingIDAttribute>
+			<uro:buildingDetailAttribute>
+				<uro:BuildingDetailAttribute>
+					<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
+					<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
+					<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
+					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
+					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
+					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">211</uro:landUseType>
+					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4111</uro:detailedUsage>
+					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>
+					<uro:surveyYear>2020</uro:surveyYear>
+				</uro:BuildingDetailAttribute>
+			</uro:buildingDetailAttribute>
+			<uro:bldgDataQualityAttribute>
+				<uro:DataQualityAttribute>
+					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
+					<uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">100</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
+					<uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
+					<uro:publicSurveyDataQualityAttribute>
+						<uro:PublicSurveyDataQualityAttribute>
+							<uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
+							<uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+							<uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
+						</uro:PublicSurveyDataQualityAttribute>
+					</uro:publicSurveyDataQualityAttribute>
+				</uro:DataQualityAttribute>
+			</uro:bldgDataQualityAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 
