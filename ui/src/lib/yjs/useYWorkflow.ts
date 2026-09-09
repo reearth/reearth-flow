@@ -42,8 +42,8 @@ export default ({
 
   // This hook deliberately takes no workflow snapshot. Both handlers below
   // write after awaiting a network call, so anything derived from a render-time
-  // snapshot could be out of date by the time the transaction runs. Read from
-  // the document instead, inside the transaction.
+  // snapshot could be out of date by the time we apply the Yjs transaction.
+  // Instead, re-read from the Yjs document after the await and just before writing.
   const readLiveWorkflows = useCallback(
     (): Workflow[] =>
       Array.from(yWorkflows.values()).map((yw) => rebuildWorkflow(yw)),
