@@ -189,10 +189,13 @@ impl Source for CityGml3Reader {
         // Per Action Standard §4.3, present-but-malformed input fails the read
         // naming the offending location, rather than emitting a feature with
         // its geometry silently dropped. Checked before the send loop, so a
-        // malformed document sends zero features.
+        // malformed document sends zero features. This is new-geometry-only:
+        // under the legacy path, `build_features_reporting` always reports zero
+        // malformations (see its doc comment in pipeline.rs), so this branch is
+        // dead there and the read stays lenient.
         if let Some(first) = malformations.first() {
             return Err(SourceError::CityGml3Reader(format!(
-                "{source_url}: malformed input ({} total): {first}",
+                "malformed input ({} total): {first}",
                 malformations.len()
             ))
             .into());
@@ -438,6 +441,76 @@ mod tests {
             msg.contains("invalid gml:posList content"),
             "the error must name the reason, got: {msg}"
         );
+        // §4.3 requires naming the offending *location*, not just the reason.
+        // This Polygon carries no gml:id, so the only location available is the
+        // source file; the synthetic inline URL must still show up.
+        assert!(
+            msg.contains("file:///inline.gml"),
+            "the error must name the offending file, got: {msg}"
+        );
+        assert_eq!(
+            drain_features(&mut rx).await,
+            0,
+            "no features should reach the channel when the read fails"
+        );
+    }
+
+    // A Building whose `gml:Solid` carries two `gml:exterior` members: a
+    // resolver-site (pass-2) malformation, distinct from the pass-1 posList
+    // case above. Exercises `construct`'s backfill of the Solid's own
+    // `gml:id` onto the malformation it collects. Only used by the
+    // new-geometry-only test below.
+    #[cfg(feature = "new-geometry")]
+    const CITYGML_3_WITH_DOUBLE_EXTERIOR_SOLID: &str = concat!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>"#,
+        r#"<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0""#,
+        r#" xmlns:bldg="http://www.opengis.net/citygml/building/3.0""#,
+        r#" xmlns:gml="http://www.opengis.net/gml/3.2">"#,
+        r#"<core:cityObjectMember><bldg:Building gml:id="b2">"#,
+        r#"<core:lod2Solid><gml:Solid gml:id="solid_bad">"#,
+        r#"<gml:exterior><gml:Shell><gml:surfaceMember>"#,
+        r#"<gml:Polygon><gml:exterior><gml:LinearRing>"#,
+        r#"<gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>"#,
+        r#"</gml:LinearRing></gml:exterior></gml:Polygon>"#,
+        r#"</gml:surfaceMember></gml:Shell></gml:exterior>"#,
+        r#"<gml:exterior><gml:Shell><gml:surfaceMember>"#,
+        r#"<gml:Polygon><gml:exterior><gml:LinearRing>"#,
+        r#"<gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>"#,
+        r#"</gml:LinearRing></gml:exterior></gml:Polygon>"#,
+        r#"</gml:surfaceMember></gml:Shell></gml:exterior>"#,
+        r#"</gml:Solid></core:lod2Solid>"#,
+        r#"</bldg:Building></core:cityObjectMember>"#,
+        r#"</core:CityModel>"#,
+    );
+
+    /// Same §4.3 property as the posList test, but for a malformation collected
+    /// by resolver.rs (pass 2) rather than geometry_next.rs (pass 1), so the
+    /// `construct` backfill (naming the Solid's own gml:id) gets its own
+    /// coverage rather than riding solely on the pass-1 case.
+    #[cfg(feature = "new-geometry")]
+    #[tokio::test]
+    async fn start_fails_the_read_on_a_solid_with_two_exteriors_naming_the_solid() {
+        let mut reader = CityGml3Reader {
+            common: FileReaderCompiledParam {
+                dataset: None,
+                inline: Some(Bytes::from(CITYGML_3_WITH_DOUBLE_EXTERIOR_SOLID)),
+            },
+            property: default_property(),
+        };
+        let (tx, mut rx) = mpsc::channel(16);
+        let err = reader
+            .start(NodeContext::default(), tx)
+            .await
+            .expect_err("a Solid with two exteriors must fail the read");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("solid with multiple exteriors"),
+            "the error must name the reason, got: {msg}"
+        );
+        assert!(
+            msg.contains("solid_bad"),
+            "the error must name the offending gml:id via the pass-2 backfill, got: {msg}"
+        );
         assert_eq!(
             drain_features(&mut rx).await,
             0,
@@ -469,5 +542,52 @@ mod tests {
             1,
             "the processor path must stay lenient and still emit the Building"
         );
+        // `features.len() == 1` alone can't tell "lenient, geometry dropped"
+        // apart from "somehow succeeded" - confirm the malformed surface's
+        // geometry is actually gone.
+        #[cfg(feature = "new-geometry")]
+        {
+            use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+
+            // The MultiSurface's only member is dropped, but `construct` still
+            // returns `Some(collection([]))` for a MultiSurface regardless of
+            // whether any member resolved, so the feature ends up with an empty
+            // collection rather than a wholly absent geometry. Recurse through
+            // any wrapping collections (the pipeline's per-lodN
+            // GeometryCollection, and the resolver's own empty Collection) to
+            // confirm no actual coordinate-bearing geometry survived anywhere
+            // inside.
+            fn is_empty_euclidean(g: &Euclidean3DGeometry) -> bool {
+                matches!(g, Euclidean3DGeometry::Collection(c) if c.members().iter().all(is_empty_euclidean))
+            }
+            fn is_empty_geometry(g: &Geometry) -> bool {
+                match g {
+                    Geometry::None => true,
+                    Geometry::Euclidean3D(e) => is_empty_euclidean(e),
+                    Geometry::GeometryCollection(gc) => gc.members().iter().all(is_empty_geometry),
+                    _ => false,
+                }
+            }
+            assert!(
+                is_empty_geometry(&features[0].geometry),
+                "the MultiSurface's only member failed to resolve, so no \
+                 coordinate-bearing geometry should survive, got: {:?}",
+                features[0].geometry
+            );
+        }
+        #[cfg(not(feature = "new-geometry"))]
+        {
+            use reearth_flow_types::GeometryValue;
+            match &features[0].geometry.value {
+                GeometryValue::None => {}
+                GeometryValue::CityGmlGeometry(g) => assert!(
+                    g.gml_geometries.iter().all(|g| {
+                        g.polygons.is_empty() && g.line_strings.is_empty() && g.points.is_empty()
+                    }),
+                    "the malformed posList must leave no coordinates behind, got: {g:?}"
+                ),
+                other => panic!("unexpected geometry value for a dropped surface: {other:?}"),
+            }
+        }
     }
 }

@@ -499,6 +499,14 @@ fn parse_pos(text: &str, malformations: &mut Vec<Malformation>) -> Option<[f64; 
         return None;
     };
     if values.len() != 3 {
+        // Deliberately no new tracing warning macro call here: the allowlist
+        // pins this file's per-site count, and this branch was previously
+        // silent. Collect only.
+        malformations.push(Malformation {
+            file: String::new(),
+            location: String::new(),
+            reason: "citygml geometry: gml:pos ordinate count is not 3, skipped".to_string(),
+        });
         return None;
     }
     Some([values[0], values[1], values[2]])

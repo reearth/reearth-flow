@@ -299,6 +299,11 @@ fn resolve_ref(
     let resolved = match target {
         Some(target) => resolve(target, ctx, enclosing, in_progress),
         None => {
+            // Not collected: a dangling `xlink:href` is indistinguishable here
+            // from an ordinary cross-file reference, which these single-document
+            // sources hit routinely (the target simply hasn't been registered
+            // from this file). Collecting here would reject valid split
+            // datasets, not just malformed ones.
             tracing::warn!(
                 id = key.1,
                 "citygml geometry: unresolved xlink:href, skipped"
@@ -332,6 +337,12 @@ fn construct(
         .iter()
         .filter_map(|(role, child)| {
             if frame_for(source_file(child), ctx.srs_by_file) != frame {
+                // Not collected, for the same reason as the unresolved-href
+                // site above: `frame_for` keys on file URL, so within one
+                // document this can never fire on same-file members. The only
+                // way to trip it in a single-document read is an ordinary
+                // cross-file reference, so collecting here would reject valid
+                // split datasets.
                 tracing::error!(
                     "citygml geometry: member srsName disagrees with its parent, skipped"
                 );
@@ -341,7 +352,15 @@ fn construct(
         })
         .collect();
 
-    match node.ty {
+    // Pass-2 leaf functions (`ring`/`surface_mesh`/`solid` and their helpers)
+    // push bare (file/location empty) Malformations, since they only see
+    // resolved members and have neither this node's file nor its gml:id.
+    // Backfill both here, at the owning `construct` call, mirroring
+    // `geometry_node`'s pass-1 backfill in geometry_next.rs. Only empty
+    // fields are filled, so a site that already named its own location keeps
+    // it.
+    let before = ctx.malformations.len();
+    let built = match node.ty {
         GmlGeometryType::MultiPoint
         | GmlGeometryType::MultiCurve
         | GmlGeometryType::CompositeCurve
@@ -365,7 +384,18 @@ fn construct(
             tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
             None
         }
+    };
+    for m in &mut ctx.malformations[before..] {
+        if m.file.is_empty() {
+            m.file = node.file.clone();
+        }
+        if m.location.is_empty() {
+            if let Some(id) = &node.id {
+                m.location = id.clone();
+            }
+        }
     }
+    built
 }
 
 /// The source file URL a child node's coordinates belong to.
