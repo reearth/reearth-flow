@@ -1,0 +1,271 @@
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+
+use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::pipeline::build_features;
+use reearth_flow_runtime::{
+    errors::BoxedError,
+    event::EventHub,
+    executor_operation::NodeContext,
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+};
+use reearth_flow_types::Attributes;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tokio::sync::mpsc::Sender;
+use url::Url;
+
+use super::reader::runner::{
+    get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
+};
+use crate::errors::SourceError;
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct CityGml2ReaderFactory;
+
+impl SourceFactory for CityGml2ReaderFactory {
+    fn name(&self) -> &str {
+        "CityGML 2 Reader"
+    }
+
+    fn description(&self) -> &str {
+        "Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within each document."
+    }
+
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        Some(schemars::schema_for!(CityGml2ReaderParam))
+    }
+
+    fn categories(&self) -> &[&'static str] {
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
+    }
+
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![FEATURES_PORT.clone()]
+    }
+
+    fn build(
+        &self,
+        ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        with: Option<HashMap<String, Value>>,
+        _state: Option<Vec<u8>>,
+    ) -> Result<Box<dyn Source>, BoxedError> {
+        let params: CityGml2ReaderParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                SourceError::CityGml2ReaderFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                SourceError::CityGml2ReaderFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            return Err(SourceError::CityGml2ReaderFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
+        };
+        let common = params.common_property.compile(&ctx).map_err(|e| {
+            SourceError::CityGml2ReaderFactory(format!("Failed to compile params: {e:?}"))
+        })?;
+        Ok(Box::new(CityGml2Reader {
+            common,
+            property: params.property,
+        }))
+    }
+}
+
+/// # CityGML 2 Reader Parameters
+///
+/// Configuration for reading a CityGML 2.0 document as 3D city models.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CityGml2ReaderParam {
+    #[serde(flatten)]
+    pub(super) common_property: FileReaderCommonParam,
+    #[serde(flatten)]
+    pub(super) property: CityGml2Property,
+}
+
+/// # CityGML 2 Reader Options
+///
+/// Controls which city objects become features and how their attributes are shaped.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct CityGml2Property {
+    /// # Extract Tags
+    /// Feature type names to emit as individual features. Accepts qualified (`bldg:Building`),
+    /// local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all
+    /// top-level city objects unchanged.
+    #[serde(default)]
+    pub(super) extract_tags: Vec<String>,
+    /// # Keep Attributes
+    /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
+    /// dropped from parsed features. Defaults to true.
+    #[serde(default = "default_keep_attributes")]
+    pub(super) keep_attributes: bool,
+    /// # Flatten Measure Types
+    /// When true, elements with a single `uom` attribute and numeric text content are converted to
+    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
+    #[serde(default)]
+    pub(super) flatten_measure_types: bool,
+    /// # City GML Attributes Key
+    /// When set, parsed CityGML attributes are nested under this key in the output feature.
+    /// When null, attributes are emitted at the top level. Defaults to null.
+    #[serde(default)]
+    pub(super) city_gml_attributes_key: Option<String>,
+}
+
+fn default_keep_attributes() -> bool {
+    true
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct CityGml2Reader {
+    common: FileReaderCompiledParam,
+    property: CityGml2Property,
+}
+
+#[async_trait::async_trait]
+impl Source for CityGml2Reader {
+    async fn initialize(&self, _ctx: NodeContext) {}
+
+    fn name(&self) -> &str {
+        "CityGML 2 Reader"
+    }
+
+    async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
+        Ok(vec![])
+    }
+
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let input_path = get_input_path(&self.common)?;
+        let content = get_content(&self.common, storage_resolver).await?;
+
+        // `inline` content has no path of its own, but the parser keys its
+        // per-file CRS and reference tables on a URL, so give it a stable one.
+        let source_url: Url = match input_path {
+            Some(uri) => uri.into(),
+            None => Url::parse("file:///inline.gml").map_err(|e| {
+                SourceError::CityGml2Reader(format!("Failed to build inline source URL: {e}"))
+            })?,
+        };
+
+        let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
+        let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone());
+        parser
+            .parse(&content, &source_url)
+            .map_err(|e| SourceError::CityGml2Reader(format!("{source_url}: {e}")))?;
+
+        let flatten_leaf_attributes: Vec<String> = if self.property.flatten_measure_types {
+            vec!["uom".to_string()]
+        } else {
+            Vec::new()
+        };
+
+        // `flatten_single_child_objects` is passed false rather than exposed: the
+        // new-geometry path ignores it, so a parameter for it would do nothing.
+        for feature in build_features(
+            parser,
+            &extract_tags,
+            &HashMap::<String, Attributes>::new(),
+            self.property.city_gml_attributes_key.as_deref(),
+            self.property.keep_attributes,
+            false,
+            &flatten_leaf_attributes,
+        ) {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| SourceError::CityGml2Reader(format!("Failed to send feature: {e}")))?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_runtime::node::SourceFactory;
+
+    #[test]
+    fn factory_metadata_matches_the_action_standard() {
+        let factory = CityGml2ReaderFactory;
+        assert_eq!(factory.name(), "CityGML 2 Reader");
+        assert_eq!(factory.categories(), &["Input"]);
+        assert_eq!(factory.tags(), &["citygml", "3d"]);
+        assert_eq!(factory.get_output_ports().len(), 1);
+        assert!(factory.description().ends_with('.'));
+        assert!(factory.parameter_schema().is_some());
+    }
+
+    const MINIMAL_CITYGML_2: &str = concat!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>"#,
+        r#"<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0""#,
+        r#" xmlns:bldg="http://www.opengis.net/citygml/building/2.0""#,
+        r#" xmlns:gml="http://www.opengis.net/gml">"#,
+        r#"<core:cityObjectMember><bldg:Building gml:id="b1">"#,
+        r#"<bldg:function>1000</bldg:function>"#,
+        r#"</bldg:Building></core:cityObjectMember>"#,
+        r#"</core:CityModel>"#,
+    );
+
+    #[test]
+    fn parses_one_city_object_into_one_feature() {
+        let mut parser = Parser::new(CityGmlVersion::V2);
+        let url = Url::parse("file:///test.gml").unwrap();
+        parser
+            .parse(MINIMAL_CITYGML_2.as_bytes(), &url)
+            .expect("minimal CityGML 2.0 should parse");
+        let features = build_features(
+            parser,
+            &HashSet::new(),
+            &HashMap::<String, Attributes>::new(),
+            None,
+            true,
+            false,
+            &[],
+        );
+        assert_eq!(features.len(), 1);
+    }
+
+    #[test]
+    fn a_citygml_3_document_is_rejected_by_the_v2_parser() {
+        let three = MINIMAL_CITYGML_2.replace("citygml/2.0", "citygml/3.0");
+        let mut parser = Parser::new(CityGmlVersion::V2);
+        let url = Url::parse("file:///test.gml").unwrap();
+        let err = parser
+            .parse(three.as_bytes(), &url)
+            .expect_err("a 3.0 document must not parse as 2.0");
+        let msg = format!("{err}");
+        // Pinned to the real message text (captured by running this test with
+        // a temporary panic!("{msg}") and reading the failure output):
+        // "CityModel root element doesn't match the expected CityGML version
+        // V2: found tag core:CityModel". Assert a distinctive fragment of it
+        // so this test fails if the mismatch stops being reported, rather
+        // than settling for "the message is merely non-empty".
+        assert!(
+            msg.contains("doesn't match the expected CityGML version"),
+            "the mismatch error must name the version it expected, got: {msg}"
+        );
+    }
+}
