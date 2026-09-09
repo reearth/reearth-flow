@@ -1,8 +1,8 @@
 mod core;
 
-pub use core::env::Env;
+pub use core::env::{new_frame, Env};
 pub use core::error::{eval_error, Error, Result};
-pub use core::eval::{default_env, env_bind, env_remove};
+pub use core::eval::{default_env, env_bind, env_remove, new_root_env};
 pub use core::value::{ClosureValue, FromValue, ImmutableObject, NativeFn, TypeValue, Value};
 
 pub fn expect_arity(name: &str, args: &[Value], min: usize, max: usize) -> Result<()> {

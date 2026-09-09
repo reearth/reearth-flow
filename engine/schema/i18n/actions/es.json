@@ -868,6 +868,10 @@
         "textureCodec": {
           "title": "Códec de Textura",
           "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas."
+        },
+        "wrapTolerance": {
+          "title": "Tolerancia de Repetición",
+          "description": "Cuánto puede desviarse una coordenada de textura fuera de 0-1 y aun así recortarse como desviación del conjunto de datos. Más allá de ese margen, se considera que la textura se repite y se le asigna una página de atlas propia para que el muestreador pueda repetirla. Valor predeterminado: 0."
         }
       },
       "enumI18n": {
@@ -1397,6 +1401,22 @@
         "writeCrs": {
           "title": "Write CRS",
           "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
+        }
+      }
+    },
+    {
+      "name": "Feature Group Mapper",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de Feature Group Mapper"
+        },
+        "attribute": {
+          "title": "Atributo de agrupación",
+          "description": "Atributo cuyo valor agrupa entidades consecutivas."
+        },
+        "expr": {
+          "title": "Expresión",
+          "description": "Expresión sobre `features` (una entrada de atributos por cada entidad del grupo) y `variables`, que devuelve una lista de la misma longitud que `features`. Cada mapa devuelto reemplaza los atributos de la entidad correspondiente."
         }
       }
     },

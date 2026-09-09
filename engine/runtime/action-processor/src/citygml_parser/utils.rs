@@ -58,10 +58,19 @@ impl XmlNode {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+pub(super) use super::resolver::GeomNode;
+
+/// Legacy never constructs one; this stub only exists so shared code can name the type unconditionally.
+#[cfg(not(feature = "new-geometry"))]
+#[derive(Debug)]
+pub enum GeomNode {}
+
 #[derive(Debug, Clone)]
 pub enum XmlChild {
     Element(Arc<XmlNode>),
     Text(String),
+    Geometry(Option<u8>, Arc<GeomNode>),
 }
 
 /// Interns namespace URIs as u32 IDs, avoiding repeated allocation of long URI strings.

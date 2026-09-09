@@ -10,7 +10,6 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-use super::geometry;
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
@@ -33,14 +32,16 @@ pub(crate) enum RawChild {
     Element(Arc<RawNode>),
     Text(String),
     Ref(RawNodeKey),
+    Geometry(Option<u8>, Arc<super::resolver::GeomNode>),
 }
 
 pub(crate) type RawRegistry = HashMap<RawNodeKey, Arc<RawNode>>;
 
 /// Everything [`Parser::finish`] hands off to pass-2 reference resolution.
 pub(super) struct ParserOutput {
-    /// The features awaiting geometry resolution.
-    pub(super) pending: Vec<PendingFeature>,
+    /// The features awaiting geometry resolution, each with its geometry already
+    /// embedded in its own tree as [`RawChild::Geometry`] nodes.
+    pub(super) pending: Vec<Arc<RawNode>>,
     /// Attribute trees, keyed for `xlink:href` lookup.
     pub(super) raw_registry: RawRegistry,
     /// Parsed geometry nodes, keyed for `xlink:href` lookup.
@@ -84,14 +85,16 @@ pub struct Parser {
     /// resolves.
     appearance_members: Vec<Arc<RawNode>>,
     pub(super) ns_registry: NamespaceRegistry,
-    pending: Vec<PendingFeature>,
-    /// Whether to record each geometry's enclosing `gml:id`s, needed only when
-    /// `flatten` will hoist children into separate features.
-    pub(super) track_owners: bool,
+    pending: Vec<Arc<RawNode>>,
     /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
     /// file with no entry declared no (or an unrecognized) srsName.
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
     version: CityGmlVersion,
+    /// Counter for synthesizing a `gml:id` on `extract_tags`-matched elements that have none.
+    pub(super) synthetic_gml_id_seq: u64,
+    /// Tags `strip()` may synthesize a `gml:id` for; same set the reader will later hoist
+    /// with `flatten::extract`.
+    pub(super) extract_tags: std::collections::HashSet<String>,
 }
 
 impl std::fmt::Debug for Parser {
@@ -106,21 +109,24 @@ impl std::fmt::Debug for Parser {
 
 impl Parser {
     pub fn new(version: CityGmlVersion) -> Self {
-        Self::with_owner_tracking(true, version)
+        Self::with_extract_tags(version, Default::default())
     }
 
-    /// A parser that records geometry owner `gml:id`s only when `track_owners` is
-    /// set; leave it off unless `flatten` will hoist children.
-    pub(super) fn with_owner_tracking(track_owners: bool, version: CityGmlVersion) -> Self {
+    /// `extract_tags` is the set `strip()` may synthesize a `gml:id` for.
+    pub(crate) fn with_extract_tags(
+        version: CityGmlVersion,
+        extract_tags: std::collections::HashSet<String>,
+    ) -> Self {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
             appearance_members: Vec::new(),
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
-            track_owners,
             srs_by_file: HashMap::new(),
             version,
+            synthetic_gml_id_seq: 0,
+            extract_tags,
         }
     }
 
@@ -170,13 +176,10 @@ impl Parser {
                                 _ => None,
                             })
                         {
-                            let (stripped, geoms) = self.split_geometry(&feature_node);
+                            let stripped = self.split_geometry(&feature_node);
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
-                            self.pending.push(PendingFeature {
-                                root: stripped,
-                                geoms,
-                            });
+                            self.pending.push(stripped);
                         } else {
                             tracing::warn!(
                                 "citygml: empty cityObjectMember/featureMember, skipped"
@@ -276,13 +279,6 @@ fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
     })
 }
 
-/// A top-level city object awaiting pass-2 resolution: its attribute tree, with
-/// geometry stripped out, plus the geometries carved from it.
-pub(super) struct PendingFeature {
-    pub(super) root: Arc<RawNode>,
-    pub(super) geoms: Vec<geometry::PendingGeom>,
-}
-
 pub fn to_feature(
     node: &XmlNode,
     citygml_attribute_key: Option<&str>,
@@ -369,6 +365,7 @@ pub fn node_to_attribute_value(
                     ));
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
+            XmlChild::Geometry(..) => {}
         }
     }
 
@@ -763,9 +760,9 @@ mod tests {
         let ParserOutput { pending, .. } = parser.finish();
 
         assert_eq!(pending.len(), 2);
-        assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
-        assert_eq!(raw_gml_id(&pending[1].root), Some("bldg002".to_string()));
-        assert_eq!(pending[0].root.name.0, "bldg:Building");
+        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
+        assert_eq!(raw_gml_id(&pending[1]), Some("bldg002".to_string()));
+        assert_eq!(pending[0].name.0, "bldg:Building");
     }
 
     #[test]
@@ -787,7 +784,7 @@ mod tests {
             raw_registry: raw_reg,
             ..
         } = parser.finish();
-        assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
+        assert_eq!(raw_gml_id(&pending[0]), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
 
@@ -993,11 +990,10 @@ mod tests {
 
         assert_eq!(
             pending[0]
-                .root
                 .attrs
                 .iter()
                 .find(|((q, _), _)| q == "codeSpace")
-                .map(|(_, v)| v.as_str()),
+                .map(|(_, v): &(QName, String)| v.as_str()),
             Some("A & B <test>")
         );
     }

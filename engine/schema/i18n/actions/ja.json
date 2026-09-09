@@ -868,6 +868,10 @@
         "textureCodec": {
           "title": "テクスチャコーデック",
           "description": "アトラスページの画像コーデック。デフォルトは `KTX2/ETC1S`。テクスチャを付与しない場合は `Untextured` を選択する。"
+        },
+        "wrapTolerance": {
+          "title": "ラップ許容値",
+          "description": "テクスチャ座標が 0〜1 の範囲外にどこまでずれてもデータの誤差としてクランプするかを指定する。これを超えた場合はタイリングテクスチャとみなし、サンプラーが繰り返せるように専用のアトラスページを割り当てる。デフォルトは 0。"
         }
       },
       "enumI18n": {
@@ -1397,6 +1401,22 @@
         "writeCrs": {
           "title": "Write CRS",
           "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
+        }
+      }
+    },
+    {
+      "name": "Feature Group Mapper",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Group Mapper パラメータ"
+        },
+        "attribute": {
+          "title": "グループ化属性",
+          "description": "この属性の値によって連続する地物をグループ化する"
+        },
+        "expr": {
+          "title": "変換式",
+          "description": "`features`（グループ内の各地物の属性エントリ）と`variables`を対象とし、`features`と同じ長さのリストを返す式。返された各マップが対応する地物の属性を置き換える"
         }
       }
     },

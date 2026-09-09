@@ -518,6 +518,7 @@ fn element_children(node: &XmlNode) -> impl Iterator<Item = &XmlNode> {
     node.children.iter().filter_map(|c| match c {
         XmlChild::Element(e) => Some(e.as_ref()),
         XmlChild::Text(_) => None,
+        XmlChild::Geometry(..) => None,
     })
 }
 
@@ -911,6 +912,7 @@ mod tests {
             .filter_map(|c| match c {
                 XmlChild::Element(e) => Some(local_name(&e.name.0)),
                 XmlChild::Text(_) => None,
+                XmlChild::Geometry(..) => None,
             })
             .collect();
         assert_eq!(

@@ -790,8 +790,8 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 
 #[cfg(test)]
 mod tests {
-    use crate::citygml_parser::parser::{CityGmlVersion, Parser, ParserOutput};
-    use crate::citygml_parser::resolver::resolve_root;
+    use crate::citygml_parser::parser::{CityGmlVersion, Parser, ParserOutput, RawChild, RawNode};
+    use crate::citygml_parser::resolver::{resolve_root, GeomNode};
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
     };
@@ -814,6 +814,25 @@ mod tests {
         xmlns:app="http://www.opengis.net/citygml/appearance/3.0"
         xmlns:xlink="http://www.w3.org/1999/xlink""#;
 
+    fn first_geom_node(node: &RawNode) -> Option<Arc<GeomNode>> {
+        for child in &node.children {
+            match child {
+                RawChild::Geometry(_, g) => return Some(Arc::clone(g)),
+                RawChild::Element(e) => {
+                    if let Some(g) = first_geom_node(e) {
+                        return Some(g);
+                    }
+                }
+                RawChild::Text(_) | RawChild::Ref(_) => {}
+            }
+        }
+        None
+    }
+
+    fn only_geom_node(node: &RawNode) -> Arc<GeomNode> {
+        first_geom_node(node).expect("feature has a geometry node")
+    }
+
     /// The sole `Polygon` of a feature whose geometry is a one-member collection of
     /// one polygon.
     fn resolve_only_polygon(xml: &str) -> Polygon3DOut {
@@ -832,7 +851,7 @@ mod tests {
         let appearance = super::build_index(&appearance_members, &raw_registry);
         assert!(!appearance.is_empty(), "appearance should be indexed");
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
+        let geom = resolve_root(&only_geom_node(&feature), &geom_registry, &appearance, &srs)
             .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::Collection(c) => match c.members().first().expect("one member") {
@@ -1485,7 +1504,7 @@ mod tests {
         } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
+        let geom = resolve_root(&only_geom_node(&feature), &geom_registry, &appearance, &srs)
             .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::TriangularMesh(m) => *m,
@@ -1729,7 +1748,7 @@ mod tests {
         } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
+        let geom = resolve_root(&only_geom_node(&feature), &geom_registry, &appearance, &srs)
             .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::PolygonMesh(m) => *m,
@@ -1840,14 +1859,14 @@ mod tests {
         let features: Vec<_> = pending.into_iter().collect();
         assert_eq!(features.len(), 2);
         let a = resolve_root(
-            &features[0].geoms[0].node,
+            &only_geom_node(&features[0]),
             &geom_registry,
             &appearance,
             &srs,
         )
         .expect("file a resolves");
         let b = resolve_root(
-            &features[1].geoms[0].node,
+            &only_geom_node(&features[1]),
             &geom_registry,
             &appearance,
             &srs,

@@ -2374,6 +2374,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "ラップ許容値",
+            "description": "テクスチャ座標が 0〜1 の範囲外にどこまでずれてもデータの誤差としてクランプするかを指定する。これを超えた場合はタイリングテクスチャとみなし、サンプラーが繰り返せるように専用のアトラスページを割り当てる。デフォルトは 0。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "テクスチャコーデック",
             "description": "アトラスページの画像コーデック。デフォルトは `KTX2/ETC1S`。テクスチャを付与しない場合は `Untextured` を選択する。",
@@ -4199,6 +4210,71 @@
       ],
       "tags": [
         "geojson"
+      ]
+    },
+    {
+      "name": "Feature Group Mapper",
+      "type": "processor",
+      "description": "Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Group Mapper パラメータ",
+        "type": "object",
+        "required": [
+          "attribute",
+          "expr"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "グループ化属性",
+            "description": "この属性の値によって連続する地物をグループ化する",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "expr": {
+            "title": "変換式",
+            "description": "`features`（グループ内の各地物の属性エントリ）と`variables`を対象とし、`features`と同じ長さのリストを返す式。返された各マップが対応する地物の属性を置き換える",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "scripting",
+        "attribute"
       ]
     },
     {
