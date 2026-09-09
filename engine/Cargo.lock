@@ -5028,7 +5028,6 @@ name = "reearth-flow-citygml"
 version = "0.0.550"
 dependencies = [
  "indexmap 2.13.0",
- "pretty_assertions",
  "quick-xml 0.37.5",
  "reearth-flow-common",
  "reearth-flow-geometry",

@@ -105,7 +105,7 @@ pub(super) struct CityGml3ReaderParam {
 #[serde(rename_all = "camelCase")]
 pub(super) struct CityGml3Property {
     /// # Extract Tags
-    /// Feature type names to emit as individual features. Accepts qualified (`bldg:Building`),
+    /// Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`),
     /// local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all
     /// top-level city objects unchanged.
     #[serde(default)]
@@ -201,7 +201,9 @@ impl Source for CityGml3Reader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytes::Bytes;
     use reearth_flow_runtime::node::SourceFactory;
+    use tokio::sync::mpsc;
 
     #[test]
     fn factory_metadata_matches_the_action_standard() {
@@ -279,6 +281,104 @@ mod tests {
         assert!(
             msg.contains("doesn't match the expected CityGML version"),
             "the mismatch error must name the version it expected, got: {msg}"
+        );
+    }
+
+    // A Building with two boundary surfaces of the same extractable type, so that
+    // extracting them changes the feature count relative to the default (1 -> 2)
+    // rather than merely relabeling the same single feature. Namespaces and the
+    // `core:boundary` wrapper match `reearth_flow_citygml::pipeline`'s own V3
+    // boundary-surface fixtures (`engine/runtime/citygml/src/pipeline.rs`).
+    const CITYGML_3_WITH_WALLS: &str = concat!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>"#,
+        r#"<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0""#,
+        r#" xmlns:bldg="http://www.opengis.net/citygml/building/3.0""#,
+        r#" xmlns:con="http://www.opengis.net/citygml/construction/3.0""#,
+        r#" xmlns:gml="http://www.opengis.net/gml/3.2">"#,
+        r#"<core:cityObjectMember><bldg:Building gml:id="b1">"#,
+        r#"<bldg:function>1000</bldg:function>"#,
+        r#"<core:boundary><con:WallSurface gml:id="wall1"/></core:boundary>"#,
+        r#"<core:boundary><con:WallSurface gml:id="wall2"/></core:boundary>"#,
+        r#"</bldg:Building></core:cityObjectMember>"#,
+        r#"</core:CityModel>"#,
+    );
+
+    fn default_property() -> CityGml3Property {
+        CityGml3Property {
+            extract_tags: vec![],
+            keep_attributes: true,
+            flatten_leaf_attributes: vec![],
+            city_gml_attributes_key: None,
+        }
+    }
+
+    async fn drain_features(rx: &mut mpsc::Receiver<(Port, IngestionMessage)>) -> usize {
+        let mut count = 0;
+        while let Ok((port, msg)) = rx.try_recv() {
+            assert_eq!(port, *FEATURES_PORT, "the reader has one output port");
+            assert!(matches!(msg, IngestionMessage::OperationEvent { .. }));
+            count += 1;
+        }
+        count
+    }
+
+    /// `inline` has no path of its own, so `start()` must fall back to the
+    /// synthetic `file:///inline.gml` source URL rather than failing or
+    /// requiring `dataset`.
+    #[tokio::test]
+    async fn start_reads_inline_content_and_emits_one_feature_per_city_object() {
+        let mut reader = CityGml3Reader {
+            common: FileReaderCompiledParam {
+                dataset: None,
+                inline: Some(Bytes::from(MINIMAL_CITYGML_3)),
+            },
+            property: default_property(),
+        };
+        let (tx, mut rx) = mpsc::channel(16);
+        reader
+            .start(NodeContext::default(), tx)
+            .await
+            .expect("start should succeed reading inline content");
+        assert_eq!(
+            drain_features(&mut rx).await,
+            1,
+            "the single Building in MINIMAL_CITYGML_3 should arrive as one feature"
+        );
+    }
+
+    /// `extract_tags` is threaded into both `Parser::with_extract_tags` and
+    /// `build_features`; if either wiring were dropped, hoisting would not
+    /// happen and the feature count would stay at the default.
+    #[tokio::test]
+    async fn start_with_extract_tags_hoists_matching_boundary_surfaces() {
+        async fn run(extract_tags: Vec<String>) -> usize {
+            let mut reader = CityGml3Reader {
+                common: FileReaderCompiledParam {
+                    dataset: None,
+                    inline: Some(Bytes::from(CITYGML_3_WITH_WALLS)),
+                },
+                property: CityGml3Property {
+                    extract_tags,
+                    ..default_property()
+                },
+            };
+            let (tx, mut rx) = mpsc::channel(16);
+            reader
+                .start(NodeContext::default(), tx)
+                .await
+                .expect("start should succeed");
+            drain_features(&mut rx).await
+        }
+
+        let default_count = run(vec![]).await;
+        let extracted_count = run(vec!["WallSurface".to_string()]).await;
+        assert_eq!(
+            default_count, 1,
+            "without extract_tags, the Building and its two boundary surfaces collapse into one feature"
+        );
+        assert_eq!(
+            extracted_count, 2,
+            "with extract_tags including WallSurface, both boundary surfaces are hoisted out as their own features and the Building itself (not in the tag set) is dropped"
         );
     }
 }

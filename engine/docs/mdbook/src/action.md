@@ -2485,7 +2485,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "extractTags": {
       "title": "Extract Tags",
-      "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
       "default": [],
       "type": "array",
       "items": {
@@ -2587,7 +2587,7 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
     },
     "extractTags": {
       "title": "Extract Tags",
-      "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
       "default": [],
       "type": "array",
       "items": {

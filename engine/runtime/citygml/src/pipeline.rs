@@ -89,8 +89,7 @@ mod build_legacy {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
                     }
                     if let Some(ref id) = root_gml_id {
-                        feature
-                            .insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
+                        feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
                     }
                     if let Some(base) = base {
                         feature.extend(base.clone());

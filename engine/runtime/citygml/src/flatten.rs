@@ -221,9 +221,7 @@ fn extract_recursive(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{
-        test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID,
-    };
+    use crate::utils::{test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID};
 
     fn node(name: &str, children: Vec<XmlChild>) -> Arc<XmlNode> {
         Arc::new(XmlNode {
