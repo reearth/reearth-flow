@@ -115,6 +115,7 @@ pub struct TileOptions<'a> {
 
 /// A tileset's non-tile output. The tiles stream out through [`build`]'s
 /// `write_tile` callback as they are encoded, so only their count is kept here.
+#[derive(Debug)]
 pub struct BuiltTiles {
     pub tilejson: String,
     pub tile_count: usize,
@@ -127,12 +128,15 @@ pub struct BuiltTiles {
 /// `write_tile` as `{z}/{x}/{y}.mvt` relative to the tileset root.
 ///
 /// Geometry carrying no geographic CRS, and 3D geometry, are skipped with a
-/// warning rather than tiled.
+/// warning rather than tiled. Fails before any tile is written when
+/// `options` describe no pyramid: an inverted zoom range or a non-positive
+/// extent.
 pub fn build(
     features: &[TileFeature<'_>],
     options: TileOptions<'_>,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTiles> {
+    validate(&options)?;
     let accum = features
         .par_iter()
         .fold(SliceAccum::default, |mut acc, input| {
@@ -173,6 +177,23 @@ pub fn build(
         tile_count: accum.by_tile.len(),
         rendered_features: accum.rendered_features,
     })
+}
+
+/// Reject options that describe no pyramid.
+fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
+    if options.min_zoom > options.max_zoom {
+        return Err(crate::errors::SinkError::MvtWriter(format!(
+            "minZoom {} exceeds maxZoom {}",
+            options.min_zoom, options.max_zoom
+        )));
+    }
+    if options.extent <= 0 {
+        return Err(crate::errors::SinkError::MvtWriter(format!(
+            "extent must be positive, got {}",
+            options.extent
+        )));
+    }
+    Ok(())
 }
 
 #[derive(Default)]
@@ -311,4 +332,44 @@ fn compress_tileset(
     std::fs::remove_dir_all(abs_path.as_path())
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
+
+    fn options(min_zoom: u8, max_zoom: u8, extent: i32) -> TileOptions<'static> {
+        TileOptions {
+            min_zoom,
+            max_zoom,
+            extent,
+            max_tile_bytes: 500_000,
+            array_map_separator: None,
+            name: None,
+        }
+    }
+
+    /// Options that describe no pyramid are refused up front rather than
+    /// producing an empty one, and nothing is written for them.
+    #[test]
+    fn options_that_describe_no_pyramid_are_refused() {
+        let written = std::sync::atomic::AtomicUsize::new(0);
+        let write = |_path: String, _bytes: Vec<u8>| {
+            written.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            Ok(())
+        };
+
+        let inverted = build(&[], options(16, 15, 4096), write).expect_err("min above max");
+        assert!(inverted
+            .to_string()
+            .contains("minZoom 16 exceeds maxZoom 15"));
+
+        let flat = build(&[], options(0, 15, 0), write).expect_err("no extent");
+        assert!(flat.to_string().contains("extent must be positive"));
+
+        build(&[], options(15, 15, 4096), write).expect("a one-level pyramid is a pyramid");
+        assert_eq!(written.load(std::sync::atomic::Ordering::Relaxed), 0);
+    }
 }

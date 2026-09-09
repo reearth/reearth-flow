@@ -299,14 +299,7 @@ impl ViewCliCommand {
                 };
                 let view = render_feature(selected, &options, &destination)
                     .map_err(crate::errors::Error::run)?;
-                match view.entry_point {
-                    Some(entry_point) => {
-                        println!("Rendered row {row} into {}", entry_point.as_str())
-                    }
-                    None => {
-                        println!("Row {row} carried no renderable geometry; nothing was written")
-                    }
-                }
+                println!("Rendered row {row} into {}", view.entry_point.as_str());
             }
             Shape::Tiles { filter, .. } => {
                 let selection = match filter {
@@ -321,21 +314,14 @@ impl ViewCliCommand {
                 let selected = loaded.selection.len();
                 let view = render_tileset(&loaded.selection, &options, &destination)
                     .map_err(crate::errors::Error::run)?;
-                match view.entry_point {
-                    Some(entry_point) => println!(
-                        "Rendered {} of {selected} selected features ({} scanned) into {} \
-                         ({} file(s))",
-                        view.rendered_features,
-                        loaded.scanned,
-                        entry_point.as_str(),
-                        view.written.len()
-                    ),
-                    None => println!(
-                        "None of the {selected} selected features ({} scanned) carried \
-                         renderable geometry; nothing was written",
-                        loaded.scanned
-                    ),
-                }
+                println!(
+                    "Rendered {} of {selected} selected features ({} scanned) into {} \
+                     ({} file(s))",
+                    view.rendered_features,
+                    loaded.scanned,
+                    view.entry_point.as_str(),
+                    view.written.len()
+                );
             }
         }
         Ok(())

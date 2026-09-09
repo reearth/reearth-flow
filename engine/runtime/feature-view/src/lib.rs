@@ -21,8 +21,7 @@ use reearth_flow_action_sink::file::cesium3dtiles::next::{
 use reearth_flow_action_sink::file::mvt::next::{build as build_tiles, TileFeature, TileOptions};
 use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::coordinate::CoordinateFrame;
-use reearth_flow_geometry::{Euclidean2DGeometry, Geometry};
+use reearth_flow_geometry::Geometry;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -82,8 +81,13 @@ pub enum Error {
     Render(#[from] SinkError),
     #[error("A glTF view needs 3D geometry, and this row holds 2D geometry")]
     TwoDimensional,
-    #[error("A 2D view is positioned in WGS84, so its geometry needs a CRS; found {frame}")]
-    NonCrs { frame: String },
+    #[error("Row {row} carried no geometry the view draws; nothing was written")]
+    RowUndrawable { row: usize },
+    #[error(
+        "None of the {selected} selected features carried geometry the view draws; nothing was \
+         written"
+    )]
+    NothingRendered { selected: usize },
     #[error("Failed to write {path}: {source}")]
     Write {
         path: String,
@@ -419,17 +423,20 @@ impl Destination<'_> {
 #[derive(Debug)]
 pub struct RenderedView {
     /// Selected features that carried renderable geometry; the rest are absent
-    /// from the output.
+    /// from the output. At least one: a render that draws nothing is an error.
     pub rendered_features: usize,
-    /// The entry point a viewer opens: the glb, or the tileset's
-    /// `tileset.json`.
-    pub entry_point: Option<Uri>,
+    /// The entry point a viewer opens: the glb, the tileset's `tileset.json`,
+    /// or the vector tiles' `tilejson.json`.
+    pub entry_point: Uri,
     /// Every file written, the entry point included.
     pub written: Vec<Uri>,
 }
 
 /// Render one feature into `{prefix}.glb`, untiled: the view behind clicking a
 /// table row.
+///
+/// Fails with [`Error::RowUndrawable`] when the row carries no geometry the
+/// writer draws, so that nothing is written.
 pub fn render_feature(
     selected: &Selected,
     options: &ViewOptions,
@@ -438,23 +445,17 @@ pub fn render_feature(
     reject_two_dimensional(std::slice::from_ref(selected))?;
     let feature = lifted_feature(selected);
 
-    let Some(glb) = build_glb(
+    let glb = build_glb(
         &feature,
         options.metadata_options(),
         options.render_options(),
     )?
-    else {
-        return Ok(RenderedView {
-            rendered_features: 0,
-            entry_point: None,
-            written: Vec::new(),
-        });
-    };
+    .ok_or(Error::RowUndrawable { row: selected.row })?;
 
     let uri = destination.write_suffixed(".glb", glb)?;
     Ok(RenderedView {
         rendered_features: 1,
-        entry_point: Some(uri.clone()),
+        entry_point: uri.clone(),
         written: vec![uri],
     })
 }
@@ -466,9 +467,10 @@ pub fn render_feature(
 /// entered at `tileset.json`, with the selection's 2D geometry lifted into 3D;
 /// an all-2D selection renders vector tiles, entered at `tilejson.json`.
 ///
-/// The 3D Tiles writer draws surfaces only, so a lifted point or line string is
-/// skipped rather than drawn; `rendered_features` counts what reached the
-/// output.
+/// Geometry the writer cannot place or draw is skipped rather than refused: a
+/// leaf naming no CRS, and for 3D Tiles anything but a surface. The render
+/// fails with [`Error::NothingRendered`] only when no selected feature was
+/// drawn, and then writes nothing. An empty selection renders an empty tileset.
 pub fn render_tileset(
     selection: &[Selected],
     options: &ViewOptions,
@@ -509,6 +511,8 @@ fn render_3d_tiles(
         },
     )?;
 
+    require_rendered(selection, built.rendered_features)?;
+
     let mut written = written.into_inner().unwrap_or_else(PoisonError::into_inner);
     for (relative_path, bytes) in built.subtrees {
         written.push(destination.write_under(&relative_path, bytes)?);
@@ -518,7 +522,7 @@ fn render_3d_tiles(
 
     Ok(RenderedView {
         rendered_features: built.rendered_features,
-        entry_point: Some(entry_point),
+        entry_point,
         written,
     })
 }
@@ -532,7 +536,6 @@ fn render_vector_tiles(
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
-    reject_non_crs(selection)?;
     let features: Vec<Feature> = selection
         .iter()
         .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
@@ -565,15 +568,28 @@ fn render_vector_tiles(
         },
     )?;
 
+    require_rendered(selection, built.rendered_features)?;
+
     let mut written = written.into_inner().unwrap_or_else(PoisonError::into_inner);
     let entry_point = destination.write_under("tilejson.json", built.tilejson.into_bytes())?;
     written.push(entry_point.clone());
 
     Ok(RenderedView {
         rendered_features: built.rendered_features,
-        entry_point: Some(entry_point),
+        entry_point,
         written,
     })
+}
+
+/// A non-empty selection that drew nothing is an error, so the tileset's
+/// entry point is never written for it.
+fn require_rendered(selection: &[Selected], rendered_features: usize) -> Result<()> {
+    if rendered_features == 0 && !selection.is_empty() {
+        return Err(Error::NothingRendered {
+            selected: selection.len(),
+        });
+    }
+    Ok(())
 }
 
 /// The feature as a 3D view renders it: the row index for its attributes, and
@@ -656,55 +672,18 @@ fn reject_two_dimensional(selection: &[Selected]) -> Result<()> {
     }
 }
 
-/// A vector tile is positioned in WGS84, so every 2D leaf has to name the CRS
-/// its coordinates are in.
-fn reject_non_crs(selection: &[Selected]) -> Result<()> {
-    selection
-        .iter()
-        .try_for_each(|s| check_frames(&s.feature.geometry))
-}
-
-fn check_frames(geometry: &Geometry) -> Result<()> {
-    match geometry {
-        Geometry::None | Geometry::Euclidean3D(_) => Ok(()),
-        Geometry::Euclidean2D(g) => check_frames_2d(g),
-        Geometry::GeometryCollection(collection) => {
-            collection.members().iter().try_for_each(check_frames)
-        }
-    }
-}
-
-fn check_frames_2d(g: &Euclidean2DGeometry) -> Result<()> {
-    let frame = match g {
-        Euclidean2DGeometry::Point(point) => point.frame(),
-        Euclidean2DGeometry::LineString(line_string) => line_string.frame(),
-        Euclidean2DGeometry::Polygon(polygon) => polygon.frame(),
-        Euclidean2DGeometry::PolygonMesh(mesh) => mesh.frame(),
-        Euclidean2DGeometry::TriangularMesh(mesh) => mesh.frame(),
-        Euclidean2DGeometry::Collection(collection) => {
-            return collection.members().iter().try_for_each(check_frames_2d)
-        }
-    };
-    match frame {
-        CoordinateFrame::Crs(_) => Ok(()),
-        other => Err(Error::NonCrs {
-            frame: format!("{other:?}"),
-        }),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
     use std::path::Path;
 
     use reearth_flow_geometry::collection::Collection3D;
-    use reearth_flow_geometry::coordinate::EpsgCode;
+    use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
     use reearth_flow_geometry::line_string::LineString2D;
-    use reearth_flow_geometry::point::Point2D;
+    use reearth_flow_geometry::point::{Point2D, Point3D};
     use reearth_flow_geometry::polygon::Polygon2D;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
-    use reearth_flow_geometry::Euclidean3DGeometry;
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry};
     use tinymvt::vector_tile;
 
     use super::*;
@@ -928,12 +907,7 @@ mod tests {
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert_eq!(view.rendered_features, 3);
-        assert!(view
-            .entry_point
-            .as_ref()
-            .expect("a tilejson is written")
-            .as_str()
-            .ends_with("/out/tilejson.json"));
+        assert!(view.entry_point.as_str().ends_with("/out/tilejson.json"));
         assert!(dir.path().join("out/tilejson.json").exists());
         assert!(!dir.path().join("out/tileset.json").exists());
 
@@ -1029,26 +1003,80 @@ mod tests {
         assert!(flat_max < 200.0);
     }
 
-    /// A vector tile is positioned in WGS84, so geometry with no CRS cannot be
-    /// placed on the map.
+    /// A leaf naming no CRS cannot be placed on the map, so it is left out
+    /// while the rest of the selection renders.
     #[test]
-    fn a_selection_without_a_crs_is_rejected() {
+    fn a_feature_without_a_crs_is_skipped_not_refused() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let selection = [
+            Selected {
+                row: 0,
+                feature: point_feature(CoordinateFrame::Euclidean),
+            },
+            Selected {
+                row: 1,
+                feature: point_feature(crs_2d()),
+            },
+        ];
+        let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
+
+        assert_eq!(view.rendered_features, 1);
+        let ids: BTreeSet<u64> = read_tiles(&view)
+            .iter()
+            .flat_map(|tile| &tile.layers)
+            .flat_map(|layer| &layer.features)
+            .filter_map(|feature| feature.id)
+            .collect();
+        assert_eq!(ids, BTreeSet::from([1]), "only the placeable row is tiled");
+    }
+
+    /// When nothing in the selection can be drawn the render is an error, and
+    /// no tileset is left behind for a viewer to open.
+    #[test]
+    fn a_selection_that_draws_nothing_is_an_error_and_writes_nothing() {
         let dir = tempfile::tempdir().expect("temp dir");
         let root = Uri::for_test(&format!("file://{}", dir.path().display()));
         let resolver = StorageResolver::new();
-        let selection = [Selected {
+        let render = |selection: &[Selected]| {
+            render_tileset(
+                selection,
+                &ViewOptions::default(),
+                &destination(&root, &resolver),
+            )
+            .expect_err("nothing to draw")
+        };
+
+        // 2D: the one leaf names no CRS.
+        let error = render(&[Selected {
             row: 0,
             feature: point_feature(CoordinateFrame::Euclidean),
-        }];
+        }]);
+        assert!(matches!(error, Error::NothingRendered { selected: 1 }));
+        assert!(!dir.path().join("out/tilejson.json").exists());
 
-        let error = render_tileset(
-            &selection,
-            &ViewOptions::default(),
-            &destination(&root, &resolver),
-        )
-        .expect_err("a tile needs a CRS");
+        // 3D: a point is not a surface, so the 3D Tiles writer draws nothing.
+        let error = render(&[Selected {
+            row: 0,
+            feature: feature(
+                "k",
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                    CoordinateFrame::Crs(EpsgCode::new(4979)),
+                    [35.6, 139.7, 10.0],
+                ))),
+            ),
+        }]);
+        assert!(matches!(error, Error::NothingRendered { selected: 1 }));
+        assert!(!dir.path().join("out/tileset.json").exists());
+    }
 
-        assert!(matches!(error, Error::NonCrs { .. }));
+    /// An empty selection has nothing to fail on: it renders an empty tileset.
+    #[test]
+    fn an_empty_selection_renders_an_empty_tileset() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let view = tileset_to(dir.path(), &[], &ViewOptions::default());
+
+        assert_eq!(view.rendered_features, 0);
+        assert!(dir.path().join("out/tileset.json").exists());
     }
 
     /// Every selection mode must agree on what row N is, and a filter must not
@@ -1178,17 +1206,26 @@ mod tests {
             .any(|uri| uri.as_str().contains("/out/content/")));
     }
 
+    /// A row with nothing to draw is an error naming the row, and no glb is
+    /// left behind.
     #[test]
-    fn a_feature_without_geometry_writes_nothing() {
+    fn a_feature_without_geometry_is_an_error_and_writes_nothing() {
         let dir = tempfile::tempdir().expect("temp dir");
+        let root = Uri::for_test(&format!("file://{}", dir.path().display()));
+        let resolver = StorageResolver::new();
         let selected = Selected {
-            row: 0,
+            row: 3,
             feature: Feature::from(Attributes::new()),
         };
-        let view = feature_to(dir.path(), &selected, &ViewOptions::default());
 
-        assert_eq!(view.rendered_features, 0);
-        assert!(view.entry_point.is_none());
-        assert!(view.written.is_empty());
+        let error = render_feature(
+            &selected,
+            &ViewOptions::default(),
+            &destination(&root, &resolver),
+        )
+        .expect_err("nothing to draw");
+
+        assert!(matches!(error, Error::RowUndrawable { row: 3 }));
+        assert!(!dir.path().join("out.glb").exists());
     }
 }
