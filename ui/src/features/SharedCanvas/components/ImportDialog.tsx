@@ -62,7 +62,7 @@ const ImportDialog: React.FC<Props> = ({
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("Select a workspace")} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-80 overflow-y-auto">
                 <SelectGroup>
                   <SelectLabel className="text-xs text-muted-foreground">
                     {t("Personal")}
