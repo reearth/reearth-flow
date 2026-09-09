@@ -62,6 +62,12 @@ impl LineString2D {
     pub fn elevation(&self) -> Option<f64> {
         self.z
     }
+
+    /// Whether the chain traces a ring: closed, and enclosing something.
+    #[inline]
+    pub fn is_closed_ring(&self) -> bool {
+        is_closed_ring(&self.coords)
+    }
 }
 
 impl LineString3D {
@@ -76,6 +82,13 @@ impl LineString3D {
     pub fn coords(&self) -> &[[f64; 3]] {
         &self.coords
     }
+}
+
+/// Whether a chain is a closed ring. A chain of three or fewer encloses no
+/// area even when its ends meet.
+#[inline]
+pub(crate) fn is_closed_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
+    coords.len() >= 4 && coords.first() == coords.last()
 }
 
 crate::unsupported!(LineString2D: Triangulate);

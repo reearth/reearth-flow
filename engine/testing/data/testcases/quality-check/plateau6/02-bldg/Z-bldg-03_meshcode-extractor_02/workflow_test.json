@@ -1,6 +1,5 @@
 {
   "description": "Test Z-bldg-03 (図郭不正 / meshcode) for plateau6 (crosses mesh boundary)",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -49,5 +48,5 @@
       ]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": true
 }
