@@ -89,6 +89,15 @@ nodes:
     with:
       routingPort: invalidSurface
 
+  # Only the exterior ring's winding is this check's business: a hole wound
+  # against its exterior is already reported by the 3D pass above, as
+  # `IncorrectInteriorOrientation`, and would otherwise be reported a second time
+  # here under a different name.
+  - id: d4000000-0000-4000-8000-00000000000f
+    name: HoleExtractorOutline
+    type: action
+    action: Hole Extractor
+
   # The absolute winding of a face's outline is a 2D property, so the face is
   # flattened before the orientation check reads it.
   - id: d4000000-0000-4000-8000-00000000000a
@@ -180,8 +189,13 @@ edges:
   ## Incorrect orientation
   - id: d4000000-0000-4000-8000-000000000109
     from: d4000000-0000-4000-8000-000000000004
-    to: d4000000-0000-4000-8000-00000000000a
+    to: d4000000-0000-4000-8000-00000000000f
     fromPort: features
+    toPort: features
+  - id: d4000000-0000-4000-8000-000000000111
+    from: d4000000-0000-4000-8000-00000000000f
+    to: d4000000-0000-4000-8000-00000000000a
+    fromPort: exterior
     toPort: features
   - id: d4000000-0000-4000-8000-00000000010a
     from: d4000000-0000-4000-8000-00000000000a
@@ -202,6 +216,11 @@ edges:
   ## Geometry no step could handle is reported rather than dropped
   - id: d4000000-0000-4000-8000-00000000010d
     from: d4000000-0000-4000-8000-000000000006
+    to: d4000000-0000-4000-8000-00000000000e
+    fromPort: rejected
+    toPort: features
+  - id: d4000000-0000-4000-8000-000000000112
+    from: d4000000-0000-4000-8000-00000000000f
     to: d4000000-0000-4000-8000-00000000000e
     fromPort: rejected
     toPort: features

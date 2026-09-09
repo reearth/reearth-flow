@@ -19,7 +19,7 @@ with:
     - wwy
 graphs:
   - !include ../../../../graphs/lod_splitter.yml
-  - !include surface_checks.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
@@ -209,7 +209,7 @@ graphs:
       - id: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         name: SurfaceChecks
         type: subGraph
-        subGraphId: c3000000-0000-4000-8000-000000000000
+        subGraphId: d4000000-0000-4000-8000-000000000000
 
       # A city object the reprojection could not convert takes part in no check at
       # all, so it is reported as a surface error rather than dropped.
