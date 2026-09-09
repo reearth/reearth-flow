@@ -22,6 +22,8 @@ pub(super) struct SlicedFeature {
     pub(super) layer_name: String,
     pub(super) geom: SlicedGeom,
     pub(super) properties: Arc<Attributes>,
+    /// Vector-tile feature id, repeated in every tile the feature reaches.
+    pub(super) id: Option<u64>,
 }
 
 #[derive(Default)]
@@ -139,6 +141,7 @@ fn extend_bounds(points: &[[i32; 2]], min: &mut [i32; 2], max: &mut [i32; 2]) {
 // points, which have no meaningful extent and are exempt from subpixel dropping.
 struct Candidate {
     layer_name: String,
+    id: Option<u64>,
     properties: Arc<Attributes>,
     geom_type: vector_tile::tile::GeomType,
     geometry: Vec<u32>,
@@ -192,6 +195,7 @@ fn build_candidate(extent: i32, feature: &SlicedFeature) -> Option<Candidate> {
 
     Some(Candidate {
         layer_name: feature.layer_name.clone(),
+        id: feature.id,
         properties: feature.properties.clone(),
         geom_type,
         geometry,
@@ -217,7 +221,7 @@ fn encode_tile(
             );
         }
         layer.features.push(vector_tile::tile::Feature {
-            id: None,
+            id: candidate.id,
             tags: layer.tags_enc.take_tags(),
             r#type: Some(candidate.geom_type as i32),
             geometry: candidate.geometry.clone(),
@@ -302,6 +306,7 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
+            id: None,
         };
         let small_feature = SlicedFeature {
             layer_name: "layer".to_string(),
@@ -310,6 +315,7 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
+            id: None,
         };
         let feats = vec![big_feature, small_feature];
 
@@ -382,6 +388,7 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
+            id: None,
         }];
 
         let bytes = make_tile(extent, &feats, u64::MAX, None).unwrap();
