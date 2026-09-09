@@ -2,6 +2,16 @@
 /// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
 pub const MEMBER_LOD_KEY: &str = "lod";
 
+/// Per-member attribute keys naming the GML a member was read from: the local
+/// name of the property it filled (`lod3Geometry`) and of the GML type that
+/// property held (`Solid`). Neither follows from the resolved geometry, since two
+/// properties of one LOD differ only by name and several GML types share a Flow
+/// geometry (`MultiSurface` and `MultiGeometry` are both a `Collection`). The type
+/// key is absent when the property held nothing but an `xlink:href`, whose target
+/// type is not known until pass 2.
+pub const MEMBER_GML_PROPERTY_NAME_KEY: &str = "gmlPropertyName";
+pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
+
 /// Per-member attribute keys naming the innermost enclosing element that carries a
 /// `gml:id` — the object the geometry belongs to. One feature can hold the geometry
 /// of several nested objects, so the feature's own `gml:id` and type do not identify
@@ -213,7 +223,10 @@ mod build_next {
         CITYGML_ROOT_GML_ID_KEY,
     };
 
-    use super::{MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_LOD_KEY};
+    use super::{
+        MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GEOMETRY_NAME_KEY,
+        MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+    };
 
     use crate::{
         appearance::{self, AppearanceIndex},
@@ -414,6 +427,16 @@ mod build_next {
                 member_attrs.insert(
                     Attribute::new(MEMBER_LOD_KEY),
                     AttributeValue::Number(lod.into()),
+                );
+            }
+            member_attrs.insert(
+                Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY),
+                AttributeValue::String(pending.property.clone()),
+            );
+            if let Some(ref gml_type) = pending.gml_type {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_NAME_KEY),
+                    AttributeValue::String(gml_type.clone()),
                 );
             }
             if let Some(owner_gml_id) = &pending.owner_gml_id {
@@ -650,6 +673,46 @@ mod build_next {
                 vec![
                     (Some(&lod1.0), Some(&lod1.1), Some(&lod1.2)),
                     (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
+                ]
+            );
+        }
+
+        #[test]
+        fn case14_each_member_names_the_gml_it_was_read_from() {
+            // Both properties are LOD 1 and both resolve to a Collection, so the
+            // property and type names are the only thing separating them.
+            let members = format!(
+                "<core:cityObjectMember><bldg:Building gml:id=\"b1\">\
+                   <core:lod1MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod1MultiSurface>\
+                   <core:lod1Geometry><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></core:lod1Geometry>\
+                 </bldg:Building></core:cityObjectMember>"
+            );
+            let features = run(&members, &[]);
+            assert_eq!(features.len(), 1);
+            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
+                panic!(
+                    "expected GeometryCollection, got {:?}",
+                    features[0].geometry
+                );
+            };
+            let names: Vec<(Option<&AttributeValue>, Option<&AttributeValue>)> = gc
+                .member_attributes()
+                .iter()
+                .map(|a| {
+                    (
+                        a.get(&Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY)),
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_NAME_KEY)),
+                    )
+                })
+                .collect();
+            let multi_surface = AttributeValue::String("lod1MultiSurface".to_string());
+            let geometry = AttributeValue::String("lod1Geometry".to_string());
+            let ty = AttributeValue::String("MultiSurface".to_string());
+            assert_eq!(
+                names,
+                vec![
+                    (Some(&multi_surface), Some(&ty)),
+                    (Some(&geometry), Some(&ty)),
                 ]
             );
         }

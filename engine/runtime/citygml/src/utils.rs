@@ -66,11 +66,27 @@ pub(super) use super::resolver::GeomNode;
 #[derive(Debug)]
 pub enum GeomNode {}
 
+/// What the source GML said about a carved geometry, beyond the geometry itself:
+/// the LOD of the property it filled (`None` for a `tin`), that property's local
+/// name (`lod3Geometry`), and the local name of the GML type it held (`Solid`).
+///
+/// Neither name follows from the resolved geometry: two properties of one LOD
+/// differ only by name, and several GML types share a Flow geometry
+/// (`MultiSurface` and `MultiGeometry` are both a `Collection`). `gml_type` is
+/// `None` when the property held nothing but an `xlink:href`, whose target type is
+/// not known until pass 2.
+#[derive(Debug, Clone)]
+pub struct GeomMeta {
+    pub lod: Option<u8>,
+    pub property: String,
+    pub gml_type: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub enum XmlChild {
     Element(Arc<XmlNode>),
     Text(String),
-    Geometry(Option<u8>, Arc<GeomNode>),
+    Geometry(GeomMeta, Arc<GeomNode>),
 }
 
 /// Interns namespace URIs as u32 IDs, avoiding repeated allocation of long URI strings.

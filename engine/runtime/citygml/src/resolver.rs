@@ -332,25 +332,6 @@ fn construct(
     member_enclosing.extend_from_slice(enclosing);
 
     let frame = frame_for(&node.file, ctx.srs_by_file);
-    let members: Vec<(Role, Euclidean3DGeometry)> = node
-        .members
-        .iter()
-        .filter_map(|(role, child)| {
-            if frame_for(source_file(child), ctx.srs_by_file) != frame {
-                // Not collected, for the same reason as the unresolved-href
-                // site above: `frame_for` keys on file URL, so within one
-                // document this can never fire on same-file members. The only
-                // way to trip it in a single-document read is an ordinary
-                // cross-file reference, so collecting here would reject valid
-                // split datasets.
-                tracing::error!(
-                    "citygml geometry: member srsName disagrees with its parent, skipped"
-                );
-                return None;
-            }
-            resolve(child, ctx, &member_enclosing, in_progress).map(|g| (*role, g))
-        })
-        .collect();
 
     // Pass-2 leaf functions (`ring`/`surface_mesh`/`solid` and their helpers)
     // push bare (file/location empty) Malformations, since they only see
@@ -360,29 +341,59 @@ fn construct(
     // fields are filled, so a site that already named its own location keeps
     // it.
     let before = ctx.malformations.len();
-    let built = match node.ty {
-        GmlGeometryType::MultiPoint
-        | GmlGeometryType::MultiCurve
-        | GmlGeometryType::CompositeCurve
-        | GmlGeometryType::MultiSurface
-        | GmlGeometryType::CompositeSolid
-        | GmlGeometryType::MultiSolid
-        | GmlGeometryType::MultiGeometry
-        | GmlGeometryType::GeometricComplex => Some(collection(members)),
-        // A single base curve/surface passes through unchanged.
-        // TODO: honor orientation="-" (reverse curve / flip surface normals).
-        GmlGeometryType::OrientableCurve | GmlGeometryType::OrientableSurface => {
-            members.into_iter().next().map(|(_, geometry)| geometry)
-        }
-        GmlGeometryType::Ring => ring(members, &frame, ctx.malformations),
+    // A surface container welds its members into one mesh. Its members are gathered
+    // as faces rather than resolved one at a time, so a nested container contributes
+    // the faces it would have welded on its own instead of an already welded mesh
+    // that cannot be merged into this one.
+    let built = if matches!(
+        node.ty,
         GmlGeometryType::CompositeSurface
-        | GmlGeometryType::Shell
-        | GmlGeometryType::Surface
-        | GmlGeometryType::PolyhedralSurface => surface_mesh(members, &frame, ctx.malformations),
-        GmlGeometryType::Solid => solid(members, &frame, ctx.malformations),
-        _ => {
-            tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
-            None
+            | GmlGeometryType::Shell
+            | GmlGeometryType::Surface
+            | GmlGeometryType::PolyhedralSurface
+    ) {
+        surface_mesh(node, ctx, &frame, &member_enclosing, in_progress)
+    } else {
+        let members: Vec<(Role, Euclidean3DGeometry)> = node
+            .members
+            .iter()
+            .filter_map(|(role, child)| {
+                if frame_for(source_file(child), ctx.srs_by_file) != frame {
+                    // Not collected, for the same reason as the unresolved-href
+                    // site above: `frame_for` keys on file URL, so within one
+                    // document this can never fire on same-file members. The only
+                    // way to trip it in a single-document read is an ordinary
+                    // cross-file reference, so collecting here would reject valid
+                    // split datasets.
+                    tracing::error!(
+                        "citygml geometry: member srsName disagrees with its parent, skipped"
+                    );
+                    return None;
+                }
+                resolve(child, ctx, &member_enclosing, in_progress).map(|g| (*role, g))
+            })
+            .collect();
+
+        match node.ty {
+            GmlGeometryType::MultiPoint
+            | GmlGeometryType::MultiCurve
+            | GmlGeometryType::CompositeCurve
+            | GmlGeometryType::MultiSurface
+            | GmlGeometryType::CompositeSolid
+            | GmlGeometryType::MultiSolid
+            | GmlGeometryType::MultiGeometry
+            | GmlGeometryType::GeometricComplex => Some(collection(members)),
+            // A single base curve/surface passes through unchanged.
+            // TODO: honor orientation="-" (reverse curve / flip surface normals).
+            GmlGeometryType::OrientableCurve | GmlGeometryType::OrientableSurface => {
+                members.into_iter().next().map(|(_, geometry)| geometry)
+            }
+            GmlGeometryType::Ring => ring(members, &frame, ctx.malformations),
+            GmlGeometryType::Solid => solid(members, &frame, ctx.malformations),
+            _ => {
+                tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
+                None
+            }
         }
     };
     for m in &mut ctx.malformations[before..] {
@@ -442,37 +453,23 @@ fn ring(
     Some(Euclidean3DGeometry::Polygon(Box::new(polygon)))
 }
 
-/// Assemble surface members into one mesh, for an inline `Surface` /
-/// `PolyhedralSurface`, a `CompositeSurface`, or a solid's `Shell`. A single
-/// already-built mesh passes through as-is; otherwise bare polygon members are
-/// welded into a single mesh, carrying each member polygon's appearance across.
-/// Mesh members mixed with other members are not yet supported and are skipped
-/// with a warning.
-fn surface_mesh(
-    members: Vec<(Role, Euclidean3DGeometry)>,
-    frame: &CoordinateFrame,
-    malformations: &mut Vec<Malformation>,
-) -> Option<Euclidean3DGeometry> {
-    if members.len() == 1
-        && matches!(
-            members[0].1,
-            Euclidean3DGeometry::PolygonMesh(_) | Euclidean3DGeometry::TriangularMesh(_)
-        )
-    {
-        return members.into_iter().next().map(|(_, geometry)| geometry);
-    }
+/// What a surface container's members contribute to its weld: independent face
+/// polygons, and any member that arrived as a mesh already built, which cannot be
+/// welded into them.
+#[derive(Default)]
+struct SurfaceParts {
+    faces: Vec<Polygon3D>,
+    meshes: Vec<Euclidean3DGeometry>,
+}
 
-    let mut faces: Vec<Polygon3D> = Vec::new();
-    for (_, geometry) in members {
+impl SurfaceParts {
+    /// File one resolved member: a `Polygon` is a face to weld, a built mesh is
+    /// held aside, and anything else is not a surface at all.
+    fn push(&mut self, geometry: Euclidean3DGeometry, malformations: &mut Vec<Malformation>) {
         match geometry {
-            Euclidean3DGeometry::Polygon(polygon) => faces.push(*polygon),
-            Euclidean3DGeometry::PolygonMesh(_) | Euclidean3DGeometry::TriangularMesh(_) => {
-                // Not present-but-malformed input: our resolver simply can't
-                // merge a mesh member into a composite surface yet.
-                tracing::warn!(
-                    "citygml geometry: merging a mesh into a composite surface is not yet supported, member skipped"
-                )
-            }
+            Euclidean3DGeometry::Polygon(polygon) => self.faces.push(*polygon),
+            mesh @ (Euclidean3DGeometry::PolygonMesh(_)
+            | Euclidean3DGeometry::TriangularMesh(_)) => self.meshes.push(mesh),
             _ => {
                 tracing::warn!("citygml geometry: expected a surface member, skipped");
                 malformations.push(Malformation {
@@ -483,11 +480,123 @@ fn surface_mesh(
             }
         }
     }
-    if faces.is_empty() {
+}
+
+/// Assemble surface members into one mesh, for an inline `Surface` /
+/// `PolyhedralSurface`, a `CompositeSurface`, or a solid's `Shell`. Members are
+/// gathered as faces by [`collect_faces`], which descends through nested surface
+/// containers and `xlink:href` references, so every polygon reaches this one weld
+/// carrying the appearance bound at its own leaf. Only a `TriangulatedSurface`
+/// member arrives as a mesh already built; one alone is the surface itself and
+/// passes through unchanged, and one mixed with other members is skipped with a
+/// warning.
+fn surface_mesh(
+    node: &Unresolved,
+    ctx: &mut ResolveCtx,
+    frame: &CoordinateFrame,
+    enclosing: &[(&str, &str)],
+    in_progress: &mut HashSet<RawNodeKey>,
+) -> Option<Euclidean3DGeometry> {
+    let mut parts = SurfaceParts::default();
+    for (_, child) in &node.members {
+        collect_faces(child, ctx, frame, enclosing, in_progress, &mut parts);
+    }
+    // Re-welding a lone triangle mesh would discard its triangle topology and the
+    // texture draped over it, so it stands as the surface on its own.
+    if parts.faces.is_empty() && parts.meshes.len() == 1 {
+        return parts.meshes.pop();
+    }
+    for _ in &parts.meshes {
+        // Not present-but-malformed input: our resolver simply can't merge a
+        // built mesh into a composite surface yet.
+        tracing::warn!(
+            "citygml geometry: merging a built mesh into a composite surface is not yet supported, member skipped"
+        );
+    }
+    if parts.faces.is_empty() {
         return None;
     }
-    build_mesh(faces, frame, malformations)
+    build_mesh(parts.faces, frame, ctx.malformations)
         .map(|mesh| Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
+}
+
+/// Gather one surface member's contribution into `parts`, descending through
+/// nested surface containers and `xlink:href` references so every face reaches the
+/// outermost container's weld. Appearance is attached at the polygon leaf, so a
+/// face welded here keeps the material bound to it and to each container that
+/// encloses it. A member whose coordinates belong to a file in a different CRS is
+/// dropped rather than folded in, as in [`construct`].
+fn collect_faces(
+    node: &GeomNode,
+    ctx: &mut ResolveCtx,
+    frame: &CoordinateFrame,
+    enclosing: &[(&str, &str)],
+    in_progress: &mut HashSet<RawNodeKey>,
+    parts: &mut SurfaceParts,
+) {
+    if frame_for(source_file(node), ctx.srs_by_file) != *frame {
+        tracing::error!("citygml geometry: member srsName disagrees with its parent, skipped");
+        return;
+    }
+    match node {
+        GeomNode::Resolved(geometry, ids) => {
+            let geometry = with_appearance(geometry.clone(), ids, ctx.appearance, enclosing);
+            parts.push(geometry, ctx.malformations);
+        }
+        GeomNode::Ref(key) => {
+            if !in_progress.insert(key.clone()) {
+                tracing::warn!(id = key.1, "citygml geometry: cyclic xlink:href, skipped");
+                ctx.malformations.push(Malformation {
+                    file: key.0.clone(),
+                    location: key.1.clone(),
+                    reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
+                });
+                return;
+            }
+            // `ctx.registry` is copied out of `ctx` for the same reason as in
+            // `resolve_ref`: the node it yields borrows independently of `ctx`.
+            let target = ctx.registry.get(key);
+            match target {
+                Some(target) => collect_faces(target, ctx, frame, enclosing, in_progress, parts),
+                None => tracing::warn!(
+                    id = key.1,
+                    "citygml geometry: unresolved xlink:href, skipped"
+                ),
+            }
+            in_progress.remove(key);
+        }
+        // A nested surface container has no weld of its own to make: its members
+        // are this container's faces. An `OrientableSurface` wraps a single base
+        // surface, so it descends the same way. Its own gml:id joins `enclosing`,
+        // so an appearance bound to it still reaches the faces below.
+        GeomNode::Unresolved(unresolved)
+            if matches!(
+                unresolved.ty,
+                GmlGeometryType::CompositeSurface
+                    | GmlGeometryType::Shell
+                    | GmlGeometryType::Surface
+                    | GmlGeometryType::PolyhedralSurface
+                    | GmlGeometryType::OrientableSurface
+            ) =>
+        {
+            let mut member_enclosing: Vec<(&str, &str)> = Vec::with_capacity(1 + enclosing.len());
+            member_enclosing.extend(
+                unresolved
+                    .id
+                    .as_deref()
+                    .map(|id| (unresolved.file.as_str(), id)),
+            );
+            member_enclosing.extend_from_slice(enclosing);
+            for (_, child) in &unresolved.members {
+                collect_faces(child, ctx, frame, &member_enclosing, in_progress, parts);
+            }
+        }
+        GeomNode::Unresolved(unresolved) => {
+            if let Some(geometry) = construct(unresolved, ctx, enclosing, in_progress) {
+                parts.push(geometry, ctx.malformations);
+            }
+        }
+    }
 }
 
 /// Pair an exterior boundary with any interior void boundaries into a `Solid`.
@@ -772,6 +881,144 @@ mod tests {
         );
         match resolve_root_bare(&n, &GeomRegistry::new()).unwrap() {
             Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 2),
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    fn node_with_id(id: &str, ty: GmlGeometryType, members: Vec<(Role, GeomNode)>) -> GeomNode {
+        GeomNode::Unresolved(Unresolved {
+            ty,
+            id: Some(id.to_string()),
+            file: "file:///test.gml".to_string(),
+            members,
+        })
+    }
+
+    /// Two triangles meeting along the edge (1,0,0)-(0,1,0), so a weld across them
+    /// shares that edge instead of duplicating it.
+    fn adjacent_triangle() -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+            FRAME,
+            [[1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+            Vec::<Vec<[f64; 3]>>::new(),
+        )))
+    }
+
+    /// A registry holding one `CompositeSurface` per id, each of two triangles.
+    fn composite_surface_registry(ids: &[&str]) -> GeomRegistry {
+        ids.iter()
+            .map(|id| {
+                let members = vec![
+                    (Role::Member, resolved(triangle())),
+                    (Role::Member, resolved(adjacent_triangle())),
+                ];
+                (
+                    key(id),
+                    node_with_id(id, GmlGeometryType::CompositeSurface, members),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn composite_surface_welds_referenced_composite_surfaces() {
+        // A CompositeSurface whose members are xlink:hrefs to other
+        // CompositeSurfaces: the referenced faces weld into this one mesh rather
+        // than arriving as meshes that cannot be merged.
+        let registry = composite_surface_registry(&["cs1", "cs2"]);
+        let n = node(
+            GmlGeometryType::CompositeSurface,
+            vec![
+                (Role::Member, GeomNode::Ref(key("cs1"))),
+                (Role::Member, GeomNode::Ref(key("cs2"))),
+            ],
+        );
+        match resolve_root_bare(&n, &registry).unwrap() {
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 4),
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn solid_from_composite_surface_of_referenced_composite_surfaces() {
+        // PLATEAU's uro:lod3Geometry shape: a Solid whose exterior CompositeSurface
+        // only holds xlink:hrefs to the CompositeSurfaces under uro:boundedBy.
+        let registry = composite_surface_registry(&["cs1", "cs2", "cs3"]);
+        let boundary = node(
+            GmlGeometryType::CompositeSurface,
+            vec![
+                (Role::Member, GeomNode::Ref(key("cs1"))),
+                (Role::Member, GeomNode::Ref(key("cs2"))),
+                (Role::Member, GeomNode::Ref(key("cs3"))),
+            ],
+        );
+        let n = node(GmlGeometryType::Solid, vec![(Role::Exterior, boundary)]);
+        match resolve_root_bare(&n, &registry).unwrap() {
+            Euclidean3DGeometry::Solid(solid) => {
+                assert_eq!(solid.exterior().num_faces(), 6);
+                assert!(solid.interiors().is_empty());
+            }
+            other => panic!("expected Solid, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn referenced_and_inline_surface_members_weld_together() {
+        let registry = composite_surface_registry(&["cs1"]);
+        let n = node(
+            GmlGeometryType::Shell,
+            vec![
+                (Role::Member, GeomNode::Ref(key("cs1"))),
+                (Role::Member, resolved(triangle())),
+            ],
+        );
+        match resolve_root_bare(&n, &registry).unwrap() {
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 3),
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn lone_referenced_triangle_mesh_passes_through() {
+        // A single already-built mesh is the surface itself, reached by reference
+        // as well as inline: re-welding it would discard its triangle topology.
+        let mut registry = GeomRegistry::new();
+        registry.insert(key("tin"), resolved(two_face_mesh()));
+        let n = node(
+            GmlGeometryType::CompositeSurface,
+            vec![(Role::Member, GeomNode::Ref(key("tin")))],
+        );
+        match resolve_root_bare(&n, &registry).unwrap() {
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 2),
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn orientable_surface_member_descends_to_its_base_faces() {
+        let base = node(
+            GmlGeometryType::CompositeSurface,
+            vec![
+                (Role::Member, resolved(triangle())),
+                (Role::Member, resolved(adjacent_triangle())),
+            ],
+        );
+        let n = node(
+            GmlGeometryType::CompositeSurface,
+            vec![
+                (
+                    Role::Member,
+                    node(
+                        GmlGeometryType::OrientableSurface,
+                        vec![(Role::Member, base)],
+                    ),
+                ),
+                (Role::Member, resolved(triangle())),
+            ],
+        );
+        match resolve_root_bare(&n, &GeomRegistry::new()).unwrap() {
+            // The third face is a duplicate of the first, so the weld keeps two.
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 3),
             other => panic!("expected PolygonMesh, got {other:?}"),
         }
     }
