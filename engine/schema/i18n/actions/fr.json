@@ -895,6 +895,74 @@
       }
     },
     {
+      "name": "CityGML 2 Reader",
+      "description": "Lit des fichiers CityGML 2.0 en tant que modèles de ville 3D, en résolvant les références gml:id au sein de chaque document",
+      "parameterI18n": {
+        "": {
+          "title": "CityGML 2 Reader Parameters",
+          "description": "Configuration for reading a CityGML 2.0 document as 3D city models."
+        },
+        "cityGmlAttributesKey": {
+          "title": "City GML Attributes Key",
+          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
+        },
+        "extractTags": {
+          "title": "Extract Tags",
+          "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+        },
+        "flattenMeasureTypes": {
+          "title": "Flatten Measure Types",
+          "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false."
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "keepAttributes": {
+          "title": "Keep Attributes",
+          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
+        }
+      }
+    },
+    {
+      "name": "CityGML 3 Reader",
+      "description": "Lit des fichiers CityGML 3.0 en tant que modèles de ville 3D, en résolvant les références gml:id au sein de chaque document",
+      "parameterI18n": {
+        "": {
+          "title": "CityGML 3 Reader Parameters",
+          "description": "Configuration for reading a CityGML 3.0 document as 3D city models."
+        },
+        "cityGmlAttributesKey": {
+          "title": "City GML Attributes Key",
+          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
+        },
+        "extractTags": {
+          "title": "Extract Tags",
+          "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+        },
+        "flattenLeafAttributes": {
+          "title": "Flatten Leaf Attributes",
+          "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this."
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "keepAttributes": {
+          "title": "Keep Attributes",
+          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
+        }
+      }
+    },
+    {
       "name": "CityGML Reader",
       "description": "Lit des modèles de ville 3D depuis des fichiers CityGML",
       "parameterI18n": {

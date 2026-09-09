@@ -2479,6 +2479,219 @@
       ]
     },
     {
+      "name": "CityGML 2 Reader",
+      "type": "source",
+      "description": "CityGML 2.0ファイルを3D都市モデルとして読み込む。各ドキュメント内でgml:id参照を解決する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 2 Reader パラメータ",
+        "description": "CityGML 2.0ドキュメントを3D都市モデルとして読み込むための設定",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "ファイルパス",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "インラインコンテンツ",
+            "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "タグの抽出",
+            "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "属性の保持",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenMeasureTypes": {
+            "title": "計測タイプのフラット化",
+            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
+          },
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性キー",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
+      "name": "CityGML 3 Reader",
+      "type": "source",
+      "description": "CityGML 3.0ファイルを3D都市モデルとして読み込む。各ドキュメント内でgml:id参照を解決する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 3 Reader パラメータ",
+        "description": "CityGML 3.0ドキュメントを3D都市モデルとして読み込むための設定",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "ファイルパス",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "インラインコンテンツ",
+            "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "タグの抽出",
+            "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "属性の保持",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenLeafAttributes": {
+            "title": "リーフ属性のフラット化",
+            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性キー",
+            "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
       "name": "CityGML Reader",
       "type": "source",
       "description": "CityGMLファイルから3D都市モデルを読み込む",
