@@ -900,31 +900,31 @@
       "parameterI18n": {
         "": {
           "title": "CityGML 2 Reader Parameters",
-          "description": "Configuration for reading a CityGML 2.0 document as 3D city models."
+          "description": "将CityGML 2.0文档读取为3D城市模型的配置。"
         },
         "cityGmlAttributesKey": {
-          "title": "City GML Attributes Key",
-          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+          "title": "CityGML属性键",
+          "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
         },
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "extractTags": {
-          "title": "Extract Tags",
-          "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+          "title": "提取标签",
+          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
         "flattenMeasureTypes": {
-          "title": "Flatten Measure Types",
-          "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false."
+          "title": "展平度量类型",
+          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "keepAttributes": {
-          "title": "Keep Attributes",
-          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
+          "title": "保留属性",
+          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         }
       }
     },
@@ -934,31 +934,31 @@
       "parameterI18n": {
         "": {
           "title": "CityGML 3 Reader Parameters",
-          "description": "Configuration for reading a CityGML 3.0 document as 3D city models."
+          "description": "将CityGML 3.0文档读取为3D城市模型的配置。"
         },
         "cityGmlAttributesKey": {
-          "title": "City GML Attributes Key",
-          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+          "title": "CityGML属性键",
+          "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
         },
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "extractTags": {
-          "title": "Extract Tags",
-          "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+          "title": "提取标签",
+          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
         "flattenLeafAttributes": {
-          "title": "Flatten Leaf Attributes",
-          "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this."
+          "title": "展平叶属性",
+          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "keepAttributes": {
-          "title": "Keep Attributes",
-          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
+          "title": "保留属性",
+          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         }
       }
     },

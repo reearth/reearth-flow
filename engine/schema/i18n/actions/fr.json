@@ -900,31 +900,31 @@
       "parameterI18n": {
         "": {
           "title": "CityGML 2 Reader Parameters",
-          "description": "Configuration for reading a CityGML 2.0 document as 3D city models."
+          "description": "Configuration pour lire un document CityGML 2.0 en tant que modèles de ville 3D."
         },
         "cityGmlAttributesKey": {
-          "title": "City GML Attributes Key",
-          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+          "title": "Clé des Attributs CityGML",
+          "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null."
         },
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "extractTags": {
-          "title": "Extract Tags",
-          "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+          "title": "Extraire les Balises",
+          "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
         "flattenMeasureTypes": {
-          "title": "Flatten Measure Types",
-          "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false."
+          "title": "Aplatir les Types de Mesure",
+          "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "keepAttributes": {
-          "title": "Keep Attributes",
-          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
+          "title": "Conserver les Attributs",
+          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         }
       }
     },
@@ -934,31 +934,31 @@
       "parameterI18n": {
         "": {
           "title": "CityGML 3 Reader Parameters",
-          "description": "Configuration for reading a CityGML 3.0 document as 3D city models."
+          "description": "Configuration pour lire un document CityGML 3.0 en tant que modèles de ville 3D."
         },
         "cityGmlAttributesKey": {
-          "title": "City GML Attributes Key",
-          "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null."
+          "title": "Clé des Attributs CityGML",
+          "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null."
         },
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "extractTags": {
-          "title": "Extract Tags",
-          "description": "Feature type names to emit as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged."
+          "title": "Extraire les Balises",
+          "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
         "flattenLeafAttributes": {
-          "title": "Flatten Leaf Attributes",
-          "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this."
+          "title": "Aplatir les Attributs Feuille",
+          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
         "keepAttributes": {
-          "title": "Keep Attributes",
-          "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true."
+          "title": "Conserver les Attributs",
+          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         }
       }
     },
