@@ -1,5 +1,6 @@
+use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 
@@ -14,7 +15,8 @@ use crate::str::base64_encode;
 use crate::uri::Uri;
 use crate::xml::{xpath_value_to_json, XmlXpathValue};
 
-/// Type alias for feature attributes to reduce verbosity
+/// An ordered set of attributes, held both by a feature and by a nested
+/// [`AttributeValue::Map`].
 pub type Attributes = IndexMap<Attribute, AttributeValue>;
 
 #[nutype(
@@ -40,6 +42,25 @@ impl Attribute {
     pub fn inner(&self) -> String {
         self.clone().into_inner()
     }
+
+    /// Borrowed view of the key.
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+}
+
+/// Lets an `Attributes` map be looked up by `&str`, as a `HashMap<String, _>` can be.
+impl Borrow<str> for Attribute {
+    fn borrow(&self) -> &str {
+        self.as_ref()
+    }
+}
+
+/// Unwraps the key back into its string.
+impl From<Attribute> for String {
+    fn from(value: Attribute) -> Self {
+        value.into_inner()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -51,7 +72,7 @@ pub enum AttributeValue {
     String(String),
     DateTime(DateTime),
     Array(Vec<AttributeValue>),
-    Map(HashMap<String, AttributeValue>),
+    Map(Attributes),
     Bytes(Bytes),
 }
 
@@ -85,7 +106,7 @@ impl AttributeValue {
     }
 
     pub fn default_map() -> Self {
-        Self::Map(HashMap::new())
+        Self::Map(Attributes::new())
     }
 
     pub fn as_bool(&self) -> Option<bool> {
@@ -137,7 +158,7 @@ impl AttributeValue {
         }
     }
 
-    pub fn as_map(&self) -> Option<HashMap<String, AttributeValue>> {
+    pub fn as_map(&self) -> Option<Attributes> {
         match self {
             Self::Map(v) => Some(v.clone()),
             _ => None,
@@ -213,7 +234,7 @@ impl AttributeValue {
     }
 
     pub fn flatten(self) -> Self {
-        let mut result = HashMap::new();
+        let mut result = Attributes::new();
         match self {
             AttributeValue::Array(map) => {
                 for value in map {
@@ -286,8 +307,8 @@ impl From<serde_json::Value> for AttributeValue {
             }
             serde_json::Value::Object(v) => AttributeValue::Map(
                 v.into_iter()
-                    .map(|(k, v)| (k, AttributeValue::from(v)))
-                    .collect::<HashMap<_, _>>(),
+                    .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
+                    .collect::<Attributes>(),
             ),
         }
     }
@@ -309,7 +330,7 @@ impl From<AttributeValue> for serde_json::Value {
             AttributeValue::Bytes(v) => serde_json::Value::String(base64_encode(v.as_ref())),
             AttributeValue::Map(v) => serde_json::Value::Object(
                 v.into_iter()
-                    .map(|(k, v)| (k, serde_json::Value::from(v)))
+                    .map(|(k, v)| (k.into_inner(), serde_json::Value::from(v)))
                     .collect::<serde_json::Map<_, _>>(),
             ),
         }
@@ -357,11 +378,17 @@ impl Hash for AttributeValue {
                 b.hash(state);
             }
             AttributeValue::Map(map) => {
+                // Two maps holding the same entries are equal whatever order they were built
+                // in, so the entries are folded together commutatively rather than in order.
                 "Map".hash(state);
-                for (k, v) in map {
-                    k.hash(state);
-                    v.hash(state);
+                let mut entries: u64 = 0;
+                for entry in map {
+                    let mut hasher = DefaultHasher::new();
+                    entry.hash(&mut hasher);
+                    entries = entries.wrapping_add(hasher.finish());
                 }
+                map.len().hash(state);
+                entries.hash(state);
             }
             AttributeValue::DateTime(dt) => {
                 "DateTime".hash(state);
@@ -385,7 +412,7 @@ fn compare_numbers(n1: &Number, n2: &Number) -> Option<Ordering> {
     None
 }
 
-pub fn all_attribute_keys(items: &HashMap<String, AttributeValue>) -> Vec<String> {
+pub fn all_attribute_keys(items: &Attributes) -> Vec<Attribute> {
     let mut keys = Vec::new();
     for (key, value) in items {
         keys.push(key.clone());
@@ -397,13 +424,10 @@ pub fn all_attribute_keys(items: &HashMap<String, AttributeValue>) -> Vec<String
 }
 
 impl AttributeValue {
-    pub fn get_recursive<T: AsRef<str>>(
-        key: T,
-        items: &HashMap<String, AttributeValue>,
-    ) -> Vec<AttributeValue> {
+    pub fn get_recursive<T: AsRef<str>>(key: T, items: &Attributes) -> Vec<AttributeValue> {
         let mut values = Vec::new();
         for (k, v) in items {
-            if k.as_str() == key.as_ref() {
+            if k.as_ref() == key.as_ref() {
                 values.push(v.clone());
             }
             if let AttributeValue::Array(array) = v {
@@ -448,7 +472,7 @@ mod tests {
 
         let map1 = AttributeValue::Map(
             vec![(
-                "key".to_string(),
+                Attribute::new("key"),
                 AttributeValue::String("value".to_string()),
             )]
             .into_iter()
@@ -456,7 +480,7 @@ mod tests {
         );
         let map2 = AttributeValue::Map(
             vec![(
-                "key".to_string(),
+                Attribute::new("key"),
                 AttributeValue::String("value".to_string()),
             )]
             .into_iter()
@@ -482,41 +506,83 @@ mod tests {
 
     #[test]
     fn test_all_attribute_keys() {
-        let mut map = HashMap::new();
+        let mut map = Attributes::new();
         map.insert(
-            "key1".to_string(),
+            Attribute::new("key1"),
             AttributeValue::String("value1".to_string()),
         );
-        let mut nested_map = HashMap::new();
+        let mut nested_map = Attributes::new();
         nested_map.insert(
-            "key2".to_string(),
+            Attribute::new("key2"),
             AttributeValue::String("value2".to_string()),
         );
-        map.insert("nested".to_string(), AttributeValue::Map(nested_map));
+        map.insert(Attribute::new("nested"), AttributeValue::Map(nested_map));
 
         let mut keys = all_attribute_keys(&map);
         keys.sort();
         assert_eq!(
             keys,
-            vec!["key1".to_string(), "key2".to_string(), "nested".to_string()]
+            vec![
+                Attribute::new("key1"),
+                Attribute::new("key2"),
+                Attribute::new("nested")
+            ]
         );
     }
 
     #[test]
     fn test_get_recursive() {
-        let mut map = HashMap::new();
+        let mut map = Attributes::new();
         map.insert(
-            "key1".to_string(),
+            Attribute::new("key1"),
             AttributeValue::String("value1".to_string()),
         );
-        let mut nested_map = HashMap::new();
+        let mut nested_map = Attributes::new();
         nested_map.insert(
-            "key2".to_string(),
+            Attribute::new("key2"),
             AttributeValue::String("value2".to_string()),
         );
-        map.insert("nested".to_string(), AttributeValue::Map(nested_map));
+        map.insert(Attribute::new("nested"), AttributeValue::Map(nested_map));
 
         let values = AttributeValue::get_recursive("key2", &map);
         assert_eq!(values, vec![AttributeValue::String("value2".to_string())]);
+    }
+
+    #[test]
+    fn a_nested_map_round_trips_through_json() {
+        let value = AttributeValue::Map(Attributes::from([
+            (
+                Attribute::new("outer"),
+                AttributeValue::Map(Attributes::from([(
+                    Attribute::new("inner"),
+                    AttributeValue::String("v".to_string()),
+                )])),
+            ),
+            (Attribute::new("n"), AttributeValue::Number(1.into())),
+        ]));
+        let json = serde_json::to_string(&value).unwrap();
+        assert_eq!(json, r#"{"outer":{"inner":"v"},"n":1}"#);
+        let back: AttributeValue = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, value);
+    }
+
+    #[test]
+    fn a_nested_map_hashes_the_same_whatever_order_it_was_built_in() {
+        let entries = [
+            (Attribute::new("a"), AttributeValue::Number(1.into())),
+            (Attribute::new("b"), AttributeValue::Number(2.into())),
+            (Attribute::new("c"), AttributeValue::Number(3.into())),
+        ];
+        let forward = AttributeValue::Map(entries.iter().cloned().collect());
+        let reversed = AttributeValue::Map(entries.iter().rev().cloned().collect());
+
+        assert_eq!(forward, reversed);
+        assert_eq!(hash_of(&forward), hash_of(&reversed));
+    }
+
+    fn hash_of(value: &AttributeValue) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        value.hash(&mut hasher);
+        hasher.finish()
     }
 }

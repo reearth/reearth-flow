@@ -118,7 +118,7 @@ impl Processor for ListExploder {
             let mut exploded = feature.clone();
             exploded.refresh_id();
             exploded.remove(&self.source_attribute);
-            exploded.extend_attributes(attributes.clone());
+            exploded.extend(attributes.clone());
             fw.send(ctx.new_with_feature_and_port(exploded, FEATURES_PORT.clone()));
         }
         Ok(())
@@ -141,7 +141,7 @@ impl Processor for ListExploder {
 mod tests {
     use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
-    use reearth_flow_types::Feature;
+    use reearth_flow_types::{Attributes, Feature};
 
     use super::*;
     use crate::tests::utils;
@@ -170,8 +170,11 @@ mod tests {
     }
 
     fn element(key: &str, value: &str) -> AttributeValue {
-        let mut map = HashMap::new();
-        map.insert(key.to_string(), AttributeValue::String(value.to_string()));
+        let mut map = Attributes::new();
+        map.insert(
+            Attribute::new(key),
+            AttributeValue::String(value.to_string()),
+        );
         AttributeValue::Map(map)
     }
 

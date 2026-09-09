@@ -189,7 +189,7 @@ impl Processor for SolidIntersectionTestPairCreator {
             .iter()
             .filter_map(|item| {
                 if let AttributeValue::Map(map) = item {
-                    map.get(&self.gml_id_attribute).and_then(|v| {
+                    map.get(self.gml_id_attribute.as_str()).and_then(|v| {
                         if let AttributeValue::String(s) = v {
                             Some(s.clone())
                         } else {
@@ -210,15 +210,12 @@ impl Processor for SolidIntersectionTestPairCreator {
         // Cache features for later lookup - extract feature data from the list
         for item in list {
             if let AttributeValue::Map(map) = item {
-                if let Some(AttributeValue::String(gml_id)) = map.get(&self.gml_id_attribute) {
+                if let Some(AttributeValue::String(gml_id)) =
+                    map.get(self.gml_id_attribute.as_str())
+                {
                     if !self.feature_cache.contains_key(gml_id) {
                         // Create a feature from the map data
-                        let mut cached_feature = Feature::new_with_attributes(Default::default());
-                        for (key, value) in map {
-                            cached_feature
-                                .attributes_mut()
-                                .insert(Attribute::new(key), value.clone());
-                        }
+                        let cached_feature = Feature::new_with_attributes(map.clone());
                         // Copy geometry from the original overlay feature (it's the intersection area)
                         // Note: For solid intersection test, we need the original solid geometries,
                         // which should be stored in the list item attributes or retrieved separately

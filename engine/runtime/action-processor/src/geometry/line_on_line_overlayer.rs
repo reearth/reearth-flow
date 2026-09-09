@@ -792,12 +792,7 @@ fn process_group<W: Write>(
                 Vec::with_capacity(source_feature_idxs.len());
             for &fi in source_feature_idxs {
                 let attrs = &attributes_by_feature[fi];
-                let attrs_map: HashMap<String, AttributeValue> = attrs
-                    .as_ref()
-                    .iter()
-                    .map(|(k, v)| (k.clone().inner(), v.clone()))
-                    .collect();
-                overlaid_list.push(AttributeValue::Map(attrs_map));
+                overlaid_list.push(AttributeValue::Map((**attrs).clone()));
             }
             attributes.insert(
                 Attribute::new(list_attribute),

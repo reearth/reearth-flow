@@ -6,7 +6,7 @@ use std::{
 use bytes::Bytes;
 use calamine::{RangeDeserializerBuilder, Reader, Xlsx};
 use once_cell::sync::Lazy;
-use reearth_flow_types::AttributeValue;
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -138,7 +138,7 @@ impl From<FeatureTypes> for AttributeValue {
             .iter()
             .map(|(k, v)| {
                 (
-                    k.clone(),
+                    Attribute::new(k.as_str()),
                     AttributeValue::Array(
                         v.iter()
                             .map(|s| AttributeValue::String(s.clone()))
@@ -146,7 +146,7 @@ impl From<FeatureTypes> for AttributeValue {
                     ),
                 )
             })
-            .collect::<HashMap<String, AttributeValue>>();
+            .collect::<Attributes>();
         AttributeValue::Map(map)
     }
 }
@@ -182,7 +182,7 @@ impl From<AttributeValue> for ObjectListMap {
             .as_map()
             .map(|map| {
                 map.iter()
-                    .map(|(k, v)| (k.clone(), ObjectList::from(v.clone())))
+                    .map(|(k, v)| (k.to_string(), ObjectList::from(v.clone())))
                     .collect::<HashMap<String, ObjectList>>()
             })
             .unwrap_or_default();
@@ -221,7 +221,7 @@ impl From<AttributeValue> for ObjectList {
             .as_map()
             .map(|map| {
                 map.iter()
-                    .map(|(k, v)| (k.clone(), v.clone().into()))
+                    .map(|(k, v)| (k.to_string(), v.clone().into()))
                     .collect::<HashMap<String, ObjectListValue>>()
             })
             .unwrap_or_default();
@@ -234,8 +234,8 @@ impl From<ObjectList> for AttributeValue {
         let map = value
             .0
             .iter()
-            .map(|(k, v)| (k.clone(), v.clone().into()))
-            .collect::<HashMap<String, AttributeValue>>();
+            .map(|(k, v)| (Attribute::new(k.as_str()), v.clone().into()))
+            .collect::<Attributes>();
         AttributeValue::Map(map)
     }
 }
@@ -286,9 +286,9 @@ impl From<AttributeValue> for ObjectListValue {
 
 impl From<ObjectListValue> for AttributeValue {
     fn from(value: ObjectListValue) -> Self {
-        let mut map = HashMap::<String, AttributeValue>::new();
+        let mut map = Attributes::new();
         map.insert(
-            "required".to_string(),
+            Attribute::new("required"),
             AttributeValue::Array(
                 value
                     .required
@@ -298,7 +298,7 @@ impl From<ObjectListValue> for AttributeValue {
             ),
         );
         map.insert(
-            "target".to_string(),
+            Attribute::new("target"),
             AttributeValue::Array(
                 value
                     .target
@@ -308,7 +308,7 @@ impl From<ObjectListValue> for AttributeValue {
             ),
         );
         map.insert(
-            "conditional".to_string(),
+            Attribute::new("conditional"),
             AttributeValue::Array(
                 value
                     .conditional
