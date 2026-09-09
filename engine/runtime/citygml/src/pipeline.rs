@@ -10,7 +10,7 @@ pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
 pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
 
 #[cfg(not(feature = "new-geometry"))]
-pub use build_legacy::build_features;
+pub use build_legacy::{build_features, build_features_reporting};
 
 /// Legacy feature building: resolves the parsed document (xlink + codespace) and returns one
 /// feature per top-level city object, or — when `extract_tags` is non-empty — one feature per
@@ -101,6 +101,31 @@ mod build_legacy {
         out
     }
 
+    /// The legacy geometry path is not instrumented for Action Standard §4.3
+    /// strictness (see `crate::malformation`) and is removed along with the
+    /// `new-geometry` migration flag, so this always reports zero
+    /// malformations rather than teaching the legacy parser to collect them.
+    pub fn build_features_reporting(
+        parser: Parser,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
+        let features = build_features(
+            parser,
+            extract_tags,
+            base_attributes,
+            citygml_attribute_key,
+            keep_attributes,
+            flatten_single_child_objects,
+            flatten_leaf_attributes,
+        );
+        (features, Vec::new())
+    }
+
     fn build_feature(
         node: &Arc<XmlNode>,
         citygml_attribute_key: Option<&str>,
@@ -170,7 +195,7 @@ mod build_legacy {
 }
 
 #[cfg(feature = "new-geometry")]
-pub use build_next::build_features;
+pub use build_next::{build_features, build_features_reporting};
 
 /// New-geometry feature building: resolves each parsed city object's references
 /// and attaches its geometry as a [`GeometryCollection`], one member per `lodN`
@@ -193,6 +218,7 @@ mod build_next {
     use crate::{
         appearance::{self, AppearanceIndex},
         codespace, flatten,
+        malformation::Malformation,
         parser::{self, Parser, ParserOutput, RawRegistry},
         resolver::{self, GeomRegistry},
         utils::{gml_id_attr, NamespaceRegistry},
@@ -202,7 +228,9 @@ mod build_next {
     /// Resolves the parsed document and returns one feature per top-level city object, or — when
     /// `extract_tags` is non-empty — one feature per matching flattened node, each with its
     /// geometry attached. Signature mirrors the legacy `build_features` so the readers share one
-    /// `finish` across geometry worlds.
+    /// `finish` across geometry worlds. A thin wrapper over
+    /// [`build_features_reporting`] that discards the malformations collected along the way, so
+    /// this — and the processors that call it — stay lenient per Action Standard §4.3.
     // TODO: honor `keep_attributes` and `flatten_single_child_objects` in the new-geometry path.
     pub fn build_features(
         parser: Parser,
@@ -210,9 +238,33 @@ mod build_next {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
-        _flatten_single_child_objects: bool,
+        flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
     ) -> Vec<Feature> {
+        build_features_reporting(
+            parser,
+            extract_tags,
+            base_attributes,
+            citygml_attribute_key,
+            keep_attributes,
+            flatten_single_child_objects,
+            flatten_leaf_attributes,
+        )
+        .0
+    }
+
+    /// Same as [`build_features`], but also returns every present-but-malformed
+    /// input site collected while parsing and resolving (Action Standard §4.3),
+    /// so a strict caller can fail the read naming the offending location.
+    pub fn build_features_reporting(
+        parser: Parser,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        _flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> (Vec<Feature>, Vec<Malformation>) {
         let ParserOutput {
             pending,
             raw_registry,
@@ -220,9 +272,10 @@ mod build_next {
             appearance_members,
             srs_by_file,
             ns_registry,
+            mut malformations,
         } = parser.finish();
         let appearance = appearance::build_index(&appearance_members, &raw_registry);
-        assemble_features(
+        let features = assemble_features(
             pending,
             &raw_registry,
             &geom_registry,
@@ -234,7 +287,9 @@ mod build_next {
             citygml_attribute_key,
             keep_attributes,
             flatten_leaf_attributes,
-        )
+            &mut malformations,
+        );
+        (features, malformations)
     }
 
     /// Resolve every pending feature into emitted `Feature`s: one per top-level city object when
@@ -254,6 +309,7 @@ mod build_next {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
+        malformations: &mut Vec<Malformation>,
     ) -> Vec<Feature> {
         let mut out = Vec::new();
         let mut codelist_resolver = codespace::CodelistResolver::new();
@@ -283,6 +339,7 @@ mod build_next {
                     geom_registry,
                     appearance,
                     srs_by_file,
+                    malformations,
                 );
                 if let Some(base) = base {
                     feature.extend(base.clone());
@@ -314,6 +371,7 @@ mod build_next {
                         geom_registry,
                         appearance,
                         srs_by_file,
+                        malformations,
                     );
                     if let Some(base) = base {
                         feature.extend(base.clone());
@@ -333,6 +391,7 @@ mod build_next {
         registry: &GeomRegistry,
         appearance: &AppearanceIndex,
         srs_by_file: &HashMap<String, EpsgCode>,
+        malformations: &mut Vec<Malformation>,
     ) {
         // Each member records its source LOD (a `tin` has none) so downstream
         // sinks can select a single LOD, and the object it belongs to so a
@@ -340,10 +399,14 @@ mod build_next {
         let mut members: Vec<Geometry> = Vec::new();
         let mut attrs: Vec<Attributes> = Vec::new();
         for pending in geoms {
-            let Some(member) =
-                resolver::resolve_root(&pending.node, registry, appearance, srs_by_file)
-                    .map(Geometry::Euclidean3D)
-            else {
+            let Some(member) = resolver::resolve_root(
+                &pending.node,
+                registry,
+                appearance,
+                srs_by_file,
+                malformations,
+            )
+            .map(Geometry::Euclidean3D) else {
                 continue;
             };
             let mut member_attrs = Attributes::new();
@@ -407,6 +470,7 @@ mod build_next {
                 appearance_members,
                 srs_by_file,
                 ns_registry,
+                ..
             } = parser.finish();
             let appearance = appearance::build_index(&appearance_members, &raw_registry);
             let tags: HashSet<String> = extract_tags.iter().map(|s| s.to_string()).collect();
@@ -422,6 +486,7 @@ mod build_next {
                 None,
                 true,
                 &[],
+                &mut Vec::new(),
             )
         }
 

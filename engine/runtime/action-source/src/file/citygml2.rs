@@ -4,7 +4,7 @@ use std::{
 };
 
 use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
-use reearth_flow_citygml::pipeline::build_features;
+use reearth_flow_citygml::pipeline::build_features_reporting;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -181,7 +181,7 @@ impl Source for CityGml2Reader {
 
         // `flatten_single_child_objects` is passed false rather than exposed: the
         // new-geometry path ignores it, so a parameter for it would do nothing.
-        for feature in build_features(
+        let (features, malformations) = build_features_reporting(
             parser,
             &extract_tags,
             &HashMap::<String, Attributes>::new(),
@@ -189,7 +189,19 @@ impl Source for CityGml2Reader {
             self.property.keep_attributes,
             false,
             &flatten_leaf_attributes,
-        ) {
+        );
+        // Per Action Standard §4.3, present-but-malformed input fails the read
+        // naming the offending location, rather than emitting a feature with
+        // its geometry silently dropped. Checked before the send loop, so a
+        // malformed document sends zero features.
+        if let Some(first) = malformations.first() {
+            return Err(SourceError::CityGml2Reader(format!(
+                "{source_url}: malformed input ({} total): {first}",
+                malformations.len()
+            ))
+            .into());
+        }
+        for feature in features {
             sender
                 .send((
                     FEATURES_PORT.clone(),
@@ -206,6 +218,7 @@ impl Source for CityGml2Reader {
 mod tests {
     use super::*;
     use bytes::Bytes;
+    use reearth_flow_citygml::pipeline::build_features;
     use reearth_flow_runtime::node::SourceFactory;
     use tokio::sync::mpsc;
 
@@ -363,6 +376,82 @@ mod tests {
         assert_eq!(
             extracted_count, 2,
             "with extract_tags including WallSurface, both boundary surfaces are hoisted out as their own features and the Building itself (not in the tag set) is dropped"
+        );
+    }
+
+    // A Building whose one surface's `gml:posList` contains a token that isn't a
+    // valid number. The XML itself is well-formed, so `Parser::parse` succeeds;
+    // the malformation only surfaces once the geometry is resolved.
+    const CITYGML_2_WITH_BAD_POSLIST: &str = concat!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>"#,
+        r#"<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0""#,
+        r#" xmlns:bldg="http://www.opengis.net/citygml/building/2.0""#,
+        r#" xmlns:gml="http://www.opengis.net/gml">"#,
+        r#"<core:cityObjectMember><bldg:Building gml:id="b1">"#,
+        r#"<bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>"#,
+        r#"<gml:Polygon><gml:exterior><gml:LinearRing>"#,
+        r#"<gml:posList>1.0 nope 3.0</gml:posList>"#,
+        r#"</gml:LinearRing></gml:exterior></gml:Polygon>"#,
+        r#"</gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>"#,
+        r#"</bldg:Building></core:cityObjectMember>"#,
+        r#"</core:CityModel>"#,
+    );
+
+    /// Action Standard §4.3: present-but-malformed input must fail the read
+    /// naming the offending location, not emit a feature with its geometry
+    /// silently dropped. Checked before the send loop, so nothing reaches the
+    /// channel. Only the new-geometry path is instrumented for this (the
+    /// legacy path is not; see `reearth_flow_citygml::pipeline`).
+    #[cfg(feature = "new-geometry")]
+    #[tokio::test]
+    async fn start_fails_the_read_on_malformed_poslist_and_sends_no_features() {
+        let mut reader = CityGml2Reader {
+            common: FileReaderCompiledParam {
+                dataset: None,
+                inline: Some(Bytes::from(CITYGML_2_WITH_BAD_POSLIST)),
+            },
+            property: default_property(),
+        };
+        let (tx, mut rx) = mpsc::channel(16);
+        let err = reader
+            .start(NodeContext::default(), tx)
+            .await
+            .expect_err("a malformed gml:posList must fail the read");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("invalid gml:posList content"),
+            "the error must name the reason, got: {msg}"
+        );
+        assert_eq!(
+            drain_features(&mut rx).await,
+            0,
+            "no features should reach the channel when the read fails"
+        );
+    }
+
+    /// The same malformed document through `build_features` (what the
+    /// `Feature CityGML 2 Reader` processor calls) must stay lenient: it
+    /// returns the feature, geometry silently dropped, and does not error.
+    #[test]
+    fn build_features_stays_lenient_on_the_same_malformed_poslist() {
+        let mut parser = Parser::new(CityGmlVersion::V2);
+        let url = Url::parse("file:///test.gml").unwrap();
+        parser
+            .parse(CITYGML_2_WITH_BAD_POSLIST.as_bytes(), &url)
+            .expect("XML is well-formed even though the posList content is not");
+        let features = build_features(
+            parser,
+            &HashSet::new(),
+            &HashMap::<String, Attributes>::new(),
+            None,
+            true,
+            false,
+            &[],
+        );
+        assert_eq!(
+            features.len(),
+            1,
+            "the processor path must stay lenient and still emit the Building"
         );
     }
 }

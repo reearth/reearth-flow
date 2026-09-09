@@ -18,6 +18,7 @@ use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
+use super::malformation::Malformation;
 use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
 use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
@@ -134,7 +135,26 @@ impl Parser {
         let id = raw_gml_id(node);
         let file = node.source_url.as_str().to_string();
         let geom = if ty.is_inline() {
-            let (geometry, faces) = build_leaf(node, &ty, &self.frame(node))?;
+            let frame = self.frame(node);
+            // Pass-1 leaves push bare (file/location empty) Malformations when
+            // they hit invalid coordinate content; backfill this node's own
+            // file and gml:id here, at the owning Parser method, since deeper
+            // functions only see text and have neither. Backfilling runs
+            // before the `?` below so it still applies when the malformed
+            // content leaves the leaf with no coordinates at all (`None`).
+            let before = self.malformations.len();
+            let result = build_leaf(node, &ty, &frame, &mut self.malformations);
+            for m in &mut self.malformations[before..] {
+                if m.file.is_empty() {
+                    m.file = file.clone();
+                }
+                if m.location.is_empty() {
+                    if let Some(rid) = &id {
+                        m.location = rid.clone();
+                    }
+                }
+            }
+            let (geometry, faces) = result?;
             GeomNode::Resolved(geometry, LeafIds { file, faces })
         } else {
             GeomNode::Unresolved(Unresolved {
@@ -217,20 +237,21 @@ fn build_leaf(
     node: &RawNode,
     ty: &GmlGeometryType,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     match ty {
-        GmlGeometryType::Point => build_point(node, frame),
-        GmlGeometryType::LineString => build_line_string(node, frame),
+        GmlGeometryType::Point => build_point(node, frame, malformations),
+        GmlGeometryType::LineString => build_line_string(node, frame, malformations),
         // TODO: gml:Curve support is deferred. Its segments may be arcs or splines,
         // which cannot be handled by sweeping control points into a straight chain.
         GmlGeometryType::Curve => {
             tracing::warn!("citygml geometry: gml:Curve is not supported yet, skipped");
             None
         }
-        GmlGeometryType::LinearRing => build_ring_polygon(node, frame),
-        GmlGeometryType::Polygon => build_polygon(node, frame),
+        GmlGeometryType::LinearRing => build_ring_polygon(node, frame, malformations),
+        GmlGeometryType::Polygon => build_polygon(node, frame, malformations),
         GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => {
-            build_triangulated(node, frame)
+            build_triangulated(node, frame, malformations)
         }
         _ => None,
     }
@@ -241,8 +262,9 @@ fn build_leaf(
 fn build_point(
     node: &RawNode,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
-    let coords = gather_coords(node);
+    let coords = gather_coords(node, malformations);
     coords.first().map(|&c| {
         (
             Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c)),
@@ -256,8 +278,9 @@ fn build_point(
 fn build_line_string(
     node: &RawNode,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
-    let coords = gather_coords(node);
+    let coords = gather_coords(node, malformations);
     if coords.is_empty() {
         return None;
     }
@@ -270,8 +293,9 @@ fn build_line_string(
 fn build_ring_polygon(
     node: &RawNode,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
-    let exterior = gather_coords(node);
+    let exterior = gather_coords(node, malformations);
     if exterior.is_empty() {
         return None;
     }
@@ -287,8 +311,9 @@ fn build_ring_polygon(
 fn build_polygon(
     node: &RawNode,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
-    let (polygon, face) = polygon_from_rings(node, frame)?;
+    let (polygon, face) = polygon_from_rings(node, frame, malformations)?;
     Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
 
@@ -300,6 +325,7 @@ fn build_polygon(
 fn build_triangulated(
     node: &RawNode,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let surface = raw_gml_id(node);
     let mut soup: Vec<[f64; 3]> = Vec::new();
@@ -307,7 +333,7 @@ fn build_triangulated(
     for prop in element_children(node) {
         if matches!(local_name(&prop.name.0), "trianglePatches" | "patches") {
             for triangle in element_children(prop) {
-                let ring = gather_coords(triangle);
+                let ring = gather_coords(triangle, malformations);
                 if ring.len() >= 3 {
                     soup.extend_from_slice(&ring[..3]);
                     face_ids.push(FaceIds {
@@ -339,19 +365,23 @@ fn triangle_ring_id(triangle: &RawNode) -> Option<String> {
 /// Build a polygon from an element's `exterior` / `interior` ring properties,
 /// capturing the element's own gml:id as the face's surface id and each
 /// `LinearRing`'s gml:id in exterior-first, holes-next order.
-fn polygon_from_rings(node: &RawNode, frame: &CoordinateFrame) -> Option<(Polygon3D, FaceIds)> {
+fn polygon_from_rings(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
+) -> Option<(Polygon3D, FaceIds)> {
     let mut exterior: Option<Ring> = None;
     let mut interiors: Vec<Ring> = Vec::new();
     for prop in element_children(node) {
         match local_name(&prop.name.0) {
             "exterior" => {
-                let ring = read_ring(prop);
+                let ring = read_ring(prop, malformations);
                 if !ring.coords.is_empty() {
                     exterior = Some(ring);
                 }
             }
             "interior" => {
-                let ring = read_ring(prop);
+                let ring = read_ring(prop, malformations);
                 if !ring.coords.is_empty() {
                     interiors.push(ring);
                 }
@@ -385,32 +415,36 @@ struct Ring {
 
 /// Read a `exterior` / `interior` ring property: its coordinates and the enclosing
 /// `LinearRing`'s gml:id.
-fn read_ring(prop: &RawNode) -> Ring {
+fn read_ring(prop: &RawNode, malformations: &mut Vec<Malformation>) -> Ring {
     let id = element_children(prop)
         .find(|e| local_name(&e.name.0) == "LinearRing")
         .and_then(raw_gml_id);
     Ring {
         id,
-        coords: gather_coords(prop),
+        coords: gather_coords(prop, malformations),
     }
 }
 
 /// Collect every coordinate under `node`, descending through property and ring
 /// wrappers to the `posList` / `pos` leaves.
-fn gather_coords(node: &RawNode) -> Vec<[f64; 3]> {
+fn gather_coords(node: &RawNode, malformations: &mut Vec<Malformation>) -> Vec<[f64; 3]> {
     let mut out = Vec::new();
-    gather_coords_into(node, &mut out);
+    gather_coords_into(node, &mut out, malformations);
     out
 }
 
 /// Collect every coordinate under `node` into `out`, descending through wrappers
 /// to the `posList` / `pos` leaves.
-fn gather_coords_into(node: &RawNode, out: &mut Vec<[f64; 3]>) {
+fn gather_coords_into(
+    node: &RawNode,
+    out: &mut Vec<[f64; 3]>,
+    malformations: &mut Vec<Malformation>,
+) {
     for child in element_children(node) {
         match local_name(&child.name.0) {
-            "posList" => out.extend(parse_pos_list(text_content(child))),
-            "pos" => out.extend(parse_pos(text_content(child))),
-            _ => gather_coords_into(child, out),
+            "posList" => out.extend(parse_pos_list(text_content(child), malformations)),
+            "pos" => out.extend(parse_pos(text_content(child), malformations)),
+            _ => gather_coords_into(child, out, malformations),
         }
     }
 }
@@ -425,23 +459,43 @@ fn parse_ordinates(text: &str) -> Option<Vec<f64>> {
 
 /// Parse a `gml:posList` into ordinate triples, in the source's own axis order.
 /// A list with any unparseable token, or whose ordinate count is not a multiple
-/// of 3, is skipped whole rather than producing misaligned coordinates.
-fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
+/// of 3, is skipped whole rather than producing misaligned coordinates. Present
+/// but malformed input, so a strict caller can fail the read on it (Action
+/// Standard §4.3); pushed here with `file`/`location` empty since only the raw
+/// text reaches this deep — `geometry_node` backfills both from the enclosing
+/// node once this returns.
+fn parse_pos_list(text: &str, malformations: &mut Vec<Malformation>) -> Vec<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:posList content, skipped");
+        malformations.push(Malformation {
+            file: String::new(),
+            location: String::new(),
+            reason: "citygml geometry: invalid gml:posList content, skipped".to_string(),
+        });
         return Vec::new();
     };
     if !values.len().is_multiple_of(3) {
         tracing::warn!("citygml geometry: gml:posList length not a multiple of 3, skipped");
+        malformations.push(Malformation {
+            file: String::new(),
+            location: String::new(),
+            reason: "citygml geometry: gml:posList length not a multiple of 3, skipped".to_string(),
+        });
         return Vec::new();
     }
     values.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
 }
 
-/// Parse a single `gml:pos` into one ordinate triple, in the source's own axis order.
-fn parse_pos(text: &str) -> Option<[f64; 3]> {
+/// Parse a single `gml:pos` into one ordinate triple, in the source's own axis
+/// order. See [`parse_pos_list`] on why `file`/`location` are left empty here.
+fn parse_pos(text: &str, malformations: &mut Vec<Malformation>) -> Option<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:pos content, skipped");
+        malformations.push(Malformation {
+            file: String::new(),
+            location: String::new(),
+            reason: "citygml geometry: invalid gml:pos content, skipped".to_string(),
+        });
         return None;
     };
     if values.len() != 3 {
@@ -877,6 +931,42 @@ mod tests {
         assert_eq!(
             collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             1
+        );
+    }
+
+    /// Action Standard §4.3: the same malformed `gml:posList` above must also
+    /// be collected as a [`Malformation`], not just warned about, so a strict
+    /// caller can fail the read naming the offending location. The leaf that
+    /// actually sees the bad text (`parse_pos_list`) has neither the file nor
+    /// a `gml:id` in scope, so `geometry_node` backfills both from the
+    /// enclosing node it was invoked for — here the `Polygon`, since that's
+    /// the element `build_polygon` (and so `geometry_node`) was called with.
+    #[test]
+    fn poslist_with_invalid_token_is_collected_as_a_malformation_naming_the_polygon() {
+        let xml = r#"<core:CityModel
+                 xmlns:core="http://www.opengis.net/citygml/3.0"
+                 xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+                 xmlns:gml="http://www.opengis.net/gml/3.2"
+                 xmlns:xlink="http://www.w3.org/1999/xlink">
+               <core:cityObjectMember><bldg:Building gml:id="b1">
+                 <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                   <gml:Polygon gml:id="poly_bad"><gml:exterior><gml:LinearRing>
+                     <gml:posList>0 0 0 1 0 0 0 1 bad 0 0 0</gml:posList>
+                   </gml:LinearRing></gml:exterior></gml:Polygon>
+                 </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+               </bldg:Building></core:cityObjectMember>
+             </core:CityModel>"#;
+        let url = Url::parse("file:///test.gml").unwrap();
+        let mut parser = Parser::new(CityGmlVersion::V3);
+        parser.parse(xml.as_bytes(), &url).unwrap();
+        let ParserOutput { malformations, .. } = parser.finish();
+        assert_eq!(
+            malformations,
+            vec![Malformation {
+                file: "file:///test.gml".to_string(),
+                location: "poly_bad".to_string(),
+                reason: "citygml geometry: invalid gml:posList content, skipped".to_string(),
+            }]
         );
     }
 

@@ -16,6 +16,7 @@ use reearth_flow_geometry::solid::{Shell, Solid};
 use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::appearance::AppearanceIndex;
+use super::malformation::Malformation;
 use super::parser::RawNodeKey;
 use super::utils::frame_for;
 
@@ -167,35 +168,55 @@ impl GmlGeometryType {
     }
 }
 
+/// The read-only lookup tables threaded through pass-2 resolution (registry,
+/// appearance index, per-file CRS), bundled with the mutable malformation sink
+/// so `resolve` and its callees carry one context argument instead of four
+/// separate ones that always travel together.
+struct ResolveCtx<'a> {
+    registry: &'a GeomRegistry,
+    appearance: &'a AppearanceIndex,
+    srs_by_file: &'a HashMap<String, EpsgCode>,
+    malformations: &'a mut Vec<Malformation>,
+}
+
 /// Resolve a top-level geometry node into a single [`Euclidean3DGeometry`],
 /// following `xlink:href` references through `registry` and attaching the
 /// appearance targeting each surface from `appearance` (an empty index attaches
 /// nothing). Attachment is at the polygon leaf, so mesh welding carries it into
 /// `PolygonMesh` / `Solid`. Returns `None` when the node, or every one of its
-/// members, cannot be resolved.
+/// members, cannot be resolved. Malformed input encountered while resolving
+/// (Action Standard §4.3) is appended to `malformations`.
 pub(super) fn resolve_root(
     node: &GeomNode,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
     srs_by_file: &HashMap<String, EpsgCode>,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<Euclidean3DGeometry> {
-    resolve(
-        node,
+    let mut ctx = ResolveCtx {
         registry,
         appearance,
         srs_by_file,
-        &[],
-        &mut HashSet::new(),
-    )
+        malformations,
+    };
+    resolve(node, &mut ctx, &[], &mut HashSet::new())
 }
 
-/// Resolve a top-level geometry node with no appearance attached and no known CRS.
+/// Resolve a top-level geometry node with no appearance attached, no known CRS,
+/// and no interest in the malformations collected along the way.
 #[cfg(test)]
 pub(super) fn resolve_root_bare(
     node: &GeomNode,
     registry: &GeomRegistry,
 ) -> Option<Euclidean3DGeometry> {
-    resolve_root(node, registry, &AppearanceIndex::default(), &HashMap::new())
+    let mut malformations = Vec::new();
+    resolve_root(
+        node,
+        registry,
+        &AppearanceIndex::default(),
+        &HashMap::new(),
+        &mut malformations,
+    )
 }
 
 /// Resolve one node. `enclosing` is the chain of enclosing container ids, each
@@ -205,9 +226,7 @@ pub(super) fn resolve_root_bare(
 /// instead of recursing forever.
 fn resolve(
     node: &GeomNode,
-    registry: &GeomRegistry,
-    appearance: &AppearanceIndex,
-    srs_by_file: &HashMap<String, EpsgCode>,
+    ctx: &mut ResolveCtx,
     enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
@@ -215,25 +234,11 @@ fn resolve(
         GeomNode::Resolved(geometry, ids) => Some(with_appearance(
             geometry.clone(),
             ids,
-            appearance,
+            ctx.appearance,
             enclosing,
         )),
-        GeomNode::Ref(key) => resolve_ref(
-            key,
-            registry,
-            appearance,
-            srs_by_file,
-            enclosing,
-            in_progress,
-        ),
-        GeomNode::Unresolved(unresolved) => construct(
-            unresolved,
-            registry,
-            appearance,
-            srs_by_file,
-            enclosing,
-            in_progress,
-        ),
+        GeomNode::Ref(key) => resolve_ref(key, ctx, enclosing, in_progress),
+        GeomNode::Unresolved(unresolved) => construct(unresolved, ctx, enclosing, in_progress),
     }
 }
 
@@ -274,25 +279,25 @@ fn with_appearance(
 /// on the current path, so a reference cycle is caught instead of recursing forever.
 fn resolve_ref(
     key: &RawNodeKey,
-    registry: &GeomRegistry,
-    appearance: &AppearanceIndex,
-    srs_by_file: &HashMap<String, EpsgCode>,
+    ctx: &mut ResolveCtx,
     enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     if !in_progress.insert(key.clone()) {
         tracing::warn!(id = key.1, "citygml geometry: cyclic xlink:href, skipped");
+        ctx.malformations.push(Malformation {
+            file: key.0.clone(),
+            location: key.1.clone(),
+            reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
+        });
         return None;
     }
-    let resolved = match registry.get(key) {
-        Some(target) => resolve(
-            target,
-            registry,
-            appearance,
-            srs_by_file,
-            enclosing,
-            in_progress,
-        ),
+    // `ctx.registry` is a `&'a GeomRegistry` copied out of `ctx`, so the `&'a
+    // GeomNode` this yields borrows independently of `ctx` itself and doesn't
+    // keep `ctx` borrowed across the recursive `resolve` call below.
+    let target = ctx.registry.get(key);
+    let resolved = match target {
+        Some(target) => resolve(target, ctx, enclosing, in_progress),
         None => {
             tracing::warn!(
                 id = key.1,
@@ -313,9 +318,7 @@ fn resolve_ref(
 /// different CRS is dropped with error rather than folded in.
 fn construct(
     node: &Unresolved,
-    registry: &GeomRegistry,
-    appearance: &AppearanceIndex,
-    srs_by_file: &HashMap<String, EpsgCode>,
+    ctx: &mut ResolveCtx,
     enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
@@ -323,26 +326,18 @@ fn construct(
     member_enclosing.extend(node.id.as_deref().map(|id| (node.file.as_str(), id)));
     member_enclosing.extend_from_slice(enclosing);
 
-    let frame = frame_for(&node.file, srs_by_file);
+    let frame = frame_for(&node.file, ctx.srs_by_file);
     let members: Vec<(Role, Euclidean3DGeometry)> = node
         .members
         .iter()
         .filter_map(|(role, child)| {
-            if frame_for(source_file(child), srs_by_file) != frame {
+            if frame_for(source_file(child), ctx.srs_by_file) != frame {
                 tracing::error!(
                     "citygml geometry: member srsName disagrees with its parent, skipped"
                 );
                 return None;
             }
-            resolve(
-                child,
-                registry,
-                appearance,
-                srs_by_file,
-                &member_enclosing,
-                in_progress,
-            )
-            .map(|g| (*role, g))
+            resolve(child, ctx, &member_enclosing, in_progress).map(|g| (*role, g))
         })
         .collect();
 
@@ -360,12 +355,12 @@ fn construct(
         GmlGeometryType::OrientableCurve | GmlGeometryType::OrientableSurface => {
             members.into_iter().next().map(|(_, geometry)| geometry)
         }
-        GmlGeometryType::Ring => ring(members, &frame),
+        GmlGeometryType::Ring => ring(members, &frame, ctx.malformations),
         GmlGeometryType::CompositeSurface
         | GmlGeometryType::Shell
         | GmlGeometryType::Surface
-        | GmlGeometryType::PolyhedralSurface => surface_mesh(members, &frame),
-        GmlGeometryType::Solid => solid(members, &frame),
+        | GmlGeometryType::PolyhedralSurface => surface_mesh(members, &frame, ctx.malformations),
+        GmlGeometryType::Solid => solid(members, &frame, ctx.malformations),
         _ => {
             tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
             None
@@ -394,12 +389,20 @@ fn collection(members: Vec<(Role, Euclidean3DGeometry)>) -> Euclidean3DGeometry 
 fn ring(
     members: Vec<(Role, Euclidean3DGeometry)>,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<Euclidean3DGeometry> {
     let mut exterior: Vec<[f64; 3]> = Vec::new();
     for (_, geometry) in members {
-        match into_line_string(geometry) {
+        match into_line_string(geometry, malformations) {
             Some(line) => exterior.extend_from_slice(line.coords()),
-            None => tracing::warn!("citygml geometry: non-curve ring member, skipped"),
+            None => {
+                tracing::warn!("citygml geometry: non-curve ring member, skipped");
+                malformations.push(Malformation {
+                    file: String::new(),
+                    location: String::new(),
+                    reason: "citygml geometry: non-curve ring member, skipped".to_string(),
+                });
+            }
         }
     }
     if exterior.is_empty() {
@@ -418,6 +421,7 @@ fn ring(
 fn surface_mesh(
     members: Vec<(Role, Euclidean3DGeometry)>,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<Euclidean3DGeometry> {
     if members.len() == 1
         && matches!(
@@ -433,35 +437,59 @@ fn surface_mesh(
         match geometry {
             Euclidean3DGeometry::Polygon(polygon) => faces.push(*polygon),
             Euclidean3DGeometry::PolygonMesh(_) | Euclidean3DGeometry::TriangularMesh(_) => {
+                // Not present-but-malformed input: our resolver simply can't
+                // merge a mesh member into a composite surface yet.
                 tracing::warn!(
                     "citygml geometry: merging a mesh into a composite surface is not yet supported, member skipped"
                 )
             }
-            _ => tracing::warn!("citygml geometry: expected a surface member, skipped"),
+            _ => {
+                tracing::warn!("citygml geometry: expected a surface member, skipped");
+                malformations.push(Malformation {
+                    file: String::new(),
+                    location: String::new(),
+                    reason: "citygml geometry: expected a surface member, skipped".to_string(),
+                });
+            }
         }
     }
     if faces.is_empty() {
         return None;
     }
-    build_mesh(faces, frame).map(|mesh| Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
+    build_mesh(faces, frame, malformations)
+        .map(|mesh| Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
 }
 
 /// Pair an exterior boundary with any interior void boundaries into a `Solid`.
 fn solid(
     members: Vec<(Role, Euclidean3DGeometry)>,
     frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
 ) -> Option<Euclidean3DGeometry> {
     let mut exterior: Option<Shell> = None;
     let mut interiors: Vec<Shell> = Vec::new();
     for (role, geometry) in members {
         match role {
-            Role::Exterior if exterior.is_none() => exterior = into_shell(geometry, frame),
-            Role::Exterior => {
-                tracing::warn!("citygml geometry: solid with multiple exteriors, extra skipped")
+            Role::Exterior if exterior.is_none() => {
+                exterior = into_shell(geometry, frame, malformations)
             }
-            Role::Interior => interiors.extend(into_shell(geometry, frame)),
+            Role::Exterior => {
+                tracing::warn!("citygml geometry: solid with multiple exteriors, extra skipped");
+                malformations.push(Malformation {
+                    file: String::new(),
+                    location: String::new(),
+                    reason: "citygml geometry: solid with multiple exteriors, extra skipped"
+                        .to_string(),
+                });
+            }
+            Role::Interior => interiors.extend(into_shell(geometry, frame, malformations)),
             Role::Member => {
-                tracing::warn!("citygml geometry: unexpected solid member role, skipped")
+                tracing::warn!("citygml geometry: unexpected solid member role, skipped");
+                malformations.push(Malformation {
+                    file: String::new(),
+                    location: String::new(),
+                    reason: "citygml geometry: unexpected solid member role, skipped".to_string(),
+                });
             }
         }
     }
@@ -474,22 +502,39 @@ fn solid(
 }
 
 /// Weld independent faces into one polygon mesh in `frame`.
-fn build_mesh(faces: Vec<Polygon3D>, frame: &CoordinateFrame) -> Option<PolygonMesh3D> {
+fn build_mesh(
+    faces: Vec<Polygon3D>,
+    frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
+) -> Option<PolygonMesh3D> {
     match PolygonMesh3D::from_polygons(frame.clone(), &faces) {
         Ok(mesh) => Some(mesh),
         Err(e) => {
             tracing::error!("citygml geometry: failed to weld mesh: {e}");
+            malformations.push(Malformation {
+                file: String::new(),
+                location: String::new(),
+                reason: format!("citygml geometry: failed to weld mesh: {e}"),
+            });
             None
         }
     }
 }
 
 /// Coerce a resolved member to a curve.
-fn into_line_string(geometry: Euclidean3DGeometry) -> Option<LineString3D> {
+fn into_line_string(
+    geometry: Euclidean3DGeometry,
+    malformations: &mut Vec<Malformation>,
+) -> Option<LineString3D> {
     match geometry {
         Euclidean3DGeometry::LineString(line) => Some(line),
         _ => {
             tracing::warn!("citygml geometry: expected a curve, skipped");
+            malformations.push(Malformation {
+                file: String::new(),
+                location: String::new(),
+                reason: "citygml geometry: expected a curve, skipped".to_string(),
+            });
             None
         }
     }
@@ -499,15 +544,23 @@ fn into_line_string(geometry: Euclidean3DGeometry) -> Option<LineString3D> {
 /// `Shell` boundary has already been assembled into a mesh by [`surface_mesh`], so
 /// this just unwraps it; a bare `Polygon` boundary is welded into a single-face
 /// mesh.
-fn into_shell(geometry: Euclidean3DGeometry, frame: &CoordinateFrame) -> Option<Shell> {
+fn into_shell(
+    geometry: Euclidean3DGeometry,
+    frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
+) -> Option<Shell> {
     match geometry {
         Euclidean3DGeometry::PolygonMesh(mesh) => Some(Shell::PolygonMesh(mesh.into_data())),
         Euclidean3DGeometry::TriangularMesh(mesh) => Some(Shell::TriangularMesh(mesh.into_data())),
-        Euclidean3DGeometry::Polygon(polygon) => {
-            build_mesh(vec![*polygon], frame).map(|mesh| Shell::PolygonMesh(mesh.into_data()))
-        }
+        Euclidean3DGeometry::Polygon(polygon) => build_mesh(vec![*polygon], frame, malformations)
+            .map(|mesh| Shell::PolygonMesh(mesh.into_data())),
         _ => {
             tracing::warn!("citygml geometry: cannot use as a solid boundary, skipped");
+            malformations.push(Malformation {
+                file: String::new(),
+                location: String::new(),
+                reason: "citygml geometry: cannot use as a solid boundary, skipped".to_string(),
+            });
             None
         }
     }
@@ -754,8 +807,50 @@ mod tests {
         assert_eq!(collection_len(&geometry), 0);
     }
 
+    /// Action Standard §4.3: a cyclic `xlink:href` is present-but-malformed
+    /// input, so it must be collected (not just warned about) with the file
+    /// and `gml:id` that name the cycle, alongside the existing lenient
+    /// (drop-and-continue) behavior asserted above.
+    #[test]
+    fn cyclic_ref_is_collected_as_a_malformation() {
+        let mut registry = GeomRegistry::new();
+        registry.insert(
+            key("a"),
+            node(
+                GmlGeometryType::MultiGeometry,
+                vec![(Role::Member, GeomNode::Ref(key("a")))],
+            ),
+        );
+        let mut malformations = Vec::new();
+        let geometry = resolve_root(
+            &GeomNode::Ref(key("a")),
+            &registry,
+            &AppearanceIndex::default(),
+            &HashMap::new(),
+            &mut malformations,
+        )
+        .unwrap();
+        assert_eq!(collection_len(&geometry), 0);
+        assert_eq!(
+            malformations,
+            vec![Malformation {
+                file: "file:///test.gml".to_string(),
+                location: "a".to_string(),
+                reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
+            }]
+        );
+    }
+
     fn resolve_root_srs(node: &GeomNode, srs: &HashMap<String, EpsgCode>) -> Euclidean3DGeometry {
-        resolve_root(node, &GeomRegistry::new(), &AppearanceIndex::default(), srs).unwrap()
+        let mut malformations = Vec::new();
+        resolve_root(
+            node,
+            &GeomRegistry::new(),
+            &AppearanceIndex::default(),
+            srs,
+            &mut malformations,
+        )
+        .unwrap()
     }
 
     #[test]
