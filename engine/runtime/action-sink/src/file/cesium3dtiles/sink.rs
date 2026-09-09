@@ -9,7 +9,7 @@ use std::{
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_runtime::event::{Event, EventHub};
+use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
@@ -20,9 +20,37 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::errors::SinkError;
-use crate::file::mvt::tileid::TileIdMethod;
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
+
+/// Serde default for flags that are on unless explicitly disabled. Also makes
+/// the generated JSON schema advertise `default: true`.
+fn default_true() -> bool {
+    true
+}
+
+/// # Texture Codec
+/// Texture image codec for the writer's atlas pages.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
+pub enum TextureCodec {
+    /// KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`):
+    /// higher quality, larger files.
+    #[serde(rename = "KTX2/UASTC")]
+    Ktx2Uastc,
+    /// KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`):
+    /// smaller files, lower quality.
+    #[default]
+    #[serde(rename = "KTX2/ETC1S")]
+    Ktx2Etc1s,
+    /// PNG, lossless with alpha.
+    #[serde(rename = "PNG")]
+    Png,
+    /// JPEG, lossy and opaque (alpha is dropped).
+    #[serde(rename = "JPEG")]
+    Jpeg,
+    /// Attach no textures; textured geometry falls back to its neutral colour.
+    Untextured,
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct Cesium3DTilesSinkFactory;
@@ -100,13 +128,19 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             pending_flush: Vec::new(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
-                min_zoom: params.min_zoom,
-                max_zoom: params.max_zoom,
-                attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 chunk_by_attribute: params.chunk_by_attribute,
+                target_tile_size: params.target_tile_size,
+                compute_flat_normal: params.compute_flat_normal,
+                texel_size: params.texel_size,
+                atlas_size: params.atlas_size,
+                atlas_extrusion: params.atlas_extrusion,
+                wrap_tolerance: params.wrap_tolerance,
+                texture_codec: params.texture_codec,
+                schema_key: params.schema_key,
+                array_map_separator: params.array_map_separator,
             },
         };
         Ok(Box::new(sink))
@@ -137,13 +171,16 @@ pub struct Cesium3DTilesWriterParam {
     /// Directory path where the 3D tiles will be written
     pub(super) output: Expr,
     /// # Minimum Zoom Level
-    /// Minimum zoom level for tile generation (0-24)
-    pub(super) min_zoom: u8,
+    /// Unused: implicit tiling derives tile depth from `targetTileSize`
+    /// instead. Kept only so older workflow files still deserialize.
+    pub(super) min_zoom: Option<u8>,
     /// # Maximum Zoom Level
-    /// Maximum zoom level for tile generation (0-24)
-    pub(super) max_zoom: u8,
+    /// Unused: implicit tiling derives tile depth from `targetTileSize`
+    /// instead. Kept only so older workflow files still deserialize.
+    pub(super) max_zoom: Option<u8>,
     /// # Attach Textures
-    /// Whether to include texture information in the generated tiles
+    /// Unused: use `textureCodec: Untextured` to attach no textures instead.
+    /// Kept only so older workflow files still deserialize.
     pub(super) attach_texture: Option<bool>,
     /// # Compressed Output Path
     /// Optional path for compressed archive output
@@ -159,18 +196,73 @@ pub struct Cesium3DTilesWriterParam {
     /// value must already be adjacent, and every feature must have it set. Each
     /// chunk's value must map to a different output path.
     pub(super) chunk_by_attribute: Option<String>,
+    /// # Target Tile Size
+    /// Target content size per tile, in bytes. Tiles are split when they'd
+    /// exceed it and merged with neighbours when they'd otherwise be smaller;
+    /// a single feature that alone exceeds it is kept whole (features are
+    /// never clipped). A value of 0 disables merging and splits every feature
+    /// into its own content. Defaults to 1,048,576 (1 MiB).
+    pub(super) target_tile_size: Option<u64>,
+    /// # Compute Flat Normals
+    /// Compute per-polygon flat normals for lighting. Defaults to true.
+    /// When disabled, no normals are written and the mesh is smaller, but the
+    /// tile carries no lighting data (a viewer must derive flat normals itself).
+    #[serde(default = "default_true")]
+    pub(super) compute_flat_normal: bool,
+    /// # Texel Size
+    /// Target texel size in metres per pixel. Textures finer than this are
+    /// downsampled to it. Defaults to 0, which keeps full texture detail.
+    pub(super) texel_size: Option<f64>,
+    /// # Atlas Size
+    /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
+    /// onto additional atlas pages; a single texture larger than it is
+    /// downsampled to fit. Defaults to 2048.
+    #[schemars(range(min = 1, max = 65536))]
+    pub(super) atlas_size: Option<u32>,
+    /// # Atlas Extrusion
+    /// Ring of pixels blitted around each texture region in the atlas to stop
+    /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
+    #[schemars(range(max = 65536))]
+    pub(super) atlas_extrusion: Option<u32>,
+    /// # Wrap Tolerance
+    /// How far outside 0-1 a texture coordinate may stray and still be clamped as
+    /// dataset drift. Past it the texture is taken to tile and is given an atlas
+    /// page of its own so the sampler can repeat it. Defaults to 0.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub(super) wrap_tolerance: Option<f64>,
+    /// # Texture Codec
+    /// Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select
+    /// `Untextured` to attach no textures.
+    #[serde(default)]
+    pub(super) texture_codec: TextureCodec,
+    /// # Schema Key
+    /// Attribute key whose value identifies the schema type and determines the
+    /// output filename: all features sharing the same value are written to the
+    /// same file. This attribute is excluded from output.
+    pub(super) schema_key: Option<String>,
+    /// # Array/Map Separator
+    /// Separator joining a nested array or map attribute to its child key or
+    /// index when flattening it into metadata columns. Leave unset to drop array
+    /// and map attributes from the output entirely.
+    pub(super) array_map_separator: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: rhai::AST,
-    pub(super) min_zoom: u8,
-    pub(super) max_zoom: u8,
-    pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) chunk_by_attribute: Option<String>,
+    pub(super) target_tile_size: Option<u64>,
+    pub(super) compute_flat_normal: bool,
+    pub(super) texel_size: Option<f64>,
+    pub(super) atlas_size: Option<u32>,
+    pub(super) atlas_extrusion: Option<u32>,
+    pub(super) wrap_tolerance: Option<f64>,
+    pub(super) texture_codec: TextureCodec,
+    pub(super) schema_key: Option<String>,
+    pub(super) array_map_separator: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -392,189 +484,107 @@ impl Cesium3DTilesWriter {
         output: &Uri,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<()> {
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
-        let mut schema: Schema = self.schema.clone();
-        for (feature_type, upstream) in upstream {
-            let Some(feature) = upstream.first() else {
-                continue;
-            };
-            if !schema.types.contains_key(feature_type) {
-                let typedef: TypeDef = feature.into();
-                schema.types.insert(feature_type.clone(), typedef);
-            }
-            features.extend(upstream.clone().into_iter());
+        for (_, upstream) in upstream {
+            features.extend(upstream.clone());
         }
 
-        let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
-        let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
-        let min_zoom = self.params.min_zoom;
-        let max_zoom = self.params.max_zoom;
+        let options = super::builder::MetadataOptions {
+            schema_key: self.params.schema_key.as_deref(),
+            skip_unexposed_attributes: self.params.skip_unexposed_attributes,
+            array_map_separator: self.params.array_map_separator.as_deref(),
+        };
+        let render = super::builder::RenderOptions {
+            draco: self.params.draco_compression.unwrap_or(true),
+            compute_flat_normal: self.params.compute_flat_normal,
+            texel_size: self.params.texel_size.unwrap_or(0.0),
+            atlas_size: self.params.atlas_size.unwrap_or(2048),
+            atlas_extrusion: self.params.atlas_extrusion.unwrap_or(0),
+            wrap_tolerance: self.params.wrap_tolerance.unwrap_or(0.0),
+            texture_codec: self.params.texture_codec,
+        };
+        let target_tile_size = self.params.target_tile_size.unwrap_or(1_048_576);
 
-        std::thread::scope(|s| {
-            {
-                let ctx = ctx.clone();
-                s.spawn(move || {
-                    let now = time::Instant::now();
-                    let result = super::pipeline::geometry_slicing_stage(
-                        &features,
-                        tile_id_conv,
-                        sender_sliced,
-                        min_zoom,
-                        max_zoom,
-                        attach_texture,
-                    );
-                    if let Err(e) = &result {
-                        ctx.event_hub.error_log(
-                            None,
-                            format!("Failed to geometry_slicing_stage with error = {e:?}"),
-                        );
-                        ctx.event_hub.send(Event::SinkFinishFailed {
-                            name: "geometry_slicing_stage".to_string(),
-                        });
-                    }
-                    ctx.event_hub.info_log(
-                        None,
-                        format!(
-                            "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
-                            features.len(),
-                            now.elapsed(),
-                            output
-                        ),
-                    );
-                });
-            }
-            {
-                let ctx = ctx.clone();
-                s.spawn(move || {
-                    let now = time::Instant::now();
-                    let result =
-                        super::pipeline::feature_sorting_stage(receiver_sliced, sender_sorted);
-                    if let Err(e) = &result {
-                        ctx.event_hub.error_log(
-                            None,
-                            format!("Failed to feature_sorting_stage with error = {e:?}"),
-                        );
-                        ctx.event_hub.send(Event::SinkFinishFailed {
-                            name: "feature_sorting_stage".to_string(),
-                        });
-                    }
-                    ctx.event_hub.info_log(
-                        None,
-                        format!(
-                            "Finish feature_sorting_stage. elapsed = {:?}, output = {}",
-                            now.elapsed(),
-                            output
-                        ),
-                    );
-                });
-            }
-            {
-                let ctx = ctx.clone();
-                let schema = schema.clone();
-                s.spawn(move || {
-                    let pool = rayon::ThreadPoolBuilder::new()
-                        .use_current_thread()
-                        .build()
-                        .unwrap();
-                    pool.install(|| {
-                        let now = time::Instant::now();
-                        let result = super::pipeline::tile_writing_stage(
-                            ctx.clone(),
-                            output.clone(),
-                            receiver_sorted,
-                            tile_id_conv,
-                            &schema,
-                            self.params.draco_compression.unwrap_or(true),
-                        );
-                        if let Err(e) = &result {
-                            let ctx = ctx.clone();
-                            ctx.event_hub.error_log(
-                                None,
-                                format!("Failed to tile_writing_stage with error = {e:?}"),
-                            );
-                            ctx.event_hub.send(Event::SinkFinishFailed {
-                                name: "tile_writing_stage".to_string(),
-                            });
-                        }
-                        ctx.event_hub.info_log(
-                            None,
-                            format!(
-                                "Finish tile_writing_stage. elapsed = {:?}, output = {}",
-                                now.elapsed(),
-                                output
-                            ),
-                        );
+        let storage = ctx
+            .storage_resolver
+            .resolve(output)
+            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+        let write_tile = |relative_path: String, bytes: Vec<u8>| -> crate::errors::Result<()> {
+            let path = output.path().join(std::path::Path::new(&relative_path));
+            storage
+                .put_sync(std::path::Path::new(&path), bytes::Bytes::from(bytes))
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+        };
 
-                        if let Some(compress_output) = compress_output {
-                            if let Ok(storage) = ctx.storage_resolver.resolve(compress_output) {
-                                let now = time::Instant::now();
-                                let buffer = Vec::new();
-                                let mut cursor = Cursor::new(buffer);
-                                let writer = BufWriter::new(&mut cursor);
-                                let zip_result = reearth_flow_common::zip::write(
-                                    writer,
-                                    output.path().as_path(),
-                                )
-                                .map_err(|e| {
-                                    crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
-                                });
-                                match zip_result {
-                                    Ok(_) => {
-                                        match storage
-                                            .put_sync(
-                                                compress_output.path().as_path(),
-                                                bytes::Bytes::from(cursor.into_inner()),
-                                            )
-                                            .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                                        {
-                                            Ok(_) => {
-                                                match std::fs::remove_dir_all(
-                                                    output.path().as_path(),
-                                                ) {
-                                                    Ok(_) => {}
-                                                    Err(e) => {
-                                                        ctx.event_hub.error_log(
-                                                            None,
-                                                            format!(
-                                                    "Failed to remove directory with error = {e:?}"
-                                                ),
-                                                        );
-                                                    }
-                                                }
-                                            }
-                                            Err(e) => {
-                                                ctx.event_hub.error_log(
-                                                    None,
-                                                    format!(
-                                                    "Failed to write zip file with error = {e:?}"
-                                                ),
-                                                );
-                                            }
-                                        }
-                                    }
-                                    Err(e) => {
-                                        ctx.event_hub.error_log(
-                                            None,
-                                            format!("Failed to write zip file with error = {e:?}"),
-                                        );
-                                    }
+        let now = time::Instant::now();
+        let built = super::builder::build(&features, options, target_tile_size, render, write_tile)?;
+        for (relative_path, bytes) in built.subtrees {
+            write_tile(relative_path, bytes)?;
+        }
+        write_tile("tileset.json".to_string(), built.tileset_json.into_bytes())?;
+        ctx.event_hub.info_log(
+            None,
+            format!(
+                "Finish Cesium3DTilesWriter. feature length = {}, tile count = {}, elapsed = {:?}, output = {}",
+                features.len(),
+                built.tile_count,
+                now.elapsed(),
+                output
+            ),
+        );
+
+        if let Some(compress_output) = compress_output {
+            if let Ok(storage) = ctx.storage_resolver.resolve(compress_output) {
+                let now = time::Instant::now();
+                let buffer = Vec::new();
+                let mut cursor = Cursor::new(buffer);
+                let writer = BufWriter::new(&mut cursor);
+                let zip_result =
+                    reearth_flow_common::zip::write(writer, output.path().as_path()).map_err(
+                        |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
+                    );
+                match zip_result {
+                    Ok(_) => {
+                        match storage
+                            .put_sync(
+                                compress_output.path().as_path(),
+                                bytes::Bytes::from(cursor.into_inner()),
+                            )
+                            .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                        {
+                            Ok(_) => {
+                                if let Err(e) = std::fs::remove_dir_all(output.path().as_path()) {
+                                    ctx.event_hub.error_log(
+                                        None,
+                                        format!("Failed to remove directory with error = {e:?}"),
+                                    );
                                 }
-                                ctx.event_hub.info_log(
+                            }
+                            Err(e) => {
+                                ctx.event_hub.error_log(
                                     None,
-                                    format!(
-                                        "Finish write zip file. elapsed = {:?}, output = {}",
-                                        now.elapsed(),
-                                        output
-                                    ),
+                                    format!("Failed to write zip file with error = {e:?}"),
                                 );
                             }
                         }
-                    });
-                });
+                    }
+                    Err(e) => {
+                        ctx.event_hub.error_log(
+                            None,
+                            format!("Failed to write zip file with error = {e:?}"),
+                        );
+                    }
+                }
+                ctx.event_hub.info_log(
+                    None,
+                    format!(
+                        "Finish write zip file. elapsed = {:?}, output = {}",
+                        now.elapsed(),
+                        output
+                    ),
+                );
             }
-        });
+        }
         Ok(())
     }
 }
