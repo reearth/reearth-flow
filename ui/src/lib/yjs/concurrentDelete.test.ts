@@ -243,3 +243,45 @@ describe("a delete is not undone by a concurrent edit", () => {
     expect(readState(docA).nodes).toEqual([]);
   });
 });
+
+describe("auto-layout", () => {
+  test("resizes a batch group to fit its newly laid out children", () => {
+    // autoLayout returns a recomputed style for any node with children. It has
+    // to be written alongside the position it was computed with, or the group
+    // box keeps its old size while the children move to fit the new one.
+    const doc = new Y.Doc();
+    doc.getMap<YWorkflow>("workflows").set(
+      "main",
+      yWorkflowConstructor(
+        "main",
+        "Main",
+        [
+          {
+            id: "batch",
+            type: "batch",
+            position: { x: 0, y: 0 },
+            style: { width: "300px", height: "200px" },
+            data: { officialName: "Batch" },
+          },
+          { ...transformer("a"), parentId: "batch" },
+          { ...transformer("b"), parentId: "batch" },
+          { ...transformer("c"), parentId: "batch" },
+        ],
+        [edgeBetween("a-b", "a", "b"), edgeBetween("b-c", "b", "c")],
+      ),
+    );
+
+    clientFor(doc).handleYLayoutChange("dagre", "Horizontal", false);
+
+    const yWorkflow = doc.getMap<YWorkflow>("workflows").get("main");
+    const nodes = rebuildWorkflow(yWorkflow as YWorkflow).nodes as Node[];
+    const batch = nodes.find((n) => n.id === "batch");
+    const children = nodes.filter((n) => n.parentId === "batch");
+
+    const width = parseFloat(batch?.style?.width as string);
+    const rightmost = Math.max(...children.map((n) => n.position.x));
+
+    expect(width).toBeGreaterThan(300);
+    expect(rightmost).toBeLessThan(width);
+  });
+});

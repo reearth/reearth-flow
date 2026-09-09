@@ -664,6 +664,12 @@ export default ({
       undoTrackerActionWrapper,
     ],
   );
+  // Despite the name this only ever CREATES: its one caller (canvas paste)
+  // regenerates every id before calling it, so the `set` below always lands on
+  // a key that does not exist yet. Do not reuse it to change an existing
+  // workflow - a `set` over a live key beats a concurrent delete and would
+  // resurrect a graph another client just removed. To update, mutate in place
+  // the way conversions/yUpdaters.ts does.
   const handleYWorkflowUpdate = useCallback(
     (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
       undoTrackerActionWrapper(() => {

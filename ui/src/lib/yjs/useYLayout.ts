@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { Algorithm, Direction, Edge, Node, Workflow } from "@flow/types";
 import { autoLayout } from "@flow/utils/autoLayout";
 
-import { updateYNodePosition } from "./conversions";
+import { updateYNodePosition, updateYNodeStyleSize } from "./conversions";
 import { YNodesMap, YWorkflow } from "./types";
 
 export default ({
@@ -46,6 +46,7 @@ export default ({
             const yNode = yNodes.get(n.id);
             if (!yNode) return;
             updateYNodePosition(yNode, n.position);
+            updateYNodeStyleSize(yNode, n.style);
           });
         });
       });

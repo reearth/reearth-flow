@@ -3,11 +3,11 @@ import * as Y from "yjs";
 
 import type { Node } from "@flow/types";
 
+import type { YNodesMap, YWorkflow } from "../types";
+
 import { rebuildWorkflow } from "./rebuildWorkflow";
 import { updateYNode } from "./yUpdaters";
 import { yWorkflowConstructor } from "./yWorkflowConstructor";
-
-import type { YNodesMap, YWorkflow } from "../types";
 
 const batchNode = (style?: { width: string; height: string }): Node => ({
   id: "batch-1",

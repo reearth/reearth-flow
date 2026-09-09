@@ -72,6 +72,15 @@ export const updateYNodePosition = (
   position: { x: number; y: number },
 ) => updateNestedMap(yNode, "position", { x: position.x, y: position.y });
 
+export const updateYNodeStyleSize = (
+  yNode: YNode,
+  style?: { width?: string | number; height?: string | number },
+) =>
+  updateNestedMap(yNode, "style", {
+    width: style?.width,
+    height: style?.height,
+  });
+
 const toYPseudoPorts = (ports?: { nodeId: string; portName: string }[]) =>
   toYjsArray(
     ports?.map((port) => {
@@ -130,9 +139,6 @@ export const updateYNode = (yNode: YNode, node: Node) => {
     width: node.measured?.width ?? 0,
     height: node.measured?.height ?? 0,
   });
-  updateNestedMap(yNode, "style", {
-    width: node.style?.width,
-    height: node.style?.height,
-  });
+  updateYNodeStyleSize(yNode, node.style);
   updateYNodeData(yNode, node);
 };
