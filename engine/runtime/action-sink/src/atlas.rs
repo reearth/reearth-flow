@@ -164,6 +164,7 @@ fn finalize_texture_materials(
         texture_materials.push(TextureInput {
             path: pending.path,
             uvs: pending.uvs,
+            scale: 1.0,
         });
         path_to_mat_idx.insert(path_str, mat_idx);
     }
