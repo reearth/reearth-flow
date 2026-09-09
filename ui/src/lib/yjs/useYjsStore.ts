@@ -47,7 +47,6 @@ export default ({
     yWorkflows,
     currentWorkflowId,
     undoTrackerActionWrapper,
-    rawWorkflows,
   });
 
   const {

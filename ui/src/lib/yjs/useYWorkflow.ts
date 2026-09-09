@@ -28,7 +28,6 @@ export default ({
   yWorkflows,
   currentWorkflowId,
   undoTrackerActionWrapper,
-  rawWorkflows,
 }: {
   yWorkflows: YMap<YWorkflow>;
   currentWorkflowId: string;
@@ -36,11 +35,20 @@ export default ({
     callback: () => void,
     originPrepend?: string,
   ) => void;
-  rawWorkflows: Workflow[];
 }) => {
   const t = useT();
   const { api } = config();
   const currentYWorkflow = yWorkflows.get(currentWorkflowId);
+
+  // This hook deliberately takes no workflow snapshot. Both handlers below
+  // write after awaiting a network call, so anything derived from a render-time
+  // snapshot could be out of date by the time the transaction runs. Read from
+  // the document instead, inside the transaction.
+  const readLiveWorkflows = useCallback(
+    (): Workflow[] =>
+      Array.from(yWorkflows.values()).map((yw) => rebuildWorkflow(yw)),
+    [yWorkflows],
+  );
 
   const fetchRouterConfigs = useCallback(async () => {
     const [inputRouter, outputRouter] = await Promise.all([
@@ -56,13 +64,15 @@ export default ({
       workflowName: string,
       position: XYPosition,
       routers: { inputRouter: Action; outputRouter: Action },
+      // Resolved by the caller from live document state, inside the
+      // transaction - never from a snapshot captured before an await.
+      parentPath: string,
       initialNodes?: Node[],
       initialEdges?: Edge[],
       needsDefaultRouters?: boolean,
     ) => {
       const { inputRouter, outputRouter } = routers;
 
-      const parentPath = computeWorkflowPath(rawWorkflows, currentWorkflowId);
       const newSubworkflowPath = parentPath
         ? `${parentPath}.${workflowId}`
         : workflowId;
@@ -129,13 +139,30 @@ export default ({
 
       return { newYWorkflow, newSubworkflowNode };
     },
-    [rawWorkflows, currentWorkflowId],
+    [],
   );
 
   const handleYWorkflowAdd = useCallback(
     async (position: XYPosition = { x: 600, y: 200 }) => {
       try {
         const routers = await fetchRouterConfigs();
+
+        // Read the document after the await but before opening the
+        // transaction. Nothing can change in between - there is no further
+        // await - so this is as current as reading inside it, and it keeps
+        // rebuildWorkflow, which throws on a corrupt node, outside a
+        // transaction that would otherwise be left half applied.
+        const parentWorkflow = yWorkflows.get(currentWorkflowId);
+        if (!parentWorkflow) return;
+        const parentWorkflowNodes = parentWorkflow.get("nodes") as
+          | YNodesMap
+          | undefined;
+        if (!parentWorkflowNodes) return;
+        const parentPath = computeWorkflowPath(
+          readLiveWorkflows(),
+          currentWorkflowId,
+        );
+
         undoTrackerActionWrapper(() => {
           const workflowId = generateUUID();
           const workflowName = t("Subworkflow");
@@ -145,13 +172,10 @@ export default ({
             workflowName,
             position,
             routers,
+            parentPath,
           );
 
-          const parentWorkflow = currentYWorkflow;
-          const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-            | YNodesMap
-            | undefined;
-          parentWorkflowNodes?.set(workflowId, newSubworkflowNode);
+          parentWorkflowNodes.set(workflowId, newSubworkflowNode);
 
           yWorkflows.set(workflowId, newYWorkflow);
         });
@@ -162,9 +186,10 @@ export default ({
     },
     [
       yWorkflows,
-      currentYWorkflow,
+      currentWorkflowId,
       t,
       createYWorkflow,
+      readLiveWorkflows,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
     ],
@@ -174,19 +199,27 @@ export default ({
     async (snapshotNodes: Node[], snapshotEdges: Edge[]) => {
       try {
         const routers = await fetchRouterConfigs();
+
+        // Read the document after the await but before opening the
+        // transaction. Nothing can change in between - there is no further
+        // await - so this is as current as reading inside it, and it keeps
+        // rebuildWorkflow, which throws on a corrupt node, outside a
+        // transaction that would otherwise be left half applied.
+        const parentWorkflow = yWorkflows.get(currentWorkflowId);
+        if (!parentWorkflow) return;
+
+        const liveWorkflows = readLiveWorkflows();
+        const live = rebuildWorkflow(parentWorkflow);
+
+        const selectedIds = new Set(
+          snapshotNodes.filter((n) => n.selected).map((n) => n.id),
+        );
+        const nodes = ((live.nodes as Node[] | undefined) ?? snapshotNodes).map(
+          (n) => ({ ...n, selected: selectedIds.has(n.id) }),
+        );
+        const edges = (live.edges as Edge[] | undefined) ?? snapshotEdges;
+
         undoTrackerActionWrapper(() => {
-          const live = currentYWorkflow
-            ? rebuildWorkflow(currentYWorkflow)
-            : undefined;
-
-          const selectedIds = new Set(
-            snapshotNodes.filter((n) => n.selected).map((n) => n.id),
-          );
-          const nodes = (
-            (live?.nodes as Node[] | undefined) ?? snapshotNodes
-          ).map((n) => ({ ...n, selected: selectedIds.has(n.id) }));
-          const edges = (live?.edges as Edge[] | undefined) ?? snapshotEdges;
-
           const selectedNodes = nodes.filter((n) => n.selected);
           if (selectedNodes.length === 0) return;
 
@@ -232,7 +265,7 @@ export default ({
           const workflowName = t("Subworkflow");
 
           const parentPath = computeWorkflowPath(
-            rawWorkflows,
+            liveWorkflows,
             currentWorkflowId,
           );
           const subworkflowNodePath = parentPath
@@ -529,16 +562,16 @@ export default ({
             workflowName,
             position,
             routers,
+            parentPath,
             allSubworkflowNodes,
             allSubworkflowEdges,
             needsDefaultRouters,
           );
 
-          const parentWorkflow = currentYWorkflow;
-          const parentWorkflowNodesMap = parentWorkflow?.get("nodes") as
+          const parentWorkflowNodesMap = parentWorkflow.get("nodes") as
             | YNodesMap
             | undefined;
-          const parentWorkflowEdgesMap = parentWorkflow?.get("edges") as
+          const parentWorkflowEdgesMap = parentWorkflow.get("edges") as
             | YEdgesMap
             | undefined;
 
@@ -623,11 +656,10 @@ export default ({
     },
     [
       yWorkflows,
-      currentYWorkflow,
       currentWorkflowId,
-      rawWorkflows,
       t,
       createYWorkflow,
+      readLiveWorkflows,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
     ],

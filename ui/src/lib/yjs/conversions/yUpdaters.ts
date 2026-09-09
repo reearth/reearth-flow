@@ -39,6 +39,18 @@ const updateNestedMap = (
   key: string,
   values: Record<string, unknown>,
 ) => {
+  const hasAnyValue = Object.values(values).some(
+    (v) => v !== null && v !== undefined,
+  );
+
+  // An empty nested map is not the same as an absent one: readers treat the map
+  // being present as a promise that its fields are there, so emptying it in
+  // place would leave a node that cannot be reassembled. Drop the whole key.
+  if (!hasAnyValue) {
+    if (parent.has(key)) parent.delete(key);
+    return;
+  }
+
   const existing = parent.get(key) as Y.Map<any> | undefined;
   if (!(existing instanceof Y.Map)) {
     setOrDelete(parent, key, toYjsMap(values));

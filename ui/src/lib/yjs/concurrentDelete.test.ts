@@ -68,7 +68,6 @@ const clientFor = (doc: Y.Doc, currentWorkflowId = "main") => {
     useYWorkflow({
       yWorkflows,
       currentWorkflowId,
-      rawWorkflows,
       undoTrackerActionWrapper,
     }),
   ).result.current;
@@ -174,7 +173,7 @@ describe("a delete is not undone by a concurrent edit", () => {
     a.handleYNodesChange([{ id: "b", type: "remove" }]);
 
     // Auto-layout rewrites the position of every node in the workflow.
-    b.handleYLayoutChange("dagre" as any, "horizontal" as any, false);
+    b.handleYLayoutChange("dagre", "Horizontal", false);
 
     merge();
 
@@ -207,7 +206,7 @@ describe("a delete is not undone by a concurrent edit", () => {
 
     // Deleting the node also removes its graph - two writes, two keys.
     a.handleYNodesChange([{ id: "sub-1", type: "remove" }]);
-    b.handleYLayoutChange("dagre" as any, "horizontal" as any, false);
+    b.handleYLayoutChange("dagre", "Horizontal", false);
 
     merge();
 

@@ -11,7 +11,7 @@ import type {
 } from "@flow/types";
 
 import { updateYNode, yNodeConstructor } from "./conversions";
-import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
+import type { YEdgesMap, YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 import { computeWorkflowPath } from "./utils/computeWorkflowPath";
@@ -157,8 +157,13 @@ export default ({
   handleYNodesChangeRef.current = (changes: NodeChange[]) => {
     const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
     if (!yNodes) return;
+    const yEdges = currentYWorkflow?.get("edges") as YEdgesMap | undefined;
 
     undoTrackerActionWrapper(() => {
+      // Collected while iterating and deleted afterwards - mutating a Y.Map
+      // during its own forEach is not safe.
+      const orphanedEdgeKeys: string[] = [];
+
       changes.forEach((change) => {
         switch (change.type) {
           case "position": {
@@ -262,6 +267,14 @@ export default ({
               });
 
               yNodes.delete(change.id);
+
+              yEdges?.forEach((yEdge, edgeKey) => {
+                const source = yEdge.get("source")?.toString();
+                const target = yEdge.get("target")?.toString();
+                if (source === change.id || target === change.id) {
+                  orphanedEdgeKeys.push(edgeKey);
+                }
+              });
             }
             break;
           }
@@ -277,6 +290,8 @@ export default ({
           }
         }
       });
+
+      orphanedEdgeKeys.forEach((edgeKey) => yEdges?.delete(edgeKey));
     });
   };
   const handleYNodesChange = useCallback(
