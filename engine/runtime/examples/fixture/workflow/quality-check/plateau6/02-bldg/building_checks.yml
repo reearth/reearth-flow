@@ -1100,9 +1100,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_invalid_building_id_format", 0)
-        # TODO: wire to the L-bldg-02 BuildingPart-connectivity pipeline once an
-        # upstream action can record, per BuildingPart, the gml:ids it shares a
-        # boundary polygon with.
+        # Wired to the L-bldg-02 BuildingPart-connectivity pipeline
+        # (CountLbldg02Errors).
         - attribute: "L-bldg-02 エラー"
           expr:
             type: flowExpr
@@ -2989,11 +2988,139 @@ nodes:
     type: subGraph
     subGraphId: b1000000-0000-4000-8000-000000000000
 
-  # TODO: add the L-bldg-02 check (LOD2/LOD3 BuildingPart connectivity) once an
-  # upstream action can pair up near-identical polygons and record, per
-  # BuildingPart, the gml:ids it shares a boundary polygon with.
-  # PLATEAU6.TransitiveLinkResolver consumes that link list and reads no
-  # geometry itself, so it is the producer that is still missing.
+  # --- L-bldg-02: LOD2/LOD3 BuildingPart connectivity ---
+  # Two BuildingParts of one Building are connected when they share a boundary
+  # surface. The chain below takes each part apart into its surfaces, pairs the
+  # surfaces that occupy the same space, and hands the resulting part-to-part
+  # links to the resolver, which decides whether the Building's parts hang
+  # together. CityGML 3.0 has no LOD4, so only lod2 and lod3 feed this chain.
+  - id: c1b00090-0000-4000-8000-000000000090
+    name: BuildingPartSurfaceCoercer
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: c1b00091-0000-4000-8000-000000000091
+    name: BuildingPartSurfaceSplitter
+    type: action
+    action: Geometry Splitter
+
+  # Surfaces occupying the same space name each other's BuildingPart. The
+  # tolerance is one millimetre in the plane rectangular CS the geometry has been
+  # reprojected into, which absorbs rounding without joining distinct surfaces.
+  # The rejected port stays unconnected: the coercer above guarantees polygons,
+  # so nothing reaches it.
+  - id: c1b00092-0000-4000-8000-000000000092
+    name: BuildingPartSurfaceIdentifier
+    type: action
+    action: Geometry Identifier
+    with:
+      tolerance: 0.001
+      groupBy:
+        - index
+        - name
+        - __citygml_parent_gml_id
+        - lod
+      idAttribute: __citygml_gml_id
+      matchedIdsAttribute: _shared_part_ids
+
+  - id: c1b00093-0000-4000-8000-000000000093
+    name: TransitiveLinkResolver
+    type: action
+    action: PLATEAU6.TransitiveLinkResolver
+    with:
+      idAttribute: __citygml_gml_id
+      linkedIdsAttribute: _shared_part_ids
+      groupBy:
+        - index
+        - name
+        - __citygml_parent_gml_id
+        - lod
+
+  # Every surface of a BuildingPart carries the same verdict; keep one per part.
+  - id: c1b00094-0000-4000-8000-000000000094
+    name: DeduplicateBuildingParts
+    type: action
+    action: Feature Duplicate Filter
+    with:
+      filterBy:
+        - index
+        - name
+        - __citygml_parent_gml_id
+        - lod
+        - __citygml_gml_id
+
+  # A part whose Building's parts do not all hang together is the error.
+  - id: c1b00095-0000-4000-8000-000000000095
+    name: FilterNonFullStatus
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_status"] != "full"
+          outputPort: filtered
+
+  - id: c1b00096-0000-4000-8000-000000000096
+    name: CountLbldg02Errors
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lbldg02_error
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: c1b00097-0000-4000-8000-000000000097
+    name: AttributeMapperLbldg02Output
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: Building.gml_id
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: BuildingPart.gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: status
+          valueAttribute: _status
+        - attribute: connected_id
+          valueAttribute: _connected_id
+        - attribute: connected_parts
+          valueAttribute: _connected_parts
+
+  - id: c1b00098-0000-4000-8000-000000000098
+    name: FeatureWriterLbldg02Errors
+    type: action
+    action: Feature Writer
+    with:
+      format: csv
+      output:
+        type: string
+        value: 02_建築物_L-bldg-02エラー.csv
+
+  # Join the per-file L-bldg-02 error count onto each file feature.
+  - id: c1b00099-0000-4000-8000-000000000099
+    name: Lbldg02SummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
 
   # --- Z-bldg-03 mesh-code (figure boundary) pipeline ---
   # Taps the reprojected LOD0 footprints (already forced to 2D by TwoDimensionForcer)
@@ -4691,14 +4818,90 @@ edges:
     to: c1b00083-0000-4000-8000-000000000083
     fromPort: features
     toPort: supplier
-  # Z-bldg-04 summary merger output -> building summary mapper.
+  # Z-bldg-04 summary merger output -> L-bldg-02 summary merger (requestor).
   - id: c1b0e086-0000-4000-8000-000000000086
     from: c1b00083-0000-4000-8000-000000000083
+    to: c1b00099-0000-4000-8000-000000000099
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e087-0000-4000-8000-000000000087
+    from: c1b00083-0000-4000-8000-000000000083
+    to: c1b00099-0000-4000-8000-000000000099
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- L-bldg-02 BuildingPart connectivity edges ---
+  # LOD2 / LOD3 BuildingParts from the dedicated LodSplitter -> surface coercer.
+  - id: c1b0e090-0000-4000-8000-000000000090
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00090-0000-4000-8000-000000000090
+    fromPort: lod2
+    toPort: features
+  - id: c1b0e091-0000-4000-8000-000000000091
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00090-0000-4000-8000-000000000090
+    fromPort: lod3
+    toPort: features
+  - id: c1b0e092-0000-4000-8000-000000000092
+    from: c1b00090-0000-4000-8000-000000000090
+    to: c1b00091-0000-4000-8000-000000000091
+    fromPort: features
+    toPort: features
+  - id: c1b0e093-0000-4000-8000-000000000093
+    from: c1b00091-0000-4000-8000-000000000091
+    to: c1b00092-0000-4000-8000-000000000092
+    fromPort: features
+    toPort: features
+  - id: c1b0e094-0000-4000-8000-000000000094
+    from: c1b00092-0000-4000-8000-000000000092
+    to: c1b00093-0000-4000-8000-000000000093
+    fromPort: features
+    toPort: features
+  - id: c1b0e095-0000-4000-8000-000000000095
+    from: c1b00093-0000-4000-8000-000000000093
+    to: c1b00094-0000-4000-8000-000000000094
+    fromPort: features
+    toPort: features
+  - id: c1b0e096-0000-4000-8000-000000000096
+    from: c1b00094-0000-4000-8000-000000000094
+    to: c1b00095-0000-4000-8000-000000000095
+    fromPort: features
+    toPort: features
+  # Non-full parts -> counter and CSV writer.
+  - id: c1b0e097-0000-4000-8000-000000000097
+    from: c1b00095-0000-4000-8000-000000000095
+    to: c1b00096-0000-4000-8000-000000000096
+    fromPort: filtered
+    toPort: features
+  - id: c1b0e098-0000-4000-8000-000000000098
+    from: c1b00095-0000-4000-8000-000000000095
+    to: c1b00097-0000-4000-8000-000000000097
+    fromPort: filtered
+    toPort: features
+  - id: c1b0e099-0000-4000-8000-000000000099
+    from: c1b00097-0000-4000-8000-000000000097
+    to: c1b00098-0000-4000-8000-000000000098
+    fromPort: features
+    toPort: features
+  - id: c1b0e09a-0000-4000-8000-00000000009a
+    from: c1b00098-0000-4000-8000-000000000098
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # Counter.default (per-file total) -> L-bldg-02 summary merger (supplier).
+  - id: c1b0e09b-0000-4000-8000-00000000009b
+    from: c1b00096-0000-4000-8000-000000000096
+    to: c1b00099-0000-4000-8000-000000000099
+    fromPort: features
+    toPort: supplier
+  # L-bldg-02 summary merger output -> building summary mapper.
+  - id: c1b0e09c-0000-4000-8000-00000000009c
+    from: c1b00099-0000-4000-8000-000000000099
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: features
-  - id: c1b0e087-0000-4000-8000-000000000087
-    from: c1b00083-0000-4000-8000-000000000083
+  - id: c1b0e09d-0000-4000-8000-00000000009d
+    from: c1b00099-0000-4000-8000-000000000099
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: features
