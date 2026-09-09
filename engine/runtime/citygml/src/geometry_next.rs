@@ -18,7 +18,7 @@ use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
-use super::parser::{raw_gml_id, CityGmlVersion, Parser, RawChild, RawNode};
+use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
 use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 
@@ -525,7 +525,7 @@ fn text_content(node: &RawNode) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{Parser, ParserOutput};
+    use crate::parser::{CityGmlVersion, Parser, ParserOutput};
     use crate::resolver::{resolve_root_bare, GeomRegistry};
     use url::Url;
 
