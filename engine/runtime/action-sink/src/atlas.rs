@@ -7,7 +7,7 @@ use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
 use image::ImageFormat;
 use indexmap::IndexSet;
-use reearth_flow_atlas::{build_atlas, TextureInput};
+use reearth_flow_atlas::{build_atlas_multipage, MultiPageAtlas, TextureCache, TextureInput};
 use reearth_flow_gltf::{calculate_normal, Primitives};
 use reearth_flow_types::{
     material::{self, Material},
@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 
 const DEFAULT_MAX_ATLAS_SIZE: u32 = 8192;
+const DEFAULT_EXTRUSION: u32 = 1;
 
 type PolygonUVs = reearth_flow_atlas::PolygonUVs;
 type PolyAtlasIndex = Vec<Vec<Option<(usize, usize)>>>;
@@ -55,14 +56,13 @@ pub fn build_atlas_geometry(
         return Ok(());
     }
 
-    let (atlas, atlas_uri) =
-        build_atlas_artifacts(&texture_materials, atlas_dir, image_format, ext)?;
+    let (atlas, page_uris) = build_atlas_pages(&texture_materials, atlas_dir, image_format, ext)?;
 
     emit_atlas_geometry(
         features,
         &poly_index,
         Some(&atlas),
-        Some(&atlas_uri),
+        Some(&page_uris),
         primitives,
         vertices,
     );
@@ -191,33 +191,45 @@ fn finalize_poly_index(
         .collect()
 }
 
-fn build_atlas_artifacts(
+fn build_atlas_pages(
     texture_materials: &[TextureInput],
     atlas_dir: &Path,
     image_format: ImageFormat,
     ext: &str,
-) -> crate::errors::Result<(reearth_flow_atlas::BuiltAtlas, Url)> {
-    let atlas = build_atlas(texture_materials, DEFAULT_MAX_ATLAS_SIZE)
-        .map_err(crate::errors::SinkError::atlas_builder)?
-        .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;
+) -> crate::errors::Result<(MultiPageAtlas, Vec<Url>)> {
+    let atlas = build_atlas_multipage(
+        texture_materials,
+        DEFAULT_MAX_ATLAS_SIZE,
+        DEFAULT_EXTRUSION,
+        1,
+        0.0,
+        &mut TextureCache::default(),
+    )
+    .map_err(crate::errors::SinkError::atlas_builder)?
+    .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;
 
-    let atlas_path = atlas_dir.join("0").with_extension(ext);
-    atlas
-        .image
-        .save_with_format(&atlas_path, image_format)
-        .map_err(crate::errors::SinkError::atlas_builder)?;
+    let page_uris = atlas
+        .pages
+        .iter()
+        .enumerate()
+        .map(|(i, page)| {
+            let page_path = atlas_dir.join(i.to_string()).with_extension(ext);
+            page.save_with_format(&page_path, image_format)
+                .map_err(crate::errors::SinkError::atlas_builder)?;
+            Url::from_file_path(&page_path).map_err(|_| {
+                crate::errors::SinkError::atlas_builder("failed to create atlas file URI")
+            })
+        })
+        .collect::<crate::errors::Result<Vec<_>>>()?;
 
-    let atlas_uri = Url::from_file_path(&atlas_path)
-        .map_err(|_| crate::errors::SinkError::atlas_builder("failed to create atlas file URI"))?;
-
-    Ok((atlas, atlas_uri))
+    Ok((atlas, page_uris))
 }
 
 fn emit_atlas_geometry(
     features: &[&GltfFeature],
     poly_index: &PolyAtlasIndex,
-    atlas: Option<&reearth_flow_atlas::BuiltAtlas>,
-    atlas_uri: Option<&Url>,
+    atlas: Option<&MultiPageAtlas>,
+    page_uris: Option<&[Url]>,
     primitives: &mut Primitives,
     vertices: &mut IndexSet<[u32; 9], RandomState>,
 ) {
@@ -229,16 +241,17 @@ fn emit_atlas_geometry(
             .map(|(poly, mat_id)| (feature.materials[*mat_id as usize].clone(), poly))
             .enumerate()
         {
-            let remapped_uvs = poly_index[feature_id][poly_idx]
-                .and_then(|(mi, pi)| atlas.as_ref()?.remapped_uvs.get(mi).map(|uvs| &uvs[pi]));
-            if remapped_uvs.is_some() {
-                if let Some(uri) = atlas_uri {
+            let placement = poly_index[feature_id][poly_idx]
+                .and_then(|(mi, pi)| atlas.as_ref()?.remapped.get(mi)?.get(pi));
+            if let Some(placement) = placement {
+                if let Some(uri) = page_uris.and_then(|uris| uris.get(placement.page)) {
                     mat = material::Material {
                         base_color: mat.base_color,
                         base_texture: Some(material::Texture { uri: uri.clone() }),
                     };
                 }
             }
+            let remapped_uvs = placement.map(|p| &p.uvs);
 
             emit_polygon(feature_id, &poly, remapped_uvs, mat, primitives, vertices);
         }
@@ -413,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_atlas_geometry_retries_with_downscaling() {
+    fn test_build_atlas_geometry_spills_to_second_page() {
         let temp_dir = TempDir::new().unwrap();
         let path1 = create_test_texture(temp_dir.path(), "large1.png", 4096, 4096);
         let path2 = create_test_texture(temp_dir.path(), "large2.png", 4096, 4096);
@@ -445,13 +458,16 @@ mod tests {
         )
         .unwrap();
 
-        let atlas = image::open(atlas_dir.join("0.png")).unwrap();
-        assert!(atlas.width() <= DEFAULT_MAX_ATLAS_SIZE);
-        assert!(atlas.height() <= DEFAULT_MAX_ATLAS_SIZE);
+        // Both pages stay full resolution; multipage spills overflow onto a
+        // second page instead of downsampling to fit one.
+        let page0 = image::open(atlas_dir.join("0.png")).unwrap();
+        let page1 = image::open(atlas_dir.join("1.png")).unwrap();
+        assert!(page0.width() <= DEFAULT_MAX_ATLAS_SIZE);
+        assert!(page1.width() <= DEFAULT_MAX_ATLAS_SIZE);
         assert_eq!(
             primitives.len(),
-            1,
-            "retry path should still share one atlas"
+            2,
+            "each texture's full-resolution page becomes its own material"
         );
     }
 
