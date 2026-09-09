@@ -49,6 +49,7 @@ fn make_material(path: PathBuf) -> TextureInput {
     TextureInput {
         path,
         uvs: vec![vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]],
+        scale: 1.0,
     }
 }
 

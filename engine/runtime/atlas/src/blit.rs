@@ -9,7 +9,7 @@ use image::{GenericImage, Rgba, RgbaImage};
 /// Maps texture path → per-region `(src_rect, atlas_placement)` pairs.
 pub(super) type TextureFrames = HashMap<String, Vec<(Rect, Rect)>>;
 
-fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
+pub(crate) fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
     if extrusion == 0 || frame.w == 0 || frame.h == 0 {
         return;
     }
