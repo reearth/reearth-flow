@@ -279,7 +279,10 @@ impl Display for AttributeValue {
                 Ok(())
             }
             AttributeValue::Bytes(v) => write!(f, "{v:?}"),
-            AttributeValue::Map(v) => write!(f, "{v:?}"),
+            AttributeValue::Map(v) => match serde_json::to_string(v) {
+                Ok(json) => write!(f, "{json}"),
+                Err(_) => Err(std::fmt::Error),
+            },
             AttributeValue::DateTime(v) => write!(f, "{}", v.to_rfc3339()),
         }
     }
