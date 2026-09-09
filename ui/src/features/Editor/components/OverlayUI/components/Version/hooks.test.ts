@@ -151,4 +151,94 @@ describe("Version panel hooks", () => {
     });
     expect(calls.saveNamedSnapshot).not.toHaveBeenCalled();
   });
+
+  test("broadcasts the selected snapshot, and clears it when evicted", async () => {
+    const onVersionSnapshotAwareness = vi.fn();
+    const yDoc = new Y.Doc();
+    const { result } = renderHook(() =>
+      useHooks({
+        projectId: "p1",
+        yDoc,
+        onDialogClose: () => {},
+        onVersionSnapshotAwareness,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onSnapshotSelect(2);
+    });
+    expect(onVersionSnapshotAwareness).toHaveBeenCalledWith(2);
+
+    calls.getSnapshotState.mockResolvedValue(undefined);
+    onVersionSnapshotAwareness.mockClear();
+    await act(async () => {
+      await result.current.onSnapshotSelect(3);
+    });
+    expect(onVersionSnapshotAwareness).toHaveBeenLastCalledWith(null);
+  });
+
+  test("clears the broadcast when the dialog unmounts", async () => {
+    const onVersionSnapshotAwareness = vi.fn();
+    const yDoc = new Y.Doc();
+    const { result, unmount } = renderHook(() =>
+      useHooks({
+        projectId: "p1",
+        yDoc,
+        onDialogClose: () => {},
+        onVersionSnapshotAwareness,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.onSnapshotSelect(2);
+    });
+    onVersionSnapshotAwareness.mockClear();
+
+    unmount();
+    expect(onVersionSnapshotAwareness).toHaveBeenCalledWith(null);
+  });
+
+  test("follows the spotlighted user's snapshot selection", async () => {
+    const yDoc = new Y.Doc();
+    const { result, rerender } = renderHook(
+      (props: { isFollowing: boolean; followVersionSnapshot: number | null }) =>
+        useHooks({ projectId: "p1", yDoc, onDialogClose: () => {}, ...props }),
+      {
+        initialProps: {
+          isFollowing: true,
+          followVersionSnapshot: null as number | null,
+        },
+      },
+    );
+
+    expect(result.current.selectedSnapshotNumber).toBeNull();
+
+    await act(async () => {
+      rerender({ isFollowing: true, followVersionSnapshot: 2 });
+    });
+
+    await waitFor(() => expect(result.current.selectedSnapshotNumber).toBe(2));
+    expect(calls.getSnapshotState).toHaveBeenCalledWith("p1", 2);
+  });
+
+  test("does not follow a snapshot when nobody is spotlighted", async () => {
+    const yDoc = new Y.Doc();
+    const { result, rerender } = renderHook(
+      (props: { isFollowing: boolean; followVersionSnapshot: number | null }) =>
+        useHooks({ projectId: "p1", yDoc, onDialogClose: () => {}, ...props }),
+      {
+        initialProps: {
+          isFollowing: false,
+          followVersionSnapshot: null as number | null,
+        },
+      },
+    );
+
+    await act(async () => {
+      rerender({ isFollowing: false, followVersionSnapshot: 2 });
+    });
+
+    expect(result.current.selectedSnapshotNumber).toBeNull();
+    expect(calls.getSnapshotState).not.toHaveBeenCalled();
+  });
 });

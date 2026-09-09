@@ -4,7 +4,15 @@ import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 
-import type { AwarenessSelectionsMap, AwarenessUser, Node } from "@flow/types";
+import type {
+  AwarenessDialog,
+  AwarenessEchoMap,
+  AwarenessNodePicker,
+  AwarenessSelectionsMap,
+  AwarenessSubEditor,
+  AwarenessUser,
+  Node,
+} from "@flow/types";
 
 export default function useAwarenessPresence({
   yAwareness,
@@ -34,6 +42,15 @@ export default function useAwarenessPresence({
     viewport: rawSelf?.viewport,
     currentWorkflowId: rawSelf?.currentWorkflowId,
     selectionRect: rawSelf?.selectionRect ?? undefined,
+    // Carried so the collaboration popover can label your own row the same way
+    // it labels everyone else's.
+    openNodeId: rawSelf?.openNodeId,
+    openSubEditor: rawSelf?.openSubEditor,
+    openDialog: rawSelf?.openDialog,
+    openNodePicker: rawSelf?.openNodePicker,
+    openWorkflowVariablesDialog: rawSelf?.openWorkflowVariablesDialog,
+    selectedVersionSnapshot: rawSelf?.selectedVersionSnapshot,
+    followingClientId: rawSelf?.followingClientId,
   };
 
   const users = Array.from(
@@ -172,6 +189,57 @@ export default function useAwarenessPresence({
     return map;
   }, [rawUsers, yAwareness.clientID]);
 
+  // Generic "who is on this element" channel. One awareness field backs every
+  // surface — dropdowns, list rows, menu items — so adding a new one is a
+  // `useEchoPresence(key, isOpen)` call rather than new plumbing.
+  const activeElementsRef = useRef<Set<string>>(new Set());
+  const setEchoElement = useCallback(
+    (key: string, active: boolean) => {
+      const set = activeElementsRef.current;
+      if (active) {
+        if (set.has(key)) return;
+        set.add(key);
+      } else {
+        if (!set.has(key)) return;
+        set.delete(key);
+      }
+      yAwareness.setLocalStateField(
+        "activeElements",
+        set.size ? Array.from(set) : null,
+      );
+    },
+    [yAwareness],
+  );
+
+  // Same stable-reference treatment as awarenessSelectionsMap: cursor moves
+  // must not invalidate the EditorContext value.
+  const prevEchoKeyRef = useRef("");
+  const awarenessEchoMapRef = useRef<AwarenessEchoMap>({});
+  const awarenessEchoMap = useMemo(() => {
+    let key = "";
+    const map: AwarenessEchoMap = {};
+
+    rawUsers.forEach((state, clientId) => {
+      if (clientId === yAwareness.clientID) return;
+      const user = state as AwarenessUser;
+      if (!user.userName || !user.activeElements?.length) return;
+
+      key += `${clientId}:${user.activeElements.join(",")}|`;
+      user.activeElements.forEach((elementKey: string) => {
+        if (!map[elementKey]) map[elementKey] = [];
+        map[elementKey].push({ color: user.color, userName: user.userName });
+      });
+    });
+
+    if (key === prevEchoKeyRef.current) {
+      return awarenessEchoMapRef.current;
+    }
+
+    prevEchoKeyRef.current = key;
+    awarenessEchoMapRef.current = map;
+    return map;
+  }, [rawUsers, yAwareness.clientID]);
+
   const handleParamFieldFocus = useCallback(
     (fieldId: string | null) => {
       yAwareness.setLocalStateField("focusedParamField", fieldId);
@@ -208,6 +276,46 @@ export default function useAwarenessPresence({
   const handleUserFocusedElement = useCallback(
     (isOpen: boolean) => {
       yAwareness.setLocalStateField("focusedElement", isOpen);
+    },
+    [yAwareness],
+  );
+
+  const handleDialogAwareness = useCallback(
+    (
+      dialog: AwarenessDialog | null,
+      ownedDialogs: readonly AwarenessDialog[],
+    ) => {
+      if (dialog === null) {
+        // The Homebar and the overlay each keep their own `showDialog`, so a
+        // close from one must not clear a dialog the other still has open.
+        const current = yAwareness.getLocalState()?.openDialog as
+          | AwarenessDialog
+          | null
+          | undefined;
+        if (current && !ownedDialogs.includes(current)) return;
+      }
+      yAwareness.setLocalStateField("openDialog", dialog);
+    },
+    [yAwareness],
+  );
+
+  const handleSubEditorAwareness = useCallback(
+    (subEditor: AwarenessSubEditor | null) => {
+      yAwareness.setLocalStateField("openSubEditor", subEditor);
+    },
+    [yAwareness],
+  );
+
+  const handleNodePickerAwareness = useCallback(
+    (nodePicker: AwarenessNodePicker | null) => {
+      yAwareness.setLocalStateField("openNodePicker", nodePicker);
+    },
+    [yAwareness],
+  );
+
+  const handleVersionSnapshotAwareness = useCallback(
+    (snapshotNumber: number | null) => {
+      yAwareness.setLocalStateField("selectedVersionSnapshot", snapshotNumber);
     },
     [yAwareness],
   );
@@ -269,12 +377,15 @@ export default function useAwarenessPresence({
 
     yAwareness.setLocalStateField("openNodeId", openNodeId);
     yAwareness.setLocalStateField("focusedParamField", null);
+    yAwareness.setLocalStateField("openSubEditor", null);
   }, [openNode, yAwareness]);
 
   return {
     self,
     users,
     awarenessSelectionsMap,
+    awarenessEchoMap,
+    setEchoElement,
     handlePointerDown,
     handleParamFieldFocus,
     handleWorkflowVarDialogOpen,
@@ -282,6 +393,10 @@ export default function useAwarenessPresence({
     handleWorkflowVarFieldFocus,
     handleWorkflowVarEditStart,
     handleUserFocusedElement,
+    handleDialogAwareness,
+    handleSubEditorAwareness,
+    handleNodePickerAwareness,
+    handleVersionSnapshotAwareness,
     setDraggingEdge,
     clearDraggingEdge,
   };

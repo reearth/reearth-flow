@@ -6,7 +6,7 @@ import {
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { Input } from "@flow/components";
 import { IconButton } from "@flow/components/buttons";
@@ -48,8 +48,12 @@ const FlowExprField = <
 }: V6FieldProps<T, S, F>) => {
   const t = useT();
   const formContext = registry.formContext as ExtendedFormContext;
-  const { onFlowExprEditorOpen, onFieldFocus, fieldFocusMap } =
-    formContext || {};
+  const {
+    onFlowExprEditorOpen,
+    onFieldFocus,
+    fieldFocusMap,
+    onFieldContextRegister,
+  } = formContext || {};
 
   const id = fieldPathId.$id;
   const focusedUsers = fieldFocusMap?.[id] ?? [];
@@ -88,6 +92,19 @@ const FlowExprField = <
       id,
     );
   }, [onChange, fieldPathId.path, id, fallbackType]);
+
+  // Publish this field's context so spotlight follow can reopen its sub-editor
+  // from the field id alone.
+  useEffect(() => {
+    onFieldContextRegister?.(
+      createFieldContext({
+        id,
+        name,
+        value: codeValue ?? { type: fallbackType, value: "" },
+        schema,
+      }),
+    );
+  }, [onFieldContextRegister, id, name, codeValue, fallbackType, schema]);
 
   const handleEditorOpen = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {

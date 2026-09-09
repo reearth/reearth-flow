@@ -3,8 +3,10 @@ import { memo } from "react";
 
 import { ButtonWithTooltip } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
+import type { UserActivity } from "@flow/features/Editor/useUserActivities";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser } from "@flow/types";
+import type { SpotlightFollow } from "@flow/lib/yjs";
+import { AwarenessDialog, AwarenessUser } from "@flow/types";
 
 import {
   Breadcrumb,
@@ -20,6 +22,12 @@ type Props = {
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
+  spotlightFollow: SpotlightFollow;
+  userActivities: Record<string, UserActivity>;
+  onDialogAwareness?: (
+    dialog: AwarenessDialog | null,
+    ownedDialogs: readonly AwarenessDialog[],
+  ) => void;
   currentWorkflowId: string;
   openWorkflows: {
     id: string;
@@ -37,6 +45,9 @@ const Homebar: React.FC<Props> = ({
   self,
   users,
   spotlightUserClientId,
+  spotlightFollow,
+  userActivities,
+  onDialogAwareness,
   currentWorkflowId,
   openWorkflows,
   onSpotlightUserSelect,
@@ -60,6 +71,9 @@ const Homebar: React.FC<Props> = ({
     handleDialogClose,
   } = useHooks({
     onUserFocusedElement,
+    onDialogAwareness,
+    isFollowing: spotlightFollow.isFollowing,
+    followDialog: spotlightFollow.dialog,
   });
 
   return (
@@ -79,6 +93,7 @@ const Homebar: React.FC<Props> = ({
           users={users}
           showDialog={showDialog}
           spotlightUserClientId={spotlightUserClientId}
+          userActivities={userActivities}
           onDialogOpen={handleDialogOpen}
           onDialogClose={handleDialogClose}
           onSpotlightUserSelect={onSpotlightUserSelect}
@@ -107,19 +122,26 @@ const Homebar: React.FC<Props> = ({
           <FileIcon weight="thin" size={16} />
         </ButtonWithTooltip>
       </div>
-      {showDialog === "workflowVariables" && (
-        <WorkflowVariablesDialog
-          currentWorkflowVariables={currentWorkflowVariables}
-          projectId={currentProject?.id}
-          users={users}
-          onClose={handleDialogClose}
-          onAdd={handleWorkflowVariableAdd}
-          onChange={handleWorkflowVariableChange}
-          onDelete={handleWorkflowVariableDelete}
-          onDeleteBatch={handleWorkflowVariablesBatchDelete}
-          onBatchUpdate={handleWorkflowVariablesBatchUpdate}
-        />
-      )}
+      {/* Editing surfaces hand control back to the follower on interaction,
+          matching the canvas' click-to-unfollow behaviour. Portaled dialog
+          content still bubbles through the React tree. Read-only browse
+          surfaces (assets, version history) deliberately do not — clicking
+          around in them is looking, not taking over. */}
+      <div className="contents" onPointerDownCapture={onSpotlightUserDeselect}>
+        {showDialog === "workflowVariables" && (
+          <WorkflowVariablesDialog
+            currentWorkflowVariables={currentWorkflowVariables}
+            projectId={currentProject?.id}
+            users={users}
+            onClose={handleDialogClose}
+            onAdd={handleWorkflowVariableAdd}
+            onChange={handleWorkflowVariableChange}
+            onDelete={handleWorkflowVariableDelete}
+            onDeleteBatch={handleWorkflowVariablesBatchDelete}
+            onBatchUpdate={handleWorkflowVariablesBatchUpdate}
+          />
+        )}
+      </div>
       {showDialog === "assets" && (
         <AssetsDialog onDialogClose={handleDialogClose} />
       )}

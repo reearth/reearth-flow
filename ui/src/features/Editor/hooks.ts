@@ -25,6 +25,7 @@ import {
 } from "@flow/hooks";
 import {
   useAwarenessPresence,
+  useFollowSync,
   useSpotlightUser,
   useYjsStore,
 } from "@flow/lib/yjs";
@@ -45,6 +46,7 @@ import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
 import usePreviewSchema from "./usePreviewSchema";
 import useUIState from "./useUIState";
+import useUserActivities from "./useUserActivities";
 
 export default ({
   yDoc,
@@ -321,6 +323,8 @@ export default ({
     self,
     users,
     awarenessSelectionsMap,
+    awarenessEchoMap,
+    setEchoElement,
     handlePointerDown,
     handleParamFieldFocus,
     handleWorkflowVarDialogOpen,
@@ -328,6 +332,10 @@ export default ({
     handleWorkflowVarFieldFocus,
     handleWorkflowVarEditStart,
     handleUserFocusedElement,
+    handleDialogAwareness,
+    handleSubEditorAwareness,
+    handleNodePickerAwareness,
+    handleVersionSnapshotAwareness,
     setDraggingEdge,
     clearDraggingEdge,
   } = useAwarenessPresence({
@@ -409,15 +417,9 @@ export default ({
   };
 
   const {
-    nodePickerOpen,
-    openNodePickerViaShortcut,
-    handleNodePickerOpen,
-    handleNodePickerClose,
-  } = useUIState({ onUserFocusedElement: handleUserFocusedElement });
-
-  const {
     spotlightUser,
     spotlightUserClientId,
+    spotlightFollow,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
   } = useSpotlightUser({
@@ -428,6 +430,56 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
   });
+
+  const {
+    nodePickerOpen,
+    openNodePickerViaShortcut,
+    handleNodePickerOpen,
+    handleNodePickerClose,
+  } = useUIState({
+    onUserFocusedElement: handleUserFocusedElement,
+    onNodePickerAwareness: handleNodePickerAwareness,
+    isFollowing: spotlightFollow.isFollowing,
+    followNodePicker: spotlightFollow.nodePicker,
+  });
+
+  // Follow the spotlighted user into the node they have open.
+  useFollowSync<string>({
+    active: spotlightFollow.isFollowing,
+    follow: spotlightFollow.openNodeId,
+    local: openNodeId ?? null,
+    onFollow: (nodeId) => {
+      setOpenNodeId(nodeId ?? undefined);
+      handleUserFocusedElement(!!nodeId);
+    },
+  });
+
+  // Follow the spotlighted user's debug run by JOINING their job, never by
+  // starting one: a second run is duplicated engine compute and produces a
+  // different jobId, so the follower would be watching different data.
+  const spotlightDebugJobId = spotlightUser?.debugRun?.jobId ?? null;
+  const spotlightUserName = spotlightUser?.userName;
+  const loadExternalDebugJobRef = useRef(loadExternalDebugJob);
+  loadExternalDebugJobRef.current = loadExternalDebugJob;
+  const spotlightUserNameRef = useRef(spotlightUserName);
+  spotlightUserNameRef.current = spotlightUserName;
+
+  useFollowSync<string>({
+    active: spotlightFollow.isFollowing,
+    follow: spotlightDebugJobId,
+    // loadExternalDebugJob is a no-op when we already hold this job, so the
+    // local side only has to say "not yet joined".
+    local: null,
+    onFollow: (jobId) => {
+      if (!jobId) return;
+      loadExternalDebugJobRef.current?.(
+        jobId,
+        spotlightUserNameRef.current ?? "",
+      );
+    },
+  });
+
+  const userActivities = useUserActivities({ self, users, rawWorkflows });
 
   const handleNodesDisable = useCallback(
     (ns?: Node[]) => {
@@ -495,6 +547,8 @@ export default ({
     showBeforeDeleteDialog,
     spotlightUserClientId,
     spotlightUser,
+    spotlightFollow,
+    userActivities,
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
@@ -552,11 +606,16 @@ export default ({
     handleConnectStart,
     handleConnectEnd,
     awarenessSelectionsMap,
+    awarenessEchoMap,
+    setEchoElement,
     handleParamFieldFocus,
     handleUserFocusedElement,
     handleWorkflowVarDialogOpen,
     handleWorkflowVarDialogClose,
     handleWorkflowVarFieldFocus,
     handleWorkflowVarEditStart,
+    handleDialogAwareness,
+    handleSubEditorAwareness,
+    handleVersionSnapshotAwareness,
   };
 };

@@ -29,11 +29,13 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
+import { useEchoDropdownSync } from "@flow/features/Editor/editorContext";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
+import { ECHO_KEYS } from "@flow/lib/yjs";
 import { openLinkInNewTab } from "@flow/utils";
 
 import { AttributionsDialog } from "./AttributionsDialog";
@@ -69,6 +71,7 @@ const HomeMenu: React.FC<Props> = ({
   const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
   const [openAttributionsDialog, setOpenAttributionsDialog] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
+  useEchoDropdownSync(ECHO_KEYS.homeMenu, openDialog, setOpenDialog);
 
   const { tosUrl, documentationUrl } = config();
 

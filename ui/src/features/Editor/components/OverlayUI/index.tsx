@@ -6,10 +6,13 @@ import {
   useEditorContext,
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
+import type { UserActivity } from "@flow/features/Editor/useUserActivities";
+import type { SpotlightFollow } from "@flow/lib/yjs";
 import type {
   ActionNodeType,
   Algorithm,
   AnyWorkflowVariable,
+  AwarenessDialog,
   AwarenessUser,
   Direction,
   Node,
@@ -76,6 +79,13 @@ type OverlayUIProps = {
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
+  spotlightFollow: SpotlightFollow;
+  userActivities: Record<string, UserActivity>;
+  onDialogAwareness?: (
+    dialog: AwarenessDialog | null,
+    ownedDialogs: readonly AwarenessDialog[],
+  ) => void;
+  onVersionSnapshotAwareness?: (snapshotNumber: number | null) => void;
   allowedToDeploy: boolean;
   isSaving: boolean;
   onWorkflowClose: (workflowId: string) => void;
@@ -123,6 +133,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   self,
   users,
   spotlightUserClientId,
+  spotlightFollow,
+  userActivities,
+  onDialogAwareness,
+  onVersionSnapshotAwareness,
   openWorkflows,
   currentWorkflowId,
   customDebugRunWorkflowVariables,
@@ -165,6 +179,9 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   const isReadOnly = useIsReadOnly();
   const { showDialog, handleDialogOpen, handleDialogClose } = useHooks({
     onUserFocusedElement,
+    onDialogAwareness,
+    isFollowing: spotlightFollow.isFollowing,
+    followDialog: spotlightFollow.dialog,
   });
 
   const handleLayoutOptionsToggle = useCallback(() => {
@@ -227,6 +244,9 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             self={self}
             users={users}
             spotlightUserClientId={spotlightUserClientId}
+            spotlightFollow={spotlightFollow}
+            userActivities={userActivities}
+            onDialogAwareness={onDialogAwareness}
             currentWorkflowId={currentWorkflowId}
             openWorkflows={openWorkflows}
             onWorkflowChange={onWorkflowChange}
@@ -272,11 +292,18 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             />
           </div>
         </div>
+        {/* No click-to-unfollow wrapper here, unlike the params dialog: version
+            history is a read-only browse surface, so clicking a snapshot is
+            looking around rather than taking over. Detaching on the first click
+            made following someone through history unusable. */}
         {showDialog === "version" && (
           <VersionDialog
             project={project}
             yDoc={yDoc}
             onDialogClose={handleDialogClose}
+            onVersionSnapshotAwareness={onVersionSnapshotAwareness}
+            isFollowing={spotlightFollow.isFollowing}
+            followVersionSnapshot={spotlightFollow.versionSnapshot}
           />
         )}
         <div
@@ -305,18 +332,22 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         </div>
       </div>
       {nodePickerOpen && (
-        <ActionPickerDialog
-          openedActionType={nodePickerOpen}
-          isMainWorkflow={isMainWorkflow}
-          nodes={nodes}
-          selectedNodeIds={selectedNodeIds}
-          edges={edges}
-          openNodePickerViaShortcut={openNodePickerViaShortcut}
-          onNodesAdd={onNodesAdd}
-          onEdgesAdd={onEdgesAdd}
-          onEdgesChange={onEdgesChange}
-          onClose={onNodePickerClose}
-        />
+        <div
+          className="contents"
+          onPointerDownCapture={onSpotlightUserDeselect}>
+          <ActionPickerDialog
+            openedActionType={nodePickerOpen}
+            isMainWorkflow={isMainWorkflow}
+            nodes={nodes}
+            selectedNodeIds={selectedNodeIds}
+            edges={edges}
+            openNodePickerViaShortcut={openNodePickerViaShortcut}
+            onNodesAdd={onNodesAdd}
+            onEdgesAdd={onEdgesAdd}
+            onEdgesChange={onEdgesChange}
+            onClose={onNodePickerClose}
+          />
+        </div>
       )}
     </>
   );

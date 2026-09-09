@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useEchoDropdownSync } from "@flow/features/Editor/editorContext";
 import { useJob } from "@flow/lib/gql/job";
+import { ECHO_KEYS } from "@flow/lib/yjs";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
@@ -50,6 +52,36 @@ export default ({
     onUserFocusedElement?.(false);
     setshowOverlayElement(undefined);
   };
+
+  // Each popover echoes under its own key and opens when the spotlighted user
+  // opens it. debugStop is left out on purpose: it is a confirmation for
+  // cancelling a run, and prompting a follower to stop a job they do not own is
+  // not passive observation.
+  const setDebugStartOpen = useCallback((open: boolean) => {
+    setshowOverlayElement(open ? "debugStart" : undefined);
+  }, []);
+  const setDebugRunsOpen = useCallback((open: boolean) => {
+    setshowOverlayElement(open ? "debugRuns" : undefined);
+  }, []);
+  const setDebugVariablesOpen = useCallback((open: boolean) => {
+    setshowOverlayElement(open ? "debugWorkflowVariables" : undefined);
+  }, []);
+
+  useEchoDropdownSync(
+    ECHO_KEYS.debugStartPopover,
+    showOverlayElement === "debugStart",
+    setDebugStartOpen,
+  );
+  useEchoDropdownSync(
+    ECHO_KEYS.debugRunsPopover,
+    showOverlayElement === "debugRuns",
+    setDebugRunsOpen,
+  );
+  useEchoDropdownSync(
+    ECHO_KEYS.debugVariablesDialog,
+    showOverlayElement === "debugWorkflowVariables",
+    setDebugVariablesOpen,
+  );
   const [debugRunStarted, setDebugRunStarted] = useState(false);
   const isStartingRef = useRef(false);
 

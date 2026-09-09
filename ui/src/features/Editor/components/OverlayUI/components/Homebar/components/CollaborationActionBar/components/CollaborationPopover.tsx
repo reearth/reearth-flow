@@ -1,4 +1,5 @@
 import { ScrollArea } from "@flow/components";
+import type { UserActivity } from "@flow/features/Editor/useUserActivities";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser } from "@flow/types";
 
@@ -8,6 +9,7 @@ type Props = {
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
+  userActivities: Record<string, UserActivity>;
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
 };
@@ -16,6 +18,7 @@ const CollaborationPopover: React.FC<Props> = ({
   self,
   users,
   spotlightUserClientId,
+  userActivities,
   onSpotlightUserSelect,
   onSpotlightUserDeselect,
 }) => {
@@ -29,6 +32,7 @@ const CollaborationPopover: React.FC<Props> = ({
           clientId={self.clientId}
           userName={self?.userName}
           color={self.color}
+          activity={userActivities[String(self.clientId)]}
         />
       </div>
       {users && Object.entries(users).length >= 1 && (
@@ -38,13 +42,14 @@ const CollaborationPopover: React.FC<Props> = ({
               <span className="text-xs opacity-55 dark:font-light">
                 {t("Currently Viewing")}
               </span>
-              {Object.entries(users).map(([_key, value]) => {
+              {Object.entries(users).map(([key, value]) => {
                 return (
                   <CollaborationCard
                     clientId={value.clientId}
                     key={value.clientId}
                     userName={value.userName}
                     color={value.color}
+                    activity={userActivities[key]}
                     spotlightUserClientId={spotlightUserClientId}
                     onSpotlightUserSelect={onSpotlightUserSelect}
                     onSpotlightUserDeselect={onSpotlightUserDeselect}

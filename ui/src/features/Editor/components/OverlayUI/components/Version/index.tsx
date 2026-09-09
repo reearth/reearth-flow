@@ -3,8 +3,12 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { Button, LoadingSkeleton, LoadingSplashscreen } from "@flow/components";
-import { useIsReadOnly } from "@flow/features/Editor/editorContext";
+import {
+  useEchoPresence,
+  useIsReadOnly,
+} from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
+import { versionRowEchoKey } from "@flow/lib/yjs";
 import type { Project } from "@flow/types";
 
 import { VersionConfirmationDialog, VersionHistoryList } from "./components";
@@ -15,6 +19,9 @@ type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
   onDialogClose: () => void;
+  onVersionSnapshotAwareness?: (snapshotNumber: number | null) => void;
+  isFollowing?: boolean;
+  followVersionSnapshot?: number | null;
 };
 
 // Normal mode: user-meaningful named versions, with preview on select and
@@ -23,7 +30,14 @@ type Props = {
 //
 // The project-corruption recovery flow is a separate component working off the
 // raw update log: ./RecoveryDialog.tsx.
-const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
+const VersionDialog: React.FC<Props> = ({
+  project,
+  yDoc,
+  onDialogClose,
+  onVersionSnapshotAwareness,
+  isFollowing,
+  followVersionSnapshot,
+}) => {
   const t = useT();
   // Browsing history stays available to everyone; restoring is a write to the
   // live document, so it follows the same gate as the rest of the editor.
@@ -48,7 +62,18 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     projectId: project?.id ?? "",
     yDoc,
     onDialogClose,
+    onVersionSnapshotAwareness,
+    isFollowing,
+    followVersionSnapshot,
   });
+
+  // Ring the row we have selected on every other client's list.
+  useEchoPresence(
+    selectedSnapshotNumber !== null
+      ? versionRowEchoKey(selectedSnapshotNumber)
+      : undefined,
+    selectedSnapshotNumber !== null,
+  );
 
   const handleDialogClose = useCallback(() => {
     destroyPreview();

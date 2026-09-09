@@ -59,6 +59,7 @@ type Props = {
   onValueEditorOpen: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
+  onFieldContextRegister?: (fieldContext: FieldContext) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -78,6 +79,7 @@ const ParamEditor: React.FC<Props> = ({
   onValueEditorOpen,
   onPythonEditorOpen,
   onFlowExprEditorOpen,
+  onFieldContextRegister,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -220,6 +222,7 @@ const ParamEditor: React.FC<Props> = ({
                 onEditorOpen={onValueEditorOpen}
                 onPythonEditorOpen={onPythonEditorOpen}
                 onFlowExprEditorOpen={onFlowExprEditorOpen}
+                onFieldContextRegister={onFieldContextRegister}
               />
             )}
           </div>

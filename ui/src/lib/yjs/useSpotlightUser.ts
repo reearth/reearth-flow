@@ -1,8 +1,40 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
-import type { AwarenessUser } from "@flow/types";
+import type {
+  AwarenessDialog,
+  AwarenessNodePicker,
+  AwarenessSubEditor,
+  AwarenessUser,
+} from "@flow/types";
+
+/**
+ * The slice of a spotlighted user's state that the follower's own UI mirrors.
+ * All fields are null while nobody is spotlighted, which is what drives the
+ * local sync effects to close whatever the follow opened.
+ */
+export type SpotlightFollow = {
+  /** Whether a user is currently spotlighted at all. */
+  isFollowing: boolean;
+  openNodeId: string | null;
+  dialog: AwarenessDialog | null;
+  subEditor: AwarenessSubEditor | null;
+  nodePicker: AwarenessNodePicker | null;
+  versionSnapshot: number | null;
+  /** Echo keys the spotlighted user is on; drives dropdown/menu follow. */
+  activeElements: string[];
+};
+
+const NO_FOLLOW: SpotlightFollow = {
+  isFollowing: false,
+  openNodeId: null,
+  dialog: null,
+  subEditor: null,
+  nodePicker: null,
+  versionSnapshot: null,
+  activeElements: [],
+};
 
 export default ({
   yAwareness,
@@ -87,6 +119,56 @@ export default ({
     prevSpotlightUserOpenWorkflowIds.current = spotlightUserOpenWorkflowIds;
   }, [spotlightUserClientId, spotlightUserOpenWorkflowIds]);
 
+  // Mirrors the spotlighted user's dialog state. Memoized on the primitive
+  // fields so a cursor move on the spotlighted user doesn't retrigger the
+  // follower's sync effects.
+  const spotlightSubEditor = spotlightUser?.openSubEditor ?? null;
+  const spotlightDialog = spotlightUser?.openDialog ?? null;
+  const spotlightOpenNodeId = spotlightUser?.openNodeId ?? null;
+  const spotlightNodePicker = spotlightUser?.openNodePicker ?? null;
+  const spotlightVersionSnapshot =
+    spotlightUser?.selectedVersionSnapshot ?? null;
+  const spotlightActiveElements = spotlightUser?.activeElements;
+  const activeElementsKey = spotlightActiveElements?.join(",") ?? "";
+  const activeElementsRef = useRef<string[]>([]);
+  activeElementsRef.current = spotlightActiveElements ?? [];
+
+  const subEditorKey = spotlightSubEditor
+    ? `${spotlightSubEditor.kind}:${spotlightSubEditor.fieldId}`
+    : null;
+  const nodePickerKey = spotlightNodePicker
+    ? `${spotlightNodePicker.nodeType}:${spotlightNodePicker.position.x}:${spotlightNodePicker.position.y}`
+    : null;
+
+  const subEditorRef = useRef(spotlightSubEditor);
+  subEditorRef.current = spotlightSubEditor;
+  const nodePickerRef = useRef(spotlightNodePicker);
+  nodePickerRef.current = spotlightNodePicker;
+
+  const spotlightFollow = useMemo<SpotlightFollow>(() => {
+    if (!spotlightUserClientId) return NO_FOLLOW;
+    return {
+      isFollowing: true,
+      openNodeId: spotlightOpenNodeId,
+      dialog: spotlightDialog,
+      subEditor: subEditorRef.current,
+      nodePicker: nodePickerRef.current,
+      versionSnapshot: spotlightVersionSnapshot,
+      activeElements: activeElementsRef.current,
+    };
+    // subEditor/nodePicker are read through refs and keyed by their string
+    // digests so identity churn from awareness updates doesn't leak out.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    spotlightUserClientId,
+    spotlightOpenNodeId,
+    spotlightDialog,
+    spotlightVersionSnapshot,
+    subEditorKey,
+    nodePickerKey,
+    activeElementsKey,
+  ]);
+
   const handleSpotlightUserSelect = useCallback((clientId: number) => {
     setSpotlightUserClientId(clientId);
   }, []);
@@ -96,6 +178,13 @@ export default ({
       setSpotlightUserClientId(null);
     }
   }, [spotlightUser, spotlightUserClientId]);
+
+  useEffect(() => {
+    yAwareness.setLocalStateField(
+      "followingClientId",
+      spotlightUserClientId ?? null,
+    );
+  }, [spotlightUserClientId, yAwareness]);
 
   useEffect(() => {
     if (Object.keys(users).length === 0) return;
@@ -110,6 +199,7 @@ export default ({
   return {
     spotlightUser,
     spotlightUserClientId,
+    spotlightFollow,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
   };
