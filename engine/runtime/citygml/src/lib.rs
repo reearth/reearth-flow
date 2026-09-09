@@ -1,3 +1,8 @@
+// TODO(new-geometry): remove after migration. The legacy `build_features` path's
+// geometry-only imports and helpers go unused under the flag; silence that noise
+// (feature-scoped, so the default build keeps full lint coverage).
+#![cfg_attr(feature = "new-geometry", allow(unused_imports, dead_code))]
+
 #[cfg(feature = "new-geometry")]
 pub(crate) mod appearance;
 pub(crate) mod codespace;

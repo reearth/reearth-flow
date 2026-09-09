@@ -182,7 +182,7 @@ mod build_next {
 
     use super::{MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_LOD_KEY};
 
-    use crate::citygml_parser::{
+    use crate::{
         appearance::{self, AppearanceIndex},
         codespace, flatten,
         parser::{self, Parser, ParserOutput, RawRegistry},
@@ -368,7 +368,7 @@ mod build_next {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use crate::citygml_parser::parser::CityGmlVersion;
+        use crate::parser::CityGmlVersion;
         use reearth_flow_geometry::Euclidean3DGeometry;
         use reearth_flow_types::CitygmlFeatureExt;
         use url::Url;

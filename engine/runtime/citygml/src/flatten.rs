@@ -221,7 +221,7 @@ fn extract_recursive(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::citygml_parser::utils::{
+    use crate::utils::{
         test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID,
     };
 

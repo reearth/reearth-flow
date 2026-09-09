@@ -81,7 +81,7 @@ impl Parser {
 
     /// Same shape as the new-geometry `Parser`'s constructor, ignored here: this
     /// legacy parser doesn't do `gml:id` synthesis.
-    pub(crate) fn with_extract_tags(
+    pub fn with_extract_tags(
         version: CityGmlVersion,
         _extract_tags: std::collections::HashSet<String>,
     ) -> Self {
@@ -611,7 +611,7 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::citygml_parser::utils::{test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
+    use crate::utils::{test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()

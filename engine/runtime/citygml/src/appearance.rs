@@ -790,8 +790,8 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 
 #[cfg(test)]
 mod tests {
-    use crate::citygml_parser::parser::{CityGmlVersion, Parser, ParserOutput, RawChild, RawNode};
-    use crate::citygml_parser::resolver::{resolve_root, GeomNode};
+    use crate::parser::{CityGmlVersion, Parser, ParserOutput, RawChild, RawNode};
+    use crate::resolver::{resolve_root, GeomNode};
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
     };

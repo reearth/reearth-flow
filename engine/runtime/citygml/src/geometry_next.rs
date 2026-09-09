@@ -525,8 +525,8 @@ fn text_content(node: &RawNode) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::citygml_parser::parser::{Parser, ParserOutput};
-    use crate::citygml_parser::resolver::{resolve_root_bare, GeomRegistry};
+    use crate::parser::{Parser, ParserOutput};
+    use crate::resolver::{resolve_root_bare, GeomRegistry};
     use url::Url;
 
     /// A geometry found embedded in a parsed tree, in the same shape the old

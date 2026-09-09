@@ -536,7 +536,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::citygml_parser::utils::{
+    use crate::utils::{
         test_url, NsId, XmlChild, EMPTY_NS_ID, GML_NS_32, GML_NS_ID, XLINK_NS, XLINK_NS_ID,
     };
 

@@ -4845,6 +4845,7 @@ dependencies = [
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-action-sink",
+ "reearth-flow-citygml",
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-geometry",
@@ -5019,6 +5020,23 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "reearth-flow-citygml"
+version = "0.0.548"
+dependencies = [
+ "indexmap 2.13.0",
+ "pretty_assertions",
+ "quick-xml 0.37.5",
+ "reearth-flow-common",
+ "reearth-flow-geometry",
+ "reearth-flow-types",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "url",
 ]
 
 [[package]]
