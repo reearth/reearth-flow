@@ -4794,6 +4794,7 @@ dependencies = [
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
+ "reearth-flow-diagnostics",
  "reearth-flow-geometry",
  "reearth-flow-runtime",
  "reearth-flow-state",

@@ -200,6 +200,13 @@
     "message": "node failed with an unclassified error"
   },
   {
+    "code": "plateau.mesh_code_unassignable",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose destination mesh code could not be computed",
+    "help": "Destination Mesh Code Extractor measures how much of a footprint falls in each mesh cell, in the coordinate system given by `epsgCode`. A feature is skipped when that system cannot be transformed to or from geographic coordinates, or when the footprint could not be intersected with a mesh cell. Read the `_meshcode_error` attribute on the skipped feature for the specific cause."
+  },
+  {
     "code": "raster.image_save_failed",
     "category": "io",
     "defaultDisposition": "warn_drop",

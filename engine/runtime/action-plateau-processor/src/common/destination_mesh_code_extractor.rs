@@ -1,5 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
+#[cfg(feature = "new-geometry")]
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{
     area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
@@ -304,11 +306,13 @@ impl Processor for DestinationMeshCodeExtractor {
                 return Ok(());
             }
             Err(e) => {
-                ctx.event_hub.warn_log(
-                    Some(ctx.error_span()),
-                    format!("mesh code extraction failed: {e}"),
-                );
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                // `warn`, not `report`: the feature is already routed to
+                // `rejected`, so leaving the drop to a resolved disposition
+                // would double-count it.
+                ctx.warn(DiagnosticDraft::new(ErrorCode::PlateauMeshCodeUnassignable));
+                let mut rejected = feature.clone();
+                rejected.insert("_meshcode_error", AttributeValue::String(e.to_string()));
+                fw.send(ctx.new_with_feature_and_port(rejected, REJECTED_PORT.clone()));
                 return Ok(());
             }
         };
