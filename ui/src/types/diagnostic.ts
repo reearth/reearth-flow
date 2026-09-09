@@ -70,6 +70,15 @@ const severityRank: Record<string, number> = {
 export const diagnosticSeverityRank = (severity: string): number =>
   severityRank[severity] ?? -1;
 
+/**
+ * Whether a severity should read as a failure rather than an advisory. Purely a
+ * display decision — pass/fail is {@link isFatalDiagnostic}, which reads
+ * `effectiveDisposition`. Shared so a badge and a node marker cannot disagree
+ * about what counts as bad.
+ */
+export const isBlockingSeverity = (severity?: string): boolean =>
+  severity === "fatal" || severity === "error";
+
 /** Sorts worst-first, so the row a user needs to read is at the top. */
 export const compareDiagnosticSeverity = (
   a: Diagnostic,

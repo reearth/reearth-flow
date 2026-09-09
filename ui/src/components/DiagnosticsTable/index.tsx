@@ -17,6 +17,10 @@ type Props = {
   diagnostics: Diagnostic[];
   isFetching?: boolean;
   noResultsMessage?: string;
+  /** Controls rendered beside the table's search input. */
+  leadingActions?: React.ReactNode;
+  /** Edge-to-edge console styling, to match LogsTable when swapped with it. */
+  flush?: boolean;
 };
 
 // Severity is a display level only, so it drives nothing but the colour here.
@@ -30,6 +34,8 @@ const DiagnosticsTable: React.FC<Props> = ({
   diagnostics,
   isFetching,
   noResultsMessage,
+  leadingActions,
+  flush,
 }) => {
   const t = useT();
   const { severityLabel, dispositionLabel, categoryLabel } =
@@ -152,6 +158,8 @@ const DiagnosticsTable: React.FC<Props> = ({
       showFiltering
       showOrdering={false}
       isFetching={isFetching}
+      leadingActions={leadingActions}
+      flush={flush}
       noResultsMessage={noResultsMessage ?? t("No diagnostics")}
     />
   );

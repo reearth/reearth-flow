@@ -32,7 +32,14 @@ import { useT } from "@flow/lib/i18n";
 import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
 
 import BasicBoiler from "../BasicBoiler";
-import { Table, TableBody, TableCell, TableRow } from "../Table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../Table";
 
 type LogProps = {
   columns: ColumnDef<UserFacingLog, unknown>[];
@@ -40,6 +47,8 @@ type LogProps = {
   isFetching: boolean;
   selectColumns?: boolean;
   showFiltering?: boolean;
+  /** Controls rendered beside the search input, e.g. a view switch. */
+  leadingActions?: React.ReactNode;
 };
 
 const LogsTable = ({
@@ -48,6 +57,7 @@ const LogsTable = ({
   isFetching,
   selectColumns = false,
   showFiltering = false,
+  leadingActions,
 }: LogProps) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -105,15 +115,16 @@ const LogsTable = ({
   return (
     <div className="flex size-full flex-col rounded">
       <div className="flex w-full shrink-0 items-center justify-between px-2 pb-2">
-        <div className="mr-4">
+        <div className="mr-4 flex items-center gap-2">
           {showFiltering && (
             <Input
-              className="w-[25vw]"
+              className="h-[36px] w-[25vw]"
               placeholder={t("Search") + "..."}
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
             />
           )}
+          {leadingActions}
         </div>
         <div className="flex items-center gap-2">
           <IconButton
@@ -189,6 +200,26 @@ const LogsTable = ({
           />
         ) : (
           <Table>
+            {/* Matches DataTable's header so switching between the log and
+                diagnostics views does not reflow the panel. */}
+            <TableHeader className="sticky top-0 z-10 bg-card/50 backdrop-blur-2xl dark:bg-background/50">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow
+                  key={headerGroup.id}
+                  className="bg-card/50 backdrop-blur-2xl dark:bg-background/50">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} className="h-8">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
             <TableBody>
               {table.getRowModel().rows.map((row) => (
                 <TableRow
