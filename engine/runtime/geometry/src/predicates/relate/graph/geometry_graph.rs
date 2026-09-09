@@ -1,3 +1,4 @@
+use crate::line_string::is_closed_ring;
 use crate::predicates::kernel::{orient2d, CoordPos, Orientation};
 use crate::predicates::relate::operand::RelateOperand;
 use crate::predicates::view::Leaf2D;
@@ -306,9 +307,7 @@ enum WindingOrder {
 /// The winding order of a closed ring, by robust orientation at its
 /// lexicographically least vertex. `None` for open or degenerate rings.
 fn ring_winding_order(ring: &[[f64; 2]]) -> Option<WindingOrder> {
-    // If the ring has at most 3 coords, it is either not closed, or is at
-    // most two distinct points. Either way, the winding is unspecified.
-    if ring.len() < 4 || ring.first() != ring.last() {
+    if !is_closed_ring(ring) {
         return None;
     }
     let least = ring

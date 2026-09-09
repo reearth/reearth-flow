@@ -31,6 +31,7 @@ use reearth_flow_types::{Geometry, GeometryValue};
 use reearth_flow_geometry::{
     collection::Collection2D,
     coordinate::CoordinateFrame,
+    ops::Elevation,
     overlay::dissolve_leaves,
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
@@ -572,24 +573,12 @@ fn accepts(geometry: &Geometry) -> bool {
     };
     leaves.iter().all(|leaf| {
         leaf.frame() == frame
-            && leaf_elevation(leaf).is_none()
+            && leaf.elevation().is_none()
             && matches!(
                 leaf,
                 Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_)
             )
     })
-}
-
-/// The elevation a 2D leaf lies at, or `None` when it is planar.
-#[cfg(feature = "new-geometry")]
-fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
-    match leaf {
-        Leaf2D::Polygon(p) => p.elevation(),
-        Leaf2D::PolygonMesh(m) => m.elevation(),
-        Leaf2D::TriangularMesh(m) => m.elevation(),
-        Leaf2D::Line(l) => l.elevation(),
-        Leaf2D::Point(_) => None,
-    }
 }
 
 /// The group's representative feature: the one covering the most area. Ties go
