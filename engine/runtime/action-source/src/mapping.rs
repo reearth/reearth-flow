@@ -6,10 +6,11 @@ use reearth_flow_runtime::node::{NodeKind, SourceFactory};
 use crate::{
     feature_creator::FeatureCreatorFactory,
     file::{
-        citygml::CityGmlReaderFactory, citygml2::CityGml2ReaderFactory, csv::CsvReaderFactory,
-        czml::CzmlReaderFactory, geojson::GeoJsonReaderFactory,
-        geopackage::GeoPackageReaderFactory, gltf::GltfReaderFactory, json::JsonReaderFactory,
-        obj::ObjReaderFactory, path_extractor::FilePathExtractorFactory,
+        citygml::CityGmlReaderFactory, citygml2::CityGml2ReaderFactory,
+        citygml3::CityGml3ReaderFactory, csv::CsvReaderFactory, czml::CzmlReaderFactory,
+        geojson::GeoJsonReaderFactory, geopackage::GeoPackageReaderFactory,
+        gltf::GltfReaderFactory, json::JsonReaderFactory, obj::ObjReaderFactory,
+        path_extractor::FilePathExtractorFactory,
     },
     sql::SqlReaderFactory,
 };
@@ -23,6 +24,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
     let factories: Vec<Box<dyn SourceFactory>> = vec![
         Box::<CityGmlReaderFactory>::default(),
         Box::<CityGml2ReaderFactory>::default(),
+        Box::<CityGml3ReaderFactory>::default(),
         Box::<FilePathExtractorFactory>::default(),
         Box::<FeatureCreatorFactory>::default(),
         Box::<SqlReaderFactory>::default(),
