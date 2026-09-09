@@ -2147,127 +2147,6 @@ graphs:
     action: Geometry Filter
     with:
       filterType: detailedGeometryType
-  - id: 04100000-0000-4000-8000-000000000100
-    name: GeometryTypeNamePolygon
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: Polygon
-  - id: 04100000-0000-4000-8000-000000000101
-    name: GeometryTypeNamePolygon2D
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: Polygon2D
-  - id: 04100000-0000-4000-8000-000000000102
-    name: GeometryTypeNamePoint
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: Point
-  - id: 04100000-0000-4000-8000-000000000103
-    name: GeometryTypeNameMultiPoint
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: MultiPoint
-  - id: 04100000-0000-4000-8000-000000000104
-    name: GeometryTypeNamePointCloud
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: PointCloud
-  - id: 04100000-0000-4000-8000-000000000105
-    name: GeometryTypeNameLineString
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: LineString
-  - id: 04100000-0000-4000-8000-000000000106
-    name: GeometryTypeNameMultiCurve
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: MultiCurve
-  - id: 04100000-0000-4000-8000-000000000107
-    name: GeometryTypeNameTriangularMesh
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: TriangularMesh
-  - id: 04100000-0000-4000-8000-000000000108
-    name: GeometryTypeNameCsg
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: Csg
-  - id: 04100000-0000-4000-8000-000000000109
-    name: GeometryTypeNameAggregate
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: Aggregate
-  - id: 04100000-0000-4000-8000-00000000010a
-    name: GeometryTypeNameUnknown
-    type: action
-    action: Attribute Manager
-    with:
-      operations:
-      - attribute: geometryName
-        method: create
-        value:
-          type: string
-          value: Unknown
   - id: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
     name: FeatureSorter
     type: action
@@ -2993,113 +2872,58 @@ graphs:
     toPort: features
   - id: 04100000-0000-4000-8000-000000000200
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000100
-    fromPort: face
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000201
-    from: 04100000-0000-4000-8000-000000000100
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: face
     toPort: features
   - id: 04100000-0000-4000-8000-000000000202
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000101
-    fromPort: polygon
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000203
-    from: 04100000-0000-4000-8000-000000000101
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: polygon
     toPort: features
   - id: 04100000-0000-4000-8000-000000000204
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000102
-    fromPort: point
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000205
-    from: 04100000-0000-4000-8000-000000000102
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: point
     toPort: features
   - id: 04100000-0000-4000-8000-000000000206
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000103
-    fromPort: multi-point
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000207
-    from: 04100000-0000-4000-8000-000000000103
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: multi-point
     toPort: features
   - id: 04100000-0000-4000-8000-000000000208
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000104
-    fromPort: point-cloud
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000209
-    from: 04100000-0000-4000-8000-000000000104
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: point-cloud
     toPort: features
   - id: 04100000-0000-4000-8000-00000000020a
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000105
-    fromPort: line-string
-    toPort: features
-  - id: 04100000-0000-4000-8000-00000000020b
-    from: 04100000-0000-4000-8000-000000000105
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: line-string
     toPort: features
   - id: 04100000-0000-4000-8000-00000000020c
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000106
-    fromPort: multi-curve
-    toPort: features
-  - id: 04100000-0000-4000-8000-00000000020d
-    from: 04100000-0000-4000-8000-000000000106
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: multi-curve
     toPort: features
   - id: 04100000-0000-4000-8000-00000000020e
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000107
-    fromPort: triangular-mesh
-    toPort: features
-  - id: 04100000-0000-4000-8000-00000000020f
-    from: 04100000-0000-4000-8000-000000000107
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: triangular-mesh
     toPort: features
   - id: 04100000-0000-4000-8000-000000000210
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000108
-    fromPort: csg
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000211
-    from: 04100000-0000-4000-8000-000000000108
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: csg
     toPort: features
   - id: 04100000-0000-4000-8000-000000000212
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-000000000109
-    fromPort: aggregate
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000213
-    from: 04100000-0000-4000-8000-000000000109
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: aggregate
     toPort: features
   - id: 04100000-0000-4000-8000-000000000214
     from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-    to: 04100000-0000-4000-8000-00000000010a
-    fromPort: unfiltered
-    toPort: features
-  - id: 04100000-0000-4000-8000-000000000215
-    from: 04100000-0000-4000-8000-00000000010a
     to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
-    fromPort: features
+    fromPort: unfiltered
     toPort: features
   - id: e3983ee8-9709-4597-b25d-cb2d6a3f21b4
     from: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
