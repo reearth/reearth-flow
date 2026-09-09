@@ -220,10 +220,6 @@ impl Processor for FeatureFilter {
     fn name(&self) -> &str {
         "Feature Filter"
     }
-
-    fn num_threads(&self) -> usize {
-        5
-    }
 }
 
 #[cfg(test)]

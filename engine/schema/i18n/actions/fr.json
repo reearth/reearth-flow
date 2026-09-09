@@ -868,6 +868,10 @@
         "textureCodec": {
           "title": "Codec de Texture",
           "description": "Codec d'image pour les pages de l'atlas. Valeur par défaut : `KTX2/ETC1S` ; choisissez `Untextured` pour n'attacher aucune texture."
+        },
+        "wrapTolerance": {
+          "title": "Tolérance de Répétition",
+          "description": "Écart maximal hors de 0-1 qu'une coordonnée de texture peut présenter tout en étant ramenée dans l'intervalle comme dérive du jeu de données. Au-delà, la texture est considérée comme répétée et reçoit sa propre page d'atlas afin que l'échantillonneur puisse la répéter. Valeur par défaut : 0."
         }
       },
       "enumI18n": {
@@ -1397,6 +1401,22 @@
         "writeCrs": {
           "title": "Write CRS",
           "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
+        }
+      }
+    },
+    {
+      "name": "Feature Group Mapper",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres de Feature Group Mapper"
+        },
+        "attribute": {
+          "title": "Attribut de regroupement",
+          "description": "Attribut dont la valeur regroupe les entités consécutives."
+        },
+        "expr": {
+          "title": "Expression",
+          "description": "Expression portant sur `features` (une entrée d'attributs par entité du groupe) et `variables`, renvoyant une liste de même longueur que `features`. Chaque carte renvoyée remplace les attributs de l'entité correspondante."
         }
       }
     },

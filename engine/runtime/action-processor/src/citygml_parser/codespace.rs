@@ -137,9 +137,14 @@ fn resolve_children(
                     }
                 }
             }
-            XmlChild::Text(t) => {
+            XmlChild::Text(_) => {
                 if let Some(ref mut nc) = out {
-                    nc.push(XmlChild::Text(t.clone()));
+                    nc.push(child.clone());
+                }
+            }
+            XmlChild::Geometry(..) => {
+                if let Some(ref mut nc) = out {
+                    nc.push(child.clone());
                 }
             }
         }

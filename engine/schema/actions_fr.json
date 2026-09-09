@@ -2374,6 +2374,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "Tolérance de Répétition",
+            "description": "Écart maximal hors de 0-1 qu'une coordonnée de texture peut présenter tout en étant ramenée dans l'intervalle comme dérive du jeu de données. Au-delà, la texture est considérée comme répétée et reçoit sa propre page d'atlas afin que l'échantillonneur puisse la répéter. Valeur par défaut : 0.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "Codec de Texture",
             "description": "Codec d'image pour les pages de l'atlas. Valeur par défaut : `KTX2/ETC1S` ; choisissez `Untextured` pour n'attacher aucune texture.",
@@ -4199,6 +4210,71 @@
       ],
       "tags": [
         "geojson"
+      ]
+    },
+    {
+      "name": "Feature Group Mapper",
+      "type": "processor",
+      "description": "Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres de Feature Group Mapper",
+        "type": "object",
+        "required": [
+          "attribute",
+          "expr"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "Attribut de regroupement",
+            "description": "Attribut dont la valeur regroupe les entités consécutives.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "expr": {
+            "title": "Expression",
+            "description": "Expression portant sur `features` (une entrée d'attributs par entité du groupe) et `variables`, renvoyant une liste de même longueur que `features`. Chaque carte renvoyée remplace les attributs de l'entité correspondante.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "scripting",
+        "attribute"
       ]
     },
     {

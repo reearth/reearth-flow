@@ -22,7 +22,8 @@ use super::utils::frame_for;
 /// A node in a CityGML geometry tree during pass-2 resolution: a geometry already
 /// built in pass 1, a reference still to be looked up, or a container still to be
 /// assembled from its members.
-pub(super) enum GeomNode {
+#[derive(Debug)]
+pub enum GeomNode {
     /// A geometry fully parsed in pass 1: an inline leaf, or a container that
     /// turned out to be reference-free and was assembled eagerly. Carries the
     /// per-face gml:ids captured from the source, for binding appearance later.
@@ -35,6 +36,7 @@ pub(super) enum GeomNode {
 
 /// The gml:ids captured for one face of a built geometry, aligned with the face's
 /// stored ring layout, used to bind CityGML appearance by gml:id in a later pass.
+#[derive(Debug)]
 pub(super) struct FaceIds {
     /// The enclosing surface element's gml:id (e.g. a `gml:Polygon`), if any; the
     /// target of a material or a texture.
@@ -47,7 +49,8 @@ pub(super) struct FaceIds {
 /// Per-face gml:ids for a built leaf geometry, in the leaf's face order, scoped to
 /// the source file every id belongs to. An appearance targeting these ids must be
 /// declared in the same file.
-pub(super) struct LeafIds {
+#[derive(Debug)]
+pub struct LeafIds {
     /// The source file URL the face ids are scoped to.
     pub(super) file: String,
     /// One entry per face, in the leaf's face order; empty for leaves with no faces
@@ -57,7 +60,8 @@ pub(super) struct LeafIds {
 
 /// A geometry container held until pass 2, when its members are resolved and
 /// folded into a single [`Euclidean3DGeometry`].
-pub(super) struct Unresolved {
+#[derive(Debug)]
+pub struct Unresolved {
     /// The CityGML type, selecting which construction site assembles this node.
     pub(super) ty: GmlGeometryType,
     /// The `gml:id`, if any, under which this node is registered as a reference
@@ -94,6 +98,7 @@ pub(super) type GeomRegistry = HashMap<RawNodeKey, GeomNode>;
 /// The types split into ones that are always fully inline, parsed whole in pass 1,
 /// and reference-bearing containers assembled in pass 2; see
 /// [`GmlGeometryType::is_inline`].
+#[derive(Debug)]
 pub(super) enum GmlGeometryType {
     /// A single position. Inline.
     Point,
