@@ -868,7 +868,9 @@ fn extract_rectangle_bounds(value: &Value) -> Option<Vec<f64>> {
                 }
             }
         }
-        if let Some(wsen) = obj.get("wsenRadians") {
+        // CZML's RectangleCoordinates names this `wsen` (radians); there is no
+        // `wsenRadians` in the schema.
+        if let Some(wsen) = obj.get("wsen") {
             if let Some(arr) = wsen.as_array() {
                 if arr.len() >= 4 {
                     let bounds: Option<Vec<f64>> = arr
@@ -1100,5 +1102,27 @@ mod tests {
                 Some(&AttributeValue::String("vehicle1".to_string()))
             );
         }
+    }
+
+    #[test]
+    fn radian_rectangle_bounds_use_the_spec_key() {
+        // CZML's RectangleCoordinates names its radian key `wsen`, not
+        // `wsenRadians`. Half pi of latitude is 90 degrees, which no
+        // degrees-passthrough could produce from the input 1.5707963...
+        let value = serde_json::json!({
+            "wsen": [0.0, 0.0, std::f64::consts::FRAC_PI_2, std::f64::consts::FRAC_PI_2],
+        });
+        let bounds = extract_rectangle_bounds(&value).expect("`wsen` is read");
+        assert_eq!(bounds.len(), 4);
+        assert!((bounds[2] - 90.0).abs() < 1e-9, "east was {}", bounds[2]);
+        assert!((bounds[3] - 90.0).abs() < 1e-9, "north was {}", bounds[3]);
+    }
+
+    #[test]
+    fn wsen_radians_is_not_a_czml_key() {
+        // Guard against reintroducing the invented key: a value carrying only
+        // `wsenRadians` is not a rectangle the spec describes.
+        let value = serde_json::json!({ "wsenRadians": [0.0, 0.0, 1.0, 1.0] });
+        assert!(extract_rectangle_bounds(&value).is_none());
     }
 }
