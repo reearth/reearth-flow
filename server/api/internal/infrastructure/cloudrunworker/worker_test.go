@@ -206,3 +206,22 @@ func TestPreviewSchema_OmitsSampleSizeWhenNil(t *testing.T) {
 	})
 	assert.NotContains(t, string(gotBody), "sample_size")
 }
+
+func (f *fakeFile) ResolveIntermediateDataURI(context.Context, string, string) (string, bool, error) {
+	panic("unused")
+}
+func (f *fakeFile) GetFeatureViewUploadURI(string, string) string {
+	panic("unused")
+}
+func (f *fakeFile) GetFeatureViewReportUploadURI(string, string, string) string {
+	panic("unused")
+}
+func (f *fakeFile) GetFeatureViewURL(string, string, string) string {
+	panic("unused")
+}
+func (f *fakeFile) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
+	panic("unused")
+}
+func (f *fakeFile) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
+	panic("unused")
+}

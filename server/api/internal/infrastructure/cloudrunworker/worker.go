@@ -63,6 +63,31 @@ type probeSchemaRequest struct {
 	ReportURL   string            `json:"report_url"`
 }
 
+// renderViewRequest is the body for the dedicated /render-view route. Flat like
+// probeSchemaRequest, and separate from it for the same reason: render-view is
+// its own worker subcommand and must not be expressed as a flag on another.
+//
+// Both option groups are always sent; see featureview.Options for why.
+type renderViewRequest struct {
+	InputURI  string  `json:"input_uri"`
+	OutputURI string  `json:"output_uri"`
+	ReportURL string  `json:"report_url"`
+	Name      string  `json:"name"`
+	Shape     string  `json:"shape"`
+	Row       *int    `json:"row,omitempty"`
+	Filter    *string `json:"filter,omitempty"`
+
+	Draco          bool    `json:"draco"`
+	TexelSize      float64 `json:"texel_size"`
+	TextureCodec   string  `json:"texture_codec"`
+	TargetTileSize uint64  `json:"target_tile_size"`
+
+	MinZoom      uint8  `json:"min_zoom"`
+	MaxZoom      uint8  `json:"max_zoom"`
+	Extent       int32  `json:"extent"`
+	MaxTileBytes uint64 `json:"max_tile_bytes"`
+}
+
 // RunJob POSTs to the Cloud Run Service /run endpoint and blocks until the
 // workflow finishes. The service responds with a terminal status in the body.
 func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
@@ -168,6 +193,74 @@ func (w *Worker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) 
 		}
 		return gateway.JobStatusFailed, fmt.Errorf(
 			"cloudrunworker: probe-schema failed (http %d): %s", resp.StatusCode, detail,
+		)
+	}
+}
+
+// RenderView POSTs to the Cloud Run Service /render-view endpoint and blocks
+// until the render finishes. The service runs `reearth-flow-worker
+// render-view`, writes the view and its report to the job's GCS artifact
+// prefix, and responds with a terminal status.
+//
+// A render that drew nothing is NOT a failure here: the renderer records
+// "empty" or "unsupported geometry" in the report and exits successfully, so
+// the reason reaches the user as a status instead of an exit code. Only a real
+// fault comes back as JobStatusFailed.
+func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gateway.JobStatus, error) {
+	body := renderViewRequest{
+		InputURI:  p.InputURI,
+		OutputURI: p.OutputURI,
+		ReportURL: p.ReportURI,
+		Name:      p.Name,
+		Shape:     string(p.Shape),
+		Row:       p.Row,
+		Filter:    p.Filter,
+
+		Draco:          p.Options.Draco,
+		TexelSize:      p.Options.TexelSize,
+		TextureCodec:   string(p.Options.TextureCodec),
+		TargetTileSize: p.Options.TargetTileSize,
+
+		MinZoom:      p.Options.MinZoom,
+		MaxZoom:      p.Options.MaxZoom,
+		Extent:       p.Options.Extent,
+		MaxTileBytes: p.Options.MaxTileBytes,
+	}
+
+	buf, _ := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.serviceURL+"/render-view", bytes.NewReader(buf))
+	if err != nil {
+		return gateway.JobStatusFailed, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := w.httpClient.Do(req)
+	if err != nil {
+		// Connection dropped / instance reclaimed = infra failure.
+		return gateway.JobStatusFailed, err
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	var rr runResponse
+	_ = json.Unmarshal(raw, &rr)
+
+	switch rr.Status {
+	case "COMPLETED":
+		return gateway.JobStatusCompleted, nil
+	case "CANCELLED":
+		return gateway.JobStatusCancelled, nil
+	default:
+		detail := rr.Error
+		if detail == "" {
+			if len(raw) > 256 {
+				detail = string(raw[:256])
+			} else {
+				detail = string(raw)
+			}
+		}
+		return gateway.JobStatusFailed, fmt.Errorf(
+			"cloudrunworker: render-view failed (http %d): %s", resp.StatusCode, detail,
 		)
 	}
 }

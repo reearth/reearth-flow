@@ -86,6 +86,35 @@ type File interface {
 	CheckJobPreviewSchemaExists(context.Context, string) (bool, error)
 	GetIntermediateDataURL(context.Context, string, string) string
 	CheckIntermediateDataExists(context.Context, string, string) (bool, error)
+	// ResolveIntermediateDataURI returns the gs://-style read URI of the
+	// intermediate-data file fileID under jobID, and whether it exists. The
+	// renderer is handed gs:// rather than the public https URL because the
+	// engine's http storage backend is read-only and unauthenticated.
+	//
+	// It reports which extension the file actually carries: a run writes
+	// `.jsonl` or `.jsonl.zst` depending on WORKER_COMPRESS_INTERMEDIATE_DATA,
+	// and resolving it here means a missing input fails before a render job is
+	// dispatched rather than inside one.
+	ResolveIntermediateDataURI(ctx context.Context, jobID, fileID string) (string, bool, error)
+	// GetFeatureViewUploadURI returns the gs:// root a view's files are written
+	// under, which is the renderer's --output.
+	GetFeatureViewUploadURI(jobID, fileID string) string
+	// GetFeatureViewReportUploadURI returns the gs:// URI the renderer writes a
+	// view's report to.
+	GetFeatureViewReportUploadURI(jobID, fileID, key string) string
+	// GetFeatureViewURL returns the public https URL of one file inside a view.
+	// name is relative to the view's own directory.
+	GetFeatureViewURL(jobID, fileID, name string) string
+	// ReadFeatureViewReport opens a view's report, and is also how an existing
+	// view is detected: rerror.ErrNotFound means it has not been rendered.
+	ReadFeatureViewReport(ctx context.Context, jobID, fileID, key string) (io.ReadCloser, error)
+	// CheckFeatureViewFileExists reports whether one file inside a view is
+	// still present. name is relative to the view's own directory, as
+	// EntryPointName builds it.
+	//
+	// A report and the view it describes are separate objects with separate
+	// lifetimes, so a report alone is not proof the view is still loadable.
+	CheckFeatureViewFileExists(ctx context.Context, jobID, fileID, name string) (bool, error)
 	IssueUploadAssetLink(context.Context, IssueUploadAssetParam) (*UploadAssetLink, error)
 	GetPublicAssetURL(string, string) (*url.URL, error)
 	UploadedAsset(context.Context, *asset.Upload) (*file.File, error)
