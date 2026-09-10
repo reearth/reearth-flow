@@ -381,10 +381,13 @@ graphs:
               expr:
                 type: string
                 value: Surface Not Closed
+            # The row reports the shell manifold failure alone, so it counts that
+            # check's own edges rather than `errorCount`, which sums every check
+            # the validator ran on the solid.
             - attribute: エラー数
               expr:
                 type: flowExpr
-                value: attributes["validationResult"]["errorCount"]
+                value: attributes["validationResult"]["checks"]["ShellManifold"]
 
       - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
         name: FeatureWriterL14-BoundaryNotClosed
@@ -447,10 +450,24 @@ graphs:
               expr:
                 type: string
                 value: InvalidSolidBoundaries
+            # Several shell checks can fail together, but the row names one issue,
+            # so it counts the first in the order the checks are tried.
             - attribute: エラー数
               expr:
                 type: flowExpr
-                value: attributes["validationResult"]["errorCount"]
+                value: |
+                  checks = attributes["validationResult"]["checks"];
+                  if "ShellConnected" in checks {
+                    checks["ShellConnected"]
+                  } else if "Orientable" in checks {
+                    checks["Orientable"]
+                  } else if "SelfIntersection" in checks {
+                    checks["SelfIntersection"]
+                  } else if "Orientation" in checks {
+                    checks["Orientation"]
+                  } else {
+                    checks.get("ShellOrientation", 0)
+                  }
 
       - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
         name: FeatureWriterL14-BoundaryOtherIssues
