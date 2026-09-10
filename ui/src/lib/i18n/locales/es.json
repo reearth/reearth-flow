@@ -255,6 +255,8 @@
   "Additional Debug Actions": "Acciones adicionales de depuración",
   "Run Workflow": "Ejecutar flujo de trabajo",
   "Workflow Logs": "Registros del flujo de trabajo",
+  "Diagnostics ({{count}})_one": "Diagnóstico ({{count}})",
+  "Diagnostics ({{count}})_many": "Diagnósticos ({{count}})",
   "Diagnostics ({{count}})_other": "Diagnósticos ({{count}})",
   "No diagnostics for this run": "No hay diagnósticos para esta ejecución",
   "Geo Viewer Could Not Be Loaded. Check if the data is valid.": "El visor geográfico no se pudo cargar. Verifica si los datos son válidos.",

@@ -255,6 +255,8 @@
   "Additional Debug Actions": "Actions de débogage supplémentaires",
   "Run Workflow": "Exécuter le flux de travail",
   "Workflow Logs": "Journaux du flux de travail",
+  "Diagnostics ({{count}})_one": "Diagnostic ({{count}})",
+  "Diagnostics ({{count}})_many": "Diagnostics ({{count}})",
   "Diagnostics ({{count}})_other": "Diagnostics ({{count}})",
   "No diagnostics for this run": "Aucun diagnostic pour cette exécution",
   "Geo Viewer Could Not Be Loaded. Check if the data is valid.": "Le visualiseur géographique n'a pas pu être chargé. Vérifiez si les données sont valides.",
