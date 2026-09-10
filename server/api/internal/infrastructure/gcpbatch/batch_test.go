@@ -101,16 +101,16 @@ func TestBatchRepo_SubmitJob_DiagnosticsEnv(t *testing.T) {
 		},
 	}
 
-	jobID, _ := id.JobIDFrom("test-job-id")
-	projectID, _ := id.ProjectIDFrom("test-project-id")
-	workspaceID, _ := accountsid.WorkspaceIDFrom("test-workspace-id")
+	jobID := id.NewJobID()
+	projectID := id.NewProjectID()
+	workspaceID := accountsid.NewWorkspaceID()
 
 	var captured *batchpb.CreateJobRequest
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).
 		Run(func(args mock.Arguments) { captured = args.Get(1).(*batchpb.CreateJobRequest) }).
-		Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/test-job-id"}, nil)
+		Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/" + jobID.String()}, nil)
 
-	_, err := batchRepo.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, accountsid.WorkspaceID(workspaceID), nil, nil)
+	_, err := batchRepo.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, workspaceID, nil, nil)
 	assert.NoError(t, err)
 
 	vars := captured.Job.TaskGroups[0].TaskSpec.Environment.Variables

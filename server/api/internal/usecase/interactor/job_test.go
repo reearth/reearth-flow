@@ -196,7 +196,8 @@ func newCheckStatusJob(jobRepo *mockCheckStatusJobRepo, diagRepo repo.NodeDiagno
 }
 
 type mockCloudRunWorker struct {
-	runJob func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error)
+	runJob        func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error)
+	previewSchema func(ctx context.Context, p gateway.ProbeSchemaParam) (gateway.JobStatus, error)
 }
 
 func (m *mockCloudRunWorker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
@@ -204,7 +205,7 @@ func (m *mockCloudRunWorker) RunJob(ctx context.Context, p gateway.RunJobParam) 
 }
 
 func (m *mockCloudRunWorker) PreviewSchema(ctx context.Context, p gateway.ProbeSchemaParam) (gateway.JobStatus, error) {
-	return gateway.JobStatusCompleted, nil
+	return m.previewSchema(ctx, p)
 }
 
 func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) error { return nil }
@@ -223,6 +224,25 @@ func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
 	}}
 
 	i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID()})
+
+	assert.Equal(t, job.StatusRunning, <-seen)
+	assert.Equal(t, 1, jobRepo.saveCalls)
+}
+
+func TestJob_PreviewSchemaCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
+	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
+	require.NoError(t, err)
+
+	jobRepo := &mockCheckStatusJobRepo{job: pending}
+	i := newCheckStatusJob(jobRepo, &mockDiagnosticsRepo{}, &mockCheckStatusRedis{})
+
+	seen := make(chan job.Status, 1)
+	i.cloudRunWorker = &mockCloudRunWorker{previewSchema: func(ctx context.Context, p gateway.ProbeSchemaParam) (gateway.JobStatus, error) {
+		seen <- jobRepo.job.Status()
+		return gateway.JobStatusCompleted, nil
+	}}
+
+	i.PreviewSchemaCloudRunWorker(pending, gateway.ProbeSchemaParam{JobID: pending.ID()})
 
 	assert.Equal(t, job.StatusRunning, <-seen)
 	assert.Equal(t, 1, jobRepo.saveCalls)
