@@ -34,7 +34,7 @@ mod tests {
         }
         assert_eq!(
             ErrorCode::ALL.len(),
-            31,
+            34,
             "update this count when adding registry codes"
         );
     }
@@ -103,5 +103,21 @@ mod tests {
         // it is a std error, so `?` coerces it into the actions' BoxedError signatures
         let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(d);
         assert!(boxed.to_string().starts_with("[WARN]"));
+    }
+
+    #[test]
+    fn czml_reader_variants_exist() {
+        // Verify the CZML reader diagnostic codes generate correctly
+        let codes = vec![
+            ErrorCode::CzmlUnsupportedPosition,
+            ErrorCode::CzmlInertialFrame,
+            ErrorCode::CzmlGeocentricForce2d,
+        ];
+        assert_eq!(codes[0].as_str(), "czml.unsupported_position");
+        assert_eq!(codes[1].as_str(), "czml.inertial_frame");
+        assert_eq!(codes[2].as_str(), "czml.geocentric_force_2d");
+        assert_eq!(codes[0].category(), ErrorCategory::Geometry);
+        assert_eq!(codes[1].category(), ErrorCategory::Geometry);
+        assert_eq!(codes[2].category(), ErrorCategory::Geometry);
     }
 }
