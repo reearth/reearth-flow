@@ -96,7 +96,7 @@
   "Preparing {{completed}} / {{total}}…": "Preparando {{completed}} / {{total}}…",
   "Download all as ZIP": "Descargar todo como ZIP",
   "{{failed}} file(s) could not be downloaded": "No se pudieron descargar {{failed}} archivo(s)",
-  "Download {{name}}": "",
+  "Download {{name}}": "Descargar {{name}}",
   "Select Language": "Seleccionar idioma",
   "Light": "Claro",
   "Dark": "Oscuro",
