@@ -123,7 +123,10 @@ const DebugPanel: React.FC = () => {
                 </TabsTrigger>
               </TabsList>
               <div className="ml-2 h-full w-1 border-l" />
-              <OutputDataDownload outputData={outputDataForDownload} />
+              <OutputDataDownload
+                outputData={outputDataForDownload}
+                archiveName={`job_${debugJobId}`}
+              />
             </div>
             {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
