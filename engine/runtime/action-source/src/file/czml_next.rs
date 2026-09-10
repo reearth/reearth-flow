@@ -394,10 +394,10 @@ fn packet_features(
     Ok(vec![feature])
 }
 
-/// The packet's geometry, first match wins, in the old world's order. A graphics
-/// property present but missing its positions is not malformed: it falls through to
-/// the next candidate, and a packet where every candidate falls through gets
-/// `Geometry::None`.
+/// The packet's geometry, first match wins, in the old world's order: polygon,
+/// polyline, rectangle, corridor, ellipse, wall, then position. A graphics property
+/// present but missing its positions is not malformed: it falls through to the next
+/// candidate, and a packet where every candidate falls through gets `Geometry::None`.
 fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionProblem> {
     if let Some(positions) = packet.pointer("/polygon/positions") {
         if let Some(coords) = position_list(positions)? {
@@ -409,16 +409,34 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
             return area_geometry(&coords, holes, force_2d);
         }
     }
-    for pointer in ["/polyline/positions", "/corridor/positions", "/wall/positions"] {
-        if let Some(positions) = packet.pointer(pointer) {
-            if let Some(coords) = position_list(positions)? {
-                return line_geometry(&coords, force_2d);
-            }
+    if let Some(positions) = packet.pointer("/polyline/positions") {
+        if let Some(coords) = position_list(positions)? {
+            return line_geometry(&coords, force_2d);
         }
     }
     if let Some(coordinates) = packet.pointer("/rectangle/coordinates") {
-        if let Some(wsen) = extract_rectangle_bounds(coordinates) {
-            return rectangle_geometry(&wsen, force_2d);
+        // `extract_rectangle_bounds` (shared with the old world, not to be touched
+        // here) returns `None` both when `coordinates` has no `wsen`/`wsenDegrees`
+        // key at all, and when it has one whose value is corrupt. Only the first is
+        // absence; the second is present-and-malformed and must fail the read.
+        let has_wsen_key = coordinates.as_object().is_some_and(|obj| {
+            obj.contains_key("wsenDegrees") || obj.contains_key("wsen")
+        });
+        match extract_rectangle_bounds(coordinates) {
+            Some(wsen) => return rectangle_geometry(&wsen, force_2d),
+            None if has_wsen_key => {
+                return Err(PositionProblem::Malformed(
+                    "rectangle `coordinates` has a `wsen`/`wsenDegrees` array with \
+                     fewer than 4 entries or a non-numeric value"
+                        .to_string(),
+                ));
+            }
+            None => {}
+        }
+    }
+    if let Some(positions) = packet.pointer("/corridor/positions") {
+        if let Some(coords) = position_list(positions)? {
+            return line_geometry(&coords, force_2d);
         }
     }
     if let (Some(ellipse), Some(value)) = (packet.get("ellipse"), packet.get("position")) {
@@ -428,8 +446,15 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
         // cartesian centre (groups of four) pass the "multiple of three" check
         // whenever the sample count made the total divisible by three, and be
         // silently misread as a run of bogus triples.
-        if let Some(centre) = position(value)?.and_then(|c| c.triples.first().copied()) {
-            return ellipse_geometry(ellipse, centre, force_2d);
+        if let Some(coords) = position(value)? {
+            if let Some(&centre) = coords.triples.first() {
+                return ellipse_geometry(ellipse, coords.frame, centre, force_2d);
+            }
+        }
+    }
+    if let Some(positions) = packet.pointer("/wall/positions") {
+        if let Some(coords) = position_list(positions)? {
+            return line_geometry(&coords, force_2d);
         }
     }
     if let Some(value) = packet.get("position") {
@@ -440,23 +465,27 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
     Ok(Geometry::None)
 }
 
-/// Interior rings from a `PositionListOfLists`, in the exterior's frame. A hole
-/// stated in a different frame than its exterior is not something this reader can
-/// place consistently.
+/// Interior rings from a `PositionListOfLists`. `extract_polygon_holes` only ever
+/// reads `holes.cartographicDegrees`, so a hole is always cartographic degrees,
+/// never `cartesian` — there is no CZML shape in which a hole could disagree with
+/// its own frame. What it *can* disagree with is the exterior: a `cartesian`
+/// exterior is ECEF metres, and a degrees hole under it has no consistent place, so
+/// that combination is unsupported rather than force-tagged into the exterior's
+/// frame.
 fn hole_rings(value: &Value, exterior: CzmlFrame) -> Result<Vec<Vec<[f64; 3]>>, PositionProblem> {
+    if exterior == CzmlFrame::Geocentric {
+        return Err(PositionProblem::Unsupported(
+            ErrorCode::CzmlUnsupportedPosition,
+        ));
+    }
     let mut rings = Vec::new();
     for ring in extract_polygon_holes(value) {
         let raw = Raw {
-            frame: exterior,
+            frame: CzmlFrame::Cartographic,
             radians: false,
             numbers: ring,
         };
         let coords = into_coords(raw)?;
-        if coords.frame != exterior {
-            return Err(PositionProblem::Unsupported(
-                ErrorCode::CzmlUnsupportedPosition,
-            ));
-        }
         rings.push(coords.triples);
     }
     Ok(rings)
@@ -490,11 +519,23 @@ fn rectangle_geometry(wsen: &[f64], force_2d: bool) -> Result<Geometry, Position
 /// An ellipse as a 32-gon, unchanged from the old world. `rotation` is still
 /// ignored and `semiMajorAxis` still lands on the east axis, both of which
 /// disagree with the CZML schema; fixing them is a follow-up, not this port.
+///
+/// `frame` is the centre's frame, as lifted by `position`. An ellipse is defined by
+/// metre-scale axes projected onto the globe's surface; centred in `cartesian` ECEF
+/// metres it has no meaning this reader can give it without a reprojection it must
+/// not perform, so a geocentric centre is unsupported rather than misread as
+/// degrees.
 fn ellipse_geometry(
     ellipse: &Value,
+    frame: CzmlFrame,
     centre: [f64; 3],
     force_2d: bool,
 ) -> Result<Geometry, PositionProblem> {
+    if frame != CzmlFrame::Cartographic {
+        return Err(PositionProblem::Unsupported(
+            ErrorCode::CzmlUnsupportedPosition,
+        ));
+    }
     const SIDES: usize = 32;
     let [lat, lon, height] = centre;
     let semi_major = ellipse
@@ -512,12 +553,25 @@ fn ellipse_geometry(
             "an ellipse centred at a pole has no longitude scale".to_string(),
         ));
     }
+    // The exact pole is caught above, but latitude approaching +/-90 degrees still
+    // makes `metres_per_degree_lon` finite yet vanishingly small, so a normal-sized
+    // `semiMajorAxis` blows the longitude half-extent past anything the globe can
+    // hold (or past `f64` finitude). An ellipse wider than the globe is not a shape
+    // this reader can produce.
+    let lon_half_extent = semi_major / metres_per_degree_lon;
+    if !lon_half_extent.is_finite() || lon_half_extent.abs() > 180.0 {
+        return Err(PositionProblem::Malformed(
+            "an ellipse's semiMajorAxis is too wide for its latitude to fit within \
+             +/-180 degrees of longitude"
+                .to_string(),
+        ));
+    }
     let triples = (0..SIDES)
         .map(|i| {
             let angle = (i as f64) * std::f64::consts::TAU / (SIDES as f64);
             [
                 lat + (semi_minor / metres_per_degree_lat) * angle.sin(),
-                lon + (semi_major / metres_per_degree_lon) * angle.cos(),
+                lon + lon_half_extent * angle.cos(),
                 height,
             ]
         })
@@ -827,6 +881,153 @@ mod tests {
         );
         assert!(features.is_empty());
     }
+
+    // -- Review fixes --------------------------------------------------------
+
+    #[test]
+    fn c1_an_ellipse_with_a_geocentric_centre_is_unsupported_not_misbuilt() {
+        // `ellipse_geometry` must not destructure a geocentric centre's ECEF
+        // metres as [lat, lon, height] and tag the result Cartographic: before
+        // this fix that produced a corrupt `Polygon3D { frame: Crs(4979) }` whose
+        // X in metres was read back as a latitude.
+        let centre = [3_960_000.0, 3_350_000.0, 3_700_000.0];
+        let ellipse = serde_json::json!({"semiMajorAxis": 100.0, "semiMinorAxis": 50.0});
+        assert_eq!(
+            ellipse_geometry(&ellipse, CzmlFrame::Geocentric, centre, false).unwrap_err(),
+            PositionProblem::Unsupported(ErrorCode::CzmlUnsupportedPosition),
+        );
+
+        // And end to end: the packet is reported and dropped, not built.
+        let features = read_str(
+            r#"[{"id":"e","ellipse":{"semiMajorAxis":100.0,"semiMinorAxis":50.0},
+                 "position":{"cartesian":[3960000.0,3350000.0,3700000.0]}}]"#,
+            &params(false, true),
+        );
+        assert!(features.is_empty());
+    }
+
+    #[test]
+    fn i2_a_hole_under_a_geocentric_exterior_is_unsupported_not_mistagged() {
+        // `extract_polygon_holes` only ever reads `holes.cartographicDegrees`, so
+        // before this fix a degrees hole under a `cartesian` exterior got
+        // force-tagged Geocentric and stored verbatim as if it were metres,
+        // because the dead `coords.frame != exterior` check could never fire
+        // (`into_coords` always echoes back the frame it was given).
+        let holes = serde_json::json!({
+            "cartographicDegrees": [[139.0, 35.0, 0.0, 139.5, 35.0, 0.0, 139.5, 35.5, 0.0]]
+        });
+        assert_eq!(
+            hole_rings(&holes, CzmlFrame::Geocentric).unwrap_err(),
+            PositionProblem::Unsupported(ErrorCode::CzmlUnsupportedPosition),
+        );
+
+        // End to end: a cartesian-exterior polygon with a degrees hole is
+        // reported and dropped rather than built with a mistagged hole.
+        let features = read_str(
+            r#"[{"id":"p","polygon":{"positions":{"cartesian":
+                 [0,0,0, 1000,0,0, 1000,1000,0, 0,1000,0]},
+                 "holes":{"cartographicDegrees":
+                 [[139.0,35.0,0.0,139.5,35.0,0.0,139.5,35.5,0.0]]}}}]"#,
+            &params(false, true),
+        );
+        assert!(features.is_empty());
+    }
+
+    #[test]
+    fn i3_dispatch_order_matches_the_old_world_for_mixed_graphics_packets() {
+        // Old world order: polygon, polyline, rectangle, corridor, ellipse, wall,
+        // position. Before this fix, corridor and wall were grouped with polyline
+        // ahead of rectangle and ellipse, so these two packets built the wrong
+        // shape.
+        let rectangle_over_corridor = read_str(
+            r#"[{"id":"r","rectangle":{"coordinates":{"wsenDegrees":[139.0,35.0,140.0,36.0]}},
+                 "corridor":{"positions":{"cartographicDegrees":
+                 [139.0,35.0,0.0, 140.0,36.0,0.0]}}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(rectangle_over_corridor.len(), 1);
+        assert!(
+            matches!(
+                &*rectangle_over_corridor[0].geometry,
+                Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(_)),
+            ),
+            "rectangle must win over corridor, got {:?}",
+            rectangle_over_corridor[0].geometry
+        );
+
+        let ellipse_over_wall = read_str(
+            r#"[{"id":"e","ellipse":{"semiMajorAxis":100.0,"semiMinorAxis":50.0},
+                 "position":{"cartographicDegrees":[139.0,35.0,0.0]},
+                 "wall":{"positions":{"cartographicDegrees":
+                 [139.0,35.0,0.0, 140.0,36.0,0.0]}}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(ellipse_over_wall.len(), 1);
+        assert!(
+            matches!(
+                &*ellipse_over_wall[0].geometry,
+                Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(_)),
+            ),
+            "ellipse must win over wall, got {:?}",
+            ellipse_over_wall[0].geometry
+        );
+    }
+
+    #[test]
+    fn i4_a_corrupt_rectangle_bounds_fails_the_read_rather_than_becoming_geometry_none() {
+        // `extract_rectangle_bounds` returns `None` both for "no wsen key" and for
+        // "wsen holds a non-numeric entry"; only the first is absence. Before this
+        // fix a corrupt value produced an `Ok` with one `Geometry::None` feature.
+        let err = read(
+            &NodeContext::default(),
+            &Bytes::from(
+                r#"[{"id":"bad-rect","rectangle":{"coordinates":
+                     {"wsenDegrees":[139.0,35.0,"x",36.0]}}}]"#
+                    .to_string(),
+            ),
+            &params(false, true),
+        )
+        .unwrap_err();
+        assert!(format!("{err}").contains("bad-rect"), "message was: {err}");
+        assert!(matches!(err, SourceError::CzmlReader(_)));
+
+        // The absence case must keep falling through, not fail.
+        let features = read_str(
+            r#"[{"id":"no-bounds","rectangle":{"coordinates":{}},
+                 "position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        assert!(matches!(
+            &*features[0].geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(_)),
+        ));
+    }
+
+    #[test]
+    fn i5_an_ellipse_near_the_pole_fails_rather_than_producing_absurd_longitudes() {
+        // The exact-pole guard only fires at latitude +/-90. At 89.99999999 the
+        // longitude half-extent came out around five million degrees before this
+        // fix: finite, so it slipped past the old guard, and unreported.
+        let err = read(
+            &NodeContext::default(),
+            &Bytes::from(
+                r#"[{"id":"polar-ellipse",
+                     "ellipse":{"semiMajorAxis":100.0,"semiMinorAxis":50.0},
+                     "position":{"cartographicDegrees":[139.0,89.99999999,0.0]}}]"#
+                    .to_string(),
+            ),
+            &params(false, true),
+        )
+        .unwrap_err();
+        assert!(
+            format!("{err}").contains("polar-ellipse"),
+            "message was: {err}"
+        );
+        assert!(matches!(err, SourceError::CzmlReader(_)));
+    }
+
+    // -------------------------------------------------------------------------
 
     fn cartographic(triples: Vec<[f64; 3]>) -> Coords {
         Coords {
