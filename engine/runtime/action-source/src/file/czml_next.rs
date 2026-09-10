@@ -14,6 +14,7 @@
 //! the `box`, `cylinder`, `ellipsoid`, `polylineVolume`, `path`, `model` and
 //! `tileset` graphics. Each is reported, never silently dropped.
 
+use bytes::Bytes;
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::{
@@ -22,7 +23,16 @@ use reearth_flow_geometry::{
     polygon::{Polygon2D, Polygon3D},
     Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
 };
+use reearth_flow_runtime::executor_operation::NodeContext;
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use serde_json::Value;
+
+use super::{
+    extract_common_attributes, extract_extra_czml_properties, extract_polygon_holes,
+    extract_rectangle_bounds, parse_time_tagged_position, sample_timestamp,
+    CzmlReaderCompiledParam, TimeSamplingStrategy,
+};
+use crate::errors::SourceError;
 
 /// WGS84 geographic 3D. Authority axis order `(latitude, longitude, height)`.
 pub(super) const WGS84_GEOGRAPHIC_3D: EpsgCode = EpsgCode::new(4979);
@@ -296,10 +306,527 @@ pub(super) fn area_geometry(
     })
 }
 
+/// Read a whole CZML document.
+///
+/// Three outcomes per packet, per Action Standard 4.3. Input that is present and
+/// malformed fails the read with the packet id in the message. Valid CZML this
+/// reader does not support is reported through `ctx.report_drop` and the packet is
+/// skipped. A packet with attributes and no geometry becomes a `Geometry::None`
+/// feature, which is a change from the old world, where it vanished with its
+/// attributes.
+pub(super) fn read(
+    ctx: &NodeContext,
+    content: &Bytes,
+    params: &CzmlReaderCompiledParam,
+) -> Result<Vec<Feature>, SourceError> {
+    let text = String::from_utf8(content.to_vec())
+        .map_err(|e| SourceError::CzmlReader(format!("Invalid UTF-8: {e}")))?;
+    let packets: Vec<Value> = serde_json::from_str(&text)
+        .map_err(|e| SourceError::CzmlReader(format!("Failed to parse CZML: {e}")))?;
+
+    let mut features = Vec::with_capacity(packets.len());
+    for packet in &packets {
+        let is_document = packet.get("version").is_some_and(Value::is_string);
+        if is_document && params.skip_document_packet {
+            continue;
+        }
+        match packet_features(packet, params, is_document) {
+            Ok(built) => features.extend(built),
+            Err(PositionProblem::Unsupported(code)) => {
+                ctx.report_drop(code, None, None);
+            }
+            Err(PositionProblem::Malformed(reason)) => {
+                return Err(SourceError::CzmlReader(format!(
+                    "packet `{}`: {reason}",
+                    packet_id(packet)
+                )));
+            }
+        }
+    }
+    Ok(features)
+}
+
+/// The packet's `id`, or a placeholder, for error messages.
+fn packet_id(packet: &Value) -> &str {
+    packet
+        .get("id")
+        .and_then(Value::as_str)
+        .unwrap_or("<no id>")
+}
+
+/// One packet's features. Mirrors the old world's `packet_to_features`: a
+/// time-tagged position takes the timeseries path, everything else builds static
+/// geometry.
+///
+/// Takes no `NodeContext` on purpose: every problem is returned as a
+/// `PositionProblem` and `read` alone decides whether it reports or fails. Keeping
+/// the reporting in one place is what makes the three-way failure policy auditable.
+fn packet_features(
+    packet: &Value,
+    params: &CzmlReaderCompiledParam,
+    is_document: bool,
+) -> Result<Vec<Feature>, PositionProblem> {
+    let base = extract_common_attributes(packet);
+
+    if let Some(position) = packet.get("position") {
+        if let Some(ts) = parse_time_tagged_position(position) {
+            return timeseries_features(&ts, &base, packet, params);
+        }
+    }
+
+    let geometry = packet_geometry(packet, params.force_2d)?;
+    let mut feature = Feature::new_with_attributes_and_geometry(base, geometry);
+    let attributes = std::sync::Arc::make_mut(&mut feature.attributes);
+    extract_extra_czml_properties(packet, attributes);
+    if is_document {
+        // `CZML_COMMON_PROPERTIES` holds `version` and `clock` out of the shared
+        // capture, so a kept document packet would otherwise lose exactly the
+        // fields that identify it.
+        for key in ["version", "clock"] {
+            if let Some(value) = packet.get(key) {
+                attributes.insert(
+                    Attribute::new(format!("czml.{key}")),
+                    AttributeValue::String(serde_json::to_string(value).unwrap_or_default()),
+                );
+            }
+        }
+    }
+    Ok(vec![feature])
+}
+
+/// The packet's geometry, first match wins, in the old world's order. A graphics
+/// property present but missing its positions is not malformed: it falls through to
+/// the next candidate, and a packet where every candidate falls through gets
+/// `Geometry::None`.
+fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionProblem> {
+    if let Some(positions) = packet.pointer("/polygon/positions") {
+        if let Some(coords) = position_list(positions)? {
+            let holes = packet
+                .pointer("/polygon/holes")
+                .map(|value| hole_rings(value, coords.frame))
+                .transpose()?
+                .unwrap_or_default();
+            return area_geometry(&coords, holes, force_2d);
+        }
+    }
+    for pointer in ["/polyline/positions", "/corridor/positions", "/wall/positions"] {
+        if let Some(positions) = packet.pointer(pointer) {
+            if let Some(coords) = position_list(positions)? {
+                return line_geometry(&coords, force_2d);
+            }
+        }
+    }
+    if let Some(coordinates) = packet.pointer("/rectangle/coordinates") {
+        if let Some(wsen) = extract_rectangle_bounds(coordinates) {
+            return rectangle_geometry(&wsen, force_2d);
+        }
+    }
+    if let (Some(ellipse), Some(value)) = (packet.get("ellipse"), packet.get("position")) {
+        // `position`, not `position_list`: an ellipse's centre is a singular CZML
+        // Position, and only `position` carries the time-tagged guard. Routing a
+        // singular position through `position_list` would let a time-tagged
+        // cartesian centre (groups of four) pass the "multiple of three" check
+        // whenever the sample count made the total divisible by three, and be
+        // silently misread as a run of bogus triples.
+        if let Some(centre) = position(value)?.and_then(|c| c.triples.first().copied()) {
+            return ellipse_geometry(ellipse, centre, force_2d);
+        }
+    }
+    if let Some(value) = packet.get("position") {
+        if let Some(coords) = position(value)? {
+            return point_geometry(&coords, force_2d);
+        }
+    }
+    Ok(Geometry::None)
+}
+
+/// Interior rings from a `PositionListOfLists`, in the exterior's frame. A hole
+/// stated in a different frame than its exterior is not something this reader can
+/// place consistently.
+fn hole_rings(value: &Value, exterior: CzmlFrame) -> Result<Vec<Vec<[f64; 3]>>, PositionProblem> {
+    let mut rings = Vec::new();
+    for ring in extract_polygon_holes(value) {
+        let raw = Raw {
+            frame: exterior,
+            radians: false,
+            numbers: ring,
+        };
+        let coords = into_coords(raw)?;
+        if coords.frame != exterior {
+            return Err(PositionProblem::Unsupported(
+                ErrorCode::CzmlUnsupportedPosition,
+            ));
+        }
+        rings.push(coords.triples);
+    }
+    Ok(rings)
+}
+
+/// A rectangle's four corners, closed. `wsen` is west, south, east, north in
+/// degrees with an optional height, as `extract_rectangle_bounds` returns it.
+fn rectangle_geometry(wsen: &[f64], force_2d: bool) -> Result<Geometry, PositionProblem> {
+    let [west, south, east, north] = match wsen {
+        [w, s, e, n, ..] => [*w, *s, *e, *n],
+        _ => {
+            return Err(PositionProblem::Malformed(
+                "a rectangle needs west, south, east and north bounds".to_string(),
+            ));
+        }
+    };
+    let height = wsen.get(4).copied().unwrap_or(0.0);
+    // Stored latitude-first, like every other cartographic coordinate here.
+    let coords = Coords {
+        frame: CzmlFrame::Cartographic,
+        triples: vec![
+            [south, west, height],
+            [south, east, height],
+            [north, east, height],
+            [north, west, height],
+        ],
+    };
+    area_geometry(&coords, vec![], force_2d)
+}
+
+/// An ellipse as a 32-gon, unchanged from the old world. `rotation` is still
+/// ignored and `semiMajorAxis` still lands on the east axis, both of which
+/// disagree with the CZML schema; fixing them is a follow-up, not this port.
+fn ellipse_geometry(
+    ellipse: &Value,
+    centre: [f64; 3],
+    force_2d: bool,
+) -> Result<Geometry, PositionProblem> {
+    const SIDES: usize = 32;
+    let [lat, lon, height] = centre;
+    let semi_major = ellipse
+        .get("semiMajorAxis")
+        .and_then(Value::as_f64)
+        .unwrap_or(100.0);
+    let semi_minor = ellipse
+        .get("semiMinorAxis")
+        .and_then(Value::as_f64)
+        .unwrap_or(100.0);
+    let metres_per_degree_lat = 111_000.0;
+    let metres_per_degree_lon = metres_per_degree_lat * lat.to_radians().cos();
+    if metres_per_degree_lon.abs() < f64::EPSILON {
+        return Err(PositionProblem::Malformed(
+            "an ellipse centred at a pole has no longitude scale".to_string(),
+        ));
+    }
+    let triples = (0..SIDES)
+        .map(|i| {
+            let angle = (i as f64) * std::f64::consts::TAU / (SIDES as f64);
+            [
+                lat + (semi_minor / metres_per_degree_lat) * angle.sin(),
+                lon + (semi_major / metres_per_degree_lon) * angle.cos(),
+                height,
+            ]
+        })
+        .collect();
+    let coords = Coords {
+        frame: CzmlFrame::Cartographic,
+        triples,
+    };
+    area_geometry(&coords, vec![], force_2d)
+}
+
+/// Features from a time-tagged position, one per `TimeSamplingStrategy`.
+///
+/// The samples in `czml.timeseries` stay in CZML's own longitude, latitude, height
+/// order. The writer reads them as raw JSON and its own comment states they must not
+/// be reprojected or swapped, because the reader already parsed them out of
+/// `cartographicDegrees`. Only the feature's geometry is latitude-first.
+fn timeseries_features(
+    ts: &super::TimeTaggedPosition,
+    base: &reearth_flow_types::Attributes,
+    packet: &Value,
+    params: &CzmlReaderCompiledParam,
+) -> Result<Vec<Feature>, PositionProblem> {
+    let sample_point = |sample: &super::TimeSample| -> Result<Geometry, PositionProblem> {
+        let coords = Coords {
+            frame: CzmlFrame::Cartographic,
+            triples: vec![[sample.lat, sample.lon, sample.height]],
+        };
+        point_geometry(&coords, params.force_2d)
+    };
+
+    match params.time_sampling {
+        TimeSamplingStrategy::FirstSampleOnly => {
+            let Some(sample) = ts.samples.first() else {
+                return Ok(vec![]);
+            };
+            let mut feature =
+                Feature::new_with_attributes_and_geometry(base.clone(), sample_point(sample)?);
+            let attributes = std::sync::Arc::make_mut(&mut feature.attributes);
+            add_interpolation(attributes, ts);
+            extract_extra_czml_properties(packet, attributes);
+            Ok(vec![feature])
+        }
+        TimeSamplingStrategy::AllSamples => {
+            let mut features = Vec::with_capacity(ts.samples.len());
+            for sample in &ts.samples {
+                let mut feature =
+                    Feature::new_with_attributes_and_geometry(base.clone(), sample_point(sample)?);
+                let attributes = std::sync::Arc::make_mut(&mut feature.attributes);
+                attributes.insert(
+                    Attribute::new("czml.timestamp"),
+                    AttributeValue::String(sample_timestamp(sample, ts.epoch.as_deref())),
+                );
+                attributes.insert(
+                    Attribute::new("czml.timeOffset"),
+                    AttributeValue::Number(
+                        serde_json::Number::from_f64(sample.time_offset)
+                            .unwrap_or_else(|| serde_json::Number::from(0)),
+                    ),
+                );
+                add_interpolation(attributes, ts);
+                features.push(feature);
+            }
+            Ok(features)
+        }
+        TimeSamplingStrategy::PreserveRaw => {
+            let Some(first) = ts.samples.first() else {
+                return Ok(vec![]);
+            };
+            let mut feature =
+                Feature::new_with_attributes_and_geometry(base.clone(), sample_point(first)?);
+            let samples: Vec<Value> = ts
+                .samples
+                .iter()
+                .map(|s| {
+                    serde_json::json!({
+                        "time": sample_timestamp(s, ts.epoch.as_deref()),
+                        "timeOffset": s.time_offset,
+                        "lon": s.lon,
+                        "lat": s.lat,
+                        "height": s.height,
+                    })
+                })
+                .collect();
+            let attributes = std::sync::Arc::make_mut(&mut feature.attributes);
+            attributes.insert(
+                Attribute::new("czml.timeseries"),
+                AttributeValue::String(serde_json::to_string(&samples).unwrap_or_default()),
+            );
+            add_interpolation(attributes, ts);
+            extract_extra_czml_properties(packet, attributes);
+            Ok(vec![feature])
+        }
+    }
+}
+
+/// The epoch and interpolation attributes, identical to the old world's
+/// `add_interpolation_attributes`.
+fn add_interpolation(
+    attributes: &mut reearth_flow_types::Attributes,
+    ts: &super::TimeTaggedPosition,
+) {
+    if let Some(epoch) = &ts.epoch {
+        attributes.insert(
+            Attribute::new("czml.epoch"),
+            AttributeValue::String(epoch.clone()),
+        );
+    }
+    if let Some(algorithm) = &ts.interpolation_algorithm {
+        attributes.insert(
+            Attribute::new("czml.interpolationAlgorithm"),
+            AttributeValue::String(algorithm.clone()),
+        );
+    }
+    if let Some(degree) = ts.interpolation_degree {
+        attributes.insert(
+            Attribute::new("czml.interpolationDegree"),
+            AttributeValue::Number(
+                serde_json::Number::from_f64(degree).unwrap_or_else(|| serde_json::Number::from(0)),
+            ),
+        );
+    }
+}
+
 #[cfg(all(test, feature = "new-geometry"))]
 mod tests {
     use super::*;
     use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::executor_operation::NodeContext;
+    use reearth_flow_types::{Attribute, AttributeValue};
+    // `SourceError` and `Bytes` are already imported by the implementation's own
+    // `use` block above, so `use super::*` brings them into the tests.
+    //
+    // `Attribute` doubles as a `Feature::get` key: `get` takes
+    // `T: AsRef<str> + Display`, and `&Attribute` satisfies both through std's
+    // blanket impls, so `feature.get(&Attribute::new("id"))` compiles.
+
+    use crate::file::reader::runner::FileReaderCompiledParam;
+
+    fn params(force_2d: bool, skip_document: bool) -> CzmlReaderCompiledParam {
+        // Built directly rather than through `compile`, which needs an expression
+        // engine; the reader never reads `common` here. `FileReaderCompiledParam`
+        // has no `Default`, but its fields are `pub(crate)` and this is the same
+        // crate, so construct it literally rather than adding a `Default` impl to
+        // production code.
+        CzmlReaderCompiledParam {
+            common: FileReaderCompiledParam {
+                dataset: None,
+                inline: None,
+            },
+            force_2d,
+            skip_document_packet: skip_document,
+            time_sampling: TimeSamplingStrategy::PreserveRaw,
+        }
+    }
+
+    fn read_str(json: &str, params: &CzmlReaderCompiledParam) -> Vec<Feature> {
+        read(&NodeContext::default(), &Bytes::from(json.to_string()), params)
+            .expect("the document reads")
+    }
+
+    #[test]
+    fn a_static_polygon_packet_becomes_one_feature() {
+        let features = read_str(
+            r#"[{"id":"a","polygon":{"positions":{"cartographicDegrees":
+               [139.0,35.0,0.0, 140.0,35.0,0.0, 140.0,36.0,0.0]}}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        assert_eq!(
+            features[0].get(&Attribute::new("id")),
+            Some(&AttributeValue::String("a".to_string())),
+        );
+        assert!(matches!(
+            &*features[0].geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(_)),
+        ));
+    }
+
+    #[test]
+    fn a_packet_with_no_geometry_keeps_its_attributes() {
+        // Today this packet vanishes, taking its attributes with it, which is why
+        // `preserveRaw` is not the lossless round trip its docstring claims.
+        let features = read_str(
+            r#"[{"id":"styles-only","name":"n","point":{"pixelSize":12}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        assert!(matches!(&*features[0].geometry, Geometry::None));
+        assert_eq!(
+            features[0].get(&Attribute::new("name")),
+            Some(&AttributeValue::String("n".to_string())),
+        );
+        // The graphics survive for the writer's embedded mode to replay.
+        assert!(features[0].get(&Attribute::new("czml.point")).is_some());
+    }
+
+    #[test]
+    fn a_document_packet_is_skipped_by_default() {
+        let features = read_str(
+            r#"[{"id":"document","version":"1.0","clock":{"multiplier":60}},
+                {"id":"a","position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        assert_eq!(
+            features[0].get(&Attribute::new("id")),
+            Some(&AttributeValue::String("a".to_string())),
+        );
+    }
+
+    #[test]
+    fn a_kept_document_packet_keeps_version_and_clock() {
+        // `CZML_COMMON_PROPERTIES` excludes both from the shared `czml.*` capture,
+        // so without an explicit capture the feature would be stripped of exactly
+        // what made it a document packet.
+        let features = read_str(
+            r#"[{"id":"document","version":"1.0","clock":{"multiplier":60}}]"#,
+            &params(false, false),
+        );
+        assert_eq!(features.len(), 1);
+        assert!(features[0].get(&Attribute::new("czml.version")).is_some());
+        assert!(features[0].get(&Attribute::new("czml.clock")).is_some());
+    }
+
+    #[test]
+    fn a_timeseries_stays_longitude_first_while_geometry_does_not() {
+        // THE REGRESSION TEST FOR THE ASYMMETRY. The writer reads these samples as
+        // raw JSON and must not reproject or swap them, so they stay in CZML order
+        // even though the feature's geometry is latitude-first.
+        let features = read_str(
+            r#"[{"id":"v","position":{"epoch":"2024-01-01T00:00:00Z",
+               "cartographicDegrees":[0,139.76,35.68,50.0, 60,139.80,35.70,52.0]}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) = &*features[0].geometry else {
+            panic!("expected a 3D point");
+        };
+        // Geometry: latitude first.
+        assert_eq!(p.position(), [35.68, 139.76, 50.0]);
+        // Timeseries JSON: longitude first, untouched.
+        let Some(AttributeValue::String(json)) =
+            features[0].get(&Attribute::new("czml.timeseries"))
+        else {
+            panic!("expected a timeseries attribute");
+        };
+        let samples: Vec<serde_json::Value> = serde_json::from_str(json).unwrap();
+        assert_eq!(samples[0]["lon"].as_f64().unwrap(), 139.76);
+        assert_eq!(samples[0]["lat"].as_f64().unwrap(), 35.68);
+    }
+
+    #[test]
+    fn an_inertial_packet_is_skipped_without_failing_the_file() {
+        let features = read_str(
+            r#"[{"id":"sat","position":{"referenceFrame":"INERTIAL",
+                 "cartesian":[1.0,2.0,3.0]}},
+                {"id":"b","position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#,
+            &params(false, true),
+        );
+        // The inertial packet is reported and dropped; its sibling still reads.
+        assert_eq!(features.len(), 1);
+        assert_eq!(
+            features[0].get(&Attribute::new("id")),
+            Some(&AttributeValue::String("b".to_string())),
+        );
+    }
+
+    #[test]
+    fn a_malformed_coordinate_list_fails_the_whole_read() {
+        // Action Standard 4.3: a reader that emits part of a file and quietly drops
+        // the rest hides corrupt input where the user can still fix it.
+        let err = read(
+            &NodeContext::default(),
+            &Bytes::from(
+                r#"[{"id":"bad","polyline":{"positions":{"cartographicDegrees":[1.0,2.0]}}}]"#
+                    .to_string(),
+            ),
+            &params(false, true),
+        )
+        .unwrap_err();
+        // The message must name the packet so the user can find it.
+        assert!(format!("{err}").contains("bad"), "message was: {err}");
+        // And it must be the malformed arm, not a report-and-skip: a file with a
+        // ragged coordinate list produces no features at all.
+        assert!(matches!(err, SourceError::CzmlReader(_)));
+    }
+
+    #[test]
+    fn a_cartesian_packet_reads_as_geocentric() {
+        let features = read_str(
+            r#"[{"id":"e","position":{"cartesian":[3960000.0,3350000.0,3700000.0]}}]"#,
+            &params(false, true),
+        );
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) = &*features[0].geometry else {
+            panic!("expected a 3D point");
+        };
+        assert_eq!(*p.frame(), CoordinateFrame::Crs(WGS84_GEOCENTRIC));
+        assert_eq!(p.position(), [3960000.0, 3350000.0, 3700000.0]);
+    }
+
+    #[test]
+    fn force_2d_skips_a_cartesian_packet_rather_than_mangling_it() {
+        let features = read_str(
+            r#"[{"id":"e","position":{"cartesian":[1.0,2.0,3.0]}}]"#,
+            &params(true, true),
+        );
+        assert!(features.is_empty());
+    }
 
     fn cartographic(triples: Vec<[f64; 3]>) -> Coords {
         Coords {
