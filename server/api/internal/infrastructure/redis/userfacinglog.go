@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -68,7 +69,79 @@ func (e *UserFacingLogEntry) ToDomain() (*userfacinglog.UserFacingLog, error) {
 	), nil
 }
 
+// GetUserFacingLogs reads the per-job stream userfacinglog:<jobID> the
+// subscriber dual-writes — an O(job) XRANGE instead of a keyspace-wide scan.
+// Jobs from before the dual-write have no stream and fall back to the scan.
 func (r *redisLog) GetUserFacingLogs(
+	ctx context.Context,
+	since time.Time,
+	until time.Time,
+	jobID id.JobID,
+) ([]*userfacinglog.UserFacingLog, error) {
+	logs, found, err := r.userFacingLogsFromStream(ctx, since, until, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		return logs, nil
+	}
+	return r.userFacingLogsFromScan(ctx, since, until, jobID)
+}
+
+func (r *redisLog) userFacingLogsFromStream(
+	ctx context.Context,
+	since time.Time,
+	until time.Time,
+	jobID id.JobID,
+) ([]*userfacinglog.UserFacingLog, bool, error) {
+	streamKey := fmt.Sprintf("userfacinglog:%s", jobID.String())
+	exists, err := r.client.Exists(ctx, streamKey).Result()
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to check log stream: %w", err)
+	}
+	if exists == 0 {
+		return nil, false, nil
+	}
+
+	// Entry IDs are arrival-time based; pad the lower bound and filter on the
+	// event timestamp so arrival skew cannot drop rows.
+	start := strconv.FormatInt(since.UTC().Add(-time.Minute).UnixMilli(), 10)
+	entries, err := r.client.XRange(ctx, streamKey, start, "+").Result()
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to read log stream: %w", err)
+	}
+
+	sinceUTC := since.UTC()
+	untilUTC := until.UTC()
+	result := make([]*userfacinglog.UserFacingLog, 0, len(entries))
+	for _, entry := range entries {
+		raw, ok := entry.Values["data"].(string)
+		if !ok {
+			continue
+		}
+
+		var e UserFacingLogEntry
+		if err := json.Unmarshal([]byte(raw), &e); err != nil {
+			reearth_log.Warnfc(ctx, "gql: failed to unmarshal user-facing log stream entry: %s", raw)
+			continue
+		}
+
+		ts := e.Timestamp.UTC()
+		if ts.Before(sinceUTC) || ts.After(untilUTC) {
+			continue
+		}
+
+		domainLog, err := e.ToDomain()
+		if err != nil {
+			reearth_log.Warnfc(ctx, "gql: failed to convert user-facing log entry to domain: %v", err)
+			continue
+		}
+		result = append(result, domainLog)
+	}
+	return result, true, nil
+}
+
+func (r *redisLog) userFacingLogsFromScan(
 	ctx context.Context,
 	since time.Time,
 	until time.Time,
