@@ -32,7 +32,7 @@ pub fn convert_properties(tags_enc: &mut TagsEncoder, name: &str, tree: &Attribu
         }
         AttributeValue::Map(obj) => {
             for (key, value) in obj {
-                convert_properties(tags_enc, key, value);
+                convert_properties(tags_enc, key.as_str(), value);
             }
         }
         AttributeValue::DateTime(v) => {

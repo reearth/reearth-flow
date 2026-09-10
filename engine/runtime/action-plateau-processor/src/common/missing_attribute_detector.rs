@@ -259,47 +259,47 @@ impl MissingAttributeDetector {
             feature.insert(
                 "dataFileData".to_string(),
                 AttributeValue::Array(vec![
-                    AttributeValue::Map(HashMap::from([
+                    AttributeValue::Map(Attributes::from([
                         (
-                            "name".to_string(),
+                            Attribute::new("name"),
                             AttributeValue::String("C05_必須属性等の欠落_Error".to_string()),
                         ),
                         (
-                            "count".to_string(),
+                            Attribute::new("count"),
                             AttributeValue::Number(serde_json::value::Number::from(
                                 buffer.required_counter,
                             )),
                         ),
                     ])),
-                    AttributeValue::Map(HashMap::from([
+                    AttributeValue::Map(Attributes::from([
                         (
-                            "name".to_string(),
+                            Attribute::new("name"),
                             AttributeValue::String("C06_現われない属性等".to_string()),
                         ),
                         (
-                            "count".to_string(),
+                            Attribute::new("count"),
                             AttributeValue::Number(serde_json::value::Number::from(target_counter)),
                         ),
                     ])),
-                    AttributeValue::Map(HashMap::from([
+                    AttributeValue::Map(Attributes::from([
                         (
-                            "name".to_string(),
+                            Attribute::new("name"),
                             AttributeValue::String("C07_品質属性".to_string()),
                         ),
                         (
-                            "count".to_string(),
+                            Attribute::new("count"),
                             AttributeValue::Number(serde_json::value::Number::from(
                                 buffer.c07_counter,
                             )),
                         ),
                     ])),
-                    AttributeValue::Map(HashMap::from([
+                    AttributeValue::Map(Attributes::from([
                         (
-                            "name".to_string(),
+                            Attribute::new("name"),
                             AttributeValue::String("C08_公共測量品質属性".to_string()),
                         ),
                         (
-                            "count".to_string(),
+                            Attribute::new("count"),
                             AttributeValue::Number(serde_json::value::Number::from(
                                 buffer.c08_counter,
                             )),
@@ -998,13 +998,13 @@ mod tests {
             _ => panic!("Expected dataFileData to be an array"),
         };
 
-        let expected = AttributeValue::Map(HashMap::from([
+        let expected = AttributeValue::Map(Attributes::from([
             (
-                "name".to_string(),
+                Attribute::new("name"),
                 AttributeValue::String("C06_現われない属性等".to_string()),
             ),
             (
-                "count".to_string(),
+                Attribute::new("count"),
                 AttributeValue::Number(serde_json::Number::from(1)),
             ),
         ]));
@@ -1313,7 +1313,7 @@ mod tests {
         let object_list = ObjectList::new(object_list_types);
 
         let object_list_map =
-            HashMap::from([(package.to_string(), AttributeValue::from(object_list))]);
+            Attributes::from([(Attribute::new(package), AttributeValue::from(object_list))]);
 
         attributes.insert(
             Attribute::new("objectList"),

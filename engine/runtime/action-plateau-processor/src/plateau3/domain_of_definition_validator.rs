@@ -566,8 +566,13 @@ fn process_feature(
             response
                 .invalid_feature_types
                 .iter()
-                .map(|(k, v)| (k.clone(), AttributeValue::Number(Number::from(*v))))
-                .collect::<HashMap<_, _>>(),
+                .map(|(k, v)| {
+                    (
+                        Attribute::new(k.as_str()),
+                        AttributeValue::Number(Number::from(*v)),
+                    )
+                })
+                .collect::<Attributes>(),
         ),
     );
     result_feature.insert(

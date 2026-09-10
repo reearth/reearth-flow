@@ -889,9 +889,11 @@ fn create_feature_response(
         attributes: feature
             .get(&Attribute::new("attributes"))
             .map(|v| match v {
-                AttributeValue::Map(v) => {
-                    v.clone().into_iter().map(|(k, v)| (k, v.into())).collect()
-                }
+                AttributeValue::Map(v) => v
+                    .clone()
+                    .into_iter()
+                    .map(|(k, v)| (k.into_inner(), v.into()))
+                    .collect(),
                 _ => HashMap::new(),
             })
             .unwrap_or_default(),
