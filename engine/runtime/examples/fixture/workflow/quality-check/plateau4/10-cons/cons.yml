@@ -389,27 +389,17 @@ edges:
     fromPort: lod0
     toPort: features
 
-  # LOD1-3 reach the surface checks whole, so a solid's faces are checked
-  # alongside a bare surface's.
+  # A cons solid's shell is built from `xlink:href`s to the polygons under
+  # `uro:boundedBy`, and each of those boundary surfaces is already a LOD member
+  # of its own heading for the surface checks. Sending the solid there as well
+  # would check every face twice, so only bare surfaces take that branch and the
+  # solid goes to the shell checks alone.
   - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
-    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
     to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    fromPort: lod1
+    fromPort: surface
     toPort: features
 
-  - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f0
-    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    fromPort: lod2
-    toPort: features
-
-  - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a1
-    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    fromPort: lod3
-    toPort: features
-
-  # The same three LODs feed the solid filter, which keeps only what has shells.
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a02
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
