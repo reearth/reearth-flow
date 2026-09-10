@@ -9,7 +9,7 @@ import { NodeProps } from "@xyflow/react";
 import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
-import type { Node } from "@flow/types";
+import { type Node, isBlockingSeverity } from "@flow/types";
 
 import { Handles } from "./components";
 import useHooks from "./hooks";
@@ -39,6 +39,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     selectedColor,
     selectedBackgroundColor,
     isNodeStale,
+    diagnosticSeverity,
     handleCollapsedToggle,
   } = useHooks({ data, type, nodeId: id });
 
@@ -85,9 +86,20 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               {data.customizations?.customName || officialName}
             </p>
           </div>
-          {isNodeStale && (
+          {/* A diagnostic outranks staleness: a run that reported something is
+              more urgent than one whose cache is out of date, and they would
+              otherwise overlap in the same corner. */}
+          {diagnosticSeverity ? (
+            <span
+              className={`absolute -top-1 -right-0.5 size-2.5 rounded-full ring-1 ring-secondary ${
+                isBlockingSeverity(diagnosticSeverity)
+                  ? "bg-destructive"
+                  : "bg-warning"
+              }`}
+            />
+          ) : isNodeStale ? (
             <WarningCircleIcon className="absolute -top-1 -right-0.5 size-3 text-warning" />
-          )}
+          ) : null}
           {/* <CaretRight weight="fill" /> */}
         </div>
         <Handles

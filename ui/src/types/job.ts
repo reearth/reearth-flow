@@ -1,4 +1,5 @@
 import type { ApiResponse } from "./api";
+import type { Diagnostic } from "./diagnostic";
 
 export enum JobOrderBy {
   CompletedAt = "completedAt",
@@ -23,6 +24,13 @@ export type Job = {
   completedAt: string;
   outputURLs?: string[];
   userFacingLogsURL?: string;
+  /**
+   * Terminal per-node failures. Persisted at job completion, so this is never
+   * populated while the job is still running.
+   */
+  failedNodes?: Diagnostic[];
+  /** Diagnostics the engine had to drop rather than emit, if any. */
+  droppedEventCount?: number;
 };
 
 export type CancelJob = {

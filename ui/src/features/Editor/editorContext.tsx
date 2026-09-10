@@ -36,6 +36,8 @@ export type EditorContextType = {
   yDoc?: Doc | null;
   workflowVarAwareness?: WorkflowVarAwareness;
   staleNodeIds?: Set<string>;
+  /** nodeId -> worst diagnostic severity from the current debug run. */
+  diagnosticSeverityByNodeId?: Map<string, string>;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

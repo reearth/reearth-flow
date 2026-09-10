@@ -1,7 +1,8 @@
 import {
+  DiagnosticFragment,
   JobFragment,
   UserFacingLogFragment,
-} from "@flow/lib/gql/__gen__/graphql";
+} from "@flow/lib/gql/__gen__/plugins/graphql-request";
 
 export const mockJobs: JobFragment[] = [
   {
@@ -20,6 +21,8 @@ export const mockJobs: JobFragment[] = [
       "https://output.reearth.io/job-1/processed_data.geojson",
     ],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
   {
     id: "job-2",
@@ -34,6 +37,8 @@ export const mockJobs: JobFragment[] = [
     completedAt: null,
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
   {
     id: "job-3",
@@ -48,6 +53,22 @@ export const mockJobs: JobFragment[] = [
     completedAt: "2024-01-25T09:18:45Z",
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: 12,
+    failedNodes: [
+      {
+        code: "expression_eval_failed",
+        category: "expression",
+        severity: "fatal",
+        effectiveDisposition: "fatal",
+        nodeId: "node-3",
+        actionType: "FeatureTransformer",
+        featureId: null,
+        message: "Expression evaluation failed: unknown attribute `heigth`",
+        help: "Did you mean `height`?",
+        aggregatedCount: null,
+        sampleFeatureIds: null,
+      },
+    ],
   },
   {
     id: "job-4",
@@ -62,6 +83,8 @@ export const mockJobs: JobFragment[] = [
     completedAt: null,
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
   {
     id: "job-5",
@@ -76,6 +99,8 @@ export const mockJobs: JobFragment[] = [
     completedAt: "2024-01-20T11:35:15Z",
     outputURLs: [],
     userFacingLogsURL: null,
+    droppedEventCount: null,
+    failedNodes: null,
   },
 ];
 
@@ -89,3 +114,52 @@ export const mockLogs: UserFacingLogFragment[] = [
     message: "Job started successfully",
   },
 ];
+
+const droppedGeometryDiagnostic: DiagnosticFragment = {
+  code: "geometry_invalid",
+  category: "geometry",
+  severity: "warn",
+  effectiveDisposition: "warn_drop",
+  nodeId: "node-2",
+  actionType: "GeometryValidator",
+  featureId: null,
+  message: "1,204 features dropped: self-intersecting polygon",
+  help: "Run the geometry through a repair action before validating.",
+  aggregatedCount: 1204,
+  sampleFeatureIds: [
+    "6f1b8f30-0f5d-4a3f-9f3e-1f0c5a2d7b11",
+    "b21b8f30-0f5d-4a3f-9f3e-1f0c5a2d7b12",
+  ],
+};
+
+export const mockJobDiagnostics: Record<string, DiagnosticFragment[]> = {
+  "job-3": [
+    droppedGeometryDiagnostic,
+    {
+      code: "source_unreadable",
+      category: "io",
+      severity: "error",
+      effectiveDisposition: "warn_drop",
+      nodeId: null,
+      actionType: null,
+      featureId: null,
+      message: "Skipped 1 unreadable source file",
+      help: "Check that every input asset is still present.",
+      aggregatedCount: null,
+      sampleFeatureIds: null,
+    },
+    {
+      code: "expression_eval_failed",
+      category: "expression",
+      severity: "fatal",
+      effectiveDisposition: "fatal",
+      nodeId: "node-3",
+      actionType: "FeatureTransformer",
+      featureId: "c31b8f30-0f5d-4a3f-9f3e-1f0c5a2d7b13",
+      message: "Expression evaluation failed: unknown attribute `heigth`",
+      help: "Did you mean `height`?",
+      aggregatedCount: null,
+      sampleFeatureIds: null,
+    },
+  ],
+};

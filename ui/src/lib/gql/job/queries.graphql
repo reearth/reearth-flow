@@ -22,6 +22,15 @@ query GetJob($id: ID!) {
   }
 }
 
+query GetJobDiagnostics($jobId: ID!, $nodeId: String!) {
+  job(id: $jobId) {
+    id
+    nodeDiagnostics(nodeId: $nodeId) {
+      ...Diagnostic
+    }
+  }
+}
+
 mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
     job {

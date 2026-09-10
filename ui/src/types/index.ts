@@ -2,6 +2,7 @@ export * from "./action";
 export * from "./api";
 export * from "./asset";
 export * from "./deployment";
+export * from "./diagnostic";
 export * from "./document";
 export * from "./edge";
 export * from "./job";
