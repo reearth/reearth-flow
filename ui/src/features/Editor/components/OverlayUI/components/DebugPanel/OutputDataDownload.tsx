@@ -120,7 +120,7 @@ const OutputDataDownload: React.FC<Props> = ({ outputData, archiveName }) => {
                   handleDownloadZip(outputData ?? [], `${archiveName}.zip`)
                 }>
                 <FileZipIcon size={16} />
-                {t("Download All as ZIP")}
+                {t("Download all as ZIP")}
               </DropdownMenuItem>
               <div className="my-1 h-px bg-border" />
             </>

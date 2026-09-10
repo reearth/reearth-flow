@@ -72,6 +72,7 @@ export default () => {
   );
 
   const downloadOne = useCallback(async (file: ArtifactFile) => {
+    setFailedPaths(undefined);
     try {
       const response = await fetch(file.url);
       if (!response.ok) {
