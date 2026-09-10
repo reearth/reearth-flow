@@ -10,8 +10,8 @@ import type {
   Workflow,
 } from "@flow/types";
 
-import { yNodeConstructor } from "./conversions";
-import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
+import { updateYNode, yNodeConstructor } from "./conversions";
+import type { YEdgesMap, YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 import { computeWorkflowPath } from "./utils/computeWorkflowPath";
@@ -157,8 +157,13 @@ export default ({
   handleYNodesChangeRef.current = (changes: NodeChange[]) => {
     const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
     if (!yNodes) return;
+    const yEdges = currentYWorkflow?.get("edges") as YEdgesMap | undefined;
 
     undoTrackerActionWrapper(() => {
+      // Collected while iterating and deleted afterwards - mutating a Y.Map
+      // during its own forEach is not safe.
+      const orphanedEdgeKeys: string[] = [];
+
       changes.forEach((change) => {
         switch (change.type) {
           case "position": {
@@ -185,8 +190,7 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.item) {
-              const newYNode = yNodeConstructor(change.item);
-              yNodes.set(change.id, newYNode);
+              updateYNode(existingYNode, change.item);
             }
             break;
           }
@@ -237,19 +241,21 @@ export default ({
               ) {
                 handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
               } else if (nodeToDelete.data.params?.routingPort) {
+                const currentWorkflowId = currentYWorkflow
+                  ?.get("id")
+                  ?.toJSON() as string;
                 const parentWorkflowId = rawWorkflows.find((w) => {
                   const nodes = w.nodes as Node[];
                   return nodes.some(
-                    (n) =>
-                      n.id ===
-                      (currentYWorkflow?.get("id")?.toJSON() as string),
+                    (n) => n.data.subworkflowId === currentWorkflowId,
                   );
                 })?.id;
-                if (!parentWorkflowId) return;
-                const parentYWorkflow = yWorkflows.get(parentWorkflowId);
+                const parentYWorkflow = parentWorkflowId
+                  ? yWorkflows.get(parentWorkflowId)
+                  : undefined;
                 if (parentYWorkflow) {
                   removeParentYWorkflowNodePseudoPort(
-                    currentYWorkflow?.get("id")?.toJSON() as string,
+                    currentWorkflowId,
                     parentYWorkflow,
                     nodeToDelete,
                   );
@@ -261,6 +267,14 @@ export default ({
               });
 
               yNodes.delete(change.id);
+
+              yEdges?.forEach((yEdge, edgeKey) => {
+                const source = yEdge.get("source")?.toString();
+                const target = yEdge.get("target")?.toString();
+                if (source === change.id || target === change.id) {
+                  orphanedEdgeKeys.push(edgeKey);
+                }
+              });
             }
             break;
           }
@@ -276,6 +290,8 @@ export default ({
           }
         }
       });
+
+      orphanedEdgeKeys.forEach((edgeKey) => yEdges?.delete(edgeKey));
     });
   };
   const handleYNodesChange = useCallback(

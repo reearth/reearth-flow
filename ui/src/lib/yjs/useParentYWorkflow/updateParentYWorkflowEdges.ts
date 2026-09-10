@@ -1,6 +1,6 @@
 import type { Node } from "@flow/types";
 
-import { reassembleEdge, yEdgeConstructor } from "../conversions";
+import { reassembleEdge, updateYEdge } from "../conversions";
 import type { YEdge, YEdgesMap, YNodesMap, YWorkflow } from "../types";
 
 import { getUpdatedPseudoPortsParam } from "./utils";
@@ -47,28 +47,23 @@ export function updateParentYWorkflowEdges(
     );
     if (!prevPseudoPort) return;
 
-    const [yEdgeId, yEdge] =
-      Array.from(parentYEdges).find(([, e]) => {
-        const edgeObj = reassembleEdge(e as YEdge);
-        return edgeType === "source"
-          ? edgeObj.source === subworkflowParentNode.id &&
-              edgeObj.sourceHandle === prevPseudoPort.portName
-          : edgeObj.target === subworkflowParentNode.id &&
-              edgeObj.targetHandle === prevPseudoPort.portName;
-      }) ?? [];
+    const staleYEdges = Array.from(parentYEdges).filter(([, e]) => {
+      const edgeObj = reassembleEdge(e as YEdge);
+      return edgeType === "source"
+        ? edgeObj.source === subworkflowParentNode.id &&
+            edgeObj.sourceHandle === prevPseudoPort.portName
+        : edgeObj.target === subworkflowParentNode.id &&
+            edgeObj.targetHandle === prevPseudoPort.portName;
+    });
 
-    if (yEdgeId && yEdge) {
-      const currentEdge = reassembleEdge(yEdge);
-      const updatedEdge = {
+    staleYEdges.forEach(([, yEdge]) => {
+      const currentEdge = reassembleEdge(yEdge as YEdge);
+      updateYEdge(yEdge as YEdge, {
         ...currentEdge,
         [edgeType === "source" ? "sourceHandle" : "targetHandle"]:
           newPseudoPort.portName,
-      };
-
-      const newYEdge = yEdgeConstructor(updatedEdge);
-
-      parentYEdges.set(yEdgeId, newYEdge);
-    }
+      });
+    });
   } catch (error) {
     console.error("Error updating edges:", error);
   }
@@ -86,21 +81,13 @@ export function removeEdgePort(
   if (!parentYEdges) return;
 
   try {
-    const edgesArray = Array.from(parentYEdges).map(([, e]) =>
-      reassembleEdge(e as YEdge),
-    );
-
-    edgesArray.forEach((edgeObj) => {
-      if (
-        (type === "source" && edgeObj.source === nodeId) ||
-        (type === "target" && edgeObj.target === nodeId)
-      ) {
-        if (type === "source" && edgeObj.sourceHandle === portName) {
-          parentYEdges.delete(edgeObj.id);
-        } else if (type === "target" && edgeObj.targetHandle === portName) {
-          parentYEdges.delete(edgeObj.id);
-        }
-      }
+    Array.from(parentYEdges).forEach(([key, e]) => {
+      const edgeObj = reassembleEdge(e as YEdge);
+      const matches =
+        type === "source"
+          ? edgeObj.source === nodeId && edgeObj.sourceHandle === portName
+          : edgeObj.target === nodeId && edgeObj.targetHandle === portName;
+      if (matches) parentYEdges.delete(key);
     });
   } catch (error) {
     console.error("Error cleaning up edges:", error);

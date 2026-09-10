@@ -1,6 +1,6 @@
 import { Node } from "@flow/types";
 
-import { yNodeConstructor } from "../conversions";
+import { updateYNode } from "../conversions";
 import { YNodesMap, YWorkflow } from "../types";
 
 import { removeEdgePort } from "./updateParentYWorkflowEdges";
@@ -60,8 +60,6 @@ export function removeParentYWorkflowNodePseudoPort(
     }
   }
 
-  parentYNodes.set(
-    subworkflowNode.id,
-    yNodeConstructor(updatedSubworkflowNode),
-  );
+  const existing = parentYNodes.get(subworkflowNode.id);
+  if (existing) updateYNode(existing, updatedSubworkflowNode);
 }

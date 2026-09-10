@@ -33,9 +33,12 @@ export const reassembleNode = (yNode: YNode): Node => {
   const parentId = yNode.get("parentId")?.toString();
 
   const data: NodeData = {
+    // Optional chaining here has to cover the key as well as the map: a data
+    // map that is present but missing the key would otherwise throw and take
+    // the whole project down as a corruption error.
     officialName: (yNode.get("data") as Y.Map<any>)
       ?.get("officialName")
-      .toString(),
+      ?.toString(),
   };
 
   if ((yNode.get("data") as Y.Map<any>)?.get("inputs") !== undefined) {
@@ -98,9 +101,10 @@ export const reassembleNode = (yNode: YNode): Node => {
       }));
   }
 
+  const styleMap = yNode.get("style") as Y.Map<any> | undefined;
   const style = {
-    width: (yNode.get("style") as Y.Map<any>)?.get("width").toString(),
-    height: (yNode.get("style") as Y.Map<any>)?.get("height").toString(),
+    width: styleMap?.get("width")?.toString(),
+    height: styleMap?.get("height")?.toString(),
   };
 
   const reassembledNode: Node = {

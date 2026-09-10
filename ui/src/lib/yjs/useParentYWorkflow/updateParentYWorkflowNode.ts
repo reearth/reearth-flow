@@ -1,6 +1,6 @@
 import { Node, PseudoPort } from "@flow/types";
 
-import { yNodeConstructor } from "../conversions";
+import { updateYNode } from "../conversions";
 import type { YNodesMap } from "../types";
 
 import { getUpdatedPseudoPortsParam } from "./utils";
@@ -22,7 +22,6 @@ export function updateParentYWorkflowNode(
   if (!subworkflowParentNode) return;
 
   updatePseudoPorts(
-    parentNodes,
     parentYNodes,
     subworkflowParentNode,
     prevNode,
@@ -31,7 +30,6 @@ export function updateParentYWorkflowNode(
 }
 
 function updatePseudoPorts(
-  parentNodes: Node[],
   parentYNodes: YNodesMap,
   subworkflowParentNode: Node,
   prevNode: Node,
@@ -64,14 +62,7 @@ function updatePseudoPorts(
     },
   };
 
-  const newParentNodes = parentNodes.map((node) =>
-    node.id === updatedSubworkflowParentNode.id
-      ? updatedSubworkflowParentNode
-      : node,
-  );
-
-  newParentNodes.forEach((node) => {
-    const newYNode = yNodeConstructor(node);
-    parentYNodes.set(node.id, newYNode);
-  });
+  const existing = parentYNodes.get(updatedSubworkflowParentNode.id);
+  if (!existing) return;
+  updateYNode(existing, updatedSubworkflowParentNode);
 }
