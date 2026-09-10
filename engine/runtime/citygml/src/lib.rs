@@ -7,6 +7,7 @@ pub(crate) mod geometry;
 #[cfg(feature = "new-geometry")]
 #[path = "geometry_next.rs"]
 pub(crate) mod geometry;
+pub mod malformation;
 #[cfg(not(feature = "new-geometry"))]
 pub mod parser;
 #[cfg(feature = "new-geometry")]

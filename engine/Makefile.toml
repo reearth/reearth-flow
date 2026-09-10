@@ -162,7 +162,7 @@ script = ['''
 #     hypothetical `log::warn!` or an identifier merely ending in "warn"/"error",
 #     e.g. `tracing_warn!(`/`prewarn!(`)
 actual=$(mktemp)
-git ls-files 'runtime/action-*' | grep -E '\.rs$' \
+git ls-files 'runtime/action-*' 'runtime/citygml' | grep -E '\.rs$' \
   | xargs grep -c -E 'tracing::(warn|error)!|\.(warn_log|error_log|warn_log_with_node_handle|error_log_with_node_handle|error_log_with_node_info)\(|(^|[^:])\b(warn|error)!\(' 2>/dev/null \
   | grep -v ':0$' | LC_ALL=C sort > "$actual" || true
 if ! diff -u tools/action-tracing-allowlist.txt "$actual"; then
@@ -176,7 +176,7 @@ fi
 [tasks.update-action-tracing-allowlist]
 script = ['''
 #!/usr/bin/env bash -eu
-git ls-files 'runtime/action-*' | grep -E '\.rs$' \
+git ls-files 'runtime/action-*' 'runtime/citygml' | grep -E '\.rs$' \
   | xargs grep -c -E 'tracing::(warn|error)!|\.(warn_log|error_log|warn_log_with_node_handle|error_log_with_node_handle|error_log_with_node_info)\(|(^|[^:])\b(warn|error)!\(' 2>/dev/null \
   | grep -v ':0$' | LC_ALL=C sort > tools/action-tracing-allowlist.txt
 echo "wrote tools/action-tracing-allowlist.txt"

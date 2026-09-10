@@ -2479,6 +2479,219 @@
       ]
     },
     {
+      "name": "CityGML 2 Reader",
+      "type": "source",
+      "description": "Lit des fichiers CityGML 2.0 en tant que modèles de ville 3D, en résolvant les références gml:id au sein de chaque document",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 2 Reader Parameters",
+        "description": "Configuration pour lire un document CityGML 2.0 en tant que modèles de ville 3D.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "Extraire les Balises",
+            "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "Conserver les Attributs",
+            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplatir les Types de Mesure",
+            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "cityGmlAttributesKey": {
+            "title": "Clé des Attributs CityGML",
+            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
+      "name": "CityGML 3 Reader",
+      "type": "source",
+      "description": "Lit des fichiers CityGML 3.0 en tant que modèles de ville 3D, en résolvant les références gml:id au sein de chaque document",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 3 Reader Parameters",
+        "description": "Configuration pour lire un document CityGML 3.0 en tant que modèles de ville 3D.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "Extraire les Balises",
+            "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "Conserver les Attributs",
+            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenLeafAttributes": {
+            "title": "Aplatir les Attributs Feuille",
+            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cityGmlAttributesKey": {
+            "title": "Clé des Attributs CityGML",
+            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
       "name": "CityGML Reader",
       "type": "source",
       "description": "Lit des modèles de ville 3D depuis des fichiers CityGML",

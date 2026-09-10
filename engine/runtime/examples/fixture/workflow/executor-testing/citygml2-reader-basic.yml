@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 29be23d3-71d1-4fb7-8524-4f1a176b21de
+name: "citygml2-reader-basic"
+entryGraphId: 57dd25c2-95d2-41c1-9548-bd15a7e6505a
+with:
+  cityGmlPath:
+
+graphs:
+  - id: 57dd25c2-95d2-41c1-9548-bd15a7e6505a
+    name: main
+    nodes:
+      - id: 51da3961-1699-461b-a351-d3b24e9dd8e8
+        name: CityGml2Reader
+        type: action
+        action: CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["cityGmlPath"]
+
+      - id: fa0ef01a-3177-4924-92bb-fba4eb81c021
+        name: FeatureWriter
+        type: action
+        action: Feature Writer
+        with:
+          format: json
+          output:
+            type: string
+            value: expected_output.json
+
+    edges:
+      - id: c2a60b8f-7a22-407c-baad-eaa309b2d5fc
+        from: 51da3961-1699-461b-a351-d3b24e9dd8e8
+        to: fa0ef01a-3177-4924-92bb-fba4eb81c021
+        fromPort: features
+        toPort: features

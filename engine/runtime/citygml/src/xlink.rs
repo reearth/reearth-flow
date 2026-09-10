@@ -6,6 +6,9 @@ use super::utils::{XmlChild, XmlNode};
 
 /// Phase-2: convert a parsed feature root into a fully resolved `XmlNode`.
 /// Each `RawChild::Ref` becomes `XmlChild::Element(Arc<XmlNode>)` — a direct node pointer.
+/// Legacy (whole-batch) counterpart to `resolve_one`, used only by the legacy `build_features`
+/// path; the new-geometry path resolves one root at a time via `resolve_one` instead.
+#[cfg(not(feature = "new-geometry"))]
 pub fn resolve(
     raws: impl IntoIterator<Item = Arc<RawNode>>,
     registry: &RawRegistry,
@@ -108,8 +111,8 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::citygml_parser::parser::{CityGmlVersion, Parser, RawNode, RawRegistry};
-    use crate::citygml_parser::utils::{local_name, XmlChild};
+    use crate::parser::{CityGmlVersion, Parser, RawNode, RawRegistry};
+    use crate::utils::{local_name, XmlChild};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()

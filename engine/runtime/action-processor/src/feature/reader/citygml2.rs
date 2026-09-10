@@ -15,9 +15,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use crate::citygml_parser::parser::{CityGmlVersion, Parser};
-use crate::citygml_parser::pipeline::build_features;
 use crate::feature::errors::FeatureProcessorError;
+use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::pipeline::build_features;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGml2ReaderFactory;
