@@ -10,11 +10,11 @@
             [
               -19468.208054886814,
               -18728.500585496888,
-              0.0
+              1.0
             ],
             [
-              -19481.760080185595,
-              -18728.470738645246,
+              -19468.183628932693,
+              -18717.406082957255,
               0.0
             ],
             [
@@ -23,26 +23,26 @@
               0.0
             ],
             [
-              -19468.183628932693,
-              -18717.406082957255,
+              -19481.760080185595,
+              -18728.470738645246,
               0.0
             ],
             [
               -19468.208054886814,
               -18728.500585496888,
-              0.0
+              1.0
             ]
           ]
         ]
       },
       "properties": {
-        "check": "面の向き不正",
-        "issue": "Incorrect Orientation",
-        "orientation": "right_hand_rule",
-        "filename": "53395499_tran_6697_op.gml",
+        "check": "面のエラー",
+        "package": "rwy",
+        "issue": "NonPlanarSurface",
+        "filename": "53395499_rwy_6697_op.gml",
         "featureType": "tran:TrafficArea",
-        "gmlId": "tran_7a4d0e63-9c2b-4f85-8137-4e6a8c0d2f59",
-        "rootGmlId": "tran_5e2b8c41-7a09-4d63-8f15-2c4e6a8b0d37",
+        "gmlId": "rwy_6c3d9e52-8a1f-4b74-8c26-3d5f7b9c1e48",
+        "rootGmlId": "rwy_4a1b7c30-6e9d-4f52-8a04-1b3d5f7a9c26",
         "lod": 1
       }
     },
@@ -53,42 +53,42 @@
         "coordinates": [
           [
             [
-              -19450.138687888448,
-              -18728.540348989056,
-              2.5
-            ],
-            [
               -19463.690713133037,
               -18728.510529831412,
-              2.5
-            ],
-            [
-              -19463.66629284671,
-              -18717.416027303098,
-              2.5
+              0.0
             ],
             [
               -19450.114284605497,
               -18717.44584649608,
-              2.5
+              0.0
+            ],
+            [
+              -19463.66629284671,
+              -18717.416027303098,
+              0.0
             ],
             [
               -19450.138687888448,
               -18728.540348989056,
-              2.5
+              0.0
+            ],
+            [
+              -19463.690713133037,
+              -18728.510529831412,
+              0.0
             ]
           ]
         ]
       },
       "properties": {
-        "check": "面の向き不正",
-        "issue": "Incorrect Orientation",
-        "orientation": "right_hand_rule",
-        "filename": "53395499_tran_6697_op.gml",
+        "check": "面のエラー",
+        "package": "rwy",
+        "issue": "SelfIntersection",
+        "filename": "53395499_rwy_6697_op.gml",
         "featureType": "tran:AuxiliaryTrafficArea",
-        "gmlId": "tran_0d7a3b96-2f5e-4b18-946a-8d1f3c5e7a92",
-        "rootGmlId": "tran_5e2b8c41-7a09-4d63-8f15-2c4e6a8b0d37",
-        "lod": 3
+        "gmlId": "rwy_0a7b3c96-2e5d-4f18-8a6a-7b9d1f3c5e82",
+        "rootGmlId": "rwy_4a1b7c30-6e9d-4f52-8a04-1b3d5f7a9c26",
+        "lod": 1
       }
     }
   ],

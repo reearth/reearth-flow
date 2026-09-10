@@ -35,6 +35,7 @@
       },
       "properties": {
         "check": "面のエラー位置",
+        "package": "tran",
         "issue": "NonPlanarSurface",
         "filename": "53395499_tran_6697_op.gml",
         "featureType": "tran:TrafficArea",
@@ -55,6 +56,7 @@
       },
       "properties": {
         "check": "面のエラー位置",
+        "package": "tran",
         "issue": "SelfIntersection",
         "filename": "53395499_tran_6697_op.gml",
         "featureType": "tran:AuxiliaryTrafficArea",

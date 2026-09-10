@@ -1,10 +1,10 @@
 {
-  "description": "Test L-tran-03 for plateau6",
+  "description": "Test surface orientation errors for plateau6 03-tran on a track (trk) input, so the result files carry the 03-3_徒歩道 prefix.",
   "workflowPath": "quality-check/plateau6/03-tran/workflow.yml",
   "workflowVariables": [
     {
       "name": "cityGmlPath",
-      "value": "tran_.zip"
+      "value": "trk_.zip"
     },
     {
       "name": "codelistsPath",
@@ -25,8 +25,8 @@
   ],
   "zipBeforeTest": [
     {
-      "path": "udx/tran",
-      "name": "tran_.zip"
+      "path": "udx/trk",
+      "name": "trk_.zip"
     },
     {
       "path": "../../../../../fixtures/plateau6-citymodel/z11100_saitama-shi_city_2025_citygml_1_op/codelists",
@@ -38,21 +38,18 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "03-1_道路_xlink参照エラー.csv"
+    "expectedFile": [
+      "03-3_徒歩道_面の向き不正.csv",
+      "error_geometry/03-3_徒歩道_面の向き不正.geojson"
+    ]
   },
   "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_tran.json",
-      "includeFields": [
-        "xlink参照エラー"
-      ]
-    },
     "fileErrorSummary": {
-      "expectedFile": "03-1_道路_検査結果一覧.csv",
+      "expectedFile": "03-3_徒歩道_検査結果一覧.csv",
       "includeColumns": [
-        "xlink参照エラー"
+        "面の向き不正"
       ]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": true
 }
