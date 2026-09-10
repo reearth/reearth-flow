@@ -22,6 +22,13 @@ use tokio::sync::mpsc::Sender;
 use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
 use crate::errors::SourceError;
 
+// New-geometry reading lives in a sibling file, declared here as a child module so
+// it can reuse this module's geometry-free JSON helpers via `super::`. Sharing them
+// is what keeps the `preserveRaw` attribute contract identical in both worlds.
+#[cfg(feature = "new-geometry")]
+#[path = "czml_next.rs"]
+mod czml_next;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CzmlReaderFactory;
 
