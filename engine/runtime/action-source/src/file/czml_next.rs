@@ -9,10 +9,16 @@
 //! Nothing is reprojected here. The CZML Writer's `to_wgs84` reprojects whatever
 //! frame it is handed, so tagging the frame correctly is the whole job.
 //!
-//! Not read: interval-scoped property arrays, `reference`/`references` positions,
-//! time-tagged `cartesian`, `ellipse.rotation`, `wall` and `corridor` surfaces, and
-//! the `box`, `cylinder`, `ellipsoid`, `polylineVolume`, `path`, `model` and
-//! `tileset` graphics. Each is reported, never silently dropped.
+//! Not read, and reported through `report_drop` so the packet is skipped rather than
+//! vanishing: interval-scoped property arrays, `reference`/`references` positions,
+//! time-tagged `cartesian`, `cartesian` in an INERTIAL reference frame, and `force2D`
+//! on a geocentric packet.
+//!
+//! Not read, and silently unsupported or approximated with no diagnostic:
+//! `ellipse.rotation` is never looked at; `wall.minimumHeights`/`maximumHeights` and
+//! `corridor.width`/`cornerType` are dropped when the line is built; and a `box`,
+//! `cylinder`, `ellipsoid`, `polylineVolume`, `path`, `model` or `tileset` packet
+//! falls through to `Geometry::None` with no diagnostic at all.
 
 use bytes::Bytes;
 use reearth_flow_diagnostics::ErrorCode;
@@ -458,8 +464,24 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
         }
     }
     if let Some(value) = packet.get("position") {
-        if let Some(coords) = position(value)? {
-            return point_geometry(&coords, force_2d);
+        // Mirrors the old world's `has_other_geom` guard: a packet whose `polygon`,
+        // `polyline`, `rectangle`, `corridor`, `ellipse` or `wall` was already
+        // considered by the arms above, and produced no geometry, is a mistyped
+        // packet, not a point. Reaching here means every such arm already fell
+        // through, so a bare `position` on top of one of them must not become a
+        // Point: it falls through to `Geometry::None`, which keeps the attributes.
+        // A packet with a `position` and none of those graphics properties still
+        // becomes a Point, as it does today.
+        let has_other_geometry = packet.get("polygon").is_some()
+            || packet.get("polyline").is_some()
+            || packet.get("rectangle").is_some()
+            || packet.get("corridor").is_some()
+            || packet.get("ellipse").is_some()
+            || packet.get("wall").is_some();
+        if !has_other_geometry {
+            if let Some(coords) = position(value)? {
+                return point_geometry(&coords, force_2d);
+            }
         }
     }
     Ok(Geometry::None)
@@ -994,17 +1016,16 @@ mod tests {
         assert!(format!("{err}").contains("bad-rect"), "message was: {err}");
         assert!(matches!(err, SourceError::CzmlReader(_)));
 
-        // The absence case must keep falling through, not fail.
+        // The absence case must keep falling through, not fail. (Whether a bare
+        // `position` alongside it becomes a Point is covered separately by the
+        // `f4_*` tests below, since a present `rectangle` key blocks that fallback
+        // regardless of whether its coordinates are usable.)
         let features = read_str(
-            r#"[{"id":"no-bounds","rectangle":{"coordinates":{}},
-                 "position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#,
+            r#"[{"id":"no-bounds","rectangle":{"coordinates":{}}}]"#,
             &params(false, true),
         );
         assert_eq!(features.len(), 1);
-        assert!(matches!(
-            &*features[0].geometry,
-            Geometry::Euclidean3D(Euclidean3DGeometry::Point(_)),
-        ));
+        assert!(matches!(&*features[0].geometry, Geometry::None));
     }
 
     #[test]
@@ -1028,6 +1049,112 @@ mod tests {
             "message was: {err}"
         );
         assert!(matches!(err, SourceError::CzmlReader(_)));
+    }
+
+    #[test]
+    fn f3_rectangle_geometry_stores_corners_south_west_south_east_north_east_north_west() {
+        // `rectangle_geometry` is the one geometry builder that hand-writes storage
+        // order instead of going through `into_coords`, so it is the one place a
+        // latitude/longitude inversion would escape every other test in this file.
+        // Longitude 10-20 and latitude 50-60 are disjoint ranges, so a swap could
+        // not accidentally produce the same numbers.
+        let wsen = vec![10.0, 50.0, 20.0, 60.0]; // west, south, east, north, degrees
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) =
+            rectangle_geometry(&wsen, false).unwrap()
+        else {
+            panic!("expected a 3D polygon");
+        };
+        let exterior = polygon.exterior();
+        assert_eq!(exterior.len(), 5, "four corners plus the closing vertex");
+        // Storage is latitude-first: (S,W), (S,E), (N,E), (N,W).
+        assert_eq!(exterior[0], [50.0, 10.0, 0.0], "(south, west)");
+        assert_eq!(exterior[1], [50.0, 20.0, 0.0], "(south, east)");
+        assert_eq!(exterior[2], [60.0, 20.0, 0.0], "(north, east)");
+        assert_eq!(exterior[3], [60.0, 10.0, 0.0], "(north, west)");
+        assert_eq!(exterior[4], exterior[0], "the ring is closed");
+    }
+
+    #[test]
+    fn f3_a_wsen_radians_rectangle_matches_the_equivalent_wsen_degrees_rectangle() {
+        // The spec's required-cases list: "`wsen` radians rectangles read, and
+        // produce the same polygon as the equivalent `wsenDegrees`". Bounds whose
+        // latitude and longitude ranges are disjoint so an inversion cannot pass.
+        let west = 10.0_f64;
+        let south = 50.0_f64;
+        let east = 20.0_f64;
+        let north = 60.0_f64;
+
+        let degrees = read_str(
+            &serde_json::json!([{
+                "id": "deg",
+                "rectangle": {"coordinates": {"wsenDegrees": [west, south, east, north]}},
+            }])
+            .to_string(),
+            &params(false, true),
+        );
+        let radians = read_str(
+            &serde_json::json!([{
+                "id": "rad",
+                "rectangle": {"coordinates": {"wsen": [
+                    west.to_radians(), south.to_radians(),
+                    east.to_radians(), north.to_radians(),
+                ]}},
+            }])
+            .to_string(),
+            &params(false, true),
+        );
+
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(deg_poly)) = &*degrees[0].geometry
+        else {
+            panic!("expected a 3D polygon");
+        };
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(rad_poly)) = &*radians[0].geometry
+        else {
+            panic!("expected a 3D polygon");
+        };
+        let deg_exterior = deg_poly.exterior();
+        let rad_exterior = rad_poly.exterior();
+        assert_eq!(deg_exterior.len(), rad_exterior.len());
+        for (degree_corner, radian_corner) in deg_exterior.iter().zip(rad_exterior.iter()) {
+            for axis in 0..3 {
+                assert!(
+                    (degree_corner[axis] - radian_corner[axis]).abs() < 1e-9,
+                    "degrees corner {degree_corner:?} vs radians corner \
+                     {radian_corner:?} disagree at axis {axis}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn f4_a_bare_position_under_an_unproductive_polygon_does_not_become_a_point() {
+        // A packet carrying a `polygon` with styling but no `positions`, plus a
+        // `position` (the ordinary way to anchor a label or billboard on a polygon
+        // entity), must not fall through to a Point: that mistypes the feature for
+        // a downstream type-dispatching processor, which is worse than the old
+        // world's silent drop.
+        let features = read_str(
+            r#"[{"id":"p","polygon":{"material":{"solidColor":{"color":{"rgba":[255,0,0,255]}}}},
+                 "position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        assert!(matches!(&*features[0].geometry, Geometry::None));
+        // The attributes, including the graphics the writer replays, still survive.
+        assert!(features[0].get(Attribute::new("czml.polygon")).is_some());
+    }
+
+    #[test]
+    fn f4_a_bare_position_with_no_other_graphics_still_becomes_a_point() {
+        let features = read_str(
+            r#"[{"id":"p","position":{"cartographicDegrees":[139.0,35.0,0.0]}}]"#,
+            &params(false, true),
+        );
+        assert_eq!(features.len(), 1);
+        assert!(matches!(
+            &*features[0].geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(_)),
+        ));
     }
 
     // -------------------------------------------------------------------------
