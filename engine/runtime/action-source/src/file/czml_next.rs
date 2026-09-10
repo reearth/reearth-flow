@@ -126,6 +126,18 @@ struct Raw {
     numbers: Vec<f64>,
 }
 
+/// A JSON value's kind, for naming what was found where an object was wanted.
+fn json_kind(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a boolean",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "an array",
+        Value::Object(_) => "an object",
+    }
+}
+
 /// Pull the flat number list off a CZML position or position list, rejecting the
 /// shapes this reader does not support.
 fn raw_numbers(value: &Value) -> Result<Option<Raw>, PositionProblem> {
@@ -136,8 +148,17 @@ fn raw_numbers(value: &Value) -> Result<Option<Raw>, PositionProblem> {
             ErrorCode::CzmlUnsupportedPosition,
         ));
     }
+    // A present scalar is malformed, not absent. Absence is the key not being
+    // there at all, which the caller established before calling; `null` is the
+    // one written form of "no value" and stays absent.
     let Some(obj) = value.as_object() else {
-        return Ok(None);
+        if value.is_null() {
+            return Ok(None);
+        }
+        return Err(PositionProblem::Malformed(format!(
+            "a position must be an object, got {}",
+            json_kind(value)
+        )));
     };
     if obj.contains_key("reference") || obj.contains_key("references") {
         return Err(PositionProblem::Unsupported(
@@ -325,13 +346,25 @@ pub(super) fn read(
     content: &Bytes,
     params: &CzmlReaderCompiledParam,
 ) -> Result<Vec<Feature>, SourceError> {
-    let text = String::from_utf8(content.to_vec())
+    // Borrowed, not copied: `Bytes` derefs to `[u8]` and `from_str` wants only a
+    // `&str`, so a CZML document is never duplicated in memory to be decoded.
+    let text = std::str::from_utf8(content)
         .map_err(|e| SourceError::CzmlReader(format!("Invalid UTF-8: {e}")))?;
-    let packets: Vec<Value> = serde_json::from_str(&text)
+    let packets: Vec<Value> = serde_json::from_str(text)
         .map_err(|e| SourceError::CzmlReader(format!("Failed to parse CZML: {e}")))?;
 
     let mut features = Vec::with_capacity(packets.len());
-    for packet in &packets {
+    for (index, packet) in packets.iter().enumerate() {
+        // A CZML document is an array of packets, and a packet is an object.
+        // Without this, a stray scalar in the array reaches `packet_features`,
+        // where every lookup misses and it becomes an attribute-less
+        // `Geometry::None` feature: malformed input accepted silently.
+        if !packet.is_object() {
+            return Err(SourceError::CzmlReader(format!(
+                "packet at index {index}: a CZML packet must be an object, got {}",
+                json_kind(packet)
+            )));
+        }
         let is_document = packet.get("version").is_some_and(Value::is_string);
         if is_document && params.skip_document_packet {
             continue;
@@ -1442,6 +1475,64 @@ mod tests {
     fn a_value_with_no_recognised_key_is_absent_not_an_error() {
         let value = serde_json::json!({ "show": true });
         assert!(position(&value).unwrap().is_none());
+    }
+
+    #[test]
+    fn a_scalar_position_is_malformed_not_absent() {
+        // `"position": 5` is present and wrong, not missing. Treating it as
+        // absence let it fall through to a `Geometry::None` feature, which is
+        // the silent acceptance the failure policy exists to prevent.
+        for value in [
+            serde_json::json!(5),
+            serde_json::json!("somewhere"),
+            serde_json::json!(true),
+        ] {
+            assert!(
+                matches!(position(&value).unwrap_err(), PositionProblem::Malformed(_)),
+                "expected Malformed for {value}",
+            );
+            assert!(matches!(
+                position_list(&value).unwrap_err(),
+                PositionProblem::Malformed(_),
+            ));
+        }
+    }
+
+    #[test]
+    fn a_null_position_is_absent_not_malformed() {
+        // `null` is the one written form of "no value", so it stays absence.
+        assert!(position(&serde_json::json!(null)).unwrap().is_none());
+    }
+
+    #[test]
+    fn a_scalar_position_inside_a_packet_fails_the_read() {
+        let err = read(
+            &NodeContext::default(),
+            &Bytes::from(r#"[{"id":"scalar-pos","position":5}]"#.to_string()),
+            &params(false, true),
+        )
+        .unwrap_err();
+        assert!(
+            format!("{err}").contains("scalar-pos"),
+            "message was: {err}"
+        );
+    }
+
+    #[test]
+    fn a_non_object_packet_fails_the_read() {
+        // A stray scalar in the top-level array used to become an
+        // attribute-less `Geometry::None` feature.
+        let err = read(
+            &NodeContext::default(),
+            &Bytes::from(
+                r#"[{"id":"a","position":{"cartographicDegrees":[139.0,35.0,0.0]}},7]"#.to_string(),
+            ),
+            &params(false, true),
+        )
+        .unwrap_err();
+        let message = format!("{err}");
+        assert!(message.contains("index 1"), "message was: {message}");
+        assert!(message.contains("a number"), "message was: {message}");
     }
 
     #[test]
