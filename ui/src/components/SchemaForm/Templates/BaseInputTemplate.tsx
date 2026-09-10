@@ -4,6 +4,7 @@ import {
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
+import { useEffect } from "react";
 
 import {
   FieldContext,
@@ -22,6 +23,7 @@ export type ExtendedFormContext = FormContextType & {
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
   onAssetsOpen?: (fieldContext: FieldContext) => void;
+  onFieldContextRegister?: (fieldContext: FieldContext) => void;
   originalSchema?: any;
   actionName?: string;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
@@ -47,9 +49,16 @@ const BaseInputTemplate = <
     onEditorOpen,
     onPythonEditorOpen,
     onAssetsOpen,
+    onFieldContextRegister,
     originalSchema,
     actionName,
   } = formContext || {};
+
+  // Publish this field's context so spotlight follow can reopen its sub-editor
+  // from the field id alone.
+  useEffect(() => {
+    onFieldContextRegister?.(createFieldContext({ id, name, value, schema }));
+  }, [onFieldContextRegister, id, name, value, schema]);
 
   // Check if this field is marked as an Expr type in the UI schema
   let isExprField = uiSchema?.["ui:exprType"] === "flowExpr";

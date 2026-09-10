@@ -48,6 +48,8 @@ export default function Editor({
     isSaving,
     spotlightUserClientId,
     spotlightUser,
+    spotlightFollow,
+    userActivities,
     activeUsersDebugRuns,
     rawWorkflows,
     customDebugRunWorkflowVariables,
@@ -109,7 +111,12 @@ export default function Editor({
     handleWorkflowVarFieldFocus,
     handleWorkflowVarEditStart,
     handleUserFocusedElement,
+    handleDialogAwareness,
+    handleSubEditorAwareness,
+    handleVersionSnapshotAwareness,
     awarenessSelectionsMap,
+    awarenessEchoMap,
+    setEchoElement,
     handleShowSearchPanel,
     selectedNodeIds,
     staleNodeIds,
@@ -131,6 +138,9 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
+      awarenessEchoMap,
+      onEchoElement: setEchoElement,
+      spotlightFollow,
       yDoc,
       workflowVarAwareness: {
         onDialogOpen: handleWorkflowVarDialogOpen,
@@ -148,6 +158,9 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
       awarenessSelectionsMap,
+      awarenessEchoMap,
+      setEchoElement,
+      spotlightFollow,
       yDoc,
       handleWorkflowVarDialogOpen,
       handleWorkflowVarDialogClose,
@@ -173,6 +186,10 @@ export default function Editor({
             self={self}
             users={users}
             spotlightUserClientId={spotlightUserClientId}
+            spotlightFollow={spotlightFollow}
+            userActivities={userActivities}
+            onDialogAwareness={handleDialogAwareness}
+            onVersionSnapshotAwareness={handleVersionSnapshotAwareness}
             isSaving={isSaving}
             allowedToDeploy={allowedToDeploy}
             canUndo={canUndo}
@@ -261,6 +278,10 @@ export default function Editor({
               attributeSuggestions={readerAttributeSuggestions}
               onWorkflowRename={handleWorkflowRename}
               onParamFieldFocus={handleParamFieldFocus}
+              onSubEditorAwareness={handleSubEditorAwareness}
+              isFollowing={spotlightFollow.isFollowing}
+              followSubEditor={spotlightFollow.subEditor}
+              onSpotlightUserDeselect={handleSpotlightUserDeselect}
             />
           )}
           <PreviewSchemaMonitors

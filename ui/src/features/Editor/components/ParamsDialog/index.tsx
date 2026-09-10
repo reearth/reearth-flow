@@ -14,7 +14,7 @@ import {
 import { applySchemaDefaults } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import type { AwarenessUser, Node } from "@flow/types";
+import type { AwarenessSubEditor, AwarenessUser, Node } from "@flow/types";
 import { normalizeParams } from "@flow/utils";
 
 import {
@@ -50,6 +50,11 @@ type Props = {
   attributeSuggestions?: AutocompleteSuggestion[];
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
+  onSubEditorAwareness?: (subEditor: AwarenessSubEditor | null) => void;
+  isFollowing?: boolean;
+  followSubEditor?: AwarenessSubEditor | null;
+  /** Dropped when the follower interacts with a dialog spotlight opened. */
+  onSpotlightUserDeselect?: () => void;
 };
 
 const ParamsDialog: React.FC<Props> = ({
@@ -62,6 +67,10 @@ const ParamsDialog: React.FC<Props> = ({
   attributeSuggestions,
   onWorkflowRename,
   onParamFieldFocus,
+  onSubEditorAwareness,
+  isFollowing = false,
+  followSubEditor,
+  onSpotlightUserDeselect,
 }) => {
   const t = useT();
   const readonly = useIsReadOnly();
@@ -79,6 +88,152 @@ const ParamsDialog: React.FC<Props> = ({
   const [flowExprEditorContext, setFlowExprEditorContext] = useState<
     FieldContext | undefined
   >(undefined);
+
+  // Field contexts published by each rendered field. Awareness only carries a
+  // field id, so this is how a spotlight follow recovers the schema and value
+  // needed to reopen the same sub-editor.
+  //
+  // The registry is stamped with the node it belongs to and reset on write
+  // rather than in an effect: child effects run before the parent's, so an
+  // effect-based reset would wipe the fields that just registered.
+  const fieldContextsRef = useRef<{
+    nodeId: string | undefined;
+    contexts: Record<string, FieldContext>;
+  }>({ nodeId: undefined, contexts: {} });
+  const [registeredFieldKey, setRegisteredFieldKey] = useState("");
+
+  const openNodeIdRef = useRef(openNode?.id);
+  openNodeIdRef.current = openNode?.id;
+
+  const handleFieldContextRegister = useCallback(
+    (fieldContext: FieldContext) => {
+      const nodeId = openNodeIdRef.current;
+      if (fieldContextsRef.current.nodeId !== nodeId) {
+        fieldContextsRef.current = { nodeId, contexts: {} };
+      }
+      const { contexts } = fieldContextsRef.current;
+      const isNew = !contexts[fieldContext.id];
+      contexts[fieldContext.id] = fieldContext;
+      // Re-render only when a field id shows up for the first time — every
+      // keystroke re-registers, and that must not churn the tree.
+      if (isNew) {
+        setRegisteredFieldKey(
+          `${nodeId ?? ""}:${Object.keys(contexts).length}`,
+        );
+      }
+    },
+    [],
+  );
+
+  const handleSubEditorOpen = useCallback(
+    (kind: AwarenessSubEditor["kind"], fieldContext: FieldContext) => {
+      if (kind === "value") {
+        setValueEditorContext(fieldContext);
+        setOpenValueEditor(true);
+      } else if (kind === "python") {
+        setPythonEditorContext(fieldContext);
+        setOpenPythonEditor(true);
+      } else {
+        setFlowExprEditorContext(fieldContext);
+        setOpenFlowExprEditor(true);
+      }
+      onSubEditorAwareness?.({
+        kind,
+        fieldId: fieldContext.id,
+        fieldName: fieldContext.fieldName,
+      });
+    },
+    [onSubEditorAwareness],
+  );
+
+  const handleSubEditorClose = useCallback(() => {
+    setOpenValueEditor(false);
+    setValueEditorContext(undefined);
+    setOpenPythonEditor(false);
+    setPythonEditorContext(undefined);
+    setOpenFlowExprEditor(false);
+    setFlowExprEditorContext(undefined);
+    onSubEditorAwareness?.(null);
+  }, [onSubEditorAwareness]);
+
+  const localSubEditor: AwarenessSubEditor | null = useMemo(() => {
+    if (openValueEditor && valueEditorContext)
+      return {
+        kind: "value",
+        fieldId: valueEditorContext.id,
+        fieldName: valueEditorContext.fieldName,
+      };
+    if (openPythonEditor && pythonEditorContext)
+      return {
+        kind: "python",
+        fieldId: pythonEditorContext.id,
+        fieldName: pythonEditorContext.fieldName,
+      };
+    if (openFlowExprEditor && flowExprEditorContext)
+      return {
+        kind: "flowExpr",
+        fieldId: flowExprEditorContext.id,
+        fieldName: flowExprEditorContext.fieldName,
+      };
+    return null;
+  }, [
+    openValueEditor,
+    valueEditorContext,
+    openPythonEditor,
+    pythonEditorContext,
+    openFlowExprEditor,
+    flowExprEditorContext,
+  ]);
+
+  // Sub-editor follow is hand-rolled rather than using `useFollowSync` because
+  // the field may not have rendered yet when the follow arrives; it also has to
+  // rerun as the field registry fills in.
+  const localSubEditorRef = useRef(localSubEditor);
+  localSubEditorRef.current = localSubEditor;
+  const openedByFollowRef = useRef(false);
+  const followKey = followSubEditor
+    ? `${followSubEditor.kind}:${followSubEditor.fieldId}`
+    : null;
+  const followSubEditorRef = useRef(followSubEditor);
+  followSubEditorRef.current = followSubEditor;
+  const subEditorOpenRef = useRef(handleSubEditorOpen);
+  subEditorOpenRef.current = handleSubEditorOpen;
+  const subEditorCloseRef = useRef(handleSubEditorClose);
+  subEditorCloseRef.current = handleSubEditorClose;
+
+  useEffect(() => {
+    if (!isFollowing) {
+      openedByFollowRef.current = false;
+      return;
+    }
+
+    const follow = followSubEditorRef.current;
+    const local = localSubEditorRef.current;
+
+    if (follow) {
+      if (
+        local &&
+        local.kind === follow.kind &&
+        local.fieldId === follow.fieldId
+      )
+        return;
+      const registry = fieldContextsRef.current;
+      const fieldContext =
+        registry.nodeId === openNodeIdRef.current
+          ? registry.contexts[follow.fieldId]
+          : undefined;
+      // Not rendered yet — this effect reruns when the registry grows.
+      if (!fieldContext) return;
+      openedByFollowRef.current = true;
+      subEditorOpenRef.current(follow.kind, fieldContext);
+      return;
+    }
+
+    if (openedByFollowRef.current) {
+      openedByFollowRef.current = false;
+      if (local) subEditorCloseRef.current();
+    }
+  }, [isFollowing, followKey, registeredFieldKey]);
 
   const yDrafts = useMemo(() => yDoc?.getMap<any>("paramDrafts"), [yDoc]);
   const rawDrafts = useY(yDrafts ?? new YMap()) as DraftStore;
@@ -352,7 +507,11 @@ const ParamsDialog: React.FC<Props> = ({
   return (
     <>
       <Dialog open={!!openNode} onOpenChange={handleOpenNode}>
-        <DialogContent size="2xl">
+        {/* Interacting with a dialog spotlight opened hands control back to
+            the follower, matching the canvas' click-to-unfollow behaviour. */}
+        <DialogContent
+          size="2xl"
+          onPointerDownCapture={() => onSpotlightUserDeselect?.()}>
           <DialogHeader>
             <DialogTitle>
               <div className="flex items-center gap-2">
@@ -408,18 +567,16 @@ const ParamsDialog: React.FC<Props> = ({
               onMigrate={handleMigrate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
-              onValueEditorOpen={(fieldContext) => {
-                setValueEditorContext(fieldContext);
-                setOpenValueEditor(true);
-              }}
-              onPythonEditorOpen={(fieldContext) => {
-                setPythonEditorContext(fieldContext);
-                setOpenPythonEditor(true);
-              }}
-              onFlowExprEditorOpen={(fieldContext) => {
-                setFlowExprEditorContext(fieldContext);
-                setOpenFlowExprEditor(true);
-              }}
+              onFieldContextRegister={handleFieldContextRegister}
+              onValueEditorOpen={(fieldContext) =>
+                handleSubEditorOpen("value", fieldContext)
+              }
+              onPythonEditorOpen={(fieldContext) =>
+                handleSubEditorOpen("python", fieldContext)
+              }
+              onFlowExprEditorOpen={(fieldContext) =>
+                handleSubEditorOpen("flowExpr", fieldContext)
+              }
             />
           )}
         </DialogContent>
@@ -428,10 +585,7 @@ const ParamsDialog: React.FC<Props> = ({
         <ValueEditorDialog
           open={openValueEditor}
           fieldContext={valueEditorContext}
-          onClose={() => {
-            setOpenValueEditor(false);
-            setValueEditorContext(undefined);
-          }}
+          onClose={handleSubEditorClose}
           onValueSubmit={handleValueChange}
         />
       )}
@@ -439,10 +593,7 @@ const ParamsDialog: React.FC<Props> = ({
         <PythonEditorDialog
           open={openPythonEditor}
           fieldContext={pythonEditorContext}
-          onClose={() => {
-            setOpenPythonEditor(false);
-            setPythonEditorContext(undefined);
-          }}
+          onClose={handleSubEditorClose}
           onValueSubmit={(value) => applyFieldPatch(pythonEditorContext, value)}
         />
       )}
@@ -452,8 +603,7 @@ const ParamsDialog: React.FC<Props> = ({
           fieldContext={flowExprEditorContext}
           attributeSuggestions={attributeSuggestions}
           onClose={() => {
-            setOpenFlowExprEditor(false);
-            setFlowExprEditorContext(undefined);
+            handleSubEditorClose();
             onParamFieldFocus?.(null);
           }}
           onValueSubmit={handleFlowExprValueSubmit}

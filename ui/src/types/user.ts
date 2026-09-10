@@ -35,6 +35,36 @@ export type UpdateMe = {
 
 export type AwarenessSelection = { color: string; userName: string };
 export type AwarenessSelectionsMap = Record<string, AwarenessSelection[]>;
+/** Users currently on each echoed UI element, keyed by that element's key. */
+export type AwarenessEchoMap = Record<string, AwarenessSelection[]>;
+
+/**
+ * Dialogs whose open/closed state is broadcast over awareness. Mirrors the
+ * editor's local `DialogOptions`, kept as its own union so `@flow/types` does
+ * not have to reach into a feature directory.
+ */
+export type AwarenessDialog =
+  | "deploy"
+  | "share"
+  | "version"
+  | "assets"
+  | "debugStop"
+  | "workflowVariables"
+  | "collaboration"
+  | "layout";
+
+/** A code/value editor opened on top of the params dialog. */
+export type AwarenessSubEditor = {
+  kind: "value" | "python" | "flowExpr";
+  /** RJSF field id (e.g. "root_expr"), used to reopen the same field. */
+  fieldId: string;
+  fieldName: string;
+};
+
+export type AwarenessNodePicker = {
+  nodeType: string;
+  position: { x: number; y: number };
+};
 
 export type AwarenessUser = {
   clientId: number;
@@ -56,7 +86,21 @@ export type AwarenessUser = {
   focusedElement?: boolean;
   openNodeId?: string | null;
   focusedParamField?: string | null;
+  openSubEditor?: AwarenessSubEditor | null;
+  openDialog?: AwarenessDialog | null;
+  openNodePicker?: AwarenessNodePicker | null;
   openWorkflowVariablesDialog?: boolean | null;
+  /** Snapshot selected in the version history dialog (preview, not restore). */
+  selectedVersionSnapshot?: number | null;
+  /** clientId of the user this user is spotlighting, if any. */
+  followingClientId?: number | null;
+  /**
+   * Stable keys for the UI elements this user is currently on — a dropdown they
+   * have open, a list row they are hovering, a menu item under their pointer.
+   * Read with `useAwarenessEcho(key)`; any component can opt in with one line,
+   * so this stays a single field rather than growing one per surface.
+   */
+  activeElements?: string[] | null;
   focusedVariableId?: string | null;
   focusedVariableField?: string | null;
   editingVariableId?: string | null;

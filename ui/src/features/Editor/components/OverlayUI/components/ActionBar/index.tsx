@@ -23,16 +23,38 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import {
+  useEchoDropdown,
+  useEchoHover,
   useEditorContext,
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
+import { actionItemEchoKey, ECHO_KEYS } from "@flow/lib/yjs";
+import { awarenessEchoStyles } from "@flow/utils";
 
 import { DialogOptions } from "../../types";
 
 import { DeployPopover, SharePopover } from "./components";
 
 const tooltipOffset = 6;
+
+/**
+ * Menu entry that rings in a collaborator's colour while they are on it. Its own
+ * component because each entry needs its own `useEchoHover` subscription.
+ */
+const EchoMenuItem: React.FC<
+  React.ComponentProps<typeof DropdownMenuItem> & { echoKey: string }
+> = ({ echoKey, style, children, ...props }) => {
+  const { users, hoverProps } = useEchoHover(echoKey);
+  return (
+    <DropdownMenuItem
+      style={{ ...style, ...awarenessEchoStyles(users) }}
+      {...hoverProps}
+      {...props}>
+      {children}
+    </DropdownMenuItem>
+  );
+};
 
 type Props = {
   allowedToDeploy: boolean;
@@ -67,6 +89,7 @@ const ActionBar: React.FC<Props> = ({
   const t = useT();
   const { isLocked, isReaderRestricted } = useEditorContext();
   const readonly = useIsReadOnly();
+  const actionsDropdown = useEchoDropdown(ECHO_KEYS.actionsDropdown);
 
   return (
     <div className="flex gap-2 align-middle">
@@ -127,7 +150,7 @@ const ActionBar: React.FC<Props> = ({
           )}
         </PopoverContent>
       </Popover>
-      <DropdownMenu>
+      <DropdownMenu {...actionsDropdown}>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -143,7 +166,8 @@ const ActionBar: React.FC<Props> = ({
           align="end"
           sideOffset={8}
           alignOffset={2}>
-          <DropdownMenuItem
+          <EchoMenuItem
+            echoKey={actionItemEchoKey("manual-save")}
             className="flex items-center justify-between"
             closeOnClick={false}
             disabled={isSaving || readonly}
@@ -157,8 +181,9 @@ const ActionBar: React.FC<Props> = ({
                 keyBinding={{ key: "s", commandKey: true }}
               />
             </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem
+          </EchoMenuItem>
+          <EchoMenuItem
+            echoKey={actionItemEchoKey("lock")}
             className="flex items-center justify-between"
             closeOnClick={false}
             disabled={isReaderRestricted}
@@ -176,17 +201,19 @@ const ActionBar: React.FC<Props> = ({
                 keyBinding={{ key: "l", commandKey: true }}
               />
             </div>
-          </DropdownMenuItem>
+          </EchoMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
+          <EchoMenuItem
+            echoKey={actionItemEchoKey("version-history")}
             className="flex items-center justify-between"
             onClick={() => onDialogOpen("version")}>
             <div className="flex items-center gap-1">
               <ClockCounterClockwiseIcon weight="light" />
               <p>{t("Version History")}</p>
             </div>
-          </DropdownMenuItem>
-          <DropdownMenuItem
+          </EchoMenuItem>
+          <EchoMenuItem
+            echoKey={actionItemEchoKey("export")}
             className="flex items-center justify-between"
             onClick={onProjectExport}
             disabled>
@@ -194,7 +221,7 @@ const ActionBar: React.FC<Props> = ({
               <ExportIcon weight="light" />
               <p>{t("Export Project")}</p>
             </div>
-          </DropdownMenuItem>
+          </EchoMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

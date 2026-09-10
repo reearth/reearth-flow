@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDocument } from "@flow/lib/gql/document/useApi";
 import { useT } from "@flow/lib/i18n";
+import { useFollowSync } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import { docFromUpdate, makeGetMetadata, revertUpdate } from "./yjsRevert";
@@ -14,10 +15,16 @@ export default ({
   projectId,
   yDoc,
   onDialogClose,
+  onVersionSnapshotAwareness,
+  isFollowing = false,
+  followVersionSnapshot,
 }: {
   projectId: string;
   yDoc: Y.Doc | null;
   onDialogClose?: () => void;
+  onVersionSnapshotAwareness?: (snapshotNumber: number | null) => void;
+  isFollowing?: boolean;
+  followVersionSnapshot?: number | null;
 }) => {
   const {
     useGetProjectNamedSnapshots,
@@ -54,6 +61,7 @@ export default ({
   const onSnapshotSelect = useCallback(
     async (snapshotNumber: number) => {
       setSelectedSnapshotNumber(snapshotNumber);
+      onVersionSnapshotAwareness?.(snapshotNumber);
       destroyPreview();
       setIsLoadingPreview(true);
 
@@ -66,6 +74,7 @@ export default ({
           // Retention evicts snapshots, so a listed row can be gone by the time
           // it is clicked. Say so rather than showing an unchanged canvas.
           setSelectedSnapshotNumber(null);
+          onVersionSnapshotAwareness?.(null);
           return toast({
             title: t("Version unavailable"),
             description: t("This version is no longer available."),
@@ -79,6 +88,7 @@ export default ({
       } catch (error) {
         console.error("Snapshot preview failed:", error);
         setSelectedSnapshotNumber(null);
+        onVersionSnapshotAwareness?.(null);
         toast({
           title: t("Could not load this version"),
           variant: "destructive",
@@ -87,7 +97,41 @@ export default ({
         setIsLoadingPreview(false);
       }
     },
-    [projectId, useGetProjectNamedSnapshot, destroyPreview, toast, t],
+    [
+      projectId,
+      useGetProjectNamedSnapshot,
+      destroyPreview,
+      onVersionSnapshotAwareness,
+      toast,
+      t,
+    ],
+  );
+
+  // Mirror the spotlighted user's selection. Loading a preview is a read, so the
+  // follower can run the same fetch independently.
+  useFollowSync<number>({
+    active: isFollowing,
+    follow: followVersionSnapshot ?? null,
+    local: selectedSnapshotNumber,
+    onFollow: (snapshotNumber) => {
+      if (snapshotNumber === null) {
+        setSelectedSnapshotNumber(null);
+        destroyPreview();
+        return;
+      }
+      onSnapshotSelect(snapshotNumber);
+    },
+  });
+
+  // The dialog unmounts without going through onSnapshotSelect, so clear the
+  // broadcast here rather than leaving a stale snapshot on our awareness state.
+  const clearSnapshotAwarenessRef = useRef(onVersionSnapshotAwareness);
+  clearSnapshotAwarenessRef.current = onVersionSnapshotAwareness;
+  useEffect(
+    () => () => {
+      clearSnapshotAwarenessRef.current?.(null);
+    },
+    [],
   );
 
   const onSnapshotRestore = useCallback(async () => {

@@ -1,18 +1,45 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useWorkflowVariables } from "@flow/lib/gql";
+import { useFollowSync } from "@flow/lib/yjs";
 import { useCurrentProject } from "@flow/stores";
 import {
   WorkflowVariable as WorkflowVariableType,
   AnyWorkflowVariable,
+  type AwarenessDialog,
 } from "@flow/types";
 
 import { DialogOptions } from "../../types";
 
+/** Dialogs whose open state lives in this hook rather than in the overlay. */
+const OWNED_DIALOGS: readonly AwarenessDialog[] = [
+  "workflowVariables",
+  "assets",
+  "collaboration",
+];
+
+/**
+ * Subset that spotlight follows. The collaboration popover is excluded — it is
+ * the control used to spotlight in the first place, so mirroring it is noise.
+ */
+const FOLLOWABLE_DIALOGS: readonly AwarenessDialog[] = [
+  "workflowVariables",
+  "assets",
+];
+
 export default ({
   onUserFocusedElement,
+  onDialogAwareness,
+  isFollowing = false,
+  followDialog,
 }: {
   onUserFocusedElement?: (isOpen: boolean) => void;
+  onDialogAwareness?: (
+    dialog: AwarenessDialog | null,
+    ownedDialogs: readonly AwarenessDialog[],
+  ) => void;
+  isFollowing?: boolean;
+  followDialog?: AwarenessDialog | null;
 }) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
 
@@ -32,18 +59,41 @@ export default ({
     [workflowVariables],
   );
 
-  const handleDialogOpen = (dialog: DialogOptions) => {
-    if (dialog === "workflowVariables") {
-      refetchWorkflowVariables();
-    }
-    setShowDialog(dialog);
-    onUserFocusedElement?.(true);
-  };
+  const handleDialogOpen = useCallback(
+    (dialog: DialogOptions) => {
+      if (dialog === "workflowVariables") {
+        refetchWorkflowVariables();
+      }
+      setShowDialog(dialog);
+      onUserFocusedElement?.(true);
+      onDialogAwareness?.(dialog ?? null, OWNED_DIALOGS);
+    },
+    [refetchWorkflowVariables, onUserFocusedElement, onDialogAwareness],
+  );
 
-  const handleDialogClose = () => {
+  const handleDialogClose = useCallback(() => {
     setShowDialog(undefined);
     onUserFocusedElement?.(false);
-  };
+    onDialogAwareness?.(null, OWNED_DIALOGS);
+  }, [onUserFocusedElement, onDialogAwareness]);
+
+  const handleFollowDialog = useCallback(
+    (dialog: AwarenessDialog | null) =>
+      dialog ? handleDialogOpen(dialog) : handleDialogClose(),
+    [handleDialogOpen, handleDialogClose],
+  );
+
+  const followable =
+    followDialog && FOLLOWABLE_DIALOGS.includes(followDialog)
+      ? followDialog
+      : null;
+
+  useFollowSync<AwarenessDialog>({
+    active: isFollowing,
+    follow: followable,
+    local: showDialog && OWNED_DIALOGS.includes(showDialog) ? showDialog : null,
+    onFollow: handleFollowDialog,
+  });
 
   const handleWorkflowVariableAdd = useCallback(
     async (workflowVariable: WorkflowVariableType) => {

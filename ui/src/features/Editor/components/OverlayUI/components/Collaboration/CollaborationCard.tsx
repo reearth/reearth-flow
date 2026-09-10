@@ -6,8 +6,63 @@ import {
 import { useState } from "react";
 
 import { IconButton } from "@flow/components";
+import type { UserActivity } from "@flow/features/Editor/useUserActivities";
 import { useT } from "@flow/lib/i18n";
 import { JobStatus, UserDebugRun } from "@flow/types";
+
+const getActivityLabel = (
+  activity: UserActivity | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string | undefined => {
+  if (!activity) return undefined;
+  switch (activity.kind) {
+    case "following":
+      return t("Following {{user}}", { user: activity.label });
+    case "subEditor":
+      switch (activity.editor) {
+        case "python":
+          return t("Python editor: {{field}}", { field: activity.label });
+        case "flowExpr":
+          return t("Expression editor: {{field}}", { field: activity.label });
+        default:
+          return t("Value editor: {{field}}", { field: activity.label });
+      }
+    case "editingNode":
+      return activity.label
+        ? t("Editing {{node}}", { node: activity.label })
+        : t("Editing a node");
+    case "workflowVariables":
+      return t("Editing workflow variables");
+    case "assets":
+      return t("Browsing assets");
+    case "nodePicker":
+      return t("Adding a node");
+    case "version":
+      return activity.snapshotNumber !== undefined
+        ? t("Version history: snapshot {{snapshot}}", {
+            snapshot: activity.snapshotNumber,
+          })
+        : t("Viewing version history");
+    case "layout":
+      return t("Adjusting layout");
+    case "deploy":
+      return t("Deploying");
+    case "share":
+      return t("Sharing the project");
+    case "debugVariables":
+      return t("Setting up a debug run");
+    case "debugRun":
+      return activity.status
+        ? t("Debug run ({{status}})", { status: activity.status })
+        : t("Running a debug job");
+    case "viewing":
+      return activity.label
+        ? t("Viewing {{workflow}}", { workflow: activity.label })
+        : undefined;
+    default:
+      return undefined;
+  }
+};
 
 type Props = {
   self?: boolean;
@@ -15,6 +70,7 @@ type Props = {
   userDebugRun?: UserDebugRun;
   userName: string;
   color: string;
+  activity?: UserActivity;
   spotlightUserClientId?: number | null;
   time?: string;
   onSpotlightUserSelect?: (clientId: number) => void;
@@ -28,6 +84,7 @@ const CollaborationCard: React.FC<Props> = ({
   userDebugRun,
   userName,
   color,
+  activity,
   spotlightUserClientId,
   time,
   onSpotlightUserSelect,
@@ -36,6 +93,7 @@ const CollaborationCard: React.FC<Props> = ({
 }) => {
   const isSpotlighted = spotlightUserClientId === clientId;
   const t = useT();
+  const activityLabel = getActivityLabel(activity, t);
   const [isHovered, setIsHovered] = useState(false);
   const getDebugRunStatusLabel = (
     status: JobStatus | undefined,
@@ -73,6 +131,13 @@ const CollaborationCard: React.FC<Props> = ({
         <span className="truncate text-sm select-none dark:font-light">
           {userName}
         </span>
+        {activityLabel && (
+          <span
+            className="truncate text-xs opacity-55 select-none dark:font-light"
+            title={activityLabel}>
+            {activityLabel}
+          </span>
+        )}
 
         <div className="flex items-center gap-2">
           {(time || userDebugRun) && (

@@ -30,6 +30,12 @@ type SchemaFormProps = {
   onEditorOpen?: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
+  /**
+   * Called by each rendered field with its own context. Lets an ancestor
+   * reopen a sub-editor by field id alone, which is what spotlight follow
+   * needs — awareness only carries the id, never the schema.
+   */
+  onFieldContextRegister?: (fieldContext: FieldContext) => void;
 };
 
 // Function to recursively scan schema for Expr/Code types and build UI schema.
@@ -143,6 +149,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   onEditorOpen,
   onPythonEditorOpen,
   onFlowExprEditorOpen,
+  onFieldContextRegister,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +239,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
           onEditorOpen,
           onPythonEditorOpen,
           onFlowExprEditorOpen,
+          onFieldContextRegister,
           originalSchema,
           patchedSchema,
           actionName,

@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
+import type { UserActivity } from "@flow/features/Editor/useUserActivities";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser } from "@flow/types";
 
@@ -20,6 +21,7 @@ type Props = {
   users: Record<string, AwarenessUser>;
   showDialog: DialogOptions;
   spotlightUserClientId: number | null;
+  userActivities: Record<string, UserActivity>;
   onDialogOpen: (dialog: DialogOptions) => void;
   onDialogClose: () => void;
   onSpotlightUserSelect: (clientId: number) => void;
@@ -31,6 +33,7 @@ const CollaborationActionBar: React.FC<Props> = ({
   users,
   showDialog,
   spotlightUserClientId,
+  userActivities,
   onDialogOpen,
   onDialogClose,
   onSpotlightUserSelect,
@@ -101,6 +104,7 @@ const CollaborationActionBar: React.FC<Props> = ({
             self={self}
             users={users}
             spotlightUserClientId={spotlightUserClientId}
+            userActivities={userActivities}
             onSpotlightUserSelect={onSpotlightUserSelect}
             onSpotlightUserDeselect={onSpotlightUserDeselect}
           />

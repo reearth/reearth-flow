@@ -4,7 +4,7 @@ import {
   PencilLineIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   DataTable as Table,
@@ -20,8 +20,55 @@ import {
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import {
+  useAwarenessEcho,
+  useEchoFocus,
+  useEditorContext,
+} from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
+import {
+  debugVariableEchoKey,
+  ECHO_KEYS,
+  useDebugVarSession,
+} from "@flow/lib/yjs";
 import { AnyWorkflowVariable, Asset } from "@flow/types";
+import { awarenessEchoStyles } from "@flow/utils";
+
+/**
+ * Wraps a variable's editor so the cell rings while another user has it
+ * focused. Own component because each row needs its own subscription.
+ */
+const EchoVariableCell: React.FC<{
+  variable: AnyWorkflowVariable;
+  index: number;
+  showVariableDialog: boolean;
+  onVariableDialogClose: () => void;
+  onAssetDialogOpen: (dialog: DialogOptions) => void;
+  onDefaultValueChange: (index: number, value: any) => void;
+}> = ({
+  variable,
+  index,
+  showVariableDialog,
+  onVariableDialogClose,
+  onAssetDialogOpen,
+  onDefaultValueChange,
+}) => {
+  const { users, focusProps } = useEchoFocus(debugVariableEchoKey(variable.id));
+
+  return (
+    <div style={awarenessEchoStyles(users)} {...focusProps}>
+      <VariableRow
+        variable={variable}
+        index={index}
+        key={variable.id}
+        showVariableDialog={showVariableDialog}
+        onVariableDialogClose={onVariableDialogClose}
+        onAssetDialogOpen={onAssetDialogOpen}
+        onDefaultValueChange={onDefaultValueChange}
+      />
+    </div>
+  );
+};
 
 type Props = {
   debugRunWorkflowVariables?: AnyWorkflowVariable[];
@@ -38,18 +85,23 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   onDialogClose,
 }) => {
   const t = useT();
+  const { yDoc } = useEditorContext();
 
-  // Local draft state for workflow variables, initialized with the debug run variables if provided
-  const [variables, setVariables] = useState<AnyWorkflowVariable[]>(
+  const baseVariables = useMemo(
     () => debugRunWorkflowVariables ?? [],
+    [debugRunWorkflowVariables],
   );
 
-  const hasEditedRef = useRef(false);
+  // Staged values live in the shared doc, not local state: everyone with this
+  // dialog open is configuring the same run and should see each other type.
+  const { variables, setVariableValue, clearSession } = useDebugVarSession({
+    yDoc,
+    baseVariables,
+  });
 
-  useEffect(() => {
-    if (hasEditedRef.current || !debugRunWorkflowVariables) return;
-    setVariables(debugRunWorkflowVariables);
-  }, [debugRunWorkflowVariables]);
+  // Other users with this dialog open, from the same echo key the DebugActionBar
+  // already broadcasts.
+  const dialogUsers = useAwarenessEcho(ECHO_KEYS.debugVariablesDialog);
 
   const [startingDebugRun, setStartingDebugRun] = useState(false);
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
@@ -57,34 +109,27 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
 
+  const variablesRef = useRef(variables);
+  variablesRef.current = variables;
+
   const handleDefaultValueChange = useCallback(
     (index: number, newValue: any) => {
-      hasEditedRef.current = true;
-      setVariables((prev) =>
-        prev.map((variable, i) =>
-          i === index ? { ...variable, defaultValue: newValue } : variable,
-        ),
-      );
+      const variable = variablesRef.current[index];
+      if (!variable) return;
+      setVariableValue(variable.id, newValue);
     },
-    [],
+    [setVariableValue],
   );
 
   const handleResetToDefault = useCallback(
-    (index: number, variableId: string) => {
+    (variableId: string) => {
       const original = workflowVariableDefaults?.find(
         (defaultVariable) => defaultVariable.id === variableId,
       );
       if (!original) return;
-      hasEditedRef.current = true;
-      setVariables((prev) =>
-        prev.map((variable, i) =>
-          i === index
-            ? { ...variable, defaultValue: original.defaultValue }
-            : variable,
-        ),
-      );
+      setVariableValue(variableId, original.defaultValue);
     },
-    [workflowVariableDefaults],
+    [workflowVariableDefaults, setVariableValue],
   );
 
   const isAtDefault = useCallback(
@@ -146,6 +191,14 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     setStartingDebugRun(true);
     await onDebugRunStart(variables);
     setStartingDebugRun(false);
+    clearSession();
+    onDialogClose();
+  };
+
+  const handleCancel = () => {
+    // Only the last participant clears — bailing out while someone else is
+    // still editing must not wipe their staged values.
+    if (dialogUsers.length === 0) clearSession();
     onDialogClose();
   };
 
@@ -164,7 +217,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
         header: t("Default Value"),
         cell: ({ row }) => {
           return (
-            <VariableRow
+            <EchoVariableCell
               variable={row.original}
               index={row.index}
               showVariableDialog={
@@ -204,7 +257,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
               variant="ghost"
               icon={<ArrowUDownLeftIcon />}
               tooltipText={t("Reset to default")}
-              onClick={() => handleResetToDefault(row.index, row.original.id)}
+              onClick={() => handleResetToDefault(row.original.id)}
               disabled={isAtDefault(row.original)}
             />
           </div>
@@ -234,6 +287,21 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
                 <div className="flex items-center gap-2">
                   <ChalkboardTeacherIcon />
                   {t("Workflow Variables")}
+                  {dialogUsers.length > 0 && (
+                    <div className="flex items-center -space-x-2">
+                      {dialogUsers.slice(0, 3).map((user) => (
+                        <div
+                          key={user.userName}
+                          title={user.userName}
+                          className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                          style={{ backgroundColor: user.color }}>
+                          <span className="text-xs font-medium text-white select-none">
+                            {user.userName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </DialogTitle>
@@ -253,7 +321,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
             <Button
               variant="outline"
               disabled={startingDebugRun}
-              onClick={onDialogClose}>
+              onClick={handleCancel}>
               {t("Cancel")}
             </Button>
             <Button onClick={handleDebugRunStart} disabled={startingDebugRun}>

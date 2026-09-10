@@ -1,10 +1,3 @@
-export type DialogOptions =
-  | "deploy"
-  | "share"
-  | "version"
-  | "assets"
-  | "debugStop"
-  | "workflowVariables"
-  | "collaboration"
-  | "layout"
-  | undefined;
+import type { AwarenessDialog } from "@flow/types";
+
+export type DialogOptions = AwarenessDialog | undefined;
