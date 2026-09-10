@@ -12,10 +12,15 @@ pub const MEMBER_LOD_KEY: &str = "lod";
 pub const MEMBER_GML_PROPERTY_NAME_KEY: &str = "gmlPropertyName";
 pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
 
-/// Per-member attribute keys naming the innermost enclosing element that carries a
-/// `gml:id` — the object the geometry belongs to. One feature can hold the geometry
-/// of several nested objects, so the feature's own `gml:id` and type do not identify
-/// a single member's owner.
+/// Per-member attribute keys naming the element the geometry property hung from,
+/// the object the geometry belongs to. One feature can hold the geometry of several
+/// nested objects, so the feature's own `gml:id` and type do not identify a single
+/// member's owner.
+///
+/// The type is always known; the id is there only when that element carries a
+/// `gml:id`. An ADE property container such as `uro:DmGeometricAttribute` carries
+/// none, so its geometry is named by type alone, which is what tells it apart from
+/// a city object's own geometry.
 pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
 pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
 
@@ -439,14 +444,14 @@ mod build_next {
                     AttributeValue::String(gml_type.clone()),
                 );
             }
+            member_attrs.insert(
+                Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
+                AttributeValue::String(pending.owner_feature_type.clone()),
+            );
             if let Some(owner_gml_id) = &pending.owner_gml_id {
                 member_attrs.insert(
                     Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY),
                     AttributeValue::String(owner_gml_id.clone()),
-                );
-                member_attrs.insert(
-                    Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
-                    AttributeValue::String(pending.owner_feature_type.clone()),
                 );
             }
             members.push(member);
@@ -480,6 +485,7 @@ mod build_next {
                      xmlns:con="http://www.opengis.net/citygml/construction/3.0"
                      xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
                      xmlns:gml="http://www.opengis.net/gml/3.2"
+                     xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
                      xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
             );
             let mut parser = Parser::new(CityGmlVersion::V3);
@@ -674,6 +680,48 @@ mod build_next {
                     (Some(&lod1.0), Some(&lod1.1), Some(&lod1.2)),
                     (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
                 ]
+            );
+        }
+
+        #[test]
+        fn case15_geometry_under_an_ade_container_is_named_by_its_owner_type() {
+            // `uro:DmGeometricAttribute` holds survey geometry, not the building's
+            // own. It carries no `gml:id`, so only the owner type tells the two
+            // apart; a workflow reads that key to keep survey geometry out of the
+            // checks meant for city objects.
+            let members = format!(
+                "<core:cityObjectMember><bldg:Building gml:id=\"b1\">\
+                   <uro:bldgDmAttribute><uro:DmGeometricAttribute>\
+                     <uro:lod0Geometry><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></uro:lod0Geometry>\
+                   </uro:DmGeometricAttribute></uro:bldgDmAttribute>\
+                   <bldg:lod0MultiSurface><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></bldg:lod0MultiSurface>\
+                 </bldg:Building></core:cityObjectMember>"
+            );
+            let features = run(&members, &[]);
+            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
+                panic!(
+                    "expected GeometryCollection, got {:?}",
+                    features[0].geometry
+                );
+            };
+            let owners: Vec<(Option<&AttributeValue>, Option<&AttributeValue>)> = gc
+                .member_attributes()
+                .iter()
+                .map(|a| {
+                    (
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY)),
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY)),
+                    )
+                })
+                .collect();
+            let dm = AttributeValue::String("uro:DmGeometricAttribute".to_string());
+            let building = AttributeValue::String("bldg:Building".to_string());
+            let b1 = AttributeValue::String("b1".to_string());
+            // Both are LOD 0; the owner type is the only thing separating them, and
+            // the ADE container contributes no id.
+            assert_eq!(
+                owners,
+                vec![(Some(&dm), None), (Some(&building), Some(&b1))]
             );
         }
 

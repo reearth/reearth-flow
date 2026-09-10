@@ -33,6 +33,16 @@ graphs:
     name: GeometrySplitter
     type: action
     action: Geometry Splitter
+  - id: b1000000-0000-4000-8000-000000000005
+    name: FeatureFilterCityObjectGeometry
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+      - expr:
+          type: flowExpr
+          value: not attributes.get("__citygml_geometry_feature_type", "").ends_with(":DmGeometricAttribute")
+        outputPort: cityObject
   - id: b1000000-0000-4000-8000-000000000004
     name: FeatureFilterByLod
     type: action
@@ -102,8 +112,13 @@ graphs:
     toPort: features
   - id: b1000000-0000-4000-8000-000000000103
     from: b1000000-0000-4000-8000-000000000003
-    to: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000005
     fromPort: features
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000104
+    from: b1000000-0000-4000-8000-000000000005
+    to: b1000000-0000-4000-8000-000000000004
+    fromPort: cityObject
     toPort: features
   - id: b1000000-0000-4000-8000-000000000110
     from: b1000000-0000-4000-8000-000000000004
