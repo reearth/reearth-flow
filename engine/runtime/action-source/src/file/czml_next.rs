@@ -16,6 +16,12 @@
 
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+use reearth_flow_geometry::{
+    line_string::{LineString2D, LineString3D},
+    point::{Point2D, Point3D},
+    polygon::{Polygon2D, Polygon3D},
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
+};
 use serde_json::Value;
 
 /// WGS84 geographic 3D. Authority axis order `(latitude, longitude, height)`.
@@ -136,7 +142,10 @@ fn raw_numbers(value: &Value) -> Result<Option<Raw>, PositionProblem> {
             numbers: numbers(cartesian, "cartesian")?,
         }));
     }
-    for (key, radians) in [("cartographicDegrees", false), ("cartographicRadians", true)] {
+    for (key, radians) in [
+        ("cartographicDegrees", false),
+        ("cartographicRadians", true),
+    ] {
         if let Some(list) = obj.get(key) {
             return Ok(Some(Raw {
                 frame: CzmlFrame::Cartographic,
@@ -196,9 +205,273 @@ fn into_coords(raw: Raw) -> Result<Coords, PositionProblem> {
     })
 }
 
+/// Close a ring the way CZML means it. CZML never repeats the first vertex because
+/// Cesium closes implicitly, while `Polygon::from_rings` stores rings verbatim and
+/// never closes them. Translating that implicit closure is the reader's job.
+fn closed(ring: &[[f64; 3]]) -> Vec<[f64; 3]> {
+    let mut ring = ring.to_vec();
+    match (ring.first().copied(), ring.last().copied()) {
+        (Some(first), Some(last)) if first != last => ring.push(first),
+        _ => {}
+    }
+    ring
+}
+
+/// A point at the first coordinate.
+pub(super) fn point_geometry(coords: &Coords, force_2d: bool) -> Result<Geometry, PositionProblem> {
+    let frame = resolve_frame(coords.frame, force_2d).map_err(PositionProblem::Unsupported)?;
+    let Some(&[x, y, z]) = coords.triples.first() else {
+        return Err(PositionProblem::Malformed(
+            "a position needs one coordinate".to_string(),
+        ));
+    };
+    Ok(if force_2d {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame, [x, y])))
+    } else {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame, [x, y, z])))
+    })
+}
+
+/// A line string through every coordinate. Not closed: a polyline, corridor
+/// centreline or wall centreline is an open chain.
+pub(super) fn line_geometry(coords: &Coords, force_2d: bool) -> Result<Geometry, PositionProblem> {
+    let frame = resolve_frame(coords.frame, force_2d).map_err(PositionProblem::Unsupported)?;
+    if coords.triples.len() < 2 {
+        return Err(PositionProblem::Malformed(format!(
+            "a line needs at least 2 coordinates, got {}",
+            coords.triples.len()
+        )));
+    }
+    Ok(if force_2d {
+        Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            frame,
+            coords.triples.iter().map(|&[x, y, _]| [x, y]),
+        )))
+    } else {
+        Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+            frame,
+            coords.triples.iter().copied(),
+        )))
+    })
+}
+
+/// A polygon: `coords` is the exterior ring, `holes` the interiors. Every ring is
+/// closed on the way in. Vertex order is preserved exactly: see
+/// `a_ccw_lon_lat_ring_is_canonically_counter_clockwise` for why reversing would be
+/// wrong, and note that CZML specifies no winding at all, so none is normalised.
+pub(super) fn area_geometry(
+    coords: &Coords,
+    holes: Vec<Vec<[f64; 3]>>,
+    force_2d: bool,
+) -> Result<Geometry, PositionProblem> {
+    let frame = resolve_frame(coords.frame, force_2d).map_err(PositionProblem::Unsupported)?;
+    if coords.triples.len() < 3 {
+        return Err(PositionProblem::Malformed(format!(
+            "a polygon ring needs at least 3 coordinates, got {}",
+            coords.triples.len()
+        )));
+    }
+    let exterior = closed(&coords.triples);
+    let interiors: Vec<Vec<[f64; 3]>> = holes
+        .iter()
+        // A ring of fewer than 3 vertices bounds no area; the model drops empty
+        // interiors anyway, and this keeps a stray one from becoming a sliver.
+        .filter(|hole| hole.len() >= 3)
+        .map(|hole| closed(hole))
+        .collect();
+    Ok(if force_2d {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                frame,
+                exterior.iter().map(|&[x, y, _]| [x, y]),
+                interiors
+                    .iter()
+                    .map(|hole| hole.iter().map(|&[x, y, _]| [x, y]).collect::<Vec<_>>()),
+            ),
+        )))
+    } else {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(frame, exterior, interiors),
+        )))
+    })
+}
+
 #[cfg(all(test, feature = "new-geometry"))]
 mod tests {
     use super::*;
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    fn cartographic(triples: Vec<[f64; 3]>) -> Coords {
+        Coords {
+            frame: CzmlFrame::Cartographic,
+            triples,
+        }
+    }
+
+    /// A square wound counter-clockwise in longitude/latitude order, open, as CZML
+    /// writes it. Longitudes 139 to 140, latitudes 35 to 36.
+    fn open_ccw_square() -> Coords {
+        cartographic(vec![
+            [35.0, 139.0, 0.0],
+            [35.0, 140.0, 0.0],
+            [36.0, 140.0, 0.0],
+            [36.0, 139.0, 0.0],
+        ])
+    }
+
+    #[test]
+    fn a_point_carries_its_frame_and_order() {
+        let coords = cartographic(vec![[35.68, 139.76, 10.0]]);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) =
+            point_geometry(&coords, false).unwrap()
+        else {
+            panic!("expected a 3D point");
+        };
+        assert_eq!(*p.frame(), CoordinateFrame::Crs(WGS84_GEOGRAPHIC_3D));
+        assert_eq!(p.position(), [35.68, 139.76, 10.0]);
+    }
+
+    #[test]
+    fn force_2d_drops_the_height_and_demotes_the_frame() {
+        let coords = cartographic(vec![[35.68, 139.76, 10.0]]);
+        let Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) =
+            point_geometry(&coords, true).unwrap()
+        else {
+            panic!("expected a 2D point");
+        };
+        assert_eq!(*p.frame(), CoordinateFrame::Crs(WGS84_GEOGRAPHIC_2D));
+        assert_eq!(p.position(), [35.68, 139.76]);
+    }
+
+    #[test]
+    fn force_2d_on_a_geocentric_point_is_reported() {
+        let coords = Coords {
+            frame: CzmlFrame::Geocentric,
+            triples: vec![[1.0, 2.0, 3.0]],
+        };
+        assert_eq!(
+            point_geometry(&coords, true).unwrap_err(),
+            PositionProblem::Unsupported(ErrorCode::CzmlGeocentricForce2d),
+        );
+    }
+
+    #[test]
+    fn a_polygon_ring_is_closed_on_the_way_in() {
+        // CZML does not repeat the closing vertex; the model stores rings verbatim
+        // and never closes them, so the reader must.
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) =
+            area_geometry(&open_ccw_square(), vec![], false).unwrap()
+        else {
+            panic!("expected a 3D polygon");
+        };
+        let exterior = polygon.exterior();
+        assert_eq!(exterior.len(), 5, "four corners plus the closing vertex");
+        assert_eq!(exterior[0], exterior[4]);
+    }
+
+    #[test]
+    fn an_already_closed_ring_is_not_closed_twice() {
+        let mut coords = open_ccw_square();
+        coords.triples.push(coords.triples[0]);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) =
+            area_geometry(&coords, vec![], false).unwrap()
+        else {
+            panic!("expected a 3D polygon");
+        };
+        assert_eq!(polygon.exterior().len(), 5);
+    }
+
+    #[test]
+    fn a_ccw_lon_lat_ring_is_canonically_counter_clockwise() {
+        // THE REGRESSION TEST FOR "DO NOT REVERSE". Winding is judged as stored
+        // winding times the frame's orientation sign, and EPSG:4979 is -1. Writing
+        // longitude/latitude points latitude-first already mirrors them, so a
+        // counter-clockwise lon/lat ring stores clockwise and lands canonically
+        // counter-clockwise on its own. `shapefile_next` reverses its rings because
+        // a shapefile winds outer rings clockwise; CZML does not, so reversing here
+        // would double-flip and invert every face.
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) =
+            area_geometry(&open_ccw_square(), vec![], false).unwrap()
+        else {
+            panic!("expected a 3D polygon");
+        };
+        let exterior = polygon.exterior();
+        // Stored order must still be the input order: same first vertex, and the
+        // second vertex is the input's second, not its last.
+        assert_eq!(exterior[0], [35.0, 139.0, 0.0]);
+        assert_eq!(exterior[1], [35.0, 140.0, 0.0]);
+        // Stored winding, by the shoelace over (x, y) as stored, is negative
+        // (clockwise); times the frame's -1 that is canonically counter-clockwise.
+        let stored: f64 = exterior
+            .windows(2)
+            .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+            .sum();
+        assert!(
+            stored < 0.0,
+            "stored shoelace was {stored}, expected clockwise"
+        );
+    }
+
+    #[test]
+    fn polygon_holes_are_carried_and_closed() {
+        let hole = vec![[35.2, 139.2, 0.0], [35.2, 139.8, 0.0], [35.8, 139.8, 0.0]];
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) =
+            area_geometry(&open_ccw_square(), vec![hole], false).unwrap()
+        else {
+            panic!("expected a 3D polygon");
+        };
+        let interiors: Vec<_> = polygon.interiors().collect();
+        assert_eq!(interiors.len(), 1);
+        assert_eq!(
+            interiors[0].len(),
+            4,
+            "three corners plus the closing vertex"
+        );
+    }
+
+    #[test]
+    fn a_line_keeps_every_vertex_and_is_not_closed() {
+        let coords = cartographic(vec![[35.0, 139.0, 0.0], [36.0, 140.0, 1.0]]);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::LineString(line)) =
+            line_geometry(&coords, false).unwrap()
+        else {
+            panic!("expected a 3D line");
+        };
+        assert_eq!(line.coords(), &[[35.0, 139.0, 0.0], [36.0, 140.0, 1.0]]);
+    }
+
+    #[test]
+    fn a_line_with_one_vertex_fails_the_read() {
+        let coords = cartographic(vec![[35.0, 139.0, 0.0]]);
+        assert!(matches!(
+            line_geometry(&coords, false).unwrap_err(),
+            PositionProblem::Malformed(_),
+        ));
+    }
+
+    #[test]
+    fn a_ring_with_two_vertices_fails_the_read() {
+        let coords = cartographic(vec![[35.0, 139.0, 0.0], [36.0, 140.0, 0.0]]);
+        assert!(matches!(
+            area_geometry(&coords, vec![], false).unwrap_err(),
+            PositionProblem::Malformed(_),
+        ));
+    }
+
+    #[test]
+    fn a_geocentric_polygon_keeps_x_y_z_order() {
+        let coords = Coords {
+            frame: CzmlFrame::Geocentric,
+            triples: vec![[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        };
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) =
+            area_geometry(&coords, vec![], false).unwrap()
+        else {
+            panic!("expected a 3D polygon");
+        };
+        assert_eq!(*polygon.frame(), CoordinateFrame::Crs(WGS84_GEOCENTRIC));
+        assert_eq!(polygon.exterior()[0], [1.0, 0.0, 0.0]);
+    }
 
     #[test]
     fn cartographic_degrees_store_latitude_first() {
