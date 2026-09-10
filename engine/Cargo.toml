@@ -54,6 +54,7 @@ reearth-flow-action-python-processor = { path = "runtime/action-python-processor
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-atlas = { path = "runtime/atlas" }
+reearth-flow-citygml = { path = "runtime/citygml" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-diagnostics = { path = "runtime/diagnostics" }
 reearth-flow-expr = { path = "runtime/expr" }

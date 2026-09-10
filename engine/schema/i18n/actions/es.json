@@ -895,6 +895,74 @@
       }
     },
     {
+      "name": "CityGML 2 Reader",
+      "description": "Lee archivos CityGML 2.0 como modelos de ciudad 3D, resolviendo las referencias gml:id dentro de cada documento",
+      "parameterI18n": {
+        "": {
+          "title": "CityGML 2 Reader Parameters",
+          "description": "Configuración para leer un documento CityGML 2.0 como modelos de ciudad 3D."
+        },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        }
+      }
+    },
+    {
+      "name": "CityGML 3 Reader",
+      "description": "Lee archivos CityGML 3.0 como modelos de ciudad 3D, resolviendo las referencias gml:id dentro de cada documento",
+      "parameterI18n": {
+        "": {
+          "title": "CityGML 3 Reader Parameters",
+          "description": "Configuración para leer un documento CityGML 3.0 como modelos de ciudad 3D."
+        },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenLeafAttributes": {
+          "title": "Aplanar Atributos Hoja",
+          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        }
+      }
+    },
+    {
       "name": "CityGML Reader",
       "description": "Lee modelos de ciudad 3D desde archivos CityGML",
       "parameterI18n": {

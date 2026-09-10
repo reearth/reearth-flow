@@ -1,4 +1,6 @@
 pub(super) mod citygml;
+pub(super) mod citygml2;
+pub(super) mod citygml3;
 pub(super) mod csv;
 pub(super) mod czml;
 pub(super) mod geojson;

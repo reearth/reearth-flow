@@ -4212,7 +4212,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.172"
+version = "0.2.173"
 dependencies = [
  "bytes",
  "glam 0.30.10",
@@ -4845,6 +4845,7 @@ dependencies = [
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-action-sink",
+ "reearth-flow-citygml",
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-geometry",
@@ -4985,6 +4986,7 @@ dependencies = [
  "proj",
  "quick-xml 0.37.5",
  "reearth-flow-action-log",
+ "reearth-flow-citygml",
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-geometry",
@@ -5019,6 +5021,22 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "reearth-flow-citygml"
+version = "0.0.551"
+dependencies = [
+ "indexmap 2.13.0",
+ "quick-xml 0.37.5",
+ "reearth-flow-common",
+ "reearth-flow-geometry",
+ "reearth-flow-types",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -8259,7 +8277,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.362"
+version = "0.1.363"
 dependencies = [
  "anyhow",
  "csv",

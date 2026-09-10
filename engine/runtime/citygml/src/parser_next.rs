@@ -10,6 +10,7 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
+use super::malformation::Malformation;
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
@@ -52,6 +53,10 @@ pub(super) struct ParserOutput {
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
     /// Interned namespace URIs.
     pub(super) ns_registry: NamespaceRegistry,
+    /// Every present-but-malformed input site collected during parsing, per
+    /// Action Standard §4.3. A strict caller can fail the read from these;
+    /// `build_features` itself stays lenient and discards them.
+    pub(super) malformations: Vec<Malformation>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -95,6 +100,9 @@ pub struct Parser {
     /// Tags `strip()` may synthesize a `gml:id` for; same set the reader will later hoist
     /// with `flatten::extract`.
     pub(super) extract_tags: std::collections::HashSet<String>,
+    /// Present-but-malformed input sites collected during parsing; see
+    /// [`ParserOutput::malformations`].
+    pub(super) malformations: Vec<Malformation>,
 }
 
 impl std::fmt::Debug for Parser {
@@ -113,7 +121,7 @@ impl Parser {
     }
 
     /// `extract_tags` is the set `strip()` may synthesize a `gml:id` for.
-    pub(crate) fn with_extract_tags(
+    pub fn with_extract_tags(
         version: CityGmlVersion,
         extract_tags: std::collections::HashSet<String>,
     ) -> Self {
@@ -127,6 +135,7 @@ impl Parser {
             version,
             synthetic_gml_id_seq: 0,
             extract_tags,
+            malformations: Vec::new(),
         }
     }
 
@@ -169,6 +178,7 @@ impl Parser {
                             attrs,
                             &source_url_arc,
                             &mut self.ns_registry,
+                            &mut self.malformations,
                         )?;
                         if let Some(feature_node) =
                             member.children.iter().find_map(|child| match child {
@@ -193,6 +203,7 @@ impl Parser {
                             attrs,
                             &source_url_arc,
                             &mut self.ns_registry,
+                            &mut self.malformations,
                         )?);
                         collect_ids(&member, source_url_arc.as_str(), &mut self.raw_registry);
                         self.appearance_members.push(member);
@@ -204,6 +215,7 @@ impl Parser {
                             attrs,
                             &source_url_arc,
                             &mut self.ns_registry,
+                            &mut self.malformations,
                         )?;
                         if let Some(epsg) = envelope_epsg(&bounded_by) {
                             self.srs_by_file
@@ -218,9 +230,9 @@ impl Parser {
                     // A self-closing appearanceMember carries a whole shared
                     // `app:Appearance` by `xlink:href`; retain it as a reference to
                     // resolve in pass 2.
-                    if let Some(key) = xlink_href_attr(&attrs)
-                        .and_then(|href| href_to_key(href, source_url_arc.as_ref()))
-                    {
+                    if let Some(key) = xlink_href_attr(&attrs).and_then(|href| {
+                        href_to_key(href, source_url_arc.as_ref(), &mut self.malformations)
+                    }) {
                         self.appearance_members.push(Arc::new(RawNode {
                             name,
                             attrs: attrs
@@ -252,6 +264,7 @@ impl Parser {
             appearance_members: self.appearance_members,
             srs_by_file: self.srs_by_file,
             ns_registry: self.ns_registry,
+            malformations: self.malformations,
         }
     }
 }
@@ -449,7 +462,11 @@ fn collect_nested_appearances(node: &Arc<RawNode>, out: &mut Vec<Arc<RawNode>>) 
     }
 }
 
-fn href_to_key(href: &str, base: &Url) -> Option<RawNodeKey> {
+fn href_to_key(
+    href: &str,
+    base: &Url,
+    malformations: &mut Vec<Malformation>,
+) -> Option<RawNodeKey> {
     if let Some(frag) = href.strip_prefix('#') {
         Some((base.as_str().to_string(), frag.to_string()))
     } else if let Some((file, frag)) = href.split_once('#') {
@@ -458,6 +475,11 @@ fn href_to_key(href: &str, base: &Url) -> Option<RawNodeKey> {
             .map(|u| (u.to_string(), frag.to_string()))
     } else {
         tracing::warn!(href, "citygml: unsupported xlink:href format, skipped");
+        malformations.push(Malformation {
+            file: base.as_str().to_string(),
+            location: String::new(),
+            reason: "citygml: unsupported xlink:href format, skipped".to_string(),
+        });
         None
     }
 }
@@ -509,6 +531,7 @@ fn next_event<R: BufRead>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn parse_element<R: BufRead>(
     reader: &mut NsReader<R>,
     buf: &mut Vec<u8>,
@@ -516,9 +539,10 @@ fn parse_element<R: BufRead>(
     attrs: Vec<(QName, String)>,
     source_url_arc: &Arc<Url>,
     ns_reg: &mut NamespaceRegistry,
+    malformations: &mut Vec<Malformation>,
 ) -> Result<RawNode, ParseError> {
     let href = xlink_href_attr(&attrs)
-        .and_then(|href| href_to_key(href, source_url_arc.as_ref()))
+        .and_then(|href| href_to_key(href, source_url_arc.as_ref(), malformations))
         .map(|key| {
             let filtered = attrs
                 .iter()
@@ -535,7 +559,8 @@ fn parse_element<R: BufRead>(
                 name: cn,
                 attrs: ca,
             } => {
-                let child = parse_element(reader, buf, cn, ca, source_url_arc, ns_reg)?;
+                let child =
+                    parse_element(reader, buf, cn, ca, source_url_arc, ns_reg, malformations)?;
                 children.push(RawChild::Element(Arc::new(child)));
             }
             OwnedEvent::Empty {
@@ -543,7 +568,7 @@ fn parse_element<R: BufRead>(
                 attrs: ca,
             } => {
                 if let Some(href) = xlink_href_attr(&ca) {
-                    if let Some(key) = href_to_key(href, source_url_arc.as_ref()) {
+                    if let Some(key) = href_to_key(href, source_url_arc.as_ref(), malformations) {
                         let filtered: Vec<(QName, String)> = ca
                             .into_iter()
                             .filter(|((q, ns), _)| !(local_name(q) == "href" && *ns == XLINK_NS_ID))
@@ -699,7 +724,7 @@ mod tests {
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
 
-    use crate::citygml_parser::utils::{test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
+    use crate::utils::{test_url, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_ID};
 
     fn dummy_url() -> Url {
         Url::parse("file:///test.gml").unwrap()

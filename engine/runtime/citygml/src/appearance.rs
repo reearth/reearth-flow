@@ -790,8 +790,8 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 
 #[cfg(test)]
 mod tests {
-    use crate::citygml_parser::parser::{CityGmlVersion, Parser, ParserOutput, RawChild, RawNode};
-    use crate::citygml_parser::resolver::{resolve_root, GeomNode};
+    use crate::parser::{CityGmlVersion, Parser, ParserOutput, RawChild, RawNode};
+    use crate::resolver::{resolve_root, GeomNode};
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
     };
@@ -851,8 +851,14 @@ mod tests {
         let appearance = super::build_index(&appearance_members, &raw_registry);
         assert!(!appearance.is_empty(), "appearance should be indexed");
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&only_geom_node(&feature), &geom_registry, &appearance, &srs)
-            .expect("geometry resolves");
+        let geom = resolve_root(
+            &only_geom_node(&feature),
+            &geom_registry,
+            &appearance,
+            &srs,
+            &mut Vec::new(),
+        )
+        .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::Collection(c) => match c.members().first().expect("one member") {
                 Euclidean3DGeometry::Polygon(p) => Polygon3DOut((**p).clone()),
@@ -1504,8 +1510,14 @@ mod tests {
         } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&only_geom_node(&feature), &geom_registry, &appearance, &srs)
-            .expect("geometry resolves");
+        let geom = resolve_root(
+            &only_geom_node(&feature),
+            &geom_registry,
+            &appearance,
+            &srs,
+            &mut Vec::new(),
+        )
+        .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::TriangularMesh(m) => *m,
             other => panic!("expected TriangularMesh, got {other:?}"),
@@ -1748,8 +1760,14 @@ mod tests {
         } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&only_geom_node(&feature), &geom_registry, &appearance, &srs)
-            .expect("geometry resolves");
+        let geom = resolve_root(
+            &only_geom_node(&feature),
+            &geom_registry,
+            &appearance,
+            &srs,
+            &mut Vec::new(),
+        )
+        .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::PolygonMesh(m) => *m,
             other => panic!("expected PolygonMesh, got {other:?}"),
@@ -1863,6 +1881,7 @@ mod tests {
             &geom_registry,
             &appearance,
             &srs,
+            &mut Vec::new(),
         )
         .expect("file a resolves");
         let b = resolve_root(
@@ -1870,6 +1889,7 @@ mod tests {
             &geom_registry,
             &appearance,
             &srs,
+            &mut Vec::new(),
         )
         .expect("file b resolves");
         assert_eq!(diffuse(&a), [1.0, 0.0, 0.0], "file a keeps its own colour");
