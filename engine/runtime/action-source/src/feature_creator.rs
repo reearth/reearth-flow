@@ -1,13 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
-use indexmap::IndexMap;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Expr, Feature};
 use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -145,11 +144,7 @@ impl Source for FeatureCreator {
 /// consumed to set the feature's metadata feature_type (never surfaced as an attribute) —
 /// the only way a FeatureCreator-made feature can carry one, since Feature::from(attributes)
 /// otherwise leaves it unset.
-fn to_feature(new_value: HashMap<String, AttributeValue>) -> Feature {
-    let mut attributes = new_value
-        .iter()
-        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-        .collect::<IndexMap<Attribute, AttributeValue>>();
+fn to_feature(mut attributes: Attributes) -> Feature {
     let feature_type = attributes
         .shift_remove(&Attribute::new("__feature_type".to_string()))
         .and_then(|v| v.as_string());

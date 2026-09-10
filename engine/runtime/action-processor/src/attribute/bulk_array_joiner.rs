@@ -153,15 +153,15 @@ mod test {
     use crate::tests::utils::create_default_execute_context;
     use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::Feature;
+    use reearth_flow_types::{Attributes, Feature};
 
     use super::*;
     #[test]
     fn test_attribute_map_array_joiner() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let flattener: HashMap<String, AttributeValue> = vec![(
-            "hoge".to_string(),
+        let flattener: Attributes = vec![(
+            Attribute::new("hoge"),
             AttributeValue::String("hogehoge".to_string()),
         )]
         .into_iter()

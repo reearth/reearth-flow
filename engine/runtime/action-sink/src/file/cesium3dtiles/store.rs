@@ -16,7 +16,7 @@ use std::str::FromStr;
 use reearth_flow_gltf::tiles::metadata::{self, MetadataOptions};
 use reearth_flow_types::datetime::DateTime;
 use reearth_flow_types::geometry::GeometryValue;
-use reearth_flow_types::{AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use super::appearance::{ResolvedMaterial, TextureSource};
 use super::mesh::{self, ExtractOptions, ExtractedMesh};
@@ -354,7 +354,7 @@ fn encode_value(out: &mut Vec<u8>, value: &AttributeValue) {
             put_u8(out, TAG_MAP);
             put_u32(out, map.len() as u32);
             for (k, v) in map {
-                put_str(out, k);
+                put_str(out, k.as_str());
                 encode_value(out, v);
             }
         }
@@ -498,10 +498,10 @@ fn decode_value(r: &mut Reader<'_>) -> io::Result<AttributeValue> {
         }
         TAG_MAP => {
             let len = r.u32()? as usize;
-            let mut map = std::collections::HashMap::with_capacity(len);
+            let mut map = Attributes::with_capacity(len);
             for _ in 0..len {
                 let key = r.string()?;
-                map.insert(key, decode_value(r)?);
+                map.insert(Attribute::new(key), decode_value(r)?);
             }
             AttributeValue::Map(map)
         }
@@ -556,7 +556,7 @@ mod tests {
             (
                 "array".to_string(),
                 AttributeValue::Array(vec![AttributeValue::Map(
-                    [("k".to_string(), AttributeValue::String("v".to_string()))].into(),
+                    [(Attribute::new("k"), AttributeValue::String("v".to_string()))].into(),
                 )]),
             ),
         ]);

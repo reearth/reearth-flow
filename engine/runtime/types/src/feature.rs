@@ -116,12 +116,8 @@ impl From<AttributeValue> for Feature {
     fn from(v: AttributeValue) -> Self {
         let attributes = match v {
             AttributeValue::Map(v) => v,
-            _ => HashMap::new(),
+            _ => Attributes::new(),
         };
-        let attributes = attributes
-            .into_iter()
-            .map(|(k, v)| (Attribute::new(k), v))
-            .collect::<Attributes>();
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: Arc::new(attributes),
@@ -450,11 +446,9 @@ impl Feature {
         scope
     }
 
-    pub fn as_map(&self) -> HashMap<String, AttributeValue> {
-        self.attributes
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.clone()))
-            .collect()
+    /// Clone of the feature's attributes.
+    pub fn as_map(&self) -> Attributes {
+        (*self.attributes).clone()
     }
 
     pub fn fetch_attribute_value(
@@ -485,10 +479,11 @@ impl Feature {
         }
     }
 
-    pub fn all_attribute_keys(&self) -> Vec<String> {
+    /// Every attribute key of the feature, including the keys of nested maps.
+    pub fn all_attribute_keys(&self) -> Vec<Attribute> {
         let mut keys = Vec::new();
         for (key, value) in self.attributes.iter() {
-            keys.push(key.clone().to_string());
+            keys.push(key.clone());
             if let AttributeValue::Map(map) = value {
                 keys.extend(all_attribute_keys(map));
             }

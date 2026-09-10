@@ -195,7 +195,7 @@ impl Processor for AttributeMapper {
                         (&mapper.parent_attribute, &mapper.child_attribute)
                     {
                         if let Some(AttributeValue::Map(parent)) = feature.get(parent_attribute) {
-                            if let Some(child) = parent.get(child_attribute) {
+                            if let Some(child) = parent.get(child_attribute.as_str()) {
                                 attributes.insert(Attribute::new(attribute.clone()), child.clone());
                             }
                         }
@@ -207,11 +207,7 @@ impl Processor for AttributeMapper {
                         if let Ok(new_value) = new_value {
                             if new_value.is::<rhai::Map>() {
                                 if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
-                                    attributes.extend(
-                                        new_value
-                                            .iter()
-                                            .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
-                                    );
+                                    attributes.extend(new_value);
                                 }
                             }
                         }

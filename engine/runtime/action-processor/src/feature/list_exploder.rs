@@ -104,7 +104,7 @@ impl Processor for ListExploder {
             let mut feature = feature.clone();
             feature.refresh_id();
             feature.remove(&self.source_attribute);
-            feature.extend_attributes(attributes.clone());
+            feature.extend(attributes.clone());
             fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         }
         Ok(())
