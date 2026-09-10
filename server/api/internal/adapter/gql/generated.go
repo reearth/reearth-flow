@@ -250,6 +250,19 @@ type ComplexityRoot struct {
 		Severity             func(childComplexity int) int
 	}
 
+	IntermediateDataView struct {
+		EntryPointURL    func(childComplexity int) int
+		Error            func(childComplexity int) int
+		FileID           func(childComplexity int) int
+		Format           func(childComplexity int) int
+		ID               func(childComplexity int) int
+		JobID            func(childComplexity int) int
+		RenderedFeatures func(childComplexity int) int
+		SelectedFeatures func(childComplexity int) int
+		Shape            func(childComplexity int) int
+		Status           func(childComplexity int) int
+	}
+
 	Job struct {
 		CompletedAt       func(childComplexity int) int
 		Debug             func(childComplexity int) int
@@ -301,49 +314,50 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddMemberToWorkspace      func(childComplexity int, input gqlmodel.AddMemberToWorkspaceInput) int
-		CancelJob                 func(childComplexity int, input gqlmodel.CancelJobInput) int
-		CopyProject               func(childComplexity int, projectID gqlmodel.ID, source gqlmodel.ID) int
-		CreateAsset               func(childComplexity int, input gqlmodel.CreateAssetInput) int
-		CreateAssetUpload         func(childComplexity int, input gqlmodel.CreateAssetUploadInput) int
-		CreateDeployment          func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
-		CreateProject             func(childComplexity int, input gqlmodel.CreateProjectInput) int
-		CreateTrigger             func(childComplexity int, input gqlmodel.CreateTriggerInput) int
-		CreateWorkspace           func(childComplexity int, input gqlmodel.CreateWorkspaceInput) int
-		DeclareParameter          func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) int
-		DeleteAsset               func(childComplexity int, input gqlmodel.DeleteAssetInput) int
-		DeleteDeployment          func(childComplexity int, input gqlmodel.DeleteDeploymentInput) int
-		DeleteMe                  func(childComplexity int, input gqlmodel.DeleteMeInput) int
-		DeleteProject             func(childComplexity int, input gqlmodel.DeleteProjectInput) int
-		DeleteTrigger             func(childComplexity int, triggerID gqlmodel.ID) int
-		DeleteWorkerConfig        func(childComplexity int) int
-		DeleteWorkspace           func(childComplexity int, input gqlmodel.DeleteWorkspaceInput) int
-		ExecuteDeployment         func(childComplexity int, input gqlmodel.ExecuteDeploymentInput) int
-		ImportProject             func(childComplexity int, projectID gqlmodel.ID, data gqlmodel.Bytes) int
-		PreviewSchema             func(childComplexity int, input gqlmodel.PreviewSchemaInput) int
-		PreviewSnapshot           func(childComplexity int, projectID gqlmodel.ID, version int, name *string) int
-		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
-		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
-		RemoveParameter           func(childComplexity int, input gqlmodel.RemoveParameterInput) int
-		RemoveParameters          func(childComplexity int, input gqlmodel.RemoveParametersInput) int
-		RollbackProject           func(childComplexity int, projectID gqlmodel.ID, version int) int
-		RunProject                func(childComplexity int, input gqlmodel.RunProjectInput) int
-		SaveNamedSnapshot         func(childComplexity int, projectID gqlmodel.ID, label string) int
-		SaveSnapshot              func(childComplexity int, projectID gqlmodel.ID) int
-		ShareProject              func(childComplexity int, input gqlmodel.ShareProjectInput) int
-		Signup                    func(childComplexity int, input gqlmodel.SignupInput) int
-		UnshareProject            func(childComplexity int, input gqlmodel.UnshareProjectInput) int
-		UpdateAsset               func(childComplexity int, input gqlmodel.UpdateAssetInput) int
-		UpdateDeployment          func(childComplexity int, input gqlmodel.UpdateDeploymentInput) int
-		UpdateMe                  func(childComplexity int, input gqlmodel.UpdateMeInput) int
-		UpdateMemberOfWorkspace   func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
-		UpdateParameter           func(childComplexity int, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) int
-		UpdateParameterOrder      func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) int
-		UpdateParameters          func(childComplexity int, input gqlmodel.ParameterBatchInput) int
-		UpdateProject             func(childComplexity int, input gqlmodel.UpdateProjectInput) int
-		UpdateTrigger             func(childComplexity int, input gqlmodel.UpdateTriggerInput) int
-		UpdateWorkerConfig        func(childComplexity int, input gqlmodel.UpdateWorkerConfigInput) int
-		UpdateWorkspace           func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
+		AddMemberToWorkspace       func(childComplexity int, input gqlmodel.AddMemberToWorkspaceInput) int
+		CancelJob                  func(childComplexity int, input gqlmodel.CancelJobInput) int
+		CopyProject                func(childComplexity int, projectID gqlmodel.ID, source gqlmodel.ID) int
+		CreateAsset                func(childComplexity int, input gqlmodel.CreateAssetInput) int
+		CreateAssetUpload          func(childComplexity int, input gqlmodel.CreateAssetUploadInput) int
+		CreateDeployment           func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
+		CreateProject              func(childComplexity int, input gqlmodel.CreateProjectInput) int
+		CreateTrigger              func(childComplexity int, input gqlmodel.CreateTriggerInput) int
+		CreateWorkspace            func(childComplexity int, input gqlmodel.CreateWorkspaceInput) int
+		DeclareParameter           func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) int
+		DeleteAsset                func(childComplexity int, input gqlmodel.DeleteAssetInput) int
+		DeleteDeployment           func(childComplexity int, input gqlmodel.DeleteDeploymentInput) int
+		DeleteMe                   func(childComplexity int, input gqlmodel.DeleteMeInput) int
+		DeleteProject              func(childComplexity int, input gqlmodel.DeleteProjectInput) int
+		DeleteTrigger              func(childComplexity int, triggerID gqlmodel.ID) int
+		DeleteWorkerConfig         func(childComplexity int) int
+		DeleteWorkspace            func(childComplexity int, input gqlmodel.DeleteWorkspaceInput) int
+		ExecuteDeployment          func(childComplexity int, input gqlmodel.ExecuteDeploymentInput) int
+		ImportProject              func(childComplexity int, projectID gqlmodel.ID, data gqlmodel.Bytes) int
+		PreviewSchema              func(childComplexity int, input gqlmodel.PreviewSchemaInput) int
+		PreviewSnapshot            func(childComplexity int, projectID gqlmodel.ID, version int, name *string) int
+		RemoveMemberFromWorkspace  func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
+		RemoveMyAuth               func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
+		RemoveParameter            func(childComplexity int, input gqlmodel.RemoveParameterInput) int
+		RemoveParameters           func(childComplexity int, input gqlmodel.RemoveParametersInput) int
+		RenderIntermediateDataView func(childComplexity int, input gqlmodel.RenderIntermediateDataViewInput) int
+		RollbackProject            func(childComplexity int, projectID gqlmodel.ID, version int) int
+		RunProject                 func(childComplexity int, input gqlmodel.RunProjectInput) int
+		SaveNamedSnapshot          func(childComplexity int, projectID gqlmodel.ID, label string) int
+		SaveSnapshot               func(childComplexity int, projectID gqlmodel.ID) int
+		ShareProject               func(childComplexity int, input gqlmodel.ShareProjectInput) int
+		Signup                     func(childComplexity int, input gqlmodel.SignupInput) int
+		UnshareProject             func(childComplexity int, input gqlmodel.UnshareProjectInput) int
+		UpdateAsset                func(childComplexity int, input gqlmodel.UpdateAssetInput) int
+		UpdateDeployment           func(childComplexity int, input gqlmodel.UpdateDeploymentInput) int
+		UpdateMe                   func(childComplexity int, input gqlmodel.UpdateMeInput) int
+		UpdateMemberOfWorkspace    func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
+		UpdateParameter            func(childComplexity int, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) int
+		UpdateParameterOrder       func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) int
+		UpdateParameters           func(childComplexity int, input gqlmodel.ParameterBatchInput) int
+		UpdateProject              func(childComplexity int, input gqlmodel.UpdateProjectInput) int
+		UpdateTrigger              func(childComplexity int, input gqlmodel.UpdateTriggerInput) int
+		UpdateWorkerConfig         func(childComplexity int, input gqlmodel.UpdateWorkerConfigInput) int
+		UpdateWorkspace            func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
 	}
 
 	NamedSnapshot struct {
@@ -452,6 +466,7 @@ type ComplexityRoot struct {
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
 		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
+		IntermediateDataView  func(childComplexity int, jobID gqlmodel.ID, fileID string, viewID gqlmodel.ID) int
 		Job                   func(childComplexity int, id gqlmodel.ID) int
 		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
@@ -472,6 +487,10 @@ type ComplexityRoot struct {
 
 	RemoveMemberFromWorkspacePayload struct {
 		Workspace func(childComplexity int) int
+	}
+
+	RenderIntermediateDataViewPayload struct {
+		View func(childComplexity int) int
 	}
 
 	RunProjectPayload struct {
@@ -644,6 +663,7 @@ type MutationResolver interface {
 	CopyProject(ctx context.Context, projectID gqlmodel.ID, source gqlmodel.ID) (bool, error)
 	ImportProject(ctx context.Context, projectID gqlmodel.ID, data gqlmodel.Bytes) (bool, error)
 	SaveNamedSnapshot(ctx context.Context, projectID gqlmodel.ID, label string) (*gqlmodel.NamedSnapshot, error)
+	RenderIntermediateDataView(ctx context.Context, input gqlmodel.RenderIntermediateDataViewInput) (*gqlmodel.RenderIntermediateDataViewPayload, error)
 	CancelJob(ctx context.Context, input gqlmodel.CancelJobInput) (*gqlmodel.CancelJobPayload, error)
 	DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error)
 	UpdateParameter(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) (*gqlmodel.Parameter, error)
@@ -704,6 +724,7 @@ type QueryResolver interface {
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
 	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version *int, snapshotNumber *int) (*gqlmodel.ProjectSnapshot, error)
 	ProjectNamedSnapshots(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error)
+	IntermediateDataView(ctx context.Context, jobID gqlmodel.ID, fileID string, viewID gqlmodel.ID) (*gqlmodel.IntermediateDataView, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
@@ -1451,6 +1472,67 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Diagnostic.Severity(childComplexity), true
 
+	case "IntermediateDataView.entryPointUrl":
+		if e.complexity.IntermediateDataView.EntryPointURL == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.EntryPointURL(childComplexity), true
+	case "IntermediateDataView.error":
+		if e.complexity.IntermediateDataView.Error == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.Error(childComplexity), true
+	case "IntermediateDataView.fileId":
+		if e.complexity.IntermediateDataView.FileID == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.FileID(childComplexity), true
+	case "IntermediateDataView.format":
+		if e.complexity.IntermediateDataView.Format == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.Format(childComplexity), true
+	case "IntermediateDataView.id":
+		if e.complexity.IntermediateDataView.ID == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.ID(childComplexity), true
+	case "IntermediateDataView.jobId":
+		if e.complexity.IntermediateDataView.JobID == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.JobID(childComplexity), true
+	case "IntermediateDataView.renderedFeatures":
+		if e.complexity.IntermediateDataView.RenderedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.RenderedFeatures(childComplexity), true
+	case "IntermediateDataView.selectedFeatures":
+		if e.complexity.IntermediateDataView.SelectedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.SelectedFeatures(childComplexity), true
+	case "IntermediateDataView.shape":
+		if e.complexity.IntermediateDataView.Shape == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.Shape(childComplexity), true
+	case "IntermediateDataView.status":
+		if e.complexity.IntermediateDataView.Status == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.Status(childComplexity), true
+
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
 			break
@@ -1946,6 +2028,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveParameters(childComplexity, args["input"].(gqlmodel.RemoveParametersInput)), true
+	case "Mutation.renderIntermediateDataView":
+		if e.complexity.Mutation.RenderIntermediateDataView == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_renderIntermediateDataView_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RenderIntermediateDataView(childComplexity, args["input"].(gqlmodel.RenderIntermediateDataViewInput)), true
 	case "Mutation.rollbackProject":
 		if e.complexity.Mutation.RollbackProject == nil {
 			break
@@ -2636,6 +2729,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
+	case "Query.intermediateDataView":
+		if e.complexity.Query.IntermediateDataView == nil {
+			break
+		}
+
+		args, err := ec.field_Query_intermediateDataView_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.IntermediateDataView(childComplexity, args["jobId"].(gqlmodel.ID), args["fileId"].(string), args["viewId"].(gqlmodel.ID)), true
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
 			break
@@ -2809,6 +2913,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RemoveMemberFromWorkspacePayload.Workspace(childComplexity), true
+
+	case "RenderIntermediateDataViewPayload.view":
+		if e.complexity.RenderIntermediateDataViewPayload.View == nil {
+			break
+		}
+
+		return e.complexity.RenderIntermediateDataViewPayload.View(childComplexity), true
 
 	case "RunProjectPayload.job":
 		if e.complexity.RunProjectPayload.Job == nil {
@@ -3319,6 +3430,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExecuteDeploymentInput,
 		ec.unmarshalInputGetByVersionInput,
 		ec.unmarshalInputGetHeadInput,
+		ec.unmarshalInputIntermediateDataViewOptionsInput,
 		ec.unmarshalInputPageBasedPagination,
 		ec.unmarshalInputPagination,
 		ec.unmarshalInputParameterBatchInput,
@@ -3328,6 +3440,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRemoveMyAuthInput,
 		ec.unmarshalInputRemoveParameterInput,
 		ec.unmarshalInputRemoveParametersInput,
+		ec.unmarshalInputRenderIntermediateDataViewInput,
 		ec.unmarshalInputRunParameterInput,
 		ec.unmarshalInputRunProjectInput,
 		ec.unmarshalInputShareProjectInput,
@@ -3951,6 +4064,133 @@ extend type Query {
   ): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }`, BuiltIn: false},
+	{Name: "../../../gql/intermediateDataView.graphql", Input: `"""
+A viewable rendering of the intermediate data a finished run left on one output port.
+
+The shape is what the caller asks for; the format is what the engine produced.
+They are separate because the engine chooses the format from the geometry it
+finds — a TILES view becomes 3D Tiles if any 3D geometry is present and vector
+tiles only for an all-2D selection — so neither the client nor the server can
+know it before the render runs.
+"""
+type IntermediateDataView {
+  "Identifies the view by its content: the same request always yields the same id."
+  id: ID!
+  "The finished job whose feature-store held the input."
+  jobId: ID!
+  "The engine's ` + "`" + `[subgraphPrefix.]nodeId.port` + "`" + `."
+  fileId: String!
+  shape: IntermediateDataViewShape!
+  status: IntermediateDataViewStatus!
+  "Null until a render has finished."
+  format: IntermediateDataViewFormat
+  "The URL a viewer opens. Null unless status is READY."
+  entryPointUrl: String
+  "Features the selection kept, before any were dropped."
+  selectedFeatures: Int
+  """
+  Selected features that reached the output.
+
+  Fewer than selectedFeatures is normal: geometry naming no CRS is dropped, and
+  so is geometry the view cannot draw. Nothing is lost — the feature keeps its
+  row in the table, only its geometry is absent from the view.
+  """
+  renderedFeatures: Int
+  "Why there is no view, for a status other than READY."
+  error: String
+}
+
+enum IntermediateDataViewShape {
+  "One row rendered to a glb. Needs 3D geometry: a purely 2D row has no glb."
+  GLTF
+  "A whole selection rendered to a tile pyramid."
+  TILES
+}
+
+enum IntermediateDataViewFormat {
+  "Entered at the .glb itself."
+  GLB
+  "Entered at tileset.json."
+  CESIUM_3D_TILES
+  "Entered at tilejson.json."
+  VECTOR_TILES
+}
+
+"""
+Every value is terminal. A render is awaited in the request, so there is no
+in-flight state to poll for.
+"""
+enum IntermediateDataViewStatus {
+  "The entry point is loadable."
+  READY
+  "Nothing was selected, or nothing selected carried geometry the view draws."
+  EMPTY
+  "A GLTF view was asked of a purely 2D row."
+  UNSUPPORTED_GEOMETRY
+  FAILED
+}
+
+enum IntermediateDataViewTextureCodec {
+  "The default: encodes far faster than the KTX2 forms at a comparable size."
+  JPEG
+  PNG
+  KTX2_ETC1S
+  KTX2_UASTC
+  "Skips texturing and renders geometry in its neutral colour."
+  UNTEXTURED
+}
+
+# InputType
+
+"""
+Render options.
+
+Both groups are accepted for either shape; the engine applies whichever half
+matches the format it chose. The zoom range is narrower than the engine's own
+0-15 default on purpose: the renderer holds every level's sliced geometry in
+memory at once.
+"""
+input IntermediateDataViewOptionsInput {
+  draco: Boolean
+  texelSize: Float
+  textureCodec: IntermediateDataViewTextureCodec
+  targetTileSize: Int
+  minZoom: Int
+  maxZoom: Int
+  extent: Int
+  maxTileBytes: Int
+}
+
+input RenderIntermediateDataViewInput {
+  jobId: ID!
+  fileId: String!
+  shape: IntermediateDataViewShape!
+  "Required for GLTF, and rejected for TILES."
+  row: Int
+  "A Flow expression evaluated against each feature. TILES only."
+  filter: String
+  options: IntermediateDataViewOptionsInput
+}
+
+# Payloads
+
+type RenderIntermediateDataViewPayload {
+  view: IntermediateDataView!
+}
+
+# Query and Mutation
+
+extend type Query {
+  "Reads an already-rendered view without rendering one. Null if none exists."
+  intermediateDataView(jobId: ID!, fileId: String!, viewId: ID!): IntermediateDataView
+}
+
+extend type Mutation {
+  renderIntermediateDataView(
+    input: RenderIntermediateDataViewInput!
+  ): RenderIntermediateDataViewPayload!
+}
+`, BuiltIn: false},
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
   completedAt: DateTime
   deployment: Deployment
@@ -4998,6 +5238,17 @@ func (ec *executionContext) field_Mutation_removeParameters_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_renderIntermediateDataView_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRenderIntermediateDataViewInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRenderIntermediateDataViewInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_rollbackProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5472,6 +5723,27 @@ func (ec *executionContext) field_Query_deployments_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["pagination"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_intermediateDataView_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "jobId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["jobId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "fileId", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["fileId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "viewId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["viewId"] = arg2
 	return args, nil
 }
 
@@ -9380,6 +9652,296 @@ func (ec *executionContext) fieldContext_Diagnostic_sampleFeatureIds(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _IntermediateDataView_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_jobId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_jobId,
+		func(ctx context.Context) (any, error) {
+			return obj.JobID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_jobId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_fileId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_fileId,
+		func(ctx context.Context) (any, error) {
+			return obj.FileID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_fileId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_shape(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_shape,
+		func(ctx context.Context) (any, error) {
+			return obj.Shape, nil
+		},
+		nil,
+		ec.marshalNIntermediateDataViewShape2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewShape,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_shape(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type IntermediateDataViewShape does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_status(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNIntermediateDataViewStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type IntermediateDataViewStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_format(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_format,
+		func(ctx context.Context) (any, error) {
+			return obj.Format, nil
+		},
+		nil,
+		ec.marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type IntermediateDataViewFormat does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_entryPointUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_entryPointUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.EntryPointURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_entryPointUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_selectedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_selectedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.SelectedFeatures, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_selectedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_renderedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_renderedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.RenderedFeatures, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_renderedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_error(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Job_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11281,6 +11843,51 @@ func (ec *executionContext) fieldContext_Mutation_saveNamedSnapshot(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_saveNamedSnapshot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_renderIntermediateDataView(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_renderIntermediateDataView,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RenderIntermediateDataView(ctx, fc.Args["input"].(gqlmodel.RenderIntermediateDataViewInput))
+		},
+		nil,
+		ec.marshalNRenderIntermediateDataViewPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRenderIntermediateDataViewPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_renderIntermediateDataView(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "view":
+				return ec.fieldContext_RenderIntermediateDataViewPayload_view(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RenderIntermediateDataViewPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_renderIntermediateDataView_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -15531,6 +16138,69 @@ func (ec *executionContext) fieldContext_Query_projectNamedSnapshots(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_intermediateDataView(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_intermediateDataView,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().IntermediateDataView(ctx, fc.Args["jobId"].(gqlmodel.ID), fc.Args["fileId"].(string), fc.Args["viewId"].(gqlmodel.ID))
+		},
+		nil,
+		ec.marshalOIntermediateDataView2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataView,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_intermediateDataView(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_IntermediateDataView_id(ctx, field)
+			case "jobId":
+				return ec.fieldContext_IntermediateDataView_jobId(ctx, field)
+			case "fileId":
+				return ec.fieldContext_IntermediateDataView_fileId(ctx, field)
+			case "shape":
+				return ec.fieldContext_IntermediateDataView_shape(ctx, field)
+			case "status":
+				return ec.fieldContext_IntermediateDataView_status(ctx, field)
+			case "format":
+				return ec.fieldContext_IntermediateDataView_format(ctx, field)
+			case "entryPointUrl":
+				return ec.fieldContext_IntermediateDataView_entryPointUrl(ctx, field)
+			case "selectedFeatures":
+				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
+			case "renderedFeatures":
+				return ec.fieldContext_IntermediateDataView_renderedFeatures(ctx, field)
+			case "error":
+				return ec.fieldContext_IntermediateDataView_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntermediateDataView", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_intermediateDataView_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_jobs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16217,6 +16887,57 @@ func (ec *executionContext) fieldContext_RemoveMemberFromWorkspacePayload_worksp
 				return ec.fieldContext_Workspace_projects(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RenderIntermediateDataViewPayload_view(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.RenderIntermediateDataViewPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RenderIntermediateDataViewPayload_view,
+		func(ctx context.Context) (any, error) {
+			return obj.View, nil
+		},
+		nil,
+		ec.marshalNIntermediateDataView2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataView,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RenderIntermediateDataViewPayload_view(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RenderIntermediateDataViewPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_IntermediateDataView_id(ctx, field)
+			case "jobId":
+				return ec.fieldContext_IntermediateDataView_jobId(ctx, field)
+			case "fileId":
+				return ec.fieldContext_IntermediateDataView_fileId(ctx, field)
+			case "shape":
+				return ec.fieldContext_IntermediateDataView_shape(ctx, field)
+			case "status":
+				return ec.fieldContext_IntermediateDataView_status(ctx, field)
+			case "format":
+				return ec.fieldContext_IntermediateDataView_format(ctx, field)
+			case "entryPointUrl":
+				return ec.fieldContext_IntermediateDataView_entryPointUrl(ctx, field)
+			case "selectedFeatures":
+				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
+			case "renderedFeatures":
+				return ec.fieldContext_IntermediateDataView_renderedFeatures(ctx, field)
+			case "error":
+				return ec.fieldContext_IntermediateDataView_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntermediateDataView", field.Name)
 		},
 	}
 	return fc, nil
@@ -20889,6 +21610,82 @@ func (ec *executionContext) unmarshalInputGetHeadInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputIntermediateDataViewOptionsInput(ctx context.Context, obj any) (gqlmodel.IntermediateDataViewOptionsInput, error) {
+	var it gqlmodel.IntermediateDataViewOptionsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"draco", "texelSize", "textureCodec", "targetTileSize", "minZoom", "maxZoom", "extent", "maxTileBytes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "draco":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("draco"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Draco = data
+		case "texelSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("texelSize"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TexelSize = data
+		case "textureCodec":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("textureCodec"))
+			data, err := ec.unmarshalOIntermediateDataViewTextureCodec2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewTextureCodec(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TextureCodec = data
+		case "targetTileSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetTileSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TargetTileSize = data
+		case "minZoom":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minZoom"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MinZoom = data
+		case "maxZoom":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxZoom"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxZoom = data
+		case "extent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extent"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Extent = data
+		case "maxTileBytes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxTileBytes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxTileBytes = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPageBasedPagination(ctx context.Context, obj any) (gqlmodel.PageBasedPagination, error) {
 	var it gqlmodel.PageBasedPagination
 	asMap := map[string]any{}
@@ -21273,6 +22070,68 @@ func (ec *executionContext) unmarshalInputRemoveParametersInput(ctx context.Cont
 				return it, err
 			}
 			it.ParamIds = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputRenderIntermediateDataViewInput(ctx context.Context, obj any) (gqlmodel.RenderIntermediateDataViewInput, error) {
+	var it gqlmodel.RenderIntermediateDataViewInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"jobId", "fileId", "shape", "row", "filter", "options"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "jobId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.JobID = data
+		case "fileId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FileID = data
+		case "shape":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shape"))
+			data, err := ec.unmarshalNIntermediateDataViewShape2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewShape(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Shape = data
+		case "row":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("row"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Row = data
+		case "filter":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Filter = data
+		case "options":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
+			data, err := ec.unmarshalOIntermediateDataViewOptionsInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewOptionsInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Options = data
 		}
 	}
 
@@ -23667,6 +24526,75 @@ func (ec *executionContext) _Diagnostic(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var intermediateDataViewImplementors = []string{"IntermediateDataView"}
+
+func (ec *executionContext) _IntermediateDataView(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.IntermediateDataView) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, intermediateDataViewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IntermediateDataView")
+		case "id":
+			out.Values[i] = ec._IntermediateDataView_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jobId":
+			out.Values[i] = ec._IntermediateDataView_jobId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fileId":
+			out.Values[i] = ec._IntermediateDataView_fileId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "shape":
+			out.Values[i] = ec._IntermediateDataView_shape(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._IntermediateDataView_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "format":
+			out.Values[i] = ec._IntermediateDataView_format(ctx, field, obj)
+		case "entryPointUrl":
+			out.Values[i] = ec._IntermediateDataView_entryPointUrl(ctx, field, obj)
+		case "selectedFeatures":
+			out.Values[i] = ec._IntermediateDataView_selectedFeatures(ctx, field, obj)
+		case "renderedFeatures":
+			out.Values[i] = ec._IntermediateDataView_renderedFeatures(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._IntermediateDataView_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var jobImplementors = []string{"Job", "Node"}
 
 func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Job) graphql.Marshaler {
@@ -24298,6 +25226,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "saveNamedSnapshot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveNamedSnapshot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "renderIntermediateDataView":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_renderIntermediateDataView(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -25672,6 +26607,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "intermediateDataView":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_intermediateDataView(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "jobs":
 			field := field
 
@@ -25924,6 +26878,45 @@ func (ec *executionContext) _RemoveMemberFromWorkspacePayload(ctx context.Contex
 			out.Values[i] = graphql.MarshalString("RemoveMemberFromWorkspacePayload")
 		case "workspace":
 			out.Values[i] = ec._RemoveMemberFromWorkspacePayload_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var renderIntermediateDataViewPayloadImplementors = []string{"RenderIntermediateDataViewPayload"}
+
+func (ec *executionContext) _RenderIntermediateDataViewPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.RenderIntermediateDataViewPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, renderIntermediateDataViewPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RenderIntermediateDataViewPayload")
+		case "view":
+			out.Values[i] = ec._RenderIntermediateDataViewPayload_view(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -28227,6 +29220,36 @@ func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	return ret
 }
 
+func (ec *executionContext) marshalNIntermediateDataView2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataView(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataView) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IntermediateDataView(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNIntermediateDataViewShape2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewShape(ctx context.Context, v any) (gqlmodel.IntermediateDataViewShape, error) {
+	var res gqlmodel.IntermediateDataViewShape
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewShape2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewShape(ctx context.Context, sel ast.SelectionSet, v gqlmodel.IntermediateDataViewShape) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNIntermediateDataViewStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewStatus(ctx context.Context, v any) (gqlmodel.IntermediateDataViewStatus, error) {
+	var res gqlmodel.IntermediateDataViewStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewStatus(ctx context.Context, sel ast.SelectionSet, v gqlmodel.IntermediateDataViewStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, v any) (gqlmodel.JSON, error) {
 	res, err := gqlmodel.UnmarshalJSON(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -28737,6 +29760,25 @@ func (ec *executionContext) unmarshalNRemoveParameterInput2githubᚗcomᚋreeart
 func (ec *executionContext) unmarshalNRemoveParametersInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParametersInput(ctx context.Context, v any) (gqlmodel.RemoveParametersInput, error) {
 	res, err := ec.unmarshalInputRemoveParametersInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRenderIntermediateDataViewInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRenderIntermediateDataViewInput(ctx context.Context, v any) (gqlmodel.RenderIntermediateDataViewInput, error) {
+	res, err := ec.unmarshalInputRenderIntermediateDataViewInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRenderIntermediateDataViewPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRenderIntermediateDataViewPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.RenderIntermediateDataViewPayload) graphql.Marshaler {
+	return ec._RenderIntermediateDataViewPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRenderIntermediateDataViewPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRenderIntermediateDataViewPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.RenderIntermediateDataViewPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RenderIntermediateDataViewPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx context.Context, v any) (gqlmodel.Role, error) {
@@ -29750,6 +30792,23 @@ func (ec *executionContext) marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋre
 	return ret
 }
 
+func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	res := graphql.MarshalFloatContext(*v)
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
 func (ec *executionContext) unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, v any) ([]gqlmodel.ID, error) {
 	if v == nil {
 		return nil, nil
@@ -29821,6 +30880,53 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOIntermediateDataView2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataView(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataView) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._IntermediateDataView(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewFormat, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.IntermediateDataViewFormat)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewFormat) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOIntermediateDataViewOptionsInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewOptionsInput(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewOptionsInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputIntermediateDataViewOptionsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOIntermediateDataViewTextureCodec2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewTextureCodec(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewTextureCodec, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.IntermediateDataViewTextureCodec)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOIntermediateDataViewTextureCodec2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewTextureCodec(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewTextureCodec) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, v any) (gqlmodel.JSON, error) {

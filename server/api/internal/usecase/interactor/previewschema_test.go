@@ -461,3 +461,28 @@ func TestParametersToVariables(t *testing.T) {
 	_, ok := vars["noDefault"]
 	assert.False(t, ok, "parameter with nil default must be omitted, not set to \"<nil>\"")
 }
+
+func (f *previewFakeFile) ResolveIntermediateDataURI(context.Context, string, string) (string, bool, error) {
+	panic("unused")
+}
+func (f *previewFakeFile) GetFeatureViewUploadURI(string, string) string {
+	panic("unused")
+}
+func (f *previewFakeFile) GetFeatureViewReportUploadURI(string, string, string) string {
+	panic("unused")
+}
+func (f *previewFakeFile) GetFeatureViewURL(string, string, string) string {
+	panic("unused")
+}
+func (f *previewFakeFile) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
+	panic("unused")
+}
+func (f *previewFakeFile) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
+	panic("unused")
+}
+
+// --- stubs for the render-view seams, which these tests do not exercise ----
+
+func (s *stubCloudRunWorker) RenderView(context.Context, gateway.RenderViewParam) (gateway.JobStatus, error) {
+	panic("unused")
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
+	"github.com/reearth/reearth-flow/api/pkg/featureview"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
@@ -35,14 +36,18 @@ const (
 )
 
 type fileRepo struct {
-	bucketName       string
-	base             *url.URL
+	bucketName string
+	base       *url.URL
+	// artifactBase is the public base a job's artifacts are served from. It is
+	// a separate base because artifacts are served by their own route, so
+	// joining an artifact path onto the asset base would address the wrong one.
+	artifactBase     *url.URL
 	cacheControl     string
 	replaceUploadURL bool
 	client           *storage.Client
 }
 
-func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool) (gateway.File, error) {
+func NewFile(bucketName, base, artifactBase string, cacheControl string, replaceUploadURL bool) (gateway.File, error) {
 	if bucketName == "" {
 		return nil, errors.New("bucket name is empty")
 	}
@@ -58,6 +63,14 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 		return nil, errors.New("invalid base URL")
 	}
 
+	var au *url.URL
+	if artifactBase != "" {
+		au, err = url.Parse(artifactBase)
+		if err != nil {
+			return nil, errors.New("invalid artifact base URL")
+		}
+	}
+
 	client, err := storage.NewClient(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCS client: %w", err)
@@ -66,6 +79,7 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 	repo := &fileRepo{
 		bucketName:       bucketName,
 		base:             u,
+		artifactBase:     au,
 		cacheControl:     cacheControl,
 		replaceUploadURL: replaceUploadURL,
 		client:           client,
@@ -670,4 +684,84 @@ func validateContentEncoding(ce string) error {
 func IsValidUUID(u string) bool {
 	_, err := uuid.Parse(u)
 	return err == nil
+}
+
+// gcsFeatureViewDir is the directory a view's files live in: alongside the
+// feature-store file they were rendered from, under the same job.
+const gcsFeatureViewDirName = "feature-view"
+
+// intermediateDataExtensions are the extensions a run writes its
+// intermediate data under, in the order they are probed. Which one appears
+// depends on WORKER_COMPRESS_INTERMEDIATE_DATA; the compressed form is tried
+// first because it is what current deployments produce.
+var intermediateDataExtensions = [...]string{".jsonl.zst", ".jsonl"}
+
+func gcsFeatureViewDir(jobID, fileID string) string {
+	return path.Join(gcsArtifactBasePath, jobID, gcsFeatureViewDirName, fileID)
+}
+
+func (f *fileRepo) gcsURI(objectPath string) string {
+	return fmt.Sprintf("gs://%s/%s", f.bucketName, objectPath)
+}
+
+func (f *fileRepo) ResolveIntermediateDataURI(ctx context.Context, jobID, fileID string) (string, bool, error) {
+	if jobID == "" || fileID == "" {
+		return "", false, gateway.ErrInvalidFile
+	}
+
+	bucket := f.bucket()
+	for _, ext := range intermediateDataExtensions {
+		objectPath := path.Join(gcsArtifactBasePath, jobID, "feature-store", fileID+ext)
+		_, err := bucket.Object(objectPath).Attrs(ctx)
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			continue
+		}
+		if err != nil {
+			return "", false, err
+		}
+		return f.gcsURI(objectPath), true, nil
+	}
+
+	return "", false, nil
+}
+
+func (f *fileRepo) GetFeatureViewUploadURI(jobID, fileID string) string {
+	return f.gcsURI(gcsFeatureViewDir(jobID, fileID))
+}
+
+func (f *fileRepo) GetFeatureViewReportUploadURI(jobID, fileID, key string) string {
+	return f.gcsURI(path.Join(gcsFeatureViewDir(jobID, fileID), featureview.ReportName(key)))
+}
+
+// GetFeatureViewURL resolves against the artifact base rather than the asset
+// base, and joins a path relative to the artifacts prefix: the artifact route
+// already reads under `artifacts/`, so including it again would look for
+// `artifacts/artifacts/...`.
+func (f *fileRepo) GetFeatureViewURL(jobID, fileID, name string) string {
+	url := getGCSObjectURL(f.artifactBase, path.Join(jobID, gcsFeatureViewDirName, fileID, name))
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
+func (f *fileRepo) ReadFeatureViewReport(ctx context.Context, jobID, fileID, key string) (io.ReadCloser, error) {
+	if jobID == "" || fileID == "" || key == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	return f.read(ctx, path.Join(gcsFeatureViewDir(jobID, fileID), featureview.ReportName(key)))
+}
+
+func (f *fileRepo) CheckFeatureViewFileExists(ctx context.Context, jobID, fileID, name string) (bool, error) {
+	if jobID == "" || fileID == "" || name == "" {
+		return false, gateway.ErrInvalidFile
+	}
+	_, err := f.bucket().Object(path.Join(gcsFeatureViewDir(jobID, fileID), name)).Attrs(ctx)
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

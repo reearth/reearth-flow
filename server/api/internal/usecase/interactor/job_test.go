@@ -25,6 +25,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/notification"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -357,4 +358,27 @@ func TestJob_persistTerminalDiagnostics(t *testing.T) {
 		}
 		assert.Error(t, i.persistTerminalDiagnostics(ctx, jobID, event))
 	})
+}
+
+func (m *mockCheckStatusFile) ResolveIntermediateDataURI(context.Context, string, string) (string, bool, error) {
+	return "", false, nil
+}
+func (m *mockCheckStatusFile) GetFeatureViewUploadURI(string, string) string {
+	return ""
+}
+func (m *mockCheckStatusFile) GetFeatureViewReportUploadURI(string, string, string) string {
+	return ""
+}
+func (m *mockCheckStatusFile) GetFeatureViewURL(string, string, string) string {
+	return ""
+}
+func (m *mockCheckStatusFile) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
+	return nil, rerror.ErrNotFound
+}
+func (m *mockCheckStatusFile) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
+	panic("unused")
+}
+
+func (m *mockCloudRunWorker) RenderView(context.Context, gateway.RenderViewParam) (gateway.JobStatus, error) {
+	return gateway.JobStatusCompleted, nil
 }

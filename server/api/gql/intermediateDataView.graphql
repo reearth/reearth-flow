@@ -1,0 +1,126 @@
+"""
+A viewable rendering of the intermediate data a finished run left on one output port.
+
+The shape is what the caller asks for; the format is what the engine produced.
+They are separate because the engine chooses the format from the geometry it
+finds — a TILES view becomes 3D Tiles if any 3D geometry is present and vector
+tiles only for an all-2D selection — so neither the client nor the server can
+know it before the render runs.
+"""
+type IntermediateDataView {
+  "Identifies the view by its content: the same request always yields the same id."
+  id: ID!
+  "The finished job whose feature-store held the input."
+  jobId: ID!
+  "The engine's `[subgraphPrefix.]nodeId.port`."
+  fileId: String!
+  shape: IntermediateDataViewShape!
+  status: IntermediateDataViewStatus!
+  "Null until a render has finished."
+  format: IntermediateDataViewFormat
+  "The URL a viewer opens. Null unless status is READY."
+  entryPointUrl: String
+  "Features the selection kept, before any were dropped."
+  selectedFeatures: Int
+  """
+  Selected features that reached the output.
+
+  Fewer than selectedFeatures is normal: geometry naming no CRS is dropped, and
+  so is geometry the view cannot draw. Nothing is lost — the feature keeps its
+  row in the table, only its geometry is absent from the view.
+  """
+  renderedFeatures: Int
+  "Why there is no view, for a status other than READY."
+  error: String
+}
+
+enum IntermediateDataViewShape {
+  "One row rendered to a glb. Needs 3D geometry: a purely 2D row has no glb."
+  GLTF
+  "A whole selection rendered to a tile pyramid."
+  TILES
+}
+
+enum IntermediateDataViewFormat {
+  "Entered at the .glb itself."
+  GLB
+  "Entered at tileset.json."
+  CESIUM_3D_TILES
+  "Entered at tilejson.json."
+  VECTOR_TILES
+}
+
+"""
+Every value is terminal. A render is awaited in the request, so there is no
+in-flight state to poll for.
+"""
+enum IntermediateDataViewStatus {
+  "The entry point is loadable."
+  READY
+  "Nothing was selected, or nothing selected carried geometry the view draws."
+  EMPTY
+  "A GLTF view was asked of a purely 2D row."
+  UNSUPPORTED_GEOMETRY
+  FAILED
+}
+
+enum IntermediateDataViewTextureCodec {
+  "The default: encodes far faster than the KTX2 forms at a comparable size."
+  JPEG
+  PNG
+  KTX2_ETC1S
+  KTX2_UASTC
+  "Skips texturing and renders geometry in its neutral colour."
+  UNTEXTURED
+}
+
+# InputType
+
+"""
+Render options.
+
+Both groups are accepted for either shape; the engine applies whichever half
+matches the format it chose. The zoom range is narrower than the engine's own
+0-15 default on purpose: the renderer holds every level's sliced geometry in
+memory at once.
+"""
+input IntermediateDataViewOptionsInput {
+  draco: Boolean
+  texelSize: Float
+  textureCodec: IntermediateDataViewTextureCodec
+  targetTileSize: Int
+  minZoom: Int
+  maxZoom: Int
+  extent: Int
+  maxTileBytes: Int
+}
+
+input RenderIntermediateDataViewInput {
+  jobId: ID!
+  fileId: String!
+  shape: IntermediateDataViewShape!
+  "Required for GLTF, and rejected for TILES."
+  row: Int
+  "A Flow expression evaluated against each feature. TILES only."
+  filter: String
+  options: IntermediateDataViewOptionsInput
+}
+
+# Payloads
+
+type RenderIntermediateDataViewPayload {
+  view: IntermediateDataView!
+}
+
+# Query and Mutation
+
+extend type Query {
+  "Reads an already-rendered view without rendering one. Null if none exists."
+  intermediateDataView(jobId: ID!, fileId: String!, viewId: ID!): IntermediateDataView
+}
+
+extend type Mutation {
+  renderIntermediateDataView(
+    input: RenderIntermediateDataViewInput!
+  ): RenderIntermediateDataViewPayload!
+}
