@@ -474,7 +474,6 @@ mod build_next {
                      xmlns:con="http://www.opengis.net/citygml/construction/3.0"
                      xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
                      xmlns:gml="http://www.opengis.net/gml/3.2"
-                     xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
                      xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
             );
             let mut parser = Parser::new(CityGmlVersion::V3);
