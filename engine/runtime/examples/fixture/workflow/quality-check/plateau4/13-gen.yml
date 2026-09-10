@@ -2042,6 +2042,12 @@ graphs:
     action: Input Router
     with:
       routingPort: features
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6f
+    name: InputRouterRejected
+    type: action
+    action: Input Router
+    with:
+      routingPort: rejected
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     name: LodSplitter
     type: subGraph
@@ -2390,18 +2396,6 @@ graphs:
       output:
         type: string
         value: 13_汎用都市オブジェクト_gml_nameエラー.csv
-  - id: 22a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d4
-    name: UncodedGmlNameStatsAggregator
-    type: action
-    action: Statistics Calculator
-    with:
-      groupBy:
-      - Filename
-      calculations:
-      - newAttribute: _num_uncoded_gml_name
-        expr:
-          type: flowExpr
-          value: '1'
   - id: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
     name: OutputRouterUncodedGmlName
     type: action
@@ -2605,6 +2599,11 @@ graphs:
     to: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
     fromPort: stats
     toPort: features
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c60
+    from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6f
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: features
+    toPort: features
   ports:
     outputs:
     - id: errorCountNotClosedSolid
@@ -2763,6 +2762,17 @@ graphs:
     with:
       countStart: 0
       outputAttribute: featureIndex
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
+    name: AttributeManagerReprojectionRejected
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: issue
+        method: create
+        value:
+          type: string
+          value: GeometryRejected
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9f
     name: GENValidation
     type: subGraph
@@ -3038,6 +3048,16 @@ graphs:
     to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
     fromPort: features
     toPort: features
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6e
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
+    to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
+    fromPort: rejected
+    toPort: features
+  - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6f
+    from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
+    to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9f
+    fromPort: features
+    toPort: rejected
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
     from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
     to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e

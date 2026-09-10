@@ -668,15 +668,15 @@ graphs:
       - newAttribute: _num_lod2_invalid_surface
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "2" { 1 } else { 0 }
+          value: if attributes["lod"] == 2 { 1 } else { 0 }
       - newAttribute: _num_lod3_invalid_surface
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "3" { 1 } else { 0 }
+          value: if attributes["lod"] == 3 { 1 } else { 0 }
       - newAttribute: _num_lod4_invalid_surface
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "4" { 1 } else { 0 }
+          value: if attributes["lod"] == 4 { 1 } else { 0 }
   - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
     name: AttributeManagerLod2-4InvalidSurface
     type: action
@@ -940,7 +940,9 @@ graphs:
         value:
           type: flowExpr
           value: attributes.get("package") or attributes.get("udxDirs", "")
-      - attribute: solid_boundary_issues
+      - attribute: validationResult
+        method: remove
+      - attribute: _solid_issue
         method: remove
       - attribute: surfaceId
         method: remove
@@ -1014,19 +1016,19 @@ graphs:
       - newAttribute: _num_lod1_not_closed_solid
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "1" { 1 } else { 0 }
+          value: if attributes["lod"] == 1 { 1 } else { 0 }
       - newAttribute: _num_lod2_not_closed_solid
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "2" { 1 } else { 0 }
+          value: if attributes["lod"] == 2 { 1 } else { 0 }
       - newAttribute: _num_lod3_not_closed_solid
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "3" { 1 } else { 0 }
+          value: if attributes["lod"] == 3 { 1 } else { 0 }
       - newAttribute: _num_lod4_not_closed_solid
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "4" { 1 } else { 0 }
+          value: if attributes["lod"] == 4 { 1 } else { 0 }
   - id: 44f4a5b6-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: ErrorCount-Lod1NotClosedSolid
     type: action
@@ -1064,7 +1066,9 @@ graphs:
         value:
           type: flowExpr
           value: attributes.get("package") or attributes.get("udxDirs", "")
-      - attribute: solid_boundary_issues
+      - attribute: validationResult
+        method: remove
+      - attribute: _solid_issue
         method: remove
       - attribute: surfaceId
         method: remove
@@ -1138,19 +1142,19 @@ graphs:
       - newAttribute: _num_lod1_solid_issues
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "1" { 1 } else { 0 }
+          value: if attributes["lod"] == 1 { 1 } else { 0 }
       - newAttribute: _num_lod2_solid_issues
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "2" { 1 } else { 0 }
+          value: if attributes["lod"] == 2 { 1 } else { 0 }
       - newAttribute: _num_lod3_solid_issues
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "3" { 1 } else { 0 }
+          value: if attributes["lod"] == 3 { 1 } else { 0 }
       - newAttribute: _num_lod4_solid_issues
         expr:
           type: flowExpr
-          value: if attributes["lod"] == "4" { 1 } else { 0 }
+          value: if attributes["lod"] == 4 { 1 } else { 0 }
   - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
     name: ErrorCount-Lod1SolidIssues
     type: action
@@ -1193,44 +1197,55 @@ graphs:
     action: Output Router
     with:
       routingPort: errorCountLod4SolidIssues
-  - id: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
-    name: SolidBoundaryNotClosedIssueCounter
+  - id: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    name: AttributeMapperLod0SurfaceIntersection
     type: action
-    action: Statistics Calculator
+    action: Attribute Mapper
     with:
-      groupId: gmlFilename
-      groupBy:
-      - filename
-      calculations:
-      - newAttribute: _num_lod1_not_closed_solid
+      mappers:
+      - attribute: filename_a
+        valueAttribute: gmlFilename_1
+      - attribute: filename_b
+        valueAttribute: gmlFilename_2
+      - attribute: feature_type_a
+        valueAttribute: featureType_1
+      - attribute: feature_type_b
+        valueAttribute: featureType_2
+      - attribute: lod_a
+        valueAttribute: lod_1
+      - attribute: lod_b
+        valueAttribute: lod_2
+      - attribute: gml_id_a
+        valueAttribute: gmlId_1
+      - attribute: gml_id_b
+        valueAttribute: gmlId_2
+      - attribute: issue
+        expr:
+          type: string
+          value: Surface Intersection
+      - attribute: folder
         expr:
           type: flowExpr
-          value: '1'
-  - id: bc5638de-624d-46a2-a40b-59dde392ff97
-    name: SolidBoundaryNotClosedIssueCountOutputRouter
+          value: attributes.get("package_1") or attributes.get("udxDirs_1", "")
+  - id: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
+    name: FeatureWriterLod0SurfaceIntersection
     type: action
-    action: Output Router
+    action: Feature Writer
     with:
-      routingPort: errorCountLod1NotClosedSolid
-  - id: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
-    name: SolidBoundaryOtherIssueCounter
-    type: action
-    action: Statistics Calculator
-    with:
-      groupId: gmlFilename
-      groupBy:
-      - filename
-      calculations:
-      - newAttribute: _num_lod1_solid_issues
-        expr:
-          type: flowExpr
-          value: '1'
-  - id: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
-    name: SolidBoundaryOtherIssueCountOutputRouter
-    type: action
-    action: Output Router
-    with:
-      routingPort: errorCountLod1SolidIssues
+      format: csv
+      output:
+        type: flowExpr
+        value: |
+          pkg = attributes.get("folder");
+          if pkg == "brid" {
+            "09_橋梁_LOD0面の交差.csv"
+          } else if pkg == "tun" {
+            "09_トンネル_LOD0面の交差.csv"
+          } else if pkg == "ubld" {
+            "09_地下街_LOD0面の交差.csv"
+          } else {
+            "09_橋梁_トンネル_地下街_LOD0面の交差.csv"
+          }
   edges:
   - id: 8c4d7e2a-5b6f-4918-a3e5-9d1c8b7a6e4f
     from: 5d8f3c2e-9a4b-4e1c-8f7a-3c5d9e2b8a1f
@@ -1244,7 +1259,7 @@ graphs:
     toPort: features
   - id: 9b7d5e3c-4f8a-4e2b-9c1a-8d6f5b3e7c2a
     from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
-    to: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
+    to: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     fromPort: inCorrectOrientation
     toPort: features
   - id: 7c1e5b9d-3f8a-4e2c-9b6d-8a5c2e7f4b1c
@@ -1343,9 +1358,9 @@ graphs:
     fromPort: features
     toPort: features
   - id: 11aa22bb-33cc-44dd-55ee-66ff77aa88bb
-    from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     to: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
-    fromPort: features
+    fromPort: lod0
     toPort: features
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1ff
     from: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
@@ -1414,7 +1429,7 @@ graphs:
     toPort: features
   - id: 337a1460-27bf-4df9-8d8b-08c5c84509d1
     from: d0132191-a81f-4647-896d-5db49e3fb734
-    to: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
+    to: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     fromPort: notClosed
     toPort: features
   - id: 7a034ade-628d-4a74-ba34-069d744c15f4
@@ -1424,32 +1439,12 @@ graphs:
     toPort: features
   - id: 9c6792d9-f844-42dd-aca4-eeb34f691c0e
     from: d0132191-a81f-4647-896d-5db49e3fb734
-    to: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
+    to: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     fromPort: otherIssues
     toPort: features
   - id: 819866a6-4e4d-44c5-a2df-2cb6b1645a0c
     from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
     to: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
-    fromPort: features
-    toPort: features
-  - id: 4de69165-d302-4392-9899-af387553f5a8
-    from: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
-    to: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
-    fromPort: features
-    toPort: features
-  - id: 1478ecb6-8c64-4b25-80f1-eb158be5a9c5
-    from: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
-    to: bc5638de-624d-46a2-a40b-59dde392ff97
-    fromPort: features
-    toPort: features
-  - id: 24fe89e5-ee96-422a-9047-edd122c64c79
-    from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
-    to: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
-    fromPort: features
-    toPort: features
-  - id: 01cef8a5-e953-4895-ad8e-93edbf2e65ae
-    from: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
-    to: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
     fromPort: features
     toPort: features
   - id: 5eff6aa7-fa23-4392-0b00-bf488644f6a9
@@ -1490,6 +1485,46 @@ graphs:
   - id: cffedfee-6f9a-ba99-7f77-ffcffddbbfdf
     from: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     to: ccf2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: features
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000210
+    from: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+    to: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
+    fromPort: complete
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000211
+    from: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    to: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
+    fromPort: complete
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000220
+    from: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    to: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
+    fromPort: complete
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000221
+    from: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    to: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: features
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000230
+    from: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
+    to: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    fromPort: features
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000231
+    from: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    to: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    fromPort: features
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000232
+    from: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    to: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
+    fromPort: complete
+    toPort: features
+  - id: 09100000-0000-4000-8000-000000000233
+    from: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    to: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     fromPort: features
     toPort: features
   ports:
@@ -3375,12 +3410,12 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id")
+          value: attributes.get("__citygml_root_gml_id") or attributes.get("__citygml_gml_id", "")
       - attribute: featureId
         method: create
         value:
           type: flowExpr
-          value: attributes.get("__citygml_gml_id")
+          value: attributes.get("__citygml_gml_id", "")
   - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
     name: CoordinateFrameReprojector
     type: action

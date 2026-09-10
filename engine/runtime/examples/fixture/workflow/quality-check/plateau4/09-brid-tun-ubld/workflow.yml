@@ -168,12 +168,12 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id")
+          value: attributes.get("__citygml_root_gml_id") or attributes.get("__citygml_gml_id", "")
       - attribute: featureId
         method: create
         value:
           type: flowExpr
-          value: attributes.get("__citygml_gml_id")
+          value: attributes.get("__citygml_gml_id", "")
 
   # Reprojected before any check: planarity and the absolute winding of a face
   # are only defined in a linear-unit frame.

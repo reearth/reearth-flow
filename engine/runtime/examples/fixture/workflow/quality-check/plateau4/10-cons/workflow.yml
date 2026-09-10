@@ -171,6 +171,20 @@ graphs:
               type: flowExpr
               value: variables["prcs"]
 
+      # A geometry that cannot be reprojected is reported as a surface error
+      # instead of being dropped before any check runs.
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a71
+        name: AttributeManagerReprojectionRejected
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: issue
+              method: create
+              value:
+                type: string
+                value: GeometryRejected
+
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
         name: FeatureSorter
         type: action
@@ -280,7 +294,7 @@ graphs:
             value: 'attributes["gmlFilename"] + "|" + attributes["featureTypeName"] + "|" + str(attributes["lod"])'
           supplierAttributeValue:
             type: flowExpr
-            value: '(attributes.get("Filename") or attributes.get("filename") or "") + "|" + (attributes.get("FeatureType") or attributes.get("feature_type") or "") + "|" + str(attributes.get("LOD") or attributes.get("lod") or "")'
+            value: '(attributes.get("Filename") or attributes.get("filename") or "") + "|" + (attributes.get("FeatureType") or attributes.get("feature_type") or "") + "|" + str(attributes.get("LOD", attributes.get("lod", "")))'
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
@@ -525,6 +539,16 @@ graphs:
         to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
         fromPort: features
         toPort: features
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a72
+        from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a70
+        to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a71
+        fromPort: rejected
+        toPort: features
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a73
+        from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a71
+        to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
+        fromPort: features
+        toPort: rejected
 
       # FeatureSorter → FeatureCounterFeatureIndex
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f81

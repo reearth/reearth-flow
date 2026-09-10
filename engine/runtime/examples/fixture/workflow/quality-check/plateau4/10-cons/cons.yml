@@ -12,6 +12,15 @@ nodes:
     with:
       routingPort: features
 
+  # Geometry the reprojector could not handle arrives here already tagged with
+  # its issue, and joins the surface error report rather than being dropped.
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c71
+    name: InputRouterRejected
+    type: action
+    action: Input Router
+    with:
+      routingPort: rejected
+
   # LOD splitter
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     name: LodSplitter
@@ -644,6 +653,12 @@ edges:
   - id: 14f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8c0
     from: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
     to: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
+    fromPort: features
+    toPort: features
+
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c72
+    from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c71
+    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: features
     toPort: features
 
