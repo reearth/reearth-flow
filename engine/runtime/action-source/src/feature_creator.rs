@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 
-use indexmap::IndexMap;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, Feature};
+use reearth_flow_types::{AttributeValue, Code, CodeType, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -120,11 +119,7 @@ impl Source for FeatureCreatorSource {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         match self.params.creator.clone() {
-            AttributeValue::Map(map) => {
-                let attributes = map
-                    .into_iter()
-                    .map(|(k, v)| (Attribute::new(k), v))
-                    .collect::<IndexMap<Attribute, AttributeValue>>();
+            AttributeValue::Map(attributes) => {
                 let feature = Feature::from(attributes);
                 sender
                     .send((
@@ -136,11 +131,7 @@ impl Source for FeatureCreatorSource {
             }
             AttributeValue::Array(arr) => {
                 for item in arr {
-                    if let AttributeValue::Map(map) = item {
-                        let attributes = map
-                            .into_iter()
-                            .map(|(k, v)| (Attribute::new(k), v))
-                            .collect::<IndexMap<Attribute, AttributeValue>>();
+                    if let AttributeValue::Map(attributes) = item {
                         let feature = Feature::from(attributes);
                         sender
                             .send((

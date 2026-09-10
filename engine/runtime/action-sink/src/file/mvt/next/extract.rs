@@ -101,17 +101,16 @@ fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut 
                 collect_2d(member, cache, out);
             }
         }
-        Euclidean2DGeometry::PolygonMesh(mesh) => {
-            let mut faces = Euclidean2DGeometry::PolygonMesh(mesh.clone());
-            let mut emitted = Vec::new();
-            if faces.split(&mut |geom, _attrs| emitted.push(geom)).is_err() {
-                tracing::warn!("MVT Writer: failed to split polygon mesh into faces, skipping");
+        Euclidean2DGeometry::PolygonMesh(_) | Euclidean2DGeometry::TriangularMesh(_) => {
+            let mut mesh = g.clone();
+            let mut faces = Vec::new();
+            if mesh.split(&mut |geom, _attrs| faces.push(geom)).is_err() {
+                tracing::warn!("MVT Writer: failed to split mesh into faces, skipping");
                 return;
             }
-            for face in &emitted {
+            for face in &faces {
                 collect(face, cache, out);
             }
         }
-        other => tracing::warn!("MVT Writer: unsupported 2D geometry, skipping: {other:?}"),
     }
 }

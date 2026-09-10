@@ -308,16 +308,21 @@ pub fn node_to_attribute_value(
         return AttributeValue::String(text_parts.join(""));
     }
 
-    // currently unordered because AttributeValue::Map is unordered
-    let mut map: HashMap<String, AttributeValue> = HashMap::new();
+    let mut map = Attributes::new();
 
     if keep_attributes {
         for ((qname, _), v) in &node.attrs {
-            map.insert(format!("@{qname}"), AttributeValue::String(v.clone()));
+            map.insert(
+                Attribute::new(format!("@{qname}")),
+                AttributeValue::String(v.clone()),
+            );
         }
     }
     if !text_parts.is_empty() {
-        map.insert("$".into(), AttributeValue::String(text_parts.join("")));
+        map.insert(
+            Attribute::new("$"),
+            AttributeValue::String(text_parts.join("")),
+        );
     }
     for (name, values) in elem_groups {
         let av = if values.len() == 1 {
@@ -333,10 +338,10 @@ pub fn node_to_attribute_value(
         } else {
             AttributeValue::Array(values)
         };
-        map.insert(name, av);
+        map.insert(Attribute::new(name), av);
     }
     for (key, val) in leaf_attr_entries {
-        map.insert(key, AttributeValue::String(val));
+        map.insert(Attribute::new(key), AttributeValue::String(val));
     }
 
     AttributeValue::Map(map)
@@ -586,9 +591,7 @@ fn build_feature(
         }
         None => {
             if let AttributeValue::Map(map) = content {
-                for (k, v) in map {
-                    attrs.insert(Attribute::new(k), v);
-                }
+                attrs.extend(map);
             }
         }
     }
