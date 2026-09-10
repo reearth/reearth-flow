@@ -2053,19 +2053,7 @@ graphs:
     type: subGraph
     subGraphId: b1000000-0000-4000-8000-000000000000
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
-    name: GeometryFilterLod1
-    type: action
-    action: Geometry Filter
-    with:
-      filterType: geometryType
-  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    name: GeometryFilterLod2
-    type: action
-    action: Geometry Filter
-    with:
-      filterType: geometryType
-  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
-    name: GeometryFilterLod3
+    name: GeometryFilterSolid
     type: action
     action: Geometry Filter
     with:
@@ -2075,15 +2063,7 @@ graphs:
     type: subGraph
     subGraphId: d4000000-0000-4000-8000-000000000000
   - id: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    name: SurfaceChecksLod1
-    type: subGraph
-    subGraphId: d4000000-0000-4000-8000-000000000000
-  - id: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    name: SurfaceChecksLod2
-    type: subGraph
-    subGraphId: d4000000-0000-4000-8000-000000000000
-  - id: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
-    name: SurfaceChecksLod3
+    name: SurfaceChecksLod1-3
     type: subGraph
     subGraphId: d4000000-0000-4000-8000-000000000000
   - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
@@ -2390,33 +2370,33 @@ graphs:
     toPort: features
   - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     fromPort: lod1
     toPort: features
   - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f0
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
+    to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     fromPort: lod2
     toPort: features
   - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a1
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
+    to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     fromPort: lod3
     toPort: features
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a02
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
-    to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    fromPort: surface
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    fromPort: lod1
     toPort: features
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a05
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    to: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    fromPort: surface
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    fromPort: lod2
     toPort: features
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a08
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
-    to: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
-    fromPort: surface
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    fromPort: lod3
     toPort: features
   - id: 11a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
@@ -2425,16 +2405,6 @@ graphs:
     toPort: features
   - id: 12b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d9
     from: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    fromPort: invalidSurface
-    toPort: features
-  - id: 13c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7ea
-    from: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    fromPort: invalidSurface
-    toPort: features
-  - id: 14d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8fb
-    from: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
     toPort: features
@@ -2460,16 +2430,6 @@ graphs:
     toPort: features
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a03
     from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
-    to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    fromPort: solid
-    toPort: features
-  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a06
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    fromPort: solid
-    toPort: features
-  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a09
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
     to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     fromPort: solid
     toPort: features

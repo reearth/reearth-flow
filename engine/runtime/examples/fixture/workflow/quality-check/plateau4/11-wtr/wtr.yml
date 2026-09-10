@@ -1,7 +1,7 @@
 # WaterBody quality check subgraph
 # LOD1 expects MultiSurface, LOD2+ expects Solid
 # Uses GeometryFilter to detect non-MultiSurface geometry in LOD1 (invalid spatial attribute type)
-# Uses SolidBoundaryValidator to validate solids for LOD2+
+# Uses Geometry Validator to check the shells of LOD2+ solids
 id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
 name: "WTR.WaterBodyValidation"
 nodes:
@@ -101,8 +101,7 @@ nodes:
     with:
       routingPort: errorCountInvalidSpatialAttr
 
-  # ===== LOD1: SurfaceValidator3D for surface errors =====
-  # LOD1 MultiSurface geometry validation (same as bldg workflow)
+  # ===== LOD1: surface errors =====
   - id: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
     name: SurfaceChecksLod1
     type: subGraph
@@ -185,7 +184,7 @@ nodes:
     with:
       routingPort: errorCountLod1SurfaceErrors
 
-  # ===== LOD2/3: SolidBoundaryValidator =====
+  # ===== LOD2/3: solid checks =====
   # Only a solid has shells to check; a LOD stream also carries bare surfaces,
   # which the boundary surface checks own.
   - id: 11100000-0000-4000-8000-000000000010
@@ -239,7 +238,7 @@ nodes:
             value: attributes["_solid_issue"] == "Other"
           outputPort: otherIssues
 
-  # Non-watertight solid (NotA2Manifold) - following building workflow pattern
+  # Non-watertight solid: a shell that is not closed.
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
     name: AttributeMapperNotClosed
     type: action
@@ -555,7 +554,7 @@ edges:
     fromPort: features
     toPort: features
 
-  # ===== LOD1 surface (MultiSurface) → SurfaceValidator3D =====
+  # ===== LOD1 surface (MultiSurface) → SurfaceChecksLod1 =====
   - id: 30a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
     from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
     to: 10a1b1c1-d1e1-f1a1-b1c1-d1e1f1a1b1c1
@@ -617,14 +616,14 @@ edges:
     fromPort: features
     toPort: features
 
-  # ===== LOD2 → SolidBoundaryValidator =====
+  # ===== LOD2 → GeometryFilterSolidLod2Plus =====
   - id: 08b9c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d3
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
     to: 11100000-0000-4000-8000-000000000010
     fromPort: lod2
     toPort: features
 
-  # LOD3 → SolidBoundaryValidator
+  # LOD3 → GeometryFilterSolidLod2Plus
   - id: 09c0d1e2-f3a4-b5c6-d7e8-f9a0b1c2d3e4
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
     to: 11100000-0000-4000-8000-000000000010

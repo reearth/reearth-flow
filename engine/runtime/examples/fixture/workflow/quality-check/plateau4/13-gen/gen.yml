@@ -29,25 +29,25 @@ nodes:
     subGraphId: b1000000-0000-4000-8000-000000000000
 
   # ===== Surface Validation for LOD0-3 =====
-  # SurfaceValidator3D for LOD0
+  # Surface checks for LOD0
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     name: SurfaceChecksLod0
     type: subGraph
     subGraphId: d4000000-0000-4000-8000-000000000000
 
-  # SurfaceValidator3D for LOD1
+  # Surface checks for LOD1
   - id: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     name: SurfaceChecksLod1
     type: subGraph
     subGraphId: d4000000-0000-4000-8000-000000000000
 
-  # SurfaceValidator3D for LOD2
+  # Surface checks for LOD2
   - id: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
     name: SurfaceChecksLod2
     type: subGraph
     subGraphId: d4000000-0000-4000-8000-000000000000
 
-  # SurfaceValidator3D for LOD3
+  # Surface checks for LOD3
   - id: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
     name: SurfaceChecksLod3
     type: subGraph
@@ -249,8 +249,8 @@ nodes:
     with:
       routingPort: errorCountNotClosedSolid
 
-  # ===== Solid Issues (立体のエラー) - OtherIssues from SolidBoundaryValidator =====
-  # AttributeMapper for OtherIssues (unfiltered = not NotA2Manifold)
+  # ===== Solid Issues (立体のエラー) =====
+  # Every shell failure that is not an unclosed shell.
   - id: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     name: AttributeMapperSolidIssues
     type: action
@@ -443,36 +443,36 @@ edges:
     fromPort: features
     toPort: features
 
-  # ===== LOD outputs → SurfaceValidator3D =====
-  # LOD0 → SurfaceValidator3D_LOD0
+  # ===== LOD outputs → surface checks =====
+  # LOD0 → SurfaceChecksLod0
   - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d8
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     fromPort: lod0
     toPort: features
 
-  # LOD1 → SurfaceValidator3D_LOD1
+  # LOD1 → SurfaceChecksLod1
   - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     fromPort: lod1
     toPort: features
 
-  # LOD2 → SurfaceValidator3D_LOD2
+  # LOD2 → SurfaceChecksLod2
   - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f0
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
     fromPort: lod2
     toPort: features
 
-  # LOD3 → SurfaceValidator3D_LOD3
+  # LOD3 → SurfaceChecksLod3
   - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a1
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
     fromPort: lod3
     toPort: features
 
-  # ===== SurfaceValidator3D invalidSurface outputs → AttributeMapper =====
+  # ===== Surface check failures → AttributeMapper =====
   # LOD0 invalidSurface → AttributeMapper
   - id: 11a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
@@ -529,22 +529,22 @@ edges:
     fromPort: features
     toPort: features
 
-  # ===== SolidBoundaryValidator edges =====
-  # LOD1 → SolidBoundaryValidator
+  # ===== Solid check edges =====
+  # LOD1 → GeometryFilterSolid
   - id: a110a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: 13100000-0000-4000-8000-000000000001
     fromPort: lod1
     toPort: features
 
-  # LOD2 → SolidBoundaryValidator
+  # LOD2 → GeometryFilterSolid
   - id: a111b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: 13100000-0000-4000-8000-000000000001
     fromPort: lod2
     toPort: features
 
-  # LOD3 → SolidBoundaryValidator
+  # LOD3 → GeometryFilterSolid
   - id: a112c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: 13100000-0000-4000-8000-000000000001
@@ -649,7 +649,7 @@ edges:
     toPort: features
 
   # ===== Orientation errors (面の向き不正) - LOD0 only =====
-  # SurfaceValidator3D_LOD0 inCorrectOrientation → AttributeMapperOrientationErrors
+  # SurfaceChecksLod0 inCorrectOrientation → AttributeMapperOrientationErrors
   - id: 25a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c0
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d

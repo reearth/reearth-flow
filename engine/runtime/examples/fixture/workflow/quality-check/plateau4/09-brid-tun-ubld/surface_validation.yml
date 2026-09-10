@@ -274,10 +274,6 @@ nodes:
   action: Output Router
   with:
     routingPort: errorCountLod1InvalidSurface
-- id: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
-  name: Dummy_GeometryFilter
-  type: action
-  action: Noop Processor
 - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
   name: SurfaceChecksLod2-4
   type: subGraph
@@ -823,6 +819,12 @@ nodes:
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\");\nif pkg == \"brid\" {\n  \"09_橋梁_LOD0面の交差.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_LOD0面の交差.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_LOD0面の交差.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_LOD0面の交差.csv\"\n}\n"
+- id: 09100000-0000-4000-8000-000000000300
+  name: OutputRouter
+  type: action
+  action: Output Router
+  with:
+    routingPort: fileOutput
 edges:
 - id: 8c4d7e2a-5b6f-4918-a3e5-9d1c8b7a6e4f
   from: 5d8f3c2e-9a4b-4e1c-8f7a-3c5d9e2b8a1f
@@ -886,23 +888,18 @@ edges:
   toPort: features
 - id: 9d3f6a8e-4c7b-4e2a-8f5d-2b9c5e8a1f6d
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-  to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+  to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
   fromPort: lod2
   toPort: features
 - id: 8e5b7c4f-2a9d-4f6e-9c3b-7a4f8e2c5b9d
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-  to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+  to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
   fromPort: lod3
   toPort: features
 - id: 6c2e9f5a-7b4d-4c8e-9f2a-5d8c3e6f9b2a
   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-  to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
-  fromPort: lod4
-  toPort: features
-- id: 1a5f3c8d-9e2b-4d7a-8c6f-5b9e3d2a6f8c
-  from: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
   to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
-  fromPort: features
+  fromPort: lod4
   toPort: features
 - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
   from: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
@@ -1104,8 +1101,46 @@ edges:
   to: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
   fromPort: features
   toPort: features
+- id: 09100000-0000-4000-8000-000000000301
+  from: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000302
+  from: f8e2a4c6-5d9b-4f7e-8c3a-1e6d4b8f2c5a
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000303
+  from: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000304
+  from: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000305
+  from: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000306
+  from: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
+- id: 09100000-0000-4000-8000-000000000307
+  from: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
+  to: 09100000-0000-4000-8000-000000000300
+  fromPort: features
+  toPort: features
 ports:
   outputs:
+  - id: fileOutput
+    nodeId: 09100000-0000-4000-8000-000000000300
+    port: features
   - id: errorCountLod0IncorrectOrientation
     nodeId: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     port: features
