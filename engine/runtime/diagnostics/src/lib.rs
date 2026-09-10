@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn czml_reader_variants_exist() {
         // Verify the CZML reader diagnostic codes generate correctly
-        let codes = vec![
+        let codes = [
             ErrorCode::CzmlUnsupportedPosition,
             ErrorCode::CzmlInertialFrame,
             ErrorCode::CzmlGeocentricForce2d,
@@ -116,8 +116,9 @@ mod tests {
         assert_eq!(codes[0].as_str(), "czml.unsupported_position");
         assert_eq!(codes[1].as_str(), "czml.inertial_frame");
         assert_eq!(codes[2].as_str(), "czml.geocentric_force_2d");
-        assert_eq!(codes[0].category(), ErrorCategory::Geometry);
-        assert_eq!(codes[1].category(), ErrorCategory::Geometry);
-        assert_eq!(codes[2].category(), ErrorCategory::Geometry);
+        for code in codes {
+            assert_eq!(code.category(), ErrorCategory::Geometry);
+            assert_eq!(code.default_disposition(), Disposition::WarnDrop);
+        }
     }
 }
