@@ -236,15 +236,6 @@ graphs:
                 type: flowExpr
                 value: "1"
 
-      # GeometryValidator for valid triangular meshes
-      - id: 793402b8-8abc-4a86-b92d-873d6072f76e
-        name: GeometryValidator
-        type: action
-        action: Geometry Validator
-        with:
-          validationTypes:
-            - corruptGeometry: 0.01
-
       # Branch 3: Corrupt geometry (degenerate triangles)
       - id: 38b40d0a-42a8-43e5-8978-898a723fddc8
         name: AttributeMapperCorruptGeometry

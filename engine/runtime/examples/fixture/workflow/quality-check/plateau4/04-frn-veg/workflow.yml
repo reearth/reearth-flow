@@ -155,20 +155,6 @@ graphs:
               type: flowExpr
               value: variables["prcs"]
 
-      # A geometry that cannot be reprojected is reported as a surface error
-      # instead of being dropped before any check runs.
-      - id: 04100000-0000-4000-8000-000000000010
-        name: AttributeManagerReprojectionRejected
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: issue
-              method: create
-              value:
-                type: string
-                value: GeometryRejected
-
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: LodSplitter
         type: subGraph
@@ -894,16 +880,6 @@ graphs:
         from: 950407af-eec5-49ee-902c-2b41f31150d3
         to: 10b3d500-65b6-47a4-ada2-fdf219f3e669
         fromPort: invalidSurface
-        toPort: features
-      - id: 04100000-0000-4000-8000-000000000110
-        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        to: 04100000-0000-4000-8000-000000000010
-        fromPort: rejected
-        toPort: features
-      - id: 04100000-0000-4000-8000-000000000111
-        from: 04100000-0000-4000-8000-000000000010
-        to: 10b3d500-65b6-47a4-ada2-fdf219f3e669
-        fromPort: features
         toPort: features
       - id: a9aaaf1f-5f5e-42a5-8b47-f8c1788b971f
         from: 10b3d500-65b6-47a4-ada2-fdf219f3e669

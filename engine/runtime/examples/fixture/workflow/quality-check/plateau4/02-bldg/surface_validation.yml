@@ -910,7 +910,7 @@ edges:
   - id: b3000000-0000-4000-8000-000000000101
     from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
     to: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
   - id: b3000000-0000-4000-8000-000000000105
     from: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c

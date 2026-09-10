@@ -471,7 +471,7 @@ nodes:
 
   # --- LOD0 surface orientation pipeline ---
   # SurfaceChecks emits every LOD0 face whose 2D exterior ring is wound against
-  # the coordinate frame on `inCorrectOrientation`. A face that also fails a
+  # the coordinate frame on `incorrectOrientation`. A face that also fails a
   # surface check is still counted here: the two errors are independent.
   - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
     name: Lod0IncorrectOrientationCounter
@@ -3557,11 +3557,11 @@ edges:
     fromPort: features
     toPort: features
 
-  # LOD0 surface orientation pipeline (taps inCorrectOrientation surfaces).
+  # LOD0 surface orientation pipeline (taps incorrectOrientation surfaces).
   - id: 8712059f-8e80-4cb6-ba77-12c294035546
     from: d12958f8-f52d-4c95-b62c-58a92d363017
     to: 0177ff7b-a842-4aca-be99-47813bf1b11d
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer (one row per surface)
   - id: 6acfa6f3-ff6b-43e9-af8e-72c99ea08c36

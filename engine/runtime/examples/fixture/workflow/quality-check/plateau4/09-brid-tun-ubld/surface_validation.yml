@@ -839,7 +839,7 @@ edges:
 - id: 9b7d5e3c-4f8a-4e2b-9c1a-8d6f5b3e7c2a
   from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
   to: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-  fromPort: inCorrectOrientation
+  fromPort: incorrectOrientation
   toPort: features
 - id: 7c1e5b9d-3f8a-4e2c-9b6d-8a5c2e7f4b1c
   from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
@@ -1152,12 +1152,6 @@ ports:
     port: features
   - id: errorCountLod1InvalidSurface
     nodeId: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
-    port: features
-  - id: errorCountLod1NotClosedSolid
-    nodeId: bc5638de-624d-46a2-a40b-59dde392ff97
-    port: features
-  - id: errorCountLod1SolidIssues
-    nodeId: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
     port: features
   - id: errorCountLod2InvalidSurface
     nodeId: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d

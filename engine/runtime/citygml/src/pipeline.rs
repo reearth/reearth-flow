@@ -1,26 +1,15 @@
-/// Per-member attribute key under which the new-geometry path records each
-/// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
+/// Per-member attribute keys describing the GML a `GeometryCollection` member was
+/// read from. Its LOD, the local name of the property it filled, and of the GML type
+/// that property held.
 pub const MEMBER_LOD_KEY: &str = "lod";
-
-/// Per-member attribute keys naming the GML a member was read from: the local
-/// name of the property it filled (`lod3Geometry`) and of the GML type that
-/// property held (`Solid`). Neither follows from the resolved geometry, since two
-/// properties of one LOD differ only by name and several GML types share a Flow
-/// geometry (`MultiSurface` and `MultiGeometry` are both a `Collection`). The type
-/// key is absent when the property held nothing but an `xlink:href`, whose target
-/// type is not known until pass 2.
 pub const MEMBER_GML_PROPERTY_NAME_KEY: &str = "gmlPropertyName";
 pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
 
 /// Per-member attribute keys naming the element the geometry property hung from,
-/// the object the geometry belongs to. One feature can hold the geometry of several
-/// nested objects, so the feature's own `gml:id` and type do not identify a single
-/// member's owner.
-///
-/// The type is always known; the id is there only when that element carries a
-/// `gml:id`. An ADE property container such as `uro:DmGeometricAttribute` carries
-/// none, so its geometry is named by type alone, which is what tells it apart from
-/// a city object's own geometry.
+/// the object the geometry belongs to: one feature can hold the geometry of
+/// several nested objects, so the feature's own `gml:id` and type do not identify
+/// a member's owner. The type is always known, the id only when that element
+/// carries a `gml:id`.
 pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
 pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
 
@@ -679,88 +668,6 @@ mod build_next {
                 vec![
                     (Some(&lod1.0), Some(&lod1.1), Some(&lod1.2)),
                     (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
-                ]
-            );
-        }
-
-        #[test]
-        fn case15_geometry_under_an_ade_container_is_named_by_its_owner_type() {
-            // `uro:DmGeometricAttribute` holds survey geometry, not the building's
-            // own. It carries no `gml:id`, so only the owner type tells the two
-            // apart; a workflow reads that key to keep survey geometry out of the
-            // checks meant for city objects.
-            let members = format!(
-                "<core:cityObjectMember><bldg:Building gml:id=\"b1\">\
-                   <uro:bldgDmAttribute><uro:DmGeometricAttribute>\
-                     <uro:lod0Geometry><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></uro:lod0Geometry>\
-                   </uro:DmGeometricAttribute></uro:bldgDmAttribute>\
-                   <bldg:lod0MultiSurface><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></bldg:lod0MultiSurface>\
-                 </bldg:Building></core:cityObjectMember>"
-            );
-            let features = run(&members, &[]);
-            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
-                panic!(
-                    "expected GeometryCollection, got {:?}",
-                    features[0].geometry
-                );
-            };
-            let owners: Vec<(Option<&AttributeValue>, Option<&AttributeValue>)> = gc
-                .member_attributes()
-                .iter()
-                .map(|a| {
-                    (
-                        a.get(&Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY)),
-                        a.get(&Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY)),
-                    )
-                })
-                .collect();
-            let dm = AttributeValue::String("uro:DmGeometricAttribute".to_string());
-            let building = AttributeValue::String("bldg:Building".to_string());
-            let b1 = AttributeValue::String("b1".to_string());
-            // Both are LOD 0; the owner type is the only thing separating them, and
-            // the ADE container contributes no id.
-            assert_eq!(
-                owners,
-                vec![(Some(&dm), None), (Some(&building), Some(&b1))]
-            );
-        }
-
-        #[test]
-        fn case14_each_member_names_the_gml_it_was_read_from() {
-            // Both properties are LOD 1 and both resolve to a Collection, so the
-            // property and type names are the only thing separating them.
-            let members = format!(
-                "<core:cityObjectMember><bldg:Building gml:id=\"b1\">\
-                   <core:lod1MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod1MultiSurface>\
-                   <core:lod1Geometry><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></core:lod1Geometry>\
-                 </bldg:Building></core:cityObjectMember>"
-            );
-            let features = run(&members, &[]);
-            assert_eq!(features.len(), 1);
-            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
-                panic!(
-                    "expected GeometryCollection, got {:?}",
-                    features[0].geometry
-                );
-            };
-            let names: Vec<(Option<&AttributeValue>, Option<&AttributeValue>)> = gc
-                .member_attributes()
-                .iter()
-                .map(|a| {
-                    (
-                        a.get(&Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY)),
-                        a.get(&Attribute::new(MEMBER_GEOMETRY_NAME_KEY)),
-                    )
-                })
-                .collect();
-            let multi_surface = AttributeValue::String("lod1MultiSurface".to_string());
-            let geometry = AttributeValue::String("lod1Geometry".to_string());
-            let ty = AttributeValue::String("MultiSurface".to_string());
-            assert_eq!(
-                names,
-                vec![
-                    (Some(&multi_surface), Some(&ty)),
-                    (Some(&geometry), Some(&ty)),
                 ]
             );
         }

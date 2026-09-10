@@ -4,7 +4,7 @@ name: PLATEAU4.SurfaceChecks
 # their faces, multi-surfaces into their polygons). Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue`, and every
 # face whose 2D outline is wound against the coordinate frame on
-# `inCorrectOrientation`. Geometry no step could handle also leaves via
+# `incorrectOrientation`. Geometry no step could handle also leaves via
 # `invalidSurface`, so nothing is dropped silently.
 nodes:
   - id: d4000000-0000-4000-8000-000000000001
@@ -34,16 +34,9 @@ nodes:
     type: action
     action: Geometry Splitter
 
-  - id: d4000000-0000-4000-8000-000000000005
-    name: FacesRouter
-    type: action
-    action: Output Router
-    with:
-      routingPort: faces
-
   # Vertices within `duplicateTolerance` of each other count as one point: a
   # reprojected surface does not preserve exact coordinate equality.
-  - id: d4000000-0000-4000-8000-000000000006
+  - id: d4000000-0000-4000-8000-000000000005
     name: GeometryValidatorFace
     type: action
     action: Geometry Validator
@@ -52,7 +45,7 @@ nodes:
       planarityThreshold:
         maxHeight: 0.03
 
-  - id: d4000000-0000-4000-8000-000000000007
+  - id: d4000000-0000-4000-8000-000000000006
     name: AttributeManagerIssues
     type: action
     action: Attribute Manager
@@ -75,14 +68,14 @@ nodes:
               checks = attributes["validationResult"]["checks"];
               itertools.map(itertools.sorted(checks.keys()), fn(k) { {"issue": names.get(k, k)} })
 
-  - id: d4000000-0000-4000-8000-000000000008
+  - id: d4000000-0000-4000-8000-000000000007
     name: ListExploderIssues
     type: action
     action: List Exploder
     with:
       sourceAttribute: _issues
 
-  - id: d4000000-0000-4000-8000-000000000009
+  - id: d4000000-0000-4000-8000-000000000008
     name: InvalidSurfaceRouter
     type: action
     action: Output Router
@@ -93,7 +86,7 @@ nodes:
   # against its exterior is already reported by the 3D pass above, as
   # `IncorrectInteriorOrientation`, and would otherwise be reported a second time
   # here under a different name.
-  - id: d4000000-0000-4000-8000-00000000000f
+  - id: d4000000-0000-4000-8000-000000000009
     name: HoleExtractorOutline
     type: action
     action: Hole Extractor
@@ -121,14 +114,14 @@ nodes:
         - expr:
             type: flowExpr
             value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0
-          outputPort: inCorrectOrientation
+          outputPort: incorrectOrientation
 
   - id: d4000000-0000-4000-8000-00000000000d
-    name: InCorrectOrientationRouter
+    name: IncorrectOrientationRouter
     type: action
     action: Output Router
     with:
-      routingPort: inCorrectOrientation
+      routingPort: incorrectOrientation
 
   - id: d4000000-0000-4000-8000-00000000000e
     name: AttributeManagerRejected
@@ -158,42 +151,37 @@ edges:
     to: d4000000-0000-4000-8000-000000000004
     fromPort: features
     toPort: features
+
+  ## Surface errors
   - id: d4000000-0000-4000-8000-000000000104
     from: d4000000-0000-4000-8000-000000000004
     to: d4000000-0000-4000-8000-000000000005
     fromPort: features
     toPort: features
-
-  ## Surface errors
   - id: d4000000-0000-4000-8000-000000000105
-    from: d4000000-0000-4000-8000-000000000004
+    from: d4000000-0000-4000-8000-000000000005
     to: d4000000-0000-4000-8000-000000000006
-    fromPort: features
+    fromPort: failed
     toPort: features
   - id: d4000000-0000-4000-8000-000000000106
     from: d4000000-0000-4000-8000-000000000006
     to: d4000000-0000-4000-8000-000000000007
-    fromPort: failed
+    fromPort: features
     toPort: features
   - id: d4000000-0000-4000-8000-000000000107
     from: d4000000-0000-4000-8000-000000000007
     to: d4000000-0000-4000-8000-000000000008
     fromPort: features
     toPort: features
+
+  ## Incorrect orientation
   - id: d4000000-0000-4000-8000-000000000108
-    from: d4000000-0000-4000-8000-000000000008
+    from: d4000000-0000-4000-8000-000000000004
     to: d4000000-0000-4000-8000-000000000009
     fromPort: features
     toPort: features
-
-  ## Incorrect orientation
   - id: d4000000-0000-4000-8000-000000000109
-    from: d4000000-0000-4000-8000-000000000004
-    to: d4000000-0000-4000-8000-00000000000f
-    fromPort: features
-    toPort: features
-  - id: d4000000-0000-4000-8000-000000000111
-    from: d4000000-0000-4000-8000-00000000000f
+    from: d4000000-0000-4000-8000-000000000009
     to: d4000000-0000-4000-8000-00000000000a
     fromPort: exterior
     toPort: features
@@ -210,44 +198,41 @@ edges:
   - id: d4000000-0000-4000-8000-00000000010c
     from: d4000000-0000-4000-8000-00000000000c
     to: d4000000-0000-4000-8000-00000000000d
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
 
   ## Geometry no step could handle is reported rather than dropped
   - id: d4000000-0000-4000-8000-00000000010d
-    from: d4000000-0000-4000-8000-000000000006
-    to: d4000000-0000-4000-8000-00000000000e
-    fromPort: rejected
-    toPort: features
-  - id: d4000000-0000-4000-8000-000000000112
-    from: d4000000-0000-4000-8000-00000000000f
+    from: d4000000-0000-4000-8000-000000000005
     to: d4000000-0000-4000-8000-00000000000e
     fromPort: rejected
     toPort: features
   - id: d4000000-0000-4000-8000-00000000010e
-    from: d4000000-0000-4000-8000-00000000000a
+    from: d4000000-0000-4000-8000-000000000009
     to: d4000000-0000-4000-8000-00000000000e
     fromPort: rejected
     toPort: features
   - id: d4000000-0000-4000-8000-00000000010f
-    from: d4000000-0000-4000-8000-00000000000b
+    from: d4000000-0000-4000-8000-00000000000a
     to: d4000000-0000-4000-8000-00000000000e
     fromPort: rejected
     toPort: features
   - id: d4000000-0000-4000-8000-000000000110
+    from: d4000000-0000-4000-8000-00000000000b
+    to: d4000000-0000-4000-8000-00000000000e
+    fromPort: rejected
+    toPort: features
+  - id: d4000000-0000-4000-8000-000000000111
     from: d4000000-0000-4000-8000-00000000000e
-    to: d4000000-0000-4000-8000-000000000009
+    to: d4000000-0000-4000-8000-000000000008
     fromPort: features
     toPort: features
 
 ports:
   outputs:
-    - id: faces
-      nodeId: d4000000-0000-4000-8000-000000000005
-      port: features
     - id: invalidSurface
-      nodeId: d4000000-0000-4000-8000-000000000009
+      nodeId: d4000000-0000-4000-8000-000000000008
       port: features
-    - id: inCorrectOrientation
+    - id: incorrectOrientation
       nodeId: d4000000-0000-4000-8000-00000000000d
       port: features

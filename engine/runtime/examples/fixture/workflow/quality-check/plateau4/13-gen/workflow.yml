@@ -179,20 +179,6 @@ graphs:
           countStart: 0
           outputAttribute: featureIndex
 
-      # A geometry that cannot be reprojected is reported as a surface error
-      # instead of being dropped before any check runs.
-      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
-        name: AttributeManagerReprojectionRejected
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: issue
-              method: create
-              value:
-                type: string
-                value: GeometryRejected
-
       # GEN Validation Subgraph
       - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9f
         name: GENValidation
@@ -510,17 +496,6 @@ graphs:
         to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
         fromPort: features
         toPort: features
-      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6e
-        from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
-        to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
-        fromPort: rejected
-        toPort: features
-      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6f
-        from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6d
-        to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9f
-        fromPort: features
-        toPort: rejected
-
       # FeatureSorter → FeatureCounterFeatureIndex
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7c
         from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d

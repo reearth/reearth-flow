@@ -159,20 +159,6 @@ graphs:
               type: flowExpr
               value: variables["prcs"]
 
-      # A city object the reprojection could not convert takes part in no check at
-      # all, so it is reported as a surface error rather than dropped.
-      - id: 05100000-0000-4000-8000-000000000001
-        name: AttributeManagerReprojectionRejected
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: issue
-              method: create
-              value:
-                type: string
-                value: GeometryRejected
-
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: LodSplitter
         type: subGraph
@@ -655,7 +641,7 @@ graphs:
       - id: 3bc60cc8-2b85-4912-9c9a-be697af8c98e
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
         to: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
-        fromPort: inCorrectOrientation
+        fromPort: incorrectOrientation
         toPort: features
       - id: fb63cbbf-f2c2-4be4-9d2d-5fbf1949d41c
         from: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
@@ -667,21 +653,6 @@ graphs:
         to: ba747af8-c4fb-4481-9406-e14f1d4c7f57
         fromPort: invalidSurface
         toPort: features
-      - id: 05100000-0000-4000-8000-000000000101
-        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        to: 05100000-0000-4000-8000-000000000001
-        fromPort: rejected
-        toPort: features
-      - id: 05100000-0000-4000-8000-000000000102
-        from: 05100000-0000-4000-8000-000000000001
-        to: ba747af8-c4fb-4481-9406-e14f1d4c7f57
-        fromPort: features
-        toPort: features
-      - id: 05100000-0000-4000-8000-000000000103
-        from: 05100000-0000-4000-8000-000000000001
-        to: 667c37eb-2b19-4a86-8aa4-70679f7787b5
-        fromPort: features
-        toPort: features
       - id: 03533a65-b64e-41a9-a8d7-8df66866f57b
         from: ba747af8-c4fb-4481-9406-e14f1d4c7f57
         to: eb34119b-592f-4140-b9b9-f3712a805c47
@@ -690,7 +661,7 @@ graphs:
       - id: df71e174-5ad7-40e1-9bc2-989014b0880f
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
         to: 26751290-4ac7-4884-908a-7c231b5f820a
-        fromPort: inCorrectOrientation
+        fromPort: incorrectOrientation
         toPort: features
       - id: fde37f13-ef96-4ab7-907b-140a4f0ef1b5
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
