@@ -184,7 +184,7 @@ fn numbers(value: &Value, key: &str) -> Result<Vec<f64>, PositionProblem> {
 /// Chunk a flat number list into triples, converting radians and swapping to the
 /// frame's storage order.
 fn into_coords(raw: Raw) -> Result<Coords, PositionProblem> {
-    if raw.numbers.is_empty() || raw.numbers.len() % 3 != 0 {
+    if raw.numbers.is_empty() || !raw.numbers.len().is_multiple_of(3) {
         return Err(PositionProblem::Malformed(format!(
             "a position list needs a whole number of [x, y, z] triples, got {} values",
             raw.numbers.len()
@@ -419,9 +419,9 @@ fn packet_geometry(packet: &Value, force_2d: bool) -> Result<Geometry, PositionP
         // here) returns `None` both when `coordinates` has no `wsen`/`wsenDegrees`
         // key at all, and when it has one whose value is corrupt. Only the first is
         // absence; the second is present-and-malformed and must fail the read.
-        let has_wsen_key = coordinates.as_object().is_some_and(|obj| {
-            obj.contains_key("wsenDegrees") || obj.contains_key("wsen")
-        });
+        let has_wsen_key = coordinates
+            .as_object()
+            .is_some_and(|obj| obj.contains_key("wsenDegrees") || obj.contains_key("wsen"));
         match extract_rectangle_bounds(coordinates) {
             Some(wsen) => return rectangle_geometry(&wsen, force_2d),
             None if has_wsen_key => {
@@ -706,8 +706,8 @@ mod tests {
     // `use` block above, so `use super::*` brings them into the tests.
     //
     // `Attribute` doubles as a `Feature::get` key: `get` takes
-    // `T: AsRef<str> + Display`, and `&Attribute` satisfies both through std's
-    // blanket impls, so `feature.get(&Attribute::new("id"))` compiles.
+    // `T: AsRef<str> + Display`, both of which `Attribute` implements directly,
+    // so `feature.get(Attribute::new("id"))` compiles without a borrow.
 
     use crate::file::reader::runner::FileReaderCompiledParam;
 
@@ -729,8 +729,12 @@ mod tests {
     }
 
     fn read_str(json: &str, params: &CzmlReaderCompiledParam) -> Vec<Feature> {
-        read(&NodeContext::default(), &Bytes::from(json.to_string()), params)
-            .expect("the document reads")
+        read(
+            &NodeContext::default(),
+            &Bytes::from(json.to_string()),
+            params,
+        )
+        .expect("the document reads")
     }
 
     #[test]
@@ -742,7 +746,7 @@ mod tests {
         );
         assert_eq!(features.len(), 1);
         assert_eq!(
-            features[0].get(&Attribute::new("id")),
+            features[0].get(Attribute::new("id")),
             Some(&AttributeValue::String("a".to_string())),
         );
         assert!(matches!(
@@ -762,11 +766,11 @@ mod tests {
         assert_eq!(features.len(), 1);
         assert!(matches!(&*features[0].geometry, Geometry::None));
         assert_eq!(
-            features[0].get(&Attribute::new("name")),
+            features[0].get(Attribute::new("name")),
             Some(&AttributeValue::String("n".to_string())),
         );
         // The graphics survive for the writer's embedded mode to replay.
-        assert!(features[0].get(&Attribute::new("czml.point")).is_some());
+        assert!(features[0].get(Attribute::new("czml.point")).is_some());
     }
 
     #[test]
@@ -778,7 +782,7 @@ mod tests {
         );
         assert_eq!(features.len(), 1);
         assert_eq!(
-            features[0].get(&Attribute::new("id")),
+            features[0].get(Attribute::new("id")),
             Some(&AttributeValue::String("a".to_string())),
         );
     }
@@ -793,8 +797,8 @@ mod tests {
             &params(false, false),
         );
         assert_eq!(features.len(), 1);
-        assert!(features[0].get(&Attribute::new("czml.version")).is_some());
-        assert!(features[0].get(&Attribute::new("czml.clock")).is_some());
+        assert!(features[0].get(Attribute::new("czml.version")).is_some());
+        assert!(features[0].get(Attribute::new("czml.clock")).is_some());
     }
 
     #[test]
@@ -814,8 +818,7 @@ mod tests {
         // Geometry: latitude first.
         assert_eq!(p.position(), [35.68, 139.76, 50.0]);
         // Timeseries JSON: longitude first, untouched.
-        let Some(AttributeValue::String(json)) =
-            features[0].get(&Attribute::new("czml.timeseries"))
+        let Some(AttributeValue::String(json)) = features[0].get(Attribute::new("czml.timeseries"))
         else {
             panic!("expected a timeseries attribute");
         };
@@ -835,7 +838,7 @@ mod tests {
         // The inertial packet is reported and dropped; its sibling still reads.
         assert_eq!(features.len(), 1);
         assert_eq!(
-            features[0].get(&Attribute::new("id")),
+            features[0].get(Attribute::new("id")),
             Some(&AttributeValue::String("b".to_string())),
         );
     }

@@ -175,6 +175,30 @@ impl Source for CzmlReader {
             .await
             .map_err(Into::<BoxedError>::into)
     }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+
+        let features = czml_next::read(&ctx, &content, &self.params)?;
+
+        for feature in features {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| SourceError::CzmlReader(format!("Failed to send feature: {e}")))?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(not(feature = "new-geometry"))]
