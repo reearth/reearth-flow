@@ -96,6 +96,7 @@
   "Preparing {{completed}} / {{total}}…": "準備中 {{completed}} / {{total}}…",
   "Download all as ZIP": "すべてをZIPでダウンロード",
   "{{failed}} file(s) could not be downloaded": "{{failed}} ファイルをダウンロードできませんでした",
+  "Download {{name}}": "",
   "Select Language": "言語を選択",
   "Light": "ライト",
   "Dark": "ダーク",

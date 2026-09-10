@@ -9,11 +9,7 @@ import { useMemo } from "react";
 import { Button } from "@flow/components";
 import { useArtifactZipDownload } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import {
-  folderArchiveName,
-  groupArtifactsByFolder,
-  openLinkInNewTab,
-} from "@flow/utils";
+import { folderArchiveName, groupArtifactsByFolder } from "@flow/utils";
 import type { ArtifactFile } from "@flow/utils";
 
 type Props = {
@@ -114,16 +110,19 @@ const OutputArtifacts: React.FC<Props> = ({ files, archiveName }) => {
                   className="flex items-center justify-between gap-2 rounded py-1 hover:bg-accent">
                   <div className="flex min-w-0 items-center gap-2">
                     <FileIcon className="shrink-0" />
-                    <p
-                      title={file.name}
-                      className="cursor-pointer truncate text-sm font-light text-blue-400 hover:text-blue-300"
-                      onClick={openLinkInNewTab(file.url)}>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={file.path}
+                      className="truncate text-sm font-light text-blue-400 hover:text-blue-300 hover:underline focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden">
                       {file.name}
-                    </p>
+                    </a>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={t("Download {{name}}", { name: file.path })}
                     onClick={() => downloadOne(file)}>
                     <DownloadIcon />
                   </Button>

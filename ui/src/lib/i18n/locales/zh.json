@@ -96,6 +96,7 @@
   "Preparing {{completed}} / {{total}}…": "准备中 {{completed}} / {{total}}…",
   "Download all as ZIP": "全部下载为ZIP",
   "{{failed}} file(s) could not be downloaded": "{{failed}} 个文件无法下载",
+  "Download {{name}}": "",
   "Select Language": "选择语言",
   "Light": "浅色",
   "Dark": "深色",

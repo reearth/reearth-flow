@@ -96,6 +96,7 @@
   "Preparing {{completed}} / {{total}}…": "",
   "Download all as ZIP": "",
   "{{failed}} file(s) could not be downloaded": "",
+  "Download {{name}}": "",
   "Select Language": "",
   "Light": "Light",
   "Dark": "Dark",
