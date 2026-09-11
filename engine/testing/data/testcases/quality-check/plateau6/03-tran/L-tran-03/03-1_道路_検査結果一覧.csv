@@ -1,4 +1,4 @@
 "Index","Folder","Filename","フィーチャータイプ","LOD","インスタンス数","面のエラー","面の向き不正","隣接面重複","xlink参照エラー"
-1,"tran","53395499_tran_6697_op.gml","TrafficArea",3,1,0,2,0,0
-1,"tran","53395499_tran_6697_op.gml","AuxiliaryTrafficArea",3,1,0,2,0,0
-1,"tran","53395499_tran_6697_op.gml","Road",3,1,0,2,0,2
+1,"tran","53395499_tran_6697_op.gml","TrafficArea",3,1,0,0,0,0
+1,"tran","53395499_tran_6697_op.gml","AuxiliaryTrafficArea",3,1,0,0,0,0
+1,"tran","53395499_tran_6697_op.gml","Road",3,1,0,0,0,2

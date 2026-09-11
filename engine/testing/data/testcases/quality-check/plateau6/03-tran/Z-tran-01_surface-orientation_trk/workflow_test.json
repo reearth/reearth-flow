@@ -46,9 +46,6 @@
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "03-3_徒歩道_検査結果一覧.csv",
-      "includeColumns": [
-        "面の向き不正"
-      ],
       "keyColumns": [
         "Filename",
         "フィーチャータイプ",
