@@ -128,7 +128,6 @@ var baseActions = map[string]bool{
 	"PLATEAU4.MaxLodExtractor":                         true,
 	"PLATEAU4.MissingAttributeDetector":                true,
 	"PLATEAU4.ObjectListExtractor":                     true,
-	"PLATEAU4.SolarCityGmlAttributeInserter":           true,
 	"PLATEAU4.SolidIntersectionTestPairCreator":        true,
 	"PLATEAU4.TransitiveLinkResolver":                  true,
 	"PLATEAU4.TransportationXlinkDetector":             true,
