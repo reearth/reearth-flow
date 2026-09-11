@@ -46,11 +46,7 @@
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "03-3_徒歩道_検査結果一覧.csv",
-      "keyColumns": [
-        "Filename",
-        "フィーチャータイプ",
-        "LOD"
-      ]
+      "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
     }
   },
   "expectResultOkFile": true

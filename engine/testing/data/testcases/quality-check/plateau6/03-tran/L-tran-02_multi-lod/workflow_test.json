@@ -38,21 +38,13 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": [
-      "03-1_道路_隣接面重複.csv"
-    ],
-    "except": [
-      "隣接ID"
-    ]
+    "expectedFile": ["03-1_道路_隣接面重複.csv"],
+    "except": ["隣接ID"]
   },
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "03-1_道路_検査結果一覧.csv",
-      "keyColumns": [
-        "Filename",
-        "フィーチャータイプ",
-        "LOD"
-      ]
+      "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
     }
   },
   "expectResultOkFile": true

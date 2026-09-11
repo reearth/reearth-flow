@@ -46,11 +46,7 @@
     },
     "fileErrorSummary": {
       "expectedFile": "03-1_道路_検査結果一覧.csv",
-      "keyColumns": [
-        "Filename",
-        "フィーチャータイプ",
-        "LOD"
-      ]
+      "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
     }
   },
   "expectResultOkFile": false

@@ -1,1 +1,49 @@
-{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[-19468.208054886814,-18728.500585496888,1.0],[-19468.183628932693,-18717.406082957255,0.0],[-19481.735637228096,-18717.37623607169,0.0],[-19481.760080185595,-18728.470738645246,0.0],[-19468.208054886814,-18728.500585496888,1.0]]},"properties":{"index":1,"folder":"tran","filename":"53395499_tran_6697_op.gml","ftr_type":"TrafficArea","lod":1,"gml_id":"tran_6c3d9e52-8a1f-4b74-8c26-3d5f7b9c1e48","issue":"NonPlanarSurface"},"id":"639d65f8-0471-4ceb-a765-f0164b7839f0"},{"type":"Feature","geometry":{"type":"Point","coordinates":[-19456.90249458855,-18722.978184674994,0.0]},"properties":{"index":1,"folder":"tran","filename":"53395499_tran_6697_op.gml","ftr_type":"AuxiliaryTrafficArea","lod":1,"gml_id":"tran_0a7b3c96-2e5d-4f18-8a6a-7b9d1f3c5e82","issue":"SelfIntersection"},"id":"639d65f8-0471-4ceb-a765-f0164b7839f0"}],"crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:EPSG::6677"}}}
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-19468.208054886814, -18728.500585496888, 1.0],
+          [-19468.183628932693, -18717.406082957255, 0.0],
+          [-19481.735637228096, -18717.37623607169, 0.0],
+          [-19481.760080185595, -18728.470738645246, 0.0],
+          [-19468.208054886814, -18728.500585496888, 1.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "tran",
+        "filename": "53395499_tran_6697_op.gml",
+        "ftr_type": "TrafficArea",
+        "lod": 1,
+        "gml_id": "tran_6c3d9e52-8a1f-4b74-8c26-3d5f7b9c1e48",
+        "issue": "NonPlanarSurface"
+      },
+      "id": "639d65f8-0471-4ceb-a765-f0164b7839f0"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-19456.90249458855, -18722.978184674994, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "tran",
+        "filename": "53395499_tran_6697_op.gml",
+        "ftr_type": "AuxiliaryTrafficArea",
+        "lod": 1,
+        "gml_id": "tran_0a7b3c96-2e5d-4f18-8a6a-7b9d1f3c5e82",
+        "issue": "SelfIntersection"
+      },
+      "id": "639d65f8-0471-4ceb-a765-f0164b7839f0"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6677" }
+  }
+}

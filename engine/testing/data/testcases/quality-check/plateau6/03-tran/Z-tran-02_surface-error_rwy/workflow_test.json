@@ -47,11 +47,7 @@
   "summaryOutput": {
     "fileErrorSummary": {
       "expectedFile": "03-2_鉄道_検査結果一覧.csv",
-      "keyColumns": [
-        "Filename",
-        "フィーチャータイプ",
-        "LOD"
-      ]
+      "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
     }
   },
   "expectResultOkFile": false

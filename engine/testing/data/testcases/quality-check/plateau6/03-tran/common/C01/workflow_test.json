@@ -39,9 +39,7 @@
   ],
   "expectedOutput": {
     "expectedFile": "01_共通_GML_ID重複.csv",
-    "except": [
-      "Index"
-    ]
+    "except": ["Index"]
   },
   "summaryOutput": {
     "errorCountSummary": {
@@ -50,20 +48,12 @@
     "fileErrorSummary": [
       {
         "expectedFile": "01_共通.csv",
-        "excludeColumns": [
-          "Index"
-        ]
+        "excludeColumns": ["Index"]
       },
       {
         "expectedFile": "03-1_道路_検査結果一覧.csv",
-        "excludeColumns": [
-          "Index"
-        ],
-        "keyColumns": [
-          "Filename",
-          "フィーチャータイプ",
-          "LOD"
-        ]
+        "excludeColumns": ["Index"],
+        "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
       }
     ]
   },

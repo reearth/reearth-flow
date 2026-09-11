@@ -1,1 +1,63 @@
-{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[-19459.173371379366,-18728.520471858752,3.25],[-19459.14895676083,-18717.425969342454,3.25],[-19472.700965027983,-18717.396136302825,3.25],[-19472.725396649894,-18728.49063885447,3.25],[-19459.173371379366,-18728.520471858752,3.25]]]]},"properties":{"index":1,"folder":"tran","filename":"53395499_tran_6697_op.gml","ftr_type":"TrafficArea","lod":3,"gml_id":"tran_c7f15d2a-3e8b-4c94-8a62-7d9f0b3e5a18","pair_id":1},"id":"f6991b10-b993-4a7e-be3a-891ec621b5e9"},{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[-19468.208054886814,-18728.500585496888,5.5],[-19468.183628932693,-18717.406082957255,5.5],[-19481.735637228096,-18717.37623607169,5.5],[-19481.760080185595,-18728.470738645246,5.5],[-19468.208054886814,-18728.500585496888,5.5]]]]},"properties":{"index":1,"folder":"tran","filename":"53395499_tran_6697_op.gml","ftr_type":"TrafficArea","lod":3,"gml_id":"tran_b6e04c19-2f7a-4d83-9b51-6c8e0a2f4d17","pair_id":1},"id":"46d9300a-5371-416c-b63d-78bd0cf33a50"}],"crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:EPSG::6677"}}}
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-19459.173371379366, -18728.520471858752, 3.25],
+              [-19459.14895676083, -18717.425969342454, 3.25],
+              [-19472.700965027983, -18717.396136302825, 3.25],
+              [-19472.725396649894, -18728.49063885447, 3.25],
+              [-19459.173371379366, -18728.520471858752, 3.25]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "tran",
+        "filename": "53395499_tran_6697_op.gml",
+        "ftr_type": "TrafficArea",
+        "lod": 3,
+        "gml_id": "tran_c7f15d2a-3e8b-4c94-8a62-7d9f0b3e5a18",
+        "pair_id": 1
+      },
+      "id": "f6991b10-b993-4a7e-be3a-891ec621b5e9"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-19468.208054886814, -18728.500585496888, 5.5],
+              [-19468.183628932693, -18717.406082957255, 5.5],
+              [-19481.735637228096, -18717.37623607169, 5.5],
+              [-19481.760080185595, -18728.470738645246, 5.5],
+              [-19468.208054886814, -18728.500585496888, 5.5]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "tran",
+        "filename": "53395499_tran_6697_op.gml",
+        "ftr_type": "TrafficArea",
+        "lod": 3,
+        "gml_id": "tran_b6e04c19-2f7a-4d83-9b51-6c8e0a2f4d17",
+        "pair_id": 1
+      },
+      "id": "46d9300a-5371-416c-b63d-78bd0cf33a50"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6677" }
+  }
+}
