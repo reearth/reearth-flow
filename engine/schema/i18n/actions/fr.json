@@ -641,6 +641,18 @@
             "title": "TSV (Tab-Separated Values)",
             "description": "File with tab-separated values"
           }
+        },
+        "GeometryConfig": {
+          "column": {
+            "title": "WKT Column",
+            "description": "Geometry stored as Well-Known Text in a single column",
+            "properties": {
+              "column": {
+                "title": "WKT Column Name",
+                "description": "Name of the column containing WKT geometry"
+              }
+            }
+          }
         }
       }
     },
@@ -682,6 +694,18 @@
           "tsv": {
             "title": "TSV (Tab-Separated Values)",
             "description": "File with tab-separated values"
+          }
+        },
+        "GeometryExportConfig": {
+          "column": {
+            "title": "WKT Column",
+            "description": "Write geometry as Well-Known Text in a single column",
+            "properties": {
+              "column": {
+                "title": "WKT Column Name",
+                "description": "Name of the column to write WKT geometry"
+              }
+            }
           }
         }
       }
@@ -1046,6 +1070,40 @@
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
         }
+      },
+      "enumI18n": {
+        "CoordinateExtractionMode": {
+          "allCoordinates": {
+            "description": "Extract all vertices into a list attribute.",
+            "properties": {
+              "coordinatesListName": {
+                "title": "Coordinates List Name",
+                "description": "Name of the list attribute that will store coordinate objects (default: \"_indices\")"
+              }
+            }
+          },
+          "specifyCoordinate": {
+            "description": "Extract a single vertex by index.",
+            "properties": {
+              "coordinateIndex": {
+                "title": "Coordinate Index",
+                "description": "Index of the coordinate to extract. 0 = first vertex, negative values count from end (-1 = last)."
+              },
+              "xAttribute": {
+                "title": "X Attribute Name",
+                "description": "Name of the X coordinate attribute (default: \"_x\")"
+              },
+              "yAttribute": {
+                "title": "Y Attribute Name",
+                "description": "Name of the Y coordinate attribute (default: \"_y\")"
+              },
+              "zAttribute": {
+                "title": "Z Attribute Name",
+                "description": "Name of the Z coordinate attribute (default: \"_z\")"
+              }
+            }
+          }
+        }
       }
     },
     {
@@ -1065,7 +1123,37 @@
         }
       },
       "enumI18n": {
+        "BasePoint": {
+          "asIs": {
+            "title": "As Is",
+            "description": "Reinterpret coordinate values unchanged across the boundary."
+          },
+          "fromPort": {
+            "title": "From Port",
+            "description": "Offset by a base point taken from the base-point input port, matched to each feature by a key.",
+            "properties": {
+              "matchKey": {
+                "title": "Match Key",
+                "description": "Expression identifying which base-point feature applies to a given feature. Evaluated against both streams."
+              }
+            }
+          },
+          "value": {
+            "title": "Value",
+            "description": "Offset by a base point given as an expression evaluating to `[x, y, z]`.",
+            "properties": {
+              "basePoint": {
+                "title": "Base Point",
+                "description": "Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's declared axis order."
+              }
+            }
+          }
+        },
         "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
           "euclidean": {
             "title": "Euclidean",
             "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
@@ -1104,6 +1192,10 @@
             "title": "Detect Automatically",
             "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unixMs` input format."
           },
+          "custom": {
+            "title": "Custom Pattern",
+            "description": "Field-by-field pattern, for values none of the fixed formats match."
+          },
           "date": {
             "title": "Date Only",
             "description": "Date only format (YYYY-MM-DD)"
@@ -1125,6 +1217,10 @@
           "auto": {
             "title": "Typed Datetime",
             "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string."
+          },
+          "custom": {
+            "title": "Custom Pattern",
+            "description": "Writes a string built from a field-by-field pattern."
           },
           "date": {
             "title": "Date Only",
@@ -1662,6 +1758,36 @@
         "": {
           "title": "Feature Writer Parameters",
           "description": "Configuration for writing features to different file formats."
+        },
+        "format": {
+          "title": "Format",
+          "description": "The file format to write. Every format writes attribute values only; geometry is not included in the output."
+        },
+        "output": {
+          "title": "Output Path",
+          "description": "Where to write, relative to the job's output directory. Evaluated once per feature, so an expression over the feature's attributes splits the stream into one file per distinct result."
+        }
+      },
+      "enumI18n": {
+        "FeatureWriterFormat": {
+          "csv": {
+            "title": "CSV",
+            "description": "Comma-separated values. The column list comes from the first feature written to a file, so every later feature must carry those same attributes."
+          },
+          "json": {
+            "title": "JSON",
+            "description": "An array of objects, one per feature, holding its attribute values.",
+            "properties": {
+              "converter": {
+                "title": "Converter",
+                "description": "Builds the JSON document from all the features destined for one file, replacing the default array of attribute objects."
+              }
+            }
+          },
+          "tsv": {
+            "title": "TSV",
+            "description": "Tab-separated values, with the same column rules as CSV."
+          }
         }
       }
     },
@@ -1708,6 +1834,32 @@
         "projectionPlane": {
           "title": "Plan de projection",
           "description": "Plan sur lequel la géométrie est projetée. Par défaut, le plan horizontal."
+        }
+      },
+      "enumI18n": {
+        "ProjectionPlane": {
+          "custom": {
+            "title": "Custom Plane",
+            "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+            "properties": {
+              "normal": {
+                "title": "Normal",
+                "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length."
+              },
+              "origin": {
+                "title": "Origin",
+                "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`."
+              },
+              "xAxis": {
+                "title": "X Axis",
+                "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical."
+              }
+            }
+          },
+          "horizontal": {
+            "title": "Horizontal",
+            "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system."
+          }
         }
       }
     },
@@ -1914,6 +2066,26 @@
         "": {
           "title": "Geometry Filter Parameters",
           "description": "Configure how to filter features based on their geometry type"
+        },
+        "filterType": {
+          "title": "Filter Type",
+          "description": "The aspect of the geometry that selects the output port. A feature no port claims leaves by `unfiltered`."
+        }
+      },
+      "enumI18n": {
+        "FilterType": {
+          "detailedGeometryType": {
+            "title": "Detailed Geometry Type",
+            "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port."
+          },
+          "geometryType": {
+            "title": "Geometry Type",
+            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid."
+          },
+          "none": {
+            "title": "No Geometry",
+            "description": "Separates the features that carry no geometry at all from the ones that do."
+          }
         }
       }
     },
@@ -2058,6 +2230,16 @@
           "shellOrientation": {
             "title": "Shell Orientation",
             "description": "Detection of solid shells whose faces point the wrong way."
+          }
+        },
+        "PlanarityThreshold": {
+          "maxHeight": {
+            "title": "Max Height",
+            "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs."
+          },
+          "ratio": {
+            "title": "Ratio",
+            "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant."
           }
         }
       }
@@ -2278,6 +2460,72 @@
             "description": "Include API key in URL query string"
           }
         },
+        "Authentication": {
+          "apiKey": {
+            "title": "API Key",
+            "description": "API key authentication in header or query parameter",
+            "properties": {
+              "keyName": {
+                "title": "Key Name",
+                "description": "The name of the API key parameter"
+              },
+              "keyValue": {
+                "title": "Key Value",
+                "description": "The API key value"
+              },
+              "location": {
+                "title": "Location",
+                "description": "Where to include the API key (header or query parameter)"
+              }
+            }
+          },
+          "basic": {
+            "title": "Basic Authentication",
+            "description": "HTTP Basic authentication with username and password",
+            "properties": {
+              "password": {
+                "title": "Password",
+                "description": "The password for basic authentication"
+              },
+              "username": {
+                "title": "Username",
+                "description": "The username for basic authentication"
+              }
+            }
+          },
+          "bearer": {
+            "title": "Bearer Token",
+            "description": "Bearer token authentication (OAuth 2.0)",
+            "properties": {
+              "token": {
+                "title": "Token",
+                "description": "The bearer token value"
+              }
+            }
+          }
+        },
+        "BinarySource": {
+          "base64": {
+            "title": "Base64 Encoded",
+            "description": "Binary data encoded as base64 string",
+            "properties": {
+              "data": {
+                "title": "Data",
+                "description": "Base64-encoded binary data (supports expressions)"
+              }
+            }
+          },
+          "file": {
+            "title": "From File",
+            "description": "Read binary data from a file",
+            "properties": {
+              "path": {
+                "title": "File Path",
+                "description": "Path to the file to read (supports expressions)"
+              }
+            }
+          }
+        },
         "HttpMethod": {
           "DELETE": {
             "title": "DELETE",
@@ -2308,6 +2556,94 @@
             "description": "Update or create a resource"
           }
         },
+        "MultipartPart": {
+          "file": {
+            "title": "File Upload",
+            "description": "A file upload in the multipart form",
+            "properties": {
+              "contentType": {
+                "title": "Content Type",
+                "description": "MIME type of the file"
+              },
+              "filename": {
+                "title": "Filename",
+                "description": "The filename to send in the Content-Disposition header"
+              },
+              "name": {
+                "title": "Field Name",
+                "description": "The name of the file upload field"
+              },
+              "source": {
+                "title": "File Source",
+                "description": "Source of the file data (base64 or file path)"
+              }
+            }
+          },
+          "text": {
+            "title": "Text Field",
+            "description": "A text field in the multipart form",
+            "properties": {
+              "name": {
+                "title": "Field Name",
+                "description": "The name of the form field"
+              },
+              "value": {
+                "title": "Field Value",
+                "description": "The value of the form field (supports expressions)"
+              }
+            }
+          }
+        },
+        "RequestBody": {
+          "binary": {
+            "title": "Binary Body",
+            "description": "Send binary data from base64 or file",
+            "properties": {
+              "contentType": {
+                "title": "Content Type",
+                "description": "Content-Type header for the body (default: application/octet-stream)"
+              },
+              "source": {
+                "title": "Binary Source",
+                "description": "Source of the binary data (base64 string or file path)"
+              }
+            }
+          },
+          "formUrlEncoded": {
+            "title": "Form URL Encoded",
+            "description": "Send application/x-www-form-urlencoded data",
+            "properties": {
+              "fields": {
+                "title": "Form Fields",
+                "description": "List of form field name-value pairs"
+              }
+            }
+          },
+          "multipart": {
+            "title": "Multipart Form Data",
+            "description": "Send multipart/form-data (for file uploads); cannot be combined with retry",
+            "properties": {
+              "parts": {
+                "title": "Parts",
+                "description": "List of multipart form parts (text fields or file uploads)"
+              }
+            }
+          },
+          "text": {
+            "title": "Text Body",
+            "description": "Send text or JSON content",
+            "properties": {
+              "content": {
+                "title": "Content",
+                "description": "The text content to send (supports expressions)"
+              },
+              "contentType": {
+                "title": "Content Type",
+                "description": "Content-Type header for the body, such as application/json or text/plain"
+              }
+            }
+          }
+        },
         "ResponseEncoding": {
           "base64": {
             "title": "Base64",
@@ -2316,6 +2652,22 @@
           "text": {
             "title": "Text",
             "description": "Store the response body as UTF-8 text"
+          }
+        },
+        "ResponseHandling": {
+          "attribute": {
+            "title": "Store in Attribute",
+            "description": "Store the response body in a feature attribute"
+          },
+          "file": {
+            "title": "Save to File",
+            "description": "Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute",
+            "properties": {
+              "path": {
+                "title": "File Path",
+                "description": "Relative path under the job's output directory where the response is saved (supports expressions)"
+              }
+            }
           }
         },
         "TimingStrategy": {
@@ -2389,6 +2741,14 @@
       },
       "enumI18n": {
         "OnOverlap": {
+          "max": {
+            "title": "Maximum",
+            "description": "Keeps the colour of the overlapping polygon whose expression evaluates highest."
+          },
+          "min": {
+            "title": "Minimum",
+            "description": "Keeps the colour of the overlapping polygon whose expression evaluates lowest."
+          },
           "sum": {
             "title": "Sum",
             "description": "Adds the RGB channels of every overlapping polygon, saturating at full intensity."
@@ -2738,6 +3098,42 @@
           "null": {
             "title": "Null Value",
             "description": "An attribute present on the feature but holding an explicit null value."
+          }
+        },
+        "NullReplacement": {
+          "boolean": {
+            "title": "True or False",
+            "description": "Written as a true/false value.",
+            "properties": {
+              "value": {
+                "title": "Value",
+                "description": "The value to write."
+              }
+            }
+          },
+          "number": {
+            "title": "Number",
+            "description": "Written as a number.",
+            "properties": {
+              "value": {
+                "title": "Value",
+                "description": "The number to write."
+              }
+            }
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the attribute from the feature instead of writing a value."
+          },
+          "text": {
+            "title": "Text",
+            "description": "Written as text.",
+            "properties": {
+              "value": {
+                "title": "Value",
+                "description": "The text to write."
+              }
+            }
           }
         },
         "OnMissing": {
@@ -3536,6 +3932,50 @@
         "rotation": {
           "title": "Rotation",
           "description": "The rotation specification: either from/to vectors or axis-angle"
+        }
+      },
+      "enumI18n": {
+        "RotationParam": {
+          "axisAngle": {
+            "description": "Rotation defined by an axis and angle",
+            "properties": {
+              "angle": {
+                "description": "Rotation angle in degrees"
+              },
+              "axisX": {
+                "description": "X component of the rotation axis"
+              },
+              "axisY": {
+                "description": "Y component of the rotation axis"
+              },
+              "axisZ": {
+                "description": "Z component of the rotation axis"
+              }
+            }
+          },
+          "fromToVectors": {
+            "description": "Rotation defined by two vectors (from and to)",
+            "properties": {
+              "fromX": {
+                "description": "X component of the source direction vector"
+              },
+              "fromY": {
+                "description": "Y component of the source direction vector"
+              },
+              "fromZ": {
+                "description": "Z component of the source direction vector"
+              },
+              "toX": {
+                "description": "X component of the target direction vector"
+              },
+              "toY": {
+                "description": "Y component of the target direction vector"
+              },
+              "toZ": {
+                "description": "Z component of the target direction vector"
+              }
+            }
+          }
         }
       }
     },
