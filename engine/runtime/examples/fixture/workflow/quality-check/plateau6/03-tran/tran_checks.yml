@@ -86,14 +86,14 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: Folder
-          expr:
-            type: flowExpr
-            value: attributes.get("package", "")
         - attribute: Index
           expr:
             type: flowExpr
             value: attributes.get("fileIndex", "")
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
         - attribute: Filename
           expr:
             type: flowExpr
@@ -122,8 +122,9 @@ nodes:
     with:
       format: csv
       output:
-        type: string
-        value: 03_交通_xlink参照エラー.csv
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_xlink参照エラー.csv"
 
   # --- Reading ---
   # `extractTags` stays empty: one feature per top-level city object, with each
@@ -180,14 +181,14 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: Folder
-          expr:
-            type: flowExpr
-            value: attributes.get("package", "")
         - attribute: Index
           expr:
             type: flowExpr
             value: attributes.get("fileIndex", "")
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
         - attribute: Filename
           expr:
             type: flowExpr
@@ -197,7 +198,7 @@ nodes:
         - attribute: FeatureType
           expr:
             type: flowExpr
-            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
         - attribute: LOD
           expr:
             type: flowExpr
@@ -206,7 +207,12 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        - attribute: issue
+        # One row per failed check per face, so the count is fixed at 1.
+        - attribute: "エラー数"
+          expr:
+            type: flowExpr
+            value: "1"
+        - attribute: "エラー内容"
           expr:
             type: flowExpr
             value: attributes.get("issue", "UnknownError")
@@ -218,8 +224,9 @@ nodes:
     with:
       format: csv
       output:
-        type: string
-        value: 03_交通_面のエラー.csv
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_面のエラー.csv"
 
   - id: d5000000-0000-4000-8000-000000000011
     name: OrientationAttributeMapper
@@ -227,14 +234,14 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: Folder
-          expr:
-            type: flowExpr
-            value: attributes.get("package", "")
         - attribute: Index
           expr:
             type: flowExpr
             value: attributes.get("fileIndex", "")
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
         - attribute: Filename
           expr:
             type: flowExpr
@@ -242,7 +249,7 @@ nodes:
         - attribute: FeatureType
           expr:
             type: flowExpr
-            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
         - attribute: LOD
           expr:
             type: flowExpr
@@ -274,8 +281,9 @@ nodes:
     with:
       format: csv
       output:
-        type: string
-        value: 03_交通_面の向き不正.csv
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_面の向き不正.csv"
 
   # --- Error detail GeoJSON for the surface checks ---
   # Fed from the sub-graph's ports only. City objects the reprojection could not
@@ -285,36 +293,38 @@ nodes:
   #
   # Coordinates stay in the inspection CRS (variable "prcs"); the `crs` member
   # names it. A face belongs to the innermost city object that encloses it, so
-  # `gmlId` prefers the geometry's owner and `rootGmlId` names the city object
-  # the reader emitted.
+  # `gml_id` names that owner, not the city object the reader emitted.
   - id: d5000000-0000-4000-8000-000000000039
     name: SurfaceValidationAttributeMapperGeoJson
     type: action
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: check
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: ftr_type
           expr:
-            type: string
-            value: 面のエラー
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gml_id
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        # One feature per failed check per face, so the count is fixed at 1.
+        - attribute: issue_cnt
+          expr:
+            type: flowExpr
+            value: "1"
         - attribute: issue
           expr:
             type: flowExpr
             value: attributes.get("issue", "UnknownError")
-        - attribute: filename
-          valueAttribute: name
-        - attribute: featureType
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
-        - attribute: gmlId
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        - attribute: rootGmlId
-          valueAttribute: __citygml_gml_id
-        - attribute: lod
-          valueAttribute: lod
 
   - id: d5000000-0000-4000-8000-00000000003a
     name: SurfaceValidationGeoJsonWriter
@@ -322,8 +332,9 @@ nodes:
     action: Feature GeoJSON Writer
     with:
       output:
-        type: string
-        value: error_geometry/03_交通_面のエラー.geojson
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面のエラー.geojson"
       writeCrs: true
 
   # One feature per flagged position rather than per face, so `issue` names the
@@ -334,28 +345,26 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: check
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: ftr_type
           expr:
-            type: string
-            value: 面のエラー位置
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: gml_id
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: issue
           expr:
             type: flowExpr
             value: attributes.get("issue", "UnknownError")
-        - attribute: filename
-          valueAttribute: name
-        - attribute: featureType
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
-        - attribute: gmlId
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        - attribute: rootGmlId
-          valueAttribute: __citygml_gml_id
-        - attribute: lod
-          valueAttribute: lod
 
   - id: d5000000-0000-4000-8000-00000000003c
     name: IssueLocationGeoJsonWriter
@@ -363,8 +372,9 @@ nodes:
     action: Feature GeoJSON Writer
     with:
       output:
-        type: string
-        value: error_geometry/03_交通_面のエラー位置.geojson
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面のエラー位置.geojson"
       writeCrs: true
 
   - id: d5000000-0000-4000-8000-00000000003d
@@ -373,12 +383,28 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: check
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: ftr_type
           expr:
-            type: string
-            value: 面の向き不正
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gml_id
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
         # Reaching this mapper already means the face is wound the wrong way, so
-        # both labels are fixed.
+        # the count and the two labels are fixed.
+        - attribute: issue_cnt
+          expr:
+            type: flowExpr
+            value: "1"
         - attribute: issue
           expr:
             type: string
@@ -387,20 +413,6 @@ nodes:
           expr:
             type: string
             value: right_hand_rule
-        - attribute: filename
-          valueAttribute: name
-        - attribute: featureType
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")
-        - attribute: gmlId
-          expr:
-            type: flowExpr
-            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        - attribute: rootGmlId
-          valueAttribute: __citygml_gml_id
-        - attribute: lod
-          valueAttribute: lod
 
   - id: d5000000-0000-4000-8000-00000000003e
     name: OrientationGeoJsonWriter
@@ -408,8 +420,9 @@ nodes:
     action: Feature GeoJSON Writer
     with:
       output:
-        type: string
-        value: error_geometry/03_交通_面の向き不正.geojson
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面の向き不正.geojson"
       writeCrs: true
 
   # --- L-tran-01/02: adjacent surface overlap detection ---
@@ -623,14 +636,14 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: Folder
-          expr:
-            type: flowExpr
-            value: attributes.get("package", "")
         - attribute: Index
           expr:
             type: flowExpr
             value: attributes.get("fileIndex", "")
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
         - attribute: Filename
           expr:
             type: flowExpr
@@ -638,7 +651,7 @@ nodes:
         - attribute: FeatureType
           expr:
             type: flowExpr
-            value: attributes.get("__citygml_feature_type", "")
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
         - attribute: LOD
           expr:
             type: flowExpr
@@ -646,7 +659,7 @@ nodes:
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes.get("__citygml_gml_id", "")
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: 隣接ID
           expr:
             type: flowExpr
@@ -659,8 +672,9 @@ nodes:
     with:
       format: csv
       output:
-        type: string
-        value: 03_交通_隣接面重複.csv
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_隣接面重複.csv"
 
   # Restore the road's own 3D surface for the GeoJSON error detail. The overlap
   # region itself is not what a reviewer needs to look at.
@@ -677,31 +691,26 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: check
-          expr:
-            type: string
-            value: 隣接面重複
-        - attribute: issue
-          expr:
-            type: string
-            value: Adjacent Surface Overlap
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
         - attribute: filename
           valueAttribute: name
-        - attribute: featureType
-          valueAttribute: __citygml_feature_type
-        - attribute: gmlId
-          valueAttribute: __citygml_gml_id
-        # Canonicalize the overlapping-id set: the overlayer emits the list in a
-        # non-deterministic order, so sort before joining.
-        - attribute: relatedGmlId
+        - attribute: ftr_type
           expr:
             type: flowExpr
-            value: |
-              ",".join(itertools.sorted(attributes["concatenatedGmlIds"].split(",")))
-        - attribute: rootGmlId
-          valueAttribute: __citygml_gml_id
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
         - attribute: lod
           valueAttribute: lod
+        - attribute: gml_id
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: pair_id
+          expr:
+            type: flowExpr
+            value: attributes.get("areaOverlapIndex", "")
 
   - id: d5000000-0000-4000-8000-00000000002b
     name: OverlapGeoJsonWriter
@@ -709,8 +718,9 @@ nodes:
     action: Feature GeoJSON Writer
     with:
       output:
-        type: string
-        value: error_geometry/03_交通_隣接面重複.geojson
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_隣接面重複.geojson"
       writeCrs: true
 
   # Geometry that cannot take part in overlap detection — not an area, or not
@@ -723,17 +733,70 @@ nodes:
     type: action
     action: Noop Sink
 
-  # --- Per-file result row and summary ---
-  - id: d5000000-0000-4000-8000-00000000002d
-    name: FileInfoExtractor
+  # --- Per feature-type/LOD result row and summary ---
+  # One row per file, city object type and LOD, the way the original workspace
+  # builds its 検査結果一覧 sheet; the plateau4 port has one row per file
+  # instead. Every error count is joined onto that same key.
+  - id: d5000000-0000-4000-8000-00000000003f
+    name: InstanceInfoMapper
     type: action
     action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
-          valueAttribute: fileIndex
+          expr:
+            type: flowExpr
+            value: attributes.get("fileIndex", "")
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes.get("package", "")
         - attribute: Filename
-          valueAttribute: name
+          expr:
+            type: flowExpr
+            value: attributes.get("name", "")
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: attributes.get("lod", "")
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+
+  # One city object can carry several geometries at the same LOD; it is still
+  # one instance.
+  - id: d5000000-0000-4000-8000-000000000040
+    name: InstanceDuplicateFilter
+    type: action
+    action: Attribute Duplicate Filter
+    with:
+      filterBy:
+        - Filename
+        - FeatureType
+        - LOD
+        - GmlId
+
+  - id: d5000000-0000-4000-8000-00000000002d
+    name: InstanceCountCalculator
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Index
+        - Folder
+        - Filename
+        - FeatureType
+        - LOD
+      calculations:
+        - newAttribute: _num_instances
+          expr:
+            type: flowExpr
+            value: "1"
 
   - id: d5000000-0000-4000-8000-00000000002e
     name: XlinkErrorCounter
@@ -742,6 +805,8 @@ nodes:
     with:
       groupBy:
         - Filename
+        - FeatureType
+        - LOD
       calculations:
         - newAttribute: _num_unreferenced_surface
           expr:
@@ -755,6 +820,8 @@ nodes:
     with:
       groupBy:
         - Filename
+        - FeatureType
+        - LOD
       calculations:
         - newAttribute: _num_incorrect_orientation
           expr:
@@ -768,6 +835,8 @@ nodes:
     with:
       groupBy:
         - Filename
+        - FeatureType
+        - LOD
       calculations:
         - newAttribute: _num_overlaps
           expr:
@@ -781,6 +850,8 @@ nodes:
     with:
       groupBy:
         - Filename
+        - FeatureType
+        - LOD
       calculations:
         - newAttribute: _surface_issues
           expr:
@@ -794,27 +865,44 @@ nodes:
     with:
       requestorAttributeValue:
         type: flowExpr
-        value: attributes["Filename"]
+        value: |
+          attributes["Filename"] + "|" + attributes["FeatureType"] + "|" + str(attributes["LOD"])
       supplierAttributeValue:
         type: flowExpr
-        value: attributes["Filename"]
+        value: |
+          attributes["Filename"] + "|" + attributes["FeatureType"] + "|" + str(attributes["LOD"])
 
-  # One row per file. Each error column reads a `_num_*` / `_surface_*`
-  # attribute and falls back to 0 when that check reported nothing.
+  # Each error column reads a `_num_*` / `_surface_*` attribute and falls back
+  # to 0 when that check reported nothing.
   - id: d5000000-0000-4000-8000-000000000033
     name: SummaryAttributeMapper
     type: action
     action: Attribute Mapper
     with:
       mappers:
+        # Index and LOD come back from the grouping as strings.
         - attribute: Index
-          valueAttribute: Index
-        - attribute: Filename
-          valueAttribute: Filename
-        - attribute: "xlink参照エラー"
           expr:
             type: flowExpr
-            value: attributes.get("_num_unreferenced_surface", 0)
+            value: int(attributes.get("Index") or 0)
+        - attribute: Folder
+          valueAttribute: Folder
+        - attribute: Filename
+          valueAttribute: Filename
+        - attribute: "フィーチャータイプ"
+          valueAttribute: FeatureType
+        - attribute: LOD
+          expr:
+            type: flowExpr
+            value: int(attributes.get("LOD") or 0)
+        - attribute: "インスタンス数"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_instances", 0)
+        - attribute: "面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_surface_issues", 0)
         - attribute: "面の向き不正"
           expr:
             type: flowExpr
@@ -823,10 +911,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_overlaps", 0)
-        - attribute: "面のエラー"
+        - attribute: "xlink参照エラー"
           expr:
             type: flowExpr
-            value: attributes.get("_surface_issues", 0)
+            value: attributes.get("_num_unreferenced_surface", 0)
 
   - id: d5000000-0000-4000-8000-000000000034
     name: CSVSummaryWriter
@@ -835,8 +923,9 @@ nodes:
     with:
       format: csv
       output:
-        type: string
-        value: 03_交通_検査結果一覧.csv
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_検査結果一覧.csv"
 
   # Each newAttribute name becomes a "name" entry in summary_tran.json.
   # "隣接面重複" and "面の向き不正" are deliberately absent: neither takes part
@@ -1218,9 +1307,35 @@ edges:
     fromPort: rejected
     toPort: features
 
-  # Per-file result row
-  - id: d5000000-0000-4000-8000-000100000036
-    from: d5000000-0000-4000-8000-000000000006
+  # Per feature-type/LOD result row. LOD0 is counted as well: it holds city
+  # objects even though no face check runs on a curve.
+  - id: d5000000-0000-4000-8000-000100000056
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000003f
+    fromPort: lod0
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000057
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000003f
+    fromPort: lod1
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000058
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000003f
+    fromPort: lod2
+    toPort: features
+  - id: d5000000-0000-4000-8000-000100000059
+    from: d5000000-0000-4000-8000-00000000000c
+    to: d5000000-0000-4000-8000-00000000003f
+    fromPort: lod3
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000005a
+    from: d5000000-0000-4000-8000-00000000003f
+    to: d5000000-0000-4000-8000-000000000040
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000005b
+    from: d5000000-0000-4000-8000-000000000040
     to: d5000000-0000-4000-8000-00000000002d
     fromPort: features
     toPort: features
