@@ -54,9 +54,12 @@ nodes:
     action: XML Fragmenter
     with:
       source: file
+      # A package the objectlist marks nothing as 作成対象 for is absent from
+      # `featureTypes`. Nothing is required of it, so match no element at all
+      # rather than abort the run.
       elementsToMatch:
         type: flowExpr
-        value: attributes["featureTypes"][attributes["package"]]
+        value: attributes["featureTypes"].get(attributes["package"], [])
       elementsToExclude:
         type: flowExpr
         value: "[]"
