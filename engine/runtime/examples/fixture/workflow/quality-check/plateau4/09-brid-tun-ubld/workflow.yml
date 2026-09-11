@@ -324,7 +324,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 09_橋梁_地物インスタンス数.csv
@@ -333,7 +334,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 09_トンネル_地物インスタンス数.csv
@@ -342,7 +344,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 09_地下街_地物インスタンス数.csv
@@ -450,7 +453,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -558,18 +562,19 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            feature = attributes["__features"][0];
-            itertools.map(feature.keys(), fn(key) {
-              {"name": key, "count": feature[key]}
-            })
-          }
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              feature = attributes["__features"][0];
+              itertools.map(feature.keys(), fn(key) {
+                {"name": key, "count": feature[key]}
+              })
+            }
       output:
         type: flowExpr
         value: |

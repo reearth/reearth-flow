@@ -127,7 +127,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L01エラー.csv
@@ -163,7 +164,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L02エラー.csv
@@ -297,7 +299,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通.csv
@@ -372,20 +375,21 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            result = [];
-            feature = attributes["__features"][0];
-            for key in feature.keys() {
-              result.append({"name": key, "count": feature[key]});
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              result = [];
+              feature = attributes["__features"][0];
+              for key in feature.keys() {
+                result.append({"name": key, "count": feature[key]});
+              }
+              result
             }
-            result
-          }
       output:
         type: string
         value: summary_common.json
@@ -412,7 +416,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_GML_ID書式不正.csv
@@ -438,7 +443,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_GML_ID重複.csv
@@ -490,7 +496,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L06エラー.csv
@@ -522,7 +529,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L04エラー.csv
@@ -554,7 +562,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_不正なcodeSpace.csv
@@ -605,7 +614,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_xlink参照先なし.csv
@@ -639,7 +649,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_T03エラー.csv
@@ -669,7 +680,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L-frn-01エラー.csv

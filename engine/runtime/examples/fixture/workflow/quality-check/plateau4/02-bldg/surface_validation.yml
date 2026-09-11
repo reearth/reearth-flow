@@ -54,7 +54,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面のエラー.csv
@@ -103,7 +104,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の向きエラー.csv
@@ -192,7 +194,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の交差.csv
@@ -282,7 +285,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_図郭不正.csv
@@ -348,7 +352,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD1境界面のエラー.csv
@@ -416,7 +421,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
@@ -543,7 +549,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_非水密体.csv
@@ -625,7 +632,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体のエラー.csv
@@ -800,7 +808,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体交差.csv

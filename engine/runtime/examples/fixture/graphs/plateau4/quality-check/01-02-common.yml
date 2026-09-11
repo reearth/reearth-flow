@@ -82,16 +82,17 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            {}
-          } else {
-            feature = attributes["__features"][0];
-            feature["dataFileData"]
-          }
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              {}
+            } else {
+              feature = attributes["__features"][0];
+              feature["dataFileData"]
+            }
       output:
         type: flowExpr
         value: |
@@ -125,7 +126,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -149,7 +151,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -183,7 +186,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -217,7 +221,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |

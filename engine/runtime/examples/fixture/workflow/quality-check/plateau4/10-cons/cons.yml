@@ -88,7 +88,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 10_その他の構造物_面のエラー.csv
@@ -190,7 +191,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 10_その他の構造物_LOD1-3非水密立体.csv
@@ -248,7 +250,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 10_その他の構造物_LOD1-3立体のエラー.csv
@@ -317,7 +320,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 10_その他の構造物_面の向き不正.csv

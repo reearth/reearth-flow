@@ -28,7 +28,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: json
+          format:
+            type: json
           output:
             type: string
             value: metadata.json
