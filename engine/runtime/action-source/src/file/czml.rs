@@ -38,7 +38,7 @@ impl SourceFactory for CzmlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data"
+        "Reads geometry and attributes from CZML (Cesium Language) documents. Time-tagged positions become either a timeseries attribute or one feature per sample, depending on the sampling strategy."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -46,7 +46,11 @@ impl SourceFactory for CzmlReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["czml", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -112,16 +116,20 @@ pub(super) struct CzmlReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     /// # Force 2D
-    /// If true, forces all geometries to be 2D (ignoring Z values)
+    /// Drops elevations, reading every geometry as two-dimensional. A packet
+    /// positioned in earth-centred cartesian coordinates is skipped instead,
+    /// because that system has no two-dimensional form.
     #[serde(default)]
     pub(super) force_2d: bool,
     /// # Skip Document Packet
-    /// If true, skips the document packet (first packet with version/clock info)
+    /// Skips the document packet, which carries the version and clock settings
+    /// rather than geometry. Any packet declaring a string `version` counts as
+    /// the document packet, wherever it appears.
     #[serde(default = "default_skip_document")]
     pub(super) skip_document_packet: bool,
     /// # Time Sampling Strategy
-    /// How to handle time-dynamic properties in CZML packets.
-    /// Defaults to "preserveRaw" for lossless round-trip with CZML Writer.
+    /// Controls how a packet's time-tagged positions become features. Defaults
+    /// to preserving the raw samples, which round-trips through CZML Writer.
     #[serde(default)]
     pub(super) time_sampling: TimeSamplingStrategy,
 }
@@ -134,18 +142,19 @@ fn default_skip_document() -> bool {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum TimeSamplingStrategy {
-    /// Extract all time-tagged samples as separate features, each with a
-    /// `czml.timestamp` and `czml.timeOffset` attribute. Useful when you
-    /// need per-sample processing in downstream actions.
+    /// # All Samples
+    /// Emits one feature per time-tagged sample, each carrying a
+    /// `czml.timestamp` and `czml.timeOffset` attribute. The packet's other
+    /// properties are not retained, so these features do not round-trip.
     AllSamples,
-    /// Keep the first sample only (static geometry). Use this for workflows
-    /// that don't need timeseries data.
+    /// # First Sample Only
+    /// Emits one static feature positioned at the first sample, discarding the
+    /// rest of the timeseries.
     FirstSampleOnly,
-    /// Embed the full timeseries in one feature per entity. The feature
-    /// geometry uses the first sample, `czml.timeseries` holds all position
-    /// samples as a JSON array, and all other CZML packet properties (point,
-    /// path, orientation, ellipsoid, etc.) are preserved as `czml.<key>`
-    /// attributes for faithful round-trip through CZML Writer.
+    /// # Preserve Raw
+    /// Emits one feature per entity, positioned at the first sample, holding
+    /// every sample in `czml.timeseries` and every other packet property as a
+    /// `czml.<key>` attribute.
     #[default]
     PreserveRaw,
 }

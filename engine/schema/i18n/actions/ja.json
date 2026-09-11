@@ -688,7 +688,7 @@
     },
     {
       "name": "CZML Reader",
-      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
+      "description": "CZML（Cesium Language）ドキュメントからジオメトリと属性を読み取ります。時刻タグ付き位置は、サンプリング戦略に応じて時系列属性またはサンプルごとのフィーチャーになります。",
       "parameterI18n": {
         "": {
           "title": "CZML Reader パラメータ",
@@ -700,7 +700,7 @@
         },
         "force2d": {
           "title": "2D に強制",
-          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+          "description": "標高を破棄し、すべてのジオメトリを 2 次元として読み取ります。地心直交座標で位置指定されたパケットは、その座標系に 2 次元形式が存在しないため、代わりにスキップされます。"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -708,23 +708,26 @@
         },
         "skipDocumentPacket": {
           "title": "ドキュメントパケットをスキップ",
-          "description": "true の場合、ドキュメントパケット（バージョン/クロック情報を含む最初のパケット）をスキップする"
+          "description": "ジオメトリではなくバージョンとクロック設定を保持するドキュメントパケットをスキップします。文字列の `version` を宣言するパケットは、出現位置にかかわらずドキュメントパケットとして扱われます。"
         },
         "timeSampling": {
           "title": "時系列サンプリング戦略",
-          "description": "CZML パケット内の時間動的プロパティの処理方法。CZML Writer との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。"
+          "description": "パケットの時刻タグ付き位置をフィーチャーに変換する方法を制御します。既定では生のサンプルを保持し、CZML Writer とのラウンドトリップが可能です。"
         }
       },
       "enumI18n": {
         "TimeSamplingStrategy": {
           "allSamples": {
-            "description": "時刻タグ付きサンプルをすべて個別フィーチャーとして展開する。各フィーチャーに `czml.timestamp` および `czml.timeOffset` 属性が付与される。後続のアクションでサンプル単位の処理が必要な場合に便利。"
+            "title": "全サンプル",
+            "description": "時刻タグ付きサンプルごとに 1 つのフィーチャーを出力し、それぞれに `czml.timestamp` と `czml.timeOffset` 属性を付与します。パケットのその他のプロパティは保持されないため、これらのフィーチャーはラウンドトリップできません。"
           },
           "firstSampleOnly": {
-            "description": "最初のサンプルのみを保持する（静的ジオメトリ）。時系列データが不要なワークフローで使用する。"
+            "title": "最初のサンプルのみ",
+            "description": "最初のサンプルの位置に 1 つの静的フィーチャーを出力し、残りの時系列は破棄します。"
           },
           "preserveRaw": {
-            "description": "エンティティごとに 1 つのフィーチャーとして時系列全体を埋め込む。フィーチャーのジオメトリは最初のサンプルを使用し、`czml.timeseries` にはすべての位置サンプルが JSON 配列として格納される。その他の CZML パケットプロパティ（point、path、orientation、ellipsoid など）は `czml.<key>` 属性として保持され、CZML Writer との無損失なラウンドトリップが可能。"
+            "title": "生データを保持",
+            "description": "エンティティごとに 1 つのフィーチャーを最初のサンプルの位置に出力し、すべてのサンプルを `czml.timeseries` に、その他のパケットプロパティを `czml.<key>` 属性として保持します。"
           }
         }
       }

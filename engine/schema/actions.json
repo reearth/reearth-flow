@@ -1935,7 +1935,7 @@
     {
       "name": "CZML Reader",
       "type": "source",
-      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data",
+      "description": "Reads geometry and attributes from CZML (Cesium Language) documents. Time-tagged positions become either a timeseries attribute or one feature per sample, depending on the sampling strategy.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Reader Parameters",
@@ -1944,19 +1944,19 @@
         "properties": {
           "force2d": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "description": "Drops elevations, reading every geometry as two-dimensional. A packet positioned in earth-centred cartesian coordinates is skipped instead, because that system has no two-dimensional form.",
             "default": false,
             "type": "boolean"
           },
           "skipDocumentPacket": {
             "title": "Skip Document Packet",
-            "description": "If true, skips the document packet (first packet with version/clock info)",
+            "description": "Skips the document packet, which carries the version and clock settings rather than geometry. Any packet declaring a string `version` counts as the document packet, wherever it appears.",
             "default": true,
             "type": "boolean"
           },
           "timeSampling": {
             "title": "Time Sampling Strategy",
-            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
+            "description": "Controls how a packet's time-tagged positions become features. Defaults to preserving the raw samples, which round-trips through CZML Writer.",
             "default": "preserveRaw",
             "allOf": [
               {
@@ -2020,21 +2020,24 @@
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
               {
-                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+                "title": "All Samples",
+                "description": "Emits one feature per time-tagged sample, each carrying a `czml.timestamp` and `czml.timeOffset` attribute. The packet's other properties are not retained, so these features do not round-trip.",
                 "type": "string",
                 "enum": [
                   "allSamples"
                 ]
               },
               {
-                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+                "title": "First Sample Only",
+                "description": "Emits one static feature positioned at the first sample, discarding the rest of the timeseries.",
                 "type": "string",
                 "enum": [
                   "firstSampleOnly"
                 ]
               },
               {
-                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
+                "title": "Preserve Raw",
+                "description": "Emits one feature per entity, positioned at the first sample, holding every sample in `czml.timeseries` and every other packet property as a `czml.<key>` attribute.",
                 "type": "string",
                 "enum": [
                   "preserveRaw"
@@ -2050,9 +2053,12 @@
         "features"
       ],
       "categories": [
-        "File"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "czml",
+        "3d"
+      ]
     },
     {
       "name": "CZML Writer",
