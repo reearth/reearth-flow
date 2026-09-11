@@ -144,9 +144,11 @@ A plain `enum` with no doc comments produces no per-variant descriptions and sho
 
 **Keep mode enums inside a property — never make the parameter block itself a `oneOf`.** A Rust enum used *as the whole parameter type* (`#[serde(tag = "...")] enum FooParam`) generates a schema whose root is a `oneOf` rather than an object with `properties`. Translation cannot reach the variants: `apply_parameter_i18n` (`cli/src/utils.rs`) patches the root's own title/description, root `properties[*]`, `definitions[*].properties[*]`, and `definitions[*].oneOf|anyOf` variants — and that last traversal is scoped *inside* the `definitions` object, so a `oneOf` sitting at the schema root is never visited.
 
-The failure is quiet, which is what makes it dangerous: the block's own title and description still translate via the root, so the action looks localised while the mode labels the user actually chooses between stay in English permanently. `Geometry Filter` is in this state today — its Japanese entry has a translated block header and no variant entries at all.
+The failure is quiet, which is what makes it dangerous: the block's own title and description still translate via the root, so the action looks localised while the mode labels the user actually chooses between stay in English permanently.
 
-Give the action a normal parameter object with the enum as one property instead. When a mode needs its own sub-parameters, use a `#[serde(tag = "type")]` enum *as a property value* — the variants carry their own fields, the user only sees the fields belonging to the mode they chose, and the whole thing still translates.
+Give the action a normal parameter object with the enum as one property instead. When a mode needs its own sub-parameters, use a `#[serde(tag = "type")]` enum *as a property value* — the variants carry their own fields, and the user only sees the fields belonging to the mode they chose.
+
+**Moving the enum into `definitions` is necessary but was not, on its own, sufficient — read this before trusting a past review on it.** Until 2026-09-11 the i18n pass identified a variant by a **top-level `enum` key** on the variant object, and `schemars` emits that only for a variant carrying no fields. Every variant that carried sub-parameters — the entire reason to reach for the idiom — was invisible to both the scaffold and the applier, so the recommended fix silently delivered nothing for exactly the case it was recommended for. `Coordinate Frame Reprojector` shipped in that state: its `crs` variant and all three `BasePoint` variants were untranslatable, and `BasePoint` had no i18n entry at all. Both halves are fixed (`enum_variant_key` in `cli/src/utils.rs` now recognises internally- and externally-tagged variants, and `PropertyI18n` gained a nested `properties` map so a variant's own fields translate too), so the idiom now does what this section says. The lesson generalises: a translation path is not working because the schema has the recommended shape — check that the key actually appears in `schema/i18n/actions/ja.json`.
 
 **Single-variant enums** are a design smell — they present the user with a parameter that has no real choice. If only one variant exists and no others are planned, remove the parameter and hard-code the behavior. If additional variants are planned but not yet implemented, keep the `oneOf` and note the intent in a code comment (`// TODO: add X, Y variants`).
 
@@ -337,6 +339,10 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-09-11
+
+- **§3.4 corrected — this reverses the practical effect of previous guidance without changing the rule.** The prescribed fix for a root-level `oneOf` (a tagged enum as a property value) did not restore translation for any variant carrying sub-parameters, because the i18n scaffold and applier both keyed a variant off a top-level `enum` that `schemars` emits only for field-less variants. The tooling is fixed and variant sub-properties are now translatable as well. **No past verdict changes, but any action previously marked clean on §3.4 grounds had its mode labels shipping in English regardless** — 13 actions were in this state, including the audited-and-exposed `HTTP Caller` (34 strings), `Coordinate Frame Reprojector`, `Date Time Converter` and `CSV Reader`. Their keys now exist and are seeded with English; translating them is separate work.
 
 ### 2026-08-28
 
