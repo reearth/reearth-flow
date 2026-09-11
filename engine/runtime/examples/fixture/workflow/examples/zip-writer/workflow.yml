@@ -41,7 +41,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: csv
+          format:
+            type: csv
           output:
             type: string
             value: year-2024.csv
@@ -51,7 +52,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: csv
+          format:
+            type: csv
           output:
             type: string
             value: year-2025.csv

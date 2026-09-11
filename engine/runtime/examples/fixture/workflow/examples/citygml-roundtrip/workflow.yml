@@ -66,11 +66,12 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: citygml
+          format:
+            type: citygml
+            prettyPrint: true
           output:
             type: string
             value: citygml-roundtrip-output.gml
-          prettyPrint: true
 
       - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
         name: FeatureCityGmlReaderReadback

@@ -79,7 +79,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 13_汎用都市オブジェクト_面のエラー.csv
@@ -204,7 +205,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 13_汎用都市オブジェクト_非水密立体.csv
@@ -276,7 +278,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 13_汎用都市オブジェクト_立体のエラー.csv
@@ -339,7 +342,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 13_汎用都市オブジェクト_面の向き不正.csv
@@ -388,7 +392,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 13_汎用都市オブジェクト_gml_nameエラー.csv
