@@ -1,6 +1,6 @@
 [package]
 name = "workflow-tests"
-version = "0.1.363"
+version = "0.1.364"
 edition = "2021"
 
 [features]

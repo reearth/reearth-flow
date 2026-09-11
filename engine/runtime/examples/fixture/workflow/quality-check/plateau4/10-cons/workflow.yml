@@ -18,8 +18,8 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
-  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/plateau4/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   - !include cons.yml
   # Entry point graph
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d81
@@ -140,26 +140,36 @@ graphs:
                   parts = attributes["path"].split("/");
                   if len(parts) >= 2 { parts[-2] } else { attributes.get("udxDirs", "") }
 
+      # The boundary surfaces are hoisted into features of their own so each is
+      # counted and reported under its own feature type.
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["gmlPath"]
+          extractTags:
+            - OtherConstruction
+            - GroundSurface
+            - RoofSurface
+            - WallSurface
+            - ClosureSurface
+            - OuterCeilingSurface
+            - OuterFloorSurface
+
+      # Reprojected before any check: planarity and the absolute winding of a face
+      # are only defined in a linear-unit frame.
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a70
-        name: HorizontalReprojector
+        name: CoordinateFrameReprojector
         type: action
-        action: Horizontal Reprojector
+        action: Coordinate Frame Reprojector
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          destinationFrame:
+            crs:
+              type: flowExpr
+              value: variables["prcs"]
 
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
         name: FeatureSorter
@@ -199,7 +209,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: 'attributes.get("parentId") or attributes.get("gmlId", "")'
+                value: 'attributes.get("__citygml_parent_gml_id") or attributes.get("__citygml_gml_id", "")'
 
       # GeometrySplitter for LOD-based counting
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
@@ -270,7 +280,7 @@ graphs:
             value: 'attributes["gmlFilename"] + "|" + attributes["featureTypeName"] + "|" + str(attributes["lod"])'
           supplierAttributeValue:
             type: flowExpr
-            value: '(attributes.get("Filename") or attributes.get("filename") or "") + "|" + (attributes.get("FeatureType") or attributes.get("feature_type") or "") + "|" + str(attributes.get("LOD") or attributes.get("lod") or "")'
+            value: '(attributes.get("Filename") or attributes.get("filename") or "") + "|" + (attributes.get("FeatureType") or attributes.get("feature_type") or "") + "|" + str(attributes.get("LOD", attributes.get("lod", "")))'
 
       # Summary CSV output - per-file result
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
@@ -515,7 +525,6 @@ graphs:
         to: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
         fromPort: features
         toPort: features
-
       # FeatureSorter → FeatureCounterFeatureIndex
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f81
         from: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80

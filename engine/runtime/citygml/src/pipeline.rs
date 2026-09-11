@@ -1,11 +1,15 @@
-/// Per-member attribute key under which the new-geometry path records each
-/// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
+/// Per-member attribute keys describing the GML a `GeometryCollection` member was
+/// read from. Its LOD, the local name of the property it filled, and of the GML type
+/// that property held.
 pub const MEMBER_LOD_KEY: &str = "lod";
+pub const MEMBER_GML_PROPERTY_NAME_KEY: &str = "gmlPropertyName";
+pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
 
-/// Per-member attribute keys naming the innermost enclosing element that carries a
-/// `gml:id` — the object the geometry belongs to. One feature can hold the geometry
-/// of several nested objects, so the feature's own `gml:id` and type do not identify
-/// a single member's owner.
+/// Per-member attribute keys naming the element the geometry property hung from,
+/// the object the geometry belongs to: one feature can hold the geometry of
+/// several nested objects, so the feature's own `gml:id` and type do not identify
+/// a member's owner. The type is always known, the id only when that element
+/// carries a `gml:id`.
 pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
 pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
 
@@ -213,7 +217,10 @@ mod build_next {
         CITYGML_ROOT_GML_ID_KEY,
     };
 
-    use super::{MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_LOD_KEY};
+    use super::{
+        MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GEOMETRY_NAME_KEY,
+        MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+    };
 
     use crate::{
         appearance::{self, AppearanceIndex},
@@ -416,14 +423,24 @@ mod build_next {
                     AttributeValue::Number(lod.into()),
                 );
             }
+            member_attrs.insert(
+                Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY),
+                AttributeValue::String(pending.property.clone()),
+            );
+            if let Some(ref gml_type) = pending.gml_type {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_NAME_KEY),
+                    AttributeValue::String(gml_type.clone()),
+                );
+            }
+            member_attrs.insert(
+                Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
+                AttributeValue::String(pending.owner_feature_type.clone()),
+            );
             if let Some(owner_gml_id) = &pending.owner_gml_id {
                 member_attrs.insert(
                     Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY),
                     AttributeValue::String(owner_gml_id.clone()),
-                );
-                member_attrs.insert(
-                    Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
-                    AttributeValue::String(pending.owner_feature_type.clone()),
                 );
             }
             members.push(member);

@@ -14,57 +14,33 @@ nodes:
 
   # LOD splitter
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    name: LodSplitterWithDM
+    name: LodSplitter
     type: subGraph
-    subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+    subGraphId: b1000000-0000-4000-8000-000000000000
 
-  # ===== Geometry Type Filters for LOD1-3 =====
-  # GeometryFilter routes Surface→SurfaceValidator3D, Solid→SolidBoundaryValidator
+  # The LOD1-3 stream splits by geometry type: only a solid has shells, so solids
+  # go to the solid checks and bare surfaces to the surface checks. A solid's own
+  # faces reach the surface checks as the boundary surfaces they are declared as,
+  # not through the solid; see the edge that wires the `surface` port.
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
-    name: GeometryFilterLod1
+    name: GeometryFilterSolid
     type: action
     action: Geometry Filter
     with:
       filterType: geometryType
 
-  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    name: GeometryFilterLod2
-    type: action
-    action: Geometry Filter
-    with:
-      filterType: geometryType
-
-  - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
-    name: GeometryFilterLod3
-    type: action
-    action: Geometry Filter
-    with:
-      filterType: geometryType
-
-  # ===== Surface Validation for LOD0-3 =====
-  # SurfaceValidator3D for LOD0
+  # LOD0 is checked on its own because it is the only LOD whose face winding is
+  # reported; every other LOD reads `invalidSurface` alone and can share one
+  # instance.
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
-    name: SurfaceValidator3D_LOD0
+    name: SurfaceChecksLod0
     type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
-  # SurfaceValidator3D for LOD1
   - id: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    name: SurfaceValidator3D_LOD1
+    name: SurfaceChecksLod1-3
     type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
-
-  # SurfaceValidator3D for LOD2
-  - id: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    name: SurfaceValidator3D_LOD2
-    type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
-
-  # SurfaceValidator3D for LOD3
-  - id: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
-    name: SurfaceValidator3D_LOD3
-    type: subGraph
-    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   # ===== AttributeMapper for surface errors =====
   - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
@@ -96,7 +72,7 @@ nodes:
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes.get("featureId", attributes.get("gmlId", ""))
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: エラー数
           expr:
             type: string
@@ -104,15 +80,7 @@ nodes:
         - attribute: エラー内容
           expr:
             type: flowExpr
-            value: |
-              vr = attributes.get("validationResult");
-              if vr != null and "details" in vr {
-                vr["details"][0][0]
-              } else if "issue" in attributes {
-                attributes["issue"]
-              } else {
-                "UnknownError"
-              }
+            value: attributes.get("issue", "UnknownError")
 
   # ===== CSV Writer for surface errors =====
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
@@ -148,17 +116,35 @@ nodes:
       routingPort: errorCountSurfaceErrors
 
   # ===== Solid Boundary Validation (非水密立体検出) =====
-  # SolidBoundaryValidator for LOD1,2,3
   - id: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    name: SolidBoundaryValidator
+    name: SolidValidator
     type: action
-    action: Solid Boundary Validator
+    action: Geometry Validator
     with:
-      tolerance:
-        type: flowExpr
-        value: "0.01"
+      duplicateTolerance: 0.01
 
-  # Filter for NotClosed errors (NotA2Manifold = non-watertight solid)
+  # Shell-level failures are classified here; face-level failures on the same
+  # solid are reported by the boundary surface checks.
+  - id: 10100000-0000-4000-8000-000000000002
+    name: AttributeManagerSolidIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _solid_issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              if "ShellManifold" in checks {
+                "NotClosed"
+              } else if "ShellConnected" in checks or "Orientable" in checks or "Orientation" in checks or "ShellOrientation" in checks or "SelfIntersection" in checks {
+                "Other"
+              } else {
+                ""
+              }
+
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FeatureFilterNotClosed
     type: action
@@ -167,8 +153,12 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
+            value: attributes["_solid_issue"] == "NotClosed"
           outputPort: notClosed
+        - expr:
+            type: flowExpr
+            value: attributes["_solid_issue"] == "Other"
+          outputPort: otherIssues
 
   # AttributeMapper for NotClosed errors (lowercase format like wtr/bldg)
   - id: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
@@ -186,7 +176,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: gml_id
-          valueAttribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: issue
           expr:
             type: string
@@ -225,8 +217,8 @@ nodes:
     with:
       routingPort: errorCountNotClosedSolid
 
-  # ===== Solid Issues (立体のその他のエラー) - OtherIssues from SolidBoundaryValidator =====
-  # AttributeMapper for OtherIssues (unfiltered = not NotA2Manifold)
+  # ===== Solid Issues (立体のその他のエラー) =====
+  # Every shell failure that is not an unclosed shell.
   - id: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     name: AttributeMapperSolidIssues
     type: action
@@ -242,7 +234,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: gml_id
-          valueAttribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: issue
           expr:
             type: string
@@ -304,7 +298,7 @@ nodes:
         - attribute: "gml:id"
           expr:
             type: flowExpr
-            value: attributes.get("gmlId", attributes.get("featureId", ""))
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: エラー数
           expr:
             type: string
@@ -349,13 +343,6 @@ nodes:
     with:
       routingPort: errorCountOrientationErrors
 
-  - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9a
-    name: OutputRouterFileOutputOrientationErrors
-    type: action
-    action: Output Router
-    with:
-      routingPort: fileOutput
-
   # OutputRouter for Solid Errors
   - id: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d0
     name: OutputRouterSolidErrors
@@ -380,81 +367,51 @@ edges:
     fromPort: features
     toPort: features
 
-  # ===== LOD outputs → SurfaceValidator3D =====
-  # LOD0 → SurfaceValidator3D_LOD0
+  # ===== LOD splitter outputs =====
   - id: 02b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d8
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     fromPort: lod0
     toPort: features
 
-  # LOD1 → GeometryFilterLod1
+  # A cons solid's shell is built from `xlink:href`s to the polygons under
+  # `uro:boundedBy`, and each of those boundary surfaces is already a LOD member
+  # of its own heading for the surface checks. Sending the solid there as well
+  # would check every face twice, so only bare surfaces take that branch and the
+  # solid goes to the shell checks alone.
   - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
-    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
-    fromPort: lod1
-    toPort: features
-
-  # LOD2 → GeometryFilterLod2
-  - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f0
-    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    fromPort: lod2
-    toPort: features
-
-  # LOD3 → GeometryFilterLod3
-  - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a1
-    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
-    fromPort: lod3
-    toPort: features
-
-  # GeometryFilterLod1 surface → SurfaceValidator3D_LOD1
-  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a02
     from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
     to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     fromPort: surface
     toPort: features
 
-  # GeometryFilterLod2 surface → SurfaceValidator3D_LOD2
+  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a02
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    fromPort: lod1
+    toPort: features
+
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a05
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    to: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    fromPort: surface
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    fromPort: lod2
     toPort: features
 
-  # GeometryFilterLod3 surface → SurfaceValidator3D_LOD3
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a08
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
-    to: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
-    fromPort: surface
+    from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
+    to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
+    fromPort: lod3
     toPort: features
 
-  # ===== SurfaceValidator3D invalidSurface outputs → AttributeMapper =====
-  # LOD0 invalidSurface → AttributeMapper
+  # ===== Surface check failures → AttributeMapper =====
   - id: 11a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c8
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
     toPort: features
 
-  # LOD1 invalidSurface → AttributeMapper
   - id: 12b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d9
     from: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
-    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    fromPort: invalidSurface
-    toPort: features
-
-  # LOD2 invalidSurface → AttributeMapper
-  - id: 13c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7ea
-    from: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
-    to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-    fromPort: invalidSurface
-    toPort: features
-
-  # LOD3 invalidSurface → AttributeMapper
-  - id: 14d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8fb
-    from: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
     toPort: features
@@ -487,33 +444,23 @@ edges:
     fromPort: features
     toPort: features
 
-  # ===== GeometryFilter solid → SolidBoundaryValidator edges =====
-  # GeometryFilterLod1 solid → SolidBoundaryValidator
+  # ===== Solid checks =====
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a03
     from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
     to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     fromPort: solid
     toPort: features
 
-  # GeometryFilterLod2 solid → SolidBoundaryValidator
-  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a06
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
-    to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    fromPort: solid
-    toPort: features
-
-  # GeometryFilterLod3 solid → SolidBoundaryValidator
-  - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a09
-    from: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
-    to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    fromPort: solid
-    toPort: features
-
-  # SolidBoundaryValidator (failed) → FeatureFilterNotClosed
+  # SolidValidator (failed) → AttributeManagerSolidIssue → FeatureFilterNotClosed
   - id: a113d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
     from: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
-    to: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    to: 10100000-0000-4000-8000-000000000002
     fromPort: failed
+    toPort: features
+  - id: 10100000-0000-4000-8000-000000000102
+    from: 10100000-0000-4000-8000-000000000002
+    to: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
+    fromPort: features
     toPort: features
 
   # FeatureFilterNotClosed (notClosed) → AttributeMapperNotClosed
@@ -552,11 +499,11 @@ edges:
     toPort: features
 
   # ===== Solid Issues (立体のその他のエラー) edges =====
-  # FeatureFilterNotClosed (unfiltered) → AttributeMapperSolidIssues
+  # FeatureFilterNotClosed (otherIssues) → AttributeMapperSolidIssues
   - id: a119e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
     from: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     to: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
-    fromPort: unfiltered
+    fromPort: otherIssues
     toPort: features
 
   # AttributeMapperSolidIssues → FeatureWriterSolidIssues
@@ -588,11 +535,11 @@ edges:
     toPort: features
 
   # ===== Orientation errors (面の向き不正) - LOD0 only =====
-  # SurfaceValidator3D_LOD0 inCorrectOrientation → AttributeMapperOrientationErrors
+  # SurfaceChecksLod0 incorrectOrientation → AttributeMapperOrientationErrors
   - id: 25a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c0
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
 
   # AttributeMapperOrientationErrors → CsvWriterOrientationErrors
@@ -602,10 +549,10 @@ edges:
     fromPort: features
     toPort: features
 
-  # CsvWriterOrientationErrors → OutputRouterFileOutputOrientationErrors
+  # CsvWriterOrientationErrors → OutputRouterFileOutput
   - id: 27c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e2
     from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
-    to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9a
+    to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c50
     fromPort: features
     toPort: features
 

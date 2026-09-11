@@ -12,8 +12,8 @@ with:
   objectListsPath:
   objectLists:
 graphs:
-  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/plateau4/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
@@ -112,42 +112,57 @@ graphs:
               value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
             outputPort: features
 
+      # `extractTags` stays empty: an lsld city object carries its geometry directly, so
+      # there is nothing to hoist out.
       - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["path"]
-      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
-        name: FilterNotCityModel
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["featureType"] != "CityModel"
-              outputPort: features
 
-      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        name: HorizontalReprojector
+      # Derives the identity attributes the instance count and the checks key on
+      # from the reader output.
+      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        name: AttributeManagerReaderAdapter
         type: action
-        action: Horizontal Reprojector
+        action: Attribute Manager
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          operations:
+            - attribute: featureType
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: gmlName
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: featureId
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_gml_id")
+
+      # Reprojected before any check: planarity and the absolute winding of a face
+      # are only defined in a linear-unit frame.
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: CoordinateFrameReprojector
+        type: action
+        action: Coordinate Frame Reprojector
+        with:
+          destinationFrame:
+            crs:
+              type: flowExpr
+              value: variables["prcs"]
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
-        name: PLATEAU3.LodSplitterWithDM
+        name: LodSplitter
         type: subGraph
-        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+        subGraphId: b1000000-0000-4000-8000-000000000000
 
       - id: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         name: FeatureSorter
@@ -214,9 +229,9 @@ graphs:
               valueAttribute: name
 
       - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
-        name: PLATEAU3.SurfaceValidator2D
+        name: SurfaceChecks
         type: subGraph
-        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+        subGraphId: d4000000-0000-4000-8000-000000000000
 
       - id: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
         name: AttributeMapperForSurfaceOrientationErrors
@@ -231,13 +246,17 @@ graphs:
             - attribute: Filename
               valueAttribute: name
             - attribute: FeatureType
-              valueAttribute: featureType
+              expr:
+                type: flowExpr
+                value: attributes.get("__citygml_geometry_feature_type") or attributes.get("featureType", "")
             - attribute: エラー数
               expr:
                 type: string
                 value: "1"
             - attribute: "gml:id"
-              valueAttribute: featureId
+              expr:
+                type: flowExpr
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("featureId", "")
             - attribute: 面の向き
               # It is okay to hardcode here since this mapper is connected to the surface orientation error port of surface validator.
               expr:
@@ -280,13 +299,17 @@ graphs:
             - attribute: Filename
               valueAttribute: name
             - attribute: FeatureType
-              valueAttribute: featureType
+              expr:
+                type: flowExpr
+                value: attributes.get("__citygml_geometry_feature_type") or attributes.get("featureType", "")
             - attribute: エラー数
               expr:
                 type: string
                 value: "1"
             - attribute: "gml:id"
-              valueAttribute: featureId
+              expr:
+                type: flowExpr
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("featureId", "")
             - attribute: エラー内容
               expr:
                 type: flowExpr
@@ -548,7 +571,7 @@ graphs:
       - id: 3bc60cc8-2b85-4912-9c9a-be697af8c98e
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
         to: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
-        fromPort: inCorrectOrientation
+        fromPort: incorrectOrientation
         toPort: features
       - id: fb63cbbf-f2c2-4be4-9d2d-5fbf1949d41c
         from: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
@@ -568,7 +591,7 @@ graphs:
       - id: df71e174-5ad7-40e1-9bc2-989014b0880f
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
         to: 26751290-4ac7-4884-908a-7c231b5f820a
-        fromPort: inCorrectOrientation
+        fromPort: incorrectOrientation
         toPort: features
       - id: fde37f13-ef96-4ab7-907b-140a4f0ef1b5
         from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44

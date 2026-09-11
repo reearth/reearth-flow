@@ -88,7 +88,7 @@ fn convert_node(
                 }
             }
             #[cfg(feature = "new-geometry")]
-            RawChild::Geometry(lod, g) => Some(XmlChild::Geometry(*lod, Arc::clone(g))),
+            RawChild::Geometry(meta, g) => Some(XmlChild::Geometry(meta.clone(), Arc::clone(g))),
         })
         .collect();
 
