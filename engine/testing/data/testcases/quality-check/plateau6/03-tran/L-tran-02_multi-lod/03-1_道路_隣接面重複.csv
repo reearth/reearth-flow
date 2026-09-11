@@ -1,5 +1,5 @@
-"Index","Folder","Filename","FeatureType","LOD","gml:id"
-1,"tran","53395499_tran_6697_op.gml","tran:Road",1,"tran_2fde7a5f-9ad1-427a-923b-69f0ab7d82fc"
-1,"tran","53395499_tran_6697_op.gml","tran:Road",1,"tran_69bcd697-4e2c-4b6e-a427-f8941b674a18"
-1,"tran","53395499_tran_6697_op.gml","tran:Road",3,"tran_2fde7a5f-9ad1-427a-923b-69f0ab7d82fc"
-1,"tran","53395499_tran_6697_op.gml","tran:Road",3,"tran_69bcd697-4e2c-4b6e-a427-f8941b674a18"
+"Index","Folder","Filename","FeatureType","LOD","gml:id","隣接ID"
+1,"tran","53395499_tran_6697_op.gml","TrafficArea",3,"tran_c6010901-3df2-4d6e-848c-821dc81035f4",1
+1,"tran","53395499_tran_6697_op.gml","TrafficArea",3,"tran_d34b902f-9770-43d1-a724-d46ecf1d27f6",1
+1,"tran","53395499_tran_6697_op.gml","TrafficArea",1,"tran_c6010901-3df2-4d6e-848c-821dc81035f4",3
+1,"tran","53395499_tran_6697_op.gml","TrafficArea",1,"tran_d34b902f-9770-43d1-a724-d46ecf1d27f6",3

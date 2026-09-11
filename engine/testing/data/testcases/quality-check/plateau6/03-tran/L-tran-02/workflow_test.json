@@ -48,6 +48,11 @@
       "expectedFile": "03-1_道路_検査結果一覧.csv",
       "includeColumns": [
         "隣接面重複"
+      ],
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
       ]
     }
   },

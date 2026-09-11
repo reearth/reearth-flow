@@ -49,6 +49,11 @@
       "expectedFile": "03-2_鉄道_検査結果一覧.csv",
       "includeColumns": [
         "面のエラー"
+      ],
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
       ]
     }
   },

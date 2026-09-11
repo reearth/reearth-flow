@@ -51,6 +51,11 @@
       "expectedFile": "03-1_道路_検査結果一覧.csv",
       "includeColumns": [
         "xlink参照エラー"
+      ],
+      "keyColumns": [
+        "Filename",
+        "フィーチャータイプ",
+        "LOD"
       ]
     }
   },
