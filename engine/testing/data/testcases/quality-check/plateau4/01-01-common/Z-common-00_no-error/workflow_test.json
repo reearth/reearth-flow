@@ -1,6 +1,5 @@
 {
   "description": "Verify output files for quality check with no errors",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {

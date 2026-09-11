@@ -12,8 +12,8 @@ with:
   prcs:
   targetPackages: ["frn", "veg"]
 graphs:
-  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/plateau4/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
@@ -113,65 +113,59 @@ graphs:
               value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
             outputPort: features
 
+      # `extractTags` stays empty: a frn/veg city object carries its geometry
+      # directly, so there is nothing to hoist out.
       - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["path"]
-      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
-        name: FilterNotCityModel
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["featureType"] != "CityModel"
-              outputPort: features
 
-      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        name: HorizontalReprojector
+      # Derives the identity attributes the instance count and the checks key on
+      # from the reader output.
+      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        name: AttributeManagerReaderAdapter
         type: action
-        action: Horizontal Reprojector
+        action: Attribute Manager
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          operations:
+            - attribute: featureType
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+            - attribute: gmlName
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("__citygml_feature_type")
+
+      # Reprojected before any check: planarity and the absolute winding of a face
+      # are only defined in a linear-unit frame.
+      - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
+        name: CoordinateFrameReprojector
+        type: action
+        action: Coordinate Frame Reprojector
+        with:
+          destinationFrame:
+            crs:
+              type: flowExpr
+              value: variables["prcs"]
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
-        name: PLATEAU3.LodSplitterWithDM
+        name: LodSplitter
         type: subGraph
-        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+        subGraphId: b1000000-0000-4000-8000-000000000000
 
       - id: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
-        name: FeatureFilterGmlGeometryType
+        name: GeometryFilterByType
         type: action
-        action: Feature Filter
+        action: Geometry Filter
         with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["gmlPropertyName"] in ["lod1MultiSurface", "lod2MultiSurface", "lod3MultiSurface"]
-              outputPort: multiSurface
-            - expr:
-                type: flowExpr
-                value: attributes["gmlPropertyName"] in ["lod1MultiSolid", "lod2MultiSolid", "lod3MultiSolid"]
-              outputPort: multiSolid
-            - expr:
-                type: flowExpr
-                value: attributes["gmlPropertyName"] in ["lod1Geometry", "lod2Geometry", "lod3Geometry"] and attributes["geometryName"] == "MultiSurface"
-              outputPort: surfaceGeometry
-            - expr:
-                type: flowExpr
-                value: attributes["gmlPropertyName"] in ["lod1Geometry", "lod2Geometry", "lod3Geometry"] and attributes["geometryName"] == "Solid"
-              outputPort: solidGeometry
+          filterType: detailedGeometryType
 
       # Instance Count
       - id: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
@@ -247,9 +241,9 @@ graphs:
 
       # Surface Validation
       - id: 950407af-eec5-49ee-902c-2b41f31150d3
-        name: PLATEAU3.SurfaceValidator3D
+        name: SurfaceChecks
         type: subGraph
-        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+        subGraphId: d4000000-0000-4000-8000-000000000000
 
       - id: 10b3d500-65b6-47a4-ada2-fdf219f3e669
         name: AttributeMapperSurfaceValidationErrors
@@ -276,19 +270,11 @@ graphs:
             - attribute: gml_id
               expr:
                 type: flowExpr
-                value: attributes.get("gmlId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
             - attribute: issue
               expr:
                 type: flowExpr
-                value: |
-                  vr = attributes.get("validationResult");
-                  if vr != null and "details" in vr {
-                    vr["details"][0][0]
-                  } else if "issue" in attributes {
-                    attributes["issue"]
-                  } else {
-                    "UnknownError"
-                  }
+                value: attributes.get("issue", "UnknownError")
       - id: 51bdd4e8-1f3d-4745-9e96-9cb53ee92a53
         name: CsvWriterSurfaceValidationErrors
         type: action
@@ -322,13 +308,33 @@ graphs:
 
       # Solid Validation
       - id: bf13c543-ca57-4479-be36-47fe5ad34dfc
-        name: SolidBoundaryValidator
+        name: SolidValidator
         type: action
-        action: Solid Boundary Validator
+        action: Geometry Validator
         with:
-          tolerance:
-            type: flowExpr
-            value: "0.01"
+          duplicateTolerance: 0.01
+
+      # Shell-level failures are classified here; face-level failures on the same
+      # solid are reported by the boundary surface checks.
+      - id: 04100000-0000-4000-8000-000000000001
+        name: AttributeManagerSolidIssue
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _solid_issue
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  checks = attributes["validationResult"]["checks"];
+                  if "ShellManifold" in checks {
+                    "NotClosed"
+                  } else if "ShellConnected" in checks or "Orientable" in checks or "Orientation" in checks or "ShellOrientation" in checks or "SelfIntersection" in checks {
+                    "Other"
+                  } else {
+                    ""
+                  }
 
       - id: d0132191-a81f-4647-896d-5db49e3fb734
         name: FeatureFilterInvalidSolidBoundary
@@ -338,8 +344,12 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["solid_boundary_issues"]["issue"] == "NotA2Manifold"
+                value: attributes["_solid_issue"] == "NotClosed"
               outputPort: notClosed
+            - expr:
+                type: flowExpr
+                value: attributes["_solid_issue"] == "Other"
+              outputPort: otherIssues
 
       - id: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
         name: AttributeMapperSolidBoundaryInvalidNotClosed
@@ -366,15 +376,18 @@ graphs:
             - attribute: gml_id
               expr:
                 type: flowExpr
-                value: attributes.get("gmlId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
             - attribute: エラー内容
               expr:
                 type: string
                 value: Surface Not Closed
+            # The row reports the shell manifold failure alone, so it counts that
+            # check's own edges rather than `errorCount`, which sums every check
+            # the validator ran on the solid.
             - attribute: エラー数
               expr:
                 type: flowExpr
-                value: attributes["solid_boundary_issues"]["issue_count"]
+                value: attributes["validationResult"]["checks"]["ShellManifold"]
 
       - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
         name: FeatureWriterL14-BoundaryNotClosed
@@ -407,13 +420,6 @@ graphs:
                 type: flowExpr
                 value: "1"
 
-      - id: 44f4a5b6-7c8d-9e0f-1a2b-3c4d5e6f7a8b
-        name: ErrorCount-Lod1NotClosedSolid
-        type: action
-        action: Output Router
-        with:
-          routingPort: errorCountLod1NotClosedSolid
-
       - id: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
         name: AttributeMapperSolidBoundaryInvalidOtherIssues
         type: action
@@ -439,15 +445,29 @@ graphs:
             - attribute: gml_id
               expr:
                 type: flowExpr
-                value: attributes.get("gmlId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
             - attribute: エラー内容
               expr:
                 type: string
                 value: InvalidSolidBoundaries
+            # Several shell checks can fail together, but the row names one issue,
+            # so it counts the first in the order the checks are tried.
             - attribute: エラー数
               expr:
                 type: flowExpr
-                value: attributes["solid_boundary_issues"]["issue_count"]
+                value: |
+                  checks = attributes["validationResult"]["checks"];
+                  if "ShellConnected" in checks {
+                    checks["ShellConnected"]
+                  } else if "Orientable" in checks {
+                    checks["Orientable"]
+                  } else if "SelfIntersection" in checks {
+                    checks["SelfIntersection"]
+                  } else if "Orientation" in checks {
+                    checks["Orientation"]
+                  } else {
+                    checks.get("ShellOrientation", 0)
+                  }
 
       - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
         name: FeatureWriterL14-BoundaryOtherIssues
@@ -510,7 +530,7 @@ graphs:
             - attribute: gml_id
               expr:
                 type: flowExpr
-                value: attributes.get("gmlId", "")
+                value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
             - attribute: "ジオメトリ型"
               expr:
                 type: flowExpr
@@ -547,8 +567,6 @@ graphs:
               expr:
                 type: flowExpr
                 value: "1"
-
-
 
       # Error Aggregation and Output
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
@@ -850,25 +868,30 @@ graphs:
         toPort: features
       
       # Suraface Validation flow
-      - id: 588df3c1-eb70-4961-93b0-ab45402805e8
+      - id: 04100000-0000-4000-8000-000000000240
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
-        fromPort: multiSurface
+        fromPort: multi-surface
         toPort: features
-      - id: 664d0a26-1b35-4b43-83c4-352c562c946f
+      - id: 04100000-0000-4000-8000-000000000241
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
-        fromPort: multiSurface
+        fromPort: polygon-mesh
         toPort: features
-      - id: aa75806c-3daf-4c5c-bab0-188979ecb00b
+      - id: 04100000-0000-4000-8000-000000000242
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
-        fromPort: multiSolid
+        fromPort: multi-area
         toPort: features
-      - id: a5f4a4ee-9d18-4f94-8909-19ca4228e931
+      - id: 04100000-0000-4000-8000-000000000243
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
-        fromPort: solidGeometry
+        fromPort: solid
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000244
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 950407af-eec5-49ee-902c-2b41f31150d3
+        fromPort: multi-solid
         toPort: features
       - id: 637ac78f-80eb-45db-815b-0dde642e0e7a
         from: 950407af-eec5-49ee-902c-2b41f31150d3
@@ -887,20 +910,25 @@ graphs:
         toPort: features
 
       # Solid Validation flow
-      - id: 92fbdd35-b2ac-4a68-9300-4fc35b0bb59b
+      - id: 04100000-0000-4000-8000-000000000250
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: bf13c543-ca57-4479-be36-47fe5ad34dfc
-        fromPort: multiSolid
+        fromPort: solid
         toPort: features
-      - id: caddaf7a-1f14-4fbc-99f0-af6a360c0c56
+      - id: 04100000-0000-4000-8000-000000000251
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: bf13c543-ca57-4479-be36-47fe5ad34dfc
-        fromPort: solidGeometry
+        fromPort: multi-solid
         toPort: features
       - id: c9eac8a2-591e-4f3e-96aa-fafe45a65a2b
         from: bf13c543-ca57-4479-be36-47fe5ad34dfc
-        to: d0132191-a81f-4647-896d-5db49e3fb734
+        to: 04100000-0000-4000-8000-000000000001
         fromPort: failed
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000002
+        from: 04100000-0000-4000-8000-000000000001
+        to: d0132191-a81f-4647-896d-5db49e3fb734
+        fromPort: features
         toPort: features
       - id: 9d998e42-7f49-44ea-b726-f9f95cb68021
         from: d0132191-a81f-4647-896d-5db49e3fb734
@@ -920,7 +948,7 @@ graphs:
       - id: c964647c-71b4-4c34-9f04-d247538a3acc
         from: d0132191-a81f-4647-896d-5db49e3fb734
         to: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
-        fromPort: unfiltered
+        fromPort: otherIssues
         toPort: features
       - id: 57a3aa25-21fe-47cf-a9ca-7334cc86eafb
         from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
@@ -930,11 +958,61 @@ graphs:
       - id: 8bce78b0-0605-4986-a9b5-42be75551269
         from: d0132191-a81f-4647-896d-5db49e3fb734
         to: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
-        fromPort: unfiltered
+        fromPort: otherIssues
         toPort: features
 
       # Geometry Type Error flow
-      - id: 45d153c9-e98a-4f3a-80c0-b43d390528eb
+      - id: 04100000-0000-4000-8000-000000000200
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: face
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000202
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: polygon
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000204
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: point
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000206
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: multi-point
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000208
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: point-cloud
+        toPort: features
+      - id: 04100000-0000-4000-8000-00000000020a
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: line-string
+        toPort: features
+      - id: 04100000-0000-4000-8000-00000000020c
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: multi-curve
+        toPort: features
+      - id: 04100000-0000-4000-8000-00000000020e
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: triangular-mesh
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000210
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: csg
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000212
+        from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
+        to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
+        fromPort: aggregate
+        toPort: features
+      - id: 04100000-0000-4000-8000-000000000214
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
         fromPort: unfiltered
@@ -1045,7 +1123,6 @@ graphs:
         to: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae    # FileWriterQcResultOk
         fromPort: features
         toPort: features
-
 
       # Output files to ZipFileWriter
       - id: b4a13b04-9c9c-4152-a221-7c74947b59b3

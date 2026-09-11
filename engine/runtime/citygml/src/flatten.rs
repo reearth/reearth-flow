@@ -21,6 +21,10 @@ pub(super) struct Extracted {
 #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(super) struct FoundGeometry {
     pub(super) lod: Option<u8>,
+    /// The local name of the property the geometry filled, and of the GML type
+    /// that property held; see [`GeomMeta`](super::utils::GeomMeta).
+    pub(super) property: String,
+    pub(super) gml_type: Option<String>,
     pub(super) node: Arc<GeomNode>,
     pub(super) owner_gml_id: Option<String>,
     pub(super) owner_feature_type: String,
@@ -40,8 +44,10 @@ fn collect_all_geometry_inner(node: &Arc<XmlNode>, out: &mut Vec<FoundGeometry>)
     for child in &node.children {
         match child {
             XmlChild::Element(e) => collect_all_geometry_inner(e, out),
-            XmlChild::Geometry(lod, g) => out.push(FoundGeometry {
-                lod: *lod,
+            XmlChild::Geometry(meta, g) => out.push(FoundGeometry {
+                lod: meta.lod,
+                property: meta.property.clone(),
+                gml_type: meta.gml_type.clone(),
                 node: Arc::clone(g),
                 owner_gml_id: gml_id_attr(&node.attrs),
                 owner_feature_type: node.name.0.clone(),
@@ -198,9 +204,11 @@ fn extract_recursive(
                     nc.push(child.clone());
                 }
             }
-            XmlChild::Geometry(lod, g) => {
+            XmlChild::Geometry(meta, g) => {
                 geometry.push(FoundGeometry {
-                    lod: *lod,
+                    lod: meta.lod,
+                    property: meta.property.clone(),
+                    gml_type: meta.gml_type.clone(),
                     node: Arc::clone(g),
                     owner_gml_id: gml_id_attr(&node.attrs),
                     owner_feature_type: node.name.0.clone(),
@@ -221,6 +229,8 @@ fn extract_recursive(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "new-geometry")]
+    use crate::utils::GeomMeta;
     use crate::utils::{test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID};
 
     fn node(name: &str, children: Vec<XmlChild>) -> Arc<XmlNode> {
@@ -247,6 +257,16 @@ mod tests {
             children,
             source_url: test_url(),
         })
+    }
+
+    /// The metadata a `lod<N>MultiSurface` property would have carried.
+    #[cfg(feature = "new-geometry")]
+    fn geom_meta(lod: u8) -> GeomMeta {
+        GeomMeta {
+            lod: Some(lod),
+            property: format!("lod{lod}MultiSurface"),
+            gml_type: Some("MultiSurface".to_string()),
+        }
     }
 
     #[test]
@@ -369,7 +389,7 @@ mod tests {
         let root = gml_id(
             "bldg:Building",
             "b1",
-            vec![XmlChild::Geometry(Some(2), geom_ref("g1"))],
+            vec![XmlChild::Geometry(geom_meta(2), geom_ref("g1"))],
         );
         let extracted = extract(&root, &included(&["bldg:Building"]), &ns_reg);
         assert_eq!(extracted.len(), 1);
@@ -385,7 +405,7 @@ mod tests {
         let wall = gml_id(
             "con:WallSurface",
             "wall1",
-            vec![XmlChild::Geometry(Some(2), geom_ref("g1"))],
+            vec![XmlChild::Geometry(geom_meta(2), geom_ref("g1"))],
         );
         let root = gml_id("bldg:Building", "b1", vec![elem(wall)]);
         let extracted = extract(&root, &included(&["bldg:Building"]), &ns_reg);
@@ -404,7 +424,7 @@ mod tests {
         let part = gml_id(
             "bldg:BuildingPart",
             "part1",
-            vec![XmlChild::Geometry(Some(2), geom_ref("g1"))],
+            vec![XmlChild::Geometry(geom_meta(2), geom_ref("g1"))],
         );
         let root = gml_id("bldg:Building", "b1", vec![elem(part)]);
         let extracted = extract(

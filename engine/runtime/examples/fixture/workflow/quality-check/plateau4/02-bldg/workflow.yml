@@ -20,7 +20,7 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
   - !include ../../../../graphs/lod_splitter.yml
-  - !include surface_checks.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   - !include building_part_validation.yml
   - !include format_checks.yml
   - !include ref_and_type_checks.yml

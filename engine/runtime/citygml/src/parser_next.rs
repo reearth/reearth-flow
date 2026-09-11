@@ -33,7 +33,7 @@ pub(crate) enum RawChild {
     Element(Arc<RawNode>),
     Text(String),
     Ref(RawNodeKey),
-    Geometry(Option<u8>, Arc<super::resolver::GeomNode>),
+    Geometry(super::utils::GeomMeta, Arc<super::resolver::GeomNode>),
 }
 
 pub(crate) type RawRegistry = HashMap<RawNodeKey, Arc<RawNode>>;

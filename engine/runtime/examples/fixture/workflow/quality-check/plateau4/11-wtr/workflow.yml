@@ -18,8 +18,8 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
-  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/plateau4/surface_validator.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   - !include wtr.yml
   # Entry point graph
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7f
@@ -140,26 +140,28 @@ graphs:
                   parts = attributes["path"].split("/");
                   if len(parts) >= 2 { parts[-2] } else { attributes.get("udxDirs", "") }
 
+      # `extractTags` stays empty: a WaterBody carries its geometry directly and
+      # has no nested boundary surfaces to hoist out.
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
         name: FeatureCityGmlReader
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
-          codelistsPath:
-            type: flowExpr
-            value: attributes["codelists"]
-          flatten: true
           dataset:
             type: flowExpr
             value: attributes["gmlPath"]
+
+      # Reprojected before any check: planarity and the absolute winding of a face
+      # are only defined in a linear-unit frame.
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
-        name: HorizontalReprojector
+        name: CoordinateFrameReprojector
         type: action
-        action: Horizontal Reprojector
+        action: Coordinate Frame Reprojector
         with:
-          targetEpsgCode:
-            type: flowExpr
-            value: variables["prcs"]
+          destinationFrame:
+            crs:
+              type: flowExpr
+              value: variables["prcs"]
 
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
         name: FeatureSorter
@@ -223,6 +225,11 @@ graphs:
             value: 'attributes.get("Filename") or attributes["filename"]'
 
       # Instance count per file (with lod for grouping)
+      - id: 11100000-0000-4000-8000-000000000001
+        name: GeometrySplitterForInstanceCount
+        type: action
+        action: Geometry Splitter
+
       - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
         name: InstanceCountCalculator
         type: action
@@ -504,9 +511,14 @@ graphs:
         fromPort: features
         toPort: features
 
-      # FeatureCounterFeatureIndex → InstanceCountCalculator
+      # FeatureCounterFeatureIndex → GeometrySplitter → InstanceCountCalculator
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9c
         from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        to: 11100000-0000-4000-8000-000000000001
+        fromPort: features
+        toPort: features
+      - id: 11100000-0000-4000-8000-000000000101
+        from: 11100000-0000-4000-8000-000000000001
         to: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
         fromPort: features
         toPort: features

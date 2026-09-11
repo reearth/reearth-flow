@@ -19,7 +19,7 @@ with:
     - wwy
 graphs:
   - !include ../../../../graphs/lod_splitter.yml
-  - !include surface_checks.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   # Common quality check graphs
   - !include ../../../../graphs/plateau4/xml_validator.yml
   - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
@@ -209,21 +209,7 @@ graphs:
       - id: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         name: SurfaceChecks
         type: subGraph
-        subGraphId: c3000000-0000-4000-8000-000000000000
-
-      # A city object the reprojection could not convert takes part in no check at
-      # all, so it is reported as a surface error rather than dropped.
-      - id: c3100000-0000-4000-8000-000000000001
-        name: AttributeManagerReprojectionRejected
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: issue
-              method: create
-              value:
-                type: string
-                value: GeometryRejected
+        subGraphId: d4000000-0000-4000-8000-000000000000
 
       # Attribute Mapper for surface validation errors
       - id: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
@@ -446,14 +432,6 @@ graphs:
         action: List Exploder
         with:
           sourceAttribute: overlaidLists
-
-      # DuplicateFilter to remove duplicates based on the road's gml:id
-      - id: f94ccdb2-2133-4b0d-886d-9c933c0d645f
-        name: DuplicateFilterLineOverlaps
-        type: action
-        action: Attribute Duplicate Filter
-        with:
-          filterBy: ["__citygml_gml_id"]
 
       # Replace geometry from attribute
       - id: 2261a5c9-46a4-45ce-a292-d277a3dc0ebc
@@ -888,18 +866,6 @@ graphs:
         fromPort: features
         toPort: features
 
-      # Reprojection rejects are reported as surface errors
-      - id: c3100000-0000-4000-8000-000000000101
-        from: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        to: c3100000-0000-4000-8000-000000000001
-        fromPort: rejected
-        toPort: features
-      - id: c3100000-0000-4000-8000-000000000102
-        from: c3100000-0000-4000-8000-000000000001
-        to: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
-        fromPort: features
-        toPort: features
-
       # Connect LOD splitter to the surface checks
       - id: e23edb68-8299-4a9f-a722-f82b73c82d88
         from: 51431704-ac14-41cd-988b-88141dc6e326
@@ -924,11 +890,11 @@ graphs:
         fromPort: invalidSurface
         toPort: features
 
-      # Connect SurfaceChecks inCorrectOrientation to AttributeMapper
+      # Connect SurfaceChecks incorrectOrientation to AttributeMapper
       - id: f57856b7-7b32-4a0d-88a4-2bfadaf2f9a3
         from: abf4b25e-6c1f-46fd-b5f8-07d43d137abf
         to: 0740c8ce-3c27-416f-9a13-5b2086090426
-        fromPort: inCorrectOrientation
+        fromPort: incorrectOrientation
         toPort: features
 
       # AttributeMapper to FeatureWriter
@@ -978,7 +944,7 @@ graphs:
         toPort: features
 
       # FeatureSorter to GeometryExtractor
-      - id: c472919a-4b86-462f-8570-34a149f69382
+      - id: 03100000-0000-4000-8000-000000000001
         from: 0c979585-82b2-41aa-909c-00d9b8d017d0
         to: 37e634aa-67c0-4f70-8fdc-939854a3cc21
         fromPort: features

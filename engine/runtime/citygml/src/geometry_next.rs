@@ -21,7 +21,7 @@ use reearth_flow_geometry::Euclidean3DGeometry;
 use super::malformation::Malformation;
 use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
-use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
+use super::utils::{frame_for, local_name, GeomMeta, GML_NS_311_ID, GML_NS_ID};
 
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a
@@ -65,8 +65,13 @@ impl Parser {
 
             if let Some(lod) = lod {
                 let nc = new_children.get_or_insert_with(|| node.children[..i].to_vec());
-                if let Some(gnode) = self.property_geometry(e) {
-                    nc.push(RawChild::Geometry(lod, Arc::new(gnode)));
+                if let Some((gnode, gml_type)) = self.property_geometry(e) {
+                    let meta = GeomMeta {
+                        lod,
+                        property: ln.to_string(),
+                        gml_type,
+                    };
+                    nc.push(RawChild::Geometry(meta, Arc::new(gnode)));
                 }
             } else {
                 let stripped_child = self.strip(e);
@@ -109,11 +114,17 @@ impl Parser {
 
     /// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` /
     /// `tin` property into a [`GeomNode`].
-    fn property_geometry(&mut self, prop: &RawNode) -> Option<GeomNode> {
+    fn property_geometry(&mut self, prop: &RawNode) -> Option<(GeomNode, Option<String>)> {
         for child in &prop.children {
             match child {
-                RawChild::Ref(key) => return Some(GeomNode::Ref(key.clone())),
-                RawChild::Element(e) => return self.geometry_node(e),
+                RawChild::Ref(key) => return Some((GeomNode::Ref(key.clone()), None)),
+                RawChild::Element(e) => {
+                    // Read the type name here rather than off the returned node:
+                    // `geometry_node` registers a gml:id-bearing geometry and hands
+                    // back a `Ref` in its place, which no longer names its type.
+                    let ty = local_name(&e.name.0).to_string();
+                    return self.geometry_node(e).map(|node| (node, Some(ty)));
+                }
                 RawChild::Text(_) | RawChild::Geometry(..) => {}
             }
         }
@@ -595,14 +606,18 @@ mod tests {
     /// `PendingGeom` list exposed to tests.
     struct FoundGeom {
         lod: Option<u8>,
+        property: String,
+        gml_type: Option<String>,
         node: Arc<GeomNode>,
     }
 
     fn collect_geoms(node: &RawNode, out: &mut Vec<FoundGeom>) {
         for child in &node.children {
             match child {
-                RawChild::Geometry(lod, g) => out.push(FoundGeom {
-                    lod: *lod,
+                RawChild::Geometry(meta, g) => out.push(FoundGeom {
+                    lod: meta.lod,
+                    property: meta.property.clone(),
+                    gml_type: meta.gml_type.clone(),
                     node: Arc::clone(g),
                 }),
                 RawChild::Element(e) => collect_geoms(e, out),
@@ -678,6 +693,58 @@ mod tests {
         assert_eq!(geoms[0].lod, Some(2));
         let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert_eq!(collection_len(&geometry), 1);
+    }
+
+    #[test]
+    fn carved_geometry_records_its_property_and_gml_type() {
+        // The two names tell apart what the resolved geometry cannot: `lod2Solid`
+        // from any other LOD 2 property, and a `Solid` from the other GML types.
+        let (geoms, _registry) = parse_one(&format!(
+            "<bldg:lod2Solid><gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{POLYGON}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid></bldg:lod2Solid>"
+        ));
+        assert_eq!(geoms[0].property, "lod2Solid");
+        assert_eq!(geoms[0].gml_type.as_deref(), Some("Solid"));
+    }
+
+    #[test]
+    fn gml_type_survives_registration_of_an_identified_geometry() {
+        // A geometry carrying a gml:id is registered and the property is left
+        // holding a `Ref`, which no longer names its own type.
+        let (geoms, _registry) = parse_one(&format!(
+            "<bldg:lod2MultiSurface><gml:MultiSurface gml:id=\"ms1\"><gml:surfaceMember>{POLYGON}</gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>"
+        ));
+        assert!(matches!(*geoms[0].node, GeomNode::Ref(_)));
+        assert_eq!(geoms[0].property, "lod2MultiSurface");
+        assert_eq!(geoms[0].gml_type.as_deref(), Some("MultiSurface"));
+    }
+
+    #[test]
+    fn same_lod_properties_are_told_apart_by_property_name() {
+        // Both resolve to a Collection, so only the property and type names
+        // separate a lod1MultiSurface from a lod1Geometry holding a MultiSurface.
+        let (geoms, _registry) = parse_one(&format!(
+            "<bldg:lod1MultiSurface><gml:MultiSurface><gml:surfaceMember>{POLYGON}</gml:surfaceMember></gml:MultiSurface></bldg:lod1MultiSurface>
+             <uro:lod1Geometry><gml:MultiSurface><gml:surfaceMember>{POLYGON}</gml:surfaceMember></gml:MultiSurface></uro:lod1Geometry>"
+        ));
+        assert_eq!(geoms.len(), 2);
+        assert_eq!(geoms[0].lod, geoms[1].lod);
+        assert_eq!(geoms[0].property, "lod1MultiSurface");
+        assert_eq!(geoms[1].property, "lod1Geometry");
+        for g in &geoms {
+            assert_eq!(g.gml_type.as_deref(), Some("MultiSurface"));
+        }
+    }
+
+    #[test]
+    fn tin_records_its_property_name() {
+        let (geoms, _registry) = parse_one(
+            r#"<dem:tin><gml:TriangulatedSurface><gml:patches>
+                 <gml:Triangle><gml:exterior><gml:LinearRing><gml:posList>1 2 0 3 2 0 1 4 5 1 2 0</gml:posList></gml:LinearRing></gml:exterior></gml:Triangle>
+               </gml:patches></gml:TriangulatedSurface></dem:tin>"#,
+        );
+        assert_eq!(geoms[0].lod, None);
+        assert_eq!(geoms[0].property, "tin");
+        assert_eq!(geoms[0].gml_type.as_deref(), Some("TriangulatedSurface"));
     }
 
     #[test]

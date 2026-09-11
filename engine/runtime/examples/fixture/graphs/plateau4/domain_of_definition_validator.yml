@@ -33,8 +33,8 @@ nodes:
           outputPort: codeValidation
         - expr:
             type: flowExpr
-            value: attributes["flag"] == "inCorrectCodeSpace"
-          outputPort: inCorrectCodeSpace
+            value: attributes["flag"] == "incorrectCodeSpace"
+          outputPort: incorrectCodeSpace
         - expr:
             type: flowExpr
             value: attributes["flag"] == "ExtentsValidation"
@@ -75,11 +75,11 @@ nodes:
       routingPort: codeValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
-    name: InCorrectCodeSpaceRouter
+    name: IncorrectCodeSpaceRouter
     type: action
     action: Output Router
     with:
-      routingPort: inCorrectCodeSpace
+      routingPort: incorrectCodeSpace
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: ExtentsValidationRouter
@@ -184,7 +184,7 @@ edges:
   - id: 41141e61-6815-4556-b247-05c4e5de8bb8
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
-    fromPort: inCorrectCodeSpace
+    fromPort: incorrectCodeSpace
     toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb9
     from: 747d2fa3-2527-4324-b630-92fba84a548c

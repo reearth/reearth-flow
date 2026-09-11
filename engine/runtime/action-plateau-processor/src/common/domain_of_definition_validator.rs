@@ -639,11 +639,11 @@ fn process_feature(
         AttributeValue::Number(Number::from(response.correct_code_values)),
     );
     result_feature.insert(
-        "inCorrectCodeValue",
+        "incorrectCodeValue",
         AttributeValue::Number(Number::from(response.code_value_errors)),
     );
     result_feature.insert(
-        "inCorrectCodeSpace",
+        "incorrectCodeSpace",
         AttributeValue::Number(Number::from(response.code_space_errors)),
     );
     result_feature.insert(
@@ -664,7 +664,7 @@ fn process_feature(
         AttributeValue::Number(Number::from(response.correct_extents)),
     );
     result_feature.insert(
-        "inCorrectExtents",
+        "incorrectExtents",
         AttributeValue::Number(Number::from(response.incorrect_extents)),
     );
     result_feature.insert(
@@ -1241,7 +1241,7 @@ fn process_member_node(
             handle_code_validation_failure(
                 context.ctx,
                 context.fw,
-                "inCorrectCodeSpace",
+                "incorrectCodeSpace",
                 &base_feature,
                 &cs_entry.tag,
                 &cs_entry.xpath,

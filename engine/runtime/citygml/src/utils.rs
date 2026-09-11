@@ -66,11 +66,21 @@ pub(super) use super::resolver::GeomNode;
 #[derive(Debug)]
 pub enum GeomNode {}
 
+/// What the source GML said about a carved geometry beyond the geometry itself.
+/// Reaches the feature as the member attributes documented on
+/// [`MEMBER_LOD_KEY`](super::pipeline::MEMBER_LOD_KEY).
+#[derive(Debug, Clone)]
+pub struct GeomMeta {
+    pub lod: Option<u8>,
+    pub property: String,
+    pub gml_type: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub enum XmlChild {
     Element(Arc<XmlNode>),
     Text(String),
-    Geometry(Option<u8>, Arc<GeomNode>),
+    Geometry(GeomMeta, Arc<GeomNode>),
 }
 
 /// Interns namespace URIs as u32 IDs, avoiding repeated allocation of long URI strings.
