@@ -116,7 +116,9 @@ func (li *UserFacingLogInteractor) startWatchingLogsIfNeeded(jobID id.JobID, sin
 }
 
 func (li *UserFacingLogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobID, since time.Time) {
-	ticker := time.NewTicker(15 * time.Second)
+	// 2s keeps short debug runs live in the console; the stream-backed Redis
+	// read is O(job), so the faster cadence stays cheap.
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	jobKey := jobID.String()
