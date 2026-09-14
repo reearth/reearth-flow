@@ -164,10 +164,13 @@ async fn probe_schema(
     if output.status.success() {
         (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
     } else {
-        // `output()` buffers all of stderr in memory; embedding it verbatim
-        // could allocate unboundedly on a chatty failure. Keep only the tail
-        // (where the actionable error usually is) for the JSON response; the
-        // full logs remain in the container's stdout/stderr.
+        // `output()` buffers all of stderr in memory, so `MAX_STDERR` bounds
+        // the JSON response, not what the child can allocate here. Keep only
+        // the tail, where the actionable error usually is.
+        //
+        // Note stderr is piped rather than inherited, so unlike stdout it does
+        // NOT also reach the container log: this tail is the only copy that
+        // survives. Bounding the child's own output would mean teeing it.
         const MAX_STDERR: usize = 8 * 1024;
         let stderr = String::from_utf8_lossy(&output.stderr);
         let trimmed = stderr.trim();
@@ -228,10 +231,13 @@ async fn render_view(
     if output.status.success() {
         (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
     } else {
-        // `output()` buffers all of stderr in memory; embedding it verbatim
-        // could allocate unboundedly on a chatty failure. Keep only the tail
-        // (where the actionable error usually is) for the JSON response; the
-        // full logs remain in the container's stdout/stderr.
+        // `output()` buffers all of stderr in memory, so `MAX_STDERR` bounds
+        // the JSON response, not what the child can allocate here. Keep only
+        // the tail, where the actionable error usually is.
+        //
+        // Note stderr is piped rather than inherited, so unlike stdout it does
+        // NOT also reach the container log: this tail is the only copy that
+        // survives. Bounding the child's own output would mean teeing it.
         const MAX_STDERR: usize = 8 * 1024;
         let stderr = String::from_utf8_lossy(&output.stderr);
         let trimmed = stderr.trim();

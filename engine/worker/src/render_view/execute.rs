@@ -73,7 +73,15 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
             if outcome.fatal {
                 return Err(outcome.error.unwrap_or_else(|| error.to_string()));
             }
-            // A filter that will not compile lands here, and is the user's to fix.
+            // A filter the user wrote lands here, and is theirs to fix.
+            //
+            // `scanned` is 0 rather than a partial count. For `FilterCompile`
+            // that is exact: compilation happens before the first line is read.
+            // For `FilterEval` it undercounts, because the loader returns an
+            // error rather than a `Loaded`, so the lines it examined before the
+            // expression failed are not surfaced to us. Reporting 0 is honest
+            // about what we know; carrying the real count would mean adding it
+            // to `feature_view::Error::FilterEval`.
             return write_report(
                 &args,
                 &storage_resolver,
@@ -492,7 +500,7 @@ mod tests {
     /// docker network create reearth-flow-net   # once
     /// docker compose -f engine/compose.yml up -d gcs
     /// STORAGE_EMULATOR_HOST=http://localhost:4443 cargo test -p reearth-flow-worker \
-    ///     a_gs_render_survives_the_synchronous_io_gap -- --ignored --nocapture
+    ///     a_gs_render_survives_the_synchronous_io_gap -- --nocapture
     /// ```
     #[test]
     fn a_gs_render_survives_the_synchronous_io_gap() {
