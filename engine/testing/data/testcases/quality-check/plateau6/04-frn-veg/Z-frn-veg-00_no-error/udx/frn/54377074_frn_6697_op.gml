@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Instance count fixture for plateau6 04-frn-veg, CityGML 3.0 + i-UR 4.0.
+  No-error fixture for plateau6 04-frn-veg, CityGML 3.0 + i-UR 4.0.
 
   Two frn:CityFurniture within imizu-shi mesh 54377074 (EPSG:6697), each carrying a
   core:lod3MultiSurface of two horizontal triangles. The geometry is valid, so the

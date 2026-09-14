@@ -675,13 +675,15 @@ nodes:
 
   # --- Per file result row and summary ---
   # One row per GML file, the way the original workspace builds its 検査結果一覧
-  # sheet. Every error count is joined onto that same key.
+  # sheet. Every error count is joined onto that same key. The package is part of
+  # the key: each one writes its own result file, so their counts never share a row.
   - id: d6000000-0000-4000-8000-00000000002b
     name: SurfaceValidationErrorCounter
     type: action
     action: Statistics Calculator
     with:
       groupBy:
+        - Folder
         - Filename
       calculations:
         - newAttribute: _num_surface_issues
@@ -695,6 +697,7 @@ nodes:
     action: Statistics Calculator
     with:
       groupBy:
+        - Folder
         - Filename
       calculations:
         - newAttribute: _num_not_closed_solid
@@ -708,6 +711,7 @@ nodes:
     action: Statistics Calculator
     with:
       groupBy:
+        - Folder
         - Filename
       calculations:
         - newAttribute: _num_solid_issues
@@ -736,10 +740,12 @@ nodes:
     with:
       requestorAttributeValue:
         type: flowExpr
-        value: attributes["Filename"]
+        value: |
+          attributes["Folder"] + "|" + attributes["Filename"]
       supplierAttributeValue:
         type: flowExpr
-        value: attributes["Filename"]
+        value: |
+          attributes["Folder"] + "|" + attributes["Filename"]
 
   # Each error column reads a `_num_*` attribute and falls back to 0 when that
   # check reported nothing.

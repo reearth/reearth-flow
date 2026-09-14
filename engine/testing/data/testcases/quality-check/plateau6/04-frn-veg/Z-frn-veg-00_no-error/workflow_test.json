@@ -1,5 +1,5 @@
 {
-  "description": "No-error case for plateau6 04-frn-veg: two valid frn:CityFurniture yield no finding, so the run writes a qc_result_ok file.",
+  "description": "No-error case for plateau6 04-frn-veg: two valid frn:CityFurniture yield no finding, so the run writes a qc_result_ok file and the per feature-type instance count.",
   "workflowPath": "quality-check/plateau6/04-frn-veg/workflow.yml",
   "workflowVariables": [
     {
@@ -37,6 +37,9 @@
       "name": "schemas_.zip"
     }
   ],
+  "expectedOutput": {
+    "expectedFile": "04-1_都市設備_地物インスタンス数.csv"
+  },
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_frn.json"
