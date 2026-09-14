@@ -1,0 +1,59 @@
+{
+  "description": "No-error case for plateau6 04-frn-veg: two valid frn:CityFurniture yield no finding, so the run writes a qc_result_ok file and the per feature-type instance count.",
+  "workflowPath": "quality-check/plateau6/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "frn_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/frn",
+      "name": "frn_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "04-1_都市設備_地物インスタンス数.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_frn.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "04-1_都市設備_検査結果一覧.csv",
+        "keyColumns": ["Filename"]
+      },
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": ["サイズ[KB]"]
+      }
+    ]
+  },
+  "expectResultOkFile": true
+}
