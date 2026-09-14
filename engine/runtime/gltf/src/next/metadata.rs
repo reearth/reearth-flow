@@ -46,8 +46,10 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
     }
 
     // Property table keys are the raw attribute path, unsanitized.
-    let properties: Vec<(String, String)> =
-        raw_paths.into_iter().map(|raw| (raw.clone(), raw)).collect();
+    let properties: Vec<(String, String)> = raw_paths
+        .into_iter()
+        .map(|raw| (raw.clone(), raw))
+        .collect();
 
     let rows = flattened
         .iter()

@@ -12,10 +12,20 @@ pub(super) struct PropertyStats {
 impl PropertyStats {
     fn update(&mut self, n: &Number) {
         let Some(v) = n.as_f64() else { return };
-        if self.minimum.as_ref().and_then(Number::as_f64).is_none_or(|m| v < m) {
+        if self
+            .minimum
+            .as_ref()
+            .and_then(Number::as_f64)
+            .is_none_or(|m| v < m)
+        {
             self.minimum = Some(n.clone());
         }
-        if self.maximum.as_ref().and_then(Number::as_f64).is_none_or(|m| v > m) {
+        if self
+            .maximum
+            .as_ref()
+            .and_then(Number::as_f64)
+            .is_none_or(|m| v > m)
+        {
             self.maximum = Some(n.clone());
         }
     }
@@ -47,10 +57,7 @@ mod tests {
             "height".to_string(),
             AttributeValue::Number(Number::from_f64(height).unwrap()),
         );
-        attrs.insert(
-            "name".to_string(),
-            AttributeValue::String(name.to_string()),
-        );
+        attrs.insert("name".to_string(), AttributeValue::String(name.to_string()));
         Feature::from(attrs)
     }
 

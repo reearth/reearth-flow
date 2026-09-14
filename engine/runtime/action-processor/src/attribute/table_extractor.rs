@@ -293,12 +293,20 @@ fn coerce(value: AttributeValue, data_type: Option<ExtractDataType>) -> Attribut
     };
     let AttributeValue::String(s) = &value else {
         if !matches!(value, AttributeValue::Number(_)) {
-            tracing::error!(?data_type, ?value, "attribute table extractor: cannot coerce non-string value");
+            tracing::error!(
+                ?data_type,
+                ?value,
+                "attribute table extractor: cannot coerce non-string value"
+            );
         }
         return value;
     };
     let coerced = match data_type {
-        ExtractDataType::Int => s.trim().parse::<i64>().ok().map(|n| AttributeValue::Number(n.into())),
+        ExtractDataType::Int => s
+            .trim()
+            .parse::<i64>()
+            .ok()
+            .map(|n| AttributeValue::Number(n.into())),
         ExtractDataType::Float => s
             .trim()
             .parse::<f64>()
