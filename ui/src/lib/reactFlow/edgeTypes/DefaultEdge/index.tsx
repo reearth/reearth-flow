@@ -5,9 +5,7 @@ import { Edge } from "@flow/types";
 
 import useHooks from "./hooks";
 
-export type CustomEdgeProps = EdgeProps<Edge> & {
-  currentWorkflowId?: string;
-};
+export type CustomEdgeProps = EdgeProps<Edge>;
 
 const DefaultEdge: React.FC<CustomEdgeProps> = ({
   id,
@@ -20,7 +18,6 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   targetY,
   targetPosition,
   selected,
-  currentWorkflowId,
   // markerEnd,
   // ...props
 }) => {
@@ -34,7 +31,6 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   });
 
   const { jobStatus, hasIntermediateData } = useHooks({
-    currentWorkflowId,
     sourceNodeId: source,
     sourcePortName: sourceHandleId,
   });

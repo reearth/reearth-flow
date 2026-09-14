@@ -11,6 +11,11 @@ import {
 } from "@flow/stores";
 import { NodeData } from "@flow/types";
 
+import {
+  intermediateDataArtifactUrl,
+  resolveIntermediateDataTarget,
+} from "./resolveIntermediateDataTarget";
+
 export default ({
   nodeId,
   nodeData,
@@ -35,10 +40,32 @@ export default ({
     [debugJobState?.status],
   );
 
-  const dataUrl = useMemo(() => {
-    if (!api || !debugJobState?.jobId) return undefined;
-    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${nodeData.workflowPath ? `${nodeData.workflowPath}.` : ""}${nodeId}.${portName}.jsonl.zst`;
-  }, [api, nodeData.workflowPath, debugJobState?.jobId, nodeId, portName]);
+  // Canvas coordinates: how this port is addressed on the graph the user is
+  // looking at. Availability is recorded under these so edges — which only know
+  // their own source node and handle — can match it.
+  const workflowPath = nodeData.workflowPath ?? "";
+
+  // Engine coordinates: where the data was actually written. Differs from the
+  // canvas for subworkflow nodes, whose handles are pseudo ports.
+  const target = resolveIntermediateDataTarget({ nodeId, nodeData, portName });
+
+  const dataUrl = useMemo(
+    () =>
+      api && debugJobState?.jobId
+        ? intermediateDataArtifactUrl(api, debugJobState.jobId, {
+            nodeId: target.nodeId,
+            portName: target.portName,
+            workflowPath: target.workflowPath,
+          })
+        : undefined,
+    [
+      api,
+      debugJobState?.jobId,
+      target.nodeId,
+      target.portName,
+      target.workflowPath,
+    ],
+  );
 
   const [hasIntermediateData, setHasIntermediateData] = useState(false);
 
@@ -96,7 +123,7 @@ export default ({
   useEffect(() => {
     const jobId = debugJobState?.jobId;
     if (!hasIntermediateData || !jobId || !currentProject?.id) return;
-    const writeKey = `${nodeId}:${portName}:${jobId}`;
+    const writeKey = `${workflowPath}:${nodeId}:${portName}:${jobId}`;
     if (writtenForJobRef.current === writeKey) return;
     writtenForJobRef.current = writeKey;
 
@@ -107,12 +134,20 @@ export default ({
         const existing: AvailableIntermediateData[] =
           job.availableIntermediateData ?? [];
         if (
-          existing.some((e) => e.nodeId === nodeId && e.portName === portName)
+          existing.some(
+            (e) =>
+              e.nodeId === nodeId &&
+              e.portName === portName &&
+              (e.workflowPath ?? "") === workflowPath,
+          )
         )
           return job;
         return {
           ...job,
-          availableIntermediateData: [...existing, { nodeId, portName }],
+          availableIntermediateData: [
+            ...existing,
+            { nodeId, portName, workflowPath },
+          ],
         };
       }),
     }));
@@ -122,6 +157,7 @@ export default ({
     currentProject?.id,
     nodeId,
     portName,
+    workflowPath,
     updateValue,
   ]);
 

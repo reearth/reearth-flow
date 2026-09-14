@@ -15,6 +15,13 @@ export type SelectedIntermediateData = {
 export type AvailableIntermediateData = {
   nodeId: string;
   portName: string;
+  /**
+   * Dot-path of the containing subworkflow graph ids ("" for the main
+   * workflow). Intermediate data is keyed by workflow as well as by node and
+   * port, so availability has to carry the path to stay unambiguous across
+   * subworkflows. Absent on entries written before this field existed.
+   */
+  workflowPath?: string;
 };
 
 export type GraphSnapshot = {

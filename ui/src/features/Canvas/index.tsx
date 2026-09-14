@@ -17,7 +17,7 @@ import { DEFAULT_GRID_SIZE } from "@flow/global-constants";
 import {
   isValidConnection,
   CustomConnectionLine,
-  createFullEdgeTypes,
+  fullEdgeTypes,
   simpleEdgeTypes,
   connectionLineStyle,
 } from "@flow/lib/reactFlow";
@@ -127,12 +127,6 @@ const Canvas: React.FC<Props> = ({
     onPaste,
     onNodesDisable,
   });
-
-  // Create edge types with currentWorkflowId injected
-  const fullEdgeTypes = useMemo(
-    () => createFullEdgeTypes(currentWorkflowId),
-    [currentWorkflowId],
-  );
 
   const fullNodeTypes = useMemo(() => {
     return createFullNodeTypes(readonly);
