@@ -182,8 +182,14 @@ impl Report {
         if let Some(filter) = &self.filter {
             map.insert("filter".to_string(), json!(filter));
         }
-        map.insert("selectedFeatures".to_string(), json!(self.selected_features));
-        map.insert("renderedFeatures".to_string(), json!(self.rendered_features));
+        map.insert(
+            "selectedFeatures".to_string(),
+            json!(self.selected_features),
+        );
+        map.insert(
+            "renderedFeatures".to_string(),
+            json!(self.rendered_features),
+        );
         map.insert("scanned".to_string(), json!(self.scanned));
         if let Some(entry_point) = &self.entry_point {
             map.insert("entryPoint".to_string(), json!(entry_point));
@@ -282,11 +288,17 @@ mod tests {
         );
         // A trailing slash on the root must not leave a leading slash behind.
         assert_eq!(
-            relativise("gs://bucket/feature-view/abc/", "gs://bucket/feature-view/abc/x.glb"),
+            relativise(
+                "gs://bucket/feature-view/abc/",
+                "gs://bucket/feature-view/abc/x.glb"
+            ),
             "x.glb",
         );
         // Not under the root: returned unchanged rather than silently mangled.
-        assert_eq!(relativise("gs://bucket/a", "gs://other/b.glb"), "gs://other/b.glb");
+        assert_eq!(
+            relativise("gs://bucket/a", "gs://other/b.glb"),
+            "gs://other/b.glb"
+        );
     }
 
     #[test]
@@ -355,7 +367,10 @@ mod tests {
         assert_eq!(json["error"], "nothing drew");
         assert!(json.get("format").is_none());
         assert!(json.get("entryPoint").is_none());
-        assert!(json.get("written").is_none(), "written is omitted when empty");
+        assert!(
+            json.get("written").is_none(),
+            "written is omitted when empty"
+        );
         // Counts are always present, including zero.
         assert_eq!(json["renderedFeatures"], 0);
     }
