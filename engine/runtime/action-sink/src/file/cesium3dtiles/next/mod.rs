@@ -201,6 +201,11 @@ const DEFAULT_WRAP_TOLERANCE: f64 = 0.0;
 /// (e.g. many coincident features) rather than acting as a tuning knob.
 const SAFETY_MAX_DEPTH: u32 = 24;
 
+/// Contents per tile above which a warning is logged. Viewers fetch a tile's
+/// contents together and cap concurrent requests per server (e.g., CesiumJS
+/// defaults to 18), so a tile with more contents than the cap never loads.
+const CONTENTS_PER_TILE_WARN: usize = 18;
+
 /// Default per-tile content-size target (bytes) when `target_tile_size` is
 /// unset.
 const DEFAULT_TARGET_TILE_SIZE: u64 = 1_048_576;
@@ -277,6 +282,18 @@ pub fn build(
     // both declared once for the whole tileset, so every cell shares the same
     // slot count even where only one cell actually splits.
     let max_contents = content_counts.values().copied().max().unwrap_or(1);
+    if max_contents > CONTENTS_PER_TILE_WARN {
+        let crowded = content_counts
+            .values()
+            .filter(|&&n| n > CONTENTS_PER_TILE_WARN)
+            .count();
+        tracing::warn!(
+            "Cesium3DTilesWriter: {crowded} tile(s) carry more than {CONTENTS_PER_TILE_WARN} \
+             contents (max {max_contents}); viewers cap concurrent requests per server, so \
+             make sure the tile server and viewer request cap allow this many, or raise \
+             targetTileSize"
+        );
+    }
     let tile_count: usize = cell_contents.iter().map(|(_, chunks)| chunks.len()).sum();
 
     // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
