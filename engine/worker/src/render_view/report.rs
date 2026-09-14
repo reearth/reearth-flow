@@ -128,9 +128,24 @@ pub(crate) fn format_of(shape: Shape, entry_point: &str) -> Format {
     }
 }
 
-/// A path relative to the view directory, which is what the consumer stores.
-/// A URI that is not under `root` comes back unchanged rather than mangled: the
-/// consumer rejects it, which is a clearer failure than a corrupted path.
+/// A path relative to the view directory, which is the documented `version: 1`
+/// schema for `entryPoint` and `written`. A URI that is not under `root` comes
+/// back unchanged rather than mangled: an absolute (or otherwise wrong) path is
+/// a clearer failure to notice than a corrupted relative one.
+///
+/// This is not, as an earlier version of this comment claimed, because the Go
+/// consumer rejects an absolute path. Checked directly against
+/// `server/api/pkg/featureview/report.go` on `origin/FLOW-DEV-257`:
+/// `ParseReport` validates only `version` and that a `ready` status carries a
+/// `format` and entry point, with no `ErrInvalidReport` case for an absolute
+/// URI. `intermediatedataview.go`'s `entryPointName()` does not even read our
+/// `entryPoint`: it deliberately rederives the name itself, commented as
+/// guarding against a wrong or hostile report addressing a file outside the
+/// view directory. `report.Written` is never read at all. Relativising here is
+/// still correct and worth keeping regardless: it is the schema we document,
+/// and it independently avoids leaking the worker's local filesystem layout
+/// into a report meant for an external caller, but no current consumer
+/// behaviour depends on it.
 ///
 /// Stripping the prefix is not enough on its own: a sibling directory whose
 /// name merely starts with `root`'s name (`.../abc` vs `.../abcdef`) would
@@ -260,6 +275,63 @@ mod tests {
         assert!(outcome.fatal, "a real fault must exit non-zero");
     }
 
+    // I3: the classification the spec argues hardest for — a bad filter is the
+    // user's to fix, so it must be `failed` and NOT fatal — had no direct
+    // test. `execute.rs`'s own filter test used `"false"`, which compiles fine
+    // and only exercises the empty-selection short circuit, so flipping this
+    // arm to `fatal: true` would have passed every test on the branch.
+
+    #[test]
+    fn a_filter_that_will_not_compile_is_failed_and_not_fatal() {
+        let error = Error::FilterCompile {
+            expr: "(".to_string(),
+            source: reearth_flow_expr::eval_error("unexpected end of input"),
+        };
+        let outcome = classify(&error);
+        assert_eq!(outcome.status, Status::Failed);
+        assert!(
+            !outcome.fatal,
+            "the user's expression is theirs to fix, not a system fault"
+        );
+        assert!(outcome.error.is_some());
+    }
+
+    #[test]
+    fn a_filter_that_fails_to_evaluate_is_failed_and_not_fatal() {
+        let error = Error::FilterEval {
+            expr: "foo > 1".to_string(),
+            feature_id: "00000000-0000-0000-0000-000000000001".to_string(),
+            source: reearth_flow_types::error::Error::input("foo is not a number"),
+        };
+        let outcome = classify(&error);
+        assert_eq!(outcome.status, Status::Failed);
+        assert!(
+            !outcome.fatal,
+            "the user's expression is theirs to fix, not a system fault"
+        );
+    }
+
+    #[test]
+    fn a_write_failure_is_fatal() {
+        let error = Error::Write {
+            path: "view/tileset.json".to_string(),
+            source: Box::new(std::io::Error::other("disk full")),
+        };
+        let outcome = classify(&error);
+        assert_eq!(outcome.status, Status::Failed);
+        assert!(outcome.fatal, "a write fault must exit non-zero");
+    }
+
+    #[test]
+    fn a_render_failure_is_fatal() {
+        let error = Error::Render(
+            reearth_flow_action_sink::errors::SinkError::cesium3dtiles_writer("boom"),
+        );
+        let outcome = classify(&error);
+        assert_eq!(outcome.status, Status::Failed);
+        assert!(outcome.fatal, "a renderer fault must exit non-zero");
+    }
+
     #[test]
     fn format_follows_the_entry_point_file_name() {
         // A glTF view writes <name>.glb; a tileset writes <name>/tileset.json
@@ -277,8 +349,11 @@ mod tests {
 
     #[test]
     fn paths_come_out_relative_to_the_view_directory() {
-        // The Go side rejects an absolute URI as ErrInvalidReport: the renderer
-        // does not know the public URL its output is served from.
+        // This is the documented `version: 1` schema, not something the Go
+        // side enforces on us (it does not reject an absolute URI; see
+        // `relativise`'s doc comment). The renderer does not know the public
+        // URL its output is served from, so relative is what it can honestly
+        // report either way.
         assert_eq!(
             relativise(
                 "gs://bucket/feature-view/abc",
@@ -305,9 +380,8 @@ mod tests {
     fn a_sibling_directory_that_merely_starts_with_the_root_name_is_not_under_it() {
         // "abcdef" is a sibling of "abc", not a descendant. A plain
         // strip_prefix would wrongly yield "def/x.glb", a normal-looking
-        // relative path that is not absolute, so the Go consumer's
-        // ErrInvalidReport check for absolute paths would accept it silently
-        // instead of rejecting a URI that was never under the root.
+        // relative path that silently points at the wrong location instead of
+        // tripping the "not under root" fallback below.
         assert_eq!(
             relativise(
                 "gs://bucket/feature-view/abc",

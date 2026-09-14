@@ -422,14 +422,51 @@ mod render_view_args_tests {
         assert!(!args.contains(&"--filter".to_string()));
     }
 
+    /// Parses `argv` (as `try_get_matches_from` would see it, program name
+    /// included) all the way through `render_view::args::parse`, which is
+    /// where all four validation rules actually live (shape/row/filter
+    /// combinations, min-zoom vs. max-zoom). Stopping at
+    /// `try_get_matches_from` would pass even if the route built argv that
+    /// `parse` rejects.
+    fn parse_argv(argv: Vec<String>) -> Result<crate::render_view::args::RenderViewArgs, String> {
+        let matches = crate::render_view::build_render_view_command()
+            .try_get_matches_from(argv)
+            .map_err(|e| e.to_string())?;
+        crate::render_view::args::parse(matches)
+    }
+
     #[test]
-    fn the_arg_line_round_trips_through_the_subcommand_parser() {
-        // The strongest check available here: what the route builds must be
-        // something the subcommand actually accepts.
-        let args = build_render_view_args(&tiles_request());
-        let parsed = crate::render_view::build_render_view_command().try_get_matches_from(
-            std::iter::once("render-view".to_string()).chain(args.into_iter().skip(1)),
+    fn a_tiles_request_round_trips_through_the_validator() {
+        let mut req = tiles_request();
+        req.filter = Some("foo > 1".to_string());
+        let args = build_render_view_args(&req);
+        let argv = std::iter::once("render-view".to_string())
+            .chain(args.into_iter().skip(1))
+            .collect();
+        let parsed = parse_argv(argv);
+        assert!(
+            parsed.is_ok(),
+            "built args must pass validation: {parsed:?}"
         );
-        assert!(parsed.is_ok(), "built args must parse: {:?}", parsed.err());
+    }
+
+    #[test]
+    fn a_gltf_request_round_trips_through_the_validator() {
+        // Validation is where a shape mismatch actually bites (`gltf`
+        // requires `row` and rejects `filter`), and the tiles case above
+        // exercises none of that: it never gets exercised if every seam test
+        // only ever builds a tiles request.
+        let mut req = tiles_request();
+        req.shape = "gltf".to_string();
+        req.row = Some(4);
+        let args = build_render_view_args(&req);
+        let argv = std::iter::once("render-view".to_string())
+            .chain(args.into_iter().skip(1))
+            .collect();
+        let parsed = parse_argv(argv);
+        assert!(
+            parsed.is_ok(),
+            "built args must pass validation: {parsed:?}"
+        );
     }
 }
