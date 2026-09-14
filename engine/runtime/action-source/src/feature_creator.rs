@@ -118,9 +118,16 @@ impl Source for FeatureCreatorSource {
         _ctx: NodeContext,
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
-        match self.params.creator.clone() {
-            AttributeValue::Map(attributes) => {
-                let feature = Feature::from(attributes);
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = expr_engine.new_scope();
+        let new_value = scope
+            .eval::<Dynamic>(self.creator.to_string().as_str())
+            .map_err(|e| {
+                crate::errors::SourceError::FeatureCreator(format!("Failed to evaluate: {e}"))
+            })?;
+        if new_value.is::<rhai::Map>() {
+            if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
+                let feature = to_feature(new_value);
                 sender
                     .send((
                         FEATURES_PORT.clone(),
@@ -129,18 +136,22 @@ impl Source for FeatureCreatorSource {
                     .await
                     .map_err(|e| SourceError::FeatureCreator(format!("{e:?}")))?;
             }
-            AttributeValue::Array(arr) => {
-                for item in arr {
-                    if let AttributeValue::Map(attributes) = item {
-                        let feature = Feature::from(attributes);
-                        sender
-                            .send((
-                                FEATURES_PORT.clone(),
-                                IngestionMessage::OperationEvent { feature },
-                            ))
-                            .await
-                            .map_err(|e| SourceError::FeatureCreator(format!("{e:?}")))?;
-                    }
+        } else if new_value.is::<rhai::Array>() {
+            let array_values = new_value.clone().into_array().map_err(|e| {
+                crate::errors::SourceError::FeatureCreator(format!("Failed to convert: {e}"))
+            })?;
+            for new_value in array_values {
+                if let Ok(AttributeValue::Map(new_value)) = new_value.try_into() {
+                    let feature = to_feature(new_value);
+                    sender
+                        .send((
+                            DEFAULT_PORT.clone(),
+                            IngestionMessage::OperationEvent { feature },
+                        ))
+                        .await
+                        .map_err(|e| {
+                            crate::errors::SourceError::FeatureCreator(format!("{e:?}"))
+                        })?;
                 }
             }
             _ => {
@@ -152,4 +163,23 @@ impl Source for FeatureCreatorSource {
         }
         Ok(())
     }
+}
+
+/// Builds a Feature from created attributes. A `__feature_type` key, if present, is
+/// consumed to set the feature's metadata feature_type (never surfaced as an attribute) —
+/// the only way a FeatureCreator-made feature can carry one, since Feature::from(attributes)
+/// otherwise leaves it unset.
+fn to_feature(new_value: HashMap<String, AttributeValue>) -> Feature {
+    let mut attributes = new_value
+        .iter()
+        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
+        .collect::<IndexMap<Attribute, AttributeValue>>();
+    let feature_type = attributes
+        .shift_remove(&Attribute::new("__feature_type".to_string()))
+        .and_then(|v| v.as_string());
+    let mut feature = Feature::from(attributes);
+    if let Some(feature_type) = feature_type {
+        feature.update_feature_type(feature_type);
+    }
+    feature
 }

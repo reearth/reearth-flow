@@ -25,6 +25,7 @@ use tempfile::tempdir;
 use super::slice::slice_to_tiles;
 use super::tiling;
 use super::tiling::{TileContent, TileTree};
+use super::{slice::slice_to_tiles, tiling};
 use crate::atlas::{build_atlas_geometry, GltfFeature};
 use crate::file::mvt::tileid::TileIdMethod;
 
@@ -434,7 +435,7 @@ pub(super) fn tile_writing_stage(
             let valid_features: Vec<&GltfFeature> = features
                 .iter()
                 .filter(|feature| {
-                    match metadata_encoder.add_feature(typename, &feature.attributes) {
+                    match metadata_encoder.add_feature(&typename, &feature.attributes) {
                         Ok(_) => true,
                         Err(e) => {
                             tracing::error!("Failed to add feature with error = {e:?}");

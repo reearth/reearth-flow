@@ -6,11 +6,11 @@ use reearth_flow_runtime::{
     cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
-    executor_operation::{ExecutorContext, NodeContext},
+    executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Code, CompiledCode};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -95,6 +95,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
             flatten: params.flatten,
             codelists_path,
+            chunk_by_attribute: params.chunk_by_attribute,
         };
         Ok(Box::new(FeatureCityGmlReader {
             params: compiled_params,
@@ -102,22 +103,25 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
+            current_chunk: None,
             cache_dir: None,
         }))
     }
 }
 
 pub struct FeatureCityGmlReader {
-    params: FeatureCityGmlReaderCompiledParam,
-    /// Pass 1 registry: polygon URL → owning GeometryStore (needed for cross-file ref resolution)
+    global_params: Option<HashMap<String, serde_json::Value>>,
+    params: CompiledFeatureCityGmlReaderParam,
+    // Registries/cache for whichever chunk is currently being accumulated. When
+    // chunk_by_attribute is unset, there's only ever one (implicit) chunk, so this
+    // holds the whole dataset until the single flush in finish().
     geom_registry: HashMap<Url, Arc<RwLock<GeometryStore>>>,
-    /// Pass 1 registry: polygon URL → owning AppearanceStore
     app_registry: HashMap<Url, Arc<RwLock<AppearanceStore>>>,
-    /// One entry per top-level city object parsed; indexed by store_id in the JSONL cache.
     store_pool: StorePool,
-    /// Per-file JSONL cache paths written during pass 1.
     cache_paths: Vec<PathBuf>,
-    /// Root of the executor-specific cache directory, set on first process() call.
+    // Last seen chunk_by_attribute value; a change means the previous chunk is
+    // complete and can be flushed (see Processor::process).
+    current_chunk: Option<AttributeValue>,
     cache_dir: Option<PathBuf>,
 }
 
@@ -138,6 +142,7 @@ impl Clone for FeatureCityGmlReader {
             app_registry: HashMap::new(),
             store_pool: Vec::new(),
             cache_paths: Vec::new(),
+            current_chunk: None,
             cache_dir: None,
         }
     }
@@ -165,14 +170,19 @@ pub struct FeatureCityGmlReaderParam {
     flatten: Option<bool>,
     /// # Codelists Path
     /// Optional path to the codelists directory for resolving codelist values
-    codelists_path: Option<Code>,
+    codelists_path: Option<Expr>,
+    /// # Chunk By Attribute
+    /// An attribute name to split processing into chunks by. Features sharing a
+    /// value must already be adjacent, and every feature must have it set.
+    chunk_by_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 struct FeatureCityGmlReaderCompiledParam {
     dataset: CompiledCode,
     flatten: Option<bool>,
-    codelists_path: Option<CompiledCode>,
+    codelists_path: Option<rhai::AST>,
+    chunk_by_attribute: Option<String>,
 }
 
 impl Processor for FeatureCityGmlReader {
@@ -188,10 +198,12 @@ impl Processor for FeatureCityGmlReader {
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature.clone();
         let ctx = ctx.as_context();
-        let dataset = self.params.dataset.clone();
-        let flatten = self.params.flatten;
-        let codelists_url = self.params.codelists_path.as_ref().and_then(|code| {
-            code.eval_string(&feature, ctx.variables.clone())
+        let global_params = self.global_params.clone();
+        let codelists_url = self.params.codelists_path.clone().and_then(|ast| {
+            let expr_engine = Arc::clone(&ctx.expr_engine);
+            let scope = feature.new_scope(expr_engine.clone(), &global_params);
+            scope
+                .eval_ast::<String>(&ast)
                 .ok()
                 .and_then(|s| Url::from_str(&s).ok())
         });
@@ -208,12 +220,29 @@ impl Processor for FeatureCityGmlReader {
                 .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
             self.cache_dir = Some(dir);
         }
-        // Pass 1: parse file, populate registries, write entities to per-file JSONL cache
+
+        if let Some(chunk_attr) = self.params.chunk_by_attribute.clone() {
+            let Some(chunk) = feature.attributes.get(&Attribute::new(chunk_attr.clone())) else {
+                return Err(FeatureProcessorError::FileCityGmlReader(format!(
+                    "chunkByAttribute {chunk_attr:?} is set but feature is missing that attribute"
+                ))
+                .into());
+            };
+            if self.current_chunk.as_ref() != Some(chunk) {
+                if self.current_chunk.is_some() {
+                    self.flush_current(ctx.clone(), fw)?;
+                }
+                self.current_chunk = Some(chunk.clone());
+            }
+        }
+
         let cache_path = parse_and_register(
             ctx,
             feature,
-            dataset,
-            flatten,
+            self.params.dataset.clone(),
+            self.params.original_dataset.clone(),
+            self.params.flatten,
+            global_params,
             codelists_url,
             &mut self.geom_registry,
             &mut self.app_registry,
@@ -231,22 +260,42 @@ impl Processor for FeatureCityGmlReader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let Some(cache_dir) = self.cache_dir.as_deref() else {
-            return Ok(());
-        };
-        // Pass 2: stream per-file, resolve cross-file refs, emit
-        emit_buffered(
-            ctx.as_context(),
-            fw,
-            cache_dir,
-            &self.cache_paths,
-            &self.store_pool,
-            &self.geom_registry,
-            &self.app_registry,
-        )
+        self.flush_current(ctx.as_context(), fw)
     }
 
     fn name(&self) -> &str {
         "Feature CityGML Reader"
+    }
+}
+
+impl FeatureCityGmlReader {
+    /// Emits everything accumulated so far — the chunk that just completed, or,
+    /// when `chunk_by_attribute` is unset, the whole dataset — then drops it so
+    /// the next chunk (if any) starts from empty registries.
+    fn flush_current(
+        &mut self,
+        ctx: Context,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let Some(cache_dir) = self.cache_dir.clone() else {
+            return Ok(());
+        };
+        emit_buffered(
+            ctx,
+            fw,
+            &cache_dir,
+            &self.cache_paths,
+            &self.store_pool,
+            &self.geom_registry,
+            &self.app_registry,
+        )?;
+        for p in &self.cache_paths {
+            let _ = std::fs::remove_file(p);
+        }
+        self.cache_paths.clear();
+        self.store_pool.clear();
+        self.geom_registry.clear();
+        self.app_registry.clear();
+        Ok(())
     }
 }

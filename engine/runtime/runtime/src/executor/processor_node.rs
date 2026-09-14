@@ -513,17 +513,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        // Spill excess finish()-emitted features to disk instead of blocking send() — avoids shutdown deadlock on a full channel.
-        channel_manager.enable_spill_mode();
+        channel_manager.wait_until_downstream_empty(std::time::Duration::from_secs(300));
         channel_manager.reset_send_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
-            .map_err(|e| to_node_error(e, NodeErrorKind::Processor));
-        // Summaries are emitted regardless of finish() outcome — must not be dropped just because finish() failed.
-        let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
-        *self.summaries_sink.lock() = summaries;
-        channel_manager.flush_spill_files(&ctx.as_context());
+            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
         let finish_feature_count = channel_manager.get_send_count();
         self.finish_feature_count
             .store(finish_feature_count, std::sync::atomic::Ordering::Relaxed);

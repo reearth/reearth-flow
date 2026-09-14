@@ -86,9 +86,7 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
-pub fn collect_damage<'a>(
-    materials: impl IntoIterator<Item = &'a TextureInput>,
-) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
+pub fn collect_damage(materials: &[TextureInput]) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
 
@@ -115,25 +113,23 @@ pub fn collect_damage<'a>(
                 },
             );
 
+            if min_u < 0.0 || max_u > 1.0 || min_v < 0.0 || max_v > 1.0 {
+                tracing::error!(
+                    "reearth-flow-atlas: polygon {} of '{}' has UV coordinates outside \
+                     [0,1] (u=[{min_u:.4},{max_u:.4}], v=[{min_v:.4},{max_v:.4}]); clamping",
+                    polygon_idx,
+                    mat.path.display()
+                );
+            }
             let min_u = min_u.clamp(0.0, 1.0);
             let max_u = max_u.clamp(0.0, 1.0);
             let min_v = min_v.clamp(0.0, 1.0);
             let max_v = max_v.clamp(0.0, 1.0);
 
-            // Pixel-row span of the UV box, per the v origin: top-left
-            // (new-geometry) runs top row = min_v; bottom-left (legacy) inverts.
             let x = ((min_u * tw as f64).floor() as u32).min(tw);
+            let y = (((1.0 - max_v) * th as f64).floor() as u32).min(th);
             let right = ((max_u * tw as f64).ceil() as u32).min(tw);
-            #[cfg(feature = "new-geometry")]
-            let (y, bottom) = (
-                ((min_v * th as f64).floor() as u32).min(th),
-                ((max_v * th as f64).ceil() as u32).min(th),
-            );
-            #[cfg(not(feature = "new-geometry"))]
-            let (y, bottom) = (
-                (((1.0 - max_v) * th as f64).floor() as u32).min(th),
-                (((1.0 - min_v) * th as f64).ceil() as u32).min(th),
-            );
+            let bottom = (((1.0 - min_v) * th as f64).ceil() as u32).min(th);
 
             // Every polygon must be represented — guarantee a minimum 1×1 damage rect
             // so that polygon_regions is dense and no index is ever left unmapped.
@@ -228,8 +224,6 @@ mod tests {
         TextureInput {
             path,
             uvs: vec![uvs.iter().map(|&(u, v)| [u, v]).collect()],
-            #[cfg(feature = "new-geometry")]
-            scale: 1.0,
         }
     }
 
@@ -254,8 +248,6 @@ mod tests {
                 vec![[0.0, 0.5], [0.3, 0.5], [0.3, 1.0], [0.0, 1.0]],
                 vec![[0.7, 0.0], [1.0, 0.0], [1.0, 0.5], [0.7, 0.5]],
             ],
-            #[cfg(feature = "new-geometry")]
-            scale: 1.0,
         };
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result.len(), 1);
@@ -277,8 +269,6 @@ mod tests {
                 vec![[0.0, 0.0], [0.6, 0.0], [0.6, 1.0], [0.0, 1.0]],
                 vec![[0.4, 0.0], [1.0, 0.0], [1.0, 1.0], [0.4, 1.0]],
             ],
-            #[cfg(feature = "new-geometry")]
-            scale: 1.0,
         };
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");

@@ -143,7 +143,23 @@ func loadActionsData(lang string) (ActionsData, error) {
 	}
 	mutex.RUnlock()
 
-	body, err := fetchActionsFile(filename)
+	// If not in cache, acquire write lock
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Double-check after acquiring write lock
+	if data, exists := actionsDataMap[cacheKey]; exists {
+		actionsData = data
+		return nil
+	}
+
+	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/plateau5/engine/schema/"
+	filename := "actions.json"
+	if lang != "" {
+		filename = fmt.Sprintf("actions_%s.json", lang)
+	}
+
+	resp, err := http.Get(baseURL + filename)
 	if err != nil {
 		return ActionsData{}, err
 	}

@@ -21,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::tempdir;
 
-#[cfg(not(feature = "new-geometry"))]
 use crate::atlas::{build_atlas_geometry, GltfFeature as ClassFeature};
 use crate::errors::SinkError;
 use crate::zip_eq_logged::ZipEqLoggedExt;
@@ -223,7 +222,7 @@ impl Sink for GltfWriter {
         self.classified_features
             .par_iter()
             .try_for_each(|(typename, features)| {
-                let schema: Schema = features.try_into()?;
+                let schema: nusamai_citygml::schema::Schema = features.try_into()?;
 
                 let mut metadata_encoder = MetadataEncoder::new(&schema);
 

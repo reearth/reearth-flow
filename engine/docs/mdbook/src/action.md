@@ -1500,9 +1500,408 @@ Computes the solid a Constructive Solid Geometry tree describes, replacing the t
   "properties": {
     "tolerance": {
       "title": "Tolerance",
-      "description": "Distance below which a vertex counts as lying on a cutting plane and two vertices count as one, in the unit of the operands' coordinate reference. Defaults to a distance small enough that only near-identical vertices merge.",
-      "default": 1e-9,
-      "type": "number",
+      "description": "Tolerance value for geometry operations (as an expression evaluating to f64). Used for vertex merging and mesh operations.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* nullport
+* rejected
+### Category
+* Geometry
+
+## CenterPointReplacer
+### Type
+* processor
+### Description
+Replace Feature Geometry with Center Point
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CenterPointReplacerParam",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "description": "The method used to compute the replacement center point.",
+      "default": "centerOfGravity",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CenterPointMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CenterPointMode": {
+      "description": "Method used to compute the center point of a geometry.",
+      "oneOf": [
+        {
+          "description": "Computes the centroid (center of gravity) of the geometry.",
+          "type": "string",
+          "enum": [
+            "centerOfGravity"
+          ]
+        },
+        {
+          "description": "Computes the center of the geometry's bounding box.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
+          "type": "string",
+          "enum": [
+            "anyInsidePoint"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* point
+* rejected
+### Category
+* Geometry
+
+## Cesium3DTilesWriter
+### Type
+* sink
+### Description
+Export Features as Cesium 3D Tiles for Web Visualization
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cesium3DTilesWriter Parameters",
+  "type": "object",
+  "required": [
+    "maxZoom",
+    "minZoom",
+    "output"
+  ],
+  "properties": {
+    "attachTexture": {
+      "title": "Attach Textures",
+      "description": "Whether to include texture information in the generated tiles",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "chunkByAttribute": {
+      "title": "Chunk By Attribute",
+      "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set. Each chunk's value must map to a different output path.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "compressOutput": {
+      "title": "Compressed Output Path",
+      "description": "Optional path for compressed archive output",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dracoCompression": {
+      "title": "Draco Compression",
+      "description": "Use draco compression. Defaults to true.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "maxZoom": {
+      "title": "Maximum Zoom Level",
+      "description": "Maximum zoom level for tile generation (0-24)",
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "minZoom": {
+      "title": "Minimum Zoom Level",
+      "description": "Minimum zoom level for tile generation (0-24)",
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "output": {
+      "title": "Output Path",
+      "description": "Directory path where the 3D tiles will be written",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip unexposed Attributes",
+      "description": "Skip attributes with double underscore prefix",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+* schema
+### Output Ports
+### Category
+* File
+
+## CityGmlReader
+### Type
+* source
+### Description
+Reads 3D city models from CityGML files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlReader Parameters",
+  "description": "Configuration for reading CityGML files as 3D city models.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "flatten": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+
+## CityGmlWriter
+### Type
+* sink
+### Description
+Writes features to CityGML 2.0 files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "epsgCode": {
+      "description": "EPSG code for coordinate reference system",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "lodFilter": {
+      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    },
+    "output": {
+      "description": "Output file path expression",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "prettyPrint": {
+      "description": "Whether to format output with indentation (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
+## Clipper
+### Type
+* processor
+### Description
+Clip Features Using Boundary Shapes
+### Parameters
+* No parameters
+### Input Ports
+* clipper
+* candidate
+### Output Ports
+* inside
+* outside
+* rejected
+### Category
+* Geometry
+
+## ClosedCurveFilter
+### Type
+* processor
+### Description
+Filter LineString Features by Closed/Open Status
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* closed
+* open
+* rejected
+### Category
+* Geometry
+
+## ConvexHullAccumulator
+### Type
+* processor
+### Description
+Generate Convex Hull Polygons from Grouped Features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConvexHullAccumulator Parameters",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features before creating convex hulls - each group gets its own hull",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
+## CoordinateExtractor
+### Type
+* processor
+### Description
+Extracts coordinates from geometry vertices into feature attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Extractor Parameters",
+  "type": "object",
+  "required": [
+    "mode"
+  ],
+  "properties": {
+    "defaultZValue": {
+      "title": "Default Z Value",
+      "description": "Z value to use for 2D geometries that have no Z coordinate.",
+      "type": [
+        "number",
+        "null"
+      ],
       "format": "double"
     }
   }
@@ -3881,6 +4280,26 @@ Reads CityGML features from a file path referenced by the incoming feature, opti
     "dataset"
   ],
   "properties": {
+    "chunkByAttribute": {
+      "title": "Chunk By Attribute",
+      "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "codelistsPath": {
+      "title": "Codelists Path",
+      "description": "Optional path to the codelists directory for resolving codelist values",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "dataset": {
       "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
@@ -9738,6 +10157,14 @@ Flatten attributes for building feature
   "title": "AttributeFlattener Parameters",
   "type": "object",
   "properties": {
+    "chunkByAttribute": {
+      "description": "An attribute name to split processing into chunks by. Features sharing a value must already be adjacent, and every feature must have it set. Parent/child relationships and cross-file references must not span chunks.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "existingFlattenAttributes": {
       "description": "When true, only include attributes that were actually used during processing in the schema output. When false (default), include all defined attributes in the schema regardless of usage.",
       "default": false,
@@ -11041,472 +11468,92 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 ### Category
 * PLATEAU
 
-## PLATEAU6.BuildingUsageAttributeValidator
+## PLATEAU4.WaterBodyTinValidator
 ### Type
 * processor
 ### Description
-This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
+Validates WaterBody TIN surfaces end-to-end for the flood-family quality check: extracts faces from CityGML, reprojects, detects degenerate triangles and unshared edges, and emits one summary per file.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BuildingUsageAttributeValidatorParam",
+  "title": "WaterBodyTinValidator Parameters",
   "type": "object",
   "required": [
-    "codelistsPath"
+    "targetEpsgCode"
   ],
   "properties": {
-    "codelistsPath": {
-      "description": "Expression evaluating to the PLATEAU codelists directory path.",
-      "type": "object",
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
+    "cityGmlPathAttribute": {
+      "description": "Attribute holding the CityGML file path (default: \"path\").",
+      "default": "path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
         }
-      }
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* l0405BldgError
-* cityCodeError
-* features
-### Category
-* PLATEAU
-
-## PLATEAU6.DestinationMeshCodeExtractor
-### Type
-* processor
-### Description
-Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PLATEAU Destination MeshCode Extractor Parameters",
-  "description": "Configure mesh code extraction for Japanese standard regional mesh",
-  "type": "object",
-  "properties": {
-    "meshType": {
-      "title": "Mesh Type",
-      "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
-      "default": 3,
+      ]
+    },
+    "corruptGeometryTolerance": {
+      "description": "Tolerance for corrupt-geometry degenerate check (default: 0.01).",
+      "default": 0.01,
+      "type": "number",
+      "format": "double"
+    },
+    "duplicateConsecutivePointsTolerance": {
+      "description": "Tolerance for duplicate-consecutive-points degenerate check (default: 0.009).",
+      "default": 0.009,
+      "type": "number",
+      "format": "double"
+    },
+    "sourceEpsgCode": {
+      "description": "Source EPSG code (default: 6697, JGD2011 geographic — FaceExtractor output).",
+      "default": 6697,
       "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
+      "format": "int64"
     },
-    "meshcodeAttr": {
-      "title": "Mesh Code Attribute Name",
-      "description": "Output attribute name for the mesh code",
-      "default": "_meshcode",
-      "type": "string"
-    },
-    "epsgCode": {
-      "title": "EPSG Code",
-      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
-      "default": {
-        "type": "flowExpr",
-        "value": "6691"
-      },
-      "type": "object",
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-* rejected
-### Category
-* PLATEAU
-
-## PLATEAU6.DomainOfDefinitionValidator
-### Type
-* processor
-### Description
-Validates domain of definition of CityGML features
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DomainOfDefinitionValidator Parameters",
-  "description": "Configuration for validating domain of definition of CityGML features.",
-  "type": "object",
-  "properties": {
-    "codelistsPath": {
-      "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-* rejected
-* duplicateGmlIdStats
-### Category
-* PLATEAU
-
-## PLATEAU6.MissingAttributeDetector
-### Type
-* processor
-### Description
-Detect missing attributes in PLATEAU features
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MissingAttributeDetector Parameters",
-  "description": "Configuration for detecting missing attributes in PLATEAU features.",
-  "type": "object",
-  "required": [
-    "packageAttribute"
-  ],
-  "properties": {
-    "packageAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* summary
-* required
-* target
-* dataQualityC07
-* dataQualityC08
-### Category
-* PLATEAU
-
-## PLATEAU6.ObjectListExtractor
-### Type
-* processor
-### Description
-Extract object list
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ObjectListExtractor Parameters",
-  "description": "Configuration for extracting object lists from PLATEAU data.",
-  "type": "object",
-  "required": [
-    "objectListPathAttribute"
-  ],
-  "properties": {
-    "objectListPathAttribute": {
-      "$ref": "#/definitions/Attribute"
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-### Category
-* PLATEAU
-
-## PLATEAU6.SolidIntersectionTestPairCreator
-### Type
-* processor
-### Description
-Creates pairs of features from Area On Area Overlayer output for solid intersection testing
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SolidIntersectionTestPairCreatorParam",
-  "type": "object",
-  "properties": {
-    "pairIdAttribute": {
-      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
-      "default": "pair_id",
-      "type": "string"
-    },
-    "listAttribute": {
-      "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")",
-      "default": "list",
-      "type": "string"
-    },
-    "gmlIdAttribute": {
-      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
-      "default": "gmlId",
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* A
-* B
-### Category
-* PLATEAU
-
-## PLATEAU6.TransitiveLinkResolver
-### Type
-* processor
-### Description
-Resolves which features link to one another, directly or transitively, through an attribute holding the IDs each feature links to. Within each scope it labels every feature with the index and size of the linked set it belongs to, and whether that set spans one, some, or all of the scope.
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TransitiveLinkResolver Parameters",
-  "description": "Names the attribute identifying each feature, the attribute listing the features it links to, and the attributes delimiting the scope a verdict is computed over.",
-  "type": "object",
-  "required": [
-    "idAttribute",
-    "linkedIdsAttribute"
-  ],
-  "properties": {
-    "idAttribute": {
-      "title": "ID Attribute",
-      "description": "Attribute holding the identifier of the feature, such as its gml:id. Entries of the linked IDs attribute are matched against this value.",
+    "targetEpsgCode": {
+      "description": "Target EPSG code expression for reprojection (e.g. `env.get(\"prcs\")`).",
       "allOf": [
         {
-          "$ref": "#/definitions/Attribute"
+          "$ref": "#/definitions/Expr"
         }
       ]
     },
-    "linkedIdsAttribute": {
-      "title": "Linked IDs Attribute",
-      "description": "Attribute holding an array of the identifiers of the features this one links to. An absent or null value means it links to nothing; a link recorded on only one side still connects the pair.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "groupBy": {
-      "title": "Group By",
-      "description": "Attributes delimiting the scope a verdict is computed over, such as a parent feature, a level of detail and a source file. When omitted, all input features form a single scope. Linked IDs naming a feature outside the scope are ignored.",
-      "type": [
-        "array",
-        "null"
+    "unsharedEdgeGroupBy": {
+      "description": "Group-by attributes for unshared-edge detection (default: [_fld_scale, udxDirs]).",
+      "default": [
+        "_fld_scale",
+        "udxDirs"
       ],
+      "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "unsharedEdgeTolerance": {
+      "description": "Tolerance for unshared-edge matching in meters (default: 0.1).",
+      "default": 0.1,
+      "type": "number",
+      "format": "double"
     }
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
       "type": "string"
     }
   }
 }
 ```
 ### Input Ports
-* features
-### Output Ports
-* features
-### Category
-* PLATEAU
-
-## PLATEAU6.TransportationXlinkDetector
-### Type
-* processor
-### Description
-Detect unreferenced surfaces in PLATEAU transportation models (L-tran-03)
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TransportationXlinkDetectorParam",
-  "type": "object",
-  "required": [
-    "cityGmlPath"
-  ],
-  "properties": {
-    "cityGmlPath": {
-      "type": "object",
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* passed
-* failed
-### Category
-* PLATEAU
-
-## PLATEAU6.UDXFolderExtractor
-### Type
-* processor
-### Description
-Extracts UDX folders from cityGML path
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "UDXFolderExtractor Parameters",
-  "description": "Configuration for extracting UDX folder structure information from PLATEAU CityGML paths.",
-  "type": "object",
-  "required": [
-    "cityGmlPath"
-  ],
-  "properties": {
-    "cityGmlPath": {
-      "type": "object",
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "codelistsPath": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "schemasPath": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-* rejected
-### Category
-* PLATEAU
-
-## PLATEAU6.UnmatchedXlinkDetector
-### Type
-* processor
-### Description
-Detect unmatched Xlinks for PLATEAU
-### Parameters
-* No parameters
-### Input Ports
-* features
+* default
 ### Output Ports
 * summary
-* unMatchedXlinkFrom
-* unMatchedXlinkTo
 ### Category
 * PLATEAU
 
-## Planarity Filter
+## PlanarityFilter
 ### Type
 * processor
 ### Description

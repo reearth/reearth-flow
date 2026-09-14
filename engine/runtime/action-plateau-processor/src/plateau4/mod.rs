@@ -14,9 +14,4 @@ mod profile;
 pub(crate) mod transportation_xlink_strategy;
 pub(crate) mod unmatched_xlink_strategy;
 pub(crate) mod unshared_edge_detector;
-
-// The PLATEAU4 profile is referenced from plateau4/mapping via `super::profile`.
-// This re-export exists so the common check logic tests can reference it as
-// `crate::plateau4::PLATEAU4`, and is only needed in test builds.
-#[cfg(test)]
-pub(crate) use profile::PLATEAU4;
+pub(crate) mod water_body_tin_validator;

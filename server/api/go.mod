@@ -12,7 +12,6 @@ require (
 	cloud.google.com/go/storage v1.57.2
 	github.com/99designs/gqlgen v0.17.84
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/exaring/otelpgx v0.7.0
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-redis/redismock/v9 v9.2.0
@@ -26,12 +25,10 @@ require (
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/ravilushqa/otelgqlgen v0.19.0
-	github.com/redis/go-redis/extra/redisotel/v9 v9.14.1
-	github.com/redis/go-redis/v9 v9.14.1
-	github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841
-	github.com/reearth/reearth-flow/db v0.0.0-00010101000000-000000000000
+	github.com/redis/go-redis/v9 v9.14.0
+	github.com/reearth/reearth-accounts/server v0.0.0-20260216070148-6989bf981831
 	github.com/reearth/reearth-proto v1.1.0
-	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
+	github.com/reearth/reearthx v0.0.0-20251202081949-5abca579aec6
 	github.com/samber/lo v1.52.0
 	github.com/spf13/afero v1.15.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0

@@ -535,9 +535,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojectorByLod1
     type: action
@@ -573,9 +572,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
     name: VerticalReprojectorByLod2
     type: action
@@ -611,9 +609,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
     name: VerticalReprojectorByLod2NoTexture
     type: action
@@ -649,9 +646,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
     name: VerticalReprojectorByLod3
     type: action
@@ -687,9 +683,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
     name: VerticalReprojectorByLod3NoTexture
     type: action
@@ -725,9 +720,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
     name: VerticalReprojectorByLod4
     type: action
@@ -763,9 +757,8 @@ graphs:
           value: (attributes["_ymin"] + attributes["_ymax"]) * 0.5
       - attribute: _lod
         method: create
-        value:
-          type: flowExpr
-          value: attributes["__citygml_lod_mask"].bit_length() - 1
+        value: |
+          env.get("__lod")
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
     name: VerticalReprojectorByLod4NoTexture
     type: action

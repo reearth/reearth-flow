@@ -12,7 +12,15 @@ use super::{
     face_extractor::FaceExtractorFactory,
     flooding_area_surface_generator::FloodingAreaSurfaceGeneratorFactory,
     gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory,
-    max_lod_extractor::MaxLodExtractorFactory, unshared_edge_detector::UnsharedEdgeDetectorFactory,
+    max_lod_extractor::MaxLodExtractorFactory,
+    missing_attribute_detector::MissingAttributeDetectorFactory,
+    object_list_extractor::ObjectListExtractorFactory,
+    solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory,
+    tran_xlink_detector::TransportationXlinkDetectorFactory,
+    udx_folder_extractor::UDXFolderExtractorFactory,
+    unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
+    unshared_edge_detector::UnsharedEdgeDetectorFactory,
+    water_body_tin_validator::WaterBodyTinValidatorFactory,
 };
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
 use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
@@ -60,6 +68,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FaceExtractorFactory>::default(),
         Box::<UnsharedEdgeDetectorFactory>::default(),
         Box::<CompositeSurfaceContinuityFilterFactory>::default(),
+        Box::<WaterBodyTinValidatorFactory>::default(),
     ];
     factories
         .into_iter()
