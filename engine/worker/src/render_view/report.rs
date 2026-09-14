@@ -131,11 +131,20 @@ pub(crate) fn format_of(shape: Shape, entry_point: &str) -> Format {
 /// A path relative to the view directory, which is what the consumer stores.
 /// A URI that is not under `root` comes back unchanged rather than mangled: the
 /// consumer rejects it, which is a clearer failure than a corrupted path.
+///
+/// Stripping the prefix is not enough on its own: a sibling directory whose
+/// name merely starts with `root`'s name (`.../abc` vs `.../abcdef`) would
+/// also strip, leaving a relative-looking remainder that points at the wrong
+/// location instead of tripping the "not under root" case. So what remains
+/// after the strip must be empty (an exact match) or start with `/` (a real
+/// path separator) before it counts as being under `root`.
 pub(crate) fn relativise(root: &str, uri: &str) -> String {
     let root = root.strip_suffix('/').unwrap_or(root);
     match uri.strip_prefix(root) {
-        Some(rest) => rest.trim_start_matches('/').to_string(),
-        None => uri.to_string(),
+        Some(rest) if rest.is_empty() || rest.starts_with('/') => {
+            rest.trim_start_matches('/').to_string()
+        }
+        _ => uri.to_string(),
     }
 }
 
@@ -278,6 +287,22 @@ mod tests {
         );
         // Not under the root: returned unchanged rather than silently mangled.
         assert_eq!(relativise("gs://bucket/a", "gs://other/b.glb"), "gs://other/b.glb");
+    }
+
+    #[test]
+    fn a_sibling_directory_that_merely_starts_with_the_root_name_is_not_under_it() {
+        // "abcdef" is a sibling of "abc", not a descendant. A plain
+        // strip_prefix would wrongly yield "def/x.glb", a normal-looking
+        // relative path that is not absolute, so the Go consumer's
+        // ErrInvalidReport check for absolute paths would accept it silently
+        // instead of rejecting a URI that was never under the root.
+        assert_eq!(
+            relativise(
+                "gs://bucket/feature-view/abc",
+                "gs://bucket/feature-view/abcdef/x.glb"
+            ),
+            "gs://bucket/feature-view/abcdef/x.glb",
+        );
     }
 
     #[test]
