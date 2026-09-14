@@ -94,11 +94,6 @@ test.describe.serial("Editor canvas", { tag: "@regression" }, () => {
     );
     await expect(editor.nodes).toHaveCount(base + 1);
 
-    // React Flow measures a new node after it mounts, and the editor writes that
-    // measurement to the undo history. When it lands after the 200ms undo
-    // capture window it becomes its own step, so the first undo only reverts
-    // the measurement. Retry until the node is gone; an undo on an empty stack
-    // is a no-op, so this can't overshoot on a fresh project.
     await expect(async () => {
       await editor.undo();
       await expect(editor.nodes).toHaveCount(base, { timeout: 2_000 });
