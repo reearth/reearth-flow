@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { Node } from "@flow/types";
 
 import { yWorkflowConstructor } from "./conversions";
-import type { YNodesMap, YWorkflow } from "./types";
+import type { YEdgesMap, YNodesMap, YWorkflow } from "./types";
 import useYNode from "./useYNode";
 
 afterEach(() => {
@@ -76,5 +76,53 @@ describe("useYNode", () => {
     }));
 
     expect(n).toEqual(expectedNodes);
+  });
+});
+
+describe("useYNode edge cleanup", () => {
+  test("removing a node removes the edges attached to it", () => {
+    // Callers emit their own edge removals, but every one of them works from a
+    // snapshot of some kind. This is the backstop that makes edge cleanup a
+    // property of deleting the node rather than of remembering to ask.
+    const yDoc = new Y.Doc();
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+    const node = (id: string): Node => ({
+      id,
+      type: "transformer",
+      position: { x: 0, y: 0 },
+      data: { officialName: id, inputs: ["features"], outputs: ["features"] },
+    });
+    const yWorkflow = yWorkflowConstructor(
+      "workflow-1",
+      "My Workflow",
+      [node("a"), node("b"), node("c")],
+      [
+        { id: "a-b", source: "a", target: "b" },
+        { id: "b-c", source: "b", target: "c" },
+        { id: "a-c", source: "a", target: "c" },
+      ],
+    );
+    yWorkflows.set("workflow-1", yWorkflow);
+
+    const { result } = renderHook(() =>
+      useYNode({
+        currentYWorkflow: yWorkflow,
+        yWorkflows,
+        rawWorkflows: [],
+        setSelectedNodeIds: () => {},
+        undoTrackerActionWrapper: (callback) => act(callback),
+      }),
+    );
+
+    // No accompanying edge changes - the node change arrives on its own.
+    result.current.handleYNodesChange([{ id: "b", type: "remove" }]);
+
+    const remainingEdges = Object.keys(
+      (yWorkflow.get("edges") as YEdgesMap).toJSON(),
+    );
+    expect(remainingEdges).toEqual(["a-c"]);
+    expect(
+      Object.keys((yWorkflow.get("nodes") as YNodesMap).toJSON()).sort(),
+    ).toEqual(["a", "c"]);
   });
 });

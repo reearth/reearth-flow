@@ -20,15 +20,27 @@ export default ({
   const [workflowNames, setWorkflowsNames] = useState(
     rawWorkflows.map((w) => ({ id: w.id, name: w.name })),
   );
-  // Length check is used to for adding and removing workflows.
-  // This works as a semi-static base for the rest of the state in this hook.
-  // Without this state (aka using rawWorkflows directly), performance drops
-  // due to the state updating on every change to a node (which is a lot)
+  // A semi-static base for the rest of the state in this hook. Deriving it from
+  // rawWorkflows directly costs too much - that array is rebuilt on every node
+  // change - so it is only refreshed when the set of workflows itself changes.
+  // Keyed on the ids and names rather than the count: a workflow removed and
+  // another added between two renders leaves the length identical, and the
+  // recovery effects below would then be working from a list that no longer
+  // matches the document. Names are part of the key so a rename from another
+  // client reaches the tab labels too - a local rename goes straight through
+  // setWorkflowsNames and does not wait for this.
+  const workflowIdsKey = rawWorkflows
+    .map((w) => `${w.id}:${w.name ?? ""}`)
+    .join("\n");
   useEffect(() => {
-    if (rawWorkflows.length !== workflowNames.length) {
-      setWorkflowsNames(rawWorkflows.map((w) => ({ id: w.id, name: w.name })));
-    }
-  }, [rawWorkflows.length, workflowNames.length]); // eslint-disable-line react-hooks/exhaustive-deps
+    setWorkflowsNames((prev) => {
+      const next = rawWorkflows.map((w) => ({ id: w.id, name: w.name }));
+      const unchanged =
+        prev.length === next.length &&
+        prev.every((p, i) => p.id === next[i].id && p.name === next[i].name);
+      return unchanged ? prev : next;
+    });
+  }, [workflowIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const workflows = useMemo(() => {
     return workflowNames.filter(isDefined).map((w2) => ({
@@ -36,6 +48,13 @@ export default ({
       name: w2.name as string,
     }));
   }, [workflowNames]);
+
+  useEffect(() => {
+    if (workflows.length === 0) return;
+    if (!workflows.some((w) => w.id === currentWorkflowId)) {
+      setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
+    }
+  }, [workflows, currentWorkflowId, setCurrentWorkflowId]);
 
   const handleCurrentWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -48,6 +67,17 @@ export default ({
   const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>([
     DEFAULT_ENTRY_GRAPH_ID,
   ]);
+
+  useEffect(() => {
+    if (workflows.length === 0) return;
+    setOpenWorkflowIds((ids) => {
+      const kept = ids.filter(
+        (id) =>
+          id === DEFAULT_ENTRY_GRAPH_ID || workflows.some((w) => w.id === id),
+      );
+      return kept.length === ids.length ? ids : kept;
+    });
+  }, [workflows]);
 
   const openWorkflows: {
     id: string;

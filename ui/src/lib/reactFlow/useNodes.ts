@@ -60,6 +60,25 @@ export default ({
       // that are being deleted
       const deletedIds = new Set(deleted.map((node) => node.id));
 
+      // A reconnection must never duplicate a connection that is already there.
+      // Two edges with the same endpoints and handles draw on top of each other,
+      // so the canvas shows one while the document holds two - and the engine
+      // then receives the same features twice.
+      const connectionKey = (e: {
+        source: string;
+        target: string;
+        sourceHandle?: string | null;
+        targetHandle?: string | null;
+      }) =>
+        `${e.source}:${e.sourceHandle ?? ""}->${e.target}:${e.targetHandle ?? ""}`;
+
+      const removedIds = new Set(
+        getConnectedEdges(deleted, edges).map((edge) => edge.id),
+      );
+      const existingConnections = new Set(
+        edges.filter((e) => !removedIds.has(e.id)).map(connectionKey),
+      );
+
       const changes: EdgeChange[] = deleted.reduce((acc, node) => {
         const incomers = getIncomers(node, nodes, edges);
         const outgoers = getOutgoers(node, nodes, edges);
@@ -88,24 +107,26 @@ export default ({
                 );
                 return outgoers
                   .filter(({ id }) => !deletedIds.has(id))
-                  .map((outgoer) => {
+                  .flatMap((outgoer) => {
                     // Find the edge from deleted node to outgoer to get targetHandle
                     const outgoerEdge = connectedEdges.find(
                       (e) => e.source === node.id && e.target === outgoer.id,
                     );
 
                     const edgeId = generateUUID();
-                    return {
+                    const item = {
                       id: edgeId,
-                      type: "add" as const,
-                      item: {
-                        id: edgeId,
-                        source: incomer.id,
-                        target: outgoer.id,
-                        sourceHandle: incomerEdge?.sourceHandle ?? null,
-                        targetHandle: outgoerEdge?.targetHandle ?? null,
-                      },
+                      source: incomer.id,
+                      target: outgoer.id,
+                      sourceHandle: incomerEdge?.sourceHandle ?? null,
+                      targetHandle: outgoerEdge?.targetHandle ?? null,
                     };
+
+                    const key = connectionKey(item);
+                    if (existingConnections.has(key)) return [];
+                    existingConnections.add(key);
+
+                    return [{ id: edgeId, type: "add" as const, item }];
                   });
               })
           : [];
@@ -180,7 +201,10 @@ export default ({
         // Make sure edge has source and target nodes
         const sourceNode = nodes.find((n) => n.id === e.source);
         const targetNode = nodes.find((n) => n.id === e.target);
-        if (!sourceNode || !targetNode) return;
+        // Skip this edge, don't abandon the whole drop: one edge whose
+        // endpoints can't be resolved would otherwise silently disable
+        // drop-on-edge for the entire workflow.
+        if (!sourceNode || !targetNode) continue;
 
         let sourceNodeXYPosition: XYPosition = sourceNode.position;
         let targetNodeXYPosition: XYPosition = targetNode.position;
