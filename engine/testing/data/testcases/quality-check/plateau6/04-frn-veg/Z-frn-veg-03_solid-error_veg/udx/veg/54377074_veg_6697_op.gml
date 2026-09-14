@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Vegetation fixture for plateau6 04-frn-veg, CityGML 3.0 + i-UR 4.0. It covers the
-  veg package, whose results go to the 04-2_植生 files, with one of each vegetation
-  feature type:
-    - veg:SolitaryVegetationObject carries a core:lod3MultiSurface whose single
-      quadrilateral has one corner 1 m above the plane of the other three, so the
-      face is not planar.
+  solid error of the veg package, whose results go to the 04-2_植生 files, with one
+  of each vegetation feature type:
     - veg:PlantCover carries a core:lod1Solid built from a tetrahedron with the base
       face left out, so the shell is not closed and the three edges around the
       opening are its reported positions.
+    - veg:SolitaryVegetationObject carries a valid planar core:lod3MultiSurface and
+      is expected to raise no error.
 
   CityGML 3.0 gives vegetation no lod1MultiSurface and no boundary surfaces, so LOD1
   here has to be a solid. Both objects sit in imizu-shi mesh 54377074 (EPSG:6697).
@@ -50,7 +49,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 						<gml:Polygon gml:id="poly_7c1b4e93-0a58-4d26-9f74-3b6e2a0d5c81">
 							<gml:exterior>
 								<gml:LinearRing>
-									<gml:posList>36.647500 137.053000 1 36.647500 137.053030 0 36.647530 137.053030 0 36.647530 137.053000 0 36.647500 137.053000 1</gml:posList>
+									<gml:posList>36.647500 137.053000 0 36.647500 137.053030 0 36.647500 137.053030 3 36.647500 137.053000 3 36.647500 137.053000 0</gml:posList>
 								</gml:LinearRing>
 							</gml:exterior>
 						</gml:Polygon>

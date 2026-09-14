@@ -1,5 +1,5 @@
 {
-  "description": "Vegetation package for plateau6 04-frn-veg: a non-planar face on a SolitaryVegetationObject and an open shell on a PlantCover, both written to the 04-2_植生 files.",
+  "description": "Solid errors for the veg package of plateau6 04-frn-veg: an open shell on a PlantCover, written to the 04-2_植生 files.",
   "workflowPath": "quality-check/plateau6/04-frn-veg/workflow.yml",
   "workflowVariables": [
     {
@@ -39,10 +39,7 @@
   ],
   "expectedOutput": {
     "expectedFile": [
-      "04-2_植生_面のエラー.csv",
       "04-2_植生_非水密立体.csv",
-      "error_geometry/04-2_植生_面のエラー.geojson",
-      "error_geometry/04-2_植生_面のエラー位置.geojson",
       "error_geometry/04-2_植生_非水密立体.geojson",
       "error_geometry/04-2_植生_非水密立体の辺.geojson"
     ]
