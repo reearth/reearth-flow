@@ -765,7 +765,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L01エラー.csv
@@ -798,7 +799,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L02エラー.csv
@@ -928,7 +930,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通.csv
@@ -992,20 +995,21 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            result = [];
-            feature = attributes["__features"][0];
-            for key in feature.keys() {
-              result.append({"name": key, "count": feature[key]});
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              result = [];
+              feature = attributes["__features"][0];
+              for key in feature.keys() {
+                result.append({"name": key, "count": feature[key]});
+              }
+              result
             }
-            result
-          }
       output:
         type: string
         value: summary_common.json
@@ -1030,7 +1034,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_GML_ID書式不正.csv
@@ -1055,7 +1060,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_GML_ID重複.csv
@@ -1102,7 +1108,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L06エラー.csv
@@ -1133,7 +1140,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L04エラー.csv
@@ -1164,7 +1172,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_不正なcodeSpace.csv
@@ -1213,7 +1222,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_xlink参照先なし.csv
@@ -1246,7 +1256,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_T03エラー.csv
@@ -1275,7 +1286,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L-frn-01エラー.csv
@@ -1679,16 +1691,17 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            {}
-          } else {
-            feature = attributes["__features"][0];
-            feature["dataFileData"]
-          }
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              {}
+            } else {
+              feature = attributes["__features"][0];
+              feature["dataFileData"]
+            }
       output:
         type: flowExpr
         value: |
@@ -1720,7 +1733,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -1742,7 +1756,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -1774,7 +1789,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -1806,7 +1822,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2217,7 +2234,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2268,7 +2286,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2370,7 +2389,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2445,7 +2465,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2508,7 +2529,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2588,7 +2610,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -2639,18 +2662,19 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            feature = attributes["__features"][0];
-            itertools.map(feature.keys(), fn(key) {
-              {"name": key, "count": feature[key]}
-            })
-          }
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              feature = attributes["__features"][0];
+              itertools.map(feature.keys(), fn(key) {
+                {"name": key, "count": feature[key]}
+              })
+            }
       output:
         type: flowExpr
         value: |

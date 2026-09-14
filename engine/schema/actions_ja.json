@@ -5181,214 +5181,130 @@
     {
       "name": "Feature Writer",
       "type": "processor",
-      "description": "地物をファイルに書き込む",
+      "description": "受け取った地物を、評価した出力パスごとにまとめてファイルへ書き出す。書き出したファイルごとに、そのパスと行数を持つ地物を 1 件出力し、消費した地物に代えて下流へ送る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Writer パラメータ",
-        "description": "さまざまなファイル形式にフィーチャーを書き出す設定",
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
+        "description": "書き出すファイル形式と、各ファイルの出力先を設定する",
+        "type": "object",
+        "required": [
+          "format",
+          "output"
+        ],
+        "properties": {
+          "format": {
+            "title": "形式",
+            "description": "書き出すファイル形式と、その形式が受け取る設定。いずれの形式も属性値のみを書き出し、ジオメトリは出力に含まれない",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureWriterFormat"
               }
-            }
+            ]
           },
-          {
+          "output": {
+            "title": "出力パス",
+            "description": "ジョブの出力ディレクトリからの相対パス。地物ごとに 1 回評価されるため、属性を参照する式を指定すると評価結果ごとに別のファイルへ分割される",
             "type": "object",
+            "format": "code",
             "required": [
-              "format",
-              "output"
+              "type",
+              "value"
             ],
             "properties": {
-              "format": {
+              "type": {
                 "type": "string",
                 "enum": [
-                  "tsv"
+                  "flowExpr",
+                  "string"
                 ]
               },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "title": "JsonWriter Parameters",
-            "description": "Configuration for writing features in JSON format with optional custom conversion.",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "converter": {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "title": "CityGmlWriter Parameters",
-            "description": "Configuration for writing features in CityGML 2.0 format.",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "lodFilter": {
-                "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
-                "default": null,
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "integer",
-                  "format": "uint8",
-                  "minimum": 0.0
-                }
-              },
-              "epsgCode": {
-                "description": "EPSG code for coordinate reference system",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "prettyPrint": {
-                "description": "Whether to format output with indentation (default: true)",
-                "default": true,
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+              "value": {
+                "type": "string"
               }
             }
           }
-        ]
+        },
+        "definitions": {
+          "FeatureWriterFormat": {
+            "title": "Format",
+            "description": "The file format written, and the settings belonging to it.",
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "カンマ区切り。列の一覧は各ファイルへ最初に書き出された地物から決まるため、以降のすべての地物が同じ属性を持つ必要がある",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "csv"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "TSV",
+                "description": "タブ区切り。列の扱いは CSV と同じ",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "tsv"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "JSON",
+                "description": "地物ごとに 1 つのオブジェクトを持つ配列。各オブジェクトはその地物の属性値を保持する",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "json"
+                    ]
+                  },
+                  "converter": {
+                    "title": "コンバーター",
+                    "description": "1 つのファイルへ書き出すすべての地物から JSON ドキュメントを組み立て、既定の属性オブジェクトの配列を置き換える",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -5400,7 +5316,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "csv",
+        "json"
+      ]
     },
     {
       "name": "File Path Extractor",
@@ -6179,61 +6098,58 @@
     {
       "name": "Geometry Filter",
       "type": "processor",
-      "description": "ジオメトリをタイプに基づいてフィルタリングする",
+      "description": "ジオメトリの有無、ジオメトリの系統、または厳密なジオメトリタイプに応じて、各地物を対応する出力ポートへ振り分ける",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Filter パラメータ",
-        "description": "ジオメトリタイプに基づいてフィーチャーをフィルタリングする方法を設定する",
-        "oneOf": [
-          {
-            "title": "No Geometry",
-            "description": "Separates the features that carry no geometry at all from the ones that do.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+        "description": "地物が出るポートをジオメトリのどの側面で決めるかを選択する",
+        "type": "object",
+        "required": [
+          "filterType"
+        ],
+        "properties": {
+          "filterType": {
+            "title": "フィルタータイプ",
+            "description": "出力ポートを選ぶ際に見るジオメトリの側面。どのポートにも該当しない地物は unfiltered から出る",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FilterType"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "FilterType": {
+            "title": "Filter Type",
+            "description": "The aspect of the geometry that selects the output port.",
+            "oneOf": [
+              {
+                "title": "ジオメトリなし",
+                "description": "ジオメトリをまったく持たない地物と、ジオメトリを持つ地物とを分ける",
                 "type": "string",
                 "enum": [
                   "none"
                 ]
-              }
-            }
-          },
-          {
-            "title": "Geometry Type",
-            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+              },
+              {
+                "title": "ジオメトリ系統",
+                "description": "地物が属するジオメトリの系統（点、曲線、曲面、三角形、ソリッド）で振り分ける",
                 "type": "string",
                 "enum": [
                   "geometryType"
                 ]
-              }
-            }
-          },
-          {
-            "title": "Detailed Geometry Type",
-            "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+              },
+              {
+                "title": "詳細ジオメトリタイプ",
+                "description": "系統ではなく厳密なジオメトリタイプで振り分ける。フェース、ポリゴンメッシュ、マルチサーフェスがそれぞれ専用のポートから出る",
                 "type": "string",
                 "enum": [
                   "detailedGeometryType"
                 ]
               }
-            }
+            ]
           }
-        ]
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -6241,7 +6157,7 @@
       ],
       "outputPorts": [
         "unfiltered",
-        "none",
+        "no-geometry",
         "point",
         "curve",
         "surface",
@@ -6262,9 +6178,11 @@
         "aggregate"
       ],
       "categories": [
-        "Geometry"
+        "Filter"
       ],
-      "tags": []
+      "tags": [
+        "geometry"
+      ]
     },
     {
       "name": "Geometry Identifier",

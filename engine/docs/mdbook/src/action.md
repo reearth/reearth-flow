@@ -5021,216 +5021,132 @@ Filters CityGML features by their feature type.
 ### Type
 * processor
 ### Description
-Writes features from various formats
+Writes the features it receives to files, grouping them by the evaluated output path. Emits one feature per file written, carrying that file's path and row count, in place of the features it consumed.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature Writer Parameters",
-  "description": "Configuration for writing features to different file formats.",
-  "oneOf": [
-    {
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "csv"
-          ]
-        },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
+  "description": "Configures the file format written and where each file goes.",
+  "type": "object",
+  "required": [
+    "format",
+    "output"
+  ],
+  "properties": {
+    "format": {
+      "title": "Format",
+      "description": "The file format to write, with the settings that format takes. Every format writes attribute values only; geometry is not included in the output.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureWriterFormat"
         }
-      }
+      ]
     },
-    {
+    "output": {
+      "title": "Output Path",
+      "description": "Where to write, relative to the job's output directory. Evaluated once per feature, so an expression over the feature's attributes splits the stream into one file per distinct result.",
       "type": "object",
+      "format": "code",
       "required": [
-        "format",
-        "output"
+        "type",
+        "value"
       ],
       "properties": {
-        "format": {
+        "type": {
           "type": "string",
           "enum": [
-            "tsv"
+            "flowExpr",
+            "string"
           ]
         },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    {
-      "title": "JsonWriter Parameters",
-      "description": "Configuration for writing features in JSON format with optional custom conversion.",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "json"
-          ]
-        },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        },
-        "converter": {
-          "type": [
-            "object",
-            "null"
-          ],
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    {
-      "title": "CityGmlWriter Parameters",
-      "description": "Configuration for writing features in CityGML 2.0 format.",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        },
-        "lodFilter": {
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
-          "default": null,
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
-        },
-        "epsgCode": {
-          "description": "EPSG code for coordinate reference system",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "prettyPrint": {
-          "description": "Whether to format output with indentation (default: true)",
-          "default": true,
-          "type": [
-            "boolean",
-            "null"
-          ]
+        "value": {
+          "type": "string"
         }
       }
     }
-  ]
+  },
+  "definitions": {
+    "FeatureWriterFormat": {
+      "title": "Format",
+      "description": "The file format written, and the settings belonging to it.",
+      "oneOf": [
+        {
+          "title": "CSV",
+          "description": "Comma-separated values. The column list comes from the first feature written to a file, so every later feature must carry those same attributes.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "csv"
+              ]
+            }
+          }
+        },
+        {
+          "title": "TSV",
+          "description": "Tab-separated values, with the same column rules as CSV.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "tsv"
+              ]
+            }
+          }
+        },
+        {
+          "title": "JSON",
+          "description": "An array of objects, one per feature, holding its attribute values.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "json"
+              ]
+            },
+            "converter": {
+              "title": "Converter",
+              "description": "Builds the JSON document from all the features destined for one file, replacing the default array of attribute objects.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
 }
 ```
 ### Input Ports
@@ -5992,70 +5908,67 @@ Serializes a feature's geometry to a compressed representation and stores it in 
 ### Type
 * processor
 ### Description
-Filter Features by Geometry Type
+Routes each feature to the output port matching its geometry, selected by presence, by geometry family, or by exact type.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Filter Parameters",
-  "description": "Configure how to filter features based on their geometry type",
-  "oneOf": [
-    {
-      "title": "No Geometry",
-      "description": "Separates the features that carry no geometry at all from the ones that do.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
+  "description": "Selects which aspect of a feature's geometry decides the port it leaves by.",
+  "type": "object",
+  "required": [
+    "filterType"
+  ],
+  "properties": {
+    "filterType": {
+      "title": "Filter Type",
+      "description": "The aspect of the geometry that selects the output port. A feature no port claims leaves by `unfiltered`.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FilterType"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "FilterType": {
+      "title": "Filter Type",
+      "description": "The aspect of the geometry that selects the output port.",
+      "oneOf": [
+        {
+          "title": "No Geometry",
+          "description": "Separates the features that carry no geometry at all from the ones that do.",
           "type": "string",
           "enum": [
             "none"
           ]
-        }
-      }
-    },
-    {
-      "title": "Geometry Type",
-      "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
+        },
+        {
+          "title": "Geometry Type",
+          "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
           "type": "string",
           "enum": [
             "geometryType"
           ]
-        }
-      }
-    },
-    {
-      "title": "Detailed Geometry Type",
-      "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
+        },
+        {
+          "title": "Detailed Geometry Type",
+          "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
           "type": "string",
           "enum": [
             "detailedGeometryType"
           ]
         }
-      }
+      ]
     }
-  ]
+  }
 }
 ```
 ### Input Ports
 * features
 ### Output Ports
 * unfiltered
-* none
+* no-geometry
 * point
 * curve
 * surface
@@ -6075,7 +5988,7 @@ Filter Features by Geometry Type
 * multi-solid
 * aggregate
 ### Category
-* Geometry
+* Filter
 
 ## Geometry Identifier
 ### Type

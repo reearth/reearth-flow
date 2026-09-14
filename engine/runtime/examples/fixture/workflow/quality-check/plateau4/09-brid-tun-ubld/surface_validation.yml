@@ -107,7 +107,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"package\") or attributes.get(\"udxDirs\");\nif pkg == \"brid\" {\n  \"09_橋梁_LOD0面の向きエラー.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_LOD0面の向きエラー.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_LOD0面の向きエラー.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_LOD0面の向きエラー.csv\"\n}\n"
@@ -134,7 +135,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\", \"\");\nif pkg == \"brid\" {\n  \"09_橋梁_LOD0面のエラー.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_LOD0面のエラー.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_LOD0面のエラー.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_LOD0面のエラー.csv\"\n}\n"
@@ -252,7 +254,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\", \"\");\nif pkg == \"brid\" {\n  \"09_橋梁_LOD1境界面のエラー.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_LOD1境界面のエラー.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_LOD1境界面のエラー.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_LOD1境界面のエラー.csv\"\n}\n"
@@ -390,7 +393,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\", \"\");\nif pkg == \"brid\" {\n  \"09_橋梁_LOD2以上境界面のエラー.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_LOD2以上境界面のエラー.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_LOD2以上境界面のエラー.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_LOD2以上境界面のエラー.csv\"\n}\n"
@@ -594,7 +598,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\", \"\");\nif pkg == \"brid\" {\n  \"09_橋梁_非水密体.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_非水密体.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_非水密体.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_非水密体.csv\"\n}\n"
@@ -710,7 +715,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\", \"\");\nif pkg == \"brid\" {\n  \"09_橋梁_立体のエラー.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_立体のエラー.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_立体のエラー.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_立体のエラー.csv\"\n}\n"
@@ -815,7 +821,8 @@ nodes:
   type: action
   action: Feature Writer
   with:
-    format: csv
+    format:
+      type: csv
     output:
       type: flowExpr
       value: "pkg = attributes.get(\"folder\");\nif pkg == \"brid\" {\n  \"09_橋梁_LOD0面の交差.csv\"\n} else if pkg == \"tun\" {\n  \"09_トンネル_LOD0面の交差.csv\"\n} else if pkg == \"ubld\" {\n  \"09_地下街_LOD0面の交差.csv\"\n} else {\n  \"09_橋梁_トンネル_地下街_LOD0面の交差.csv\"\n}\n"

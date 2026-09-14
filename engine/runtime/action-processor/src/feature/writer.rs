@@ -16,7 +16,7 @@ use reearth_flow_runtime::{
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -32,7 +32,9 @@ impl ProcessorFactory for FeatureWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features from various formats"
+        "Writes the features it receives to files, grouping them by the evaluated output path. \
+Emits one feature per file written, carrying that file's path and row count, in place of the \
+features it consumed."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -41,6 +43,10 @@ impl ProcessorFactory for FeatureWriterFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Feature"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["csv", "json"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -76,168 +82,135 @@ impl ProcessorFactory for FeatureWriterFactory {
             .into());
         };
 
-        match params {
-            FeatureWriterParam::Csv { common_param } => {
-                let common_param = CommonWriterCompiledParam {
-                    output: common_param.output.compile().map_err(|e| {
-                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?,
-                };
-                let process = FeatureWriter {
-                    params: CompiledFeatureWriterParam::Csv { common_param },
-                    buffer: HashMap::new(),
-                };
-                Ok(Box::new(process))
-            }
-            FeatureWriterParam::Tsv { common_param } => {
-                let common_param = CommonWriterCompiledParam {
-                    output: common_param.output.compile().map_err(|e| {
-                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?,
-                };
-                let process = FeatureWriter {
-                    params: CompiledFeatureWriterParam::Tsv { common_param },
-                    buffer: HashMap::new(),
-                };
-                Ok(Box::new(process))
-            }
-            FeatureWriterParam::Json {
-                common_param,
-                param,
-            } => {
-                let common_param = CommonWriterCompiledParam {
-                    output: common_param.output.compile().map_err(|e| {
-                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?,
-                };
-                let converter = param
-                    .converter
+        let output = params
+            .output
+            .compile()
+            .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
+        let format = match params.format {
+            FeatureWriterFormat::Csv => CompiledFormat::Csv,
+            FeatureWriterFormat::Tsv => CompiledFormat::Tsv,
+            FeatureWriterFormat::Json { converter } => CompiledFormat::Json {
+                converter: converter
                     .map(|code| code.compile())
                     .transpose()
-                    .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
-                let process = FeatureWriter {
-                    params: CompiledFeatureWriterParam::Json {
-                        common_param,
-                        param: json::CompiledJsonWriterParam { converter },
-                    },
-                    buffer: HashMap::new(),
-                };
-                Ok(Box::new(process))
-            }
-            // TODO(new-geometry): the CityGML arm shares `write_citygml_to_storage`
-            // with the `CityGML Writer` sink; ungate it when that sink is ported.
-            #[cfg(feature = "new-geometry")]
-            FeatureWriterParam::CityGml { .. } => Err(FeatureProcessorError::FeatureWriterFactory(
-                "CityGML output is not yet supported in the new geometry world".to_string(),
-            )
-            .into()),
+                    .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?,
+            },
             #[cfg(not(feature = "new-geometry"))]
-            FeatureWriterParam::CityGml {
-                common_param,
-                param,
-            } => {
-                let common_param = CommonWriterCompiledParam {
-                    output: common_param.output.compile().map_err(|e| {
-                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
-                    })?,
-                };
-                let lod_mask = citygml::build_lod_mask(&param.lod_filter);
-                let process = FeatureWriter {
-                    params: CompiledFeatureWriterParam::CityGml {
-                        common_param,
-                        lod_mask,
-                        epsg_code: param.epsg_code,
-                        pretty_print: param.pretty_print.unwrap_or(true),
-                    },
-                    buffer: HashMap::new(),
-                };
-                Ok(Box::new(process))
-            }
-        }
+            FeatureWriterFormat::CityGml {
+                lod_filter,
+                epsg_code,
+                pretty_print,
+            } => CompiledFormat::CityGml {
+                lod_mask: citygml::build_lod_mask(&lod_filter),
+                epsg_code,
+                pretty_print: pretty_print.unwrap_or(true),
+            },
+        };
+
+        Ok(Box::new(FeatureWriter {
+            format,
+            output,
+            buffer: HashMap::new(),
+        }))
     }
 }
 
 #[derive(Debug, Clone)]
 struct FeatureWriter {
-    params: CompiledFeatureWriterParam,
+    format: CompiledFormat,
+    output: CompiledCode,
     pub(super) buffer: HashMap<String, Vec<Feature>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-struct CommonWriterParam {
-    /// # Output path
-    pub(super) output: Code,
 }
 
 /// # Feature Writer Parameters
 ///
-/// Configuration for writing features to different file formats.
+/// Configures the file format written and where each file goes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "format")]
-enum FeatureWriterParam {
-    #[serde(rename = "csv")]
-    Csv {
-        #[serde(flatten)]
-        common_param: CommonWriterParam,
-    },
-    #[serde(rename = "tsv")]
-    Tsv {
-        #[serde(flatten)]
-        common_param: CommonWriterParam,
-    },
-    #[serde(rename = "json")]
+#[serde(rename_all = "camelCase")]
+struct FeatureWriterParam {
+    /// # Format
+    ///
+    /// The file format to write, with the settings that format takes. Every
+    /// format writes attribute values only; geometry is not included in the
+    /// output.
+    format: FeatureWriterFormat,
+    /// # Output Path
+    ///
+    /// Where to write, relative to the job's output directory. Evaluated once per
+    /// feature, so an expression over the feature's attributes splits the stream
+    /// into one file per distinct result.
+    output: Code,
+}
+
+/// # Format
+///
+/// The file format written, and the settings belonging to it.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum FeatureWriterFormat {
+    /// # CSV
+    ///
+    /// Comma-separated values. The column list comes from the first feature
+    /// written to a file, so every later feature must carry those same
+    /// attributes.
+    Csv,
+    /// # TSV
+    ///
+    /// Tab-separated values, with the same column rules as CSV.
+    Tsv,
+    /// # JSON
+    ///
+    /// An array of objects, one per feature, holding its attribute values.
+    #[serde(rename_all = "camelCase")]
     Json {
-        #[serde(flatten)]
-        common_param: CommonWriterParam,
-        #[serde(flatten)]
-        param: json::JsonWriterParam,
+        /// # Converter
+        ///
+        /// Builds the JSON document from all the features destined for one file,
+        /// replacing the default array of attribute objects.
+        #[serde(default)]
+        converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     },
-    #[serde(rename = "citygml")]
+    // TODO(new-geometry): the CityGML arm shares `write_citygml_to_storage` with
+    // the `CityGML Writer` sink. Restore this variant when that sink is ported.
+    #[cfg(not(feature = "new-geometry"))]
+    #[serde(rename = "citygml", rename_all = "camelCase")]
     CityGml {
-        #[serde(flatten)]
-        common_param: CommonWriterParam,
-        #[serde(flatten)]
-        param: citygml::CityGmlWriterParam,
+        /// # LOD Filter
+        ///
+        /// LOD levels to include. When omitted or empty, every LOD is included.
+        #[serde(default)]
+        lod_filter: Option<Vec<u8>>,
+        /// # EPSG Code
+        ///
+        /// EPSG code of the coordinate reference system to declare.
+        #[serde(default)]
+        epsg_code: Option<u32>,
+        /// # Pretty Print
+        ///
+        /// Whether to indent the output. Defaults to indenting.
+        #[serde(default = "default_pretty_print")]
+        pretty_print: Option<bool>,
     },
 }
 
+#[cfg(not(feature = "new-geometry"))]
+fn default_pretty_print() -> Option<bool> {
+    Some(true)
+}
+
 #[derive(Debug, Clone)]
-enum CompiledFeatureWriterParam {
-    Csv {
-        common_param: CommonWriterCompiledParam,
-    },
-    Tsv {
-        common_param: CommonWriterCompiledParam,
-    },
+enum CompiledFormat {
+    Csv,
+    Tsv,
     Json {
-        common_param: CommonWriterCompiledParam,
-        param: json::CompiledJsonWriterParam,
+        converter: Option<CompiledCode>,
     },
     #[cfg(not(feature = "new-geometry"))]
     CityGml {
-        common_param: CommonWriterCompiledParam,
         lod_mask: LodMask,
         epsg_code: Option<u32>,
         pretty_print: bool,
     },
-}
-
-#[derive(Debug, Clone)]
-struct CommonWriterCompiledParam {
-    output: CompiledCode,
-}
-
-impl CompiledFeatureWriterParam {
-    fn output(&self) -> &CompiledCode {
-        match self {
-            CompiledFeatureWriterParam::Csv { common_param } => &common_param.output,
-            CompiledFeatureWriterParam::Tsv { common_param } => &common_param.output,
-            CompiledFeatureWriterParam::Json { common_param, .. } => &common_param.output,
-            #[cfg(not(feature = "new-geometry"))]
-            CompiledFeatureWriterParam::CityGml { common_param, .. } => &common_param.output,
-        }
-    }
 }
 
 impl Processor for FeatureWriter {
@@ -248,8 +221,7 @@ impl Processor for FeatureWriter {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let path = self
-            .params
-            .output()
+            .output
             .eval_string(feature, ctx.variables.clone())
             .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
         // Validation happens at flush time via SinkOutput::new; nothing to
@@ -289,31 +261,27 @@ impl Processor for FeatureWriter {
                 ),
             ])
             .into();
-            match self.params {
-                CompiledFeatureWriterParam::Csv { .. } => {
+            match self.format {
+                CompiledFormat::Csv => {
                     csv::write_csv(output, Delimiter::Comma, &ctx.storage_resolver, features)?;
                 }
-                CompiledFeatureWriterParam::Tsv { .. } => {
+                CompiledFormat::Tsv => {
                     csv::write_csv(output, Delimiter::Tab, &ctx.storage_resolver, features)?;
                 }
-                CompiledFeatureWriterParam::Json {
-                    common_param: _,
-                    ref param,
-                } => {
+                CompiledFormat::Json { ref converter } => {
                     json::write_json(
                         output,
-                        &param.converter,
+                        converter,
                         &ctx.storage_resolver,
                         ctx.variables.clone(),
                         features,
                     )?;
                 }
                 #[cfg(not(feature = "new-geometry"))]
-                CompiledFeatureWriterParam::CityGml {
+                CompiledFormat::CityGml {
                     lod_mask,
                     epsg_code,
                     pretty_print,
-                    ..
                 } => {
                     citygml::write_citygml(
                         output,
@@ -338,5 +306,140 @@ impl Processor for FeatureWriter {
 
     fn name(&self) -> &str {
         "Feature Writer"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn output() -> Value {
+        serde_json::json!({ "type": "string", "value": "out.csv" })
+    }
+
+    fn parse(with: Value) -> Result<FeatureWriterParam, serde_json::Error> {
+        serde_json::from_value(with)
+    }
+
+    #[test]
+    fn a_format_carrying_no_settings_needs_only_its_type() {
+        for name in ["csv", "tsv"] {
+            let params = parse(serde_json::json!({
+                "format": { "type": name },
+                "output": output(),
+            }))
+            .unwrap_or_else(|e| panic!("{name} should parse: {e}"));
+            match (name, params.format) {
+                ("csv", FeatureWriterFormat::Csv) | ("tsv", FeatureWriterFormat::Tsv) => {}
+                (_, other) => panic!("{name} parsed as {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn the_converter_is_optional_and_belongs_to_the_json_format() {
+        let bare = parse(serde_json::json!({
+            "format": { "type": "json" },
+            "output": output(),
+        }))
+        .expect("json without a converter should parse");
+        assert!(matches!(
+            bare.format,
+            FeatureWriterFormat::Json { converter: None }
+        ));
+
+        let with_converter = parse(serde_json::json!({
+            "format": {
+                "type": "json",
+                "converter": { "type": "flowExpr", "value": "attributes" },
+            },
+            "output": output(),
+        }))
+        .expect("json with a converter should parse");
+        assert!(matches!(
+            with_converter.format,
+            FeatureWriterFormat::Json { converter: Some(_) }
+        ));
+    }
+
+    /// The converter used to sit beside `format`, where nothing stopped it being
+    /// set against CSV. It now belongs to the variant that reads it — but a
+    /// leftover copy at the old position is *ignored*, not reported, because no
+    /// action in the workspace sets `deny_unknown_fields`. Pinned here so the
+    /// migration trap is visible; see cross-cutting finding 10.
+    #[test]
+    fn a_converter_left_at_the_old_position_is_silently_ignored() {
+        let params = parse(serde_json::json!({
+            "format": { "type": "csv" },
+            "output": output(),
+            "converter": { "type": "flowExpr", "value": "attributes" },
+        }))
+        .expect("an unknown key does not fail the parse");
+        assert!(matches!(params.format, FeatureWriterFormat::Csv));
+    }
+
+    /// §7.3: the arm cannot run under new geometry, so it must not be offered.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn citygml_is_not_a_format_in_the_shipped_build() {
+        let err = parse(serde_json::json!({
+            "format": { "type": "citygml" },
+            "output": output(),
+        }))
+        .unwrap_err();
+        assert!(
+            err.to_string().contains("citygml"),
+            "expected the unknown variant to be named, got: {err}"
+        );
+    }
+
+    #[cfg(not(feature = "new-geometry"))]
+    #[test]
+    fn citygml_carries_its_own_settings_in_the_legacy_build() {
+        let params = parse(serde_json::json!({
+            "format": {
+                "type": "citygml",
+                "lodFilter": [1, 2],
+                "epsgCode": 6697,
+                "prettyPrint": true,
+            },
+            "output": output(),
+        }))
+        .expect("citygml should parse in the legacy build");
+        let FeatureWriterFormat::CityGml {
+            lod_filter,
+            epsg_code,
+            pretty_print,
+        } = params.format
+        else {
+            panic!("expected the citygml format");
+        };
+        assert_eq!(lod_filter, Some(vec![1, 2]));
+        assert_eq!(epsg_code, Some(6697));
+        assert_eq!(pretty_print, Some(true));
+    }
+
+    /// Omitted entirely, every citygml setting falls back rather than failing.
+    #[cfg(not(feature = "new-geometry"))]
+    #[test]
+    fn citygml_settings_all_default() {
+        let params = parse(serde_json::json!({
+            "format": { "type": "citygml" },
+            "output": output(),
+        }))
+        .expect("citygml should parse with no settings");
+        let FeatureWriterFormat::CityGml {
+            lod_filter,
+            pretty_print,
+            ..
+        } = params.format
+        else {
+            panic!("expected the citygml format");
+        };
+        assert_eq!(lod_filter, None);
+        // No filter means every LOD, not none of them.
+        let mask = citygml::build_lod_mask(&lod_filter);
+        assert_eq!(format!("{mask:?}"), format!("{:?}", LodMask::all()));
+        assert_eq!(pretty_print, Some(true));
     }
 }
