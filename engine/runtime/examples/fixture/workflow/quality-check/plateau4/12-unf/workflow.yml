@@ -313,7 +313,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: csv
+          format:
+            type: csv
           output:
             type: string
             value: 12_地下埋設物_検査結果一覧.csv
@@ -367,21 +368,22 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: json
-          converter:
-            type: flowExpr
-            value: |
-              if len(attributes["__features"]) == 0 {
-                []
-              } else {
-                result = [];
-                feature = attributes["__features"][0];
-                keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
-                for key in keys {
-                  result.append({"name": key, "count": feature.get(key, 0)});
+          format:
+            type: json
+            converter:
+              type: flowExpr
+              value: |
+                if len(attributes["__features"]) == 0 {
+                  []
+                } else {
+                  result = [];
+                  feature = attributes["__features"][0];
+                  keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
+                  for key in keys {
+                    result.append({"name": key, "count": feature.get(key, 0)});
+                  }
+                  result
                 }
-                result
-              }
           output:
             type: string
             value: summary_unf.json

@@ -163,7 +163,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面のエラー.csv
@@ -345,7 +346,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の交差.csv
@@ -510,7 +512,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の向きエラー.csv
@@ -599,7 +602,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD1境界面のエラー.csv
@@ -768,7 +772,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_非水密体.csv
@@ -810,7 +815,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体のエラー.csv
@@ -976,7 +982,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体交差.csv
@@ -1203,7 +1210,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_検査結果一覧.csv
@@ -1342,20 +1350,21 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            result = [];
-            feature = attributes["__features"][0];
-            for key in feature.keys() {
-              result.append({"name": key, "count": feature[key]});
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              result = [];
+              feature = attributes["__features"][0];
+              for key in feature.keys() {
+                result.append({"name": key, "count": feature[key]});
+              }
+              result
             }
-            result
-          }
       output:
         type: string
         value: summary_bldg.json
@@ -1468,7 +1477,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
@@ -2564,7 +2574,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_建物ID書式不正.csv
@@ -2685,7 +2696,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_C-bldg-01エラー.csv
@@ -2757,7 +2769,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-04,05エラー.csv
@@ -2813,7 +2826,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_市区町村コードエラー.csv
@@ -2934,7 +2948,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-06エラー.csv
@@ -3104,7 +3119,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-02エラー.csv
@@ -3175,7 +3191,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_図郭不正.csv
@@ -3293,7 +3310,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0-1のBuildingPart.csv

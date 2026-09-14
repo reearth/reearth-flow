@@ -77,7 +77,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 11_水部_無効な空間属性の型.csv
@@ -159,7 +160,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 11_水部_LOD1面のエラー.csv
@@ -275,7 +277,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 11_水部_LOD2-3非水密立体.csv
@@ -337,7 +340,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 11_水部_LOD2-3立体のエラー.csv
@@ -420,7 +424,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 11_水部_LOD2-3境界面のエラー.csv
