@@ -49,6 +49,20 @@
     "help": "Check the feature's LOD geometries; only LOD > 0 geometries with polygons are converted."
   },
   {
+    "code": "czml.geocentric_force_2d",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped geocentric packet because force2D was requested",
+    "help": "EPSG:4978 has no 2D form and dropping Z from an ECEF coordinate is meaningless, not merely lossy. Turn force2D off, or supply the positions as `cartographicDegrees`."
+  },
+  {
+    "code": "czml.inertial_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped packet whose cartesian position is in an inertial reference frame",
+    "help": "`referenceFrame: \"INERTIAL\"` is not earth-fixed, so it cannot be placed without a time. Convert the positions to the FIXED frame before reading."
+  },
+  {
     "code": "czml.missing_feature_id",
     "category": "schema",
     "defaultDisposition": "warn_drop",
@@ -61,6 +75,13 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped feature with non-CityGML geometry",
     "help": "CZML Writer only converts CityGML geometry to polygons; route other geometry types to a different writer."
+  },
+  {
+    "code": "czml.unsupported_position",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped packet with a position this reader cannot interpret",
+    "help": "Interval-scoped property arrays, `reference`/`references` positions and time-tagged `cartesian` positions are not read yet. Use a static `cartographicDegrees`, `cartographicRadians` or `cartesian` value."
   },
   {
     "code": "expr.attribute_operation_failed",

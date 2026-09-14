@@ -22,6 +22,13 @@ use tokio::sync::mpsc::Sender;
 use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
 use crate::errors::SourceError;
 
+// New-geometry reading lives in a sibling file, declared here as a child module so
+// it can reuse this module's geometry-free JSON helpers via `super::`. Sharing them
+// is what keeps the `preserveRaw` attribute contract identical in both worlds.
+#[cfg(feature = "new-geometry")]
+#[path = "czml_next.rs"]
+mod czml_next;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CzmlReaderFactory;
 
@@ -31,7 +38,7 @@ impl SourceFactory for CzmlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data"
+        "Reads geometry and attributes from CZML (Cesium Language) documents. Time-tagged positions become either a timeseries attribute or one feature per sample, depending on the sampling strategy."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -39,7 +46,11 @@ impl SourceFactory for CzmlReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["czml", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -105,16 +116,20 @@ pub(super) struct CzmlReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     /// # Force 2D
-    /// If true, forces all geometries to be 2D (ignoring Z values)
+    /// Drops elevations, reading every geometry as two-dimensional. A packet
+    /// positioned in earth-centred cartesian coordinates is skipped instead,
+    /// because that system has no two-dimensional form.
     #[serde(default)]
     pub(super) force_2d: bool,
     /// # Skip Document Packet
-    /// If true, skips the document packet (first packet with version/clock info)
+    /// Skips the document packet, which carries the version and clock settings
+    /// rather than geometry. Any packet declaring a string `version` counts as
+    /// the document packet, wherever it appears.
     #[serde(default = "default_skip_document")]
     pub(super) skip_document_packet: bool,
     /// # Time Sampling Strategy
-    /// How to handle time-dynamic properties in CZML packets.
-    /// Defaults to "preserveRaw" for lossless round-trip with CZML Writer.
+    /// Controls how a packet's time-tagged positions become features. Defaults
+    /// to preserving the raw samples, which round-trips through CZML Writer.
     #[serde(default)]
     pub(super) time_sampling: TimeSamplingStrategy,
 }
@@ -127,18 +142,19 @@ fn default_skip_document() -> bool {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum TimeSamplingStrategy {
-    /// Extract all time-tagged samples as separate features, each with a
-    /// `czml.timestamp` and `czml.timeOffset` attribute. Useful when you
-    /// need per-sample processing in downstream actions.
+    /// # All Samples
+    /// Emits one feature per time-tagged sample, each carrying a
+    /// `czml.timestamp` and `czml.timeOffset` attribute. The packet's other
+    /// properties are not retained, so these features do not round-trip.
     AllSamples,
-    /// Keep the first sample only (static geometry). Use this for workflows
-    /// that don't need timeseries data.
+    /// # First Sample Only
+    /// Emits one static feature positioned at the first sample, discarding the
+    /// rest of the timeseries.
     FirstSampleOnly,
-    /// Embed the full timeseries in one feature per entity. The feature
-    /// geometry uses the first sample, `czml.timeseries` holds all position
-    /// samples as a JSON array, and all other CZML packet properties (point,
-    /// path, orientation, ellipsoid, etc.) are preserved as `czml.<key>`
-    /// attributes for faithful round-trip through CZML Writer.
+    /// # Preserve Raw
+    /// Emits one feature per entity, positioned at the first sample, holding
+    /// every sample in `czml.timeseries` and every other packet property as a
+    /// `czml.<key>` attribute.
     #[default]
     PreserveRaw,
 }
@@ -167,6 +183,30 @@ impl Source for CzmlReader {
         read_czml(&content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+
+        let features = czml_next::read(&ctx, &content, &self.params)?;
+
+        for feature in features {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| SourceError::CzmlReader(format!("Failed to send feature: {e}")))?;
+        }
+
+        Ok(())
     }
 }
 
@@ -868,7 +908,9 @@ fn extract_rectangle_bounds(value: &Value) -> Option<Vec<f64>> {
                 }
             }
         }
-        if let Some(wsen) = obj.get("wsenRadians") {
+        // CZML's RectangleCoordinates names this `wsen` (radians); there is no
+        // `wsenRadians` in the schema.
+        if let Some(wsen) = obj.get("wsen") {
             if let Some(arr) = wsen.as_array() {
                 if arr.len() >= 4 {
                     let bounds: Option<Vec<f64>> = arr
@@ -1100,5 +1142,27 @@ mod tests {
                 Some(&AttributeValue::String("vehicle1".to_string()))
             );
         }
+    }
+
+    #[test]
+    fn radian_rectangle_bounds_use_the_spec_key() {
+        // CZML's RectangleCoordinates names its radian key `wsen`, not
+        // `wsenRadians`. Half pi of latitude is 90 degrees, which no
+        // degrees-passthrough could produce from the input 1.5707963...
+        let value = serde_json::json!({
+            "wsen": [0.0, 0.0, std::f64::consts::FRAC_PI_2, std::f64::consts::FRAC_PI_2],
+        });
+        let bounds = extract_rectangle_bounds(&value).expect("`wsen` is read");
+        assert_eq!(bounds.len(), 4);
+        assert!((bounds[2] - 90.0).abs() < 1e-9, "east was {}", bounds[2]);
+        assert!((bounds[3] - 90.0).abs() < 1e-9, "north was {}", bounds[3]);
+    }
+
+    #[test]
+    fn wsen_radians_is_not_a_czml_key() {
+        // Guard against reintroducing the invented key: a value carrying only
+        // `wsenRadians` is not a rectangle the spec describes.
+        let value = serde_json::json!({ "wsenRadians": [0.0, 0.0, 1.0, 1.0] });
+        assert!(extract_rectangle_bounds(&value).is_none());
     }
 }

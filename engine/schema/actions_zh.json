@@ -1935,7 +1935,7 @@
     {
       "name": "CZML Reader",
       "type": "source",
-      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据",
+      "description": "从 CZML（Cesium Language）文档读取几何与属性。带时间标记的位置会根据采样策略转换为时间序列属性或每个采样一个要素。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Reader Parameters",
@@ -1944,19 +1944,19 @@
         "properties": {
           "force2d": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "description": "丢弃高程，将所有几何按二维读取。以地心直角坐标定位的数据包会被跳过，因为该坐标系没有二维形式。",
             "default": false,
             "type": "boolean"
           },
           "skipDocumentPacket": {
             "title": "Skip Document Packet",
-            "description": "If true, skips the document packet (first packet with version/clock info)",
+            "description": "跳过文档数据包，该数据包携带版本与时钟设置而非几何。任何声明字符串 `version` 的数据包都被视为文档数据包，无论其出现在何处。",
             "default": true,
             "type": "boolean"
           },
           "timeSampling": {
             "title": "Time Sampling Strategy",
-            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
+            "description": "控制数据包中带时间标记的位置如何转换为要素。默认保留原始采样，可与 CZML Writer 往返转换。",
             "default": "preserveRaw",
             "allOf": [
               {
@@ -2020,21 +2020,24 @@
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
               {
-                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+                "title": "全部采样",
+                "description": "为每个带时间标记的采样输出一个要素，各自带有 `czml.timestamp` 和 `czml.timeOffset` 属性。数据包的其他属性不会保留，因此这些要素无法往返转换。",
                 "type": "string",
                 "enum": [
                   "allSamples"
                 ]
               },
               {
-                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+                "title": "仅第一个采样",
+                "description": "在第一个采样位置输出一个静态要素，丢弃其余的时间序列。",
                 "type": "string",
                 "enum": [
                   "firstSampleOnly"
                 ]
               },
               {
-                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
+                "title": "保留原始数据",
+                "description": "为每个实体输出一个位于第一个采样位置的要素，将所有采样保存在 `czml.timeseries` 中，并将其他数据包属性保存为 `czml.<key>` 属性。",
                 "type": "string",
                 "enum": [
                   "preserveRaw"
@@ -2050,9 +2053,12 @@
         "features"
       ],
       "categories": [
-        "File"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "czml",
+        "3d"
+      ]
     },
     {
       "name": "CZML Writer",
