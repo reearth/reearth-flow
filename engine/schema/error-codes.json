@@ -185,19 +185,22 @@
     "code": "internal.diagnostics_overflow",
     "category": "internal",
     "defaultDisposition": "warn_drop",
-    "message": "additional diagnostics collapsed into this overflow marker"
+    "message": "additional diagnostics collapsed into this overflow marker",
+    "help": "The run produced more warnings than the summary shows. Fix the highest-count warnings first to reduce the tail."
   },
   {
     "code": "internal.invariant_violation",
     "category": "internal",
     "defaultDisposition": "fatal",
-    "message": "internal invariant violated"
+    "message": "internal invariant violated",
+    "help": "This is an engine bug. Please report it with the workflow, the failing node, and the job id."
   },
   {
     "code": "internal.unclassified",
     "category": "internal",
     "defaultDisposition": "fatal",
-    "message": "node failed with an unclassified error"
+    "message": "node failed with an unclassified error",
+    "help": "See the message and the failing action's log for details. If it points at a workflow parameter or input, fix that and retry."
   },
   {
     "code": "raster.image_save_failed",
