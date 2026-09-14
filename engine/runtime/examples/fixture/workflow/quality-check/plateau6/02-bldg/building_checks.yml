@@ -2188,10 +2188,9 @@ nodes:
   # The spot each shell-level check flagged. Face-level positions are left out:
   # they belong to the boundary-surface checks, which report them per face.
   #
-  # TODO: add an unshared-edge layer (02_建築物_非水密体の辺.geojson) once
-  # `check_shell_manifold` reports the unshared edges as its positions. It
-  # currently reports the whole shell, which would only duplicate
-  # 02_建築物_非水密体.geojson, so ShellManifold is excluded here.
+  # TODO: add an unshared-edge layer (02_建築物_非水密体の辺.geojson) from the
+  # ShellManifold positions, which are the offending edges. It is excluded here
+  # so this layer stays one point per shell-level issue.
   - id: e1000000-0000-4000-8000-000000000041
     name: FeatureFilterSolidIssueLocation
     type: action
