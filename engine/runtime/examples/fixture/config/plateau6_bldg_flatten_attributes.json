@@ -25,10 +25,6 @@
       "sourcePath": "city_gml_attributes con:height con:Height con:value"
     },
     {
-      "destinationPath": "attributes bldg:measuredHeight_uom",
-      "sourcePath": "city_gml_attributes con:height con:Height con:value_uom"
-    },
-    {
       "destinationPath": "attributes bldg:storeysAboveGround",
       "sourcePath": "city_gml_attributes bldg:storeysAboveGround",
       "dataType": "int"
@@ -251,10 +247,6 @@
     {
       "destinationPath": "attributes bldg:measuredHeight",
       "sourcePath": "city_gml_attributes con:height con:Height con:value"
-    },
-    {
-      "destinationPath": "attributes bldg:measuredHeight_uom",
-      "sourcePath": "city_gml_attributes con:height con:Height con:value_uom"
     },
     {
       "destinationPath": "attributes bldg:storeysAboveGround",

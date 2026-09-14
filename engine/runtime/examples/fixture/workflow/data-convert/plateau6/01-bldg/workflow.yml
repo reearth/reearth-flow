@@ -43,6 +43,15 @@ graphs:
                 value: attributes["extension"] == "gml"
               outputPort: features
 
+      - id: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
+        name: PathAttributeWhitelist
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: path
+              valueAttribute: path
+
       - id: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
         name: FeatureReaderByCityGml
         type: action
@@ -52,7 +61,7 @@ graphs:
             type: flowExpr
             value: attributes["path"]
           keepAttributes: false
-          inheritInputAttributes: false
+          inheritInputAttributes: true
           cityGmlAttributesKey: city_gml_attributes
           flattenLeafAttributes:
             - uom
@@ -192,7 +201,14 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  attributes.get("uro:BuildingIDAttribute_uro:city_code") or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                  raw_city_code = null;
+                  entries = attributes["city_gml_attributes"].get("bldg:adeOfAbstractBuilding", []);
+                  for e in entries {
+                    if "uro:BuildingIDAttribute" in e {
+                      raw_city_code = e["uro:BuildingIDAttribute"].get("uro:city_code");
+                    }
+                  }
+                  raw_city_code or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
             - attribute: __base_city_code
               method: create
               value:
@@ -244,6 +260,18 @@ graphs:
         with:
           groupBy: "lod"
 
+      - id: bbfef03c-1811-42e0-a374-bccfba97e79e
+        name: LodAttributeInternalizer
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: lod
+              method: rename
+              value:
+                type: string
+                value: __lod
+
       # Collapse to one row per (gmlId, lod) pair first: a building can have
       # multiple geometry members at the same LOD, and the __lod_mask sum below
       # is only valid (sum of distinct powers of two == OR) if each distinct
@@ -257,8 +285,8 @@ graphs:
           aggregateAttributes:
             - newAttribute: __citygml_gml_id
               attribute: __citygml_gml_id
-            - newAttribute: lod
-              attribute: lod
+            - newAttribute: __lod
+              attribute: __lod
           calculationAttribute: _dup_count
           calculationValue: 1
 
@@ -274,7 +302,7 @@ graphs:
           calculationAttribute: __lod_mask
           calculation:
             type: flowExpr
-            value: 1 << attributes["lod"]
+            value: 1 << attributes["__lod"]
 
       - id: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
         name: LodMaskJoiner
@@ -306,7 +334,7 @@ graphs:
           calculationAttribute: __city_max_lod
           calculation:
             type: flowExpr
-            value: attributes["lod"]
+            value: attributes["__lod"]
 
       - id: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         name: CityMaxLodJoiner
@@ -331,6 +359,18 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes["__citygml_gml_id"]
+            - attribute: meshcode
+              method: create
+              value:
+                type: flowExpr
+                value: 'attributes["path"].split("/")[-1].split("_")[0]'
+            - attribute: path
+              method: remove
+            - attribute: city_name
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["uro:BuildingIDAttribute_uro:city"]
             - attribute: __output_base
               method: create
               value:
@@ -346,7 +386,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: attributes["lod"]
+                value: attributes["__lod"]
 
       # --- LOD1 branch ---
       - id: 04339391-dcfe-485a-9593-e12b0eddf864
@@ -357,7 +397,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 1
+                value: attributes["__lod"] == 1
               outputPort: features
 
       - id: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
@@ -419,7 +459,7 @@ graphs:
                     if (mask & (1 << i)) != 0 { best = i; }
                     i += 1;
                   }
-                  attributes["__city_max_lod"] >= 2 and attributes["lod"] == best
+                  attributes["__city_max_lod"] >= 2 and attributes["__lod"] == best
               outputPort: features
 
       - id: 81393f88-cdbc-44e3-b55d-49bc838dc127
@@ -493,7 +533,7 @@ graphs:
                     if (mask & (1 << i)) != 0 { best = i; }
                     i += 1;
                   }
-                  attributes["__city_max_lod"] >= 3 and attributes["lod"] == best
+                  attributes["__city_max_lod"] >= 3 and attributes["__lod"] == best
               outputPort: features
 
       - id: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
@@ -563,6 +603,11 @@ graphs:
         toPort: features
       - id: 499a3897-53db-4825-be5b-73414dbadfcf
         from: 8269fcb7-645d-4cc2-bb7e-215357fc960d
+        to: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
+        fromPort: features
+        toPort: features
+      - id: f34ce770-0c74-4479-b94a-e2c4e7ec63fb
+        from: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
         to: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
         fromPort: features
         toPort: features
@@ -621,9 +666,14 @@ graphs:
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features
+      - id: c63418fb-3364-4193-9873-1266821e4cc7
+        from: 16247597-565a-40df-a8d4-7445468978fd
+        to: bbfef03c-1811-42e0-a374-bccfba97e79e
+        fromPort: features
+        toPort: features
       # split -> per-gmlId LOD mask (for cascade fallback) -> joined back onto each split feature
       - id: 83373a03-9e03-4f12-b5c2-b72200d249bf
-        from: 16247597-565a-40df-a8d4-7445468978fd
+        from: bbfef03c-1811-42e0-a374-bccfba97e79e
         to: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
         fromPort: features
         toPort: features
@@ -633,7 +683,7 @@ graphs:
         fromPort: features
         toPort: features
       - id: c9b71d8c-8e82-4a9a-81ea-8aa3dc9bd776
-        from: 16247597-565a-40df-a8d4-7445468978fd
+        from: bbfef03c-1811-42e0-a374-bccfba97e79e
         to: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
         fromPort: features
         toPort: requestor
@@ -644,7 +694,7 @@ graphs:
         toPort: supplier
       # split -> per-city_code max LOD -> joined back onto each split feature
       - id: 4e6a8c0d-2b3f-4e5a-8c1d-6f9b0a2c4e83
-        from: 16247597-565a-40df-a8d4-7445468978fd
+        from: bbfef03c-1811-42e0-a374-bccfba97e79e
         to: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
         fromPort: features
         toPort: features

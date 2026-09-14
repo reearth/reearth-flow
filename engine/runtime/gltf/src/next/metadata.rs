@@ -4,7 +4,7 @@
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use gltf::json;
 use indexmap::IndexMap;
@@ -45,14 +45,9 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         raw_paths.extend(f.keys().cloned());
     }
 
-    let mut used_ids = HashSet::new();
-    let properties: Vec<(String, String)> = raw_paths
-        .into_iter()
-        .map(|raw| {
-            let id = sanitize_identifier(&raw, &mut used_ids);
-            (raw, id)
-        })
-        .collect();
+    // Property table keys are the raw attribute path, unsanitized.
+    let properties: Vec<(String, String)> =
+        raw_paths.into_iter().map(|raw| (raw.clone(), raw)).collect();
 
     let rows = flattened
         .iter()
@@ -273,37 +268,6 @@ fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, A
 
 fn is_excluded(key: &str, options: MetadataOptions) -> bool {
     (options.skip_unexposed_attributes && key.starts_with("__")) || options.schema_key == Some(key)
-}
-
-/// CityGML attribute keys are commonly namespace-prefixed (`bldg:measuredHeight`,
-/// `uro:buildingIDAttribute`) and so routinely violate `EXT_structural_metadata`'s
-/// identifier syntax; this maps a raw key to a valid, collision-free id, while
-/// the raw key survives separately as the property's `name` for display.
-fn sanitize_identifier(raw: &str, used: &mut HashSet<String>) -> String {
-    let mut id: String = raw
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-    if id.is_empty() || id.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-        id.insert(0, '_');
-    }
-    if used.insert(id.clone()) {
-        return id;
-    }
-    let mut n = 1;
-    loop {
-        let candidate = format!("{id}_{n}");
-        if used.insert(candidate.clone()) {
-            return candidate;
-        }
-        n += 1;
-    }
 }
 
 #[cfg(test)]
