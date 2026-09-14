@@ -62,6 +62,75 @@ pub fn build_probe_args(req: &ProbeRequest) -> Vec<String> {
     args
 }
 
+/// The `/render-view` request body. Field names are the JSON the API sends; see
+/// `renderViewRequest` in `server/api/internal/infrastructure/cloudrunworker/worker.go`.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct RenderViewRequest {
+    pub input_uri: String,
+    pub output_uri: String,
+    pub report_url: String,
+    pub name: String,
+    pub shape: String,
+    #[serde(default)]
+    pub row: Option<usize>,
+    #[serde(default)]
+    pub filter: Option<String>,
+    pub draco: bool,
+    pub texel_size: f64,
+    pub texture_codec: String,
+    pub target_tile_size: u64,
+    pub min_zoom: u8,
+    pub max_zoom: u8,
+    pub extent: i32,
+    pub max_tile_bytes: u64,
+}
+
+/// The argument vector for `reearth-flow-worker render-view`.
+#[cfg(feature = "new-geometry")]
+pub fn build_render_view_args(req: &RenderViewRequest) -> Vec<String> {
+    let mut args = vec![
+        "render-view".to_string(),
+        "--input".to_string(),
+        req.input_uri.clone(),
+        "--output".to_string(),
+        req.output_uri.clone(),
+        "--report-url".to_string(),
+        req.report_url.clone(),
+        "--name".to_string(),
+        req.name.clone(),
+        "--shape".to_string(),
+        req.shape.clone(),
+        "--texel-size".to_string(),
+        req.texel_size.to_string(),
+        "--texture-codec".to_string(),
+        req.texture_codec.clone(),
+        "--target-tile-size".to_string(),
+        req.target_tile_size.to_string(),
+        "--min-zoom".to_string(),
+        req.min_zoom.to_string(),
+        "--max-zoom".to_string(),
+        req.max_zoom.to_string(),
+        "--extent".to_string(),
+        req.extent.to_string(),
+        "--max-tile-bytes".to_string(),
+        req.max_tile_bytes.to_string(),
+    ];
+    if let Some(row) = req.row {
+        args.push("--row".to_string());
+        args.push(row.to_string());
+    }
+    if let Some(filter) = &req.filter {
+        args.push("--filter".to_string());
+        args.push(filter.clone());
+    }
+    // Draco is on by default in the subcommand, so only the opt-out is passed.
+    if !req.draco {
+        args.push("--no-draco".to_string());
+    }
+    args
+}
+
 /// Build the argv (excluding the program name) for the `reearth-flow-worker` CLI.
 pub fn build_worker_args(req: &RunRequest) -> Vec<String> {
     let mut args = vec![
@@ -293,5 +362,74 @@ mod tests {
         assert!(cancel_requested(&resolver, &uri).await);
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod render_view_args_tests {
+    use super::*;
+
+    fn tiles_request() -> RenderViewRequest {
+        RenderViewRequest {
+            input_uri: "gs://b/in.jsonl.zst".to_string(),
+            output_uri: "gs://b/out".to_string(),
+            report_url: "gs://b/out/report.json".to_string(),
+            name: "view".to_string(),
+            shape: "tiles".to_string(),
+            row: None,
+            filter: None,
+            draco: true,
+            texel_size: 0.0,
+            texture_codec: "jpeg".to_string(),
+            target_tile_size: 1_048_576,
+            min_zoom: 0,
+            max_zoom: 15,
+            extent: 4096,
+            max_tile_bytes: 500_000,
+        }
+    }
+
+    #[test]
+    fn a_tiles_request_becomes_the_subcommand_line() {
+        let mut req = tiles_request();
+        req.filter = Some("foo > 1".to_string());
+        let args = build_render_view_args(&req);
+        assert_eq!(args[0], "render-view");
+        assert!(args.contains(&"--shape".to_string()));
+        assert!(args.contains(&"tiles".to_string()));
+        assert!(args.contains(&"--filter".to_string()));
+        assert!(!args.contains(&"--row".to_string()), "tiles carries no row");
+        // Draco is on by default in the subcommand, so the opt-out must be absent.
+        assert!(!args.contains(&"--no-draco".to_string()));
+    }
+
+    #[test]
+    fn draco_off_becomes_the_opt_out_flag() {
+        let mut req = tiles_request();
+        req.draco = false;
+        let args = build_render_view_args(&req);
+        assert!(args.contains(&"--no-draco".to_string()));
+    }
+
+    #[test]
+    fn a_gltf_request_carries_its_row_and_no_filter() {
+        let mut req = tiles_request();
+        req.shape = "gltf".to_string();
+        req.row = Some(4);
+        let args = build_render_view_args(&req);
+        assert!(args.contains(&"--row".to_string()));
+        assert!(args.contains(&"4".to_string()));
+        assert!(!args.contains(&"--filter".to_string()));
+    }
+
+    #[test]
+    fn the_arg_line_round_trips_through_the_subcommand_parser() {
+        // The strongest check available here: what the route builds must be
+        // something the subcommand actually accepts.
+        let args = build_render_view_args(&tiles_request());
+        let parsed = crate::render_view::build_render_view_command().try_get_matches_from(
+            std::iter::once("render-view".to_string()).chain(args.into_iter().skip(1)),
+        );
+        assert!(parsed.is_ok(), "built args must parse: {:?}", parsed.err());
     }
 }
