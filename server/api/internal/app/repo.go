@@ -126,7 +126,7 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 	var err error
 	if conf.GCS.IsConfigured() {
 		log.Infofc(ctx, "file: GCS storage is used: %s\n", conf.GCS.BucketName)
-		fileRepo, err = gcs.NewFile(conf.GCS.BucketName, conf.AssetBaseURL, conf.GCS.PublicationCacheControl, conf.AssetUploadURLReplacement)
+		fileRepo, err = gcs.NewFile(conf.GCS.BucketName, conf.AssetBaseURL, conf.ArtifactBaseURL, conf.GCS.PublicationCacheControl, conf.AssetUploadURLReplacement)
 		if err != nil {
 			log.Fatalf("file: failed to init GCS storage: %s\n", err.Error())
 		}

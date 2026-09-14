@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 type queryResolver struct{ *Resolver }
@@ -38,6 +39,23 @@ func (r *queryResolver) DeploymentVersions(ctx context.Context, workspaceID gqlm
 
 func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error) {
 	return loaders(ctx).Job.FindByID(ctx, id)
+}
+
+// IntermediateDataView reads a view's recorded outcome. It is what a client
+// calls once the render job reaches a terminal status, and after a reload
+// mid-render — the format and entry point are not knowable before then.
+func (r *queryResolver) IntermediateDataView(ctx context.Context, jobID gqlmodel.ID, fileID string, viewID gqlmodel.ID) (*gqlmodel.IntermediateDataView, error) {
+	jid, err := id.JobIDFrom(string(jobID))
+	if err != nil {
+		return nil, err
+	}
+
+	view, err := usecases(ctx).IntermediateDataView.Get(ctx, jid, fileID, string(viewID))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToIntermediateDataView(view), nil
 }
 
 func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
