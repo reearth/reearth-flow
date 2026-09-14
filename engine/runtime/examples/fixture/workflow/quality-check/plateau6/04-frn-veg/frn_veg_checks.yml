@@ -160,7 +160,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -346,7 +347,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -392,7 +394,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -663,7 +666,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -769,7 +773,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -813,19 +818,20 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            feature = attributes["__features"][0];
-            keys = itertools.filter(feature.keys(), fn(key) { key != "Folder" });
-            itertools.map(keys, fn(key) {
-              {"name": key, "count": feature[key]}
-            })
-          }
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              feature = attributes["__features"][0];
+              keys = itertools.filter(feature.keys(), fn(key) { key != "Folder" });
+              itertools.map(keys, fn(key) {
+                {"name": key, "count": feature[key]}
+              })
+            }
       output:
         type: flowExpr
         value: '"summary_" + attributes["Folder"] + ".json"'

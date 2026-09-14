@@ -776,7 +776,7 @@ nodes:
         type: csv
       output:
         type: string
-        value: 02_建築物_非水密体.csv
+        value: 02_建築物_非水密立体.csv
 
   - id: 19da512d-70c7-4461-824b-047919d0cd40
     name: Lod1SolidIssuesCounter
@@ -2113,7 +2113,7 @@ nodes:
         - attribute: check
           expr:
             type: string
-            value: 非水密体
+            value: 非水密立体
         - attribute: issue
           expr:
             type: string
@@ -2138,7 +2138,7 @@ nodes:
     with:
       output:
         type: string
-        value: error_geometry/02_建築物_非水密体.geojson
+        value: error_geometry/02_建築物_非水密立体.geojson
       writeCrs: true
 
   - id: e1000000-0000-4000-8000-000000000011
@@ -2185,12 +2185,10 @@ nodes:
         value: error_geometry/02_建築物_立体のエラー.geojson
       writeCrs: true
 
-  # The spot each shell-level check flagged. Face-level positions are left out:
-  # they belong to the boundary-surface checks, which report them per face.
-  #
-  # TODO: add an unshared-edge layer (02_建築物_非水密体の辺.geojson) from the
-  # ShellManifold positions, which are the offending edges. It is excluded here
-  # so this layer stays one point per shell-level issue.
+  # The spot each shell-level check flagged. ShellManifold reports the edges a
+  # second face is missing from, which is its own layer. Face-level positions are
+  # left out: they belong to the boundary-surface checks, which report them per
+  # face.
   - id: e1000000-0000-4000-8000-000000000041
     name: FeatureFilterSolidIssueLocation
     type: action
@@ -2199,10 +2197,47 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
+            value: attributes["validationCheck"] == "ShellManifold"
+          outputPort: notClosedEdge
+        - expr:
+            type: flowExpr
             value: |
               check = attributes["validationCheck"];
               check == "ShellConnected" or check == "Orientable" or check == "Orientation" or check == "ShellOrientation" or check == "SelfIntersection"
           outputPort: shellIssue
+
+  - id: e1000000-0000-4000-8000-000000000044
+    name: AttributeMapperNotClosedEdgeGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Not Closed
+
+  - id: e1000000-0000-4000-8000-000000000045
+    name: FeatureGeoJsonWriterNotClosedEdge
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_非水密立体の辺.geojson
+      writeCrs: true
 
   - id: e1000000-0000-4000-8000-000000000042
     name: AttributeMapperSolidIssueLocationGeoJson
@@ -5092,6 +5127,21 @@ edges:
     toPort: features
   - id: e1000000-0000-4000-8000-000000000146
     from: e1000000-0000-4000-8000-000000000043
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  - id: e1000000-0000-4000-8000-000000000147
+    from: e1000000-0000-4000-8000-000000000041
+    to: e1000000-0000-4000-8000-000000000044
+    fromPort: notClosedEdge
+    toPort: features
+  - id: e1000000-0000-4000-8000-000000000148
+    from: e1000000-0000-4000-8000-000000000044
+    to: e1000000-0000-4000-8000-000000000045
+    fromPort: features
+    toPort: features
+  - id: e1000000-0000-4000-8000-000000000149
+    from: e1000000-0000-4000-8000-000000000045
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features
