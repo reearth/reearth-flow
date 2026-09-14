@@ -65,10 +65,6 @@
       "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:city"
     },
     {
-      "destinationPath": "attributes uro:BuildingIDAttribute_uro:city_code",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:city_code"
-    },
-    {
       "destinationPath": "attributes uro:BuildingDetailAttribute_uro:serialNumberOfBuildingCertification",
       "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:serialNumberOfBuildingCertification"
     },
@@ -157,8 +153,7 @@
     },
     {
       "destinationPath": "attributes uro:BuildingDetailAttribute_uro:surveyYear",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:surveyYear",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:surveyYear"
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:class",
@@ -184,13 +179,11 @@
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:yearOpened",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearOpened",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearOpened"
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:yearClosed",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearClosed",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearClosed"
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:urbanPlanType",
@@ -210,8 +203,7 @@
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:surveyYear",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:surveyYear",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:surveyYear"
     },
     {
       "destinationPath": "attributes uro:RealEstateIDAttribute_uro:realEstateIDOfBuilding",
@@ -223,15 +215,15 @@
       "dataType": "int"
     },
     {
-      "destinationPath": "attributes urc:DataQualityAttribute_urc:geometrySrcDescLod1",
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
       "sourcePath": "city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
-      "destinationPath": "attributes urc:DataQualityAttribute_urc:lodType",
+      "destinationPath": "attributes urc:lodType",
       "sourcePath": "city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     },
     {
-      "destinationPath": "attributes urc:DataQualityAttribute_urc:lod1HeightType",
+      "destinationPath": "attributes urc:lod1HeightType",
       "sourcePath": "city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lod1HeightType"
     }
   ],
@@ -301,10 +293,6 @@
       "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:city"
     },
     {
-      "destinationPath": "attributes uro:BuildingIDAttribute_uro:city_code",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:city_code"
-    },
-    {
       "destinationPath": "attributes uro:BuildingDetailAttribute_uro:serialNumberOfBuildingCertification",
       "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:serialNumberOfBuildingCertification"
     },
@@ -393,8 +381,7 @@
     },
     {
       "destinationPath": "attributes uro:BuildingDetailAttribute_uro:surveyYear",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:surveyYear",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:surveyYear"
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:class",
@@ -420,13 +407,11 @@
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:yearOpened",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearOpened",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearOpened"
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:yearClosed",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearClosed",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearClosed"
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:urbanPlanType",
@@ -446,8 +431,7 @@
     },
     {
       "destinationPath": "attributes uro:LargeCustomerFacilityAttribute_uro:surveyYear",
-      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:surveyYear",
-      "dataType": "int"
+      "sourcePath": "city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:surveyYear"
     },
     {
       "destinationPath": "attributes uro:RealEstateIDAttribute_uro:realEstateIDOfBuilding",
@@ -459,15 +443,15 @@
       "dataType": "int"
     },
     {
-      "destinationPath": "attributes urc:DataQualityAttribute_urc:geometrySrcDescLod1",
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
       "sourcePath": "city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
-      "destinationPath": "attributes urc:DataQualityAttribute_urc:lodType",
+      "destinationPath": "attributes urc:lodType",
       "sourcePath": "city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     },
     {
-      "destinationPath": "attributes urc:DataQualityAttribute_urc:lod1HeightType",
+      "destinationPath": "attributes urc:lod1HeightType",
       "sourcePath": "city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lod1HeightType"
     }
   ]

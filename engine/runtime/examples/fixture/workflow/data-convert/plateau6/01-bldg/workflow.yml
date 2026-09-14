@@ -82,6 +82,105 @@ graphs:
           supplierAttribute:
             - __citygml_gml_id
 
+      # Flattens PLATEAU disaster-risk (fld/tnm/htd/ifld/rfld/lsld) attributes into
+      # dynamically-named keys, e.g. "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランク".
+      # Attribute names are data-dependent (built from each risk record's description/
+      # adminType/scale fields), so this uses AttributeMapper's multipleExpr rather than
+      # a static AttributeTableExtractor mapping.
+      - id: 32eed03e-18e6-497b-b588-1afb84492ee1
+        name: DisasterRiskAttributeMapper
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: __citygml_gml_id
+              valueAttribute: __citygml_gml_id
+            - multipleExpr:
+                type: flowExpr
+                value: |
+                  out = {};
+                  entries = attributes["city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
+
+                  for e in entries {
+                    if "urc:RiverFloodingRiskAttribute" in e {
+                      r = e["urc:RiverFloodingRiskAttribute"];
+                      desc = r.get("urc:description");
+                      admin = r.get("urc:adminType");
+                      scale = r.get("urc:scale");
+                      if desc != null and admin != null and scale != null {
+                        basename = desc + "（" + admin + "管理区間）_" + scale;
+                        rank = r.get("urc:rank");
+                        rank_code = r.get("urc:rank_code");
+                        if rank == null {
+                          rank = r.get("urc:rankOrg");
+                          rank_code = r.get("urc:rankOrg_code");
+                        }
+                        depth = r.get("urc:depth");
+                        duration = r.get("urc:duration");
+                        if rank != null { out[basename + "_浸水ランク"] = rank; }
+                        if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
+                        if depth != null { out[basename + "_浸水深"] = float(depth); }
+                        if duration != null { out[basename + "_浸水継続時間"] = float(duration); }
+                      }
+                    }
+
+                    tnm_htd_ifld_rfld = [
+                      ["urc:TsunamiRiskAttribute", "津波浸水想定"],
+                      ["urc:HighTideRiskAttribute", "高潮浸水想定"],
+                      ["urc:InlandFloodingRiskAttribute", "内水浸水想定"],
+                      ["urc:ReservoirFloodingRiskAttribute", "ため池浸水想定"],
+                    ];
+                    for pair in tnm_htd_ifld_rfld {
+                      tag = pair[0];
+                      title = pair[1];
+                      if tag in e {
+                        r2 = e[tag];
+                        desc2 = r2.get("urc:description");
+                        if desc2 != null {
+                          basename2 = title + "_" + desc2;
+                          rank2 = r2.get("urc:rank");
+                          rank_code2 = r2.get("urc:rank_code");
+                          if rank2 == null {
+                            rank2 = r2.get("urc:rankOrg");
+                            rank_code2 = r2.get("urc:rankOrg_code");
+                          }
+                          depth2 = r2.get("urc:depth");
+                          if rank2 != null { out[basename2 + "_浸水ランク"] = rank2; }
+                          if rank_code2 != null { out[basename2 + "_浸水ランクコード"] = int(rank_code2); }
+                          if depth2 != null { out[basename2 + "_浸水深"] = float(depth2); }
+                        }
+                      }
+                    }
+
+                    if "urc:LandSlideRiskAttribute" in e {
+                      l = e["urc:LandSlideRiskAttribute"];
+                      desc3 = l.get("urc:description");
+                      area_type = l.get("urc:areaType");
+                      type_code = l.get("urc:areaType_code");
+                      if desc3 != null and type_code != null {
+                        type_code_int = int(type_code);
+                        if type_code_int <= 2 {
+                          if area_type != null {
+                            out["土砂災害リスク_" + desc3 + "_区域区分"] = area_type;
+                          }
+                          out["土砂災害リスク_" + desc3 + "_区域区分コード"] = type_code_int;
+                        }
+                      }
+                    }
+                  }
+
+                  out
+
+      - id: 928649ad-9058-42a2-b0b4-f7b91f1765c9
+        name: FeatureMergerForRiskAttributes
+        type: action
+        action: Feature Merger
+        with:
+          requestorAttribute:
+            - __citygml_gml_id
+          supplierAttribute:
+            - __citygml_gml_id
+
       - id: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
         name: AttributeManager
         type: action
@@ -146,7 +245,7 @@ graphs:
           groupBy: "lod"
 
       # Collapse to one row per (gmlId, lod) pair first: a building can have
-      # multiple geometry members at the same LOD, and the lod_mask sum below
+      # multiple geometry members at the same LOD, and the __lod_mask sum below
       # is only valid (sum of distinct powers of two == OR) if each distinct
       # lod contributes exactly once.
       - id: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
@@ -172,7 +271,7 @@ graphs:
           aggregateAttributes:
             - newAttribute: __citygml_gml_id
               attribute: __citygml_gml_id
-          calculationAttribute: lod_mask
+          calculationAttribute: __lod_mask
           calculation:
             type: flowExpr
             value: 1 << attributes["lod"]
@@ -204,7 +303,7 @@ graphs:
           aggregateAttributes:
             - newAttribute: city_code
               attribute: city_code
-          calculationAttribute: city_max_lod
+          calculationAttribute: __city_max_lod
           calculation:
             type: flowExpr
             value: attributes["lod"]
@@ -266,10 +365,10 @@ graphs:
         type: action
         action: Bounds Extractor
         with:
-          xmin: _xmin
-          ymin: _ymin
-          xmax: _xmax
-          ymax: _ymax
+          xmin: _ymin
+          ymin: _xmin
+          xmax: _ymax
+          ymax: _xmax
           zmin: _zmin
           zmax: _zmax
 
@@ -313,14 +412,14 @@ graphs:
             - expr:
                 type: flowExpr
                 value: |
-                  mask = attributes["lod_mask"];
+                  mask = attributes["__lod_mask"];
                   best = 0;
                   i = 1;
                   while i <= 2 {
                     if (mask & (1 << i)) != 0 { best = i; }
                     i += 1;
                   }
-                  attributes["city_max_lod"] >= 2 and attributes["lod"] == best
+                  attributes["__city_max_lod"] >= 2 and attributes["lod"] == best
               outputPort: features
 
       - id: 81393f88-cdbc-44e3-b55d-49bc838dc127
@@ -328,10 +427,10 @@ graphs:
         type: action
         action: Bounds Extractor
         with:
-          xmin: _xmin
-          ymin: _ymin
-          xmax: _xmax
-          ymax: _ymax
+          xmin: _ymin
+          ymin: _xmin
+          xmax: _ymax
+          ymax: _xmax
           zmin: _zmin
           zmax: _zmax
 
@@ -387,14 +486,14 @@ graphs:
             - expr:
                 type: flowExpr
                 value: |
-                  mask = attributes["lod_mask"];
+                  mask = attributes["__lod_mask"];
                   best = 0;
                   i = 1;
                   while i <= 3 {
                     if (mask & (1 << i)) != 0 { best = i; }
                     i += 1;
                   }
-                  attributes["city_max_lod"] >= 3 and attributes["lod"] == best
+                  attributes["__city_max_lod"] >= 3 and attributes["lod"] == best
               outputPort: features
 
       - id: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
@@ -402,10 +501,10 @@ graphs:
         type: action
         action: Bounds Extractor
         with:
-          xmin: _xmin
-          ymin: _ymin
-          xmax: _xmax
-          ymax: _ymax
+          xmin: _ymin
+          ymin: _xmin
+          xmax: _ymax
+          ymax: _xmax
           zmin: _zmin
           zmax: _zmax
 
@@ -487,8 +586,23 @@ graphs:
         to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
         fromPort: features
         toPort: supplier
-      - id: e7f8a9b0-9c0d-4ebf-a021-4b5c6d7e8f92
+      - id: 9a2ad9f3-c71a-44ac-ab5f-a519ef8a14f9
+        from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        to: 32eed03e-18e6-497b-b588-1afb84492ee1
+        fromPort: features
+        toPort: features
+      - id: bfdc3b07-9000-4a7a-8566-8be07364ba6a
         from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        to: 928649ad-9058-42a2-b0b4-f7b91f1765c9
+        fromPort: merged
+        toPort: requestor
+      - id: ab8a89b2-684d-4269-babc-d3f41715a582
+        from: 32eed03e-18e6-497b-b588-1afb84492ee1
+        to: 928649ad-9058-42a2-b0b4-f7b91f1765c9
+        fromPort: features
+        toPort: supplier
+      - id: ca640a0b-03e9-41a3-90be-90bd4d94d481
+        from: 928649ad-9058-42a2-b0b4-f7b91f1765c9
         to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
         fromPort: merged
         toPort: features
@@ -544,7 +658,7 @@ graphs:
         to: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         fromPort: features
         toPort: supplier
-      # joined (lod + lod_mask + city_max_lod) -> per-lod filters
+      # joined (lod + __lod_mask + __city_max_lod) -> per-lod filters
       - id: 049298e4-f321-4db6-a266-6b8977eb4009
         from: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         to: 96cc26d1-57f8-49fa-aa47-f8d92ec78189

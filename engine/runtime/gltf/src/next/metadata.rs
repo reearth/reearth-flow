@@ -35,7 +35,7 @@ pub struct PropertyTable {
 }
 
 pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
-    let flattened: Vec<BTreeMap<String, String>> = features
+    let flattened: Vec<BTreeMap<String, AttributeValue>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
@@ -59,7 +59,7 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .map(|f| {
             properties
                 .iter()
-                .map(|(raw, _)| f.get(raw).cloned().unwrap_or_default())
+                .map(|(raw, _)| f.get(raw).map(|v| v.to_string()).unwrap_or_default())
                 .collect()
         })
         .collect();
@@ -222,7 +222,10 @@ struct MetadataPropertyTableProperty {
     string_offsets: usize,
 }
 
-fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<String, String> {
+pub fn flatten_attributes(
+    feature: &Feature,
+    options: MetadataOptions,
+) -> BTreeMap<String, AttributeValue> {
     let mut out = BTreeMap::new();
     for (key, value) in feature.attributes.iter() {
         let key = key.inner();
@@ -231,8 +234,6 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
         }
         match options.array_map_separator {
             Some(sep) => flatten(key, value, sep, &mut out),
-            // Separator disabled: `Map`/`Array` attributes are dropped, only
-            // top-level scalars survive.
             None => {
                 if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
                     insert_leaf(key, value, &mut out);
@@ -243,11 +244,12 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
     out
 }
 
-/// Walks `value`, inserting one `path -> stringified leaf` entry per scalar
-/// reached. `EXT_structural_metadata` has no arbitrary-nesting property type,
-/// so a `Map`/`Array` contributes no entry of its own, only its descendants,
-/// with `path` extended by `<sep><child key>` / `<sep><index>`.
-fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<String, String>) {
+fn flatten(
+    path: String,
+    value: &AttributeValue,
+    sep: &str,
+    out: &mut BTreeMap<String, AttributeValue>,
+) {
     match value {
         AttributeValue::Map(map) => {
             for (key, child) in map {
@@ -263,8 +265,8 @@ fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<S
     }
 }
 
-fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, String>) {
-    if out.insert(path.clone(), leaf.to_string()).is_some() {
+fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, AttributeValue>) {
+    if out.insert(path.clone(), leaf.clone()).is_some() {
         tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
     }
 }

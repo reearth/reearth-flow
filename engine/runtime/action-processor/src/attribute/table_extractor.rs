@@ -288,23 +288,30 @@ fn set_nested(current: &mut AttributeValue, segments: &[&str], value: AttributeV
 }
 
 fn coerce(value: AttributeValue, data_type: Option<ExtractDataType>) -> AttributeValue {
-    let AttributeValue::String(s) = &value else {
+    let Some(data_type) = data_type else {
         return value;
     };
-    match data_type {
-        Some(ExtractDataType::Int) => s
-            .trim()
-            .parse::<i64>()
-            .map(|n| AttributeValue::Number(n.into()))
-            .unwrap_or(value),
-        Some(ExtractDataType::Float) => s
+    let AttributeValue::String(s) = &value else {
+        if !matches!(value, AttributeValue::Number(_)) {
+            tracing::error!(?data_type, ?value, "attribute table extractor: cannot coerce non-string value");
+        }
+        return value;
+    };
+    let coerced = match data_type {
+        ExtractDataType::Int => s.trim().parse::<i64>().ok().map(|n| AttributeValue::Number(n.into())),
+        ExtractDataType::Float => s
             .trim()
             .parse::<f64>()
             .ok()
             .and_then(serde_json::Number::from_f64)
-            .map(AttributeValue::Number)
-            .unwrap_or(value),
-        None => value,
+            .map(AttributeValue::Number),
+    };
+    match coerced {
+        Some(v) => v,
+        None => {
+            tracing::error!(?data_type, value = %s, "attribute table extractor: failed to coerce value");
+            value
+        }
     }
 }
 
