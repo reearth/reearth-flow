@@ -12,7 +12,7 @@ use super::report::Shape;
 
 /// A parsed, validated request.
 #[derive(Debug, Clone)]
-pub(crate) struct RenderViewArgs {
+pub struct RenderViewArgs {
     pub(crate) input: String,
     pub(crate) output: String,
     pub(crate) report_url: String,
@@ -30,7 +30,7 @@ pub(crate) struct RenderViewArgs {
     pub(crate) max_tile_bytes: u64,
 }
 
-pub(crate) fn build_render_view_command() -> Command {
+pub fn build_render_view_command() -> Command {
     Command::new("render-view")
         .about("Render a run's intermediate data into a view, and write a report.")
         .long_about(
@@ -151,7 +151,7 @@ fn required_arg(name: &'static str, help: &'static str, order: usize) -> Arg {
 ///
 /// A violation here is a caller bug rather than a render outcome, so it is
 /// returned as an error and no report is written: there is nothing to report on.
-pub(crate) fn parse(mut matches: ArgMatches) -> Result<RenderViewArgs, String> {
+pub fn parse(mut matches: ArgMatches) -> Result<RenderViewArgs, String> {
     let shape = match matches.remove_one::<String>("shape").as_deref() {
         Some("gltf") => Shape::Gltf,
         Some("tiles") => Shape::Tiles,
