@@ -818,7 +818,8 @@ nodes:
                 attributes.get("立体のエラー", 0),
               ])
 
-  # `Folder` only selects the output file; it is not one of the summary's counts.
+  # `Folder` only selects the output file and `totalErrorCount` only drives
+  # qc_result_ok; neither is one of the summary's counts.
   - id: d6000000-0000-4000-8000-000000000033
     name: JSONSummaryWriter
     type: action
@@ -833,7 +834,9 @@ nodes:
               []
             } else {
               feature = attributes["__features"][0];
-              keys = itertools.filter(feature.keys(), fn(key) { key != "Folder" });
+              keys = itertools.filter(feature.keys(), fn(key) {
+                key != "Folder" and key != "totalErrorCount"
+              });
               itertools.map(keys, fn(key) {
                 {"name": key, "count": feature[key]}
               })

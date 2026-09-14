@@ -1361,7 +1361,10 @@ nodes:
               result = [];
               feature = attributes["__features"][0];
               for key in feature.keys() {
-                result.append({"name": key, "count": feature[key]});
+                # totalErrorCount only drives qc_result_ok; it is not a count.
+                if key != "totalErrorCount" {
+                  result.append({"name": key, "count": feature[key]});
+                }
               }
               result
             }
