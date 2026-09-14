@@ -222,6 +222,16 @@ struct MetadataPropertyTableProperty {
     string_offsets: usize,
 }
 
+/// Bytes `feature`'s row adds to a property table as `encode` lays it out:
+/// each written value's UTF-8 length plus its `UINT32` string offset. Values
+/// are flattened and filtered exactly as `build_table` does.
+pub fn row_bytes(feature: &Feature, options: MetadataOptions) -> u64 {
+    flatten_attributes(feature, options)
+        .values()
+        .map(|v| v.len() as u64 + 4)
+        .sum()
+}
+
 fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();
     for (key, value) in feature.attributes.iter() {

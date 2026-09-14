@@ -245,7 +245,7 @@ pub fn build(
             continue;
         };
         let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
-        let cost = cost::estimate(feature, m, &mut cost_caches);
+        let cost = cost::estimate(feature, m, &mut cost_caches, render, options);
         by_cell.entry(cell).or_default().push(i);
         *cell_cost.entry(cell).or_default() += cost;
         feature_cost[i] = cost;
