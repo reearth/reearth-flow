@@ -1,6 +1,7 @@
 use crate::compare_attributes::{
     analyze_attributes, make_feature_key, structural_casts, CastConfig,
 };
+use crate::tileset::collect_tile_contents;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
     extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
@@ -144,62 +145,10 @@ impl GeometryCollector {
     }
 
     fn process_tile(&mut self, tile: &Value) -> Result<(), String> {
-        let geometric_error = tile
-            .get("geometricError")
-            .and_then(|v| v.as_f64())
-            .ok_or_else(|| "Missing or invalid geometricError in tile".to_string())?;
-
-        let glb_paths = self.extract_glb_paths(tile)?;
-
-        for glb_path in glb_paths {
-            self.process_glb(&glb_path, geometric_error)?;
+        for content in collect_tile_contents(&self.tileset_dir, tile)? {
+            self.process_glb(&content.path, content.geometric_error)?;
         }
-
-        if let Some(children) = tile.get("children").and_then(|c| c.as_array()) {
-            for child in children {
-                self.process_tile(child)?;
-            }
-        }
-
         Ok(())
-    }
-
-    fn extract_glb_paths(&self, tile: &Value) -> Result<Vec<PathBuf>, String> {
-        let mut glb_paths = Vec::new();
-
-        if let Some(content) = tile.get("content") {
-            if let Some(uri) = content.get("uri").and_then(|u| u.as_str()) {
-                if uri.ends_with(".glb") {
-                    let glb_path = self.tileset_dir.join(uri);
-                    if !glb_path.exists() {
-                        return Err(format!(
-                            "GLB file referenced in tileset does not exist: {:?}",
-                            glb_path
-                        ));
-                    }
-                    glb_paths.push(glb_path);
-                }
-            }
-        }
-
-        if let Some(contents) = tile.get("contents").and_then(|c| c.as_array()) {
-            for content_item in contents {
-                if let Some(uri) = content_item.get("uri").and_then(|u| u.as_str()) {
-                    if uri.ends_with(".glb") {
-                        let glb_path = self.tileset_dir.join(uri);
-                        if !glb_path.exists() {
-                            return Err(format!(
-                                "GLB file referenced in tileset does not exist: {:?}",
-                                glb_path
-                            ));
-                        }
-                        glb_paths.push(glb_path);
-                    }
-                }
-            }
-        }
-
-        Ok(glb_paths)
     }
 
     fn process_glb(&mut self, glb_path: &Path, geometric_error: f64) -> Result<(), String> {
