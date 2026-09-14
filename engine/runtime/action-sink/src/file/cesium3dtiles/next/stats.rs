@@ -31,8 +31,8 @@ impl PropertyStats {
     }
 }
 
-pub(super) fn collect(
-    features: &[Feature],
+pub(super) fn collect<'a>(
+    features: impl IntoIterator<Item = &'a Feature>,
     options: MetadataOptions,
 ) -> IndexMap<String, PropertyStats> {
     let mut stats: IndexMap<String, PropertyStats> = IndexMap::new();

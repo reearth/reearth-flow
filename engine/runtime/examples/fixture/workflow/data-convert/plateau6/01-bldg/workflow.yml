@@ -109,6 +109,7 @@ graphs:
                 value: |
                   out = {};
                   entries = attributes["city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
+                  if type(entries) == dict { entries = [entries]; }
 
                   for e in entries {
                     if "urc:RiverFloodingRiskAttribute" in e {
@@ -203,6 +204,7 @@ graphs:
                 value: |
                   raw_city_code = null;
                   entries = attributes["city_gml_attributes"].get("bldg:adeOfAbstractBuilding", []);
+                  if type(entries) == dict { entries = [entries]; }
                   for e in entries {
                     if "uro:BuildingIDAttribute" in e {
                       raw_city_code = e["uro:BuildingIDAttribute"].get("uro:city_code");

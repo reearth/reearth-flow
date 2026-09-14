@@ -218,12 +218,13 @@ pub fn build(
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
-    let property_stats = stats::collect(features, options);
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
         .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
         .collect();
+
+    let property_stats = stats::collect(extracted.iter().map(|(feature, _)| *feature), options);
 
     if extracted.is_empty() {
         tracing::warn!(

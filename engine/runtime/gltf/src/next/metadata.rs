@@ -26,7 +26,7 @@ pub struct MetadataOptions<'a> {
     pub array_map_separator: Option<&'a str>,
 }
 
-/// `properties[i] = (raw attribute path, glTF-identifier-safe property id)`;
+/// `properties[i] = (raw attribute path, raw attribute path)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`""` if the
 /// feature doesn't carry that path).
 pub struct PropertyTable {
