@@ -4,7 +4,7 @@
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use gltf::json;
 use indexmap::IndexMap;
@@ -26,7 +26,7 @@ pub struct MetadataOptions<'a> {
     pub array_map_separator: Option<&'a str>,
 }
 
-/// `properties[i] = (raw attribute path, glTF-identifier-safe property id)`;
+/// `properties[i] = (raw attribute path, raw attribute path)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`""` if the
 /// feature doesn't carry that path).
 pub struct PropertyTable {
@@ -35,7 +35,7 @@ pub struct PropertyTable {
 }
 
 pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
-    let flattened: Vec<BTreeMap<String, String>> = features
+    let flattened: Vec<BTreeMap<String, AttributeValue>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
@@ -45,13 +45,10 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         raw_paths.extend(f.keys().cloned());
     }
 
-    let mut used_ids = HashSet::new();
+    // Property table keys are the raw attribute path, unsanitized.
     let properties: Vec<(String, String)> = raw_paths
         .into_iter()
-        .map(|raw| {
-            let id = sanitize_identifier(&raw, &mut used_ids);
-            (raw, id)
-        })
+        .map(|raw| (raw.clone(), raw))
         .collect();
 
     let rows = flattened
@@ -59,7 +56,7 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .map(|f| {
             properties
                 .iter()
-                .map(|(raw, _)| f.get(raw).cloned().unwrap_or_default())
+                .map(|(raw, _)| f.get(raw).map(|v| v.to_string()).unwrap_or_default())
                 .collect()
         })
         .collect();
@@ -222,7 +219,10 @@ struct MetadataPropertyTableProperty {
     string_offsets: usize,
 }
 
-fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<String, String> {
+pub fn flatten_attributes(
+    feature: &Feature,
+    options: MetadataOptions,
+) -> BTreeMap<String, AttributeValue> {
     let mut out = BTreeMap::new();
     for (key, value) in feature.attributes.iter() {
         let key = key.inner();
@@ -231,8 +231,6 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
         }
         match options.array_map_separator {
             Some(sep) => flatten(key, value, sep, &mut out),
-            // Separator disabled: `Map`/`Array` attributes are dropped, only
-            // top-level scalars survive.
             None => {
                 if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
                     insert_leaf(key, value, &mut out);
@@ -243,11 +241,12 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
     out
 }
 
-/// Walks `value`, inserting one `path -> stringified leaf` entry per scalar
-/// reached. `EXT_structural_metadata` has no arbitrary-nesting property type,
-/// so a `Map`/`Array` contributes no entry of its own, only its descendants,
-/// with `path` extended by `<sep><child key>` / `<sep><index>`.
-fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<String, String>) {
+fn flatten(
+    path: String,
+    value: &AttributeValue,
+    sep: &str,
+    out: &mut BTreeMap<String, AttributeValue>,
+) {
     match value {
         AttributeValue::Map(map) => {
             for (key, child) in map {
@@ -263,45 +262,14 @@ fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<S
     }
 }
 
-fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, String>) {
-    if out.insert(path.clone(), leaf.to_string()).is_some() {
+fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, AttributeValue>) {
+    if out.insert(path.clone(), leaf.clone()).is_some() {
         tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
     }
 }
 
 fn is_excluded(key: &str, options: MetadataOptions) -> bool {
     (options.skip_unexposed_attributes && key.starts_with("__")) || options.schema_key == Some(key)
-}
-
-/// CityGML attribute keys are commonly namespace-prefixed (`bldg:measuredHeight`,
-/// `uro:buildingIDAttribute`) and so routinely violate `EXT_structural_metadata`'s
-/// identifier syntax; this maps a raw key to a valid, collision-free id, while
-/// the raw key survives separately as the property's `name` for display.
-fn sanitize_identifier(raw: &str, used: &mut HashSet<String>) -> String {
-    let mut id: String = raw
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-    if id.is_empty() || id.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-        id.insert(0, '_');
-    }
-    if used.insert(id.clone()) {
-        return id;
-    }
-    let mut n = 1;
-    loop {
-        let candidate = format!("{id}_{n}");
-        if used.insert(candidate.clone()) {
-            return candidate;
-        }
-        n += 1;
-    }
 }
 
 #[cfg(test)]
