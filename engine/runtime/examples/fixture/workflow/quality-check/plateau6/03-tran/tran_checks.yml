@@ -959,6 +959,7 @@ nodes:
                 attributes.get("面のエラー", 0),
               ])
 
+  # `totalErrorCount` only drives qc_result_ok; it is not one of the summary's counts.
   - id: d5000000-0000-4000-8000-000000000036
     name: JSONSummaryWriter
     type: action
@@ -973,7 +974,10 @@ nodes:
               []
             } else {
               feature = attributes["__features"][0];
-              itertools.map(feature.keys(), fn(key) {
+              keys = itertools.filter(feature.keys(), fn(key) {
+                key != "totalErrorCount"
+              });
+              itertools.map(keys, fn(key) {
                 {"name": key, "count": feature[key]}
               })
             }
