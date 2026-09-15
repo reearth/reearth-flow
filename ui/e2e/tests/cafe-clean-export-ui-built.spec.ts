@@ -7,7 +7,7 @@ import {
   newEditorSession,
   teardownSession,
 } from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
 import { AssetsPage } from "../pages/assetsPage";
 import {
   DeploymentsPage,
@@ -240,9 +240,7 @@ test.describe.serial(
     });
 
     test("exports a GeoJSON of open shops, each flagged and within Auckland", async () => {
-      const outputUrl = jobDetailsArtifact(page, GEOJSON_OUTPUT);
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, GEOJSON_OUTPUT);
       test.info().annotations.push({
         type: "geojson-url",
         description: artifactUrl,
@@ -290,9 +288,7 @@ test.describe.serial(
     });
 
     test("exports a matching CSV with the high_rated column", async () => {
-      const outputUrl = jobDetailsArtifact(page, CSV_OUTPUT);
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, CSV_OUTPUT);
       test.info().annotations.push({
         type: "csv-url",
         description: artifactUrl,
