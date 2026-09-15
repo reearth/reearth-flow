@@ -12,13 +12,14 @@ use reearth_flow_types::{AttributeValue, Feature};
 use serde::Serialize;
 
 use super::glb::{Builder, PrimitiveHandle};
+use crate::metadata::int_type_selector::{SignedIntCollector, UnsignedIntCollector};
+use crate::{FLOAT_NO_DATA, STRING_NO_DATA};
 
 const METADATA_SCHEMA_ID: &str = "Schema";
 const METADATA_CLASS_NAME: &str = "Feature";
 
-/// No per-feature-type classing yet (single inlined `Feature` class,
-/// string-typed properties only), but these two exclusions still apply,
-/// reusing the parent writer's params.
+/// No per-feature-type classing yet (single inlined `Feature` class), but
+/// these two exclusions still apply, reusing the parent writer's params.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
@@ -26,12 +27,22 @@ pub struct MetadataOptions<'a> {
     pub array_map_separator: Option<&'a str>,
 }
 
-/// `properties[i] = (raw attribute path, raw attribute path)`;
-/// `rows[feature][i]` is that feature's value for column `i` (`""` if the
-/// feature doesn't carry that path).
+// Decided per column from the values actually present (no schema here); `Bool` counts as numeric.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ColumnKind {
+    SignedInt,
+    UnsignedInt,
+    Float64,
+    String,
+}
+
+/// `properties[i] = (raw attribute path, raw attribute path, column type)`;
+/// `rows[feature][i]` is that feature's value for column `i` (`None` if the
+/// feature doesn't carry that path — encoded as the column's no-data
+/// sentinel).
 pub struct PropertyTable {
-    pub properties: Vec<(String, String)>,
-    pub rows: Vec<Vec<String>>,
+    properties: Vec<(String, String, ColumnKind)>,
+    rows: Vec<Vec<Option<AttributeValue>>>,
 }
 
 pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
@@ -46,9 +57,12 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
     }
 
     // Property table keys are the raw attribute path, unsanitized.
-    let properties: Vec<(String, String)> = raw_paths
+    let properties: Vec<(String, String, ColumnKind)> = raw_paths
         .into_iter()
-        .map(|raw| (raw.clone(), raw))
+        .map(|raw| {
+            let kind = column_kind(&flattened, &raw);
+            (raw.clone(), raw, kind)
+        })
         .collect();
 
     let rows = flattened
@@ -56,12 +70,44 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .map(|f| {
             properties
                 .iter()
-                .map(|(raw, _)| f.get(raw).map(|v| v.to_string()).unwrap_or_default())
+                .map(|(raw, _, _)| f.get(raw).cloned())
                 .collect()
         })
         .collect();
 
     PropertyTable { properties, rows }
+}
+
+fn as_numeric(value: &AttributeValue) -> Option<f64> {
+    match value {
+        AttributeValue::Number(n) => n.as_f64(),
+        AttributeValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+        _ => None,
+    }
+}
+
+fn column_kind(flattened: &[BTreeMap<String, AttributeValue>], path: &str) -> ColumnKind {
+    let mut any_value = false;
+    let mut any_fractional = false;
+    let mut any_negative = false;
+    for f in flattened {
+        let Some(value) = f.get(path) else { continue };
+        let Some(n) = as_numeric(value) else {
+            return ColumnKind::String;
+        };
+        any_value = true;
+        any_fractional |= !n.is_finite() || n.fract() != 0.0;
+        any_negative |= n < 0.0;
+    }
+    if !any_value {
+        ColumnKind::String
+    } else if any_fractional {
+        ColumnKind::Float64
+    } else if any_negative {
+        ColumnKind::SignedInt
+    } else {
+        ColumnKind::UnsignedInt
+    }
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
@@ -80,38 +126,18 @@ pub fn encode(
         return;
     }
 
-    // One STRING property per column: raw UTF-8 bytes in `values`,
-    // cumulative byte offsets in `stringOffsets` (EXT_structural_metadata's
-    // variable-length-array encoding).
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
-    for (col, (raw_name, id)) in table.properties.iter().enumerate() {
-        class_properties.insert(
-            id.clone(),
-            ClassProperty {
-                name: raw_name.clone(),
-                type_: "STRING",
-            },
-        );
-
-        let mut value_bytes = Vec::new();
-        let mut offsets: Vec<u32> = vec![0];
-        for row in &table.rows {
-            value_bytes.extend_from_slice(row[col].as_bytes());
-            offsets.push(value_bytes.len() as u32);
-        }
-        let values_bufferview = builder.push_buffer_view(&value_bytes);
-        let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
-        let offsets_bufferview = builder.push_buffer_view(&offset_bytes);
-
-        table_properties.insert(
-            id.clone(),
-            MetadataPropertyTableProperty {
-                values: values_bufferview,
-                string_offset_type: "UINT32",
-                string_offsets: offsets_bufferview,
-            },
-        );
+    for (col, (raw_name, id, kind)) in table.properties.iter().enumerate() {
+        let values = table.rows.iter().map(|row| row[col].as_ref());
+        let (class_property, table_property) = match kind {
+            ColumnKind::String => encode_string_column(raw_name, values, builder),
+            ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
+            ColumnKind::SignedInt => encode_signed_column(raw_name, values, builder),
+            ColumnKind::UnsignedInt => encode_unsigned_column(raw_name, values, builder),
+        };
+        class_properties.insert(id.clone(), class_property);
+        table_properties.insert(id.clone(), table_property);
     }
 
     let mut classes = IndexMap::new();
@@ -163,6 +189,144 @@ pub fn encode(
     }
 }
 
+fn encode_string_column<'a>(
+    raw_name: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (ClassProperty, MetadataPropertyTableProperty) {
+    let mut value_bytes = Vec::new();
+    let mut offsets: Vec<u32> = vec![0];
+    for value in values {
+        let s = value
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| STRING_NO_DATA.to_string());
+        value_bytes.extend_from_slice(s.as_bytes());
+        offsets.push(value_bytes.len() as u32);
+    }
+    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
+    let offsets_bufferview = builder.push_buffer_view(&offset_bytes);
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "STRING",
+            component_type: None,
+            no_data: serde_json::json!(STRING_NO_DATA),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: Some("UINT32"),
+            string_offsets: Some(offsets_bufferview),
+        },
+    )
+}
+
+fn encode_float_column<'a>(
+    raw_name: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (ClassProperty, MetadataPropertyTableProperty) {
+    let mut value_bytes = Vec::new();
+    for value in values {
+        let v = value.and_then(as_numeric).unwrap_or(FLOAT_NO_DATA);
+        value_bytes.extend_from_slice(&v.to_le_bytes());
+    }
+    let values_bufferview = builder.push_buffer_view(&value_bytes);
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "SCALAR",
+            component_type: Some("FLOAT64"),
+            no_data: serde_json::json!(FLOAT_NO_DATA),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: None,
+            string_offsets: None,
+        },
+    )
+}
+
+fn encode_signed_column<'a>(
+    raw_name: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (ClassProperty, MetadataPropertyTableProperty) {
+    let mut collector = SignedIntCollector::new();
+    for value in values {
+        match value.and_then(as_numeric) {
+            Some(n) => collector.push(n as i64),
+            None => collector.push_no_data(),
+        }
+    }
+    let finalized = collector.finalize();
+    let mut value_bytes = Vec::new();
+    finalized.encode_all(&mut value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes);
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "SCALAR",
+            component_type: Some(int_component_type(finalized.byte_size(), true)),
+            no_data: finalized.no_data_json(),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: None,
+            string_offsets: None,
+        },
+    )
+}
+
+fn encode_unsigned_column<'a>(
+    raw_name: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (ClassProperty, MetadataPropertyTableProperty) {
+    let mut collector = UnsignedIntCollector::new();
+    for value in values {
+        match value.and_then(as_numeric) {
+            Some(n) => collector.push(n as u64),
+            None => collector.push_no_data(),
+        }
+    }
+    let finalized = collector.finalize();
+    let mut value_bytes = Vec::new();
+    finalized.encode_all(&mut value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes);
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "SCALAR",
+            component_type: Some(int_component_type(finalized.byte_size(), false)),
+            no_data: finalized.no_data_json(),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: None,
+            string_offsets: None,
+        },
+    )
+}
+
+fn int_component_type(byte_size: usize, signed: bool) -> &'static str {
+    match (byte_size, signed) {
+        (1, true) => "INT8",
+        (1, false) => "UINT8",
+        (2, true) => "INT16",
+        (2, false) => "UINT16",
+        (4, true) => "INT32",
+        (4, false) => "UINT32",
+        (8, true) => "INT64",
+        (8, false) => "UINT64",
+        _ => unreachable!("int_type_selector only produces 1/2/4/8-byte widths"),
+    }
+}
+
 #[derive(Serialize)]
 struct ExtMeshFeatures {
     #[serde(rename = "featureIds")]
@@ -201,6 +365,10 @@ struct ClassProperty {
     name: String,
     #[serde(rename = "type")]
     type_: &'static str,
+    #[serde(rename = "componentType", skip_serializing_if = "Option::is_none")]
+    component_type: Option<&'static str>,
+    #[serde(rename = "noData")]
+    no_data: serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -213,10 +381,10 @@ struct MetadataPropertyTable {
 #[derive(Serialize)]
 struct MetadataPropertyTableProperty {
     values: usize,
-    #[serde(rename = "stringOffsetType")]
-    string_offset_type: &'static str,
-    #[serde(rename = "stringOffsets")]
-    string_offsets: usize,
+    #[serde(rename = "stringOffsetType", skip_serializing_if = "Option::is_none")]
+    string_offset_type: Option<&'static str>,
+    #[serde(rename = "stringOffsets", skip_serializing_if = "Option::is_none")]
+    string_offsets: Option<usize>,
 }
 
 pub fn flatten_attributes(
@@ -304,7 +472,7 @@ mod tests {
         table
             .properties
             .iter()
-            .map(|(raw, _)| raw.as_str())
+            .map(|(raw, _, _)| raw.as_str())
             .collect()
     }
 
@@ -332,5 +500,73 @@ mod tests {
         let table = build_table(&[&feature], options);
 
         assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
+    }
+
+    fn number(n: f64) -> AttributeValue {
+        AttributeValue::Number(serde_json::Number::from_f64(n).unwrap())
+    }
+
+    #[test]
+    fn column_kind_picks_narrowest_matching_type() {
+        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), number(3.0))])];
+        assert_eq!(column_kind(&all_nonneg_ints, "k"), ColumnKind::UnsignedInt);
+
+        let has_negative = [BTreeMap::from([("k".to_string(), number(-3.0))])];
+        assert_eq!(column_kind(&has_negative, "k"), ColumnKind::SignedInt);
+
+        let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
+        assert_eq!(column_kind(&has_fraction, "k"), ColumnKind::Float64);
+
+        let bool_only = [BTreeMap::from([("k".to_string(), AttributeValue::Bool(true))])];
+        assert_eq!(column_kind(&bool_only, "k"), ColumnKind::UnsignedInt);
+
+        let has_string = [BTreeMap::from([
+            ("k".to_string(), number(1.0)),
+            ("k2".to_string(), AttributeValue::String("s".to_string())),
+        ])];
+        assert_eq!(column_kind(&has_string, "k2"), ColumnKind::String);
+    }
+
+    #[test]
+    fn typed_columns_round_trip_through_decode() {
+        let feature1 = Feature::from(IndexMap::from([
+            ("height".to_string(), number(11.4)),
+            ("count".to_string(), number(3.0)),
+            ("flag".to_string(), AttributeValue::Bool(true)),
+            ("name".to_string(), AttributeValue::String("x".to_string())),
+        ]));
+        let feature2 = Feature::from(IndexMap::from([(
+            "name".to_string(),
+            AttributeValue::String("y".to_string()),
+        )]));
+
+        let table = build_table(&[&feature1, &feature2], MetadataOptions::default());
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let features = crate::extract_feature_properties(&gltf).unwrap();
+
+        assert_eq!(
+            features[0].get("height"),
+            Some(&serde_json::json!(11.4))
+        );
+        assert_eq!(features[0].get("count"), Some(&serde_json::json!(3)));
+        assert_eq!(features[0].get("flag"), Some(&serde_json::json!(1)));
+        assert_eq!(
+            features[0].get("name"),
+            Some(&serde_json::Value::String("x".to_string()))
+        );
+
+        // feature2 carries none of height/count/flag — they must decode as
+        // absent (no-data), not as zero/empty-string.
+        assert_eq!(features[1].get("height"), None);
+        assert_eq!(features[1].get("count"), None);
+        assert_eq!(features[1].get("flag"), None);
+        assert_eq!(
+            features[1].get("name"),
+            Some(&serde_json::Value::String("y".to_string()))
+        );
     }
 }

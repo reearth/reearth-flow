@@ -15,7 +15,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_00c3042b-0e59-4026-ba05-cf30f7036833",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_07b5a52b-877a-4e6a-bec8-a27fa836e5df": {
@@ -34,7 +34,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_07b5a52b-877a-4e6a-bec8-a27fa836e5df",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   },
   "tran_1226d860-65a3-4425-9b29-89b972cefb2d": {
@@ -53,7 +53,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_1226d860-65a3-4425-9b29-89b972cefb2d",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_17629f1a-0037-4c4a-9c26-66132c606fd1": {
@@ -72,7 +72,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_17629f1a-0037-4c4a-9c26-66132c606fd1",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_209618e2-ac66-4452-88ea-31bd0e8df171": {
@@ -91,7 +91,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_209618e2-ac66-4452-88ea-31bd0e8df171",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_2b56055e-0b79-4d80-9d30-932755eb47c8": {
@@ -110,7 +110,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_2b56055e-0b79-4d80-9d30-932755eb47c8",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   },
   "tran_34b9aa62-0a33-4c40-932e-467d25cbe4ec": {
@@ -129,7 +129,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_34b9aa62-0a33-4c40-932e-467d25cbe4ec",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_4de18195-5649-49ef-b0ab-4cd414e36bdf": {
@@ -148,7 +148,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_4de18195-5649-49ef-b0ab-4cd414e36bdf",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_573a5ed3-b2f4-4e37-a1a4-f85161651bf1": {
@@ -167,7 +167,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_573a5ed3-b2f4-4e37-a1a4-f85161651bf1",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_5eeac172-e6a0-482f-a25a-d589db9fd925": {
@@ -186,7 +186,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_5eeac172-e6a0-482f-a25a-d589db9fd925",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_62634208-cb21-46ae-8021-43fa38242c5d": {
@@ -205,7 +205,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_62634208-cb21-46ae-8021-43fa38242c5d",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_677f7b97-91c4-4159-8205-17110e44c975": {
@@ -224,7 +224,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_677f7b97-91c4-4159-8205-17110e44c975",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   },
   "tran_6d1dc1e6-cff0-4b3b-a67e-bfeecbfdd188": {
@@ -243,7 +243,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_6d1dc1e6-cff0-4b3b-a67e-bfeecbfdd188",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   },
   "tran_81c3d55b-3613-48fb-aae2-9dae330d6fee": {
@@ -262,7 +262,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_81c3d55b-3613-48fb-aae2-9dae330d6fee",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   },
   "tran_92941def-7b23-4817-b342-fcd6c0716092": {
@@ -281,7 +281,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_92941def-7b23-4817-b342-fcd6c0716092",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_939b293e-5f37-4284-b423-2f57bcbf84b6": {
@@ -300,7 +300,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_939b293e-5f37-4284-b423-2f57bcbf84b6",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   },
   "tran_940a43bd-c12f-4dc9-9391-67eae6364c96": {
@@ -319,7 +319,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_940a43bd-c12f-4dc9-9391-67eae6364c96",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_a61a1b41-52f6-4c08-8aa5-8caae921eda0": {
@@ -338,7 +338,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_a61a1b41-52f6-4c08-8aa5-8caae921eda0",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_b22020be-6c23-4954-a4e8-b93369761865": {
@@ -357,7 +357,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_b22020be-6c23-4954-a4e8-b93369761865",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_d1d6d923-a04c-4ae9-b3e2-129734394235": {
@@ -376,7 +376,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_d1d6d923-a04c-4ae9-b3e2-129734394235",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "歩道部"
   },
   "tran_e3b05ef8-99f7-41b7-9a41-50f9a425b5fa": {
@@ -395,7 +395,7 @@
     "city_code": "11100",
     "feature_type": "tran:TrafficArea",
     "gml_id": "tran_e3b05ef8-99f7-41b7-9a41-50f9a425b5fa",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "車道部"
   },
   "tran_fd1d49ae-941c-43e1-92d3-88b98854e696": {
@@ -414,7 +414,7 @@
     "city_code": "11100",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "tran_fd1d49ae-941c-43e1-92d3-88b98854e696",
-    "lod": "3",
+    "lod": 3,
     "tran:function": "島"
   }
 }
