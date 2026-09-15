@@ -6,6 +6,14 @@ pub enum SourceError {
     CityGmlReaderFactory(String),
     #[error("CityGmlFileReader error: {0}")]
     CityGmlFileReader(String),
+    #[error("CityGml2ReaderFactory error: {0}")]
+    CityGml2ReaderFactory(String),
+    #[error("CityGml2Reader error: {0}")]
+    CityGml2Reader(String),
+    #[error("CityGml3ReaderFactory error: {0}")]
+    CityGml3ReaderFactory(String),
+    #[error("CityGml3Reader error: {0}")]
+    CityGml3Reader(String),
     #[error("CsvReaderFactory error: {0}")]
     CsvReaderFactory(String),
     #[error("CsvFileReader error: {0}")]

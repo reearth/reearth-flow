@@ -436,7 +436,7 @@ fn extract_material_name(
             let mut first_material_name: Option<String> = None;
 
             for (mat_name, mat_value) in props_map {
-                if !materials.contains_key(&mat_name) {
+                if !materials.contains_key(mat_name.as_str()) {
                     let mut material = Material {
                         ambient: None,
                         diffuse: None,
@@ -496,12 +496,12 @@ fn extract_material_name(
                         }
                     }
 
-                    materials.insert(mat_name.clone(), material);
+                    materials.insert(mat_name.to_string(), material);
                 }
 
                 // Remember the first material name
                 if first_material_name.is_none() {
-                    first_material_name = Some(mat_name.clone());
+                    first_material_name = Some(mat_name.to_string());
                 }
             }
 

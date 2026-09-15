@@ -117,7 +117,7 @@ fn attribute_value_bytes(value: &AttributeValue) -> u64 {
         AttributeValue::Array(items) => items.iter().map(attribute_value_bytes).sum(),
         AttributeValue::Map(items) => items
             .iter()
-            .map(|(k, v)| k.len() as u64 + attribute_value_bytes(v))
+            .map(|(k, v)| k.as_str().len() as u64 + attribute_value_bytes(v))
             .sum(),
         AttributeValue::Bytes(b) => b.len() as u64,
     }

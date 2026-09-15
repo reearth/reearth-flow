@@ -4,8 +4,9 @@
 //! materials across a tile share one or more embedded atlas pages (one glTF
 //! primitive per page). Local-file and embedded (in-memory) rasters are both
 //! supported: embedded bytes (e.g. glTF/GLB packed images) are materialized to a
-//! temp file so the path-based atlas packer can read them. Wrapping textures and
-//! remote rasters fall back to colour-only. Texture detail is bounded by the
+//! temp file so the path-based atlas packer can read them. A tiling texture gets a
+//! page of its own, bound whole so the sampler can repeat it; remote rasters fall
+//! back to colour-only. Texture detail is bounded by the
 //! `texel_size` option (metres per pixel); atlas pages are capped at
 //! `atlas_size` and overflow spills onto further pages.
 
@@ -14,6 +15,7 @@ mod cost;
 mod mesh;
 mod primitive;
 mod quadtree;
+mod stats;
 mod subtree;
 mod tileset;
 
@@ -23,6 +25,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use rayon::prelude::*;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
@@ -82,6 +85,7 @@ impl Cesium3DTilesWriter {
                 .params
                 .atlas_extrusion
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
+            wrap_tolerance: self.params.wrap_tolerance.unwrap_or(DEFAULT_WRAP_TOLERANCE),
             texture_codec: self.params.texture_codec,
         };
         for (output, features) in &self.buffer {
@@ -174,6 +178,9 @@ pub struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub atlas_extrusion: u32,
+    /// How far outside `[0, 1]` a UV may stray and still be clamped as drift;
+    /// past it the texture is taken to tile and gets an atlas page of its own.
+    pub wrap_tolerance: f64,
     /// Image codec for atlas pages. `Untextured` attaches no textures; textured
     /// geometry falls back to its neutral colour.
     pub texture_codec: TextureCodec,
@@ -186,6 +193,10 @@ const DEFAULT_ATLAS_SIZE: u32 = 2048;
 /// Default atlas extrusion ring when the parameter is unset; disabled by
 /// default. Raise it to blit a bleed-guard ring around each packed region.
 const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
+
+/// Default UV wrap tolerance when the parameter is unset: none, so any UV outside
+/// `[0, 1]` is taken at face value as tiling.
+const DEFAULT_WRAP_TOLERANCE: f64 = 0.0;
 
 /// Hard safety cap on quadtree depth, well beyond any depth `target_tile_size`
 /// would realistically drive placement to; guards against pathological inputs
@@ -213,12 +224,14 @@ pub fn build(
         .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
         .collect();
 
+    let property_stats = stats::collect(extracted.iter().map(|(feature, _)| *feature), options);
+
     if extracted.is_empty() {
         tracing::warn!(
             "Cesium3DTilesWriter (new-geometry): no renderable geometry found; writing an \
              empty tileset"
         );
-        return empty_tileset();
+        return empty_tileset(&property_stats);
     }
 
     let root = extracted
@@ -295,7 +308,8 @@ pub fn build(
             Ok(())
         })?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels, max_contents)?;
+    let tileset_bytes =
+        render_tileset_json(&root, available_levels, max_contents, &property_stats)?;
     let subtrees = subtree::build_all(&occupied, &content_counts, max_contents)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -401,7 +415,9 @@ pub fn build_glb(
     .map(Some)
 }
 
-fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
+fn empty_tileset(
+    property_stats: &IndexMap<String, stats::PropertyStats>,
+) -> crate::errors::Result<BuiltTileset> {
     let root = GeoBox {
         west: 0.0,
         south: 0.0,
@@ -410,7 +426,7 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         min_height: 0.0,
         max_height: 0.0,
     };
-    let tileset_bytes = render_tileset_json(&root, 1, 1)?;
+    let tileset_bytes = render_tileset_json(&root, 1, 1, property_stats)?;
     let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -427,8 +443,9 @@ fn render_tileset_json(
     root: &GeoBox,
     available_levels: u32,
     max_contents: usize,
+    property_stats: &IndexMap<String, stats::PropertyStats>,
 ) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels, max_contents);
+    let tileset_json = tileset::build(root, available_levels, max_contents, property_stats);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
@@ -490,14 +507,20 @@ impl EmbeddedTextures {
     }
 }
 
-/// The atlas holds many textures side by side, so a repeating wrap would bleed
-/// across sub-images; clamp instead.
-const ATLAS_SAMPLER: glb::SamplerDesc = glb::SamplerDesc {
-    wrap_s: glb::Wrap::ClampToEdge,
-    wrap_t: glb::Wrap::ClampToEdge,
-    mag: glb::MagFilter::Linear,
-    min: glb::MinFilter::LinearMipmap,
-};
+/// A packed page holds many textures side by side, so a repeating wrap would bleed
+/// across sub-images; a page the packer gave to one tiling texture wraps that texture.
+fn page_sampler(wrap: reearth_flow_atlas::PageWrap) -> glb::SamplerDesc {
+    let (wrap_s, wrap_t) = match wrap {
+        reearth_flow_atlas::PageWrap::Clamp => (glb::Wrap::ClampToEdge, glb::Wrap::ClampToEdge),
+        reearth_flow_atlas::PageWrap::Repeat => (glb::Wrap::Repeat, glb::Wrap::Repeat),
+    };
+    glb::SamplerDesc {
+        wrap_s,
+        wrap_t,
+        mag: glb::MagFilter::Linear,
+        min: glb::MinFilter::LinearMipmap,
+    }
+}
 
 /// Render one occupied cell to a glb: one primitive per resolved colour-only
 /// material, plus one textured primitive per atlas page covering the cell's
@@ -677,6 +700,7 @@ fn build_textured_pages(
         render.atlas_size,
         render.atlas_extrusion,
         codec.block_align(),
+        render.wrap_tolerance,
         textures,
     )
     .map_err(SinkError::cesium3dtiles_writer)?
@@ -686,9 +710,9 @@ fn build_textured_pages(
     };
 
     let mut page_textures = Vec::with_capacity(built.pages.len());
-    for page in built.pages {
+    for (page, wrap) in built.pages.iter().zip(&built.wrap) {
         let texture = builder
-            .push_atlas_texture(&page, codec.as_ref(), ATLAS_SAMPLER)
+            .push_atlas_texture(page, codec.as_ref(), page_sampler(*wrap))
             .map_err(SinkError::cesium3dtiles_writer)?;
         page_textures.push(texture);
     }
@@ -998,6 +1022,7 @@ mod tests {
             texel_size: 0.0,
             atlas_size: 1024,
             atlas_extrusion: 0,
+            wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
         };
 
@@ -1087,6 +1112,7 @@ mod tests {
             texel_size: 0.0,
             atlas_size: 1024,
             atlas_extrusion: 0,
+            wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
         };
         let options = MetadataOptions {
@@ -1196,6 +1222,7 @@ mod tests {
             texel_size: 0.0,
             atlas_size: 1024,
             atlas_extrusion: 0,
+            wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
         }
     }

@@ -1,11 +1,10 @@
 use base64::{engine::general_purpose, Engine as _};
 use bytes::Bytes;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use super::client::HttpResponse;
 use super::errors::{HttpProcessorError, Result};
@@ -39,10 +38,15 @@ pub(crate) fn process_response(
         AttributeValue::Number(response.status_code.into()),
     );
 
-    let headers_map: HashMap<String, AttributeValue> = response
+    let headers_map: Attributes = response
         .headers
         .iter()
-        .map(|(k, v)| (k.clone(), AttributeValue::String(v.clone())))
+        .map(|(k, v)| {
+            (
+                Attribute::new(k.as_str()),
+                AttributeValue::String(v.clone()),
+            )
+        })
         .collect();
     attributes.insert(
         Attribute::new(HEADERS_ATTRIBUTE.to_string()),
@@ -193,7 +197,6 @@ fn save_response_to_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::Attributes;
     use std::str::FromStr;
 
     fn make_env() -> Arc<serde_json::Map<String, serde_json::Value>> {

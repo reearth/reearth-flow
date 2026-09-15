@@ -20,7 +20,7 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
   - !include ../../../../graphs/lod_splitter.yml
-  - !include surface_checks.yml
+  - !include ../../../../graphs/plateau4/surface_checks.yml
   - !include building_part_validation.yml
   - !include format_checks.yml
   - !include ref_and_type_checks.yml
@@ -430,7 +430,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: csv
+          format:
+            type: csv
           output:
             type: string
             value: 02_建築物_検査結果一覧.csv
@@ -562,6 +563,7 @@ graphs:
                 type: flowExpr
                 value: attributes.get("LOD0-1のBuildingPart", 0)
 
+            # 図郭不正 is kept out of totalErrorCount, matching the original implementation.
             - newAttribute: totalErrorCount
               expr:
                 type: flowExpr
@@ -594,7 +596,6 @@ graphs:
                     attributes.get("LOD4 立体の交差", 0),
                     attributes.get("T-bldg-02エラー", 0),
                     attributes.get("LOD0-1のBuildingPart", 0),
-                    attributes.get("図郭不正", 0),
                   ])
 
       # Phase 6: JSON output with converter
@@ -603,18 +604,19 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: json
-          converter:
-            type: flowExpr
-            value: |
-              if len(attributes["__features"]) == 0 {
-                []
-              } else {
-                feature = attributes["__features"][0];
-                itertools.map(feature.keys(), fn(key) {
-                  {"name": key, "count": feature[key]}
-                })
-              }
+          format:
+            type: json
+            converter:
+              type: flowExpr
+              value: |
+                if len(attributes["__features"]) == 0 {
+                  []
+                } else {
+                  feature = attributes["__features"][0];
+                  itertools.map(feature.keys(), fn(key) {
+                    {"name": key, "count": feature[key]}
+                  })
+                }
           output:
             type: string
             value: summary_bldg.json
@@ -792,6 +794,12 @@ graphs:
         fromPort: errorCountCityCode
         toPort: features
 
+      - id: e9f0a1b2-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: 4712539b-5103-41ee-9359-0333eefb82ef
+        fromPort: errorCountLbldg02
+        toPort: features
+
       - id: a3b4c5d6-8e9f-0a1b-2c3d-4e5f6a7b8c9d
         from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
         to: 4712539b-5103-41ee-9359-0333eefb82ef
@@ -917,6 +925,12 @@ graphs:
         from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
         to: 4712539b-5103-41ee-9359-0333eefb82ef
         fromPort: errorCountLod4SolidIssues
+        toPort: features
+
+      - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: 4712539b-5103-41ee-9359-0333eefb82ef
+        fromPort: errorCountIncorrectMeshcode
         toPort: features
 
       - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d

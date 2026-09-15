@@ -8,7 +8,7 @@ pub mod geojson;
 pub(super) mod geopackage;
 pub(super) mod gltf;
 pub(super) mod json;
-pub(super) mod mvt;
+pub mod mvt;
 pub(super) mod obj;
 #[cfg(not(feature = "new-geometry"))]
 pub(super) mod shapefile;

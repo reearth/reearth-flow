@@ -20,7 +20,7 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 
 	<!-- Building that spans across two 1km meshes -->
 	<core:cityObjectMember>
-		<bldg:Building gml:id="bldg_cross_mesh_test_building">
+		<bldg:Building gml:id="bldg_b7a7ca6b-6667-4733-9e4f-7dc4b1bef9c6">
 			<core:creationDate>2025-03-21</core:creationDate>
 			<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>
 			<bldg:usage codeSpace="../../codelists/Building_usage.xml">461</bldg:usage>
@@ -37,9 +37,9 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 								<gml:LinearRing>
 									<gml:posList>
                                         36.658333333 137.0650 0
-                                        36.665833333 137.0650 0
-                                        36.665833333 137.0750 0
                                         36.658333333 137.0750 0
+                                        36.665833333 137.0750 0
+                                        36.665833333 137.0650 0
                                         36.658333333 137.0650 0
                                     </gml:posList>
 								</gml:LinearRing>
@@ -48,6 +48,45 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</bldg:lod0RoofEdge>
+			<uro:buildingIDAttribute>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-1</uro:buildingID>
+					<uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">16</uro:prefecture>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</uro:buildingIDAttribute>
+			<uro:buildingDetailAttribute>
+				<uro:BuildingDetailAttribute>
+					<uro:totalFloorArea uom="m2">76.2</uro:totalFloorArea>
+					<uro:buildingFootprintArea uom="m2">76.2</uro:buildingFootprintArea>
+					<uro:buildingRoofEdgeArea uom="m2">58.7</uro:buildingRoofEdgeArea>
+					<uro:buildingStructureType codeSpace="../../codelists/BuildingDetailAttribute_buildingStructureType.xml">611</uro:buildingStructureType>
+					<uro:fireproofStructureType codeSpace="../../codelists/BuildingDetailAttribute_fireproofStructureType.xml">1011</uro:fireproofStructureType>
+					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">211</uro:landUseType>
+					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">4111</uro:detailedUsage>
+					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>
+					<uro:surveyYear>2020</uro:surveyYear>
+				</uro:BuildingDetailAttribute>
+			</uro:buildingDetailAttribute>
+			<uro:bldgDataQualityAttribute>
+				<uro:DataQualityAttribute>
+					<uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
+					<uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">100</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
+					<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
+					<uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
+					<uro:publicSurveyDataQualityAttribute>
+						<uro:PublicSurveyDataQualityAttribute>
+							<uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
+							<uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+							<uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
+							<uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
+						</uro:PublicSurveyDataQualityAttribute>
+					</uro:publicSurveyDataQualityAttribute>
+				</uro:DataQualityAttribute>
+			</uro:bldgDataQualityAttribute>
 		</bldg:Building>
 	</core:cityObjectMember>
 

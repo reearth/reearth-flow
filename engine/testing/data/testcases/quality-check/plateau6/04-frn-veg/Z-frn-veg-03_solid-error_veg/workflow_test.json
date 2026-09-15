@@ -1,0 +1,57 @@
+{
+  "description": "Solid errors for the veg package of plateau6 04-frn-veg: an open shell on a PlantCover, written to the 04-2_植生 files.",
+  "workflowPath": "quality-check/plateau6/04-frn-veg/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "veg_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/veg",
+      "name": "veg_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "04-2_植生_非水密立体.csv",
+      "error_geometry/04-2_植生_非水密立体.geojson",
+      "error_geometry/04-2_植生_非水密立体の辺.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_veg.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "04-2_植生_検査結果一覧.csv",
+      "keyColumns": ["Filename"]
+    }
+  },
+  "expectResultOkFile": false
+}
