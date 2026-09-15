@@ -12,7 +12,7 @@ use crate::validation::{
 };
 use earcut::{utils3d::project3d_to_2d, Earcut};
 use num_traits::{Float, FromPrimitive, NumCast};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 /// Canonical lexicographic ordering for `Coordinate3D<T>`, used to sort and
@@ -1003,7 +1003,7 @@ impl TriangularMesh<f64> {
             .collect()
     }
 
-    pub(crate) fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub(crate) fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.vertices
             .iter_mut()
             .for_each(|c| c.transform_inplace(jgd2wgs));

@@ -5,7 +5,7 @@ use flatgeom::{MultiPoint2 as NMultiPoint2, MultiPoint3 as NMultiPoint3};
 use geo_types::MultiPoint as GeoMultiPoint;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
@@ -230,7 +230,7 @@ impl<T: CoordNum> From<MultiPoint2D<T>> for GeoMultiPoint<T> {
 }
 
 impl MultiPoint3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         for point in &mut self.0 {
             point.transform_inplace(jgd2wgs);
         }

@@ -1,7 +1,7 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::{Bounded, Zero};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use rstar::{RTreeNum, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
 
@@ -336,7 +336,7 @@ where
 }
 
 impl Rect3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.min.transform_inplace(jgd2wgs);
         self.max.transform_inplace(jgd2wgs);
     }

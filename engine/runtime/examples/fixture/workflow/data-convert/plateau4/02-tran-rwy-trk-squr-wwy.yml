@@ -15,6 +15,7 @@ with:
   - squr
   - wwy
   workerArtifactPath: null
+  inputVerticalDatum: jgd2011
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -358,12 +359,28 @@ graphs:
       targetTypes:
       - tran:TrafficArea
       - tran:AuxiliaryTrafficArea
+  - id: ee1f4fa2-5d36-535e-af41-3ad6e9fafe0d
+    name: VerticalDatumRouterLod3
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: a4946e3e-9c99-56c5-b0a9-646e6e086636
+    name: HeightRevisionLod3
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: VerticalReprojectorLod3
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     name: AttributeManagerByLod3
     type: action
@@ -667,7 +684,7 @@ graphs:
     toPort: default
   - id: 7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a
     from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-    to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    to: ee1f4fa2-5d36-535e-af41-3ad6e9fafe0d
     fromPort: default
     toPort: default
   - id: 8e9f0a1b-2c3d-4e5f-6a7b-8c9d0e1f2a3b
@@ -755,3 +772,18 @@ graphs:
     to: d4e5f6a7-b8c9-0123-def1-234567890123
     fromPort: default
     toPort: schema
+  - id: 12d7a688-400c-5a15-b1ac-6b120572ecdc
+    from: ee1f4fa2-5d36-535e-af41-3ad6e9fafe0d
+    to: a4946e3e-9c99-56c5-b0a9-646e6e086636
+    fromPort: jgd2011
+    toPort: default
+  - id: 5ba17b18-a63c-5996-a6f8-f4759290303c
+    from: a4946e3e-9c99-56c5-b0a9-646e6e086636
+    to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    fromPort: default
+    toPort: default
+  - id: 9f444d6f-8934-52fa-9907-7841b6df8a41
+    from: ee1f4fa2-5d36-535e-af41-3ad6e9fafe0d
+    to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    fromPort: unfiltered
+    toPort: default

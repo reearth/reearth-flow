@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::hash::Hash;
 
 use nusamai_citygml::{GmlGeometryType, PropertyType};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
@@ -237,7 +237,7 @@ impl CityGmlGeometry {
         max_min
     }
 
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.gml_geometries
             .iter_mut()
             .for_each(|feature| feature.transform_inplace(jgd2wgs));
@@ -552,7 +552,7 @@ impl GmlGeometry {
         self.ty.name()
     }
 
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.polygons
             .iter_mut()
             .for_each(|poly| poly.transform_inplace(jgd2wgs));
