@@ -88,21 +88,21 @@ fn as_numeric(value: &AttributeValue) -> Option<f64> {
 
 fn column_kind(flattened: &[BTreeMap<String, AttributeValue>], path: &str) -> ColumnKind {
     let mut any_value = false;
-    let mut any_fractional = false;
     let mut any_negative = false;
     for f in flattened {
         let Some(value) = f.get(path) else { continue };
-        let Some(n) = as_numeric(value) else {
-            return ColumnKind::String;
-        };
-        any_value = true;
-        any_fractional |= !n.is_finite() || n.fract() != 0.0;
-        any_negative |= n < 0.0;
+        match value {
+            AttributeValue::Number(n) if n.is_f64() => return ColumnKind::Float64,
+            AttributeValue::Number(n) => {
+                any_value = true;
+                any_negative |= n.as_i64().is_some_and(|v| v < 0);
+            }
+            AttributeValue::Bool(_) => any_value = true,
+            _ => return ColumnKind::String,
+        }
     }
     if !any_value {
         ColumnKind::String
-    } else if any_fractional {
-        ColumnKind::Float64
     } else if any_negative {
         ColumnKind::SignedInt
     } else {
@@ -506,13 +506,24 @@ mod tests {
         AttributeValue::Number(serde_json::Number::from_f64(n).unwrap())
     }
 
+    fn int_number(n: i64) -> AttributeValue {
+        AttributeValue::Number(serde_json::Number::from(n))
+    }
+
     #[test]
     fn column_kind_picks_narrowest_matching_type() {
-        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), number(3.0))])];
+        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
         assert_eq!(column_kind(&all_nonneg_ints, "k"), ColumnKind::UnsignedInt);
 
-        let has_negative = [BTreeMap::from([("k".to_string(), number(-3.0))])];
+        let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
         assert_eq!(column_kind(&has_negative, "k"), ColumnKind::SignedInt);
+
+        let is_f64_typed_even_though_whole =
+            [BTreeMap::from([("k".to_string(), number(3.0))])];
+        assert_eq!(
+            column_kind(&is_f64_typed_even_though_whole, "k"),
+            ColumnKind::Float64
+        );
 
         let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
         assert_eq!(column_kind(&has_fraction, "k"), ColumnKind::Float64);
@@ -521,7 +532,7 @@ mod tests {
         assert_eq!(column_kind(&bool_only, "k"), ColumnKind::UnsignedInt);
 
         let has_string = [BTreeMap::from([
-            ("k".to_string(), number(1.0)),
+            ("k".to_string(), int_number(1)),
             ("k2".to_string(), AttributeValue::String("s".to_string())),
         ])];
         assert_eq!(column_kind(&has_string, "k2"), ColumnKind::String);
@@ -531,7 +542,8 @@ mod tests {
     fn typed_columns_round_trip_through_decode() {
         let feature1 = Feature::from(IndexMap::from([
             ("height".to_string(), number(11.4)),
-            ("count".to_string(), number(3.0)),
+            ("count".to_string(), int_number(3)),
+            ("elevation_delta".to_string(), int_number(-12)),
             ("flag".to_string(), AttributeValue::Bool(true)),
             ("name".to_string(), AttributeValue::String("x".to_string())),
         ]));
@@ -553,6 +565,10 @@ mod tests {
             Some(&serde_json::json!(11.4))
         );
         assert_eq!(features[0].get("count"), Some(&serde_json::json!(3)));
+        assert_eq!(
+            features[0].get("elevation_delta"),
+            Some(&serde_json::json!(-12))
+        );
         assert_eq!(features[0].get("flag"), Some(&serde_json::json!(1)));
         assert_eq!(
             features[0].get("name"),
@@ -563,6 +579,7 @@ mod tests {
         // absent (no-data), not as zero/empty-string.
         assert_eq!(features[1].get("height"), None);
         assert_eq!(features[1].get("count"), None);
+        assert_eq!(features[1].get("elevation_delta"), None);
         assert_eq!(features[1].get("flag"), None);
         assert_eq!(
             features[1].get("name"),
