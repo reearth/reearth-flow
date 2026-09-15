@@ -215,5 +215,19 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped assigning texture coordinates to a feature",
     "help": "Image Rasterizer only assigns texture coordinates to CityGML geometry with a non-degenerate boundary."
+  },
+  {
+    "code": "table_extractor.coerce_failed",
+    "category": "parse",
+    "defaultDisposition": "warn_drop",
+    "message": "kept a value as-is because it could not be parsed as the target type",
+    "help": "Check that the source attribute's value matches the int or float format expected by the extract rule."
+  },
+  {
+    "code": "table_extractor.non_string_value",
+    "category": "parse",
+    "defaultDisposition": "warn_drop",
+    "message": "kept a value as-is because it was not a string",
+    "help": "Attribute Table Extractor can only coerce string values to int or float. Check the source attribute's type."
   }
 ]

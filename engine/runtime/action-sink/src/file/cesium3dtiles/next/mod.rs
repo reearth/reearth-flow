@@ -15,6 +15,7 @@ mod cost;
 mod mesh;
 mod primitive;
 mod quadtree;
+mod stats;
 mod subtree;
 mod tileset;
 
@@ -24,6 +25,7 @@ use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use rayon::prelude::*;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
@@ -222,12 +224,14 @@ pub fn build(
         .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
         .collect();
 
+    let property_stats = stats::collect(extracted.iter().map(|(feature, _)| *feature), options);
+
     if extracted.is_empty() {
         tracing::warn!(
             "Cesium3DTilesWriter (new-geometry): no renderable geometry found; writing an \
              empty tileset"
         );
-        return empty_tileset();
+        return empty_tileset(&property_stats);
     }
 
     let root = extracted
@@ -304,7 +308,8 @@ pub fn build(
             Ok(())
         })?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels, max_contents)?;
+    let tileset_bytes =
+        render_tileset_json(&root, available_levels, max_contents, &property_stats)?;
     let subtrees = subtree::build_all(&occupied, &content_counts, max_contents)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -410,7 +415,9 @@ pub fn build_glb(
     .map(Some)
 }
 
-fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
+fn empty_tileset(
+    property_stats: &IndexMap<String, stats::PropertyStats>,
+) -> crate::errors::Result<BuiltTileset> {
     let root = GeoBox {
         west: 0.0,
         south: 0.0,
@@ -419,7 +426,7 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         min_height: 0.0,
         max_height: 0.0,
     };
-    let tileset_bytes = render_tileset_json(&root, 1, 1)?;
+    let tileset_bytes = render_tileset_json(&root, 1, 1, property_stats)?;
     let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -436,8 +443,9 @@ fn render_tileset_json(
     root: &GeoBox,
     available_levels: u32,
     max_contents: usize,
+    property_stats: &IndexMap<String, stats::PropertyStats>,
 ) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels, max_contents);
+    let tileset_json = tileset::build(root, available_levels, max_contents, property_stats);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }

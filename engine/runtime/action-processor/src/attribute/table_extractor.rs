@@ -2,6 +2,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -199,7 +200,7 @@ impl Processor for AttributeTableExtractor {
                 for rule in rules {
                     let src_segments: Vec<&str> = rule.source_path.split_whitespace().collect();
                     if let Some(value) = resolve_path(&feature, &src_segments) {
-                        let value = coerce(value, rule.data_type);
+                        let value = coerce(&ctx, value, rule.data_type);
                         let dst_segments: Vec<&str> =
                             rule.destination_path.split_whitespace().collect();
                         if !dst_segments.is_empty() {
@@ -287,24 +288,45 @@ fn set_nested(current: &mut AttributeValue, segments: &[&str], value: AttributeV
     }
 }
 
-fn coerce(value: AttributeValue, data_type: Option<ExtractDataType>) -> AttributeValue {
-    let AttributeValue::String(s) = &value else {
+fn coerce(
+    ctx: &ExecutorContext,
+    value: AttributeValue,
+    data_type: Option<ExtractDataType>,
+) -> AttributeValue {
+    let Some(data_type) = data_type else {
         return value;
     };
-    match data_type {
-        Some(ExtractDataType::Int) => s
+    let AttributeValue::String(s) = &value else {
+        if !matches!(value, AttributeValue::Number(_)) {
+            ctx.warn(
+                DiagnosticDraft::new(ErrorCode::TableExtractorNonStringValue)
+                    .with_message(format!("data_type={data_type:?}, value={value:?}")),
+            );
+        }
+        return value;
+    };
+    let coerced = match data_type {
+        ExtractDataType::Int => s
             .trim()
             .parse::<i64>()
-            .map(|n| AttributeValue::Number(n.into()))
-            .unwrap_or(value),
-        Some(ExtractDataType::Float) => s
+            .ok()
+            .map(|n| AttributeValue::Number(n.into())),
+        ExtractDataType::Float => s
             .trim()
             .parse::<f64>()
             .ok()
             .and_then(serde_json::Number::from_f64)
-            .map(AttributeValue::Number)
-            .unwrap_or(value),
-        None => value,
+            .map(AttributeValue::Number),
+    };
+    match coerced {
+        Some(v) => v,
+        None => {
+            ctx.warn(
+                DiagnosticDraft::new(ErrorCode::TableExtractorCoerceFailed)
+                    .with_message(format!("data_type={data_type:?}, value={s}")),
+            );
+            value
+        }
     }
 }
 
