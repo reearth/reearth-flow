@@ -5,7 +5,7 @@ import {
   newEditorSession,
   teardownSession,
 } from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
 import {
   DeploymentsPage,
   uniqueDeploymentDescription,
@@ -118,20 +118,26 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(cityGmlReader);
-      await editor.setParamFlowExpr(
-        "Dataset",
-        'variables.get("__value")["path"]',
-      );
+      await editor.setParamFlowExpr("Dataset", 'attributes["path"]');
       await editor.submitParams();
 
       await editor.openNodeParamsForm(attributeMapper);
       for (let i = 0; i < 4; i++) await editor.addParamArrayItem();
       await editor.setParamText("root_mappers_0_attribute", "gmlId");
-      await editor.setParamText("root_mappers_0_valueAttribute", "gmlId");
+      await editor.setParamText(
+        "root_mappers_0_valueAttribute",
+        "__citygml_gml_id",
+      );
       await editor.setParamText("root_mappers_1_attribute", "featureType");
-      await editor.setParamText("root_mappers_1_valueAttribute", "featureType");
-      await editor.setParamText("root_mappers_2_attribute", "maxLod");
-      await editor.setParamText("root_mappers_2_valueAttribute", "maxLod");
+      await editor.setParamText(
+        "root_mappers_1_valueAttribute",
+        "__citygml_feature_type",
+      );
+      await editor.setParamText("root_mappers_2_attribute", "lodMask");
+      await editor.setParamText(
+        "root_mappers_2_valueAttribute",
+        "__citygml_lod_mask",
+      );
       await editor.setParamText("root_mappers_3_attribute", "meshcode");
       await editor.setParamFlowExpr(
         "Value Expression",
@@ -154,37 +160,14 @@ test.describe.serial(
       await expect(editor.edges).toHaveCount(4);
     });
 
-    test("PLATEAU4.UDXFolderExtractor is absent from the dev catalog (canary)", async () => {
-      await editor.dragToolToCanvas(
-        "transformer",
-        await editor.canvasPoint(0.5, 0.85),
-      );
-      await expect(editor.actionPicker).toBeVisible();
-      await editor.actionPicker
-        .getByPlaceholder(/^Search/)
-        .fill("UDXFolderExtractor");
-      await expect(
-        editor.actionPicker
-          .locator("span")
-          .filter({ hasText: /UDXFolderExtractor/ }),
-      ).toHaveCount(0);
-      await page.keyboard.press("Escape");
-      await expect(editor.actionPicker).toBeHidden();
-    });
-
-    // fixme: PLATEAU4.UDXFolderExtractor is not yet in the dev catalog (asserted
-    // absent by the canary test above); enable once it ships to dev.
-    test.fixme("completes the chain with UDX, deploys, runs, and produces the buildings artifact", async () => {
+    test("completes the chain with UDX, deploys, runs, and produces the buildings artifact", async () => {
       const udxExtractor = await editor.addActionNodeAndGet(
         "transformer",
         "PLATEAU4.UDXFolderExtractor",
         await editor.canvasPoint(0.5, 0.47),
       );
       await editor.openNodeParamsForm(udxExtractor);
-      await editor.setParamText(
-        "root_cityGmlPath",
-        'variables.get("__value")["path"]',
-      );
+      await editor.setParamFlowExpr("cityGmlPath", 'attributes["path"]');
       await editor.submitParams();
 
       await editor.connectFromPort(filterGml, udxExtractor, "features");
@@ -207,9 +190,10 @@ test.describe.serial(
 
       await expectJobSucceeded(page, 1_380_000);
 
-      const outputUrl = jobDetailsArtifact(page, "toshima-buildings.geojson");
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(
+        page,
+        "toshima-buildings.geojson",
+      );
       test.info().annotations.push({
         type: "output-url",
         description: artifactUrl,
