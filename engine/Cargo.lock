@@ -3706,9 +3706,9 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "japan-geoid"
-version = "0.4.4"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90f9f9c71e674873b986017db18890980c334615289c1f7bed45e0d4f1242f37"
+checksum = "46e3e7744ca3fe0b4e3828a69f56d78c64337eddf7a5e65ea4c9bc90b28a6d1f"
 dependencies = [
  "lz4_flex",
  "wasm-bindgen",
@@ -4074,9 +4074,9 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
 name = "lz4_flex"
-version = "0.11.5"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ab2867e3eeeca90e844d1940eab391c9dc5228783db2ed999acbc0a9ed375a"
+checksum = "90071f8077f8e40adfc4b7fe9cd495ce316263f19e75c2211eeff3fdf475a3d9"
 
 [[package]]
 name = "lzma-rust"
@@ -4116,7 +4116,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4568,7 +4568,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "ahash 0.8.12",
  "chrono",
@@ -4589,7 +4589,7 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4600,7 +4600,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4610,7 +4610,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1)",
  "serde",
@@ -4621,7 +4621,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.8.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4639,16 +4639,17 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "japan-geoid",
+ "lz4_flex",
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "nusamai-shapefile"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
+source = "git+https://github.com/reearth/plateau-gis-converter?branch=feat%2Fjgd2024#81094f974ee7e2a12838f8380a2cf24bb8aa2e09"
 dependencies = [
  "flatgeom",
  "shapefile 0.6.0",

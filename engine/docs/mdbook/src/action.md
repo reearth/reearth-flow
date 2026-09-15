@@ -10195,6 +10195,18 @@ Reproject Vertical Coordinates Between Datums
     "reprojectorType"
   ],
   "properties": {
+    "outsideCoverage": {
+      "title": "Outside Coverage",
+      "description": "What to do with a feature that has a vertex outside the coverage of the height revision parameters (`jgd2011ToJgd2024` only). Defaults to `passThrough`.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/OutsideCoveragePolicy"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "reprojectorType": {
       "title": "Reprojector Type",
       "description": "The type of vertical coordinate transformation to apply",
@@ -10206,10 +10218,47 @@ Reproject Vertical Coordinates Between Datums
     }
   },
   "definitions": {
+    "OutsideCoveragePolicy": {
+      "oneOf": [
+        {
+          "description": "Keep the heights unchanged and mark the feature with the `_heightRevisionSkipped` attribute.",
+          "type": "string",
+          "enum": [
+            "passThrough"
+          ]
+        },
+        {
+          "description": "Fail the workflow.",
+          "type": "string",
+          "enum": [
+            "error"
+          ]
+        }
+      ]
+    },
     "VerticalReprojectorType": {
-      "type": "string",
-      "enum": [
-        "jgd2011ToWgs84"
+      "oneOf": [
+        {
+          "description": "JGD2011 heights (EPSG:6697) to WGS84 ellipsoidal heights (EPSG:4979) using the GSIGEO2011 geoid.",
+          "type": "string",
+          "enum": [
+            "jgd2011ToWgs84"
+          ]
+        },
+        {
+          "description": "JGD2011 heights (測地成果2011) to JGD2024 heights (測地成果2024) using the GSI height revision parameters. Heights stay orthometric.",
+          "type": "string",
+          "enum": [
+            "jgd2011ToJgd2024"
+          ]
+        },
+        {
+          "description": "JGD2024 heights (EPSG:6668 + EPSG:11317) to WGS84 ellipsoidal heights (EPSG:4979) using the JPGEO2024 geoid with the Hrefconv2024 correction.",
+          "type": "string",
+          "enum": [
+            "jgd2024ToWgs84"
+          ]
+        }
       ]
     }
   }

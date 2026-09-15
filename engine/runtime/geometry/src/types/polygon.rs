@@ -7,7 +7,7 @@ use flatgeom::{
 use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 
@@ -252,7 +252,7 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 }
 
 impl Polygon3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.exterior.transform_inplace(jgd2wgs);
         for interior in &mut self.interiors {
             interior.transform_inplace(jgd2wgs);

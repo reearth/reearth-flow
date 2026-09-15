@@ -1,4 +1,4 @@
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use crate::types::coordinate::Coordinate;
@@ -112,7 +112,7 @@ impl From<Solid3D<f64>> for Solid2D<f64> {
 }
 
 impl Solid3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         match &mut self.boundary_surface {
             BoundarySurface::Faces(faces) => {
                 faces.iter_mut().for_each(|f| f.transform_inplace(jgd2wgs))

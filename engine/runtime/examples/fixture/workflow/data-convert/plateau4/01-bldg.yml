@@ -10,6 +10,7 @@ with:
   targetPackages:
   - bldg
   workerArtifactPath: null
+  inputVerticalDatum: jgd2011
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -520,12 +521,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: 28c5db82-168a-536b-ad78-7d270b84d054
+    name: VerticalDatumRouterByLod1
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: e6bb84f3-c227-50bf-9fd0-024ac029720f
+    name: HeightRevisionByLod1
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojectorByLod1
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071235
     name: BoundsExtractorByLod2
     type: action
@@ -555,12 +572,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: 230d6201-641f-5a39-b6a4-c2fc489e36d9
+    name: VerticalDatumRouterByLod2
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: 2c5abbcb-6859-55da-851e-c615540092cc
+    name: HeightRevisionByLod2
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
     name: VerticalReprojectorByLod2
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071236
     name: BoundsExtractorByLod2NoTexture
     type: action
@@ -590,12 +623,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: f06ab305-295d-5482-b9dc-5b5e68c047ba
+    name: VerticalDatumRouterByLod2NoTexture
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: dfa0da74-ad84-547a-9ad3-699271db52cc
+    name: HeightRevisionByLod2NoTexture
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
     name: VerticalReprojectorByLod2NoTexture
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071237
     name: BoundsExtractorByLod3
     type: action
@@ -625,12 +674,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: 40d4c7c6-7b44-52df-94b8-adf645b276d6
+    name: VerticalDatumRouterByLod3
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: dd7de83a-9e1e-525d-931f-9b1026aa8531
+    name: HeightRevisionByLod3
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
     name: VerticalReprojectorByLod3
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071238
     name: BoundsExtractorByLod3NoTexture
     type: action
@@ -660,12 +725,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: 27795cdb-5f79-526f-acc3-67213ed964aa
+    name: VerticalDatumRouterByLod3NoTexture
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: 2c3439b1-6bb1-5755-9f1b-1cc3b9f4a60b
+    name: HeightRevisionByLod3NoTexture
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
     name: VerticalReprojectorByLod3NoTexture
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071239
     name: BoundsExtractorByLod4
     type: action
@@ -695,12 +776,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: 227cd481-8e1b-5e52-b535-296712c2c5fe
+    name: VerticalDatumRouterByLod4
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: 7998954a-8070-548d-9de8-2aa475982bb2
+    name: HeightRevisionByLod4
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
     name: VerticalReprojectorByLod4
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071240
     name: BoundsExtractorByLod4NoTexture
     type: action
@@ -730,12 +827,28 @@ graphs:
         method: create
         value: |
           env.get("__lod")
+  - id: 9534bf2f-c207-5d73-b457-b78773052b33
+    name: VerticalDatumRouterByLod4NoTexture
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: b1528b1e-a5fa-5c38-83c6-5dd3a40da510
+    name: HeightRevisionByLod4NoTexture
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
     name: VerticalReprojectorByLod4NoTexture
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
     name: cesium3DTilesWriterByLod1
     type: action
@@ -1009,7 +1122,7 @@ graphs:
     toPort: default
   - id: dde1d751-fe3e-4283-8742-ec4a61a41576
     from: fe1daa11-2b3c-4e52-8a1f-123456789011
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+    to: 28c5db82-168a-536b-ad78-7d270b84d054
     fromPort: default
     toPort: default
   - id: dde1d751-fe3e-4283-8742-ec4a61a41577
@@ -1029,7 +1142,7 @@ graphs:
     toPort: default
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30b2
     from: fe1daa11-2b3c-4e52-8a1f-123456789012
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+    to: 230d6201-641f-5a39-b6a4-c2fc489e36d9
     fromPort: default
     toPort: default
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bc
@@ -1049,7 +1162,7 @@ graphs:
     toPort: default
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30d1
     from: fe1daa11-2b3c-4e52-8a1f-123456789013
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
+    to: f06ab305-295d-5482-b9dc-5b5e68c047ba
     fromPort: default
     toPort: default
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30be
@@ -1069,7 +1182,7 @@ graphs:
     toPort: default
   - id: ce3f3571-053c-4487-8e85-b95fb71a49c1
     from: fe1daa11-2b3c-4e52-8a1f-123456789014
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+    to: 40d4c7c6-7b44-52df-94b8-adf645b276d6
     fromPort: default
     toPort: default
   - id: ce3f3571-053c-4487-8e85-b95fb71a49c8
@@ -1089,7 +1202,7 @@ graphs:
     toPort: default
   - id: ce3f3571-053c-4487-8e85-b95fb71a49c2
     from: fe1daa11-2b3c-4e52-8a1f-123456789015
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
+    to: 27795cdb-5f79-526f-acc3-67213ed964aa
     fromPort: default
     toPort: default
   - id: ce3f3571-053c-4487-8e85-b95fb71a49ca
@@ -1109,7 +1222,7 @@ graphs:
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461ec2
     from: fe1daa11-2b3c-4e52-8a1f-123456789016
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+    to: 227cd481-8e1b-5e52-b535-296712c2c5fe
     fromPort: default
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
@@ -1129,7 +1242,7 @@ graphs:
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461ee2
     from: fe1daa11-2b3c-4e52-8a1f-123456789017
-    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
+    to: 9534bf2f-c207-5d73-b457-b78773052b33
     fromPort: default
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eaf
@@ -1172,3 +1285,108 @@ graphs:
     to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
     fromPort: schema
     toPort: schema
+  - id: 977a39a6-42e0-5d24-9ac1-7bb8ed713409
+    from: 28c5db82-168a-536b-ad78-7d270b84d054
+    to: e6bb84f3-c227-50bf-9fd0-024ac029720f
+    fromPort: jgd2011
+    toPort: default
+  - id: e82b9d38-b08f-5e90-b482-9e98cfddf20a
+    from: e6bb84f3-c227-50bf-9fd0-024ac029720f
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+    fromPort: default
+    toPort: default
+  - id: 059764a8-70f9-524c-9783-f2a93a17b4e4
+    from: 28c5db82-168a-536b-ad78-7d270b84d054
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+    fromPort: unfiltered
+    toPort: default
+  - id: aa3f3ba0-b70a-5756-8281-d66135c0fa0d
+    from: 230d6201-641f-5a39-b6a4-c2fc489e36d9
+    to: 2c5abbcb-6859-55da-851e-c615540092cc
+    fromPort: jgd2011
+    toPort: default
+  - id: ddae6ee6-7031-5706-9c94-c503a30b47ce
+    from: 2c5abbcb-6859-55da-851e-c615540092cc
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+    fromPort: default
+    toPort: default
+  - id: be8124af-e399-59ed-be51-060cc36f0932
+    from: 230d6201-641f-5a39-b6a4-c2fc489e36d9
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+    fromPort: unfiltered
+    toPort: default
+  - id: cc50a126-24b1-5fa7-83f3-fe6b05bfe89c
+    from: f06ab305-295d-5482-b9dc-5b5e68c047ba
+    to: dfa0da74-ad84-547a-9ad3-699271db52cc
+    fromPort: jgd2011
+    toPort: default
+  - id: 4142b279-abfb-59bc-a822-6a36b19c954d
+    from: dfa0da74-ad84-547a-9ad3-699271db52cc
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
+    fromPort: default
+    toPort: default
+  - id: e862f394-ac51-50fa-b800-389f7321a072
+    from: f06ab305-295d-5482-b9dc-5b5e68c047ba
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
+    fromPort: unfiltered
+    toPort: default
+  - id: 3720f068-c7c0-596c-b853-58e6df7c86d4
+    from: 40d4c7c6-7b44-52df-94b8-adf645b276d6
+    to: dd7de83a-9e1e-525d-931f-9b1026aa8531
+    fromPort: jgd2011
+    toPort: default
+  - id: 6d7b5d3c-6cea-5a2a-af3c-8ff8c31217d2
+    from: dd7de83a-9e1e-525d-931f-9b1026aa8531
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+    fromPort: default
+    toPort: default
+  - id: b59d68a2-0daf-5fa7-b5c8-98feea7b90d6
+    from: 40d4c7c6-7b44-52df-94b8-adf645b276d6
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+    fromPort: unfiltered
+    toPort: default
+  - id: a518c76e-059c-50a2-b8cc-74565d806eea
+    from: 27795cdb-5f79-526f-acc3-67213ed964aa
+    to: 2c3439b1-6bb1-5755-9f1b-1cc3b9f4a60b
+    fromPort: jgd2011
+    toPort: default
+  - id: 3ce81aeb-ac2b-5a05-9f7d-44b1729191a4
+    from: 2c3439b1-6bb1-5755-9f1b-1cc3b9f4a60b
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
+    fromPort: default
+    toPort: default
+  - id: 790690c6-6eb5-5918-9943-9ea2cc4bbe13
+    from: 27795cdb-5f79-526f-acc3-67213ed964aa
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
+    fromPort: unfiltered
+    toPort: default
+  - id: 7e1cb759-968b-5e44-990e-0bf3e4852a71
+    from: 227cd481-8e1b-5e52-b535-296712c2c5fe
+    to: 7998954a-8070-548d-9de8-2aa475982bb2
+    fromPort: jgd2011
+    toPort: default
+  - id: cb74bc37-5568-5e9e-9327-74b31fc8935a
+    from: 7998954a-8070-548d-9de8-2aa475982bb2
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+    fromPort: default
+    toPort: default
+  - id: da556c1c-114d-5f02-bf09-874906a66eca
+    from: 227cd481-8e1b-5e52-b535-296712c2c5fe
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+    fromPort: unfiltered
+    toPort: default
+  - id: ff8e95b3-5dbd-59c1-acb0-8a0c43141d62
+    from: 9534bf2f-c207-5d73-b457-b78773052b33
+    to: b1528b1e-a5fa-5c38-83c6-5dd3a40da510
+    fromPort: jgd2011
+    toPort: default
+  - id: 1465f697-73dd-5e2d-9556-f7e865270710
+    from: b1528b1e-a5fa-5c38-83c6-5dd3a40da510
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
+    fromPort: default
+    toPort: default
+  - id: ad26469c-2551-531b-bedf-d737dccacef3
+    from: 9534bf2f-c207-5d73-b457-b78773052b33
+    to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
+    fromPort: unfiltered
+    toPort: default

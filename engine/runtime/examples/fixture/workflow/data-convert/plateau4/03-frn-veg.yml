@@ -12,6 +12,7 @@ with:
   - frn
   - veg
   workerArtifactPath: null
+  inputVerticalDatum: jgd2011
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -468,12 +469,28 @@ graphs:
       - attribute: cityName
         method: rename
         value: city_name
+  - id: 96828a98-f5b8-5157-9fc6-30a21fe36603
+    name: VerticalDatumRouterReprojector
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: a6124e7d-2d3e-54db-893c-60dede30fe34
+    name: HeightRevisionReprojector
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
     name: Reprojector
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 782c6a8d-a772-4238-a32e-32caadbbb91f
     name: Cesium3DTilesWriter
     type: action
@@ -678,12 +695,28 @@ graphs:
       - attribute: cityName
         method: rename
         value: city_name
+  - id: 6bee71c8-2063-57dc-a271-8fa272968e28
+    name: VerticalDatumRouterReprojectorVeg1
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: b3aebcce-2a7e-5ccf-9a2b-85539e4655d4
+    name: HeightRevisionReprojectorVeg1
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
     name: ReprojectorVeg1
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: f8a3b2c1-5d6e-4f7a-9b8c-1d2e3f4a5b6c
     name: AttributeManagerFloatConverterVeg1
     type: action
@@ -916,12 +949,28 @@ graphs:
       - attribute: cityName
         method: rename
         value: city_name
+  - id: 8c36fc1e-d484-55ae-9e6b-6836e23635af
+    name: VerticalDatumRouterReprojectorVeg2
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: febc85cb-5271-5221-aaa6-f0a7b2e3e83d
+    name: HeightRevisionReprojectorVeg2
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
     name: ReprojectorVeg2
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 53ab03e0-8b30-4eae-86a3-e17916e32d87
     name: Cesium3DTilesWriterVeg2
     type: action
@@ -1168,7 +1217,7 @@ graphs:
     toPort: default
   - id: bf8df312-1461-4431-8134-010dd518d4a4
     from: 3713b42c-a3af-489f-91a5-d101c26fcaee
-    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    to: 96828a98-f5b8-5157-9fc6-30a21fe36603
     fromPort: default
     toPort: default
   - id: f251eb31-4ffd-4edf-a56c-f2dbd9eb0fc9
@@ -1238,7 +1287,7 @@ graphs:
     toPort: default
   - id: 8a5b6c7d-e8f9-0123-a5b6-c7d8e9f01234
     from: 4a1b2c3d-e5f6-7890-a1b2-c3d4e5f67891
-    to: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
+    to: 6bee71c8-2063-57dc-a271-8fa272968e28
     fromPort: default
     toPort: default
   - id: 71682420-af86-46f3-a168-211c1ee08c5e
@@ -1313,7 +1362,7 @@ graphs:
     toPort: default
   - id: 9b6c7d8e-f9a0-1234-b6c7-d8e9f0a12345
     from: 6c3d4e5f-a7b8-9012-c3d4-e5f6a7b89013
-    to: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
+    to: 8c36fc1e-d484-55ae-9e6b-6836e23635af
     fromPort: default
     toPort: default
   - id: 8bda4f4f-801f-4cb2-85fa-7e7c442b3d92
@@ -1360,4 +1409,49 @@ graphs:
     from: b69e66da-7b24-4a8c-8c08-5fa53b92c134
     to: 7da667d4-032f-49f6-b398-18944866a327
     fromPort: default
+    toPort: default
+  - id: 1a03b1d2-1a0c-57e3-94c8-a7445e47a08c
+    from: 96828a98-f5b8-5157-9fc6-30a21fe36603
+    to: a6124e7d-2d3e-54db-893c-60dede30fe34
+    fromPort: jgd2011
+    toPort: default
+  - id: d4bd0c6d-7dff-56e0-8f60-e6ea4d181799
+    from: a6124e7d-2d3e-54db-893c-60dede30fe34
+    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    fromPort: default
+    toPort: default
+  - id: 7dfdfa8e-8493-5f80-8666-e2dee5a8b5ac
+    from: 96828a98-f5b8-5157-9fc6-30a21fe36603
+    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    fromPort: unfiltered
+    toPort: default
+  - id: b8855452-c230-50c4-ad9d-8ff20b385d62
+    from: 6bee71c8-2063-57dc-a271-8fa272968e28
+    to: b3aebcce-2a7e-5ccf-9a2b-85539e4655d4
+    fromPort: jgd2011
+    toPort: default
+  - id: 09ab4cd9-6a7c-5a3e-b9b3-14a64f74726f
+    from: b3aebcce-2a7e-5ccf-9a2b-85539e4655d4
+    to: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
+    fromPort: default
+    toPort: default
+  - id: 9fc70b55-252d-5b4b-b074-00fab26cba39
+    from: 6bee71c8-2063-57dc-a271-8fa272968e28
+    to: 5b2c3d4e-f6a7-8901-b2c3-d4e5f6a78902
+    fromPort: unfiltered
+    toPort: default
+  - id: 8dbd4255-5c89-56d2-b6ea-5a9b6049f9b9
+    from: 8c36fc1e-d484-55ae-9e6b-6836e23635af
+    to: febc85cb-5271-5221-aaa6-f0a7b2e3e83d
+    fromPort: jgd2011
+    toPort: default
+  - id: 7b889ec1-99c9-5e25-8118-efb3b47897a7
+    from: febc85cb-5271-5221-aaa6-f0a7b2e3e83d
+    to: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
+    fromPort: default
+    toPort: default
+  - id: 8ee91973-68f0-5b01-9b4b-9ca86e6c87b8
+    from: 8c36fc1e-d484-55ae-9e6b-6836e23635af
+    to: 7d4e5f6a-b8c9-0123-d4e5-f6a7b8c90124
+    fromPort: unfiltered
     toPort: default

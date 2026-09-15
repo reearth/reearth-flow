@@ -5,7 +5,7 @@ use std::ops::{Div, Mul};
 use approx::{AbsDiffEq, RelativeEq};
 use geo_types::Line as GeoLine;
 use num_traits::{NumCast, Zero};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::{line_bounding_rect, point_line_euclidean_distance};
@@ -472,7 +472,7 @@ impl<T: CoordNum> From<Line2D<T>> for GeoLine<T> {
 }
 
 impl Line3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.start.transform_inplace(jgd2wgs);
         self.end.transform_inplace(jgd2wgs);
     }

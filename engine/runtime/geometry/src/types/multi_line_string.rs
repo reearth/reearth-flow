@@ -5,7 +5,7 @@ use geo_types::LineString as GeoLineString;
 use geo_types::MultiLineString as GeoMultiLineString;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Zero;
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use flatgeom::{MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3};
@@ -243,7 +243,7 @@ impl<T: CoordNum> From<MultiLineString2D<T>> for GeoMultiLineString<T> {
 }
 
 impl MultiLineString3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         for line_string in &mut self.0 {
             line_string.transform_inplace(jgd2wgs);
         }

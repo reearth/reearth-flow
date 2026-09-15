@@ -11,6 +11,7 @@ with:
   targetPackages:
   - ubld
   workerArtifactPath: null
+  inputVerticalDatum: jgd2011
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -348,12 +349,28 @@ graphs:
           let ft = env.get("__value").feature_type;
           ft != "uro:UndergroundBuilding" && ft != "bldg:BuildingPart"
         outputPort: passed
+  - id: 33b509a2-6c7a-5d4f-af7f-996b693f2c65
+    name: VerticalDatumRouter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
+        outputPort: jgd2011
+  - id: 04ec19a4-b77b-5b03-aced-95e1f0d50283
+    name: HeightRevision
+    type: action
+    action: VerticalReprojector
+    with:
+      reprojectorType: jgd2011ToJgd2024
+      outsideCoverage: passThrough
   - id: 35fa118f-c8dd-456e-abc0-1fb6319c3931
     name: VerticalReprojector
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 20489caa-c78b-4be4-808e-a8e8881c8847
     name: AttributeManager
     type: action
@@ -428,7 +445,7 @@ graphs:
     toPort: default
   - id: 8e9f0a1b-2c3d-4e5f-6a7b-8c9d0e1f2a3b
     from: 5f7819aa-d596-48f4-a56c-8490e3a1ddc8
-    to: 35fa118f-c8dd-456e-abc0-1fb6319c3931
+    to: 33b509a2-6c7a-5d4f-af7f-996b693f2c65
     fromPort: lod1
     toPort: default
   - id: 9f64e138-d863-4b4d-9247-2441da1fdc10
@@ -438,7 +455,7 @@ graphs:
     toPort: default
   - id: 692b3109-d984-44a7-9be0-036806161355
     from: b20bfd2f-ef35-41b6-919a-3387d0d96cb0
-    to: 35fa118f-c8dd-456e-abc0-1fb6319c3931
+    to: 33b509a2-6c7a-5d4f-af7f-996b693f2c65
     fromPort: passed
     toPort: default
   - id: 9f0a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c
@@ -461,3 +478,18 @@ graphs:
     to: 1a042641-7a90-413e-adc8-2dfaf269de35
     fromPort: schema
     toPort: schema
+  - id: b8db42bf-db63-5096-8545-3f56c51cad29
+    from: 33b509a2-6c7a-5d4f-af7f-996b693f2c65
+    to: 04ec19a4-b77b-5b03-aced-95e1f0d50283
+    fromPort: jgd2011
+    toPort: default
+  - id: 85c55fdb-75a0-5af2-a982-8d0df64c51df
+    from: 04ec19a4-b77b-5b03-aced-95e1f0d50283
+    to: 35fa118f-c8dd-456e-abc0-1fb6319c3931
+    fromPort: default
+    toPort: default
+  - id: 87d1b5b5-f034-55a8-acd9-51e0c56b3c6e
+    from: 33b509a2-6c7a-5d4f-af7f-996b693f2c65
+    to: 35fa118f-c8dd-456e-abc0-1fb6319c3931
+    fromPort: unfiltered
+    toPort: default

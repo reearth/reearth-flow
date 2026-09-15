@@ -2,7 +2,7 @@ use std::ops::Div;
 
 use approx::{AbsDiffEq, RelativeEq};
 use num_traits::{Float, Zero};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -143,7 +143,7 @@ where
 }
 
 impl Triangle3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.0.transform_inplace(jgd2wgs);
         self.1.transform_inplace(jgd2wgs);
         self.2.transform_inplace(jgd2wgs);

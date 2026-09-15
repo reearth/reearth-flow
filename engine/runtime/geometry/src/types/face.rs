@@ -1,5 +1,5 @@
 use num_traits::Zero;
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use crate::types::line_string::LineString;
@@ -45,7 +45,7 @@ where
 }
 
 impl Face3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.0.iter_mut().for_each(|c| c.transform_inplace(jgd2wgs));
     }
 
