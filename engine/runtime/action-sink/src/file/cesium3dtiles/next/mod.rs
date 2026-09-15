@@ -23,7 +23,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use indexmap::IndexMap;
 use flate2::write::GzEncoder;
@@ -255,22 +255,23 @@ pub fn build(
         by_cell.entry(cell).or_default().push(i);
     }
 
-    // A decode cache per build, dropped once its glb is built. PLATEAU textures
-    // are per-surface, so a source image is referenced by only one cell; a
-    // tileset-wide cache would grow without bound for no reuse gain.
-    let build_chunk = |chunk: &[usize]| {
-        let mut textures = TextureCache::default();
-        let mut embedded = EmbeddedTextures::new()?;
+    // Callers own the caches, so a cell's candidate builds decode its sources
+    // once between them. PLATEAU textures are per-surface, so a source image is
+    // referenced by only one cell; a tileset-wide cache would grow without
+    // bound for no reuse gain.
+    let build_chunk = |chunk: &[usize], textures: &TextureCache, embedded: &EmbeddedTextures| {
         let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
             chunk.iter().map(|&i| &extracted[i]).collect();
-        build_cell_glb(&members, options, render, &mut textures, &mut embedded)
+        build_cell_glb(&members, options, render, textures, embedded)
     };
 
     let mut units: HashMap<Cell, Vec<Unit>> = by_cell
         .into_par_iter()
         .map(
             |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
-                let bytes = transfer_bytes(&build_chunk(&features)?);
+                let textures = TextureCache::default();
+                let embedded = EmbeddedTextures::new()?;
+                let bytes = transfer_bytes(&build_chunk(&features, &textures, &embedded)?);
                 Ok((cell, vec![Unit { features, bytes }]))
             },
         )
@@ -382,8 +383,11 @@ struct CellContents {
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
-    build_chunk: impl Fn(&[usize]) -> crate::errors::Result<Vec<u8>> + Sync,
+    build_chunk: impl Fn(&[usize], &TextureCache, &EmbeddedTextures) -> crate::errors::Result<Vec<u8>>
+        + Sync,
 ) -> crate::errors::Result<CellContents> {
+    let textures = TextureCache::default();
+    let embedded = EmbeddedTextures::new()?;
     let expected = group_bytes(&units);
     let parts = if target_tile_size == 0 {
         MAX_CONTENTS_PER_TILE
@@ -406,7 +410,7 @@ fn split_by_size(
                     .iter()
                     .flat_map(|u| u.features.iter().copied())
                     .collect();
-                build_chunk(&features).map(|glb| (chunk, glb))
+                build_chunk(&features, &textures, &embedded).map(|glb| (chunk, glb))
             })
             .collect::<crate::errors::Result<_>>()?;
         let total = built.len();
@@ -539,14 +543,14 @@ pub fn build_glb(
         return Ok(None);
     };
 
-    let mut textures = TextureCache::default();
-    let mut embedded = EmbeddedTextures::new()?;
+    let textures = TextureCache::default();
+    let embedded = EmbeddedTextures::new()?;
     build_cell_glb(
         &[&(feature, extracted)],
         options,
         render,
-        &mut textures,
-        &mut embedded,
+        &textures,
+        &embedded,
     )
     .map(Some)
 }
@@ -606,7 +610,7 @@ fn subtree_path(cell: Cell) -> String {
 /// built.
 struct EmbeddedTextures {
     dir: tempfile::TempDir,
-    by_hash: HashMap<u64, PathBuf>,
+    by_hash: Mutex<HashMap<u64, PathBuf>>,
 }
 
 impl EmbeddedTextures {
@@ -615,16 +619,16 @@ impl EmbeddedTextures {
             dir: tempfile::tempdir().map_err(|e| {
                 SinkError::Cesium3DTilesWriter(format!("failed to create texture temp dir: {e}"))
             })?,
-            by_hash: HashMap::new(),
+            by_hash: Mutex::new(HashMap::new()),
         })
     }
 
     /// Write `data` to a temp file (once per distinct content) and return its path.
-    fn materialize(&mut self, data: &RasterData) -> crate::errors::Result<PathBuf> {
+    fn materialize(&self, data: &RasterData) -> crate::errors::Result<PathBuf> {
         let mut hasher = DefaultHasher::new();
         data.bytes.hash(&mut hasher);
         let hash = hasher.finish();
-        if let Some(path) = self.by_hash.get(&hash) {
+        if let Some(path) = self.lock().get(&hash) {
             return Ok(path.clone());
         }
         let ext = match data.mime_type {
@@ -636,8 +640,13 @@ impl EmbeddedTextures {
         std::fs::write(&path, &data.bytes).map_err(|e| {
             SinkError::Cesium3DTilesWriter(format!("failed to write embedded texture: {e}"))
         })?;
-        self.by_hash.insert(hash, path.clone());
-        Ok(path)
+        Ok(self.lock().entry(hash).or_insert(path).clone())
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<u64, PathBuf>> {
+        self.by_hash
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
@@ -665,8 +674,8 @@ fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
     render: RenderOptions,
-    textures: &mut TextureCache,
-    embedded: &mut EmbeddedTextures,
+    textures: &TextureCache,
+    embedded: &EmbeddedTextures,
 ) -> crate::errors::Result<Vec<u8>> {
     let cells = primitive::collect(cell_members);
 
@@ -782,8 +791,8 @@ fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
     render: RenderOptions,
-    textures: &mut TextureCache,
-    embedded: &mut EmbeddedTextures,
+    textures: &TextureCache,
+    embedded: &EmbeddedTextures,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
     // Resolve each polygon's texture to a local file path: on-disk sources pass
     // through; embedded (in-memory) sources are materialized to a temp file (once
@@ -1161,13 +1170,12 @@ mod tests {
         };
 
         let mut builder = glb::Builder::new();
-        let mut cache = TextureCache::default();
-        let mut embedded = EmbeddedTextures::new().expect("temp dir");
+        let cache = TextureCache::default();
+        let embedded = EmbeddedTextures::new().expect("temp dir");
 
-        let pages =
-            build_textured_pages(&mut builder, &textured, render, &mut cache, &mut embedded)
-                .expect("build textured pages")
-                .expect("an in-memory texture must produce an atlas page, not colour-only");
+        let pages = build_textured_pages(&mut builder, &textured, render, &cache, &embedded)
+            .expect("build textured pages")
+            .expect("an in-memory texture must produce an atlas page, not colour-only");
 
         assert_eq!(pages.len(), 1, "one atlas page for the single texture");
         assert_eq!(
@@ -1176,7 +1184,7 @@ mod tests {
             "the textured triangle is kept"
         );
         // The embedded bytes were written to a temp file and cached by content hash.
-        assert_eq!(embedded.by_hash.len(), 1);
+        assert_eq!(embedded.lock().len(), 1);
     }
 
     // End to end through the public `build`: a CRS-framed TriangularMesh carrying an
@@ -1334,6 +1342,12 @@ mod tests {
     /// A plain untextured triangle at `lat, lon`, far enough from other test
     /// features to land in its own quadtree cell at deep placement levels.
     fn untextured_feature(lat: f64, lon: f64) -> Feature {
+        attributed_feature(lat, lon, &[])
+    }
+
+    /// [`untextured_feature`] carrying `attributes`, so cells can be given
+    /// disjoint metadata schemas.
+    fn attributed_feature(lat: f64, lon: f64, attributes: &[(&str, &str)]) -> Feature {
         let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
         let mesh = TriangularMesh3D::from_soup(
             frame,
@@ -1343,8 +1357,15 @@ mod tests {
                 [lat + 0.0001, lon, 10.0],
             ],
         );
+        let mut attrs = Attributes::new();
+        for (key, value) in attributes {
+            attrs.insert(
+                reearth_flow_types::Attribute::new(*key),
+                reearth_flow_types::AttributeValue::String((*value).to_string()),
+            );
+        }
         Feature::new_with_attributes_and_geometry(
-            Attributes::new(),
+            attrs,
             Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
         )
     }
