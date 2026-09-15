@@ -11,7 +11,6 @@
 //! `atlas_size` and overflow spills onto further pages.
 
 mod appearance;
-mod cost;
 mod mesh;
 mod primitive;
 mod quadtree;
@@ -207,10 +206,14 @@ const SAFETY_MAX_DEPTH: u32 = 24;
 /// unset.
 const DEFAULT_TARGET_TILE_SIZE: u64 = 1_048_576;
 
+/// Upper bound on same-tile contents a cell may split into; a cell that would
+/// need more keeps contents over `target_tile_size` instead.
+const MAX_CONTENTS_PER_TILE: usize = 15;
+
 /// A free function so `gml_to_3dtiles` can drive it directly from parsed
 /// CityGML, without a `Cesium3DTilesWriter`. Content glbs stream through
-/// `write_tile` as built rather than being retained, so peak memory stays at
-/// one glb regardless of tile count.
+/// `write_tile` as each cell is built rather than being retained, so peak
+/// memory stays at one cell's contents regardless of tile count.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
@@ -240,73 +243,76 @@ pub fn build(
         .reduce(GeoBox::union)
         .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
 
-    let mut cost_caches = cost::CostCaches::default();
     let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    let mut cell_cost: HashMap<Cell, u64> = HashMap::new();
-    let mut feature_cost: Vec<u64> = vec![0; extracted.len()];
-    for (i, (feature, m)) in extracted.iter().enumerate() {
+    for (i, (_, m)) in extracted.iter().enumerate() {
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
         let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
-        let cost = cost::estimate(feature, m, &mut cost_caches);
         by_cell.entry(cell).or_default().push(i);
-        *cell_cost.entry(cell).or_default() += cost;
-        feature_cost[i] = cost;
     }
 
-    merge_small_cells(&mut by_cell, &mut cell_cost, target_tile_size);
+    // A decode cache per build, dropped once its glb is built. PLATEAU textures
+    // are per-surface, so a source image is referenced by only one cell; a
+    // tileset-wide cache would grow without bound for no reuse gain.
+    let build_chunk = |chunk: &[usize]| {
+        let mut textures = TextureCache::default();
+        let mut embedded = EmbeddedTextures::new()?;
+        let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
+            chunk.iter().map(|&i| &extracted[i]).collect();
+        build_cell_glb(&members, options, render, &mut textures, &mut embedded)
+    };
 
-    let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
+    let mut units: HashMap<Cell, Vec<Unit>> = by_cell
+        .into_par_iter()
+        .map(
+            |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
+                let bytes = build_chunk(&features)?.len() as u64;
+                Ok((cell, vec![Unit { features, bytes }]))
+            },
+        )
+        .collect::<crate::errors::Result<_>>()?;
+    let overhead = measure_glb_overhead(&units, build_chunk)?;
+
+    merge_small_cells(&mut units, target_tile_size, overhead);
+
+    let occupied: BTreeSet<Cell> = units.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
 
-    // A cell over `target_tile_size` splits into several same-tile contents
-    // (3D Tiles 1.1 multiple contents) rather than growing an oversized glb;
-    // this only aids fetch parallelism, since the union of contents holds
-    // exactly the cell's features either way.
-    let cell_contents: Vec<(Cell, Vec<Vec<usize>>)> = by_cell
-        .into_iter()
-        .map(|(cell, indices)| {
-            (
-                cell,
-                split_by_cost(&indices, &feature_cost, target_tile_size),
-            )
-        })
-        .collect();
-    let content_counts: HashMap<Cell, usize> = cell_contents
+    // The glb bytes feed neither `tileset.json` nor the subtrees (those need
+    // only the cell keys, already captured in `occupied`), so each cell's
+    // contents stream to `write_tile` as soon as the cell is done and peak
+    // memory stays at one cell's contents per worker.
+    let cell_results: Vec<(Cell, usize, bool)> = units
+        .into_par_iter()
+        .map(
+            |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
+                let contents = split_by_size(units, target_tile_size, overhead, build_chunk)?;
+                let count = contents.glbs.len();
+                for (n, glb) in contents.glbs.into_iter().enumerate() {
+                    write_tile(content_path(cell, n), glb)?;
+                }
+                Ok((cell, count, contents.capped))
+            },
+        )
+        .collect::<crate::errors::Result<_>>()?;
+
+    let content_counts: HashMap<Cell, usize> = cell_results
         .iter()
-        .map(|(cell, chunks)| (*cell, chunks.len()))
+        .map(|(cell, count, _)| (*cell, *count))
         .collect();
     // The content URI template and the subtree `contentAvailability` array are
     // both declared once for the whole tileset, so every cell shares the same
     // slot count even where only one cell actually splits.
     let max_contents = content_counts.values().copied().max().unwrap_or(1);
-    let tile_count: usize = cell_contents.iter().map(|(_, chunks)| chunks.len()).sum();
-
-    // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
-    // textures are per-surface, so a source image is referenced by only one
-    // cell; a tileset-wide cache would grow without bound for no reuse gain.
-    // Stream each cell's glb straight to the caller as it is built, so peak
-    // memory stays at one glb rather than the whole tileset. The glb bytes feed
-    // neither `tileset.json` nor the subtrees (those need only the cell keys,
-    // already captured in `occupied`), so nothing downstream needs them retained.
-    // Cells are independent (own texture cache, own glb(s), unique output path),
-    // so render them across the rayon pool. Each glb still streams straight to
-    // `write_tile` as it is built, so peak memory stays at one glb per worker.
-    cell_contents
-        .par_iter()
-        .try_for_each(|(cell, chunks)| -> crate::errors::Result<()> {
-            let mut textures = TextureCache::default();
-            let mut embedded = EmbeddedTextures::new()?;
-            for (n, indices) in chunks.iter().enumerate() {
-                let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-                    indices.iter().map(|&i| &extracted[i]).collect();
-                let glb =
-                    build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
-                write_tile(content_path(*cell, n, max_contents > 1), glb)?;
-            }
-            Ok(())
-        })?;
+    let tile_count: usize = content_counts.values().sum();
+    let capped_cells = cell_results.iter().filter(|(_, _, capped)| *capped).count();
+    if capped_cells > 0 {
+        tracing::warn!(
+            "Cesium3DTilesWriter: {capped_cells} tile(s) reached the {MAX_CONTENTS_PER_TILE} \
+             contents-per-tile limit and carry contents over targetTileSize"
+        );
+    }
 
     let tileset_bytes =
         render_tileset_json(&root, available_levels, max_contents, &property_stats)?;
@@ -323,60 +329,187 @@ pub fn build(
     })
 }
 
-/// Partition a cell's features into fetch-parallel content chunks, each kept
-/// under `target_tile_size` where possible; a single feature already over the
-/// target is kept whole in its own chunk (features are never split).
-fn split_by_cost(
-    indices: &[usize],
-    feature_cost: &[u64],
-    target_tile_size: u64,
-) -> Vec<Vec<usize>> {
-    let mut chunks: Vec<Vec<usize>> = Vec::new();
-    let mut current: Vec<usize> = Vec::new();
-    let mut current_cost = 0u64;
-    for &i in indices {
-        let cost = feature_cost[i];
-        if !current.is_empty() && current_cost + cost > target_tile_size {
-            chunks.push(std::mem::take(&mut current));
-            current_cost = 0;
-        }
-        current.push(i);
-        current_cost += cost;
-    }
-    if !current.is_empty() {
-        chunks.push(current);
-    }
-    chunks
+/// A group of features whose glb, built on its own, is `bytes` long.
+struct Unit {
+    features: Vec<usize>,
+    bytes: u64,
 }
 
-/// Fold small sibling cells upward into their parent while staying within
-/// `target_tile_size`, deepest level first so a fold can cascade to the root.
-fn merge_small_cells(
-    by_cell: &mut HashMap<Cell, Vec<usize>>,
-    cell_cost: &mut HashMap<Cell, u64>,
+/// Bytes a glb holding all of `units` is expected to take: their measured
+/// bytes less the per-glb `overhead` paid only once.
+fn group_bytes(units: &[Unit], overhead: u64) -> u64 {
+    let sum: u64 = units.iter().map(|u| u.bytes).sum();
+    sum.saturating_sub(overhead.saturating_mul(units.len().saturating_sub(1) as u64))
+}
+
+/// Bytes every glb carries regardless of its features, measured as the amount
+/// by which the two smallest units shrink when built together. Zero when there
+/// are fewer than two units.
+fn measure_glb_overhead(
+    units: &HashMap<Cell, Vec<Unit>>,
+    build_chunk: impl Fn(&[usize]) -> crate::errors::Result<Vec<u8>>,
+) -> crate::errors::Result<u64> {
+    let mut smallest: Vec<&Unit> = units.values().flatten().collect();
+    if smallest.len() < 2 {
+        return Ok(0);
+    }
+    smallest.sort_by_key(|u| (u.bytes, u.features[0]));
+    let (a, b) = (smallest[0], smallest[1]);
+    let together: Vec<usize> = a.features.iter().chain(&b.features).copied().collect();
+    let joint = build_chunk(&together)?.len() as u64;
+    Ok((a.bytes + b.bytes).saturating_sub(joint))
+}
+
+/// The content glbs one cell splits into, in slot order.
+struct CellContents {
+    glbs: Vec<Vec<u8>>,
+    /// Whether [`MAX_CONTENTS_PER_TILE`] stopped a split, leaving at least one
+    /// content over the target.
+    capped: bool,
+}
+
+/// Partition a cell's units into fetch-parallel content chunks of at most
+/// `target_tile_size` bytes each. Units are first grouped by their measured
+/// bytes, then every chunk is built, measured, and cut further while it is
+/// over the target: a chunk of several units is cut between units, a chunk of
+/// one unit is cut into equal feature counts. A single feature is never split,
+/// and no cell yields more than [`MAX_CONTENTS_PER_TILE`] chunks.
+fn split_by_size(
+    units: Vec<Unit>,
     target_tile_size: u64,
-) {
-    let max_level = by_cell.keys().map(|c| c.level).max().unwrap_or(0);
+    overhead: u64,
+    build_chunk: impl Fn(&[usize]) -> crate::errors::Result<Vec<u8>> + Sync,
+) -> crate::errors::Result<CellContents> {
+    let expected = group_bytes(&units, overhead);
+    let parts = if target_tile_size == 0 {
+        MAX_CONTENTS_PER_TILE
+    } else {
+        (expected.div_ceil(target_tile_size) as usize).clamp(1, MAX_CONTENTS_PER_TILE)
+    };
+    let mut pending: Vec<Vec<Unit>> = if parts >= 2 && units.len() >= 2 {
+        split_into(units, |u| u.bytes, parts)
+    } else {
+        vec![units]
+    };
+
+    let mut glbs: Vec<Vec<u8>> = Vec::new();
+    let mut capped = false;
+    while !pending.is_empty() {
+        let built: Vec<(Vec<Unit>, Vec<u8>)> = std::mem::take(&mut pending)
+            .into_par_iter()
+            .map(|chunk| {
+                let features: Vec<usize> = chunk
+                    .iter()
+                    .flat_map(|u| u.features.iter().copied())
+                    .collect();
+                build_chunk(&features).map(|glb| (chunk, glb))
+            })
+            .collect::<crate::errors::Result<_>>()?;
+        let total = built.len();
+        for (k, (chunk, glb)) in built.into_iter().enumerate() {
+            let bytes = glb.len() as u64;
+            let feature_count: usize = chunk.iter().map(|u| u.features.len()).sum();
+            if bytes <= target_tile_size || feature_count == 1 {
+                glbs.push(glb);
+                continue;
+            }
+            let unprocessed = total - k - 1;
+            let room = MAX_CONTENTS_PER_TILE - glbs.len() - pending.len() - unprocessed;
+            if room < 2 {
+                capped = true;
+                glbs.push(glb);
+                continue;
+            }
+            let wanted = if target_tile_size == 0 {
+                room
+            } else {
+                bytes.div_ceil(target_tile_size) as usize
+            };
+            let parts = wanted.clamp(2, room).min(feature_count);
+            if chunk.len() >= 2 {
+                let parts = parts.min(chunk.len());
+                pending.extend(split_into(chunk, |u| u.bytes, parts));
+            } else {
+                let unit = chunk
+                    .into_iter()
+                    .next()
+                    .expect("a chunk holds at least one unit");
+                let per_unit = bytes / parts as u64;
+                pending.extend(split_into(unit.features, |_| 0, parts).into_iter().map(
+                    |features| {
+                        vec![Unit {
+                            features,
+                            bytes: per_unit,
+                        }]
+                    },
+                ));
+            }
+        }
+    }
+    Ok(CellContents { glbs, capped })
+}
+
+/// Cut `items` into between two and `parts` contiguous groups of roughly equal
+/// summed `weight`. Both `items` and `parts` must be at least two. Falls back
+/// to equal counts when every weight is zero.
+fn split_into<T>(items: Vec<T>, weight: impl Fn(&T) -> u64, parts: usize) -> Vec<Vec<T>> {
+    debug_assert!(items.len() >= 2 && parts >= 2);
+    let total: u64 = items.iter().map(&weight).sum();
+    if total == 0 {
+        let per = items.len().div_ceil(parts).max(1);
+        let mut groups: Vec<Vec<T>> = Vec::new();
+        for item in items {
+            match groups.last_mut() {
+                Some(last) if last.len() < per => last.push(item),
+                _ => groups.push(vec![item]),
+            }
+        }
+        return groups;
+    }
+    let budget = total as f64 / parts as f64;
+    let mut groups: Vec<Vec<T>> = Vec::new();
+    let mut current: Vec<T> = Vec::new();
+    let mut current_weight = 0u64;
+    for item in items {
+        let w = weight(&item);
+        if !current.is_empty() && groups.len() + 1 < parts && (current_weight + w) as f64 > budget {
+            groups.push(std::mem::take(&mut current));
+            current_weight = 0;
+        }
+        current.push(item);
+        current_weight += w;
+    }
+    if !current.is_empty() {
+        groups.push(current);
+    }
+    groups
+}
+
+/// Fold small sibling cells upward into their parent while the folded glb is
+/// expected to stay within `target_tile_size`, deepest level first so a fold
+/// can cascade to the root.
+fn merge_small_cells(units: &mut HashMap<Cell, Vec<Unit>>, target_tile_size: u64, overhead: u64) {
+    let max_level = units.keys().map(|c| c.level).max().unwrap_or(0);
     for level in (1..=max_level).rev() {
         let mut by_parent: HashMap<Cell, Vec<Cell>> = HashMap::new();
-        for cell in by_cell.keys().filter(|c| c.level == level) {
+        for cell in units.keys().filter(|c| c.level == level) {
             if let Some(parent) = cell.parent() {
                 by_parent.entry(parent).or_default().push(*cell);
             }
         }
         for (parent, mut children) in by_parent {
-            children.sort_by_key(|c| cell_cost[c]);
-            let mut parent_cost = cell_cost.get(&parent).copied().unwrap_or(0);
+            children.sort_by_key(|c| (group_bytes(&units[c], overhead), *c));
             for child in children {
-                let child_cost = cell_cost[&child];
-                if parent_cost + child_cost > target_tile_size {
+                let mut folded: Vec<&Unit> = Vec::new();
+                folded.extend(units.get(&parent).into_iter().flatten());
+                folded.extend(&units[&child]);
+                let sum: u64 = folded.iter().map(|u| u.bytes).sum();
+                let expected = sum.saturating_sub(overhead * (folded.len() as u64 - 1));
+                if expected > target_tile_size {
                     continue;
                 }
-                let features = by_cell.remove(&child).unwrap();
-                by_cell.entry(parent).or_default().extend(features);
-                cell_cost.remove(&child);
-                parent_cost += child_cost;
-                cell_cost.insert(parent, parent_cost);
+                let moved = units.remove(&child).unwrap();
+                units.entry(parent).or_default().extend(moved);
             }
         }
     }
@@ -450,15 +583,13 @@ fn render_tileset_json(
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
 
-/// `multi` picks the naming scheme: plain `{y}.glb` when every cell in the
-/// dataset has a single content (the common case, unchanged from before
-/// same-tile splitting existed), else `{y}_{n}.glb` for every cell, since the
-/// content URI template is declared once for the whole tileset.
-fn content_path(cell: Cell, n: usize, multi: bool) -> String {
-    if multi {
-        format!("content/{}/{}/{}_{}.glb", cell.level, cell.x, cell.y, n)
-    } else {
+/// Content slot `n` of a cell: slot 0 is the plain `{y}.glb`, further slots
+/// are `{y}_{n}.glb`.
+fn content_path(cell: Cell, n: usize) -> String {
+    if n == 0 {
         format!("content/{}/{}/{}.glb", cell.level, cell.x, cell.y)
+    } else {
+        format!("content/{}/{}/{}_{}.glb", cell.level, cell.x, cell.y, n)
     }
 }
 
@@ -1267,12 +1398,12 @@ mod tests {
 
     // The same two features, but with `target_tile_size` set below what even one
     // of them costs alone, so no merge/co-placement can fit them together —
-    // proving `split_by_cost` (and, since they'd otherwise share a cell, its
+    // proving `split_by_size` (and, since they'd otherwise share a cell, its
     // per-cell same-tile-content splitting) keeps every chunk under the target.
     #[test]
     fn oversized_cell_splits_into_multiple_same_tile_contents() {
         // Same location twice: both are forced into the same leaf cell
-        // regardless of `SAFETY_MAX_DEPTH`, isolating `split_by_cost`'s
+        // regardless of `SAFETY_MAX_DEPTH`, isolating `split_by_size`'s
         // same-tile-content behaviour from `merge_small_cells`.
         let features = [
             untextured_feature(35.0, 139.0),
@@ -1298,9 +1429,103 @@ mod tests {
         let paths = paths.into_inner().unwrap();
         assert_eq!(paths.len(), 2);
         assert!(
-            paths.iter().any(|p| p.ends_with("_0.glb"))
-                && paths.iter().any(|p| p.ends_with("_1.glb")),
-            "same-tile multi-content naming is used once a cell splits: {paths:?}"
+            paths.iter().any(|p| p.ends_with("/0.glb"))
+                && paths.iter().any(|p| p.ends_with("/0_1.glb")),
+            "slot 0 keeps the plain name and slot 1 gets a suffix once a cell splits: {paths:?}"
         );
+    }
+
+    /// Bytes of every content glb written for `features` under `target`.
+    fn content_sizes(features: &[Feature], target: u64) -> Vec<usize> {
+        let sizes = Mutex::new(Vec::new());
+        build(
+            features,
+            plain_metadata_options(),
+            target,
+            plain_render_options(),
+            |_path: String, glb| {
+                sizes.lock().unwrap().push(glb.len());
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+        sizes.into_inner().unwrap()
+    }
+
+    // The split decision follows the bytes the writer emits, not the estimate:
+    // a target one byte under the pair's glb splits the cell into one content
+    // per feature, while a target equal to it keeps the cell whole.
+    #[test]
+    fn split_follows_measured_glb_bytes() {
+        let one = content_sizes(&[untextured_feature(35.0, 139.0)], u64::MAX);
+        assert_eq!(one.len(), 1);
+        let single = one[0];
+
+        let pair = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(35.0, 139.0),
+        ];
+        let whole = content_sizes(&pair, u64::MAX);
+        assert_eq!(whole.len(), 1);
+        let both = whole[0] as u64;
+        assert!(both > single as u64);
+
+        let split = content_sizes(&pair, both - 1);
+        assert_eq!(split.len(), 2, "pair glb exceeds the target");
+        assert!(split.iter().all(|&b| b == single));
+
+        let kept = content_sizes(&pair, both);
+        assert_eq!(kept.len(), 1, "pair glb fits the target exactly");
+    }
+
+    // A cell that would need more contents than `MAX_CONTENTS_PER_TILE` stops
+    // splitting at the cap and keeps oversized contents instead.
+    #[test]
+    fn contents_per_tile_are_capped() {
+        let features: Vec<Feature> = (0..MAX_CONTENTS_PER_TILE * 3)
+            .map(|_| untextured_feature(35.0, 139.0))
+            .collect();
+        let sizes = content_sizes(&features, 1);
+        assert_eq!(sizes.len(), MAX_CONTENTS_PER_TILE);
+    }
+
+    #[test]
+    fn split_into_weights_items_and_never_yields_one_group() {
+        let weights = [10u64, 10, 10, 10, 100, 1, 1];
+        let all: Vec<usize> = (0..weights.len()).collect();
+        let w = |i: &usize| weights[*i];
+        assert_eq!(
+            split_into(all.clone(), w, 3),
+            vec![vec![0, 1, 2, 3], vec![4], vec![5, 6]]
+        );
+        assert_eq!(split_into(all, w, 2), vec![vec![0, 1, 2, 3], vec![4, 5, 6]]);
+        // The dominant item first: the rest still forms a second group.
+        let weights = [100u64, 1, 1];
+        assert_eq!(
+            split_into(vec![0usize, 1, 2], |i| weights[*i], 2),
+            vec![vec![0], vec![1, 2]]
+        );
+        // No weight signal at all: equal counts.
+        assert_eq!(
+            split_into((0..5).collect::<Vec<usize>>(), |_| 0, 2),
+            vec![vec![0, 1, 2], vec![3, 4]]
+        );
+    }
+
+    // Merging follows measured bytes: two far-apart features fold into one
+    // tile exactly when their joint glb fits the target, which the writer
+    // predicts from the two leaf glbs less the per-glb overhead it measured.
+    #[test]
+    fn merge_follows_measured_glb_bytes() {
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(36.0, 140.0),
+        ];
+        let whole = content_sizes(&features, u64::MAX);
+        assert_eq!(whole.len(), 1);
+        let joint = whole[0] as u64;
+
+        assert_eq!(content_sizes(&features, joint).len(), 1);
+        assert_eq!(content_sizes(&features, joint - 1).len(), 2);
     }
 }

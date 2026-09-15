@@ -40,7 +40,14 @@ pub(super) fn build(
         root_tile.insert("content".into(), json!({"uri": CONTENT_URI_TEMPLATE}));
     } else {
         let contents: Vec<Value> = (0..max_contents)
-            .map(|n| json!({"uri": format!("content/{{level}}/{{x}}/{{y}}_{n}.glb")}))
+            .map(|n| {
+                let uri = if n == 0 {
+                    CONTENT_URI_TEMPLATE.to_string()
+                } else {
+                    format!("content/{{level}}/{{x}}/{{y}}_{n}.glb")
+                };
+                json!({"uri": uri})
+            })
             .collect();
         root_tile.insert("contents".into(), Value::Array(contents));
     }
