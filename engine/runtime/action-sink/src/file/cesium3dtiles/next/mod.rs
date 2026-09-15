@@ -25,9 +25,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use indexmap::IndexMap;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use indexmap::IndexMap;
 use rayon::prelude::*;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
