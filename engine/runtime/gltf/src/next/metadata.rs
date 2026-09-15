@@ -309,6 +309,7 @@ mod tests {
     use indexmap::IndexMap;
 
     use super::*;
+    use reearth_flow_types::Attribute;
 
     fn feature_with_nested() -> Feature {
         let mut attrs: IndexMap<String, AttributeValue> = IndexMap::new();
@@ -316,9 +317,12 @@ mod tests {
         attrs.insert(
             "addr".to_string(),
             AttributeValue::Map(
-                [("city".to_string(), AttributeValue::String("X".to_string()))]
-                    .into_iter()
-                    .collect(),
+                [(
+                    Attribute::new("city"),
+                    AttributeValue::String("X".to_string()),
+                )]
+                .into_iter()
+                .collect(),
             ),
         );
         attrs.insert(

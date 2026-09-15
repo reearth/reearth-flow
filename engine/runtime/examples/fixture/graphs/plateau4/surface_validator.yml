@@ -44,7 +44,7 @@ nodes:
         - expr:
             type: flowExpr
             value: attributes["outerOrientation"] != "counter_clockwise"
-          outputPort: inCorrectOrientation
+          outputPort: incorrectOrientation
 
   - id: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
     name: GeometryReplacer
@@ -54,11 +54,11 @@ nodes:
       sourceAttribute: dumpGeometry
 
   - id: 2a5c8f1b-4e7d-4b2c-a9f6-1c4e7a2b5f8d
-    name: InCorrectOrientationRouter
+    name: IncorrectOrientationRouter
     type: action
     action: Output Router
     with:
-      routingPort: inCorrectOrientation
+      routingPort: incorrectOrientation
 
   ## Invalid Surface
   - id: 4f8b3e6a-7d1c-4e5a-c2f9-3a6f9b4e7c1d
@@ -369,7 +369,7 @@ edges:
   - id: 8b1e6a3f-4c7d-4b8e-a2f5-1e8b6a3f4c7d
     from: 7f4a1c6e-b9d2-4c5a-e8f1-6a3c7f4b9e2d
     to: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
   - id: 1d4a7c2e-8f5b-4d1a-c9f6-4a1d7c2e8f5b
     from: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d

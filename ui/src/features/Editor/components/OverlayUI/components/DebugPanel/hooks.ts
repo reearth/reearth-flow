@@ -21,6 +21,7 @@ import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
+import { toArtifactFiles } from "@flow/utils";
 
 export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
@@ -74,14 +75,13 @@ export default () => {
     return urls.length ? urls : undefined;
   }, [debugJobState?.selectedIntermediateData]);
 
-  // Separate output data for download functionality
-  const outputDataForDownload = useMemo(() => {
-    if (!outputURLs) return undefined;
-    return outputURLs.map((url) => ({
-      url,
-      name: decodeURIComponent(url.split("/").pop() || url),
-    }));
-  }, [outputURLs]);
+  // Separate output data for download functionality. The server hands the job's
+  // artifacts over as a flat list of URLs, so the folder a writer with `groupBy`
+  // set created is read back out of the URLs.
+  const outputDataForDownload = useMemo(
+    () => (outputURLs ? toArtifactFiles(outputURLs) : undefined),
+    [outputURLs],
+  );
 
   const selectedDataURL = useMemo(() => {
     if (!debugJobState?.focusedIntermediateData) return undefined;

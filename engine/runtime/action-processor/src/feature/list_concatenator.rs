@@ -125,7 +125,7 @@ impl Processor for ListConcatenator {
             // Each element should be a Map containing attributes
             if let AttributeValue::Map(element_attributes) = element {
                 // Try to get the specified attribute from this element
-                if let Some(value) = element_attributes.get(&attribute_key) {
+                if let Some(value) = element_attributes.get(attribute_key.as_str()) {
                     // Convert the value to string
                     values.push(value.to_string());
                 }

@@ -7,6 +7,8 @@ use super::coordinate::CoordinateFrame;
 mod constructor;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A single position in 2D space.
@@ -87,6 +89,12 @@ crate::unsupported!(Point3D: Coerce);
 // A point is a location, not an extent.
 #[cfg(feature = "new-geometry")]
 crate::no_area!(Point2D, Point3D);
+
+// A point has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point3D: DivideByGrid);
 
 // A position has no extent, so it reports the empty boundary rather than
 // refusing the operation.

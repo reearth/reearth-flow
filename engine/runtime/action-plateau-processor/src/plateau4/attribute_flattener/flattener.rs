@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 
 /// Sort key for flooding risk schema attributes, matching FME's fldAttrsSorter.
 /// Sorted by (desc_code, admin_code, scale_code, order) where desc_code
@@ -48,7 +48,7 @@ pub(super) struct Flattener {
 impl Flattener {
     pub(super) fn extract_fld_risk_attribute(
         &mut self,
-        attributes: &HashMap<String, AttributeValue>,
+        attributes: &Attributes,
     ) -> IndexMap<Attribute, AttributeValue> {
         let Some(disaster_risks) = attributes.get("uro:RiverFloodingRiskAttribute") else {
             return IndexMap::new();
@@ -141,7 +141,7 @@ impl Flattener {
 
     pub(super) fn extract_tnm_htd_ifld_risk_attribute(
         &mut self,
-        attributes: &HashMap<String, AttributeValue>,
+        attributes: &Attributes,
     ) -> IndexMap<Attribute, AttributeValue> {
         let src = [
             ("uro:TsunamiRiskAttribute", "津波浸水想定", "tnm"),
@@ -219,7 +219,7 @@ impl Flattener {
 
     pub(super) fn extract_lsld_risk_attribute(
         &mut self,
-        attributes: &HashMap<String, AttributeValue>,
+        attributes: &Attributes,
     ) -> IndexMap<Attribute, AttributeValue> {
         let Some(disaster_risks) = attributes.get("uro:LandSlideRiskAttribute") else {
             return IndexMap::new();
@@ -295,9 +295,7 @@ impl Flattener {
 
     /// Extract bldg:address from core:Address nested structure
     /// core:Address[0].xAL:AddressDetails[0].xAL:Country[0].xAL:Locality -> bldg:address
-    pub(super) fn extract_address(
-        attributes: &HashMap<String, AttributeValue>,
-    ) -> Option<AttributeValue> {
+    pub(super) fn extract_address(attributes: &Attributes) -> Option<AttributeValue> {
         let address_array = attributes.get("core:Address")?;
         let address_list = address_array.as_vec()?;
         let address_obj = address_list.first()?.as_map()?;
@@ -360,7 +358,7 @@ impl CommonAttributeProcessor {
     }
     fn flatten_generic_attribute(
         &mut self,
-        attribute: &HashMap<String, AttributeValue>,
+        attribute: &Attributes,
         prefix: &str,
     ) -> IndexMap<Attribute, AttributeValue> {
         let mut result = IndexMap::new();
@@ -399,7 +397,7 @@ impl CommonAttributeProcessor {
 
     pub(super) fn flatten_generic_attributes(
         &mut self,
-        attributes: &HashMap<String, AttributeValue>,
+        attributes: &Attributes,
     ) -> IndexMap<Attribute, AttributeValue> {
         let mut result = IndexMap::new();
 
@@ -431,7 +429,7 @@ impl CommonAttributeProcessor {
     #[allow(dead_code)]
     fn extract_lod_types(
         &self,
-        attrib: &HashMap<String, AttributeValue>,
+        attrib: &Attributes,
         parent_tag: &str,
     ) -> HashMap<Attribute, AttributeValue> {
         let mut result = HashMap::new();
@@ -467,7 +465,7 @@ impl CommonAttributeProcessor {
 
 pub(super) fn get_value_from_json_path(
     paths: &[&str],
-    attrib: &HashMap<String, AttributeValue>,
+    attrib: &Attributes,
 ) -> Option<AttributeValue> {
     let key = paths.first()?;
     let value = attrib.get(*key)?;

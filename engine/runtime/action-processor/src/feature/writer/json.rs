@@ -3,25 +3,9 @@ use std::sync::Arc;
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use reearth_flow_types::{create_batch_feature, CompiledCode, Feature};
 
 use super::FeatureProcessorError;
-
-/// # JsonWriter Parameters
-///
-/// Configuration for writing features in JSON format with optional custom conversion.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct JsonWriterParam {
-    pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct CompiledJsonWriterParam {
-    pub(super) converter: Option<CompiledCode>,
-}
 
 pub(super) fn write_json(
     output: &Uri,

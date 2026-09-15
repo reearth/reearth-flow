@@ -1,0 +1,44 @@
+{
+  "synth_trafficarea_1": {
+    "attributes": [
+      {},
+      {
+        "urc:geometrySrcDescLod1": [
+          "公共測量成果又は基本測量成果",
+          "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+        ],
+        "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。",
+        "tran:class": "道路",
+        "tran:function": "徒歩道",
+        "core:creationDate": "2024-03-19T00:00:00"
+      }
+    ],
+    "city_code": "08220",
+    "feature_type": "tran:TrafficArea",
+    "gml_id": "synth_trafficarea_1",
+    "lod": "2",
+    "tran_function": ""
+  },
+  "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
+    "attributes": [
+      {
+        "tran:function": "歩道部"
+      },
+      {
+        "core:creationDate": "2024-03-19T00:00:00",
+        "tran:function": "徒歩道",
+        "tran:class": "道路",
+        "urc:geometrySrcDescLod1": [
+          "公共測量成果又は基本測量成果",
+          "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+        ],
+        "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。"
+      }
+    ],
+    "city_code": "08220",
+    "feature_type": "tran:TrafficArea",
+    "gml_id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
+    "lod": "2",
+    "tran_function": "歩道部"
+  }
+}

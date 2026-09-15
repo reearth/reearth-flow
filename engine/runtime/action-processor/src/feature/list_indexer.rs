@@ -137,7 +137,7 @@ impl Processor for ListIndexer {
         // If we have valid element attributes, copy them to the feature
         if let Some(element_attributes) = element_attributes {
             for (key, value) in element_attributes {
-                let mut new_key = key;
+                let mut new_key = key.into_inner();
 
                 // Apply prefix if specified
                 if let Some(ref prefix) = self.copied_attribute_prefix {

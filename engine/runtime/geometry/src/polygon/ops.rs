@@ -503,6 +503,66 @@ impl Area for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Polygon2D {
+    /// The unsigned XY area of the face: the exterior ring's area minus its
+    /// holes'. For a 2D face this is the same quantity as
+    /// [`Polygon2D::area`] -- there is no elevation to project away -- kept
+    /// under this name too so a caller working across both dimensionalities
+    /// (e.g. a mesh's grid-divide, which judges
+    /// [`CellCoverage`](crate::ops::grid::CellCoverage) in the XY plane for
+    /// both 2D and 3D faces) can call the same method regardless.
+    ///
+    /// Measured with
+    /// [`ops::grid::signed_area_xy`](crate::ops::grid::signed_area_xy), the
+    /// same routine [`Polygon3D::area_xy`] uses and the same one the clip
+    /// itself measures a piece with, rather than delegating to
+    /// [`Polygon2D::area`]'s own shoelace. The two agree mathematically, but
+    /// `signed_area_xy` translates to the ring's first vertex before
+    /// accumulating and `Polygon2D::area` does not, which at a projected CRS
+    /// is the difference between a full cell reading `Full` and reading
+    /// `Partial` -- and a coverage verdict has to be answered by the same
+    /// arithmetic on both sides of the comparison. `Polygon2D::area` is a
+    /// public, general-purpose measure with callers of its own and is left
+    /// alone.
+    pub(crate) fn area_xy(&self) -> f64 {
+        let ring_area = |ring: &[[f64; 2]]| -> f64 {
+            let corners: Vec<crate::ops::grid::Corner<2>> = ring
+                .iter()
+                .map(|&pos| crate::ops::grid::Corner { pos, uv: None })
+                .collect();
+            crate::ops::grid::signed_area_xy(&corners).abs()
+        };
+        let exterior = ring_area(self.exterior());
+        let holes: f64 = self.interiors().map(ring_area).sum();
+        (exterior - holes).max(0.0)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Polygon3D {
+    /// The unsigned area of the face's XY *projection*: the exterior ring's
+    /// projected area minus its holes', ignoring slope. Unlike
+    /// [`Area::surface_area`], which measures the true (sloped) 3D surface,
+    /// this is the quantity a grid cell's own area is measured in, so it is
+    /// what [`CellCoverage::from_area`](crate::ops::grid::CellCoverage::from_area)
+    /// needs to judge how much of a cell a divided face covers. Reuses
+    /// [`ops::grid::signed_area_xy`](crate::ops::grid::signed_area_xy) rather
+    /// than a third shoelace implementation.
+    pub(crate) fn area_xy(&self) -> f64 {
+        let ring_area = |ring: &[[f64; 3]]| -> f64 {
+            let corners: Vec<crate::ops::grid::Corner<3>> = ring
+                .iter()
+                .map(|&pos| crate::ops::grid::Corner { pos, uv: None })
+                .collect();
+            crate::ops::grid::signed_area_xy(&corners).abs()
+        };
+        let exterior = ring_area(self.exterior());
+        let holes: f64 = self.interiors().map(ring_area).sum();
+        (exterior - holes).max(0.0)
+    }
+}
+
 use crate::ops::boundary::{unsupported as unbounded, Boundary, ExtractBoundary};
 
 // A face is bounded by its own rings, exterior first, each kept verbatim. A face
@@ -797,5 +857,554 @@ mod tests {
                 max: [4.0, 4.0, 2.0]
             }
         );
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+mod grid_impl {
+    //! `DivideByGrid` for the two polygon leaves.
+    //!
+    //! A polygon's rings are stored **closed** when well-formed (first ==
+    //! last); `ops::grid`'s half-plane clip assumes **open** rings, so the
+    //! closing duplicate is stripped on the way in, the same way
+    //! `open_ring_positions` (above, in this file) strips it for
+    //! triangulation. On the way out, [`ring_as_stored`] puts the closing
+    //! duplicate back, so a piece's ring is stored exactly the way the source
+    //! ring it came from was -- decided per ring, because `from_rings`
+    //! normalizes nothing and a source's rings need not agree with each other.
+    //! For a well-formed (closed) source that means every divided piece is
+    //! closed too, and the crate's closed-ring invariant holds for it:
+    //! `validation_next`'s `check_unclosed_ring` accepts it, and
+    //! `ops::containment`'s `coord_pos_relative_to_ring` -- which walks
+    //! `windows(2)` and documents that rings are stored closed -- judges hole
+    //! containment on it correctly.
+    //!
+    //! Mirroring the source rather than closing unconditionally is what makes
+    //! this safe for the *mesh* leaves, which are this op's other caller:
+    //! `polygon_mesh/ops.rs` rebuilds each mesh face into a bare polygon whose
+    //! rings are open (a mesh's CSR face buffers leave the closing edge
+    //! implied), divides that, and welds the pieces back with
+    //! `PolygonMesh3D::from_polygons`, which re-closes each ring itself. A
+    //! piece closed on the way out of an open source would carry one more
+    //! stored coord than its appearance's UV, and would no longer compare
+    //! equal to its source face in `mesh_unchanged`'s per-ring check.
+    //!
+    //! Winding is left alone either way: the clip preserves each ring's
+    //! orientation, so there is nothing to re-wind.
+    //!
+    //! Storage shape and UV length are one question, not two -- the UV array
+    //! is parallel to the *stored* coords -- so a restored closing duplicate
+    //! takes a duplicate UV entry with it, on both the untouched and the cut
+    //! path (see `build_one`).
+    //!
+    //! A `Polygon2D`'s single scalar elevation is not derivable from the
+    //! divided rings, so it is carried across explicitly (see
+    //! [`CarryElevation`]); a grid clip only cuts in XY, so it transfers
+    //! verbatim.
+    //!
+    //! Appearance is rebuilt per piece rather than blindly cloned, because a
+    //! piece's corner count generally differs from its source's -- except
+    //! when it doesn't: a piece the clip never actually touched (see
+    //! [`corner_layout_unchanged`]) keeps its source's appearance verbatim,
+    //! every theme and UV set included. Otherwise, `Corner` (from
+    //! `ops::grid`) carries exactly one UV channel through the clip, so only
+    //! the default theme's front, default-channel `Explicit` UV can be
+    //! threaded that way; see [`rebuild_appearance`] for what happens to
+    //! every other UV set the source appearance might carry, and why.
+
+    use super::{Polygon2D, Polygon3D};
+    use crate::appearance::{Appearance, ChannelId, Side, ThemeBinding, UvSet, UvSource};
+    use crate::ops::grid::{
+        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, ExteriorWinding, Face,
+        GridCell, GridDivideError, GridSpec,
+    };
+    use crate::ops::{Aabb, BoundingBox};
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// The polygon's default-theme, front-side, default-channel UV, gathered
+    /// into a flat array parallel to its corner buffer when that UV is
+    /// `Explicit` -- the one UV channel a [`Corner`] can carry through the
+    /// clip. `WorldToTexture` UV is positional, not per-corner, so there is
+    /// nothing to gather; [`rebuild_appearance`] carries it through unchanged
+    /// instead.
+    fn explicit_uv(appearance: &Option<Appearance>) -> Option<Vec<[f64; 2]>> {
+        match appearance.as_ref()?.default_uv()? {
+            UvSource::Explicit(coords) => Some(coords.to_vec()),
+            UvSource::WorldToTexture(_) => None,
+        }
+    }
+
+    /// The single scalar elevation a `Polygon2D` face lies at (`None` for a
+    /// `Polygon3D`, whose height lives in every corner's own `z` and is
+    /// already carried through the clip by interpolation). A grid clip only
+    /// ever cuts in XY, so this is never recomputed from the divided output
+    /// -- it is reattached to each piece verbatim, the same way
+    /// `triangular_mesh/ops.rs`'s trait of the same name and
+    /// `polygon_mesh/ops.rs`'s `z: self.elevation()` carry theirs.
+    trait CarryElevation {
+        fn elevation_for_grid(&self) -> Option<f64>;
+        fn set_elevation_for_grid(&mut self, elevation: Option<f64>);
+    }
+
+    impl CarryElevation for Polygon2D {
+        fn elevation_for_grid(&self) -> Option<f64> {
+            self.elevation()
+        }
+        fn set_elevation_for_grid(&mut self, elevation: Option<f64>) {
+            self.z = elevation;
+        }
+    }
+
+    impl CarryElevation for Polygon3D {
+        fn elevation_for_grid(&self) -> Option<f64> {
+            None
+        }
+        fn set_elevation_for_grid(&mut self, _elevation: Option<f64>) {}
+    }
+
+    /// Whether *this* ring is stored **closed** (first == last).
+    ///
+    /// Asked of every source ring, not once of the exterior. `from_rings`
+    /// normalizes nothing, so a polygon whose exterior is closed and whose
+    /// interior is not is constructible -- and answering for the interior
+    /// with the exterior's verdict would close a ring `rings_of` never
+    /// stripped, leaving the piece one stored coord longer than the
+    /// appearance the untouched fast path clones straight off the source.
+    /// That is exactly the corner-count / UV-length mismatch carrying the
+    /// source's storage shape through exists to prevent, so the shape is
+    /// carried per ring.
+    ///
+    /// A well-formed polygon is closed; the bare polygons
+    /// `polygon_mesh/ops.rs` rebuilds from a mesh's CSR face buffers are not,
+    /// because a mesh leaves the closing edge implied. See the module doc for
+    /// why the difference has to be carried through rather than normalized.
+    fn stored_closed<const N: usize>(ring: &[[f64; N]]) -> bool {
+        ring.len() >= 2 && ring.first() == ring.last()
+    }
+
+    /// One clipped ring's corners in *storage* order: the open ring the clip
+    /// produced, plus the closing duplicate when `close` says the source was
+    /// stored closed.
+    ///
+    /// `rings_of` strips the closing duplicate on the way in because the
+    /// half-plane clip assumes open rings; this puts it back on the way out.
+    /// Iterating `Corner`s rather than bare positions is deliberate: the
+    /// duplicate corner carries the first corner's UV along with its
+    /// position, which is what keeps the gathered UV array parallel to the
+    /// stored coords.
+    ///
+    /// A ring already closed (or too short to have a closing edge) is yielded
+    /// unchanged, so this never doubles a duplicate.
+    fn ring_as_stored<const N: usize>(
+        ring: &[Corner<N>],
+        close: bool,
+    ) -> impl Iterator<Item = &Corner<N>> {
+        let needs_close = close
+            && match (ring.first(), ring.last()) {
+                (Some(first), Some(last)) => first.pos != last.pos,
+                _ => false,
+            };
+        ring.iter().chain(ring.first().filter(|_| needs_close))
+    }
+
+    /// Whether a clipped piece's rings are bit-for-bit identical to the
+    /// source's -- same ring count, each ring the same length, each corner
+    /// the same position, all in the same order.
+    ///
+    /// Both sides are the *open* rings: `piece_rings` comes straight off the
+    /// clip and `source_rings` is `rings_of`'s output, so this is compared
+    /// before [`ring_as_stored`] restores any closing duplicate and re-closing
+    /// cannot perturb the verdict.
+    ///
+    /// True exactly when the clip touched nothing: `clip_rings_halfplane`'s
+    /// untouched path (`all_in`) pushes a ring through *by value*, so an
+    /// untouched ring's positions are bit-identical to its source, not
+    /// merely equal in area or shape.
+    ///
+    /// `CellCoverage` is not a substitute for this check, in either
+    /// direction: a small face lying strictly inside one cell is untouched
+    /// yet reports `Partial` (its area is less than the cell's), while a
+    /// face cut exactly along a cell boundary can report `Full` yet still be
+    /// a rewritten ring (new corners introduced right at the boundary).
+    fn corner_layout_unchanged<const N: usize>(
+        piece_rings: &[Vec<Corner<N>>],
+        source_rings: &[Vec<Corner<N>>],
+    ) -> bool {
+        piece_rings.len() == source_rings.len()
+            && piece_rings.iter().zip(source_rings).all(|(piece, source)| {
+                piece.len() == source.len() && piece.iter().zip(source).all(|(a, b)| a.pos == b.pos)
+            })
+    }
+
+    /// Rebuild an appearance for one clipped piece.
+    ///
+    /// **`layout_unchanged`** (see [`corner_layout_unchanged`]): the clip
+    /// touched nothing, so the piece's corner buffer is identical to the
+    /// source's and the *whole* appearance -- every theme, every UV set,
+    /// default or not, `Explicit` or `WorldToTexture` -- is still exactly
+    /// valid. Cloned verbatim, no rebuilding needed.
+    ///
+    /// **Otherwise**, only one UV channel survives the clip in general: the
+    /// default theme's front, default-channel `Explicit` UV, which
+    /// [`explicit_uv`] threaded through as each [`Corner`]'s `uv` and which
+    /// `gathered_uv` now carries back out, already parallel to the piece's
+    /// own corner buffer. Every *other* `Explicit` UV set the source might
+    /// carry -- a distinct theme, a back side, a non-default channel -- has
+    /// no per-corner data to recover it from (`Corner` carries exactly one
+    /// UV channel through a single clip pass), so it is dropped rather than
+    /// left at its stale, pre-clip length -- which would violate the
+    /// corner-count invariant `Appearance` depends on, and could panic a
+    /// later consumer (e.g. `Triangulate`'s UV re-gather indexes a UV array
+    /// by corner position, unchecked). `WorldToTexture` needs no threading
+    /// anywhere -- it is positional, not per-corner -- and always carries
+    /// over untouched, on any theme or side.
+    ///
+    /// Dropping a UV set also drops whatever binding depended on it, so the
+    /// result never leaves a material referencing a channel with nothing to
+    /// sample -- the orphan reference `validate_uv_coupling` forbids at
+    /// construction. That cost is scoped as narrowly as the data model
+    /// allows, and never spreads to a theme that was never at risk:
+    /// - A back-side set takes just that theme's back binding down with it
+    ///   (the theme becomes front-only, the same shape `Appearance`'s own
+    ///   `make_front_only` leaves).
+    /// - A front-side set takes the *whole theme* down, default theme
+    ///   included: `front` is not optional, and a `Uniform` front binding is
+    ///   one material for every channel it references, so losing UV for even
+    ///   one of those channels (a second, non-default channel alongside an
+    ///   otherwise-recoverable default slot, say) makes the whole binding
+    ///   unusable -- there is no coupling-valid way to keep it bound with
+    ///   one of its channels silently missing.
+    ///
+    /// Losing the default theme this way does not, by itself, cost any
+    /// *other* theme: every theme is judged solely on its own bindings, and
+    /// whether the appearance as a whole survives is decided only once,
+    /// after every theme has been judged -- if any theme remains, it is
+    /// returned (re-pointing `default_theme` at a surviving theme if the
+    /// original default did not make it); only when *no* theme survives does
+    /// the whole appearance come back `None`.
+    ///
+    /// Either way, the result is something the crate's own validated
+    /// setters would have accepted -- this op never hands a piece an
+    /// appearance they would have refused to build. What is silently lost
+    /// stays silent: this runs once per emitted piece over a division that
+    /// can emit many, so logging a drop here would put a per-piece side
+    /// effect on a hot path for what should be a rare shape of input.
+    fn rebuild_appearance(
+        src: &Option<Appearance>,
+        gathered_uv: Option<&[[f64; 2]]>,
+        layout_unchanged: bool,
+    ) -> Option<Appearance> {
+        let app = src.as_ref()?;
+        if layout_unchanged {
+            return Some(app.clone());
+        }
+
+        let default_theme = app.default_theme().clone();
+        let (materials, themes, _) = app.clone().into_parts();
+
+        let mut new_themes = Vec::with_capacity(themes.len());
+        for theme in themes {
+            let ThemeBinding {
+                theme: theme_id,
+                front,
+                mut back,
+                uv_sets,
+            } = theme;
+            let is_default_theme = theme_id == default_theme;
+            let mut drop_front = false;
+            let mut drop_back = false;
+
+            let mut kept_uv_sets = Vec::with_capacity(uv_sets.len());
+            for uv_set in uv_sets {
+                let is_default_slot = is_default_theme
+                    && uv_set.side == Side::Front
+                    && uv_set.channel == ChannelId::default();
+                match &uv_set.uv {
+                    UvSource::WorldToTexture(_) => kept_uv_sets.push(uv_set),
+                    UvSource::Explicit(_) if is_default_slot => match gathered_uv {
+                        Some(coords) => kept_uv_sets.push(UvSet {
+                            uv: UvSource::Explicit(coords.into()),
+                            ..uv_set
+                        }),
+                        None => match uv_set.side {
+                            Side::Front => drop_front = true,
+                            Side::Back => drop_back = true,
+                        },
+                    },
+                    // Some other channel/side/theme's `Explicit` UV: no
+                    // per-corner data survived the clip for it.
+                    UvSource::Explicit(_) => match uv_set.side {
+                        Side::Front => drop_front = true,
+                        Side::Back => drop_back = true,
+                    },
+                }
+            }
+
+            if drop_back {
+                // Mirrors `make_front_only`: the binding goes, and so does
+                // every back-side UV set in this theme's pool, referenced or
+                // not, so nothing pointless lingers.
+                back = None;
+                kept_uv_sets.retain(|uv| uv.side != Side::Back);
+            }
+
+            if drop_front {
+                // `front` is mandatory, so a theme that cannot keep it
+                // cannot be represented at all -- default theme or not. This
+                // costs only this one theme; it says nothing about whether
+                // any other theme, or the appearance as a whole, survives.
+                continue;
+            }
+
+            new_themes.push(ThemeBinding {
+                theme: theme_id,
+                front,
+                back,
+                uv_sets: kept_uv_sets,
+            });
+        }
+
+        // Whether the appearance survives at all is judged once, across
+        // every theme, not the moment any single theme (the default
+        // included) turns out unusable.
+        if new_themes.is_empty() {
+            return None;
+        }
+
+        // The original default theme may itself be among the casualties;
+        // fall back to the first surviving theme, mirroring `append_theme`'s
+        // own rule that the first theme added is the default.
+        let new_default = if new_themes.iter().any(|t| t.theme == default_theme) {
+            default_theme
+        } else {
+            new_themes[0].theme.clone()
+        };
+
+        let mut result = Appearance::from_parts(materials, new_themes, new_default);
+        result.compact_materials();
+        Some(result)
+    }
+
+    macro_rules! divide_polygon {
+        ($ty:ident, $dim:literal, $module:ident, $wrap:path) => {
+            mod $module {
+                use super::*;
+
+                impl DivideByGrid for $ty {
+                    fn divide_by_grid(
+                        &self,
+                        grid: &GridSpec,
+                        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+                    ) -> Result<(), GridDivideError> {
+                        let (min, max) = match self.bounding_box()? {
+                            Aabb::D2 { min, max } => (min, max),
+                            Aabb::D3 { min, max } => ([min[0], min[1]], [max[0], max[1]]),
+                        };
+
+                        let uv = explicit_uv(self.appearance());
+                        let (rings, ring_closed) = rings_of(self, uv.as_deref());
+                        if rings.is_empty() {
+                            return Err(GridDivideError::Empty);
+                        }
+
+                        let (lo, hi) = grid.cell_range(min, max);
+
+                        // Which stored winding marks an exterior ring here is
+                        // a property of the frame, not of the coordinates:
+                        // resolved once, off `self`, and handed to every clip.
+                        let exterior = ExteriorWinding::of(self.frame());
+
+                        // Row-major, so output order is defined and reproducible.
+                        for row in lo.row..=hi.row {
+                            for col in lo.col..=hi.col {
+                                let cell = GridCell { row, col };
+                                let window = grid.window(cell);
+                                let faces = clip_to_window(rings.clone(), &window, exterior);
+                                if faces.is_empty() {
+                                    continue;
+                                }
+                                let coverage =
+                                    CellCoverage::from_area(faces_area_xy(&faces), window.area());
+                                let geom = rebuild(self, faces, &rings, &ring_closed);
+                                emit(cell, coverage, geom);
+                            }
+                        }
+                        Ok(())
+                    }
+                }
+
+                /// Every ring (exterior, then holes) as open `Corner` rings,
+                /// alongside a parallel flag per ring saying whether the
+                /// source stored *that* ring closed.
+                ///
+                /// A well-formed ring is stored closed (first == last); the
+                /// closing duplicate is stripped here, and its flag is what
+                /// [`ring_as_stored`] later restores it by. The flags are
+                /// per ring rather than one verdict from the exterior
+                /// because `from_rings` normalizes nothing, so the rings of
+                /// one polygon need not agree -- see [`stored_closed`].
+                ///
+                /// The cursor still advances by each ring's full *stored*
+                /// length (closing duplicate included), so a later ring's UV
+                /// indices stay aligned with `coords` -- `uv`'s own layout.
+                fn rings_of(
+                    p: &$ty,
+                    uv: Option<&[[f64; 2]]>,
+                ) -> (Vec<Vec<Corner<$dim>>>, Vec<bool>) {
+                    let mut out = Vec::new();
+                    let mut closed = Vec::new();
+                    let mut cursor = 0usize;
+                    for ring in std::iter::once(p.exterior()).chain(p.interiors()) {
+                        let is_closed = stored_closed(ring);
+                        let open_len = if is_closed {
+                            ring.len() - 1
+                        } else {
+                            ring.len()
+                        };
+                        if open_len >= 3 {
+                            let corners = ring[..open_len]
+                                .iter()
+                                .enumerate()
+                                .map(|(i, pos)| Corner {
+                                    pos: *pos,
+                                    uv: uv.and_then(|u| u.get(cursor + i).copied()),
+                                })
+                                .collect::<Vec<_>>();
+                            out.push(corners);
+                            closed.push(is_closed);
+                        }
+                        cursor += ring.len();
+                    }
+                    (out, closed)
+                }
+
+                /// Rebuild one clipped face as a polygon in the source's
+                /// frame. `source_rings` is the whole source's own rings
+                /// (as fed into the clip, exterior first) -- compared
+                /// against this face's rings to tell whether the clip
+                /// touched anything at all -- and `source_closed` is
+                /// `rings_of`'s parallel record of how each of those rings
+                /// was stored.
+                fn build_one(
+                    src: &$ty,
+                    face: Face<$dim>,
+                    source_rings: &[Vec<Corner<$dim>>],
+                    source_closed: &[bool],
+                ) -> $ty {
+                    let unchanged = corner_layout_unchanged(&face.rings, source_rings);
+
+                    // Store each of the piece's rings the way its *own*
+                    // source ring was: for a well-formed polygon that means
+                    // closed, which is what `rings_of` stripped on the way
+                    // in, but a polygon's rings need not agree with each
+                    // other (see `stored_closed`).
+                    //
+                    // Rings are matched to their source by position:
+                    // exterior first, then holes in order, which is the
+                    // order the clip preserves. On the untouched fast path
+                    // -- the one where getting this wrong desynchronizes the
+                    // cloned appearance from the corner buffer -- the match
+                    // is exact by definition, since `unchanged` means ring
+                    // for ring, corner for corner. A cut piece can have more
+                    // rings than the source (a face severed in two), and
+                    // those fall back to the exterior's shape; its UV is
+                    // regathered over these same calls either way, so the UV
+                    // stays parallel to the stored coords regardless.
+                    let close_of = |i: usize| -> bool {
+                        source_closed
+                            .get(i)
+                            .or_else(|| source_closed.first())
+                            .copied()
+                            .unwrap_or(false)
+                    };
+
+                    let mut ring_iter = face.rings.into_iter();
+                    let exterior_corners = ring_iter.next().unwrap_or_default();
+                    let interior_corners: Vec<Vec<Corner<$dim>>> = ring_iter.collect();
+
+                    // Both the positions and the UV are gathered over
+                    // `ring_as_stored`, so a restored closing duplicate is
+                    // matched by a duplicate UV entry in the same slot and the
+                    // UV array stays parallel to the stored coords -- the
+                    // length `validate_uv_coupling` checks against, and the
+                    // one the `layout_unchanged` clone of the source's own
+                    // appearance assumes.
+                    //
+                    // Every corner must carry a UV for the gather to be
+                    // meaningful; `Option<Vec<_>>: FromIterator<Option<_>>`
+                    // short-circuits to `None` the moment one is missing.
+                    let gathered_uv: Option<Vec<[f64; 2]>> = std::iter::once(&exterior_corners)
+                        .chain(interior_corners.iter())
+                        .enumerate()
+                        .flat_map(|(i, ring)| ring_as_stored(ring, close_of(i)))
+                        .map(|c| c.uv)
+                        .collect();
+
+                    let exterior: Vec<[f64; $dim]> = ring_as_stored(&exterior_corners, close_of(0))
+                        .map(|c| c.pos)
+                        .collect();
+                    let interiors: Vec<Vec<[f64; $dim]>> = interior_corners
+                        .iter()
+                        .enumerate()
+                        .map(|(i, r)| ring_as_stored(r, close_of(i + 1)).map(|c| c.pos).collect())
+                        .collect();
+
+                    let mut poly = $ty::from_rings(src.frame().clone(), exterior, interiors);
+                    // `from_rings` hardcodes `z: None`; a grid clip never
+                    // changes Z, so the source's own elevation transfers
+                    // verbatim.
+                    poly.set_elevation_for_grid(src.elevation_for_grid());
+                    *poly.appearance_mut() =
+                        rebuild_appearance(src.appearance(), gathered_uv.as_deref(), unchanged);
+                    poly
+                }
+
+                /// Rebuild the clipped faces as geometry. Several faces
+                /// become a collection; one stays a face, so the common case
+                /// does not gain a wrapper.
+                fn rebuild(
+                    src: &$ty,
+                    faces: Vec<Face<$dim>>,
+                    source_rings: &[Vec<Corner<$dim>>],
+                    source_closed: &[bool],
+                ) -> Geometry {
+                    $wrap(
+                        faces
+                            .into_iter()
+                            .map(|face| build_one(src, face, source_rings, source_closed))
+                            .collect(),
+                    )
+                }
+            }
+        };
+    }
+
+    divide_polygon!(Polygon2D, 2, polygon_2d_grid, wrap_2d);
+    divide_polygon!(Polygon3D, 3, polygon_3d_grid, wrap_3d);
+
+    fn wrap_2d(mut built: Vec<Polygon2D>) -> Geometry {
+        if built.len() == 1 {
+            return Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(built.remove(0))));
+        }
+        Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
+            crate::collection::Collection2D::new(
+                built
+                    .into_iter()
+                    .map(|p| Euclidean2DGeometry::Polygon(Box::new(p))),
+            ),
+        ))
+    }
+
+    fn wrap_3d(mut built: Vec<Polygon3D>) -> Geometry {
+        if built.len() == 1 {
+            return Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(built.remove(0))));
+        }
+        Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            crate::collection::Collection3D::new(
+                built
+                    .into_iter()
+                    .map(|p| Euclidean3DGeometry::Polygon(Box::new(p))),
+            ),
+        ))
     }
 }

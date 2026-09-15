@@ -2374,6 +2374,17 @@
             "maximum": 65536.0,
             "minimum": 0.0
           },
+          "wrapTolerance": {
+            "title": "Tolerancia de Repetición",
+            "description": "Cuánto puede desviarse una coordenada de textura fuera de 0-1 y aun así recortarse como desviación del conjunto de datos. Más allá de ese margen, se considera que la textura se repite y se le asigna una página de atlas propia para que el muestreador pueda repetirla. Valor predeterminado: 0.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
+          },
           "textureCodec": {
             "title": "Códec de Textura",
             "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas.",
@@ -2465,6 +2476,219 @@
       "tags": [
         "3d",
         "tiling"
+      ]
+    },
+    {
+      "name": "CityGML 2 Reader",
+      "type": "source",
+      "description": "Lee archivos CityGML 2.0 como modelos de ciudad 3D, resolviendo las referencias gml:id dentro de cada documento",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 2 Reader Parameters",
+        "description": "Configuración para leer un documento CityGML 2.0 como modelos de ciudad 3D.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "Extraer Etiquetas",
+            "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "Conservar Atributos",
+            "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplanar Tipos de Medida",
+            "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "cityGmlAttributesKey": {
+            "title": "Clave de Atributos CityGML",
+            "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
+      "name": "CityGML 3 Reader",
+      "type": "source",
+      "description": "Lee archivos CityGML 3.0 como modelos de ciudad 3D, resolviendo las referencias gml:id dentro de cada documento",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 3 Reader Parameters",
+        "description": "Configuración para leer un documento CityGML 3.0 como modelos de ciudad 3D.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "Extraer Etiquetas",
+            "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "Conservar Atributos",
+            "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true.",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenLeafAttributes": {
+            "title": "Aplanar Atributos Hoja",
+            "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cityGmlAttributesKey": {
+            "title": "Clave de Atributos CityGML",
+            "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -4202,6 +4426,71 @@
       ]
     },
     {
+      "name": "Feature Group Mapper",
+      "type": "processor",
+      "description": "Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de Feature Group Mapper",
+        "type": "object",
+        "required": [
+          "attribute",
+          "expr"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "Atributo de agrupación",
+            "description": "Atributo cuyo valor agrupa entidades consecutivas.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "expr": {
+            "title": "Expresión",
+            "description": "Expresión sobre `features` (una entrada de atributos por cada entidad del grupo) y `variables`, que devuelve una lista de la misma longitud que `features`. Cada mapa devuelto reemplaza los atributos de la entidad correspondiente.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "scripting",
+        "attribute"
+      ]
+    },
+    {
       "name": "Feature Joiner",
       "type": "processor",
       "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",
@@ -4897,209 +5186,125 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Writer Parameters",
         "description": "Configuration for writing features to different file formats.",
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
+        "type": "object",
+        "required": [
+          "format",
+          "output"
+        ],
+        "properties": {
+          "format": {
+            "title": "Format",
+            "description": "The file format to write. Every format writes attribute values only; geometry is not included in the output.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureWriterFormat"
               }
-            }
+            ]
           },
-          {
+          "output": {
+            "title": "Output Path",
+            "description": "Where to write, relative to the job's output directory. Evaluated once per feature, so an expression over the feature's attributes splits the stream into one file per distinct result.",
             "type": "object",
+            "format": "code",
             "required": [
-              "format",
-              "output"
+              "type",
+              "value"
             ],
             "properties": {
-              "format": {
+              "type": {
                 "type": "string",
                 "enum": [
-                  "tsv"
+                  "flowExpr",
+                  "string"
                 ]
               },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "title": "JsonWriter Parameters",
-            "description": "Configuration for writing features in JSON format with optional custom conversion.",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "converter": {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "title": "CityGmlWriter Parameters",
-            "description": "Configuration for writing features in CityGML 2.0 format.",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "lodFilter": {
-                "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
-                "default": null,
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "integer",
-                  "format": "uint8",
-                  "minimum": 0.0
-                }
-              },
-              "epsgCode": {
-                "description": "EPSG code for coordinate reference system",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "prettyPrint": {
-                "description": "Whether to format output with indentation (default: true)",
-                "default": true,
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+              "value": {
+                "type": "string"
               }
             }
           }
-        ]
+        },
+        "definitions": {
+          "FeatureWriterFormat": {
+            "title": "Format",
+            "description": "The file format written, and the settings belonging to it.",
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "Comma-separated values. The column list comes from the first feature written to a file, so every later feature must carry those same attributes.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "csv"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "TSV",
+                "description": "Tab-separated values, with the same column rules as CSV.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "tsv"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "JSON",
+                "description": "An array of objects, one per feature, holding its attribute values.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "json"
+                    ]
+                  },
+                  "converter": {
+                    "title": "Converter",
+                    "description": "Builds the JSON document from all the features destined for one file, replacing the default array of attribute objects.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -5111,7 +5316,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "csv",
+        "json"
+      ]
     },
     {
       "name": "File Path Extractor",
@@ -5895,56 +6103,53 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Filter Parameters",
         "description": "Configure how to filter features based on their geometry type",
-        "oneOf": [
-          {
-            "title": "No Geometry",
-            "description": "Separates the features that carry no geometry at all from the ones that do.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+        "type": "object",
+        "required": [
+          "filterType"
+        ],
+        "properties": {
+          "filterType": {
+            "title": "Filter Type",
+            "description": "The aspect of the geometry that selects the output port. A feature no port claims leaves by `unfiltered`.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FilterType"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "FilterType": {
+            "title": "Filter Type",
+            "description": "The aspect of the geometry that selects the output port.",
+            "oneOf": [
+              {
+                "title": "No Geometry",
+                "description": "Separates the features that carry no geometry at all from the ones that do.",
                 "type": "string",
                 "enum": [
                   "none"
                 ]
-              }
-            }
-          },
-          {
-            "title": "Geometry Type",
-            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+              },
+              {
+                "title": "Geometry Type",
+                "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
                 "type": "string",
                 "enum": [
                   "geometryType"
                 ]
-              }
-            }
-          },
-          {
-            "title": "Detailed Geometry Type",
-            "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+              },
+              {
+                "title": "Detailed Geometry Type",
+                "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
                 "type": "string",
                 "enum": [
                   "detailedGeometryType"
                 ]
               }
-            }
+            ]
           }
-        ]
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -5952,7 +6157,7 @@
       ],
       "outputPorts": [
         "unfiltered",
-        "none",
+        "no-geometry",
         "point",
         "curve",
         "surface",
@@ -5971,6 +6176,92 @@
         "csg",
         "multi-solid",
         "aggregate"
+      ],
+      "categories": [
+        "Filter"
+      ],
+      "tags": [
+        "geometry"
+      ]
+    },
+    {
+      "name": "Geometry Identifier",
+      "type": "processor",
+      "description": "Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Identifier Parameters",
+        "description": "How close two geometries must stay to count as one shape, which features are compared against which, and where the results are written.",
+        "type": "object",
+        "required": [
+          "tolerance"
+        ],
+        "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Greatest distance, in the units the coordinates are expressed in, that two geometries may stray from one another and still count as the same shape. Zero admits only geometries whose coordinates coincide exactly, which leaves no room for rounding; prefer a small positive distance.",
+            "type": "number",
+            "format": "double"
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the set a geometry is compared against, such as a parent feature or a source file. Geometries in different groups are never identified with one another. When omitted, all input features form a single group.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute the identifier is written to. Features whose geometries occupy the same space carry the same value. Identifiers are counted across the whole input rather than restarted per group, so the same value always names the same set of features however they are grouped again downstream.",
+            "default": "_equivalence_id",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature, such as its gml:id. Read only to write the matched IDs attribute, and required when that is set.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matchedIdsAttribute": {
+            "title": "Matched IDs Attribute",
+            "description": "Attribute the identifiers of the features sharing this feature's shape are written to, as an array. Every feature carrying one identifier value lists the whole set, itself included, in arrival order and without repeats. Left unwritten when omitted.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -6348,7 +6639,7 @@
           },
           "groupBy": {
             "title": "Group By Attributes",
-            "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds.",
+            "description": "Attributes whose values group features together. Unless `origin` is set, each group is divided on its own grid, anchored at the corner of that group's combined bounds.",
             "type": [
               "array",
               "null"
@@ -6356,6 +6647,20 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
+          },
+          "origin": {
+            "title": "Grid Origin",
+            "description": "The point the grid is anchored at, as `[x, y]` in the same coordinate system as the geometry. Anchoring the grid explicitly makes cells fall in the same places across groups and across runs, instead of shifting with each group's extent.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
           }
         },
         "definitions": {

@@ -163,7 +163,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面のエラー.csv
@@ -345,7 +346,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の交差.csv
@@ -471,7 +473,7 @@ nodes:
 
   # --- LOD0 surface orientation pipeline ---
   # SurfaceChecks emits every LOD0 face whose 2D exterior ring is wound against
-  # the coordinate frame on `inCorrectOrientation`. A face that also fails a
+  # the coordinate frame on `incorrectOrientation`. A face that also fails a
   # surface check is still counted here: the two errors are independent.
   - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
     name: Lod0IncorrectOrientationCounter
@@ -510,7 +512,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の向きエラー.csv
@@ -599,7 +602,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD1境界面のエラー.csv
@@ -768,10 +772,11 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
-        value: 02_建築物_非水密体.csv
+        value: 02_建築物_非水密立体.csv
 
   - id: 19da512d-70c7-4461-824b-047919d0cd40
     name: Lod1SolidIssuesCounter
@@ -810,7 +815,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体のエラー.csv
@@ -976,7 +982,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体交差.csv
@@ -1100,9 +1107,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_invalid_building_id_format", 0)
-        # TODO: wire to the L-bldg-02 BuildingPart-connectivity pipeline once an
-        # upstream action can record, per BuildingPart, the gml:ids it shares a
-        # boundary polygon with.
+        # Wired to the L-bldg-02 BuildingPart-connectivity pipeline
+        # (CountLbldg02Errors).
         - attribute: "L-bldg-02 エラー"
           expr:
             type: flowExpr
@@ -1175,8 +1181,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod3_solid_issues", 0)
-        # TODO: wire to the Z-bldg-03 mesh-code pipeline once
-        # DestinationMeshCodeExtractor supports this geometry model.
+        # Wired to the Z-bldg-03 mesh-code pipeline (IncorrectMeshCodeCounter).
         - attribute: "図郭不正"
           expr:
             type: flowExpr
@@ -1205,7 +1210,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_検査結果一覧.csv
@@ -1310,6 +1316,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD0-1のBuildingPart", 0)
+        # 図郭不正 is kept out of totalErrorCount, matching the original implementation.
         - newAttribute: "totalErrorCount"
           expr:
             type: flowExpr
@@ -1333,7 +1340,6 @@ nodes:
               + attributes.get("LOD3 非水密立体", 0)
               + attributes.get("LOD2 立体のエラー", 0)
               + attributes.get("LOD3 立体のエラー", 0)
-              + attributes.get("図郭不正", 0)
               + attributes.get("LOD0-1のBuildingPart", 0)
               + attributes.get("LOD1 立体の交差", 0)
               + attributes.get("LOD2 立体の交差", 0)
@@ -1344,20 +1350,24 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            result = [];
-            feature = attributes["__features"][0];
-            for key in feature.keys() {
-              result.append({"name": key, "count": feature[key]});
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              result = [];
+              feature = attributes["__features"][0];
+              for key in feature.keys() {
+                # totalErrorCount only drives qc_result_ok; it is not a count.
+                if key != "totalErrorCount" {
+                  result.append({"name": key, "count": feature[key]});
+                }
+              }
+              result
             }
-            result
-          }
       output:
         type: string
         value: summary_bldg.json
@@ -1470,7 +1480,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
@@ -2105,7 +2116,7 @@ nodes:
         - attribute: check
           expr:
             type: string
-            value: 非水密体
+            value: 非水密立体
         - attribute: issue
           expr:
             type: string
@@ -2130,7 +2141,7 @@ nodes:
     with:
       output:
         type: string
-        value: error_geometry/02_建築物_非水密体.geojson
+        value: error_geometry/02_建築物_非水密立体.geojson
       writeCrs: true
 
   - id: e1000000-0000-4000-8000-000000000011
@@ -2177,13 +2188,10 @@ nodes:
         value: error_geometry/02_建築物_立体のエラー.geojson
       writeCrs: true
 
-  # The spot each shell-level check flagged. Face-level positions are left out:
-  # they belong to the boundary-surface checks, which report them per face.
-  #
-  # TODO: add an unshared-edge layer (02_建築物_非水密体の辺.geojson) once
-  # `check_shell_manifold` reports the unshared edges as its positions. It
-  # currently reports the whole shell, which would only duplicate
-  # 02_建築物_非水密体.geojson, so ShellManifold is excluded here.
+  # The spot each shell-level check flagged. ShellManifold reports the edges a
+  # second face is missing from, which is its own layer. Face-level positions are
+  # left out: they belong to the boundary-surface checks, which report them per
+  # face.
   - id: e1000000-0000-4000-8000-000000000041
     name: FeatureFilterSolidIssueLocation
     type: action
@@ -2192,10 +2200,47 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
+            value: attributes["validationCheck"] == "ShellManifold"
+          outputPort: notClosedEdge
+        - expr:
+            type: flowExpr
             value: |
               check = attributes["validationCheck"];
               check == "ShellConnected" or check == "Orientable" or check == "Orientation" or check == "ShellOrientation" or check == "SelfIntersection"
           outputPort: shellIssue
+
+  - id: e1000000-0000-4000-8000-000000000044
+    name: AttributeMapperNotClosedEdgeGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Not Closed
+
+  - id: e1000000-0000-4000-8000-000000000045
+    name: FeatureGeoJsonWriterNotClosedEdge
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_非水密立体の辺.geojson
+      writeCrs: true
 
   - id: e1000000-0000-4000-8000-000000000042
     name: AttributeMapperSolidIssueLocationGeoJson
@@ -2566,7 +2611,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_建物ID書式不正.csv
@@ -2687,7 +2733,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_C-bldg-01エラー.csv
@@ -2759,7 +2806,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-04,05エラー.csv
@@ -2815,7 +2863,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_市区町村コードエラー.csv
@@ -2936,7 +2985,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-06エラー.csv
@@ -2990,13 +3040,271 @@ nodes:
     type: subGraph
     subGraphId: b1000000-0000-4000-8000-000000000000
 
-  # TODO: add the L-bldg-02 check (LOD2/LOD3 BuildingPart connectivity) once an
-  # upstream action can pair up near-identical polygons and record, per
-  # BuildingPart, the gml:ids it shares a boundary polygon with.
-  # PLATEAU6.TransitiveLinkResolver consumes that link list and reads no
-  # geometry itself, so it is the producer that is still missing.
-  # TODO: add the destination mesh code check (図郭不正) once
-  # DestinationMeshCodeExtractor supports this geometry model.
+  # --- L-bldg-02: LOD2/LOD3 BuildingPart connectivity ---
+  # Two BuildingParts of one Building are connected when they share a boundary
+  # surface. The chain below takes each part apart into its surfaces, pairs the
+  # surfaces that occupy the same space, and hands the resulting part-to-part
+  # links to the resolver, which decides whether the Building's parts hang
+  # together. CityGML 3.0 has no LOD4, so only lod2 and lod3 feed this chain.
+  - id: c1b00090-0000-4000-8000-000000000090
+    name: BuildingPartSurfaceCoercer
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: c1b00091-0000-4000-8000-000000000091
+    name: BuildingPartSurfaceSplitter
+    type: action
+    action: Geometry Splitter
+
+  # Surfaces occupying the same space name each other's BuildingPart. The
+  # tolerance is one millimetre in the plane rectangular CS the geometry has been
+  # reprojected into, which absorbs rounding without joining distinct surfaces.
+  # The rejected port stays unconnected: the coercer above guarantees polygons,
+  # so nothing reaches it.
+  - id: c1b00092-0000-4000-8000-000000000092
+    name: BuildingPartSurfaceIdentifier
+    type: action
+    action: Geometry Identifier
+    with:
+      tolerance: 0.001
+      groupBy:
+        - index
+        - name
+        - __citygml_parent_gml_id
+        - lod
+      idAttribute: __citygml_gml_id
+      matchedIdsAttribute: _shared_part_ids
+
+  - id: c1b00093-0000-4000-8000-000000000093
+    name: TransitiveLinkResolver
+    type: action
+    action: PLATEAU6.TransitiveLinkResolver
+    with:
+      idAttribute: __citygml_gml_id
+      linkedIdsAttribute: _shared_part_ids
+      groupBy:
+        - index
+        - name
+        - __citygml_parent_gml_id
+        - lod
+
+  # Every surface of a BuildingPart carries the same verdict; keep one per part.
+  - id: c1b00094-0000-4000-8000-000000000094
+    name: DeduplicateBuildingParts
+    type: action
+    action: Feature Duplicate Filter
+    with:
+      filterBy:
+        - index
+        - name
+        - __citygml_parent_gml_id
+        - lod
+        - __citygml_gml_id
+
+  # A part whose Building's parts do not all hang together is the error.
+  - id: c1b00095-0000-4000-8000-000000000095
+    name: FilterNonFullStatus
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_status"] != "full"
+          outputPort: filtered
+
+  - id: c1b00096-0000-4000-8000-000000000096
+    name: CountLbldg02Errors
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_lbldg02_error
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: c1b00097-0000-4000-8000-000000000097
+    name: AttributeMapperLbldg02Output
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: Building.gml_id
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: BuildingPart.gml_id
+          valueAttribute: __citygml_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: status
+          valueAttribute: _status
+        - attribute: connected_id
+          valueAttribute: _connected_id
+        - attribute: connected_parts
+          valueAttribute: _connected_parts
+
+  - id: c1b00098-0000-4000-8000-000000000098
+    name: FeatureWriterLbldg02Errors
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: string
+        value: 02_建築物_L-bldg-02エラー.csv
+
+  # Join the per-file L-bldg-02 error count onto each file feature.
+  - id: c1b00099-0000-4000-8000-000000000099
+    name: Lbldg02SummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+
+  # --- Z-bldg-03 mesh-code (figure boundary) pipeline ---
+  # Taps the reprojected LOD0 footprints (already forced to 2D by TwoDimensionForcer)
+  # and computes the Japanese standard 1km mesh code the building actually falls in.
+  # A building whose GML filename does not start with that mesh code is a figure
+  # boundary error (図郭不正). Mirrors the plateau4 surface_validation.yml wiring.
+  - id: c1b00070-0000-4000-8000-000000000070
+    name: DestinationMeshCodeExtractor
+    type: action
+    action: PLATEAU6.DestinationMeshCodeExtractor
+    with:
+      meshType: 3
+      epsgCode:
+        type: flowExpr
+        value: variables.get("prcs")
+      meshcodeAttr: "meshcode"
+
+  - id: c1b00071-0000-4000-8000-000000000071
+    name: MeshCodeTester
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not attributes["name"].starts_with(attributes["meshcode"])
+          outputPort: failed
+
+  - id: c1b00072-0000-4000-8000-000000000072
+    name: AttributeMapperIncorrectMeshCode
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: feature_type
+          valueAttribute: __citygml_feature_type
+        - attribute: meshcount
+          valueAttribute: _mesh_count
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: meshcode
+          valueAttribute: meshcode
+        - attribute: filename
+          valueAttribute: name
+        - attribute: mesh2area
+          valueAttribute: _meshcode_to_area
+        - attribute: gml_id
+          valueAttribute: __citygml_gml_id
+
+  - id: c1b00073-0000-4000-8000-000000000073
+    name: FeatureWriterIncorrectMeshCode
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
+
+  # GeoJSON error-detail output for the same check. The geometry is the 2D LOD0
+  # footprint the mesh code was computed from.
+  - id: c1b00076-0000-4000-8000-000000000076
+    name: AttributeMapperIncorrectMeshCodeGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: 図郭不正
+        - attribute: issue
+          expr:
+            type: string
+            value: IncorrectMeshCode
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: meshCode
+          valueAttribute: meshcode
+        - attribute: meshCount
+          valueAttribute: _mesh_count
+        - attribute: meshToArea
+          valueAttribute: _meshcode_to_area
+
+  - id: c1b00077-0000-4000-8000-000000000077
+    name: FeatureGeoJsonWriterIncorrectMeshCode
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_図郭不正.geojson
+      writeCrs: true
+
+  # Count 図郭不正 rows per file for the summary column.
+  - id: c1b00074-0000-4000-8000-000000000074
+    name: IncorrectMeshCodeCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+      calculations:
+        - newAttribute: _num_incorrect_meshcode
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # Join the per-file 図郭不正 count onto each file feature.
+  - id: c1b00075-0000-4000-8000-000000000075
+    name: IncorrectMeshCodeSummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: attributes["name"]
 
   # ========== Z-bldg-04: LOD0/LOD1 BuildingPart ==========
   # A BuildingPart is only allowed to carry LOD2+ geometry. LOD0/LOD1 BuildingParts
@@ -3039,7 +3347,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0-1のBuildingPart.csv
@@ -3303,11 +3612,11 @@ edges:
     fromPort: features
     toPort: features
 
-  # LOD0 surface orientation pipeline (taps inCorrectOrientation surfaces).
+  # LOD0 surface orientation pipeline (taps incorrectOrientation surfaces).
   - id: 8712059f-8e80-4cb6-ba77-12c294035546
     from: d12958f8-f52d-4c95-b62c-58a92d363017
     to: 0177ff7b-a842-4aca-be99-47813bf1b11d
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer (one row per surface)
   - id: 6acfa6f3-ff6b-43e9-af8e-72c99ea08c36
@@ -4436,15 +4745,15 @@ edges:
     to: c1b00057-0000-4000-8000-000000000057
     fromPort: features
     toPort: supplier
-  # Unmatched-xlink summary merger output -> Z-bldg-04 summary merger (requestor).
+  # Unmatched-xlink summary merger output -> mesh-code summary merger (requestor).
   - id: c1b0e05b-0000-4000-8000-00000000005b
     from: c1b00057-0000-4000-8000-000000000057
-    to: c1b00083-0000-4000-8000-000000000083
+    to: c1b00075-0000-4000-8000-000000000075
     fromPort: merged
     toPort: requestor
   - id: c1b0e05c-0000-4000-8000-00000000005c
     from: c1b00057-0000-4000-8000-000000000057
-    to: c1b00083-0000-4000-8000-000000000083
+    to: c1b00075-0000-4000-8000-000000000075
     fromPort: unmerged
     toPort: requestor
 
@@ -4461,6 +4770,74 @@ edges:
     to: c1b00061-0000-4000-8000-000000000061
     fromPort: buildingPart
     toPort: features
+
+  # --- Z-bldg-03 mesh-code pipeline edges ---
+  # Tap the reprojected 2D LOD0 footprints from TwoDimensionForcer.
+  - id: c1b0e070-0000-4000-8000-000000000070
+    from: d65886fc-2d62-448c-8b2e-16841e3c4887
+    to: c1b00070-0000-4000-8000-000000000070
+    fromPort: features
+    toPort: features
+  # Extractor -> mesh-code tester.
+  - id: c1b0e071-0000-4000-8000-000000000071
+    from: c1b00070-0000-4000-8000-000000000070
+    to: c1b00071-0000-4000-8000-000000000071
+    fromPort: features
+    toPort: features
+  # Filename/mesh-code mismatch -> attribute mapper -> CSV writer.
+  - id: c1b0e072-0000-4000-8000-000000000072
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00072-0000-4000-8000-000000000072
+    fromPort: failed
+    toPort: features
+  - id: c1b0e073-0000-4000-8000-000000000073
+    from: c1b00072-0000-4000-8000-000000000072
+    to: c1b00073-0000-4000-8000-000000000073
+    fromPort: features
+    toPort: features
+  - id: c1b0e074-0000-4000-8000-000000000074
+    from: c1b00073-0000-4000-8000-000000000073
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # The same mismatches -> GeoJSON mapper -> GeoJSON writer.
+  - id: c1b0e079-0000-4000-8000-000000000079
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00076-0000-4000-8000-000000000076
+    fromPort: failed
+    toPort: features
+  - id: c1b0e07a-0000-4000-8000-00000000007a
+    from: c1b00076-0000-4000-8000-000000000076
+    to: c1b00077-0000-4000-8000-000000000077
+    fromPort: features
+    toPort: features
+  - id: c1b0e07b-0000-4000-8000-00000000007b
+    from: c1b00077-0000-4000-8000-000000000077
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # Mismatched features -> counter -> mesh-code summary merger (supplier).
+  - id: c1b0e075-0000-4000-8000-000000000075
+    from: c1b00071-0000-4000-8000-000000000071
+    to: c1b00074-0000-4000-8000-000000000074
+    fromPort: failed
+    toPort: features
+  - id: c1b0e076-0000-4000-8000-000000000076
+    from: c1b00074-0000-4000-8000-000000000074
+    to: c1b00075-0000-4000-8000-000000000075
+    fromPort: features
+    toPort: supplier
+  # Mesh-code summary merger output -> Z-bldg-04 summary merger (requestor).
+  - id: c1b0e077-0000-4000-8000-000000000077
+    from: c1b00075-0000-4000-8000-000000000075
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e078-0000-4000-8000-000000000078
+    from: c1b00075-0000-4000-8000-000000000075
+    to: c1b00083-0000-4000-8000-000000000083
+    fromPort: unmerged
+    toPort: requestor
 
   # --- Z-bldg-04 LOD0/LOD1 BuildingPart pipeline edges ---
   # LOD0 / LOD1 BuildingParts from the dedicated LodSplitter -> counter.
@@ -4496,14 +4873,90 @@ edges:
     to: c1b00083-0000-4000-8000-000000000083
     fromPort: features
     toPort: supplier
-  # Z-bldg-04 summary merger output -> building summary mapper.
+  # Z-bldg-04 summary merger output -> L-bldg-02 summary merger (requestor).
   - id: c1b0e086-0000-4000-8000-000000000086
     from: c1b00083-0000-4000-8000-000000000083
+    to: c1b00099-0000-4000-8000-000000000099
+    fromPort: merged
+    toPort: requestor
+  - id: c1b0e087-0000-4000-8000-000000000087
+    from: c1b00083-0000-4000-8000-000000000083
+    to: c1b00099-0000-4000-8000-000000000099
+    fromPort: unmerged
+    toPort: requestor
+
+  # --- L-bldg-02 BuildingPart connectivity edges ---
+  # LOD2 / LOD3 BuildingParts from the dedicated LodSplitter -> surface coercer.
+  - id: c1b0e090-0000-4000-8000-000000000090
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00090-0000-4000-8000-000000000090
+    fromPort: lod2
+    toPort: features
+  - id: c1b0e091-0000-4000-8000-000000000091
+    from: c1b00061-0000-4000-8000-000000000061
+    to: c1b00090-0000-4000-8000-000000000090
+    fromPort: lod3
+    toPort: features
+  - id: c1b0e092-0000-4000-8000-000000000092
+    from: c1b00090-0000-4000-8000-000000000090
+    to: c1b00091-0000-4000-8000-000000000091
+    fromPort: features
+    toPort: features
+  - id: c1b0e093-0000-4000-8000-000000000093
+    from: c1b00091-0000-4000-8000-000000000091
+    to: c1b00092-0000-4000-8000-000000000092
+    fromPort: features
+    toPort: features
+  - id: c1b0e094-0000-4000-8000-000000000094
+    from: c1b00092-0000-4000-8000-000000000092
+    to: c1b00093-0000-4000-8000-000000000093
+    fromPort: features
+    toPort: features
+  - id: c1b0e095-0000-4000-8000-000000000095
+    from: c1b00093-0000-4000-8000-000000000093
+    to: c1b00094-0000-4000-8000-000000000094
+    fromPort: features
+    toPort: features
+  - id: c1b0e096-0000-4000-8000-000000000096
+    from: c1b00094-0000-4000-8000-000000000094
+    to: c1b00095-0000-4000-8000-000000000095
+    fromPort: features
+    toPort: features
+  # Non-full parts -> counter and CSV writer.
+  - id: c1b0e097-0000-4000-8000-000000000097
+    from: c1b00095-0000-4000-8000-000000000095
+    to: c1b00096-0000-4000-8000-000000000096
+    fromPort: filtered
+    toPort: features
+  - id: c1b0e098-0000-4000-8000-000000000098
+    from: c1b00095-0000-4000-8000-000000000095
+    to: c1b00097-0000-4000-8000-000000000097
+    fromPort: filtered
+    toPort: features
+  - id: c1b0e099-0000-4000-8000-000000000099
+    from: c1b00097-0000-4000-8000-000000000097
+    to: c1b00098-0000-4000-8000-000000000098
+    fromPort: features
+    toPort: features
+  - id: c1b0e09a-0000-4000-8000-00000000009a
+    from: c1b00098-0000-4000-8000-000000000098
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # Counter.default (per-file total) -> L-bldg-02 summary merger (supplier).
+  - id: c1b0e09b-0000-4000-8000-00000000009b
+    from: c1b00096-0000-4000-8000-000000000096
+    to: c1b00099-0000-4000-8000-000000000099
+    fromPort: features
+    toPort: supplier
+  # L-bldg-02 summary merger output -> building summary mapper.
+  - id: c1b0e09c-0000-4000-8000-00000000009c
+    from: c1b00099-0000-4000-8000-000000000099
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
     toPort: features
-  - id: c1b0e087-0000-4000-8000-000000000087
-    from: c1b00083-0000-4000-8000-000000000083
+  - id: c1b0e09d-0000-4000-8000-00000000009d
+    from: c1b00099-0000-4000-8000-000000000099
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
     toPort: features
@@ -4677,6 +5130,21 @@ edges:
     toPort: features
   - id: e1000000-0000-4000-8000-000000000146
     from: e1000000-0000-4000-8000-000000000043
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  - id: e1000000-0000-4000-8000-000000000147
+    from: e1000000-0000-4000-8000-000000000041
+    to: e1000000-0000-4000-8000-000000000044
+    fromPort: notClosedEdge
+    toPort: features
+  - id: e1000000-0000-4000-8000-000000000148
+    from: e1000000-0000-4000-8000-000000000044
+    to: e1000000-0000-4000-8000-000000000045
+    fromPort: features
+    toPort: features
+  - id: e1000000-0000-4000-8000-000000000149
+    from: e1000000-0000-4000-8000-000000000045
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features
