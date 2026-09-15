@@ -80,9 +80,11 @@ pub(super) fn build(
         })
         .collect();
 
+    let property_stats = super::stats::collect(extracted.iter().map(|(feature, _)| *feature), options);
+
     if extracted.is_empty() {
         tracing::warn!("Cesium3DTilesWriter: no renderable geometry found; writing an empty tileset");
-        return empty_tileset();
+        return empty_tileset(&property_stats);
     }
 
     let root = extracted
@@ -151,7 +153,8 @@ pub(super) fn build(
             Ok(())
         })?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels, max_contents)?;
+    let tileset_bytes =
+        render_tileset_json(&root, available_levels, max_contents, &property_stats)?;
     let subtrees = subtree::build_all(&occupied, &content_counts, max_contents)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -219,7 +222,9 @@ fn merge_small_cells(
     }
 }
 
-fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
+fn empty_tileset(
+    property_stats: &indexmap::IndexMap<String, super::stats::PropertyStats>,
+) -> crate::errors::Result<BuiltTileset> {
     let root = GeoBox {
         west: 0.0,
         south: 0.0,
@@ -228,7 +233,7 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         min_height: 0.0,
         max_height: 0.0,
     };
-    let tileset_bytes = render_tileset_json(&root, 1, 1)?;
+    let tileset_bytes = render_tileset_json(&root, 1, 1, property_stats)?;
     let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -244,8 +249,9 @@ fn render_tileset_json(
     root: &GeoBox,
     available_levels: u32,
     max_contents: usize,
+    property_stats: &indexmap::IndexMap<String, super::stats::PropertyStats>,
 ) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels, max_contents);
+    let tileset_json = tileset::build(root, available_levels, max_contents, property_stats);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
