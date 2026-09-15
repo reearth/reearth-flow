@@ -1,4 +1,4 @@
-import { setValueAtPath } from "./fieldUtils";
+import { parsePathKey, setAtPath } from "@flow/lib/schemaForm";
 
 type PatchEntry = {
   value: any;
@@ -93,18 +93,24 @@ export const applyMergedPatch = (
   allEntries
     .sort((a, b) => a.updatedAt - b.updatedAt)
     .forEach(({ path, value }) => {
-      result = setValueAtPath(result, path.split("."), value);
+      // `parsePathKey` reads a numeric segment back as a number, so a patch
+      // into `rules.0.name` rebuilds an array rather than an object keyed "0".
+      result = setAtPath(result, parsePathKey(path), value);
     });
 
   return result;
 };
 
-export const rjsfIdToPath = (changedFieldId?: string) => {
-  if (!changedFieldId) return undefined;
-  const normalized = changedFieldId
-    .replace(/__anyof_select$/, "")
-    .replace(/__oneof_select$/, "")
-    .replace(/^root_?/, "")
-    .replace(/_/g, ".");
-  return normalized === "" ? undefined : normalized;
-};
+/**
+ * The form reports the dot path of the field it changed, which is already the
+ * key a draft patch is filed under, so there is nothing to translate.
+ *
+ * The empty string is a real path — the form's root — and must be kept. Four
+ * actions (Feature Reader, JSON/XML Fragmenter, PLATEAU4.SolarPositionCalculator)
+ * have a union rather than an object at the root of their schema, so choosing a
+ * variant on them changes the whole params object at path `""`. Rejecting it as
+ * falsy dropped the edit silently.
+ */
+export const changedFieldPath = (
+  changedFieldKey?: string,
+): string | undefined => changedFieldKey;

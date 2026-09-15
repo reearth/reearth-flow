@@ -1,18 +1,17 @@
 import { ArrowRightIcon, WarningCircleIcon } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { useMemo, useState } from "react";
 
 import { Alert, AlertDescription, Button, SchemaForm } from "@flow/components";
+import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useT } from "@flow/lib/i18n";
+import type { FlowSchema } from "@flow/lib/schemaForm";
 import type { AwarenessUser, NodeParams } from "@flow/types";
-
-import { FieldContext } from "../../utils/fieldUtils";
 
 type Props = {
   readonly?: boolean;
-  storedSchema?: RJSFSchema;
+  storedSchema?: FlowSchema;
   storedParams?: NodeParams;
-  newSchema?: RJSFSchema;
+  newSchema?: FlowSchema;
   actionName?: string;
   fieldFocusMap?: Record<string, AwarenessUser[]>;
   onParamFieldFocus?: (fieldId: string | null) => void;

@@ -11,9 +11,8 @@ import {
   DialogTitle,
   IconButton,
 } from "@flow/components";
+import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useT } from "@flow/lib/i18n";
-
-import { FieldContext } from "../../utils/fieldUtils";
 
 type Props = {
   open: boolean;
