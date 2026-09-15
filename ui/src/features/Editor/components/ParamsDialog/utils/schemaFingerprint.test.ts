@@ -1,10 +1,11 @@
-import { RJSFSchema } from "@rjsf/utils";
 import { describe, it, expect } from "vitest";
+
+import type { FlowSchema } from "@flow/lib/schemaForm";
 
 import { computeSchemaFingerprint, schemasMatch } from "./schemaFingerprint";
 
-const s = (properties: Record<string, object>): RJSFSchema =>
-  ({ properties }) as RJSFSchema;
+const s = (properties: Record<string, object>): FlowSchema =>
+  ({ properties }) as FlowSchema;
 
 describe("computeSchemaFingerprint", () => {
   it("returns undefined when schema is undefined", () => {
@@ -149,11 +150,11 @@ describe("schemasMatch", () => {
     const stored = {
       ...s({ a: { type: "string" } }),
       required: [],
-    } as RJSFSchema;
+    } as FlowSchema;
     const current = {
       ...s({ a: { type: "string" } }),
       required: ["a"],
-    } as RJSFSchema;
+    } as FlowSchema;
     expect(schemasMatch(stored, current)).toBe(false);
   });
 

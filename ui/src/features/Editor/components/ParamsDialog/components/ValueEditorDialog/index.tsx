@@ -25,14 +25,13 @@ import {
   IconButton,
   CmsLogo,
 } from "@flow/components";
+import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 import { Asset } from "@flow/types";
-
-import { FieldContext } from "../../utils/fieldUtils";
 
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
