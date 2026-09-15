@@ -21,10 +21,13 @@ mod tileset;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeSet, HashMap};
 use std::hash::{Hash, Hasher};
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use rayon::prelude::*;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
@@ -267,14 +270,13 @@ pub fn build(
         .into_par_iter()
         .map(
             |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
-                let bytes = build_chunk(&features)?.len() as u64;
+                let bytes = transfer_bytes(&build_chunk(&features)?);
                 Ok((cell, vec![Unit { features, bytes }]))
             },
         )
         .collect::<crate::errors::Result<_>>()?;
-    let overhead = measure_glb_overhead(&units, build_chunk)?;
 
-    merge_small_cells(&mut units, target_tile_size, overhead);
+    merge_small_cells(&mut units, target_tile_size);
 
     let occupied: BTreeSet<Cell> = units.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
@@ -287,7 +289,7 @@ pub fn build(
         .into_par_iter()
         .map(
             |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
-                let contents = split_by_size(units, target_tile_size, overhead, build_chunk)?;
+                let contents = split_by_size(units, target_tile_size, build_chunk)?;
                 let count = contents.glbs.len();
                 for (n, glb) in contents.glbs.into_iter().enumerate() {
                     write_tile(content_path(cell, n), glb)?;
@@ -329,35 +331,38 @@ pub fn build(
     })
 }
 
-/// A group of features whose glb, built on its own, is `bytes` long.
+/// A group of features whose glb, built on its own, takes `bytes` in transfer.
 struct Unit {
     features: Vec<usize>,
     bytes: u64,
 }
 
-/// Bytes a glb holding all of `units` is expected to take: their measured
-/// bytes less the per-glb `overhead` paid only once.
-fn group_bytes(units: &[Unit], overhead: u64) -> u64 {
-    let sum: u64 = units.iter().map(|u| u.bytes).sum();
-    sum.saturating_sub(overhead.saturating_mul(units.len().saturating_sub(1) as u64))
+/// Transfer bytes of a glb holding all of `units`, taken as their sum.
+fn group_bytes(units: &[Unit]) -> u64 {
+    units.iter().map(|u| u.bytes).sum()
 }
 
-/// Bytes every glb carries regardless of its features, measured as the amount
-/// by which the two smallest units shrink when built together. Zero when there
-/// are fewer than two units.
-fn measure_glb_overhead(
-    units: &HashMap<Cell, Vec<Unit>>,
-    build_chunk: impl Fn(&[usize]) -> crate::errors::Result<Vec<u8>>,
-) -> crate::errors::Result<u64> {
-    let mut smallest: Vec<&Unit> = units.values().flatten().collect();
-    if smallest.len() < 2 {
-        return Ok(0);
+/// A [`Write`] sink that keeps only the number of bytes written to it.
+struct ByteCounter(u64);
+
+impl Write for ByteCounter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0 += buf.len() as u64;
+        Ok(buf.len())
     }
-    smallest.sort_by_key(|u| (u.bytes, u.features[0]));
-    let (a, b) = (smallest[0], smallest[1]);
-    let together: Vec<usize> = a.features.iter().chain(&b.features).copied().collect();
-    let joint = build_chunk(&together)?.len() as u64;
-    Ok((a.bytes + b.bytes).saturating_sub(joint))
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Bytes `glb` occupies in transfer: its gzipped length, tile contents being
+/// served with `Content-Encoding: gzip`.
+fn transfer_bytes(glb: &[u8]) -> u64 {
+    const COUNTER_NEVER_FAILS: &str = "writing to a byte counter never fails";
+    let mut encoder = GzEncoder::new(ByteCounter(0), Compression::fast());
+    encoder.write_all(glb).expect(COUNTER_NEVER_FAILS);
+    encoder.finish().expect(COUNTER_NEVER_FAILS).0
 }
 
 /// The content glbs one cell splits into, in slot order.
@@ -377,10 +382,9 @@ struct CellContents {
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
-    overhead: u64,
     build_chunk: impl Fn(&[usize]) -> crate::errors::Result<Vec<u8>> + Sync,
 ) -> crate::errors::Result<CellContents> {
-    let expected = group_bytes(&units, overhead);
+    let expected = group_bytes(&units);
     let parts = if target_tile_size == 0 {
         MAX_CONTENTS_PER_TILE
     } else {
@@ -407,7 +411,7 @@ fn split_by_size(
             .collect::<crate::errors::Result<_>>()?;
         let total = built.len();
         for (k, (chunk, glb)) in built.into_iter().enumerate() {
-            let bytes = glb.len() as u64;
+            let bytes = transfer_bytes(&glb);
             let feature_count: usize = chunk.iter().map(|u| u.features.len()).sum();
             if bytes <= target_tile_size || feature_count == 1 {
                 glbs.push(glb);
@@ -485,10 +489,10 @@ fn split_into<T>(items: Vec<T>, weight: impl Fn(&T) -> u64, parts: usize) -> Vec
     groups
 }
 
-/// Fold small sibling cells upward into their parent while the folded glb is
-/// expected to stay within `target_tile_size`, deepest level first so a fold
-/// can cascade to the root.
-fn merge_small_cells(units: &mut HashMap<Cell, Vec<Unit>>, target_tile_size: u64, overhead: u64) {
+/// Fold small sibling cells upward into their parent while their summed
+/// transfer bytes stay within `target_tile_size`, deepest level first so a
+/// fold can cascade to the root.
+fn merge_small_cells(units: &mut HashMap<Cell, Vec<Unit>>, target_tile_size: u64) {
     let max_level = units.keys().map(|c| c.level).max().unwrap_or(0);
     for level in (1..=max_level).rev() {
         let mut by_parent: HashMap<Cell, Vec<Cell>> = HashMap::new();
@@ -498,14 +502,13 @@ fn merge_small_cells(units: &mut HashMap<Cell, Vec<Unit>>, target_tile_size: u64
             }
         }
         for (parent, mut children) in by_parent {
-            children.sort_by_key(|c| (group_bytes(&units[c], overhead), *c));
+            children.sort_by_key(|c| (group_bytes(&units[c]), *c));
             for child in children {
-                let mut folded: Vec<&Unit> = Vec::new();
-                folded.extend(units.get(&parent).into_iter().flatten());
-                folded.extend(&units[&child]);
-                let sum: u64 = folded.iter().map(|u| u.bytes).sum();
-                let expected = sum.saturating_sub(overhead * (folded.len() as u64 - 1));
-                if expected > target_tile_size {
+                let parent_bytes: u64 = units
+                    .get(&parent)
+                    .map(|units| group_bytes(units))
+                    .unwrap_or(0);
+                if parent_bytes + group_bytes(&units[&child]) > target_tile_size {
                     continue;
                 }
                 let moved = units.remove(&child).unwrap();
@@ -1435,8 +1438,9 @@ mod tests {
         );
     }
 
-    /// Bytes of every content glb written for `features` under `target`.
-    fn content_sizes(features: &[Feature], target: u64) -> Vec<usize> {
+    /// Transfer bytes of every content glb written for `features` under
+    /// `target`.
+    fn content_sizes(features: &[Feature], target: u64) -> Vec<u64> {
         let sizes = Mutex::new(Vec::new());
         build(
             features,
@@ -1444,7 +1448,7 @@ mod tests {
             target,
             plain_render_options(),
             |_path: String, glb| {
-                sizes.lock().unwrap().push(glb.len());
+                sizes.lock().unwrap().push(transfer_bytes(&glb));
                 Ok(())
             },
         )
@@ -1452,11 +1456,11 @@ mod tests {
         sizes.into_inner().unwrap()
     }
 
-    // The split decision follows the bytes the writer emits, not the estimate:
-    // a target one byte under the pair's glb splits the cell into one content
+    // The split decision follows the transfer bytes the writer emits: a target
+    // one byte under the pair's gzipped glb splits the cell into one content
     // per feature, while a target equal to it keeps the cell whole.
     #[test]
-    fn split_follows_measured_glb_bytes() {
+    fn split_follows_measured_transfer_bytes() {
         let one = content_sizes(&[untextured_feature(35.0, 139.0)], u64::MAX);
         assert_eq!(one.len(), 1);
         let single = one[0];
@@ -1467,8 +1471,8 @@ mod tests {
         ];
         let whole = content_sizes(&pair, u64::MAX);
         assert_eq!(whole.len(), 1);
-        let both = whole[0] as u64;
-        assert!(both > single as u64);
+        let both = whole[0];
+        assert!(both > single);
 
         let split = content_sizes(&pair, both - 1);
         assert_eq!(split.len(), 2, "pair glb exceeds the target");
@@ -1512,20 +1516,20 @@ mod tests {
         );
     }
 
-    // Merging follows measured bytes: two far-apart features fold into one
-    // tile exactly when their joint glb fits the target, which the writer
-    // predicts from the two leaf glbs less the per-glb overhead it measured.
+    // Merging follows the summed transfer bytes of the cells being folded:
+    // two far-apart features share a tile exactly when their separate contents
+    // together fit the target.
     #[test]
-    fn merge_follows_measured_glb_bytes() {
+    fn merge_follows_summed_transfer_bytes() {
         let features = [
             untextured_feature(35.0, 139.0),
             untextured_feature(36.0, 140.0),
         ];
-        let whole = content_sizes(&features, u64::MAX);
-        assert_eq!(whole.len(), 1);
-        let joint = whole[0] as u64;
+        let apart = content_sizes(&features, 1);
+        assert_eq!(apart.len(), 2);
+        let summed: u64 = apart.iter().sum();
 
-        assert_eq!(content_sizes(&features, joint).len(), 1);
-        assert_eq!(content_sizes(&features, joint - 1).len(), 2);
+        assert_eq!(content_sizes(&features, summed).len(), 1);
+        assert_eq!(content_sizes(&features, summed - 1).len(), 2);
     }
 }
