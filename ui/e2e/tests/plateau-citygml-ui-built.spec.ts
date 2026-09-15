@@ -79,7 +79,7 @@ test.describe.serial(
       );
       cityGmlReader = await editor.addActionNodeAndGet(
         "transformer",
-        "Feature CityGML Reader",
+        "Feature CityGML 2 Reader",
         await editor.canvasPoint(0.72, 0.72),
       );
       attributeMapper = await editor.addActionNodeAndGet(

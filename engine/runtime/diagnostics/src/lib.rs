@@ -23,18 +23,25 @@ mod tests {
 
     #[test]
     fn every_code_has_registry_metadata() {
-        // SSOT guard: category/default_disposition/message come from the registry for every code.
+        // SSOT guard: category/default_disposition/message/help come from the registry for every code.
+        // help is user-facing — a null help field on Job.failedNodes leaves users with no
+        // remediation guidance, so this invariant is load-bearing for the GraphQL surface.
         for code in ErrorCode::ALL {
             assert!(!code.as_str().is_empty());
             assert!(code.as_str().contains('.'));
             assert!(!code.default_message().is_empty());
+            assert!(
+                code.default_help().is_some_and(|h| !h.is_empty()),
+                "missing `help` in error-codes TOML for {}",
+                code.as_str()
+            );
             // exercising category()/default_disposition() proves the generated tables are total
             let _ = code.category();
             let _ = code.default_disposition();
         }
         assert_eq!(
             ErrorCode::ALL.len(),
-            31,
+            33,
             "update this count when adding registry codes"
         );
     }
