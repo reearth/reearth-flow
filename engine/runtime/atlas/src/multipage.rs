@@ -14,18 +14,24 @@ use crate::damage::collect_damage;
 use crate::skyline::SkylinePacker;
 use crate::{remap_polygon_uvs, AtlasError, PolygonUVs, Rect, Result, TextureInput};
 
+/// One path's cache entry, filled by whichever caller claims it first.
+type Slot = Mutex<Option<Arc<DynamicImage>>>;
+
 /// Decoded-source-image cache; share one across calls so each file is decoded
 /// once. Shareable between threads, so concurrent builds over the same sources
-/// decode them once between them.
+/// decode them once between them: callers racing for one path wait on that
+/// path alone, and other paths decode in parallel meanwhile.
 #[derive(Default)]
 pub struct TextureCache {
-    images: Mutex<HashMap<PathBuf, Arc<DynamicImage>>>,
+    images: Mutex<HashMap<PathBuf, Arc<Slot>>>,
 }
 
 impl TextureCache {
     /// Decode `path` once, then serve it from memory on later calls.
     fn get(&self, path: &Path) -> Result<Arc<DynamicImage>> {
-        if let Some(image) = self.lock().get(path) {
+        let slot = Arc::clone(self.lock().entry(path.to_path_buf()).or_default());
+        let mut slot = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(image) = slot.as_ref() {
             return Ok(Arc::clone(image));
         }
         let image = Arc::new(image::open(path).map_err(|err| {
@@ -34,14 +40,10 @@ impl TextureCache {
                 path.display()
             ))
         })?);
-        Ok(Arc::clone(
-            self.lock()
-                .entry(path.to_path_buf())
-                .or_insert_with(|| Arc::clone(&image)),
-        ))
+        Ok(Arc::clone(slot.insert(image)))
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<PathBuf, Arc<DynamicImage>>> {
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<PathBuf, Arc<Slot>>> {
         self.images
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -353,6 +355,34 @@ mod tests {
         let second = cache.get(&path).expect("served from the cache");
 
         assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    // Callers racing for one path all receive the entry its first claimant
+    // decoded, rather than each decoding a copy of their own.
+    #[test]
+    fn concurrent_callers_share_one_decode() {
+        use image::GenericImageView;
+
+        let tmp = TempDir::new().unwrap();
+        let path = write_texture(tmp.path(), "a.png", 256, 256);
+        let cache = TextureCache::default();
+        let barrier = std::sync::Barrier::new(8);
+
+        let images: Vec<Arc<DynamicImage>> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        cache.get(&path).expect("decode")
+                    })
+                })
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+
+        let first = &images[0];
+        assert_eq!(first.dimensions(), (256, 256));
+        assert!(images.iter().all(|image| Arc::ptr_eq(image, first)));
     }
 
     #[test]

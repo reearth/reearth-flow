@@ -23,6 +23,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use flate2::write::GzEncoder;
@@ -611,6 +612,9 @@ fn subtree_path(cell: Cell) -> String {
 struct EmbeddedTextures {
     dir: tempfile::TempDir,
     by_hash: Mutex<HashMap<u64, PathBuf>>,
+    /// Names the staging file of each write, so concurrent writes of the same
+    /// content never share one.
+    next_staged: AtomicU64,
 }
 
 impl EmbeddedTextures {
@@ -620,10 +624,13 @@ impl EmbeddedTextures {
                 SinkError::Cesium3DTilesWriter(format!("failed to create texture temp dir: {e}"))
             })?,
             by_hash: Mutex::new(HashMap::new()),
+            next_staged: AtomicU64::new(0),
         })
     }
 
-    /// Write `data` to a temp file (once per distinct content) and return its path.
+    /// Write `data` to a temp file (once per distinct content) and return its
+    /// path. Safe to call concurrently: a returned path always names a file
+    /// that is fully written.
     fn materialize(&self, data: &RasterData) -> crate::errors::Result<PathBuf> {
         let mut hasher = DefaultHasher::new();
         data.bytes.hash(&mut hasher);
@@ -637,10 +644,25 @@ impl EmbeddedTextures {
             MimeType::ImageWebp => "webp",
         };
         let path = self.dir.path().join(format!("{hash:016x}.{ext}"));
-        std::fs::write(&path, &data.bytes).map_err(|e| {
+        let staged = self.dir.path().join(format!(
+            "{hash:016x}.{}.staged",
+            self.next_staged.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::write(&staged, &data.bytes).map_err(|e| {
             SinkError::Cesium3DTilesWriter(format!("failed to write embedded texture: {e}"))
         })?;
-        Ok(self.lock().entry(hash).or_insert(path).clone())
+        let mut by_hash = self.lock();
+        if let Some(path) = by_hash.get(&hash) {
+            let path = path.clone();
+            drop(by_hash);
+            let _ = std::fs::remove_file(&staged);
+            return Ok(path);
+        }
+        std::fs::rename(&staged, &path).map_err(|e| {
+            SinkError::Cesium3DTilesWriter(format!("failed to write embedded texture: {e}"))
+        })?;
+        by_hash.insert(hash, path.clone());
+        Ok(path)
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<u64, PathBuf>> {
@@ -1138,6 +1160,33 @@ mod tests {
             .write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
             .expect("encode png");
         png
+    }
+
+    // Candidate builds of one cell run in parallel over a shared `EmbeddedTextures`
+    // and can miss on the same content at once. Whatever path a caller gets back
+    // must name a file holding the whole texture, never one another caller is
+    // still writing.
+    #[test]
+    fn concurrent_materialize_never_exposes_a_partial_file() {
+        let data = RasterData {
+            mime_type: MimeType::ImagePng,
+            bytes: bytes::Bytes::from(vec![0xABu8; 1 << 20]),
+        };
+        let embedded = EmbeddedTextures::new().expect("temp dir");
+        let barrier = std::sync::Barrier::new(8);
+
+        std::thread::scope(|scope| {
+            for _ in 0..8 {
+                scope.spawn(|| {
+                    barrier.wait();
+                    let path = embedded.materialize(&data).expect("materialize");
+                    let read = std::fs::read(&path).expect("read back the materialized texture");
+                    assert_eq!(read, data.bytes.as_ref());
+                });
+            }
+        });
+
+        assert_eq!(embedded.lock().len(), 1);
     }
 
     // An embedded (in-memory) texture — what a glTF/GLB packed image decodes to —
