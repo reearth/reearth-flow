@@ -5,8 +5,8 @@
  * dialect Rust's `schemars` emits, measured at roughly eight recognisable
  * shapes across the whole corpus. Rather than rewrite those shapes until a
  * general-purpose form engine happens to guess right (see
- * `docs/schema-form-replacement.md`), we classify each node once, up front,
- * into one of the `FieldNode` kinds below and render that.
+ * `docs/schema-form.md`), we classify each node once, up front, into one of the
+ * `FieldNode` kinds below and render that.
  *
  * The two properties worth protecting as this grows:
  *

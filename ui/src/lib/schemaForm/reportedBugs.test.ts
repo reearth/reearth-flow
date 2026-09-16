@@ -3,7 +3,7 @@
  * the engine's real schemas.
  *
  * Each assertion here corresponds to something the patch-then-RJSF pipeline got
- * wrong in a way a user could see. `docs/schema-form-replacement.md` records the
+ * wrong in a way a user could see. `docs/schema-form.md` records the
  * measurements these come from.
  */
 import { readFileSync } from "fs";

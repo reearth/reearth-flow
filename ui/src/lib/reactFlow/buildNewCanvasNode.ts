@@ -1,5 +1,5 @@
 import { XYPosition } from "@xyflow/react";
-import { JSONSchema7Definition } from "json-schema";
+import type { JSONSchema7Definition } from "json-schema";
 
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";

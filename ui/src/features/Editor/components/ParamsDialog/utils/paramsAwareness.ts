@@ -24,7 +24,8 @@ export type DraftPatch = {
   customizationsPatch?: Record<string, PatchEntry>;
 };
 
-type NodeDrafts = Record<string, DraftPatch | undefined>;
+/** Every client's draft for one node, keyed by client id. */
+export type NodeDrafts = Record<string, DraftPatch | undefined>;
 export type DraftStore = Record<string, NodeDrafts | undefined>;
 
 /**

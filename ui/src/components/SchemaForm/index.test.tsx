@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "fs";
 
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -54,6 +54,39 @@ const mount = (name: string, formData: unknown) => {
   };
 
   return { onChange, onValidationChange, ...render(<Harness />) };
+};
+
+/**
+ * The same harness, plus a way to put a value in from outside the form — what
+ * a collaborator's edit arriving over Yjs looks like from the form's side.
+ */
+const mountShared = (name: string, formData: unknown) => {
+  const onChange = vi.fn();
+  let fromElsewhere: (next: unknown) => void = () => {};
+
+  const Harness: React.FC = () => {
+    const [data, setData] = useState(formData);
+    fromElsewhere = setData;
+    return (
+      <SchemaForm
+        schema={schemaFor(name)}
+        actionName={name}
+        defaultFormData={data}
+        onChange={(next, key) => {
+          onChange(next, key);
+          setData(next);
+        }}
+        onFlowExprEditorOpen={() => {}}
+      />
+    );
+  };
+
+  const rendered = render(<Harness />);
+  return {
+    onChange,
+    collaboratorWrites: (next: unknown) => act(() => fromElsewhere(next)),
+    ...rendered,
+  };
 };
 
 const validity = (mock: ReturnType<typeof vi.fn>) =>
@@ -421,7 +454,7 @@ describe("a required union with no null branch", () => {
   // Coordinate Frame Reprojector's destinationFrame: required, `oneOf` of a CRS
   // object and the bare string "euclidean", and no null branch at all. There is
   // no such thing as unset here — only unchosen.
-  const mountFrame = () => mount("Coordinate Frame Reprojector", {});
+  const mountFrame = () => mountShared("Coordinate Frame Reprojector", {});
 
   it("prompts for a choice instead of claiming to be unset", async () => {
     mountFrame();
@@ -477,6 +510,49 @@ describe("a required union with no null branch", () => {
     expect(
       screen.getByRole("button", { name: "Destination Frame" }),
     ).toHaveTextContent("Euclidean");
+  });
+
+  it("lets go of the choice when the value is cleared elsewhere", async () => {
+    // The choice lives in component state only while the value cannot express
+    // it. That made it outlive the data: once a collaborator cleared the field
+    // the dropdown went on naming a variant the params no longer held, with
+    // the section beneath it open over nothing.
+    const { collaboratorWrites } = mountFrame();
+
+    const items = await openDropdown("Destination Frame");
+    await userEvent.click(
+      items.find((item) => item.textContent === "CRS") as HTMLElement,
+    );
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("CRS");
+
+    collaboratorWrites({});
+
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("Select...");
+    expect(screen.queryByText("crs")).not.toBeInTheDocument();
+  });
+
+  it("keeps the choice when the value it wrote comes back unchanged", async () => {
+    // The mirror image, and the reason the check is against the value this
+    // control wrote rather than against "matches nothing": an untagged variant
+    // matches nothing until its fields are filled, so a round trip through Yjs
+    // that returns the same value must not read as someone else's clear.
+    const { onChange, collaboratorWrites } = mountFrame();
+
+    const items = await openDropdown("Destination Frame");
+    await userEvent.click(
+      items.find((item) => item.textContent === "CRS") as HTMLElement,
+    );
+
+    const [echoed] = lastCall(onChange) as [unknown];
+    collaboratorWrites(echoed);
+
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("CRS");
   });
 
   it("follows the value when it identifies a different variant", () => {
@@ -674,5 +750,56 @@ describe("every action", () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+describe("a union of bare scalars", () => {
+  /**
+   * A variant recognised by the type of the value itself has no keys to write,
+   * so choosing one leaves the value empty and matching nothing — the window
+   * the local choice exists to cover. No action publishes this shape today;
+   * `UnionField` handles it, so it is pinned against a schema written here.
+   */
+  const scalarUnion: FlowSchema = {
+    type: "object",
+    properties: {
+      limit: {
+        title: "Limit",
+        anyOf: [
+          { title: "Text", type: "string" },
+          { title: "Number", type: "number" },
+        ],
+      },
+    },
+  };
+
+  const mountScalars = () => {
+    const Harness: React.FC = () => {
+      const [data, setData] = useState<unknown>({});
+      return (
+        <SchemaForm
+          schema={scalarUnion}
+          defaultFormData={data}
+          onChange={setData}
+        />
+      );
+    };
+    return render(<Harness />);
+  };
+
+  it("holds the choice through the window where it writes nothing", async () => {
+    mountScalars();
+
+    const items = await openDropdown("Limit");
+    await userEvent.click(
+      items.find((item) => item.textContent === "Number") as HTMLElement,
+    );
+
+    // Writing `{}` here would store an object where the schema wants a number
+    // and make Text and Number indistinguishable, so the choice is held in the
+    // control until the user types — one keystroke wide, but it has to hold.
+    expect(screen.getByRole("button", { name: "Limit" })).toHaveTextContent(
+      "Number",
+    );
   });
 });

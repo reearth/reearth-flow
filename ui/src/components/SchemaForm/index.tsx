@@ -52,7 +52,7 @@ type SchemaFormProps = {
  * The schema is compiled once into a field tree (`@flow/lib/schemaForm`) and
  * rendered from that. Validation runs against the schema as published, so what
  * the form calls valid is what the engine calls valid — see
- * `docs/schema-form-replacement.md` for what that replaced and why.
+ * `docs/schema-form.md` for what that replaced and why.
  */
 const SchemaForm: React.FC<SchemaFormProps> = ({
   readonly,

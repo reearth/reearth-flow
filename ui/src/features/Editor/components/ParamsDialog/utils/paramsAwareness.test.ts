@@ -157,6 +157,175 @@ describe("ordering between clients", () => {
   });
 });
 
+/**
+ * Whole sessions rather than single comparisons.
+ *
+ * The merge is the convergence point of the collaborative layer: every client
+ * holds the same set of drafts and has to arrive at the same params from them,
+ * whatever order Yjs happens to hand them over in. The tests above pin one
+ * decision at a time; these pin the property that matters — that two people
+ * editing at once end up looking at the same thing, with nobody's work gone.
+ */
+describe("concurrent sessions", () => {
+  type Entry = { value: unknown; updatedAt: number; seq: number };
+  type Store = Record<string, { paramsPatch: Record<string, Entry> }>;
+
+  /** Every ordering of the clients, which is what differs between replicas. */
+  const permutations = <T>(items: T[]): T[][] =>
+    items.length <= 1
+      ? [items]
+      : items.flatMap((item, index) =>
+          permutations([
+            ...items.slice(0, index),
+            ...items.slice(index + 1),
+          ]).map((rest) => [item, ...rest]),
+        );
+
+  const replicas = (base: unknown, store: Store) =>
+    permutations(Object.keys(store)).map((order) =>
+      applyMergedPatch(
+        base,
+        Object.fromEntries(order.map((client) => [client, store[client]])),
+        "paramsPatch",
+      ),
+    );
+
+  it("converges on one result however the drafts are enumerated", () => {
+    // Three people in the same node: two contesting `name`, everyone adding
+    // fields of their own, one clearing a field that was already saved.
+    const store: Store = {
+      alice: {
+        paramsPatch: {
+          name: { value: "from-alice", updatedAt: 100, seq: 3 },
+          "rules.0.attribute": { value: "bldg", updatedAt: 101, seq: 4 },
+        },
+      },
+      bob: {
+        paramsPatch: {
+          name: { value: "from-bob", updatedAt: 90, seq: 5 },
+          threshold: { value: 12, updatedAt: 95, seq: 2 },
+        },
+      },
+      carol: {
+        paramsPatch: {
+          encoding: { value: undefined, updatedAt: 80, seq: 1 },
+        },
+      },
+    };
+
+    const results = replicas({ encoding: "utf-8", keep: true }, store);
+
+    expect(results).toHaveLength(6);
+    for (const result of results) expect(result).toEqual(results[0]);
+
+    expect(results[0]).toEqual({
+      keep: true,
+      // Bob's counter is higher, so his edit is the one that saw Alice's.
+      name: "from-bob",
+      threshold: 12,
+      rules: [{ attribute: "bldg" }],
+    });
+    // Cleared, not set to undefined — the key is gone.
+    expect(results[0]).not.toHaveProperty("encoding");
+  });
+
+  it("loses nobody's edit when they touch different fields", () => {
+    const store: Store = Object.fromEntries(
+      ["alice", "bob", "carol", "dave"].map((client, index) => [
+        client,
+        {
+          paramsPatch: {
+            [`field${index}`]: { value: client, updatedAt: index, seq: 1 },
+          },
+        },
+      ]),
+    );
+
+    for (const result of replicas({}, store)) {
+      expect(result).toEqual({
+        field0: "alice",
+        field1: "bob",
+        field2: "carol",
+        field3: "dave",
+      });
+    }
+  });
+
+  it("converges when two clients edit at once and then see each other", () => {
+    // The counter is taken from what the writer has seen, so this walks a real
+    // session: a concurrent pair, then an edit made after the exchange.
+    const alice: Store["x"]["paramsPatch"] = {};
+    const bob: Store["x"]["paramsPatch"] = {};
+
+    // Neither has seen the other — both count from an empty node.
+    alice.name = { value: "alice-1", updatedAt: 10, seq: nextSeq({}) };
+    bob.threshold = { value: 1, updatedAt: 11, seq: nextSeq({}) };
+    expect(alice.name.seq).toBe(bob.threshold.seq);
+
+    // They exchange, and Alice edits again knowing about both.
+    const seen: Store = {
+      alice: { paramsPatch: alice },
+      bob: { paramsPatch: bob },
+    };
+    alice.name = { value: "alice-2", updatedAt: 12, seq: nextSeq(seen) };
+    expect(alice.name.seq).toBeGreaterThan(bob.threshold.seq);
+
+    for (const result of replicas({}, seen)) {
+      expect(result).toEqual({ name: "alice-2", threshold: 1 });
+    }
+  });
+
+  it("orders a clear against a set by the counter, not by the clock", () => {
+    const cleared: Store = {
+      writer: {
+        paramsPatch: { name: { value: "typed", updatedAt: 50, seq: 1 } },
+      },
+      clearer: {
+        paramsPatch: { name: { value: undefined, updatedAt: 40, seq: 2 } },
+      },
+    };
+    for (const result of replicas({ name: "saved" }, cleared)) {
+      expect(result).not.toHaveProperty("name");
+    }
+
+    // The same pair the other way round: the clear happened first, so the
+    // value typed after it survives.
+    const retyped: Store = {
+      clearer: {
+        paramsPatch: { name: { value: undefined, updatedAt: 40, seq: 1 } },
+      },
+      writer: {
+        paramsPatch: { name: { value: "typed", updatedAt: 50, seq: 2 } },
+      },
+    };
+    for (const result of replicas({ name: "saved" }, retyped)) {
+      expect(result).toEqual({ name: "typed" });
+    }
+  });
+
+  it("does not let one client's patch corrupt another's container", () => {
+    // A map key with a dot and an array index under the same parent: the two
+    // spellings the key format exists to keep apart.
+    const store: Store = {
+      alice: {
+        paramsPatch: {
+          "inline.bldg~1Building": { value: "a", updatedAt: 1, seq: 1 },
+        },
+      },
+      bob: {
+        paramsPatch: { "rules.0.name": { value: "b", updatedAt: 2, seq: 2 } },
+      },
+    };
+
+    for (const result of replicas({}, store)) {
+      expect(result).toEqual({
+        inline: { "bldg.Building": "a" },
+        rules: [{ name: "b" }],
+      });
+    }
+  });
+});
+
 describe("nextSeq", () => {
   it("starts at one for a node nobody has edited", () => {
     expect(nextSeq(undefined)).toBe(1);

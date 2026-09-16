@@ -1,5 +1,5 @@
 import { CaretDownIcon } from "@phosphor-icons/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -53,6 +53,36 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
    */
   const [chosen, setChosen] = useState<number | null>(null);
   const matched = selectVariant(node, value);
+
+  /**
+   * The value written for the current local choice, so a value arriving from
+   * anywhere else can be told from the one this control produced.
+   *
+   * Only a scalar variant leaves the local choice load-bearing — it writes
+   * nothing, since it is recognised by the type of the value itself, and an
+   * emptied field must keep showing "Number" rather than snapping back to
+   * unset. Every other variant writes keys the value can be matched on.
+   */
+  const ownWrite = useRef<unknown>(undefined);
+
+  /**
+   * Follow a value that was cleared elsewhere.
+   *
+   * Without this the local choice outlived the data: a collaborator clearing
+   * the field left `matched` at -1 while `chosen` still held the old index, so
+   * the dropdown went on naming a variant the params no longer contained, and
+   * the section beneath it stayed open over nothing.
+   */
+  useEffect(() => {
+    if (chosen === null) return;
+    // The value identifies a variant on its own; `matched` already wins.
+    if (matched >= 0) return;
+    // Still the value this control wrote for the choice — the user is midway
+    // through filling in a scalar variant, not looking at someone else's edit.
+    if (Object.is(value, ownWrite.current)) return;
+    setChosen(null);
+  }, [chosen, matched, value]);
+
   const index = matched >= 0 ? matched : (chosen ?? -1);
   const selected = index >= 0 ? node.variants[index] : undefined;
   const title = node.title ?? node.name;
@@ -72,6 +102,7 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
       setChosen(nextIndex);
 
       if (variant.constant !== undefined) {
+        ownWrite.current = variant.constant;
         onChange(path, variant.constant);
         return;
       }
@@ -82,6 +113,7 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
         // which is what fell out of seeding an object into a string — stored an
         // object where the schema wants a string, and made all three of Text,
         // Number and True-or-False identical.
+        ownWrite.current = undefined;
         onChange(path, undefined);
         return;
       }
@@ -115,6 +147,7 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
         }
       }
 
+      ownWrite.current = next;
       onChange(path, next);
     },
     [node.variants, onChange, path, selected, value],
@@ -157,6 +190,7 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
               <DropdownMenuItem
                 className={`text-muted-foreground ${selected ? "" : "bg-accent"}`}
                 onClick={() => {
+                  ownWrite.current = undefined;
                   setChosen(null);
                   onChange(path, undefined);
                 }}>

@@ -37,6 +37,7 @@ import {
   DraftPatch,
   DraftStore,
   nextSeq,
+  type NodeDrafts,
 } from "./utils/paramsAwareness";
 
 type Props = {
@@ -105,23 +106,41 @@ const ParamsDialog: React.FC<Props> = ({
     );
   }, [openNode, nodeDrafts]);
 
+  /**
+   * This node's drafts as the document holds them *now*.
+   *
+   * `rawDrafts` is a render snapshot, so it is a frame behind: two edits
+   * dispatched in one React tick both read the state the render began with,
+   * and the second overwrites the first. Keystrokes arrive in exactly that
+   * pattern. Yjs is the authority, so every read that precedes a write goes to
+   * the map rather than to the snapshot — which also makes the callbacks below
+   * stable, since they no longer close over a value that changes every render.
+   */
+  const liveNodeDrafts = useCallback(
+    (nodeId: string): NodeDrafts => (yDrafts?.get(nodeId) ?? {}) as NodeDrafts,
+    [yDrafts],
+  );
+
   const setMyDraft = useCallback(
-    (nodeId: string, updater: (existing: DraftPatch) => DraftPatch) => {
-      const existingNodeDrafts = rawDrafts[nodeId] ?? {};
+    (
+      nodeId: string,
+      updater: (existing: DraftPatch, nodeDrafts: NodeDrafts) => DraftPatch,
+    ) => {
+      const existingNodeDrafts = liveNodeDrafts(nodeId);
       const existingMyDraft = existingNodeDrafts[clientId] ?? {};
-      const nextMyDraft = updater(existingMyDraft);
+      const nextMyDraft = updater(existingMyDraft, existingNodeDrafts);
 
       yDrafts?.set(nodeId, {
         ...existingNodeDrafts,
         [clientId]: nextMyDraft,
       });
     },
-    [rawDrafts, yDrafts, clientId],
+    [liveNodeDrafts, yDrafts, clientId],
   );
 
   const removeMyDraft = useCallback(
     (nodeId: string) => {
-      const existingNodeDrafts = rawDrafts[nodeId];
+      const existingNodeDrafts = yDrafts?.get(nodeId) as NodeDrafts | undefined;
       if (!existingNodeDrafts) return;
 
       const { [clientId]: _removed, ...remainingDrafts } = existingNodeDrafts;
@@ -132,7 +151,7 @@ const ParamsDialog: React.FC<Props> = ({
         yDrafts?.set(nodeId, remainingDrafts);
       }
     },
-    [rawDrafts, yDrafts, clientId],
+    [yDrafts, clientId],
   );
 
   const updateMyFieldPatch = useCallback(
@@ -142,22 +161,25 @@ const ParamsDialog: React.FC<Props> = ({
       path: string,
       value: any,
     ) => {
-      // Stamped above every counter already in this node's drafts, so edits
-      // order by what each client had seen rather than by its clock.
-      const seq = nextSeq(rawDrafts[nodeId]);
-      setMyDraft(nodeId, (existing) => ({
+      setMyDraft(nodeId, (existing, nodeDrafts) => ({
         ...existing,
         [patchKey]: {
           ...(existing[patchKey] ?? {}),
           [path]: {
             value,
             updatedAt: Date.now(),
-            seq,
+            // Stamped above every counter already in this node's drafts, so
+            // edits order by what each client had seen rather than by its
+            // clock. Counted from the drafts `setMyDraft` is about to write
+            // over, not from the render snapshot: two edits in one tick would
+            // otherwise claim the same counter and fall back to `updatedAt`,
+            // which cannot separate them inside a millisecond.
+            seq: nextSeq(nodeDrafts),
           },
         },
       }));
     },
-    [setMyDraft, rawDrafts],
+    [setMyDraft],
   );
 
   const handleUpdate = useCallback(
@@ -169,7 +191,7 @@ const ParamsDialog: React.FC<Props> = ({
     ) => {
       if (!openNode || openNode.id !== id) return;
 
-      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const latestNodeDrafts = liveNodeDrafts(id);
 
       const mergedParams = applyMergedPatch(
         openNode.data.params,
@@ -211,7 +233,7 @@ const ParamsDialog: React.FC<Props> = ({
     },
     [
       openNode,
-      rawDrafts,
+      liveNodeDrafts,
       onDataSubmit,
       onNodeParamsSaved,
       yDoc,
@@ -224,7 +246,7 @@ const ParamsDialog: React.FC<Props> = ({
     (id: string, newParams: any, paramsSchema?: FlowSchema) => {
       if (!openNode || openNode.id !== id) return;
 
-      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const latestNodeDrafts = liveNodeDrafts(id);
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
         latestNodeDrafts,
@@ -245,7 +267,7 @@ const ParamsDialog: React.FC<Props> = ({
       removeMyDraft(id);
       // Dialog stays open — user reviews migrated values in normal editor and saves explicitly
     },
-    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft],
+    [openNode, liveNodeDrafts, onDataSubmit, yDoc, removeMyDraft],
   );
 
   const { getViewport, setViewport } = useReactFlow();

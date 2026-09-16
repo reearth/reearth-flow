@@ -37,8 +37,6 @@ export const applyDefaults = (node: FieldNode, value: unknown): unknown => {
     if (node.kind !== "object" || node.nullable) return undefined;
   }
 
-  if (value === null) return null;
-
   switch (node.kind) {
     case "object": {
       const source = isPlainObject(value) ? value : {};

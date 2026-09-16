@@ -223,8 +223,13 @@ export const validate = (
   const pruned: ValidationErrors = {};
   for (const key of keys) {
     const messages = errors[key];
+    // The root is `""` and its children are not prefixed by a dot, so the
+    // prefix has to be empty there — testing `"."` matched nothing and left
+    // the four union-rooted actions with the shallow report the pruning below
+    // exists to remove.
+    const prefix = key === "" ? "" : `${key}.`;
     const hasDetail = keys.some(
-      (other) => other !== key && other.startsWith(`${key}.`),
+      (other) => other !== key && other.startsWith(prefix),
     );
     const noise = branchOnly[key];
     // The key stays either way: the field is still invalid, it just has nothing
