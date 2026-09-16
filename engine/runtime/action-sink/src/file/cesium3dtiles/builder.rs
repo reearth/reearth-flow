@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 
 use rayon::prelude::*;
@@ -65,6 +65,7 @@ const SAFETY_MAX_DEPTH: u32 = 24;
 /// without a `CityGmlGeometry` are skipped.
 pub(super) fn build(
     features: &[Feature],
+    schema: &nusamai_citygml::schema::Schema,
     options: MetadataOptions,
     target_tile_size: u64,
     render: RenderOptions,
@@ -80,7 +81,8 @@ pub(super) fn build(
         })
         .collect();
 
-    let property_stats = super::stats::collect(extracted.iter().map(|(feature, _)| *feature), options);
+    let property_stats =
+        super::stats::collect(extracted.iter().map(|(feature, _)| *feature), schema, options);
 
     if extracted.is_empty() {
         tracing::warn!("Cesium3DTilesWriter: no renderable geometry found; writing an empty tileset");
@@ -116,13 +118,15 @@ pub(super) fn build(
     // A cell over `target_tile_size` splits into several same-tile contents
     // (3D Tiles 1.1 multiple contents) rather than growing an oversized glb;
     // this only aids fetch parallelism, since the union of contents holds
-    // exactly the cell's features either way.
+    // exactly the cell's features either way. Contents are additionally split
+    // by feature type: metadata classes each glb by the CityGML type of its
+    // features, which only holds if a glb never mixes types.
     let cell_contents: Vec<(Cell, Vec<Vec<usize>>)> = by_cell
         .into_iter()
         .map(|(cell, indices)| {
             (
                 cell,
-                split_by_cost(&indices, &feature_cost, target_tile_size),
+                split_by_type_and_cost(&indices, &extracted, &feature_cost, target_tile_size),
             )
         })
         .collect();
@@ -147,7 +151,7 @@ pub(super) fn build(
             for (n, indices) in chunks.iter().enumerate() {
                 let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                     indices.iter().map(|&i| &extracted[i]).collect();
-                let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
+                let glb = build_cell_glb(&cell_members, schema, options, render, &mut textures)?;
                 write_tile(content_path(*cell, n, max_contents > 1), glb)?;
             }
             Ok(())
@@ -168,8 +172,33 @@ pub(super) fn build(
 }
 
 /// Partition a cell's features into fetch-parallel content chunks, each kept
-/// under `target_tile_size` where possible; a single feature already over the
-/// target is kept whole in its own chunk (features are never split).
+/// under `target_tile_size` where possible and each holding a single feature
+/// type (grouped by type before the cost split, so a type never disappears
+/// into an emptier neighbour's chunk); a single feature already over the
+/// target is kept whole in its own chunk (features are never split). Type
+/// order is by type name, so output is deterministic regardless of `indices`'
+/// order.
+fn split_by_type_and_cost(
+    indices: &[usize],
+    extracted: &[(&Feature, mesh::ExtractedMesh)],
+    feature_cost: &[u64],
+    target_tile_size: u64,
+) -> Vec<Vec<usize>> {
+    let mut by_type: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    for &i in indices {
+        let feature_type = extracted[i].0.feature_type().unwrap_or_default();
+        by_type.entry(feature_type).or_default().push(i);
+    }
+    by_type
+        .into_values()
+        .flat_map(|group| split_by_cost(&group, feature_cost, target_tile_size))
+        .collect()
+}
+
+/// Partition a single feature type's indices into fetch-parallel content
+/// chunks, each kept under `target_tile_size` where possible; a single
+/// feature already over the target is kept whole in its own chunk (features
+/// are never split).
 fn split_by_cost(indices: &[usize], feature_cost: &[u64], target_tile_size: u64) -> Vec<Vec<usize>> {
     let mut chunks: Vec<Vec<usize>> = Vec::new();
     let mut current: Vec<usize> = Vec::new();
@@ -295,6 +324,7 @@ fn page_sampler(wrap: reearth_flow_atlas::PageWrap) -> glb::SamplerDesc {
 /// `render.draco` Draco-compresses the output.
 fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
+    schema: &nusamai_citygml::schema::Schema,
     options: MetadataOptions,
     render: RenderOptions,
     textures: &mut TextureCache,
@@ -302,7 +332,17 @@ fn build_cell_glb(
     let cells = primitive::collect(cell_members);
 
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
-    let table = metadata::build_table(&cell_features, options);
+    // Every cell_members entry shares one feature type (see
+    // `split_by_type_and_cost`), so the first feature's type names the class
+    // and picks the schema attribute definitions.
+    let feature_type = cell_features.first().and_then(|f| f.feature_type());
+    let schema_attrs = feature_type
+        .as_deref()
+        .and_then(|ft| crate::schema::schema_attributes(ft, schema));
+    let table = metadata::build_table(&cell_features, schema_attrs, options);
+    let class_name = feature_type
+        .map(|ft| metadata::sanitize_class_name(&ft))
+        .unwrap_or_default();
 
     // Per-tile local origin keeps the f32 positions small next to ECEF's
     // ~6.378e6 m magnitude (see [`push_geom`]).
@@ -373,7 +413,7 @@ fn build_cell_glb(
         .iter()
         .map(|(h, ids)| (*h, ids.as_slice()))
         .collect();
-    metadata::encode(&table, &mut builder, &refs);
+    metadata::encode(&table, &class_name, &mut builder, &refs);
 
     let gltf_origin = [origin[0], origin[2], -origin[1]];
     let glb = builder.build(gltf_origin);

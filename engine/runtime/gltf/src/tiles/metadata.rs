@@ -1,13 +1,16 @@
-//! Per-tile `EXT_structural_metadata` property table: one implicit `Feature`
-//! class per glb, its properties the union of every attribute path present
-//! across that glb's features. Also the only place that knows the
+//! Per-tile `EXT_structural_metadata` property table: one class per glb,
+//! named after its features' CityGML feature type (every feature in a glb
+//! shares one type — see `builder.rs`'s per-type content splitting), its
+//! properties the union of every attribute path present across that glb's
+//! features. Also the only place that knows the
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use gltf::json;
 use indexmap::IndexMap;
+use nusamai_citygml::schema::{Map as SchemaMap, TypeRef};
 use reearth_flow_types::{AttributeValue, Feature};
 use serde::Serialize;
 
@@ -16,10 +19,16 @@ use crate::metadata::int_type_selector::{SignedIntCollector, UnsignedIntCollecto
 use crate::{FLOAT_NO_DATA, STRING_NO_DATA};
 
 const METADATA_SCHEMA_ID: &str = "Schema";
-const METADATA_CLASS_NAME: &str = "Feature";
+const DEFAULT_CLASS_NAME: &str = "Feature";
 
-/// No per-feature-type classing yet (single inlined `Feature` class), but
-/// these two exclusions still apply, reusing the parent writer's params.
+/// glTF property table class names must match `^[a-zA-Z_][a-zA-Z0-9_]*$`; a
+/// CityGML feature type name such as `bldg:Building` isn't one, so sanitize
+/// it into a valid identifier rather than dropping the per-type class name.
+pub fn sanitize_class_name(feature_type: &str) -> String {
+    feature_type.replace(':', "_")
+}
+
+/// Shared by every class; these exclusions reuse the parent writer's params.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
@@ -27,13 +36,24 @@ pub struct MetadataOptions<'a> {
     pub array_map_separator: Option<&'a str>,
 }
 
-// Decided per column from the values actually present (no schema here); `Bool` counts as numeric.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ColumnKind {
     SignedInt,
     UnsignedInt,
     Float64,
     String,
+}
+
+impl From<&TypeRef> for ColumnKind {
+    fn from(type_ref: &TypeRef) -> Self {
+        match type_ref {
+            TypeRef::Integer => ColumnKind::SignedInt,
+            TypeRef::NonNegativeInteger => ColumnKind::UnsignedInt,
+            TypeRef::Double | TypeRef::Measure => ColumnKind::Float64,
+            TypeRef::Boolean => ColumnKind::SignedInt,
+            _ => ColumnKind::String,
+        }
+    }
 }
 
 /// `properties[i] = (raw attribute path, raw attribute path, column type)`;
@@ -45,24 +65,30 @@ pub struct PropertyTable {
     rows: Vec<Vec<Option<AttributeValue>>>,
 }
 
-pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
+pub fn build_table(
+    features: &[&Feature],
+    schema_attrs: Option<&SchemaMap>,
+    options: MetadataOptions,
+) -> PropertyTable {
     let flattened: Vec<BTreeMap<String, AttributeValue>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
-    let mut raw_paths = BTreeSet::new();
-    for f in &flattened {
-        raw_paths.extend(f.keys().cloned());
-    }
+    let Some(schema_attrs) = schema_attrs else {
+        return PropertyTable {
+            properties: Vec::new(),
+            rows: flattened.iter().map(|_| Vec::new()).collect(),
+        };
+    };
 
-    // Property table keys are the raw attribute path, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = raw_paths
-        .into_iter()
-        .map(|raw| {
-            let kind = column_kind(&flattened, &raw);
-            (raw.clone(), raw, kind)
-        })
+    // Property table keys are the schema-declared attribute name, unsanitized;
+    // an attribute no feature actually carries is dropped rather than encoded
+    // as an all-no-data column.
+    let properties: Vec<(String, String, ColumnKind)> = schema_attrs
+        .iter()
+        .filter(|(name, _)| flattened.iter().any(|f| f.contains_key(name.as_str())))
+        .map(|(name, attr)| (name.clone(), name.clone(), ColumnKind::from(&attr.type_ref)))
         .collect();
 
     let rows = flattened
@@ -86,30 +112,6 @@ fn as_numeric(value: &AttributeValue) -> Option<f64> {
     }
 }
 
-fn column_kind(flattened: &[BTreeMap<String, AttributeValue>], path: &str) -> ColumnKind {
-    let mut any_value = false;
-    let mut any_negative = false;
-    for f in flattened {
-        let Some(value) = f.get(path) else { continue };
-        match value {
-            AttributeValue::Number(n) if n.is_f64() => return ColumnKind::Float64,
-            AttributeValue::Number(n) => {
-                any_value = true;
-                any_negative |= n.as_i64().is_some_and(|v| v < 0);
-            }
-            AttributeValue::Bool(_) => any_value = true,
-            _ => return ColumnKind::String,
-        }
-    }
-    if !any_value {
-        ColumnKind::String
-    } else if any_negative {
-        ColumnKind::SignedInt
-    } else {
-        ColumnKind::UnsignedInt
-    }
-}
-
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
 /// (built once) plus, on each `(primitive, feature_ids)` in `primitives`, an
 /// `EXT_mesh_features` feature-ID attribute tagging each of that primitive's
@@ -119,12 +121,18 @@ fn column_kind(flattened: &[BTreeMap<String, AttributeValue>], path: &str) -> Co
 /// `table` has no properties.
 pub fn encode(
     table: &PropertyTable,
+    class_name: &str,
     builder: &mut Builder,
     primitives: &[(PrimitiveHandle, &[u32])],
 ) {
     if table.properties.is_empty() {
         return;
     }
+    let class_name = if class_name.is_empty() {
+        DEFAULT_CLASS_NAME.to_string()
+    } else {
+        class_name.to_string()
+    };
 
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
@@ -142,7 +150,7 @@ pub fn encode(
 
     let mut classes = IndexMap::new();
     classes.insert(
-        METADATA_CLASS_NAME,
+        class_name.clone(),
         MetadataClass {
             properties: class_properties,
         },
@@ -153,7 +161,7 @@ pub fn encode(
             classes,
         },
         property_tables: vec![MetadataPropertyTable {
-            class: METADATA_CLASS_NAME,
+            class: class_name,
             count: table.rows.len(),
             properties: table_properties,
         }],
@@ -352,7 +360,7 @@ struct ExtStructuralMetadata {
 #[derive(Serialize)]
 struct MetadataSchema {
     id: &'static str,
-    classes: IndexMap<&'static str, MetadataClass>,
+    classes: IndexMap<String, MetadataClass>,
 }
 
 #[derive(Serialize)]
@@ -373,7 +381,7 @@ struct ClassProperty {
 
 #[derive(Serialize)]
 struct MetadataPropertyTable {
-    class: &'static str,
+    class: String,
     count: usize,
     properties: IndexMap<String, MetadataPropertyTableProperty>,
 }
@@ -443,8 +451,23 @@ fn is_excluded(key: &str, options: MetadataOptions) -> bool {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
+    use nusamai_citygml::schema::Attribute as SchemaAttribute;
 
     use super::*;
+
+    fn schema_map(entries: Vec<(&str, TypeRef)>) -> SchemaMap {
+        let mut map = SchemaMap::default();
+        for (name, type_ref) in entries {
+            map.insert(
+                name.to_string(),
+                SchemaAttribute {
+                    type_ref,
+                    ..Default::default()
+                },
+            );
+        }
+        map
+    }
 
     fn feature_with_nested() -> Feature {
         let mut attrs: IndexMap<String, AttributeValue> = IndexMap::new();
@@ -473,13 +496,21 @@ mod tests {
     }
 
     #[test]
+    fn no_schema_entry_produces_no_properties() {
+        let feature = feature_with_nested();
+        let table = build_table(&[&feature], None, MetadataOptions::default());
+        assert!(raw_paths(&table).is_empty());
+    }
+
+    #[test]
     fn none_separator_drops_maps_and_arrays() {
         let feature = feature_with_nested();
         let options = MetadataOptions {
             array_map_separator: None,
             ..Default::default()
         };
-        let table = build_table(&[&feature], options);
+        let schema = schema_map(vec![("name", TypeRef::String)]);
+        let table = build_table(&[&feature], Some(&schema), options);
 
         // Only the top-level scalar survives; the map and array contribute
         // no columns at all.
@@ -493,9 +524,14 @@ mod tests {
             array_map_separator: Some("."),
             ..Default::default()
         };
-        let table = build_table(&[&feature], options);
+        let schema = schema_map(vec![
+            ("name", TypeRef::String),
+            ("addr.city", TypeRef::String),
+            ("heights.0", TypeRef::String),
+        ]);
+        let table = build_table(&[&feature], Some(&schema), options);
 
-        assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
+        assert_eq!(raw_paths(&table), vec!["name", "addr.city", "heights.0"]);
     }
 
     fn number(n: f64) -> AttributeValue {
@@ -504,33 +540,6 @@ mod tests {
 
     fn int_number(n: i64) -> AttributeValue {
         AttributeValue::Number(serde_json::Number::from(n))
-    }
-
-    #[test]
-    fn column_kind_picks_narrowest_matching_type() {
-        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
-        assert_eq!(column_kind(&all_nonneg_ints, "k"), ColumnKind::UnsignedInt);
-
-        let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
-        assert_eq!(column_kind(&has_negative, "k"), ColumnKind::SignedInt);
-
-        let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
-        assert_eq!(
-            column_kind(&is_f64_typed_even_though_whole, "k"),
-            ColumnKind::Float64
-        );
-
-        let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
-        assert_eq!(column_kind(&has_fraction, "k"), ColumnKind::Float64);
-
-        let bool_only = [BTreeMap::from([("k".to_string(), AttributeValue::Bool(true))])];
-        assert_eq!(column_kind(&bool_only, "k"), ColumnKind::UnsignedInt);
-
-        let has_string = [BTreeMap::from([
-            ("k".to_string(), int_number(1)),
-            ("k2".to_string(), AttributeValue::String("s".to_string())),
-        ])];
-        assert_eq!(column_kind(&has_string, "k2"), ColumnKind::String);
     }
 
     #[test]
@@ -547,9 +556,16 @@ mod tests {
             AttributeValue::String("y".to_string()),
         )]));
 
-        let table = build_table(&[&feature1, &feature2], MetadataOptions::default());
+        let schema = schema_map(vec![
+            ("height", TypeRef::Double),
+            ("count", TypeRef::Integer),
+            ("elevation_delta", TypeRef::Integer),
+            ("flag", TypeRef::Boolean),
+            ("name", TypeRef::String),
+        ]);
+        let table = build_table(&[&feature1, &feature2], Some(&schema), MetadataOptions::default());
         let mut builder = Builder::new();
-        encode(&table, &mut builder, &[]);
+        encode(&table, "Feature", &mut builder, &[]);
         let glb = builder.build([0.0, 0.0, 0.0]);
 
         let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();

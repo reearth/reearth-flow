@@ -517,7 +517,14 @@ impl Cesium3DTilesWriter {
         };
 
         let now = time::Instant::now();
-        let built = super::builder::build(&features, options, target_tile_size, render, write_tile)?;
+        let built = super::builder::build(
+            &features,
+            &self.schema,
+            options,
+            target_tile_size,
+            render,
+            write_tile,
+        )?;
         for (relative_path, bytes) in built.subtrees {
             write_tile(relative_path, bytes)?;
         }

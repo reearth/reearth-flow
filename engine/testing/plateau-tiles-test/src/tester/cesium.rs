@@ -25,10 +25,16 @@ pub enum GeometryTest {
 #[derive(Debug, Deserialize)]
 pub struct CesiumConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
-    #[serde(default)]
+    /// Defaults to skipping `AverageWinding`; a profile that sets this list
+    /// takes full control and can opt the winding test back in by omitting it.
+    #[serde(default = "default_skip_geometry_tests")]
     pub skip_geometry_tests: Vec<GeometryTest>,
     #[serde(default)]
     pub skip_all_geometry_tests: bool,
+}
+
+fn default_skip_geometry_tests() -> Vec<GeometryTest> {
+    vec![GeometryTest::AverageWinding]
 }
 
 pub fn test_cesium(
