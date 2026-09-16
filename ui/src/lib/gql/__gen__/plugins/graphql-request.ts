@@ -453,7 +453,7 @@ export type ExecuteDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteDeploymentMutation = { executeDeployment: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } } | null };
+export type ExecuteDeploymentMutation = { executeDeployment: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: string;
@@ -553,7 +553,7 @@ export type TriggerFragment = { id: string, createdAt: any, updatedAt: any, last
 
 export type DiagnosticFragment = { code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null };
 
-export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null };
+export type JobFragment = { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null };
 
 export type AssetFragment = { id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus: ArchiveExtractionStatus | null };
 
@@ -582,29 +582,21 @@ export type GetJobsQueryVariables = Exact<{
 }>;
 
 
-export type GetJobsQuery = { jobs: { totalCount: number, nodes: Array<{ id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
+export type GetJobsQuery = { jobs: { totalCount: number, nodes: Array<{ id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: string;
 }>;
 
 
-export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null };
-
-export type GetJobDiagnosticsQueryVariables = Exact<{
-  jobId: string;
-  nodeId: string;
-}>;
-
-
-export type GetJobDiagnosticsQuery = { job: { id: string, nodeDiagnostics: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null } | null };
+export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null };
 
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
 
 
-export type CancelJobMutation = { cancelJob: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } | null } };
+export type CancelJobMutation = { cancelJob: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null } };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
@@ -657,14 +649,14 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } } | null };
+export type RunProjectMutation = { runProject: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } | null };
 
 export type PreviewSchemaMutationVariables = Exact<{
   input: PreviewSchemaInput;
 }>;
 
 
-export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, droppedEventCount: number | null, failedNodes: Array<{ code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null }> | null, deployment: { id: string, description: string } | null } } };
+export type PreviewSchemaMutation = { previewSchema: { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } } };
 
 export type CopyProjectMutationVariables = Exact<{
   projectId: string;
@@ -1017,16 +1009,12 @@ export const JobFragmentDoc = gql`
   outputURLs
   userFacingLogsURL
   debug
-  droppedEventCount
-  failedNodes {
-    ...Diagnostic
-  }
   deployment {
     id
     description
   }
 }
-    ${DiagnosticFragmentDoc}`;
+    `;
 export const AssetFragmentDoc = gql`
     fragment Asset on Asset {
   id
@@ -1428,16 +1416,6 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
-export const GetJobDiagnosticsDocument = gql`
-    query GetJobDiagnostics($jobId: ID!, $nodeId: String!) {
-  job(id: $jobId) {
-    id
-    nodeDiagnostics(nodeId: $nodeId) {
-      ...Diagnostic
-    }
-  }
-}
-    ${DiagnosticFragmentDoc}`;
 export const CancelJobDocument = gql`
     mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
@@ -1874,9 +1852,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>({ document: GetJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJob', 'query', variables);
-    },
-    GetJobDiagnostics(variables: GetJobDiagnosticsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobDiagnosticsQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetJobDiagnosticsQuery>({ document: GetJobDiagnosticsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJobDiagnostics', 'query', variables);
     },
     CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CancelJobMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>({ document: CancelJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CancelJob', 'mutation', variables);

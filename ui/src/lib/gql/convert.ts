@@ -142,8 +142,6 @@ export const toJob = (job: JobFragment): Job => ({
   completedAt: job.completedAt,
   outputURLs: job.outputURLs ?? undefined,
   userFacingLogsURL: job.userFacingLogsURL ?? undefined,
-  droppedEventCount: job.droppedEventCount ?? undefined,
-  failedNodes: job.failedNodes?.map(toDiagnostic),
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({

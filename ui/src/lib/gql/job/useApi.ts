@@ -43,17 +43,18 @@ export const useJob = () => {
    * arrive over a subscription, so a live job has to be re-read on an interval
    * to keep them current.
    *
-   * `nodeId` defaults to the job-level bucket; pass a node's id to read the
-   * diagnostics attributed to that node instead.
+   * `nodeIds` should be every node in the run's workflows: diagnostics are
+   * bucketed by node and a node left out of the list is silently invisible.
    */
   const useGetJobDiagnostics = (
     jobId?: string,
     poll?: boolean,
-    nodeId?: string,
+    nodeIds?: string[],
   ) => {
-    const { data, ...rest } = useGetJobDiagnosticsQuery(jobId, poll, nodeId);
+    const { data, ...rest } = useGetJobDiagnosticsQuery(jobId, poll, nodeIds);
     return {
-      diagnostics: data,
+      failedNodes: data?.failedNodes,
+      bucketRows: data?.bucketRows,
       ...rest,
     };
   };

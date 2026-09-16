@@ -15,7 +15,18 @@ import { requestMiddleware } from "./GraphQLRequestMiddleware";
 
 const GraphQLContext = createContext<Sdk | undefined>(undefined);
 
+/**
+ * The same client the SDK is built on, for the rare query whose shape is not
+ * known at build time and so cannot be generated — see `nodeDiagnosticsBatch`,
+ * which aliases one field per node id.
+ */
+const GraphQLClientContext = createContext<GraphQLClient | undefined>(
+  undefined,
+);
+
 export const useGraphQLContext = () => useContext(GraphQLContext);
+
+export const useGraphQLClient = () => useContext(GraphQLClientContext);
 
 export const GraphQLRequestProvider = ({
   accesstoken,
@@ -25,6 +36,9 @@ export const GraphQLRequestProvider = ({
   children?: ReactNode;
 }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
+  const [graphQLClient, setGraphQLClient] = useState<
+    GraphQLClient | undefined
+  >();
 
   const isMockMode = config().mockEnabled;
   const endpoint = isMockMode
@@ -47,12 +61,15 @@ export const GraphQLRequestProvider = ({
     });
 
     const sdk = getSdk(graphQLClient);
+    setGraphQLClient(graphQLClient);
     setGraphQLSdk(sdk);
   }, [graphQLSdk, endpoint, accesstoken, setGraphQLSdk, isMockMode]);
 
   return graphQLSdk ? (
     <GraphQLContext.Provider value={graphQLSdk}>
-      {children}
+      <GraphQLClientContext.Provider value={graphQLClient}>
+        {children}
+      </GraphQLClientContext.Provider>
     </GraphQLContext.Provider>
   ) : null;
 };

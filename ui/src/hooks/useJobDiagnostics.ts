@@ -12,40 +12,66 @@ import {
  * A job's diagnostics, merged from the two sources the API exposes and sorted
  * worst-first.
  *
- * `Job.failedNodes` holds every fatal row for the job; `nodeDiagnostics`
- * returns one bucket, the job-level one by default. The two genuinely overlap —
- * `failedNodes` selects on disposition alone and ignores nodeId, so a fatal row
- * carrying no nodeId is in both — so fatal rows are dropped from the bucket
- * before merging. That is exact rather than a dedupe heuristic: `failedNodes`
- * already holds every fatal row, so nothing is lost.
+ * `failedNodes` is the terminal failure list and the buckets are everything
+ * else, but they overlap once a job finishes: `failedNodes` selects on
+ * disposition alone and ignores nodeId, so a fatal row can be in both.
  *
- * Note the schema has no job-wide query. `nodeDiagnostics` filters on an exact
- * nodeId match, so rows attributed to a node are only reachable by naming it —
- * a successful run whose nodes emitted warnings has none of them here yet.
+ * Overlapping rows are matched rather than filtered wholesale. `GetFailedNodes`
+ * reads only Mongo and the completion artifact — never Redis — so while a job
+ * runs it is empty and every fatal row lives in the live buckets. Dropping all
+ * fatal bucket rows therefore hid live failures from the table and the badge
+ * until the run ended, which is when watching matters least.
+ *
+ * The schema has no job-wide query — `nodeDiagnostics` filters on an exact
+ * nodeId match — so `nodeIds` must list every node in the run's workflows. A
+ * node missing from it contributes no rows and nothing says so, which is
+ * exactly how a successful run full of dropped features once looked empty.
  *
  * Shared so that a caller needing only the count or severity (to badge a
  * control) reads exactly what the table will render. Every caller hits the same
- * query keys, so this costs one request no matter how many use it.
+ * query key, so this costs one request no matter how many use it.
  */
-export default (jobId?: string, isJobActive?: boolean, nodeId?: string) => {
-  const { useGetJob, useGetJobDiagnostics } = useJob();
+/**
+ * Mirrors the server's `dedupeDiagnostics`, which keys on
+ * (nodeID, code, disposition) and normalises an absent value to "". Using the
+ * same key means the only rows collapsed here are ones the server would have
+ * collapsed itself. The NUL separator stops a value containing the delimiter
+ * from forging a collision.
+ */
+const diagnosticKey = (diagnostic: Diagnostic) =>
+  [
+    diagnostic.nodeId ?? "",
+    diagnostic.code,
+    diagnostic.effectiveDisposition ?? "",
+  ].join("\u0000");
 
-  const { job } = useGetJob(jobId);
-  const { diagnostics, isFetching } = useGetJobDiagnostics(
+export default (jobId?: string, isJobActive?: boolean, nodeIds?: string[]) => {
+  const { useGetJobDiagnostics } = useJob();
+
+  const { failedNodes, bucketRows, isFetching } = useGetJobDiagnostics(
     jobId,
     isJobActive,
-    nodeId,
+    nodeIds,
+  );
+
+  const terminalKeys = useMemo(
+    () => new Set((failedNodes ?? []).map(diagnosticKey)),
+    [failedNodes],
   );
 
   const merged: Diagnostic[] = useMemo(
     () =>
       [
-        ...(job?.failedNodes ?? []),
-        ...(diagnostics ?? []).filter(
-          (diagnostic) => !isFatalDiagnostic(diagnostic),
+        ...(failedNodes ?? []),
+        ...(bucketRows ?? []).filter(
+          // failedNodes only ever holds fatal rows, so a non-fatal bucket row
+          // cannot be a duplicate and need not be looked up at all.
+          (diagnostic) =>
+            !isFatalDiagnostic(diagnostic) ||
+            !terminalKeys.has(diagnosticKey(diagnostic)),
         ),
       ].sort(compareDiagnosticSeverity),
-    [job?.failedNodes, diagnostics],
+    [failedNodes, bucketRows, terminalKeys],
   );
 
   // Sorted worst-first, so the head carries the worst severity present. Used

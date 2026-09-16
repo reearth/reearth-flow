@@ -9,7 +9,12 @@ import { isDefined } from "@flow/utils";
 
 import { CancelJobInput } from "../__gen__/graphql";
 import { toDiagnostic, toJob } from "../convert";
-import { useGraphQLContext } from "../provider";
+import { useGraphQLClient, useGraphQLContext } from "../provider";
+
+import {
+  JOB_LEVEL_NODE_ID,
+  fetchNodeDiagnosticsBatch,
+} from "./nodeDiagnosticsBatch";
 
 export enum JobQueryKeys {
   GetJobs = "getJobs",
@@ -26,15 +31,9 @@ export const JOBS_FETCH_RATE = 15;
  */
 export const JOB_DIAGNOSTICS_POLL_RATE = 5000;
 
-/**
- * `nodeDiagnostics` filters the job's rows by an exact nodeId match, and rows
- * that belong to the job rather than to any one node carry no nodeId. An empty
- * string is therefore the job-level bucket, not "all nodes".
- */
-export const JOB_LEVEL_NODE_ID = "";
-
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
+  const graphQLClient = useGraphQLClient();
   const queryClient = useQueryClient();
 
   const useGetJobsQuery = (
@@ -81,33 +80,44 @@ export const useQueries = () => {
     });
 
   /**
-   * One bucket of a job's diagnostics. `nodeDiagnostics` filters the job's rows
-   * by an exact nodeId match, so the default empty id returns the job-level
-   * rows and a real node id returns that node's.
+   * Every bucket of a job's diagnostics: the job-level rows plus one per node.
    *
-   * There is deliberately no job-wide query on the schema, so this cannot stand
-   * in for one. The terminal per-node failures come from `Job.failedNodes`
-   * instead, which the Job fragment already carries.
+   * `nodeDiagnostics` filters by an exact nodeId match and the schema has no
+   * job-wide field, so the buckets have to be named. They go in a single
+   * aliased request — see `nodeDiagnosticsBatch` for why that is one server-side
+   * load rather than N.
+   *
+   * `nodeIds` should be every node in the run's workflows. Omitting a node
+   * silently hides its diagnostics, which is the failure mode this replaced.
+   *
+   * `failedNodes` comes back from the same request rather than from the shared
+   * Job fragment, which would make the jobs list resolve it per row.
    */
   const useGetJobDiagnosticsQuery = (
     jobId?: string,
     poll?: boolean,
-    nodeId: string = JOB_LEVEL_NODE_ID,
+    nodeIds?: string[],
   ) =>
     useQuery({
-      queryKey: [JobQueryKeys.GetJobDiagnostics, jobId, nodeId],
+      queryKey: [JobQueryKeys.GetJobDiagnostics, jobId, nodeIds],
       queryFn: async () => {
-        const data = await graphQLContext?.GetJobDiagnostics({
-          jobId: jobId ?? "",
-          nodeId,
-        });
-        // An empty list is a legitimate answer, not a failure: live rows come
-        // from a TTL-bound cache that is only merged with the persisted rows at
-        // job completion, so there is a window right after a job starts where
+        if (!graphQLClient || !jobId)
+          return { failedNodes: [], bucketRows: [] };
+        const { failedNodes, bucketRows } = await fetchNodeDiagnosticsBatch(
+          graphQLClient,
+          jobId,
+          [JOB_LEVEL_NODE_ID, ...(nodeIds ?? [])],
+        );
+        // Empty is a legitimate answer, not a failure: live rows come from a
+        // TTL-bound cache that is only merged with the persisted rows at job
+        // completion, so there is a window right after a job starts where
         // nothing exists yet.
-        return (data?.job?.nodeDiagnostics ?? []).map(toDiagnostic);
+        return {
+          failedNodes: failedNodes.map(toDiagnostic),
+          bucketRows: bucketRows.map(toDiagnostic),
+        };
       },
-      enabled: !!jobId,
+      enabled: !!jobId && !!graphQLClient,
       refetchInterval: poll ? JOB_DIAGNOSTICS_POLL_RATE : false,
     });
 

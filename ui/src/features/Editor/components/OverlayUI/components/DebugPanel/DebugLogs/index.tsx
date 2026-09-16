@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from "react";
 
 import DiagnosticsConsole from "@flow/features/DiagnosticsConsole";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import LogsConsole from "@flow/features/LogsConsole";
 import useJobDiagnostics from "@flow/hooks/useJobDiagnostics";
 
@@ -18,9 +19,17 @@ type Props = {
 const DebugLogs: React.FC<Props> = ({ debugJobId, isJobActive }) => {
   const [view, setView] = useState<DebugLogsView>("logs");
 
+  // Diagnostics are bucketed per node with no job-wide query, so the ids are
+  // what make them reachable — see `nodeDiagnosticsBatch`.
+  const { workflowNodeIds } = useEditorContext();
+
   // Reads the same query keys the diagnostics view reads, so the badge can
   // never disagree with what the table shows, and it costs no extra request.
-  const { count, hasBlocking } = useJobDiagnostics(debugJobId, isJobActive);
+  const { count, hasBlocking } = useJobDiagnostics(
+    debugJobId,
+    isJobActive,
+    workflowNodeIds,
+  );
 
   // A new run, or one whose diagnostics aged out of the live cache, must not
   // leave the panel stranded on an inert view.
@@ -45,6 +54,7 @@ const DebugLogs: React.FC<Props> = ({ debugJobId, isJobActive }) => {
         <DiagnosticsConsole
           jobId={debugJobId}
           isJobActive={isJobActive}
+          nodeIds={workflowNodeIds}
           leadingActions={switchControl}
         />
       ) : (

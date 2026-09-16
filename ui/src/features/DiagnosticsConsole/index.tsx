@@ -11,10 +11,10 @@ type Props = {
    */
   isJobActive?: boolean;
   /**
-   * Read the diagnostics attributed to one node instead of the job-level
-   * bucket. Omit for the job-level view.
+   * Every node in the run's workflows. Diagnostics are bucketed per node and
+   * the API has no job-wide query, so a node missing here shows nothing.
    */
-  nodeId?: string;
+  nodeIds?: string[];
   /** Controls rendered beside the table's search input. */
   leadingActions?: React.ReactNode;
 };
@@ -26,7 +26,7 @@ type Props = {
 const DiagnosticsConsole: React.FC<Props> = ({
   jobId,
   isJobActive,
-  nodeId,
+  nodeIds,
   leadingActions,
 }) => {
   const t = useT();
@@ -34,7 +34,7 @@ const DiagnosticsConsole: React.FC<Props> = ({
   const { diagnostics, isFetching } = useJobDiagnostics(
     jobId,
     isJobActive,
-    nodeId,
+    nodeIds,
   );
 
   // No wrapper: LogsConsole renders its table directly, and this view swaps

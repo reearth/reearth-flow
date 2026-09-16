@@ -103,10 +103,6 @@ fragment Job on Job {
   outputURLs
   userFacingLogsURL
   debug
-  droppedEventCount
-  failedNodes {
-    ...Diagnostic
-  }
   deployment {
     id
     description

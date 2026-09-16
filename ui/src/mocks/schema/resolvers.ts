@@ -22,7 +22,12 @@ import {
   mockCmsItems,
 } from "../data/cmsIntegration";
 import { mockDeployments } from "../data/deployments";
-import { mockJobDiagnostics, mockJobs, mockLogs } from "../data/jobs";
+import {
+  mockFailedNodes,
+  mockJobDiagnostics,
+  mockJobs,
+  mockLogs,
+} from "../data/jobs";
 import { mockProjects } from "../data/projects";
 import {
   mockUsers,
@@ -43,6 +48,7 @@ const jobs = [...mockJobs];
 let deployments = [...mockDeployments];
 const logs = [...mockLogs];
 const jobDiagnostics = { ...mockJobDiagnostics };
+const failedNodes = { ...mockFailedNodes };
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
 const cmsItems = [...mockCmsItems];
@@ -268,9 +274,11 @@ export const resolvers = {
     completedAt: (job: JobFragment) => job.completedAt,
     userFacingLogsURL: (job: JobFragment) => job.userFacingLogsURL,
     outputURLs: (job: JobFragment) => job.outputURLs,
-    droppedEventCount: (job: JobFragment) => job.droppedEventCount,
+    // Both have their own per-job resolver on the server, which is why they
+    // are not on the shared Job fragment.
+    droppedEventCount: () => null,
     // Persisted at job completion, so it stays null while a job is running.
-    failedNodes: (job: JobFragment) => job.failedNodes,
+    failedNodes: (job: JobFragment) => failedNodes[job.id] ?? null,
     // Exact nodeId match, as the server does it: an empty id is the job-level
     // bucket (rows with no nodeId), not "every node".
     nodeDiagnostics: (job: JobFragment, args: { nodeId: string }) =>
@@ -939,8 +947,6 @@ export const resolvers = {
         completedAt: null,
         outputURLs: [],
         userFacingLogsURL: null,
-        droppedEventCount: null,
-        failedNodes: null,
         deployment: null,
       };
 
@@ -993,8 +999,6 @@ export const resolvers = {
         completedAt: null,
         outputURLs: [],
         userFacingLogsURL: null,
-        droppedEventCount: null,
-        failedNodes: null,
         deployment: null,
       };
 
@@ -1201,8 +1205,6 @@ export const resolvers = {
         completedAt: null,
         outputURLs: [],
         userFacingLogsURL: null,
-        droppedEventCount: null,
-        failedNodes: null,
         deployment: null,
       };
 

@@ -36,6 +36,8 @@ export type EditorContextType = {
   yDoc?: Doc | null;
   workflowVarAwareness?: WorkflowVarAwareness;
   staleNodeIds?: Set<string>;
+  /** Every node id across the project's workflows; diagnostics are per-node. */
+  workflowNodeIds?: string[];
   /** nodeId -> worst diagnostic severity from the current debug run. */
   diagnosticSeverityByNodeId?: Map<string, string>;
 };

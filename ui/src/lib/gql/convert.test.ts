@@ -32,8 +32,6 @@ const jobFragment = (overrides: Partial<JobFragment> = {}): JobFragment => ({
   outputURLs: null,
   userFacingLogsURL: null,
   debug: false,
-  droppedEventCount: null,
-  failedNodes: null,
   deployment: null,
   ...overrides,
 });
@@ -72,31 +70,14 @@ describe("toDiagnostic", () => {
 });
 
 describe("toJob", () => {
-  test("converts failedNodes and droppedEventCount", () => {
-    const converted = toJob(
-      jobFragment({
-        status: "FAILED",
-        droppedEventCount: 12,
-        failedNodes: [
-          diagnosticFragment({
-            code: "expression_eval_failed",
-            severity: "fatal",
-            effectiveDisposition: "fatal",
-          }),
-        ],
-      }),
-    );
+  test("carries no diagnostics payload", () => {
+    // failedNodes and droppedEventCount each have their own per-job resolver on
+    // the server. They were on the shared Job fragment, which made the
+    // workspace jobs list resolve and transfer both for every row it rendered
+    // without them. They are fetched with the diagnostics batch instead.
+    const converted = toJob(jobFragment({ status: "FAILED" }));
 
-    expect(converted.droppedEventCount).toBe(12);
-    expect(converted.failedNodes).toHaveLength(1);
-    expect(converted.failedNodes?.[0].effectiveDisposition).toBe("fatal");
-  });
-
-  test("leaves both absent while the job has not finished", () => {
-    // failedNodes is written at job completion, so a running job has neither.
-    const converted = toJob(jobFragment({ status: "RUNNING" }));
-
-    expect(converted.failedNodes).toBeUndefined();
-    expect(converted.droppedEventCount).toBeUndefined();
+    expect(converted).not.toHaveProperty("failedNodes");
+    expect(converted).not.toHaveProperty("droppedEventCount");
   });
 });
