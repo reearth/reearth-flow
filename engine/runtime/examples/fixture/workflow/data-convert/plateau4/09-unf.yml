@@ -10,7 +10,6 @@ with:
   targetPackages:
   - unf
   workerArtifactPath: null
-  inputVerticalDatum: jgd2011
 graphs:
 - id: c6863b71-953b-4d15-af56-396fc93fc617
   name: FolderAndfilePathReader
@@ -438,22 +437,6 @@ graphs:
     action: HorizontalReprojector
     with:
       targetEpsgCode: '4326'
-  - id: 96828a98-f5b8-5157-9fc6-30a21fe36603
-    name: VerticalDatumRouter
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-      - expr: |
-          (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
-        outputPort: jgd2011
-  - id: a6124e7d-2d3e-54db-893c-60dede30fe34
-    name: HeightRevision
-    type: action
-    action: VerticalReprojector
-    with:
-      reprojectorType: jgd2011ToJgd2024
-      outsideCoverage: passThrough
   - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
     name: VerticalReprojector
     type: action
@@ -653,7 +636,7 @@ graphs:
     toPort: default
   - id: d5e6f7a8-b9c0-1d2e-3f45-6789abcdef01
     from: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
-    to: 96828a98-f5b8-5157-9fc6-30a21fe36603
+    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
     fromPort: default
     toPort: default
   - id: f251eb31-4ffd-4edf-a56c-f2dbd9eb0fc9
@@ -695,19 +678,4 @@ graphs:
     from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
     to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
     fromPort: default
-    toPort: default
-  - id: 1a03b1d2-1a0c-57e3-94c8-a7445e47a08c
-    from: 96828a98-f5b8-5157-9fc6-30a21fe36603
-    to: a6124e7d-2d3e-54db-893c-60dede30fe34
-    fromPort: jgd2011
-    toPort: default
-  - id: d4bd0c6d-7dff-56e0-8f60-e6ea4d181799
-    from: a6124e7d-2d3e-54db-893c-60dede30fe34
-    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
-    fromPort: default
-    toPort: default
-  - id: 7dfdfa8e-8493-5f80-8666-e2dee5a8b5ac
-    from: 96828a98-f5b8-5157-9fc6-30a21fe36603
-    to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
-    fromPort: unfiltered
     toPort: default

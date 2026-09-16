@@ -12,7 +12,6 @@ with:
   targetPackages:
     - wtr
   workerArtifactPath:
-  inputVerticalDatum: jgd2011
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -92,24 +91,6 @@ graphs:
         name: LodSplitterWithDM
         type: subGraph
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
-
-      - id: 892a622b-3a0f-5ef0-84e2-537e02dee09b
-        name: VerticalDatumRouterLod1
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                (env.get("inputVerticalDatum") ?? "jgd2011") == "jgd2011"
-              outputPort: jgd2011
-
-      - id: a4f1112f-c847-596b-9012-f0de07790d60
-        name: HeightRevisionLod1
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToJgd2024
-          outsideCoverage: passThrough
 
       - id: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
         name: VerticalReprojectorLod1
@@ -251,17 +232,17 @@ graphs:
         toPort: default
       - id: 1e4665bb-cbc2-4c38-933a-04df26192ae4
         from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
-        to: 892a622b-3a0f-5ef0-84e2-537e02dee09b
+        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
         fromPort: lod1
         toPort: default
       - id: 1e4665bb-cbc2-4c38-933a-04df26192ae2
         from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
-        to: 892a622b-3a0f-5ef0-84e2-537e02dee09b
+        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
         fromPort: lod2
         toPort: default
       - id: 1e4665bb-cbc2-4c38-933a-04df26192ae3
         from: 1ba025b9-3219-4d18-92b2-2eb546fe54c1
-        to: 892a622b-3a0f-5ef0-84e2-537e02dee09b
+        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
         fromPort: lod3
         toPort: default
       - id: ad5d5514-c17c-4732-b32f-9133a4a8bc0d
@@ -289,18 +270,3 @@ graphs:
         to: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
         fromPort: schema
         toPort: schema
-      - id: 603c1c4c-67dc-5b8d-95ef-90e76f56dfe0
-        from: 892a622b-3a0f-5ef0-84e2-537e02dee09b
-        to: a4f1112f-c847-596b-9012-f0de07790d60
-        fromPort: jgd2011
-        toPort: default
-      - id: 11ebabb3-9a67-54da-9f15-3aa2b80d58eb
-        from: a4f1112f-c847-596b-9012-f0de07790d60
-        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
-        fromPort: default
-        toPort: default
-      - id: f57ba378-cfcb-5804-9009-c4dea4ec57cd
-        from: 892a622b-3a0f-5ef0-84e2-537e02dee09b
-        to: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
-        fromPort: unfiltered
-        toPort: default
