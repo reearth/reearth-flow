@@ -36,6 +36,7 @@ import {
   changedFieldPath,
   DraftPatch,
   DraftStore,
+  nextSeq,
 } from "./utils/paramsAwareness";
 
 type Props = {
@@ -141,6 +142,9 @@ const ParamsDialog: React.FC<Props> = ({
       path: string,
       value: any,
     ) => {
+      // Stamped above every counter already in this node's drafts, so edits
+      // order by what each client had seen rather than by its clock.
+      const seq = nextSeq(rawDrafts[nodeId]);
       setMyDraft(nodeId, (existing) => ({
         ...existing,
         [patchKey]: {
@@ -148,11 +152,12 @@ const ParamsDialog: React.FC<Props> = ({
           [path]: {
             value,
             updatedAt: Date.now(),
+            seq,
           },
         },
       }));
     },
-    [setMyDraft],
+    [setMyDraft, rawDrafts],
   );
 
   const handleUpdate = useCallback(

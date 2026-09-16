@@ -11,6 +11,9 @@ import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 import type { JSONSchema7Definition } from "json-schema";
 
+import { pathKey } from "./path";
+import type { FieldPath } from "./types";
+
 /**
  * Failures keyed by dot path; `""` holds failures on the form as a whole.
  *
@@ -39,7 +42,7 @@ addFormats(ajv);
 const compiled = new WeakMap<object, ValidateFunction>();
 
 const validatorFor = (schema: JSONSchema7Definition): ValidateFunction => {
-  if (typeof schema === "boolean") return ajv.compile({});
+  if (typeof schema === "boolean") return ajv.compile(schema);
   const cached = compiled.get(schema);
   if (cached) return cached;
   const validate = ajv.compile(schema);
@@ -47,38 +50,74 @@ const validatorFor = (schema: JSONSchema7Definition): ValidateFunction => {
   return validate;
 };
 
-/** `/response/responseEncoding` → `response.responseEncoding`. */
-const instancePathToKey = (instancePath: string): string =>
-  instancePath === ""
-    ? ""
-    : instancePath
-        .slice(1)
-        .split("/")
-        .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"))
-        .join(".");
+/**
+ * AJV reports a location as a JSON Pointer. Turning it into the dot path a
+ * field is keyed by has to go through `pathKey`, or the two spellings diverge:
+ * a map key containing a dot is escaped on the field's side and was not here,
+ * so its error never reached the field it belonged to.
+ *
+ * Whether a segment is an array index cannot be read off the pointer, so the
+ * value is walked alongside it — the container says which it is.
+ */
+const instancePathToPath = (instancePath: string, root: unknown): FieldPath => {
+  if (instancePath === "") return [];
+
+  const segments = instancePath
+    .slice(1)
+    .split("/")
+    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
+
+  const path: (string | number)[] = [];
+  let current: unknown = root;
+  for (const segment of segments) {
+    if (Array.isArray(current)) {
+      const index = Number(segment);
+      const isIndex = Number.isInteger(index) && index >= 0;
+      path.push(isIndex ? index : segment);
+      current = isIndex ? current[index] : undefined;
+    } else {
+      path.push(segment);
+      current =
+        current && typeof current === "object"
+          ? (current as Record<string, unknown>)[segment]
+          : undefined;
+    }
+  }
+  return path;
+};
 
 /**
  * AJV reports a missing property against the parent object. Moving it onto the
  * property itself is what puts the message under the field the user has to fill.
  */
-const keyForError = (error: ErrorObject): string => {
-  const base = instancePathToKey(error.instancePath);
+const keyForError = (error: ErrorObject, root: unknown): string => {
+  const path = instancePathToPath(error.instancePath, root);
   if (error.keyword === "required") {
     const missing = (error.params as { missingProperty?: string })
       .missingProperty;
-    if (missing) return base ? `${base}.${missing}` : missing;
+    if (missing) return pathKey([...path, missing]);
   }
-  return base;
+  return pathKey(path);
 };
 
 /**
- * `must be null` only ever comes from the null branch of a nullable schema, so
- * it fires whenever an optional section is present but incomplete. The useful
- * complaint in that case is the child's, never this one.
+ * `must be null` raised by the null *branch* of a nullable union, which fires
+ * whenever an optional section is present but incomplete. The useful complaint
+ * in that case is the child's, never this one.
+ *
+ * The branch has to be confirmed rather than assumed: a schema whose only
+ * permitted value is `null` raises exactly the same error for a wrong value,
+ * and dropping it there left the form with no errors at all and a verdict of
+ * valid. AJV says which is which in `schemaPath` — a branch of a choice ends
+ * `/anyOf/<n>/type` or `/oneOf/<n>/type`, a standalone `null` schema just
+ * `/type`.
  */
+const NULL_BRANCH = /\/(anyOf|oneOf)\/\d+\/type$/;
+
 const isNullBranchNoise = (error: ErrorObject): boolean =>
   error.keyword === "type" &&
-  (error.params as { type?: string | string[] }).type === "null";
+  (error.params as { type?: string | string[] }).type === "null" &&
+  NULL_BRANCH.test(error.schemaPath);
 
 const CHOICE_MESSAGE = "Choose one of the available options";
 
@@ -120,7 +159,7 @@ export const validate = (
   const errors: ValidationErrors = {};
   for (const error of validator.errors) {
     if (isNullBranchNoise(error)) continue;
-    const key = keyForError(error);
+    const key = keyForError(error, value);
     const existing = (errors[key] ??= []);
     const message = messageFor(error);
     if (message !== null && !existing.includes(message)) existing.push(message);

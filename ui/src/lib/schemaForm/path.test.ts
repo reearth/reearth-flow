@@ -9,6 +9,7 @@ import {
   pathKey,
   setAtPath,
 } from "./path";
+import { validate } from "./validate";
 
 describe("pathKey", () => {
   it("round-trips, reading array indices back as numbers", () => {
@@ -24,6 +25,39 @@ describe("pathKey", () => {
 
   it("keeps a leading-zero segment a string, since it is not an index", () => {
     expect(parsePathKey("a.007")).toEqual(["a", "007"]);
+  });
+
+  it("round-trips a map key containing a dot as one segment", () => {
+    // A user-typed key like `roads.highway` used to serialise to
+    // `map.roads.highway` and read back as three segments, so an edit landed on
+    // a nested pair of fields and corrupted every collaborator's copy.
+    const path = ["map", "roads.highway"];
+    const key = pathKey(path);
+    expect(parsePathKey(key)).toEqual(path);
+    expect(
+      getAtPath({ map: { "roads.highway": "a" } }, parsePathKey(key)),
+    ).toBe("a");
+    expect(
+      setAtPath({ map: { "roads.highway": "a" } }, parsePathKey(key), "b"),
+    ).toEqual({ map: { "roads.highway": "b" } });
+  });
+
+  it("round-trips a map key made of digits as a string, not an index", () => {
+    const path = ["map", "0"];
+    expect(parsePathKey(pathKey(path))).toEqual(path);
+    expect(setAtPath({}, parsePathKey(pathKey(path)), "x")).toEqual({
+      map: { "0": "x" },
+    });
+  });
+
+  it("round-trips a map key containing the escape character itself", () => {
+    for (const key of ["a~b", "a~1b", "a~0b", "~2", "a.b~c.d"]) {
+      expect(parsePathKey(pathKey(["map", key]))).toEqual(["map", key]);
+    }
+  });
+
+  it("leaves an array index as bare digits, keeping the wire format intact", () => {
+    expect(pathKey(["rules", 0, "name"])).toBe("rules.0.name");
   });
 
   it("holds the assumption dot paths rest on: no '.' in any property name", () => {
@@ -56,6 +90,66 @@ describe("pathKey", () => {
     actions.forEach((action) => walk(action.parameter));
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("validation errors reach the field they belong to", () => {
+  // The field's key and the error's key are produced by different code. If only
+  // one of them escapes, an error on a map entry the user named `bldg.part` is
+  // filed under a key no field is listening on, and is never shown.
+  it("keys an error on a dotted map key the same way the field does", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        inline: {
+          type: "object",
+          additionalProperties: {
+            type: "object",
+            required: ["sourcePath"],
+            properties: { sourcePath: { type: "string" } },
+          },
+        },
+      },
+    };
+    const errors = validate(schema as never, {
+      inline: { "bldg.part": {} },
+    });
+    expect(Object.keys(errors)).toContain(
+      pathKey(["inline", "bldg.part", "sourcePath"]),
+    );
+  });
+
+  it("still keys an array index as bare digits", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        rows: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["a"],
+            properties: { a: { type: "string" } },
+          },
+        },
+      },
+    };
+    const errors = validate(schema as never, { rows: [{ a: "ok" }, {}] });
+    expect(Object.keys(errors)).toContain(pathKey(["rows", 1, "a"]));
+    expect(Object.keys(errors)).toContain("rows.1.a");
+  });
+
+  it("keys an error on a map key made of digits as a string", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        inline: {
+          type: "object",
+          additionalProperties: { type: "string" },
+        },
+      },
+    };
+    const errors = validate(schema as never, { inline: { "0": 1 } });
+    expect(Object.keys(errors)).toContain(pathKey(["inline", "0"]));
   });
 });
 

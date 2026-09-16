@@ -11,28 +11,58 @@
  * untouched by the move off RJSF, so clients on either build agree about which
  * field a patch belongs to.
  *
- * It does assume no property name contains a `.`, which holds for every one of
- * the 369 names in the action corpus (serde renames them all to camelCase) and
- * is checked by `path.test.ts`. What this replaces — reconstructing a path by
- * splitting RJSF's DOM id on `_` — made the same bet on underscores, silently.
+ * Two things in a segment would otherwise be read back as something else, so
+ * both are escaped:
+ *
+ * - a `.` inside a name would split into two segments. Schema property names
+ *   never contain one (`path.test.ts` checks that against the whole corpus),
+ *   but the keys of a `map` field are typed by the user, and a key like
+ *   `roads.highway` was being read and patched as `map.roads.highway` — a
+ *   nested pair of fields rather than the one entry, corrupting the edit and
+ *   every collaborator's copy of it.
+ * - a name made only of digits would be read back as an array index, so a map
+ *   entry called `0` would rebuild the map as an array.
+ *
+ * The escapes follow JSON Pointer's convention: `~0` for a literal `~`, `~1`
+ * for a literal `.`, plus `~2` prefixing a string that would otherwise read as
+ * an index. Array indices stay bare digits, which is what keeps the existing
+ * wire format intact.
  */
 import type { FieldPath } from "./types";
 
+const INDEX = /^(0|[1-9]\d*)$/;
+
+/** True when this string would be read back as an array index. */
+const readsAsIndex = (segment: string): boolean => INDEX.test(segment);
+
+const escapeSegment = (segment: string): string => {
+  // `~` first, so the markers introduced below are never re-escaped.
+  const escaped = segment.replace(/~/g, "~0").replace(/\./g, "~1");
+  return readsAsIndex(escaped) ? `~2${escaped}` : escaped;
+};
+
+const unescapeSegment = (segment: string): string =>
+  segment.replace(/~1/g, ".").replace(/~0/g, "~");
+
 /** Dot path for a field. The root is `""`. */
-export const pathKey = (path: FieldPath): string => path.join(".");
+export const pathKey = (path: FieldPath): string =>
+  path
+    .map((segment) =>
+      typeof segment === "number" ? String(segment) : escapeSegment(segment),
+    )
+    .join(".");
 
 /**
- * Inverse of `pathKey`. Segments that look like array indices come back as
- * numbers, so `setAtPath` rebuilds an array rather than an object — which
- * `path.split(".")` alone did not.
+ * Inverse of `pathKey`. A bare run of digits comes back as a number, so
+ * `setAtPath` rebuilds an array rather than an object keyed `"0"`.
  */
 export const parsePathKey = (key: string): FieldPath => {
   if (key === "") return [];
-  return key
-    .split(".")
-    .map((segment) =>
-      /^(0|[1-9]\d*)$/.test(segment) ? Number(segment) : segment,
-    );
+  return key.split(".").map((segment) => {
+    if (segment.startsWith("~2")) return unescapeSegment(segment.slice(2));
+    if (readsAsIndex(segment)) return Number(segment);
+    return unescapeSegment(segment);
+  });
 };
 
 export const childPath = (
@@ -76,7 +106,14 @@ export const setAtPath = (
   return container;
 };
 
-/** Immutably remove the value at `path`. Used to clear a nullable field. */
+/**
+ * Immutably remove the value at `path`.
+ *
+ * Clearing a field removes its key rather than setting it to `undefined`. A
+ * key that is present with an undefined value is still a key: `Object.keys`
+ * reports it, so a schema with `additionalProperties: false` rejects the object
+ * it sits in, and it survives into the params as a phantom entry.
+ */
 export const deleteAtPath = (target: unknown, path: FieldPath): unknown => {
   if (path.length === 0) return undefined;
 

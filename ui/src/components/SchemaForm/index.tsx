@@ -6,6 +6,7 @@ import { useT } from "@flow/lib/i18n";
 import {
   applyDefaults,
   compile,
+  deleteAtPath,
   isValid,
   setAtPath,
   pathKey,
@@ -87,7 +88,9 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   );
 
   const errors = useMemo(
-    () => (schema ? validate(schema, seeded ?? {}) : {}),
+    // Only an absent root becomes `{}`; a root the schema legally allows to be
+    // `null` must reach AJV as `null`, or a valid form is reported invalid.
+    () => (schema ? validate(schema, seeded === undefined ? {} : seeded) : {}),
     [schema, seeded],
   );
   const valid = isValid(errors);
@@ -106,7 +109,15 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   const handleChange = useCallback(
     (path: FieldPath, value: unknown) => {
       setTouched(true);
-      onChange(setAtPath(seeded ?? {}, path, value), pathKey(path));
+      // Clearing a field removes its key. Writing `undefined` would leave the
+      // key present — `Object.keys` still reports it, so an object with
+      // `additionalProperties: false` rejects it — and it would ride into the
+      // saved params as a phantom entry.
+      const next =
+        value === undefined
+          ? deleteAtPath(seeded, path)
+          : setAtPath(seeded, path, value);
+      onChange(next, pathKey(path));
     },
     [onChange, seeded],
   );

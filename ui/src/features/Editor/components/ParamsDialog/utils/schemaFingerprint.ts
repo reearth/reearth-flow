@@ -34,7 +34,11 @@ function normalizeSchema(value: any): any {
 export function computeSchemaFingerprint(
   schema?: FlowSchema,
 ): string | undefined {
-  if (!schema?.properties) return undefined;
+  // Only an absent schema has no fingerprint. Returning undefined for a schema
+  // without top-level `properties` gave the four union-rooted actions no
+  // fingerprint at all, so `schemasMatch` compared undefined to undefined and
+  // reported "unchanged" however much their schema had moved.
+  if (!schema) return undefined;
   return simpleHash(JSON.stringify(normalizeSchema(schema)));
 }
 

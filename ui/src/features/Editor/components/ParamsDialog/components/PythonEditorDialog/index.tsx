@@ -14,11 +14,37 @@ import {
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useT } from "@flow/lib/i18n";
 
+export type CodeValue = {
+  type: "flowExpr" | "string";
+  value: string;
+};
+
 type Props = {
   open: boolean;
   fieldContext: FieldContext;
   onClose: () => void;
-  onValueSubmit?: (value: any) => void;
+  onValueSubmit?: (value: CodeValue) => void;
+};
+
+/**
+ * The field holds `{ type, value }`, not a bare string — every `format: "code"`
+ * field in the engine's schema requires both keys. Reading `fieldContext.value`
+ * straight into the editor put the whole object in front of the user, and
+ * submitting the editor's string wrote a string where the schema wants the
+ * object, so the script failed validation and was dropped on reload.
+ */
+const toCodeValue = (value: unknown): CodeValue => {
+  if (typeof value === "string") return { type: "string", value };
+  if (value && typeof value === "object") {
+    const record = value as Partial<CodeValue>;
+    return {
+      // Keep the type the field already had; a script written as an expression
+      // stays one.
+      type: record.type === "flowExpr" ? "flowExpr" : "string",
+      value: typeof record.value === "string" ? record.value : "",
+    };
+  }
+  return { type: "string", value: "" };
 };
 
 const PythonEditorDialog: React.FC<Props> = ({
@@ -28,14 +54,15 @@ const PythonEditorDialog: React.FC<Props> = ({
   onValueSubmit,
 }) => {
   const t = useT();
-  const [value, setValue] = useState(fieldContext.value || "");
+  const initial = toCodeValue(fieldContext.value);
+  const [value, setValue] = useState(initial.value);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleSubmit = useCallback(() => {
     if (!onValueSubmit) return;
-    onValueSubmit(value);
+    onValueSubmit({ type: initial.type, value });
     onClose();
-  }, [value, onValueSubmit, onClose]);
+  }, [initial.type, value, onValueSubmit, onClose]);
 
   const handleEditorChange = useCallback((newValue: string | undefined) => {
     setValue(newValue || "");

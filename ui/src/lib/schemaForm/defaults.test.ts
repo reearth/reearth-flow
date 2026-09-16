@@ -61,6 +61,35 @@ describe("applyDefaults", () => {
     });
   });
 
+  it("leaves a null root null rather than seeding an object into it", () => {
+    // `null` is a stated value, not an absence. Turning it into `{}` made a
+    // root the schema legally allows to be null report as invalid.
+    const node = compile({
+      anyOf: [
+        { type: "object", properties: { a: { type: "string", default: "x" } } },
+        { type: "null" },
+      ],
+    } as never);
+    expect(applyDefaults(node, null)).toBeNull();
+    // Absent is still absent: a nullable section is not conjured into
+    // existence just to carry its defaults. `SchemaForm` validates an absent
+    // root as `{}`, which is where the required-field errors come from.
+    expect(applyDefaults(node, undefined)).toBeUndefined();
+    // The same schema without its null branch does seed, since it must exist.
+    const required = compile({
+      type: "object",
+      properties: { a: { type: "string", default: "x" } },
+    } as never);
+    expect(applyDefaults(required, undefined)).toEqual({ a: "x" });
+  });
+
+  it("leaves a null section null instead of filling its defaults in", () => {
+    expect(seed("HTTP Caller", { rateLimit: null })).toEqual({
+      method: "GET",
+      rateLimit: null,
+    });
+  });
+
   it("preserves an explicit null rather than replacing it", () => {
     const seeded = seed("HTTP Caller", {
       response: { responseEncoding: null },
@@ -126,6 +155,59 @@ describe("applyDefaults", () => {
     }
 
     expect(failures).toEqual([]);
+  });
+});
+
+describe("a schema that permits only null", () => {
+  // `must be null` is dropped where it is the null branch of a nullable union
+  // reporting on a section that is present but incomplete. It is a real
+  // complaint when null is the only value the schema allows, and dropping it
+  // there left the form with no errors at all and a verdict of valid.
+  it("reports a wrong value against a standalone null schema", () => {
+    expect(isValid(validate({ type: "null" } as never, "oops"))).toBe(false);
+    expect(isValid(validate({ type: "null" } as never, null))).toBe(true);
+  });
+
+  it("reports a wrong value against a null-only property", () => {
+    const schema = {
+      type: "object",
+      properties: { a: { type: "null" } },
+    } as never;
+    expect(validate(schema, { a: "oops" })).toHaveProperty("a");
+    expect(isValid(validate(schema, { a: null }))).toBe(true);
+  });
+
+  it("still says nothing for the null branch of a nullable union", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        a: {
+          anyOf: [
+            {
+              type: "object",
+              required: ["x"],
+              properties: { x: { type: "string" } },
+            },
+            { type: "null" },
+          ],
+        },
+      },
+    } as never;
+    const errors = validate(schema, { a: {} });
+    // The child's missing field is the complaint; "must be null" is not.
+    expect(Object.values(errors).flat()).not.toContain("must be null");
+    expect(errors).toHaveProperty("a.x");
+  });
+
+  it("keeps the section's own error when nothing more specific is known", () => {
+    const schema = {
+      type: "object",
+      properties: {
+        a: { anyOf: [{ type: "string" }, { type: "null" }] },
+      },
+    } as never;
+    // A number is neither a string nor null: the field itself is what is wrong.
+    expect(isValid(validate(schema, { a: 5 }))).toBe(false);
   });
 });
 

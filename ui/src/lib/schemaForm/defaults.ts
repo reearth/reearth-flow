@@ -25,12 +25,19 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 export const applyDefaults = (node: FieldNode, value: unknown): unknown => {
+  // `null` is a stated value, not an absence: the schema's null branch says the
+  // field is deliberately unset. Seeding into it would turn it into an object
+  // and, for a root the schema allows to be null, report a valid form invalid.
+  if (value === null) return null;
+
   if (value === undefined) {
     if (node.default !== undefined) return clone(node.default);
     // Descend into a section that must exist anyway, so its own defaults are
     // picked up; stop at anything the schema says may be absent.
     if (node.kind !== "object" || node.nullable) return undefined;
   }
+
+  if (value === null) return null;
 
   switch (node.kind) {
     case "object": {

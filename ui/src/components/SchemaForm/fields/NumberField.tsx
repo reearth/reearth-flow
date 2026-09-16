@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { Input } from "@flow/components";
 import type { NumberField as NumberFieldNode } from "@flow/lib/schemaForm";
@@ -20,25 +20,55 @@ const NumberField: React.FC<FieldProps<NumberFieldNode>> = ({
   const field = useField(path);
   const defaultValue = useRef(value ?? node.default ?? "");
 
+  /**
+   * Whether the input is holding something that is not yet a number.
+   *
+   * A number on its way to being typed passes through states that are not
+   * numbers — `-`, `1.`, `1e`. A `type="number"` input reports these as an
+   * empty `value` with `validity.badInput` set, keeping the characters on
+   * screen in a buffer of its own that nothing can read.
+   *
+   * The way to keep them there is to leave the control alone: while the entry
+   * is unparseable this renders `""`, which is what the input already reports,
+   * so React finds nothing to write and the half-typed number survives. Writing
+   * anything else — the stored value, or a draft of the raw text — resets the
+   * control and takes the characters with it, which is why a lone minus
+   * disappeared before the digits could follow it.
+   */
+  const [isPartial, setIsPartial] = useState(false);
+
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
+      const partial = event.target.validity?.badInput ?? false;
+      setIsPartial(partial);
+      // Nothing is stored for a half-typed number, and the value it is
+      // replacing is left where it is until the user finishes.
+      if (partial) return;
+
       const raw = event.target.value;
       if (raw === "") {
         onChange(path, undefined);
         return;
       }
+
       const parsed = node.integer ? parseInt(raw, 10) : parseFloat(raw);
-      // A half-typed number ("-", "1e") parses to NaN; holding the previous
-      // value keeps the keystroke from being swallowed.
       if (!Number.isNaN(parsed)) onChange(path, parsed);
     },
     [onChange, path, node.integer],
   );
 
-  const handleReset = useCallback(
-    () => onChange(path, defaultValue.current),
-    [onChange, path],
-  );
+  const handleBlur = useCallback(() => {
+    // Editing is over: drop a half-typed entry and show what was stored.
+    setIsPartial(false);
+    field.onBlur();
+  }, [field]);
+
+  const handleReset = useCallback(() => {
+    setIsPartial(false);
+    onChange(path, defaultValue.current);
+  }, [onChange, path]);
+
+  const display = isPartial || typeof value !== "number" ? "" : String(value);
 
   return (
     <FieldRow
@@ -54,10 +84,10 @@ const NumberField: React.FC<FieldProps<NumberFieldNode>> = ({
           type="number"
           disabled={field.readonly}
           required={required}
-          value={typeof value === "number" ? value : ""}
+          value={display}
           onChange={handleChange}
           onFocus={field.onFocus}
-          onBlur={field.onBlur}
+          onBlur={handleBlur}
           min={node.minimum}
           max={node.maximum}
           step={node.integer ? 1 : "any"}

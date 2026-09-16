@@ -22,9 +22,13 @@ export const useField = (path: FieldPath) => {
   } = useSchemaForm();
 
   const key = useMemo(() => pathKey(path), [path]);
-  // A field can be invalid with nothing to say — a required field left blank is
-  // marked by its asterisk and its red border, so `hasErrors` (the highlight)
-  // and `errors` (the sentence beneath) are not the same question.
+  // A required field left blank is marked by the asterisk beside its label and
+  // nothing else: no sentence underneath and no red border. It still counts
+  // against the form's validity — that is what gates Update — but a field the
+  // user simply has not reached yet is not something to colour in.
+  //
+  // Anything with a message to show does get the border, since there the colour
+  // points at something the field itself cannot say.
   const entry = showErrors ? errors[key] : undefined;
   const messages = entry && entry.length > 0 ? entry : undefined;
   const focusedUsers = fieldFocusMap?.[key];
@@ -42,7 +46,7 @@ export const useField = (path: FieldPath) => {
     // A DOM id has to be a valid selector target, which a dot path is not.
     id,
     errors: messages,
-    hasErrors: entry !== undefined,
+    hasErrors: messages !== undefined,
     describedBy: messages ? `${id}-error` : undefined,
     readonly,
     awarenessStyle: paramsAwarenessStyles(focusedUsers),

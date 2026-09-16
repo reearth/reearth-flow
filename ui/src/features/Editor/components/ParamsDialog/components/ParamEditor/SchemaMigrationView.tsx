@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Alert, AlertDescription, Button, SchemaForm } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useT } from "@flow/lib/i18n";
-import type { FlowSchema } from "@flow/lib/schemaForm";
+import { compile, migrateValue, type FlowSchema } from "@flow/lib/schemaForm";
 import type { AwarenessUser, NodeParams } from "@flow/types";
 
 type Props = {
@@ -39,12 +39,13 @@ const SchemaMigrationView: React.FC<Props> = ({
   const [formKey, setFormKey] = useState(0);
 
   const migratedInitialData = useMemo(() => {
-    if (!newSchema?.properties || !storedParams) return {};
-    const newKeys = new Set(Object.keys(newSchema.properties));
-    return Object.fromEntries(
-      Object.entries(storedParams).filter(([key]) => newKeys.has(key)),
-    );
-  }, [newSchema, storedParams]);
+    if (!newSchema || storedParams === undefined) return {};
+    // Walk the new schema rather than reading its top-level `properties`: a
+    // schema whose root is a union or a map has none, and assuming otherwise
+    // threw away every stored value before the user saw the form.
+    return (migrateValue(compile(newSchema, { actionName }), storedParams) ??
+      {}) as NodeParams;
+  }, [newSchema, storedParams, actionName]);
 
   const [migrationData, setMigrationData] =
     useState<NodeParams>(migratedInitialData);

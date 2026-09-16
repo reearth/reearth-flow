@@ -260,36 +260,47 @@ describe("editing", () => {
     expect(key).toBe("response.responseBodyAttribute");
   });
 
-  it("shows errors once the user has engaged", async () => {
-    mount("HTTP Caller", {
+  it("leaves a required field the user has not reached alone", async () => {
+    const { onValidationChange } = mount("HTTP Caller", {
       url: { type: "string", value: "https://example.test" },
     });
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    // Rate limiting requires a request count, which adding the section cannot
-    // supply — so the error belongs to the user's action, and is shown.
     await userEvent.click(
       screen.getByRole("button", { name: "Add Rate Limiting" }),
     );
 
-    // Nothing is written under the field: a required field left blank is
-    // already marked by its asterisk and by the red border below.
+    // Rate limiting requires a request count. The asterisk beside the label
+    // says so; nothing is written underneath and the input is not coloured in.
+    const requests = screen.getByLabelText("Requests");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Requests").getAttribute("aria-invalid")).toBe(
-      "true",
-    );
+    expect(requests.getAttribute("aria-invalid")).toBe("false");
+    expect(requests.className).not.toContain("border-destructive");
+
+    // It still counts against the form, which is what gates Update.
+    expect(lastOf(validity(onValidationChange))).toBe(false);
   });
 
-  it("highlights a blank required expression, which has no text to fall back on", async () => {
+  it("colours in a field whose value is actually wrong", async () => {
+    mount("HTTP Caller", {
+      url: { type: "string", value: "https://example.test" },
+      response: { responseEncoding: "not-an-option" },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Add Timeouts" }));
+
+    // Here the colour points at something the field cannot say for itself.
+    const encoding = screen.getByRole("button", { name: "Response Encoding" });
+    expect(encoding.className).toContain("border-destructive");
+    expect(await screen.findAllByRole("alert")).not.toHaveLength(0);
+  });
+
+  it("leaves a blank required expression uncoloured too", async () => {
     const { container } = mount("Feature Filter", { conditions: [] });
 
     await userEvent.click(screen.getByRole("button", { name: "Add item" }));
 
-    // The expression chip is not an <input>, so it needs the border applied
-    // explicitly — without it a blank required expression showed nothing at all
-    // once the message was dropped.
     const chip = container.querySelector(".bg-muted\\/30");
-    expect(chip?.className).toContain("border-destructive");
+    expect(chip?.className).not.toContain("border-destructive");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -403,6 +414,98 @@ describe("density", () => {
     expect(
       screen.getByRole("button", { name: "Open FlowExpr Editor" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("clearing a field", () => {
+  it("removes the key instead of leaving it present and undefined", async () => {
+    const { onChange } = mount("HTTP Caller", {
+      url: { type: "string", value: "https://example.test" },
+      response: { responseEncoding: "text" },
+    });
+
+    const items = await openDropdown("Response Encoding");
+    await userEvent.click(
+      items.find((item) => item.textContent === "Not set") as HTMLElement,
+    );
+
+    const [data] = lastCall(onChange) as [
+      { response: Record<string, unknown> },
+    ];
+    // A key present with an undefined value is still a key: `Object.keys`
+    // reports it, so an object with `additionalProperties: false` rejects it,
+    // and it rides into the saved params as a phantom entry.
+    expect("responseEncoding" in data.response).toBe(false);
+    expect(Object.keys(data.response)).not.toContain("responseEncoding");
+  });
+
+  it("removes a whole optional section by key, not by blanking it", async () => {
+    const { onChange } = mount("HTTP Caller", {
+      url: { type: "string", value: "https://example.test" },
+      timeouts: { connectionTimeout: 30 },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Timeouts" }),
+    );
+
+    const [data] = lastCall(onChange) as [Record<string, unknown>];
+    expect("timeouts" in data).toBe(false);
+  });
+
+  it("stays valid, since the schema permits the field to be unset", async () => {
+    const { onValidationChange } = mount("HTTP Caller", {
+      url: { type: "string", value: "https://example.test" },
+      response: { responseEncoding: "text" },
+    });
+
+    const items = await openDropdown("Response Encoding");
+    await userEvent.click(
+      items.find((item) => item.textContent === "Not set") as HTMLElement,
+    );
+
+    expect(lastOf(validity(onValidationChange))).toBe(true);
+  });
+});
+
+describe("a root the schema allows to be null", () => {
+  const nullableRoot = {
+    anyOf: [
+      {
+        type: "object",
+        required: ["a"],
+        properties: { a: { type: "string", title: "A" } },
+      },
+      { type: "null" },
+    ],
+  } as never;
+
+  it("is reported valid when the value is null", () => {
+    const onValidationChange = vi.fn();
+    render(
+      <SchemaForm
+        schema={nullableRoot}
+        defaultFormData={null}
+        onChange={() => {}}
+        onValidationChange={onValidationChange}
+      />,
+    );
+    // `seeded ?? {}` turned the null into `{}` before AJV saw it, so a form
+    // whose data the schema accepts was reported invalid.
+    expect(validity(onValidationChange)).toEqual([true]);
+  });
+
+  it("still treats an absent root as an empty object", () => {
+    const onValidationChange = vi.fn();
+    render(
+      <SchemaForm
+        schema={nullableRoot}
+        defaultFormData={undefined}
+        onChange={() => {}}
+        onValidationChange={onValidationChange}
+      />,
+    );
+    expect(validity(onValidationChange)).toEqual([false]);
   });
 });
 

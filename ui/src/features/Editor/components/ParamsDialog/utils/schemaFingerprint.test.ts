@@ -12,8 +12,32 @@ describe("computeSchemaFingerprint", () => {
     expect(computeSchemaFingerprint(undefined)).toBeUndefined();
   });
 
-  it("returns undefined when schema has no properties", () => {
-    expect(computeSchemaFingerprint({ type: "object" })).toBeUndefined();
+  it("returns undefined only when there is no schema at all", () => {
+    expect(computeSchemaFingerprint(undefined)).toBeUndefined();
+  });
+
+  it("fingerprints a schema whose root is not an object", () => {
+    // A union at the root has no top-level `properties`. Treating that as "no
+    // fingerprint" made every such schema compare equal to every other, so a
+    // real change was never detected for the four actions shaped that way.
+    const union: FlowSchema = {
+      oneOf: [
+        { type: "object", properties: { a: { type: "string" } } },
+        { type: "object", properties: { b: { type: "string" } } },
+      ],
+    };
+    const changed: FlowSchema = {
+      oneOf: [
+        { type: "object", properties: { a: { type: "number" } } },
+        { type: "object", properties: { b: { type: "string" } } },
+      ],
+    };
+    expect(computeSchemaFingerprint(union)).toBeDefined();
+    expect(computeSchemaFingerprint(union)).not.toBe(
+      computeSchemaFingerprint(changed),
+    );
+    expect(schemasMatch(union, changed)).toBe(false);
+    expect(schemasMatch(union, union)).toBe(true);
   });
 
   it("returns a string for a valid schema", () => {
