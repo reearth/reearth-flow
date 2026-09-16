@@ -28,10 +28,17 @@ pub enum DracoCompression {
     Enabled(Option<f64>),
 }
 
+/// Upper bound, in texels of the referenced texture, on how far texture coordinate
+/// quantization may move a vertex.
+const TEXCOORD_MAX_ERROR_TEXELS: f64 = 0.5;
+
 /// Writes the mesh as a glb, optionally Draco-compressed.
 ///
-/// An error bound is resolved against the bounding box of all `vertices`, so every
-/// primitive in the glb is quantized at the same resolution.
+/// A position error bound is resolved against the bounding box of all `vertices`, so
+/// every primitive in the glb is quantized at the same resolution. `texture_size` is
+/// the largest dimension, in pixels, of any texture the `primitives` reference and
+/// bounds the texture coordinate quantization; `None` leaves the encoder's default.
+#[allow(clippy::too_many_arguments)]
 pub fn write_gltf_glb<W: Write>(
     mut writer: W,
     translation: Option<[f64; 3]>,
@@ -40,6 +47,7 @@ pub fn write_gltf_glb<W: Write>(
     num_features: usize,
     metadata_encoder: MetadataEncoder,
     draco_compression: DracoCompression,
+    texture_size: Option<u32>,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -328,7 +336,7 @@ pub fn write_gltf_glb<W: Write>(
         // Now the glb data is in `tmp_buffer`. We compress it.
         let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::new(
             draco_oxide::io::gltf::transcoder::TranscoderConfig {
-                draco: draco_config(draco_compression, position_min, position_max),
+                draco: draco_config(draco_compression, texture_size, position_min, position_max),
             },
         );
         let (buff, warnings) = transcoder.transcode_to_glb(&tmp_buffer)?;
@@ -351,45 +359,67 @@ pub fn write_gltf_glb<W: Write>(
     Ok(())
 }
 
-/// Builds the Draco encoder configuration, resolving a requested position error
-/// bound against the bounding box spanned by `position_min`..`position_max`.
+/// Builds the Draco encoder configuration. A requested position error bound is
+/// resolved against the bounding box spanned by `position_min`..`position_max`, and
+/// `texture_size` bounds the texture coordinate error to
+/// [`TEXCOORD_MAX_ERROR_TEXELS`].
 ///
 /// Draco sizes its lattice so that the quantization *step* stays within the value it
 /// is given, while a vertex is snapped to the nearest lattice point and so moves by at
-/// most half a step. The requested bound is therefore doubled on the way in.
+/// most half a step. Each requested bound is therefore doubled on the way in.
+///
+/// The texture coordinate bound is resolved against each primitive's own coordinate
+/// range, so a primitive whose coordinates tile the texture keeps the same accuracy
+/// in texels.
 fn draco_config(
     draco: DracoCompression,
+    texture_size: Option<u32>,
     position_min: [f64; 3],
     position_max: [f64; 3],
 ) -> draco_oxide::encode::Config {
-    use draco_oxide::ConfigType;
+    use draco_oxide::encode::{AttributeConfig, Quantization};
+    use draco_oxide::{AttributeType, ConfigType};
 
-    let config = <draco_oxide::encode::Config as ConfigType>::default();
-    let DracoCompression::Enabled(Some(max_error)) = draco else {
-        return config;
+    let mut config = <draco_oxide::encode::Config as ConfigType>::default();
+
+    let position_bound = match draco {
+        DracoCompression::Enabled(Some(max_error)) => {
+            let box_is_valid = position_min
+                .iter()
+                .zip(&position_max)
+                .all(|(lo, hi)| lo <= hi);
+            (max_error > 0.0 && box_is_valid).then_some(max_error)
+        }
+        _ => None,
     };
-    if max_error <= 0.0
-        || !position_min
-            .iter()
-            .zip(&position_max)
-            .all(|(lo, hi)| lo <= hi)
-    {
-        return config;
+    if let Some(max_error) = position_bound {
+        let min = position_min.map(|v| v as f32);
+        let max = position_max.map(|v| v as f32);
+        config = config.with_attribute(
+            AttributeType::Position,
+            AttributeConfig {
+                quantization: Some(Quantization::from_bounding_box(
+                    &min,
+                    &max,
+                    (max_error * 2.0) as f32,
+                )),
+                ..Default::default()
+            },
+        );
     }
 
-    let min = position_min.map(|v| v as f32);
-    let max = position_max.map(|v| v as f32);
-    config.with_attribute(
-        draco_oxide::AttributeType::Position,
-        draco_oxide::encode::AttributeConfig {
-            quantization: Some(draco_oxide::encode::Quantization::from_bounding_box(
-                &min,
-                &max,
-                (max_error * 2.0) as f32,
-            )),
-            ..Default::default()
-        },
-    )
+    if let Some(texture_size) = texture_size.filter(|size| *size > 0) {
+        let max_error = 2.0 * TEXCOORD_MAX_ERROR_TEXELS / texture_size as f64;
+        config = config.with_attribute(
+            AttributeType::TextureCoordinate,
+            AttributeConfig {
+                quantization: Some(Quantization::MaxError(max_error as f32)),
+                ..Default::default()
+            },
+        );
+    }
+
+    config
 }
 
 // A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if
@@ -419,7 +449,7 @@ mod tests {
         min: [f64; 3],
         max: [f64; 3],
     ) -> Option<Quantization> {
-        draco_config(draco, min, max)
+        draco_config(draco, None, min, max)
             .attribute_config(draco_oxide::AttributeType::Position)
             .quantization
     }
@@ -537,6 +567,7 @@ mod tests {
             1,
             MetadataEncoder::new(&schema),
             DracoCompression::Enabled(Some(0.001)),
+            None,
         )
         .unwrap();
 

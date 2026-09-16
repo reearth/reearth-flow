@@ -234,7 +234,7 @@ impl Sink for GltfWriter {
                 let mut primitives: reearth_flow_gltf::Primitives = Default::default();
                 let mut vertices: IndexSet<[u32; 9], ahash::RandomState> = IndexSet::default();
 
-                build_atlas_geometry(
+                let texture_size = build_atlas_geometry(
                     &filtered_features,
                     &atlas_dir,
                     image::ImageFormat::Jpeg,
@@ -268,6 +268,7 @@ impl Sink for GltfWriter {
                     } else {
                         reearth_flow_gltf::DracoCompression::Disabled
                     },
+                    texture_size,
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(

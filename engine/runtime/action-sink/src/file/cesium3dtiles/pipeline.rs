@@ -426,7 +426,7 @@ pub(super) fn tile_writing_stage(
             let mut vertices: indexmap::IndexSet<[u32; 9], ahash::RandomState> =
                 indexmap::IndexSet::default();
 
-            build_atlas_geometry(
+            let texture_size = build_atlas_geometry(
                 &valid_features,
                 &tile_atlas_dir,
                 image::ImageFormat::WebP,
@@ -450,6 +450,7 @@ pub(super) fn tile_writing_stage(
                 valid_features.len(),
                 metadata_encoder,
                 draco_compression,
+                texture_size,
             )
             .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
