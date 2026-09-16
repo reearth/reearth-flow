@@ -18,8 +18,14 @@ export default ({
   nodeId: string;
 }) => {
   const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
-  const { currentYWorkflow, undoTrackerActionWrapper, staleNodeIds } =
-    useEditorContext();
+  const {
+    currentYWorkflow,
+    undoTrackerActionWrapper,
+    staleNodeIds,
+    diagnosticSeverityByNodeId,
+  } = useEditorContext();
+
+  const diagnosticSeverity = diagnosticSeverityByNodeId?.get(nodeId);
 
   const isNodeStale = useMemo(
     () => !!staleNodeIds?.has(nodeId),
@@ -81,6 +87,7 @@ export default ({
     selectedColor,
     selectedBackgroundColor,
     isNodeStale,
+    diagnosticSeverity,
     handleCollapsedToggle,
   };
 };

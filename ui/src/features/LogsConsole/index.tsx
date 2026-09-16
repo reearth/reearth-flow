@@ -1,5 +1,11 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
@@ -11,9 +17,10 @@ import { parseJSONL } from "@flow/utils/jsonl";
 
 type LogsConsoleProps = {
   jobId: string;
+  leadingActions?: ReactNode;
 };
 
-const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
+const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
   const t = useT();
   const columns: ColumnDef<UserFacingLog>[] = [
     {
@@ -105,6 +112,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       columns={columns}
       data={logs}
       isFetching={!logs.length || isFetchingLogsUrl}
+      leadingActions={leadingActions}
       selectColumns
       showFiltering
     />

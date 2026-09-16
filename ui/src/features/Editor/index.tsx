@@ -3,6 +3,7 @@ import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
+import useDebugDiagnosticNodes from "@flow/hooks/useDebugDiagnosticNodes";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
@@ -121,6 +122,8 @@ export default function Editor({
     undoTrackerActionWrapper,
   });
 
+  const diagnosticSeverityByNodeId = useDebugDiagnosticNodes();
+
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
@@ -139,6 +142,7 @@ export default function Editor({
         onEditStart: handleWorkflowVarEditStart,
       },
       staleNodeIds,
+      diagnosticSeverityByNodeId,
     }),
     [
       isLocked,
@@ -154,6 +158,7 @@ export default function Editor({
       handleWorkflowVarFieldFocus,
       handleWorkflowVarEditStart,
       staleNodeIds,
+      diagnosticSeverityByNodeId,
     ],
   );
 
