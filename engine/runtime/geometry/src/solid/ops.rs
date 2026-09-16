@@ -143,6 +143,10 @@ impl ConvertFrame for Solid {
 // result, so it has no 2D counterpart.
 crate::unsupported!(Solid: ForceTwoDimension);
 
+// A solid is a volume, not the areal geometry this op divides.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: DivideByGrid);
+
 use crate::ops::{
     emit_face_3d, emit_triangles_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
 };

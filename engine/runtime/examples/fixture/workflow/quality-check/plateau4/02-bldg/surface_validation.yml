@@ -17,7 +17,7 @@ nodes:
   - id: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
     name: SurfaceChecksLod0
     type: subGraph
-    subGraphId: b2000000-0000-4000-8000-000000000000
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: Lod0InvalidSurfaceCounter
@@ -54,7 +54,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面のエラー.csv
@@ -65,36 +66,6 @@ nodes:
     action: Output Router
     with:
       routingPort: errorCountLod0InvalidSurface
-
-  # LOD0 surface orientation: each footprint's exterior ring is checked as a 2D
-  # polygon, which must wind counter-clockwise.
-  - id: b3000000-0000-4000-8000-000000000005
-    name: HoleExtractorLod0Faces
-    type: action
-    action: Hole Extractor
-
-  - id: b3000000-0000-4000-8000-000000000001
-    name: TwoDimensionForcerLod0Faces
-    type: action
-    action: Two Dimension Forcer
-
-  - id: b3000000-0000-4000-8000-000000000002
-    name: GeometryValidatorLod0Orientation
-    type: action
-    action: Geometry Validator
-    with:
-      duplicateTolerance: 0.01
-
-  - id: b3000000-0000-4000-8000-000000000003
-    name: FeatureFilterLod0IncorrectOrientation
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: '"Orientation" in attributes["validationResult"]["checks"]'
-          outputPort: inCorrectOrientation
 
   - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lod0IncorrectOrientationCounter
@@ -133,7 +104,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の向きエラー.csv
@@ -222,7 +194,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD0面の交差.csv
@@ -248,14 +221,101 @@ nodes:
     with:
       routingPort: errorCountLod0SurfaceIntersection
 
-  # TODO: add the destination mesh code check (図郭不正) once
-  # DestinationMeshCodeExtractor supports this geometry model.
+  # ===== Z-bldg-03: destination mesh code (図郭不正) =====
+  # Taps the same 2D LOD0 footprints as the intersection check and computes the
+  # 1km mesh code the building actually falls in. A building whose GML filename
+  # does not start with that mesh code is a figure boundary error.
+  - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    name: DestinationMeshCodeExtractor
+    type: action
+    action: PLATEAU4.DestinationMeshCodeExtractor
+    with:
+      meshType: 3
+      epsgCode:
+        type: flowExpr
+        value: variables.get("prcs")
+      meshcodeAttr: "meshcode"
+
+  - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    name: MeshCodeTester
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not attributes["gmlFilename"].starts_with(attributes["meshcode"])
+          outputPort: failed
+
+  - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    name: AttributeMapperIncorrectMeshCode
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: gmlFilename
+          valueAttribute: gmlFilename
+        - attribute: filename
+          valueAttribute: gmlFilename
+        - attribute: feature_type
+          valueAttribute: featureType
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: gml_id
+          valueAttribute: gmlId
+        - attribute: meshcode
+          valueAttribute: meshcode
+        - attribute: meshcount
+          valueAttribute: _mesh_count
+        - attribute: mesh2area
+          valueAttribute: _meshcode_to_area
+
+  # gmlFilename is only kept so the counter can group by it; it is not a CSV column.
+  - id: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    name: AttributeManagerIncorrectMeshCode
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: gmlFilename
+          method: remove
+
+  - id: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    name: FeatureWriterIncorrectMeshCode
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: string
+        value: 02_建築物_図郭不正.csv
+
+  - id: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    name: IncorrectMeshCodeCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+      - gmlFilename
+      calculations:
+        - newAttribute: _num_incorrect_meshcode
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    name: ErrorCount-IncorrectMeshCode
+    type: action
+    action: Output Router
+    with:
+      routingPort: errorCountIncorrectMeshcode
 
   # ===== LOD1 boundary surface checks =====
   - id: 950407af-eec5-49ee-902c-2b41f31150d3
     name: SurfaceChecksLod1
     type: subGraph
-    subGraphId: b2000000-0000-4000-8000-000000000000
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     name: Lod1InvalidSurfaceCounter
@@ -292,7 +352,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD1境界面のエラー.csv
@@ -315,7 +376,7 @@ nodes:
   - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
     name: SurfaceChecksLod2-4
     type: subGraph
-    subGraphId: b2000000-0000-4000-8000-000000000000
+    subGraphId: d4000000-0000-4000-8000-000000000000
 
   - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     name: Lod2-4InvalidSurfaceCounter
@@ -360,7 +421,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
@@ -487,7 +549,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_非水密体.csv
@@ -569,7 +632,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体のエラー.csv
@@ -744,7 +808,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_立体交差.csv
@@ -853,28 +918,8 @@ edges:
   # ----- LOD0 surface orientation -----
   - id: b3000000-0000-4000-8000-000000000101
     from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
-    to: b3000000-0000-4000-8000-000000000005
-    fromPort: faces
-    toPort: features
-  - id: b3000000-0000-4000-8000-000000000107
-    from: b3000000-0000-4000-8000-000000000005
-    to: b3000000-0000-4000-8000-000000000001
-    fromPort: exterior
-    toPort: features
-  - id: b3000000-0000-4000-8000-000000000102
-    from: b3000000-0000-4000-8000-000000000001
-    to: b3000000-0000-4000-8000-000000000002
-    fromPort: features
-    toPort: features
-  - id: b3000000-0000-4000-8000-000000000103
-    from: b3000000-0000-4000-8000-000000000002
-    to: b3000000-0000-4000-8000-000000000003
-    fromPort: failed
-    toPort: features
-  - id: b3000000-0000-4000-8000-000000000104
-    from: b3000000-0000-4000-8000-000000000003
     to: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-    fromPort: inCorrectOrientation
+    fromPort: incorrectOrientation
     toPort: features
   - id: b3000000-0000-4000-8000-000000000105
     from: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
@@ -946,6 +991,51 @@ edges:
   - id: dd0ee1ff-2aa3-4bb4-9cc5-8dd6ee7ff8aa
     from: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: features
+    toPort: features
+
+  # ----- Z-bldg-03 destination mesh code -----
+  # Tap the same 2D LOD0 footprints the intersection check works on.
+  - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1cc
+    from: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
+    to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    fromPort: features
+    toPort: features
+  - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f
+    from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    fromPort: features
+    toPort: features
+  # Filename/mesh-code mismatch -> attribute mapper -> CSV writer.
+  - id: 5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b
+    from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    to: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    fromPort: failed
+    toPort: features
+  - id: 6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c
+    from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    fromPort: features
+    toPort: features
+  - id: 66d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    from: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    to: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    fromPort: features
+    toPort: features
+  - id: 7a8b9c0d-1e2f-403b-4c5d-6e7f8a9b0c1d
+    from: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: features
+    toPort: features
+  # Mapped rows -> per-file counter -> error count router.
+  - id: 88f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    fromPort: features
+    toPort: features
+  - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    from: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    to: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     fromPort: features
     toPort: features
 
@@ -1275,6 +1365,9 @@ ports:
       port: features
     - id: errorCountLod4InvalidSurface
       nodeId: aabacbdc-3ede-4f5a-6b7c-8d9e0f1a2b3c
+      port: features
+    - id: errorCountIncorrectMeshcode
+      nodeId: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
       port: features
     - id: errorCountLod2NotClosedSolid
       nodeId: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e

@@ -115,6 +115,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 #[cfg(feature = "new-geometry")]
                 atlas_extrusion: params.atlas_extrusion,
                 #[cfg(feature = "new-geometry")]
+                wrap_tolerance: params.wrap_tolerance,
+                #[cfg(feature = "new-geometry")]
                 texture_codec: params.texture_codec,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
@@ -185,11 +187,13 @@ pub struct Cesium3DTilesWriterParam {
     #[cfg(not(feature = "new-geometry"))]
     pub(super) max_zoom: u8,
     /// # Target Tile Size
-    /// Target content size per tile, in bytes. Tiles are split when they'd
-    /// exceed it and merged with neighbours when they'd otherwise be smaller;
-    /// a single feature that alone exceeds it is kept whole (features are
-    /// never clipped). A value of 0 disables merging and splits every feature
-    /// into its own content. Defaults to 1,048,576 (1 MiB).
+    /// Target content size per tile, in gzipped bytes as served. Tiles are
+    /// split when they'd exceed it and merged with neighbours when they'd
+    /// otherwise be smaller; a single feature that alone exceeds it is kept
+    /// whole (features are never clipped). A tile carries at most 15 contents,
+    /// so a cell needing more than that keeps contents over the target. A
+    /// value of 0 splits as far as that limit allows. Defaults to 1,048,576
+    /// (1 MiB).
     #[cfg(feature = "new-geometry")]
     pub(super) target_tile_size: Option<u64>,
     /// # Attach Textures
@@ -223,6 +227,12 @@ pub struct Cesium3DTilesWriterParam {
     /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
     #[schemars(range(max = 65536))]
     pub(super) atlas_extrusion: Option<u32>,
+    /// # Wrap Tolerance
+    /// How far outside 0-1 a texture coordinate may stray and still be clamped as
+    /// dataset drift. Past it the texture is taken to tile and is given an atlas
+    /// page of its own so the sampler can repeat it. Defaults to 0.
+    #[schemars(range(min = 0.0, max = 1.0))]
+    pub(super) wrap_tolerance: Option<f64>,
     /// # Texture Codec
     /// Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select
     /// `Untextured` to attach no textures.
@@ -269,6 +279,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) atlas_size: Option<u32>,
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_extrusion: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) wrap_tolerance: Option<f64>,
     #[cfg(feature = "new-geometry")]
     pub(super) texture_codec: TextureCodec,
     pub(super) skip_unexposed_attributes: bool,

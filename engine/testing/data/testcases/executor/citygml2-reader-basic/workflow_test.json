@@ -1,0 +1,13 @@
+{
+  "description": "CityGML 2 Reader parses a real PLATEAU CityGML 2.0 building dataset end to end, in both geometry worlds",
+  "workflowPath": "executor-testing/citygml2-reader-basic.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../../fixtures/plateau-citymodel/27100_osaka-shi_city_2024_citygml_1_op/udx/bldg/51357309_bldg_6697_op.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.json"
+  }
+}

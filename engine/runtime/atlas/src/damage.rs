@@ -86,7 +86,9 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
-pub fn collect_damage(materials: &[TextureInput]) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
+pub fn collect_damage<'a>(
+    materials: impl IntoIterator<Item = &'a TextureInput>,
+) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
 
@@ -113,14 +115,6 @@ pub fn collect_damage(materials: &[TextureInput]) -> crate::Result<Vec<(PathBuf,
                 },
             );
 
-            if min_u < 0.0 || max_u > 1.0 || min_v < 0.0 || max_v > 1.0 {
-                tracing::error!(
-                    "reearth-flow-atlas: polygon {} of '{}' has UV coordinates outside \
-                     [0,1] (u=[{min_u:.4},{max_u:.4}], v=[{min_v:.4},{max_v:.4}]); clamping",
-                    polygon_idx,
-                    mat.path.display()
-                );
-            }
             let min_u = min_u.clamp(0.0, 1.0);
             let max_u = max_u.clamp(0.0, 1.0);
             let min_v = min_v.clamp(0.0, 1.0);

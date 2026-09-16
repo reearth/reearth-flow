@@ -1,5 +1,10 @@
-import { CaretDownIcon, DownloadIcon, FolderIcon } from "@phosphor-icons/react";
-import { useCallback, useState } from "react";
+import {
+  CaretDownIcon,
+  DownloadIcon,
+  FileZipIcon,
+  FolderIcon,
+} from "@phosphor-icons/react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   Button,
@@ -8,21 +13,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { useArtifactZipDownload } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { folderArchiveName, groupArtifactsByFolder } from "@flow/utils";
+import type { ArtifactFile } from "@flow/utils";
 
 import DownloadConfirmDialog from "./DownloadConfirmDialog";
 
-type OutputDataItem = {
-  url: string;
-  name: string;
-};
-
 type Props = {
-  outputData?: OutputDataItem[];
+  outputData?: ArtifactFile[];
+  archiveName: string;
 };
 
-const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
+const OutputDataDownload: React.FC<Props> = ({ outputData, archiveName }) => {
   const t = useT();
+  const { downloadAsZip, downloadOne, progress, isDownloading } =
+    useArtifactZipDownload();
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     fileName: string;
@@ -35,53 +41,46 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
     onConfirm: () => {},
   });
 
-  const performDownload = useCallback((url: string, filename: string) => {
-    // Create a temporary anchor element to trigger download
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, []);
+  // A writer with `groupBy` set puts one file per group in a folder, so the
+  // folders are shown rather than listing every group under a bare hash.
+  const folders = useMemo(
+    () => (outputData ? groupArtifactsByFolder(outputData) : []),
+    [outputData],
+  );
 
   const handleDownload = useCallback(
-    (url: string, filename: string) => {
+    (file: ArtifactFile) => {
       setConfirmDialog({
         isOpen: true,
-        fileName: filename,
-        fileUrl: url,
+        fileName: file.path,
+        fileUrl: file.url,
         onConfirm: () => {
-          performDownload(url, filename);
+          downloadOne(file);
           setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
         },
       });
     },
-    [performDownload],
+    [downloadOne],
   );
 
-  const handleDownloadAll = useCallback(() => {
-    if (!outputData) return;
-
-    // For "Download All", show confirmation with summary
-    const totalFiles = outputData.length;
-    const summaryName = `${totalFiles} output files`;
-
-    setConfirmDialog({
-      isOpen: true,
-      fileName: summaryName,
-      fileUrl: "", // No single URL for batch download
-      onConfirm: () => {
-        // Download each file with a small delay to avoid overwhelming the browser
-        outputData.forEach((item, index) => {
-          setTimeout(() => {
-            performDownload(item.url, item.name);
-          }, index * 500); // 500ms delay between downloads
-        });
-        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
-  }, [outputData, performDownload]);
+  const handleDownloadZip = useCallback(
+    (files: ArtifactFile[], name: string) => {
+      setConfirmDialog({
+        isOpen: true,
+        fileName: t("{{total}} files → {{name}}", {
+          total: files.length,
+          name,
+        }),
+        // A batch has no single URL to size up front.
+        fileUrl: "",
+        onConfirm: () => {
+          downloadAsZip(files, name);
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    },
+    [downloadAsZip, t],
+  );
 
   const handleCancelDownload = useCallback(() => {
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
@@ -100,28 +99,60 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
               variant="ghost"
               disabled={count === 0}>
               <FolderIcon size={14} />
-              {t("Output data")} ({count})
+              {progress
+                ? t("Preparing {{completed}} / {{total}}…", {
+                    completed: progress.completed,
+                    total: progress.total,
+                  })
+                : `${t("Output data")} (${count})`}
               <CaretDownIcon size={10} />
             </Button>
           }
         />
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent
+          align="start"
+          className="max-h-[400px] overflow-y-auto">
           {count > 1 && (
             <>
-              <DropdownMenuItem onClick={handleDownloadAll}>
-                <DownloadIcon size={16} />
-                {t("Download All")}
+              <DropdownMenuItem
+                disabled={isDownloading}
+                onClick={() =>
+                  handleDownloadZip(outputData ?? [], `${archiveName}.zip`)
+                }>
+                <FileZipIcon size={16} />
+                {t("Download all as ZIP")}
               </DropdownMenuItem>
               <div className="my-1 h-px bg-border" />
             </>
           )}
-          {outputData?.map((item, index) => (
-            <DropdownMenuItem
-              key={`${item.url}-${index}`}
-              onClick={() => handleDownload(item.url, item.name)}>
-              <DownloadIcon size={16} />
-              {item.name}
-            </DropdownMenuItem>
+          {folders.map((folder) => (
+            <div key={folder.path || "__root__"}>
+              {folder.path && (
+                <DropdownMenuItem
+                  disabled={isDownloading}
+                  onClick={() =>
+                    handleDownloadZip(
+                      folder.files,
+                      folderArchiveName(archiveName, folder.path),
+                    )
+                  }>
+                  <FileZipIcon size={16} />
+                  <span className="truncate">{folder.path}</span>
+                  <span className="text-muted-foreground">
+                    ({folder.files.length})
+                  </span>
+                </DropdownMenuItem>
+              )}
+              {folder.files.map((file) => (
+                <DropdownMenuItem
+                  key={file.url}
+                  className={folder.path ? "pl-6" : undefined}
+                  onClick={() => handleDownload(file)}>
+                  <DownloadIcon size={16} />
+                  <span className="truncate">{file.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </div>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>

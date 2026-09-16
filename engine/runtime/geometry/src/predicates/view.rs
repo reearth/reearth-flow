@@ -19,6 +19,8 @@
 use super::kernel::{self, Orientation};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
 use crate::ops::{Aabb, BoundingBox};
 use crate::point::Point2D;
 use crate::polygon::{Polygon2D, Polygon3D};
@@ -401,6 +403,20 @@ impl<'a> Leaf2D<'a> {
             Leaf2D::TriangularMesh(m) => m.bounding_box(),
         }
         .ok()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Leaf2D<'_> {
+    /// The elevation the leaf lies at, or `None` when it is planar.
+    fn elevation(&self) -> Option<f64> {
+        match self {
+            Leaf2D::Point(p) => p.elevation(),
+            Leaf2D::Line(l) => l.elevation(),
+            Leaf2D::Polygon(p) => p.elevation(),
+            Leaf2D::PolygonMesh(m) => m.elevation(),
+            Leaf2D::TriangularMesh(m) => m.elevation(),
+        }
     }
 }
 

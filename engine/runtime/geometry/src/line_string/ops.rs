@@ -186,7 +186,8 @@ impl LineString2D {
     }
 }
 
-use crate::ops::coerce::{closes_a_ring, unchanged};
+use super::is_closed_ring;
+use crate::ops::coerce::unchanged;
 use crate::ops::triangulation::Cache;
 use crate::ops::{Coerce, CoercionTarget};
 use crate::polygon::{Polygon2D, Polygon3D};
@@ -201,7 +202,7 @@ impl Coerce for LineString2D {
             // A curve already is one, and bounds no area to tessellate.
             CoercionTarget::LineString | CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
             CoercionTarget::Polygon => {
-                if !closes_a_ring(&self.coords) {
+                if !is_closed_ring(&self.coords) {
                     return Err(unchanged::<Self>());
                 }
                 let ring = Vec::from(std::mem::take(&mut self.coords));
@@ -233,7 +234,7 @@ impl Coerce for LineString3D {
             // A curve already is one, and bounds no area to tessellate.
             CoercionTarget::LineString | CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
             CoercionTarget::Polygon => {
-                if !closes_a_ring(&self.coords) {
+                if !is_closed_ring(&self.coords) {
                     return Err(unchanged::<Self>());
                 }
                 let ring = Vec::from(std::mem::take(&mut self.coords));
@@ -267,6 +268,12 @@ impl Footprint for LineString3D {
         Ok(())
     }
 }
+
+// A chain has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString3D: DivideByGrid);
 
 use crate::collection::{Collection2D, Collection3D};
 use crate::ops::boundary::{endpoints, Boundary, ExtractBoundary};

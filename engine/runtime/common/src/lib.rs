@@ -107,6 +107,7 @@ pub mod process;
 pub mod serde;
 pub mod str;
 pub mod texture;
+pub mod union_find;
 pub mod uri;
 pub mod xml;
 pub mod zip;

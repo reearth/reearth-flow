@@ -2323,7 +2323,7 @@
           },
           "targetTileSize": {
             "title": "Target Tile Size",
-            "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
+            "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB).",
             "type": [
               "integer",
               "null"
@@ -2372,6 +2372,17 @@
             ],
             "format": "uint32",
             "maximum": 65536.0,
+            "minimum": 0.0
+          },
+          "wrapTolerance": {
+            "title": "重复容差",
+            "description": "纹理坐标可以超出 0-1 范围多远仍按数据偏差进行钳制。超出该范围则视为平铺纹理，并为其单独分配一个图集页面，以便采样器重复该纹理。默认为 0。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
             "minimum": 0.0
           },
           "textureCodec": {
@@ -2465,6 +2476,219 @@
       "tags": [
         "3d",
         "tiling"
+      ]
+    },
+    {
+      "name": "CityGML 2 Reader",
+      "type": "source",
+      "description": "将CityGML 2.0文件读取为3D城市模型，解析每个文档内的gml:id引用",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 2 Reader Parameters",
+        "description": "将CityGML 2.0文档读取为3D城市模型的配置。",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "提取标签",
+            "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "保留属性",
+            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenMeasureTypes": {
+            "title": "展平度量类型",
+            "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。",
+            "default": false,
+            "type": "boolean"
+          },
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性键",
+            "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
+      "name": "CityGML 3 Reader",
+      "type": "source",
+      "description": "将CityGML 3.0文件读取为3D城市模型，解析每个文档内的gml:id引用",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML 3 Reader Parameters",
+        "description": "将CityGML 3.0文档读取为3D城市模型的配置。",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "提取标签",
+            "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "保留属性",
+            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenLeafAttributes": {
+            "title": "展平叶属性",
+            "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cityGmlAttributesKey": {
+            "title": "CityGML属性键",
+            "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
       ]
     },
     {
@@ -4202,6 +4426,71 @@
       ]
     },
     {
+      "name": "Feature Group Mapper",
+      "type": "processor",
+      "description": "Groups consecutive features sharing the same attribute value and replaces each feature's attributes with the corresponding entry returned by an expression over the whole group. Input must already be sorted by the grouping attribute.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Group Mapper 参数",
+        "type": "object",
+        "required": [
+          "attribute",
+          "expr"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "分组属性",
+            "description": "用于对连续要素进行分组的属性",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "expr": {
+            "title": "表达式",
+            "description": "基于`features`（组内每个要素的属性条目）和`variables`的表达式，返回与`features`长度相同的列表。每个返回的映射将替换对应要素的属性",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "scripting",
+        "attribute"
+      ]
+    },
+    {
       "name": "Feature Joiner",
       "type": "processor",
       "description": "基于匹配的属性值，以可配置的连接类型连接请求要素和供给要素",
@@ -4897,209 +5186,125 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Writer Parameters",
         "description": "Configuration for writing features to different file formats.",
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
+        "type": "object",
+        "required": [
+          "format",
+          "output"
+        ],
+        "properties": {
+          "format": {
+            "title": "Format",
+            "description": "The file format to write. Every format writes attribute values only; geometry is not included in the output.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureWriterFormat"
               }
-            }
+            ]
           },
-          {
+          "output": {
+            "title": "Output Path",
+            "description": "Where to write, relative to the job's output directory. Evaluated once per feature, so an expression over the feature's attributes splits the stream into one file per distinct result.",
             "type": "object",
+            "format": "code",
             "required": [
-              "format",
-              "output"
+              "type",
+              "value"
             ],
             "properties": {
-              "format": {
+              "type": {
                 "type": "string",
                 "enum": [
-                  "tsv"
+                  "flowExpr",
+                  "string"
                 ]
               },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "title": "JsonWriter Parameters",
-            "description": "Configuration for writing features in JSON format with optional custom conversion.",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "converter": {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "title": "CityGmlWriter Parameters",
-            "description": "Configuration for writing features in CityGML 2.0 format.",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              },
-              "output": {
-                "title": "Output path",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "lodFilter": {
-                "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
-                "default": null,
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "items": {
-                  "type": "integer",
-                  "format": "uint8",
-                  "minimum": 0.0
-                }
-              },
-              "epsgCode": {
-                "description": "EPSG code for coordinate reference system",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "prettyPrint": {
-                "description": "Whether to format output with indentation (default: true)",
-                "default": true,
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+              "value": {
+                "type": "string"
               }
             }
           }
-        ]
+        },
+        "definitions": {
+          "FeatureWriterFormat": {
+            "title": "Format",
+            "description": "The file format written, and the settings belonging to it.",
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "Comma-separated values. The column list comes from the first feature written to a file, so every later feature must carry those same attributes.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "csv"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "TSV",
+                "description": "Tab-separated values, with the same column rules as CSV.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "tsv"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "JSON",
+                "description": "An array of objects, one per feature, holding its attribute values.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "json"
+                    ]
+                  },
+                  "converter": {
+                    "title": "Converter",
+                    "description": "Builds the JSON document from all the features destined for one file, replacing the default array of attribute objects.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -5111,7 +5316,10 @@
       "categories": [
         "Feature"
       ],
-      "tags": []
+      "tags": [
+        "csv",
+        "json"
+      ]
     },
     {
       "name": "File Path Extractor",
@@ -5895,56 +6103,53 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Filter Parameters",
         "description": "Configure how to filter features based on their geometry type",
-        "oneOf": [
-          {
-            "title": "No Geometry",
-            "description": "Separates the features that carry no geometry at all from the ones that do.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+        "type": "object",
+        "required": [
+          "filterType"
+        ],
+        "properties": {
+          "filterType": {
+            "title": "Filter Type",
+            "description": "The aspect of the geometry that selects the output port. A feature no port claims leaves by `unfiltered`.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FilterType"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "FilterType": {
+            "title": "Filter Type",
+            "description": "The aspect of the geometry that selects the output port.",
+            "oneOf": [
+              {
+                "title": "No Geometry",
+                "description": "Separates the features that carry no geometry at all from the ones that do.",
                 "type": "string",
                 "enum": [
                   "none"
                 ]
-              }
-            }
-          },
-          {
-            "title": "Geometry Type",
-            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+              },
+              {
+                "title": "Geometry Type",
+                "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
                 "type": "string",
                 "enum": [
                   "geometryType"
                 ]
-              }
-            }
-          },
-          {
-            "title": "Detailed Geometry Type",
-            "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
+              },
+              {
+                "title": "Detailed Geometry Type",
+                "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
                 "type": "string",
                 "enum": [
                   "detailedGeometryType"
                 ]
               }
-            }
+            ]
           }
-        ]
+        }
       },
       "builtin": true,
       "inputPorts": [
@@ -5952,7 +6157,7 @@
       ],
       "outputPorts": [
         "unfiltered",
-        "none",
+        "no-geometry",
         "point",
         "curve",
         "surface",
@@ -5971,6 +6176,92 @@
         "csg",
         "multi-solid",
         "aggregate"
+      ],
+      "categories": [
+        "Filter"
+      ],
+      "tags": [
+        "geometry"
+      ]
+    },
+    {
+      "name": "Geometry Identifier",
+      "type": "processor",
+      "description": "Labels every feature with an identifier shared by the features whose geometry occupies the same space, up to a tolerance.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Identifier Parameters",
+        "description": "How close two geometries must stay to count as one shape, which features are compared against which, and where the results are written.",
+        "type": "object",
+        "required": [
+          "tolerance"
+        ],
+        "properties": {
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Greatest distance, in the units the coordinates are expressed in, that two geometries may stray from one another and still count as the same shape. Zero admits only geometries whose coordinates coincide exactly, which leaves no room for rounding; prefer a small positive distance.",
+            "type": "number",
+            "format": "double"
+          },
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes delimiting the set a geometry is compared against, such as a parent feature or a source file. Geometries in different groups are never identified with one another. When omitted, all input features form a single group.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute the identifier is written to. Features whose geometries occupy the same space carry the same value. Identifiers are counted across the whole input rather than restarted per group, so the same value always names the same set of features however they are grouped again downstream.",
+            "default": "_equivalence_id",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "idAttribute": {
+            "title": "ID Attribute",
+            "description": "Attribute holding the identifier of the feature, such as its gml:id. Read only to write the matched IDs attribute, and required when that is set.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matchedIdsAttribute": {
+            "title": "Matched IDs Attribute",
+            "description": "Attribute the identifiers of the features sharing this feature's shape are written to, as an array. Every feature carrying one identifier value lists the whole set, itself included, in arrival order and without repeats. Left unwritten when omitted.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -6348,7 +6639,7 @@
           },
           "groupBy": {
             "title": "Group By Attributes",
-            "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds.",
+            "description": "Attributes whose values group features together. Unless `origin` is set, each group is divided on its own grid, anchored at the corner of that group's combined bounds.",
             "type": [
               "array",
               "null"
@@ -6356,6 +6647,20 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
+          },
+          "origin": {
+            "title": "Grid Origin",
+            "description": "The point the grid is anchored at, as `[x, y]` in the same coordinate system as the geometry. Anchoring the grid explicitly makes cells fall in the same places across groups and across runs, instead of shifting with each group's extent.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
           }
         },
         "definitions": {

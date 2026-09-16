@@ -129,7 +129,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 12_地下埋設物_無効な空間属性の型.csv
@@ -211,7 +212,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 12_地下埋設物_LOD1-2非水密立体.csv
@@ -272,7 +274,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 12_地下埋設物_LOD1-2立体のエラー.csv
@@ -364,7 +367,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 12_地下埋設物_LOD1-2境界面のエラー.csv
@@ -456,7 +460,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 12_地下埋設物_LOD3-4面のエラー.csv
@@ -536,7 +541,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 12_地下埋設物_不連続なCompositeSurface.csv

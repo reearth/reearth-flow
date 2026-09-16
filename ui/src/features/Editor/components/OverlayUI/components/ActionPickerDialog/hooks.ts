@@ -68,6 +68,7 @@ export default ({
     { value: "Merge", label: t("Merge") },
     { value: "Output", label: t("Output") },
     { value: "Transform", label: t("Transform") },
+    { value: "PLATEAU", label: t("PLATEAU") },
   ];
 
   const actionTags: { value: TagFiltering; label: string }[] = [

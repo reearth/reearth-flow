@@ -1,0 +1,3 @@
+"Index","Folder","Filename","FeatureType","GmlId","エラー数","エラー内容"
+1,"luse","54377074_luse_6697_op.gml","LandUse","luse_8922cd7d-5fcb-4a91-a687-17486c290189",1,"NonPlanarSurface"
+1,"luse","54377074_luse_6697_op.gml","LandUse","luse_1c9f2425-578f-422c-89ff-61ea82e6e4cd",1,"SelfIntersection"

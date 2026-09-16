@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -8,11 +8,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    compile, env_bind, env_remove, eval_error, expect_arity, Env as ExprEnv, FromValue,
+    compile, env_bind, eval_error, expect_arity, new_frame, Env as ExprEnv, FromValue,
     Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
 };
 
-use crate::attribute::{Attribute, AttributeValue};
+use crate::attribute::{Attribute, AttributeValue, Attributes};
 use crate::error::{Error as TypesError, Result as TypesResult};
 use crate::feature::Feature;
 
@@ -58,8 +58,8 @@ impl FromValue for FlowValue {
     fn from_dict(map: IndexMap<String, Self>) -> TypesResult<Self> {
         Ok(FlowValue(AttributeValue::Map(
             map.into_iter()
-                .map(|(k, FlowValue(v))| (k, v))
-                .collect::<HashMap<_, _>>(),
+                .map(|(k, FlowValue(v))| (Attribute::new(k), v))
+                .collect::<Attributes>(),
         )))
     }
     fn on_cycle() -> TypesResult<Self> {
@@ -72,43 +72,72 @@ impl FromValue for FlowValue {
     }
 }
 
+type Variables = Arc<serde_json::Map<String, serde_json::Value>>;
+
 thread_local! {
-    static EVAL_ENV: ExprEnv = reearth_flow_expr::default_env();
+    // Rebuilt only if `variables` identity changes.
+    static EVAL_ENV: RefCell<Option<(Variables, ExprEnv)>> = const { RefCell::new(None) };
+}
+
+fn base_env(variables: &Variables) -> ExprEnv {
+    EVAL_ENV.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        if let Some((cached, env)) = slot.as_ref() {
+            if Arc::ptr_eq(cached, variables) {
+                return env.clone();
+            }
+        }
+        let env = reearth_flow_expr::new_root_env();
+        env_bind(
+            &env,
+            "variables",
+            ExprValue::object(VariablesObject(Arc::clone(variables))),
+        );
+        *slot = Some((Arc::clone(variables), env.clone()));
+        env
+    })
 }
 
 fn eval_with_feature(
     expr: &reearth_flow_expr::CompiledExpr,
     feature: &Feature,
-    variables: &Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: &Variables,
 ) -> TypesResult<AttributeValue> {
-    EVAL_ENV.with(|env| {
-        env_bind(
-            env,
-            "attributes",
-            ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
-        );
-        env_bind(
-            env,
-            "variables",
-            ExprValue::object(VariablesObject(Arc::clone(variables))),
-        );
-        reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
-    })
+    // Attributes go on a fresh per-call frame, never on the cached base itself.
+    let env = new_frame(Some(base_env(variables)));
+    env_bind(
+        &env,
+        "attributes",
+        ExprValue::object(AttributesObject(Arc::clone(&feature.attributes))),
+    );
+    reearth_flow_expr::eval::<FlowValue>(expr, &env).map(|FlowValue(v)| v)
 }
 
 fn eval_with_vars(
     expr: &reearth_flow_expr::CompiledExpr,
-    variables: &Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: &Variables,
 ) -> TypesResult<AttributeValue> {
-    EVAL_ENV.with(|env| {
-        env_remove(env, "attributes");
-        env_bind(
-            env,
-            "variables",
-            ExprValue::object(VariablesObject(Arc::clone(variables))),
-        );
-        reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
-    })
+    let env = new_frame(Some(base_env(variables)));
+    reearth_flow_expr::eval::<FlowValue>(expr, &env).map(|FlowValue(v)| v)
+}
+
+fn eval_with_features(
+    expr: &reearth_flow_expr::CompiledExpr,
+    features: &[Feature],
+    variables: &Variables,
+) -> TypesResult<AttributeValue> {
+    let env = new_frame(Some(base_env(variables)));
+    env_bind(
+        &env,
+        "features",
+        ExprValue::list(
+            features
+                .iter()
+                .map(|f| ExprValue::object(AttributesObject(Arc::clone(&f.attributes))))
+                .collect(),
+        ),
+    );
+    reearth_flow_expr::eval::<FlowValue>(expr, &env).map(|FlowValue(v)| v)
 }
 
 #[nutype(
@@ -362,6 +391,20 @@ impl CompiledCode {
             CompiledCode::Expr(e) => eval_with_vars(e, &variables)?
                 .as_string()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
+        }
+    }
+
+    /// Evaluate with `features` (a list of `attributes` objects) and `variables` in scope.
+    pub fn eval_features(
+        &self,
+        features: &[Feature],
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> TypesResult<AttributeValue> {
+        match self {
+            CompiledCode::Literal(_) => Err(TypesError::Conversion(
+                "a string literal cannot produce a list of attributes".into(),
+            )),
+            CompiledCode::Expr(e) => eval_with_features(e, features, &variables),
         }
     }
 }

@@ -61,6 +61,10 @@ static PACKAGE_TO_VALID_FEATURE_TYPES: Lazy<HashMap<&'static str, Vec<&'static s
     Lazy::new(|| {
         HashMap::from([
             ("app", vec!["http://www.opengis.net/citygml/appearance/2.0"]),
+            (
+                "area",
+                vec!["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
+            ),
             ("bldg", vec!["Building", "CityObjectGroup"]),
             ("brid", vec!["Bridge"]),
             ("cons", vec!["OtherConstruction"]),
@@ -625,8 +629,13 @@ fn process_feature(
             response
                 .invalid_feature_types
                 .iter()
-                .map(|(k, v)| (k.clone(), AttributeValue::Number(Number::from(*v))))
-                .collect::<HashMap<_, _>>(),
+                .map(|(k, v)| {
+                    (
+                        Attribute::new(k.as_str()),
+                        AttributeValue::Number(Number::from(*v)),
+                    )
+                })
+                .collect::<Attributes>(),
         ),
     );
     result_feature.insert(
@@ -634,11 +643,11 @@ fn process_feature(
         AttributeValue::Number(Number::from(response.correct_code_values)),
     );
     result_feature.insert(
-        "inCorrectCodeValue",
+        "incorrectCodeValue",
         AttributeValue::Number(Number::from(response.code_value_errors)),
     );
     result_feature.insert(
-        "inCorrectCodeSpace",
+        "incorrectCodeSpace",
         AttributeValue::Number(Number::from(response.code_space_errors)),
     );
     result_feature.insert(
@@ -659,7 +668,7 @@ fn process_feature(
         AttributeValue::Number(Number::from(response.correct_extents)),
     );
     result_feature.insert(
-        "inCorrectExtents",
+        "incorrectExtents",
         AttributeValue::Number(Number::from(response.incorrect_extents)),
     );
     result_feature.insert(
@@ -1236,7 +1245,7 @@ fn process_member_node(
             handle_code_validation_failure(
                 context.ctx,
                 context.fw,
-                "inCorrectCodeSpace",
+                "incorrectCodeSpace",
                 &base_feature,
                 &cs_entry.tag,
                 &cs_entry.xpath,
