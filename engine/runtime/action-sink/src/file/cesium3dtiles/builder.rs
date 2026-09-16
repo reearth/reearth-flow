@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -107,24 +107,16 @@ pub(super) fn build(
         .reduce(GeoBox::union)
         .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
 
-    // Contents are grouped by feature type throughout: metadata classes each
-    // glb by the CityGML type of its features, which only holds if a glb never
-    // mixes types. Type order is by type name, so output is deterministic
-    // regardless of feature order.
-    let mut by_cell_type: BTreeMap<(Cell, String), Vec<usize>> = BTreeMap::new();
-    for (i, (feature, m)) in extracted.iter().enumerate() {
+    let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
+    for (i, (_, m)) in extracted.iter().enumerate() {
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
         let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
-        let feature_type = feature.feature_type().unwrap_or_default();
-        by_cell_type
-            .entry((cell, feature_type))
-            .or_default()
-            .push(i);
+        by_cell.entry(cell).or_default().push(i);
     }
 
-    // Callers own the cache, so a cell's candidate builds decode its sources
+    // Callers own the caches, so a cell's candidate builds decode its sources
     // once between them. PLATEAU textures are per-surface, so a source image is
     // referenced by only one cell; a tileset-wide cache would grow without
     // bound for no reuse gain.
@@ -134,69 +126,37 @@ pub(super) fn build(
         build_cell_glb(&members, schema, options, render, textures)
     };
 
-    // Every group's glb is built once up front so placement decisions run on
-    // the bytes the writer actually emits rather than an estimate of them.
-    let measured: Vec<(Cell, Unit)> = by_cell_type
+    let mut units: HashMap<Cell, Vec<Unit>> = by_cell
         .into_par_iter()
         .map(
-            |((cell, feature_type), features)| -> crate::errors::Result<(Cell, Unit)> {
+            |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
                 let textures = TextureCache::default();
                 let bytes = transfer_bytes(&build_chunk(&features, &textures)?);
-                Ok((
-                    cell,
-                    Unit {
-                        feature_type,
-                        features,
-                        bytes,
-                    },
-                ))
+                Ok((cell, vec![Unit { features, bytes }]))
             },
         )
         .collect::<crate::errors::Result<_>>()?;
-    let mut units: HashMap<Cell, Vec<Unit>> = HashMap::new();
-    for (cell, unit) in measured {
-        units.entry(cell).or_default().push(unit);
-    }
 
     merge_small_cells(&mut units, target_tile_size);
 
     let occupied: BTreeSet<Cell> = units.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
 
-    // A cell over `target_tile_size` splits into several same-tile contents
-    // (3D Tiles 1.1 multiple contents) rather than growing an oversized glb;
-    // this only aids fetch parallelism, since the union of contents holds
-    // exactly the cell's features either way.
-    //
     // The glb bytes feed neither `tileset.json` nor the subtrees (those need
     // only the cell keys, already captured in `occupied`), so each cell's
-    // contents stream to `write_tile` as soon as they are built and peak memory
-    // stays at one cell's contents per worker.
+    // contents stream to `write_tile` as soon as the cell is done and peak
+    // memory stays at one cell's contents per worker.
     let cell_results: Vec<(Cell, usize, bool)> = units
         .into_par_iter()
         .map(
             |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
                 let textures = TextureCache::default();
-                let groups = group_by_type(units);
-                let group_count = groups.len();
-                let mut written = 0usize;
-                let mut capped = false;
-                for (g, group) in groups.into_iter().enumerate() {
-                    // Every later group still needs a content of its own, so
-                    // leave it a slot when budgeting this one.
-                    let remaining = group_count - g - 1;
-                    let budget = MAX_CONTENTS_PER_TILE
-                        .saturating_sub(written + remaining)
-                        .max(1);
-                    let contents =
-                        split_by_size(group, target_tile_size, budget, &textures, &build_chunk)?;
-                    capped |= contents.capped;
-                    for glb in contents.glbs {
-                        write_tile(content_path(cell, written), glb)?;
-                        written += 1;
-                    }
+                let contents = split_by_size(units, target_tile_size, &textures, &build_chunk)?;
+                let count = contents.glbs.len();
+                for (n, glb) in contents.glbs.into_iter().enumerate() {
+                    write_tile(content_path(cell, n), glb)?;
                 }
-                Ok((cell, written, capped))
+                Ok((cell, count, contents.capped))
             },
         )
         .collect::<crate::errors::Result<_>>()?;
@@ -232,12 +192,8 @@ pub(super) fn build(
     })
 }
 
-/// A group of same-type features whose glb, built on its own, takes `bytes` in
-/// transfer.
+/// A group of features whose glb, built on its own, takes `bytes` in transfer.
 struct Unit {
-    /// CityGML type shared by every feature of the unit; a content never mixes
-    /// types, so units only ever group with units of the same type.
-    feature_type: String,
     features: Vec<usize>,
     bytes: u64,
 }
@@ -245,26 +201,6 @@ struct Unit {
 /// Transfer bytes of a glb holding all of `units`, taken as their sum.
 fn group_bytes(units: &[Unit]) -> u64 {
     units.iter().map(|u| u.bytes).sum()
-}
-
-/// Split a cell's units into one group per feature type, in type-name order
-/// and with each group's units in feature order, so contents are deterministic
-/// however the units reached this cell.
-fn group_by_type(units: Vec<Unit>) -> Vec<Vec<Unit>> {
-    let mut by_type: BTreeMap<String, Vec<Unit>> = BTreeMap::new();
-    for unit in units {
-        by_type
-            .entry(unit.feature_type.clone())
-            .or_default()
-            .push(unit);
-    }
-    by_type
-        .into_values()
-        .map(|mut group| {
-            group.sort_by_key(|u| u.features.first().copied().unwrap_or(0));
-            group
-        })
-        .collect()
 }
 
 /// A [`Write`] sink that keeps only the number of bytes written to it.
@@ -290,32 +226,31 @@ fn transfer_bytes(glb: &[u8]) -> u64 {
     encoder.finish().expect(COUNTER_NEVER_FAILS).0
 }
 
-/// The content glbs one type group splits into, in slot order.
+/// The content glbs one cell splits into, in slot order.
 struct CellContents {
     glbs: Vec<Vec<u8>>,
-    /// Whether `max_contents` stopped a split, leaving at least one content
-    /// over the target.
+    /// Whether [`MAX_CONTENTS_PER_TILE`] stopped a split, leaving at least one
+    /// content over the target.
     capped: bool,
 }
 
-/// Partition one type group's units into fetch-parallel content chunks of at
-/// most `target_tile_size` bytes each. Units are first grouped by their
-/// measured bytes, then every chunk is built, measured, and cut further while
-/// it is over the target: a chunk of several units is cut between units, a
-/// chunk of one unit is cut into equal feature counts. A single feature is
-/// never split, and no group yields more than `max_contents` chunks.
+/// Partition a cell's units into fetch-parallel content chunks of at most
+/// `target_tile_size` bytes each. Units are first grouped by their measured
+/// bytes, then every chunk is built, measured, and cut further while it is
+/// over the target: a chunk of several units is cut between units, a chunk of
+/// one unit is cut into equal feature counts. A single feature is never split,
+/// and no cell yields more than [`MAX_CONTENTS_PER_TILE`] chunks.
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
-    max_contents: usize,
     textures: &TextureCache,
     build_chunk: impl Fn(&[usize], &TextureCache) -> crate::errors::Result<Vec<u8>> + Sync,
 ) -> crate::errors::Result<CellContents> {
     let expected = group_bytes(&units);
     let parts = if target_tile_size == 0 {
-        max_contents
+        MAX_CONTENTS_PER_TILE
     } else {
-        (expected.div_ceil(target_tile_size) as usize).clamp(1, max_contents)
+        (expected.div_ceil(target_tile_size) as usize).clamp(1, MAX_CONTENTS_PER_TILE)
     };
     let mut pending: Vec<Vec<Unit>> = if parts >= 2 && units.len() >= 2 {
         split_into(units, |u| u.bytes, parts)
@@ -345,7 +280,7 @@ fn split_by_size(
                 continue;
             }
             let unprocessed = total - k - 1;
-            let room = max_contents - glbs.len() - pending.len() - unprocessed;
+            let room = MAX_CONTENTS_PER_TILE - glbs.len() - pending.len() - unprocessed;
             if room < 2 {
                 capped = true;
                 glbs.push(glb);
@@ -366,11 +301,9 @@ fn split_by_size(
                     .next()
                     .expect("a chunk holds at least one unit");
                 let per_unit = bytes / parts as u64;
-                let feature_type = unit.feature_type;
                 pending.extend(split_into(unit.features, |_| 0, parts).into_iter().map(
                     |features| {
                         vec![Unit {
-                            feature_type: feature_type.clone(),
                             features,
                             bytes: per_unit,
                         }]
@@ -526,17 +459,15 @@ fn build_cell_glb(
     let cells = primitive::collect(cell_members);
 
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
-    // Every cell_members entry shares one feature type (see `group_by_type`),
-    // so the first feature's type names the class and picks the schema
-    // attribute definitions.
-    let feature_type = cell_features.first().and_then(|f| f.feature_type());
-    let schema_attrs = feature_type
-        .as_deref()
-        .and_then(|ft| crate::schema::schema_attributes(ft, schema));
-    let table = metadata::build_table(&cell_features, schema_attrs, options);
-    let class_name = feature_type
-        .map(|ft| metadata::sanitize_class_name(&ft))
-        .unwrap_or_default();
+    let feature_types: BTreeSet<String> = cell_features
+        .iter()
+        .filter_map(|f| f.feature_type())
+        .collect();
+    let schemas: Vec<&nusamai_citygml::schema::Map> = feature_types
+        .iter()
+        .filter_map(|ft| crate::schema::schema_attributes(ft, schema))
+        .collect();
+    let table = metadata::build_table(&cell_features, &schemas, options);
 
     // Per-tile local origin keeps the f32 positions small next to ECEF's
     // ~6.378e6 m magnitude (see [`push_geom`]).
@@ -607,7 +538,7 @@ fn build_cell_glb(
         .iter()
         .map(|(h, ids)| (*h, ids.as_slice()))
         .collect();
-    metadata::encode(&table, &class_name, &mut builder, &refs);
+    metadata::encode(&table, &mut builder, &refs);
 
     let gltf_origin = [origin[0], origin[2], -origin[1]];
     let glb = builder.build(gltf_origin);
@@ -998,8 +929,6 @@ mod tests {
         );
     }
 
-    // Slot 0 keeps the plain name so a single-content cell is unchanged;
-    // further slots get the suffix the tileset's content URI template declares.
     #[test]
     fn content_slot_zero_keeps_the_plain_name() {
         let cell = Cell {

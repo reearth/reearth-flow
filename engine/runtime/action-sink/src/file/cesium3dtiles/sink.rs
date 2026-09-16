@@ -125,6 +125,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             schema: Default::default(),
             current_chunk: None,
             chunk_keys: HashMap::new(),
+            chunk_types: HashMap::new(),
             pending_flush: Vec::new(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
@@ -147,8 +148,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 }
 
-type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
-type GroupedBuffers = HashMap<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>;
+type BufferKey = (Uri, Option<Uri>); // (output, compress_output)
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
@@ -158,6 +158,7 @@ pub struct Cesium3DTilesWriter {
     // last seen chunk_by_attribute value; a change means the previous chunk is complete and can be flushed
     pub(super) current_chunk: Option<AttributeValue>,
     pub(super) chunk_keys: HashMap<AttributeValue, std::collections::HashSet<BufferKey>>,
+    pub(super) chunk_types: HashMap<AttributeValue, std::collections::HashSet<String>>,
     // chunks whose data closed before every feature_type they need has a schema entry
     pub(super) pending_flush: Vec<AttributeValue>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
@@ -362,12 +363,16 @@ impl Cesium3DTilesWriter {
             feature
         };
 
-        let key = (output, feature_type.clone(), compress_output);
+        let key = (output, compress_output);
         if let Some(chunk) = &chunk {
             self.chunk_keys
                 .entry(chunk.clone())
                 .or_default()
                 .insert(key.clone());
+            self.chunk_types
+                .entry(chunk.clone())
+                .or_default()
+                .insert(feature_type.clone());
         }
         self.buffer.entry(key).or_default().push(feature);
         Ok(())
@@ -379,11 +384,12 @@ impl Cesium3DTilesWriter {
             // don't block flushing on it, otherwise nothing would ever flush incrementally
             return true;
         }
-        self.chunk_keys
+        self.chunk_types
             .get(chunk)
-            .map(|keys| {
-                keys.iter()
-                    .all(|(_, feature_type, _)| self.schema.types.contains_key(feature_type))
+            .map(|types| {
+                types
+                    .iter()
+                    .all(|feature_type| self.schema.types.contains_key(feature_type))
             })
             .unwrap_or(true)
     }
@@ -416,22 +422,16 @@ impl Cesium3DTilesWriter {
     }
 
     fn flush_chunk(&mut self, ctx: Context, chunk: &AttributeValue) -> crate::errors::Result<()> {
+        self.chunk_types.remove(chunk);
         let Some(keys) = self.chunk_keys.remove(chunk) else {
             return Ok(());
         };
-        let mut grouped: GroupedBuffers = HashMap::new();
         for key in keys {
             let Some(buffer) = self.buffer.remove(&key) else {
                 continue;
             };
-            let (output, feature_type, compress_output) = key;
-            grouped
-                .entry((output, compress_output))
-                .or_default()
-                .push((feature_type, buffer));
-        }
-        for ((output, compress_output), upstream) in &grouped {
-            self.write(ctx.clone(), upstream, output, compress_output)?;
+            let (output, compress_output) = key;
+            self.write(ctx.clone(), &buffer, &output, &compress_output)?;
         }
         Ok(())
     }
@@ -465,32 +465,19 @@ impl Cesium3DTilesWriter {
     }
 
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
-        let mut features = HashMap::<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>::new();
-        for ((output, feature_type, compress_output), buffer) in &self.buffer {
-            features
-                .entry((output.clone(), compress_output.clone()))
-                .or_default()
-                .push((feature_type.clone(), buffer.clone()));
-        }
-        for ((output, compress_output), buffer) in &features {
+        for ((output, compress_output), buffer) in &self.buffer {
             self.write(ctx.clone(), buffer, output, compress_output)?;
         }
         Ok(())
     }
 
-    #[allow(clippy::type_complexity)]
     pub(crate) fn write(
         &self,
         ctx: Context,
-        upstream: &Vec<(String, Vec<Feature>)>,
+        features: &[Feature],
         output: &Uri,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<()> {
-        let mut features = Vec::new();
-        for (_, upstream) in upstream {
-            features.extend(upstream.clone());
-        }
-
         let options = super::builder::MetadataOptions {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,

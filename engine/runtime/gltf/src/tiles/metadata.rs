@@ -1,8 +1,6 @@
-//! Per-tile `EXT_structural_metadata` property table: one class per glb,
-//! named after its features' CityGML feature type (every feature in a glb
-//! shares one type — see `builder.rs`'s per-type content splitting), its
-//! properties the union of every attribute path present across that glb's
-//! features. Also the only place that knows the
+//! Per-tile `EXT_structural_metadata` property table: one implicit `Feature`
+//! class per glb, its properties the union of every attribute path present
+//! across that glb's features. Also the only place that knows the
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
@@ -19,16 +17,10 @@ use crate::metadata::int_type_selector::{SignedIntCollector, UnsignedIntCollecto
 use crate::{FLOAT_NO_DATA, STRING_NO_DATA};
 
 const METADATA_SCHEMA_ID: &str = "Schema";
-const DEFAULT_CLASS_NAME: &str = "Feature";
+const METADATA_CLASS_NAME: &str = "Feature";
 
-/// glTF property table class names must match `^[a-zA-Z_][a-zA-Z0-9_]*$`; a
-/// CityGML feature type name such as `bldg:Building` isn't one, so sanitize
-/// it into a valid identifier rather than dropping the per-type class name.
-pub fn sanitize_class_name(feature_type: &str) -> String {
-    feature_type.replace(':', "_")
-}
-
-/// Shared by every class; these exclusions reuse the parent writer's params.
+/// No per-feature-type classing yet (single inlined `Feature` class), but
+/// these two exclusions still apply, reusing the parent writer's params.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
@@ -56,6 +48,27 @@ impl From<&TypeRef> for ColumnKind {
     }
 }
 
+impl ColumnKind {
+    /// How many other kinds this one can hold; a glb whose feature types
+    /// declare one attribute path differently takes the most general of them.
+    fn generality(self) -> u8 {
+        match self {
+            ColumnKind::UnsignedInt => 0,
+            ColumnKind::SignedInt => 1,
+            ColumnKind::Float64 => 2,
+            ColumnKind::String => 3,
+        }
+    }
+
+    fn widen(self, other: Self) -> Self {
+        if other.generality() > self.generality() {
+            other
+        } else {
+            self
+        }
+    }
+}
+
 /// `properties[i] = (raw attribute path, raw attribute path, column type)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`None` if the
 /// feature doesn't carry that path — encoded as the column's no-data
@@ -67,7 +80,7 @@ pub struct PropertyTable {
 
 pub fn build_table(
     features: &[&Feature],
-    schema_attrs: Option<&SchemaMap>,
+    schemas: &[&SchemaMap],
     options: MetadataOptions,
 ) -> PropertyTable {
     let flattened: Vec<BTreeMap<String, AttributeValue>> = features
@@ -75,20 +88,23 @@ pub fn build_table(
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
-    let Some(schema_attrs) = schema_attrs else {
-        return PropertyTable {
-            properties: Vec::new(),
-            rows: flattened.iter().map(|_| Vec::new()).collect(),
-        };
-    };
-
     // Property table keys are the schema-declared attribute name, unsanitized;
     // an attribute no feature actually carries is dropped rather than encoded
     // as an all-no-data column.
-    let properties: Vec<(String, String, ColumnKind)> = schema_attrs
-        .iter()
+    let mut declared: IndexMap<&String, ColumnKind> = IndexMap::new();
+    for schema_attrs in schemas {
+        for (name, attr) in schema_attrs.iter() {
+            let kind = ColumnKind::from(&attr.type_ref);
+            declared
+                .entry(name)
+                .and_modify(|held| *held = held.widen(kind))
+                .or_insert(kind);
+        }
+    }
+    let properties: Vec<(String, String, ColumnKind)> = declared
+        .into_iter()
         .filter(|(name, _)| flattened.iter().any(|f| f.contains_key(name.as_str())))
-        .map(|(name, attr)| (name.clone(), name.clone(), ColumnKind::from(&attr.type_ref)))
+        .map(|(name, kind)| (name.clone(), name.clone(), kind))
         .collect();
 
     let rows = flattened
@@ -121,18 +137,12 @@ fn as_numeric(value: &AttributeValue) -> Option<f64> {
 /// `table` has no properties.
 pub fn encode(
     table: &PropertyTable,
-    class_name: &str,
     builder: &mut Builder,
     primitives: &[(PrimitiveHandle, &[u32])],
 ) {
     if table.properties.is_empty() {
         return;
     }
-    let class_name = if class_name.is_empty() {
-        DEFAULT_CLASS_NAME.to_string()
-    } else {
-        class_name.to_string()
-    };
 
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
@@ -150,7 +160,7 @@ pub fn encode(
 
     let mut classes = IndexMap::new();
     classes.insert(
-        class_name.clone(),
+        METADATA_CLASS_NAME,
         MetadataClass {
             properties: class_properties,
         },
@@ -161,7 +171,7 @@ pub fn encode(
             classes,
         },
         property_tables: vec![MetadataPropertyTable {
-            class: class_name,
+            class: METADATA_CLASS_NAME,
             count: table.rows.len(),
             properties: table_properties,
         }],
@@ -360,7 +370,7 @@ struct ExtStructuralMetadata {
 #[derive(Serialize)]
 struct MetadataSchema {
     id: &'static str,
-    classes: IndexMap<String, MetadataClass>,
+    classes: IndexMap<&'static str, MetadataClass>,
 }
 
 #[derive(Serialize)]
@@ -381,7 +391,7 @@ struct ClassProperty {
 
 #[derive(Serialize)]
 struct MetadataPropertyTable {
-    class: String,
+    class: &'static str,
     count: usize,
     properties: IndexMap<String, MetadataPropertyTableProperty>,
 }
@@ -451,23 +461,8 @@ fn is_excluded(key: &str, options: MetadataOptions) -> bool {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
-    use nusamai_citygml::schema::Attribute as SchemaAttribute;
 
     use super::*;
-
-    fn schema_map(entries: Vec<(&str, TypeRef)>) -> SchemaMap {
-        let mut map = SchemaMap::default();
-        for (name, type_ref) in entries {
-            map.insert(
-                name.to_string(),
-                SchemaAttribute {
-                    type_ref,
-                    ..Default::default()
-                },
-            );
-        }
-        map
-    }
 
     fn feature_with_nested() -> Feature {
         let mut attrs: IndexMap<String, AttributeValue> = IndexMap::new();
@@ -476,8 +471,8 @@ mod tests {
             "addr".to_string(),
             AttributeValue::Map(
                 [("city".to_string(), AttributeValue::String("X".to_string()))]
-                    .into_iter()
-                    .collect(),
+                .into_iter()
+                .collect(),
             ),
         );
         attrs.insert(
@@ -485,6 +480,20 @@ mod tests {
             AttributeValue::Array(vec![AttributeValue::String("1".to_string())]),
         );
         Feature::from(attrs)
+    }
+
+    fn schema_map(attributes: &[(&str, TypeRef)]) -> SchemaMap {
+        let mut map = SchemaMap::default();
+        for (name, type_ref) in attributes {
+            map.insert(
+                (*name).to_string(),
+                nusamai_citygml::schema::Attribute {
+                    type_ref: type_ref.clone(),
+                    ..Default::default()
+                },
+            );
+        }
+        map
     }
 
     fn raw_paths(table: &PropertyTable) -> Vec<&str> {
@@ -496,21 +505,18 @@ mod tests {
     }
 
     #[test]
-    fn no_schema_entry_produces_no_properties() {
-        let feature = feature_with_nested();
-        let table = build_table(&[&feature], None, MetadataOptions::default());
-        assert!(raw_paths(&table).is_empty());
-    }
-
-    #[test]
     fn none_separator_drops_maps_and_arrays() {
         let feature = feature_with_nested();
         let options = MetadataOptions {
             array_map_separator: None,
             ..Default::default()
         };
-        let schema = schema_map(vec![("name", TypeRef::String)]);
-        let table = build_table(&[&feature], Some(&schema), options);
+        let schema = schema_map(&[
+            ("name", TypeRef::String),
+            ("addr.city", TypeRef::String),
+            ("heights.0", TypeRef::String),
+        ]);
+        let table = build_table(&[&feature], &[&schema], options);
 
         // Only the top-level scalar survives; the map and array contribute
         // no columns at all.
@@ -524,14 +530,14 @@ mod tests {
             array_map_separator: Some("."),
             ..Default::default()
         };
-        let schema = schema_map(vec![
-            ("name", TypeRef::String),
+        let schema = schema_map(&[
             ("addr.city", TypeRef::String),
             ("heights.0", TypeRef::String),
+            ("name", TypeRef::String),
         ]);
-        let table = build_table(&[&feature], Some(&schema), options);
+        let table = build_table(&[&feature], &[&schema], options);
 
-        assert_eq!(raw_paths(&table), vec!["name", "addr.city", "heights.0"]);
+        assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
     }
 
     fn number(n: f64) -> AttributeValue {
@@ -540,6 +546,28 @@ mod tests {
 
     fn int_number(n: i64) -> AttributeValue {
         AttributeValue::Number(serde_json::Number::from(n))
+    }
+
+    // A glb holding several feature types takes, for a path they declare
+    // differently, the most general of their declared types.
+    #[test]
+    fn a_path_declared_twice_widens_to_the_more_general_type() {
+        let feature = Feature::from(IndexMap::from([("k".to_string(), int_number(3))]));
+        let kind_of = |schemas: &[&SchemaMap]| {
+            build_table(&[&feature], schemas, MetadataOptions::default()).properties[0].2
+        };
+
+        let unsigned = schema_map(&[("k", TypeRef::NonNegativeInteger)]);
+        let signed = schema_map(&[("k", TypeRef::Integer)]);
+        let double = schema_map(&[("k", TypeRef::Double)]);
+        let string = schema_map(&[("k", TypeRef::String)]);
+
+        assert_eq!(kind_of(&[&unsigned]), ColumnKind::UnsignedInt);
+        assert_eq!(kind_of(&[&unsigned, &signed]), ColumnKind::SignedInt);
+        assert_eq!(kind_of(&[&signed, &unsigned]), ColumnKind::SignedInt);
+        assert_eq!(kind_of(&[&unsigned, &double]), ColumnKind::Float64);
+        assert_eq!(kind_of(&[&double, &signed]), ColumnKind::Float64);
+        assert_eq!(kind_of(&[&string, &double]), ColumnKind::String);
     }
 
     #[test]
@@ -556,22 +584,29 @@ mod tests {
             AttributeValue::String("y".to_string()),
         )]));
 
-        let schema = schema_map(vec![
+        let schema = schema_map(&[
             ("height", TypeRef::Double),
-            ("count", TypeRef::Integer),
+            ("count", TypeRef::NonNegativeInteger),
             ("elevation_delta", TypeRef::Integer),
             ("flag", TypeRef::Boolean),
             ("name", TypeRef::String),
         ]);
-        let table = build_table(&[&feature1, &feature2], Some(&schema), MetadataOptions::default());
+        let table = build_table(
+            &[&feature1, &feature2],
+            &[&schema],
+            MetadataOptions::default(),
+        );
         let mut builder = Builder::new();
-        encode(&table, "Feature", &mut builder, &[]);
+        encode(&table, &mut builder, &[]);
         let glb = builder.build([0.0, 0.0, 0.0]);
 
         let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
         let features = crate::extract_feature_properties(&gltf).unwrap();
 
-        assert_eq!(features[0].get("height"), Some(&serde_json::json!(11.4)));
+        assert_eq!(
+            features[0].get("height"),
+            Some(&serde_json::json!(11.4))
+        );
         assert_eq!(features[0].get("count"), Some(&serde_json::json!(3)));
         assert_eq!(
             features[0].get("elevation_delta"),
