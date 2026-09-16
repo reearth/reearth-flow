@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10181.09376, 71804.318057, 1.0],
+          [-10178.411387, 71804.314875, 0.0],
+          [-10178.407439, 71807.643676, 0.0],
+          [-10181.089812, 71807.646857, 0.0],
+          [-10181.09376, 71804.318057, 1.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "frn",
+        "filename": "54377074_frn_6697_op.gml",
+        "featureType": "CityFurniture",
+        "gmlId": "frn_1c6f4a82-9d30-4b75-8e21-5a7c3f09b6d4",
+        "issue": "NonPlanarSurface"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-10171.162523, 71816.612773, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "frn",
+        "filename": "54377074_frn_6697_op.gml",
+        "featureType": "CityFurniture",
+        "gmlId": "frn_0b93e5d7-46a1-4c28-8d5f-2f7b9a0c1e63",
+        "issue": "SelfIntersection"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

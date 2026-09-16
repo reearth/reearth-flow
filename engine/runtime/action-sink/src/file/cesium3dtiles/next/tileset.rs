@@ -1,6 +1,8 @@
+use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use super::quadtree::{geometric_error, root_ground_diagonal_m, GeoBox};
+use super::stats::PropertyStats;
 
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
 const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
@@ -14,7 +16,12 @@ const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 /// `mod.rs`'s same-tile splitting): 1 keeps the plain single-`content` form,
 /// more than 1 switches every cell to a `contents` array so the array's
 /// positions line up with each `.subtree` file's `contentAvailability` entries.
-pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -> Value {
+pub(super) fn build(
+    root: &GeoBox,
+    available_levels: u32,
+    max_contents: usize,
+    property_stats: &IndexMap<String, PropertyStats>,
+) -> Value {
     let region = [
         root.west.to_radians(),
         root.south.to_radians(),
@@ -33,7 +40,14 @@ pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -
         root_tile.insert("content".into(), json!({"uri": CONTENT_URI_TEMPLATE}));
     } else {
         let contents: Vec<Value> = (0..max_contents)
-            .map(|n| json!({"uri": format!("content/{{level}}/{{x}}/{{y}}_{n}.glb")}))
+            .map(|n| {
+                let uri = if n == 0 {
+                    CONTENT_URI_TEMPLATE.to_string()
+                } else {
+                    format!("content/{{level}}/{{x}}/{{y}}_{n}.glb")
+                };
+                json!({"uri": uri})
+            })
             .collect();
         root_tile.insert("contents".into(), Value::Array(contents));
     }
@@ -47,9 +61,24 @@ pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -
         }),
     );
 
+    let properties: serde_json::Map<String, Value> = property_stats
+        .iter()
+        .map(|(key, stats)| {
+            let mut entry = serde_json::Map::new();
+            if let Some(min) = &stats.minimum {
+                entry.insert("minimum".into(), json!(min));
+            }
+            if let Some(max) = &stats.maximum {
+                entry.insert("maximum".into(), json!(max));
+            }
+            (key.clone(), Value::Object(entry))
+        })
+        .collect();
+
     json!({
         "asset": {"version": "1.1"},
         "geometricError": root_error,
         "root": Value::Object(root_tile),
+        "properties": properties,
     })
 }
