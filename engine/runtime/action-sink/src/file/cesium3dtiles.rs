@@ -1,6 +1,5 @@
 mod appearance;
 mod builder;
-mod cost;
 mod mesh;
 mod primitive;
 mod quadtree;

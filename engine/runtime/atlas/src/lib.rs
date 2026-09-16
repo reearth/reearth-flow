@@ -7,7 +7,9 @@ mod skyline;
 use std::path::PathBuf;
 
 pub use error::{AtlasError, Result};
-pub use multipage::{build_atlas_multipage, MultiPageAtlas, PageWrap, PolygonPlacement, TextureCache};
+pub use multipage::{
+    build_atlas_multipage, MultiPageAtlas, PageWrap, PolygonPlacement, TextureCache,
+};
 
 pub type PolygonUVs = Vec<[f64; 2]>;
 pub type TextureUVs = Vec<PolygonUVs>;

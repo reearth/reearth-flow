@@ -1,6 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::io::Write;
 use std::path::PathBuf;
 
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use rayon::prelude::*;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
@@ -58,11 +61,15 @@ pub(super) struct RenderOptions {
 /// (e.g. many coincident features) rather than acting as a tuning knob.
 const SAFETY_MAX_DEPTH: u32 = 24;
 
+/// Upper bound on same-tile contents a cell may split into; a cell that would
+/// need more keeps contents over `target_tile_size` instead.
+const MAX_CONTENTS_PER_TILE: usize = 15;
+
 /// Build one tileset (tileset.json + subtrees + streamed content glbs) from a
 /// batch of features already resolved to one output path. Content glbs stream
-/// through `write_tile` as built rather than being retained, so peak memory
-/// stays at one glb per rayon worker regardless of tile count. Features
-/// without a `CityGmlGeometry` are skipped.
+/// through `write_tile` as each cell is built rather than being retained, so
+/// peak memory stays at one cell's contents per rayon worker regardless of
+/// tile count. Features without a `CityGmlGeometry` are skipped.
 pub(super) fn build(
     features: &[Feature],
     schema: &nusamai_citygml::schema::Schema,
@@ -81,11 +88,16 @@ pub(super) fn build(
         })
         .collect();
 
-    let property_stats =
-        super::stats::collect(extracted.iter().map(|(feature, _)| *feature), schema, options);
+    let property_stats = super::stats::collect(
+        extracted.iter().map(|(feature, _)| *feature),
+        schema,
+        options,
+    );
 
     if extracted.is_empty() {
-        tracing::warn!("Cesium3DTilesWriter: no renderable geometry found; writing an empty tileset");
+        tracing::warn!(
+            "Cesium3DTilesWriter: no renderable geometry found; writing an empty tileset"
+        );
         return empty_tileset(&property_stats);
     }
 
@@ -95,67 +107,116 @@ pub(super) fn build(
         .reduce(GeoBox::union)
         .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
 
-    let mut cost_caches = super::cost::CostCaches::default();
-    let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    let mut cell_cost: HashMap<Cell, u64> = HashMap::new();
-    let mut feature_cost: Vec<u64> = vec![0; extracted.len()];
+    // Contents are grouped by feature type throughout: metadata classes each
+    // glb by the CityGML type of its features, which only holds if a glb never
+    // mixes types. Type order is by type name, so output is deterministic
+    // regardless of feature order.
+    let mut by_cell_type: BTreeMap<(Cell, String), Vec<usize>> = BTreeMap::new();
     for (i, (feature, m)) in extracted.iter().enumerate() {
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
         let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
-        let cost = super::cost::estimate(feature, m, &mut cost_caches);
-        by_cell.entry(cell).or_default().push(i);
-        *cell_cost.entry(cell).or_default() += cost;
-        feature_cost[i] = cost;
+        let feature_type = feature.feature_type().unwrap_or_default();
+        by_cell_type
+            .entry((cell, feature_type))
+            .or_default()
+            .push(i);
     }
 
-    merge_small_cells(&mut by_cell, &mut cell_cost, target_tile_size);
+    // Callers own the cache, so a cell's candidate builds decode its sources
+    // once between them. PLATEAU textures are per-surface, so a source image is
+    // referenced by only one cell; a tileset-wide cache would grow without
+    // bound for no reuse gain.
+    let build_chunk = |chunk: &[usize], textures: &TextureCache| {
+        let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
+            chunk.iter().map(|&i| &extracted[i]).collect();
+        build_cell_glb(&members, schema, options, render, textures)
+    };
 
-    let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
+    // Every group's glb is built once up front so placement decisions run on
+    // the bytes the writer actually emits rather than an estimate of them.
+    let measured: Vec<(Cell, Unit)> = by_cell_type
+        .into_par_iter()
+        .map(
+            |((cell, feature_type), features)| -> crate::errors::Result<(Cell, Unit)> {
+                let textures = TextureCache::default();
+                let bytes = transfer_bytes(&build_chunk(&features, &textures)?);
+                Ok((
+                    cell,
+                    Unit {
+                        feature_type,
+                        features,
+                        bytes,
+                    },
+                ))
+            },
+        )
+        .collect::<crate::errors::Result<_>>()?;
+    let mut units: HashMap<Cell, Vec<Unit>> = HashMap::new();
+    for (cell, unit) in measured {
+        units.entry(cell).or_default().push(unit);
+    }
+
+    merge_small_cells(&mut units, target_tile_size);
+
+    let occupied: BTreeSet<Cell> = units.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
 
     // A cell over `target_tile_size` splits into several same-tile contents
     // (3D Tiles 1.1 multiple contents) rather than growing an oversized glb;
     // this only aids fetch parallelism, since the union of contents holds
-    // exactly the cell's features either way. Contents are additionally split
-    // by feature type: metadata classes each glb by the CityGML type of its
-    // features, which only holds if a glb never mixes types.
-    let cell_contents: Vec<(Cell, Vec<Vec<usize>>)> = by_cell
-        .into_iter()
-        .map(|(cell, indices)| {
-            (
-                cell,
-                split_by_type_and_cost(&indices, &extracted, &feature_cost, target_tile_size),
-            )
-        })
-        .collect();
-    let content_counts: HashMap<Cell, usize> = cell_contents
+    // exactly the cell's features either way.
+    //
+    // The glb bytes feed neither `tileset.json` nor the subtrees (those need
+    // only the cell keys, already captured in `occupied`), so each cell's
+    // contents stream to `write_tile` as soon as they are built and peak memory
+    // stays at one cell's contents per worker.
+    let cell_results: Vec<(Cell, usize, bool)> = units
+        .into_par_iter()
+        .map(
+            |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
+                let textures = TextureCache::default();
+                let groups = group_by_type(units);
+                let group_count = groups.len();
+                let mut written = 0usize;
+                let mut capped = false;
+                for (g, group) in groups.into_iter().enumerate() {
+                    // Every later group still needs a content of its own, so
+                    // leave it a slot when budgeting this one.
+                    let remaining = group_count - g - 1;
+                    let budget = MAX_CONTENTS_PER_TILE
+                        .saturating_sub(written + remaining)
+                        .max(1);
+                    let contents =
+                        split_by_size(group, target_tile_size, budget, &textures, &build_chunk)?;
+                    capped |= contents.capped;
+                    for glb in contents.glbs {
+                        write_tile(content_path(cell, written), glb)?;
+                        written += 1;
+                    }
+                }
+                Ok((cell, written, capped))
+            },
+        )
+        .collect::<crate::errors::Result<_>>()?;
+
+    let content_counts: HashMap<Cell, usize> = cell_results
         .iter()
-        .map(|(cell, chunks)| (*cell, chunks.len()))
+        .map(|(cell, count, _)| (*cell, *count))
         .collect();
     // The content URI template and the subtree `contentAvailability` array are
     // both declared once for the whole tileset, so every cell shares the same
     // slot count even where only one cell actually splits.
     let max_contents = content_counts.values().copied().max().unwrap_or(1);
-    let tile_count: usize = cell_contents.iter().map(|(_, chunks)| chunks.len()).sum();
-
-    // Cells are independent (own texture cache, own glb(s), unique output
-    // path), so render them across the rayon pool. Each glb streams straight
-    // to `write_tile` as it is built, so peak memory stays at one glb per
-    // worker rather than the whole tileset.
-    cell_contents
-        .par_iter()
-        .try_for_each(|(cell, chunks)| -> crate::errors::Result<()> {
-            let mut textures = TextureCache::default();
-            for (n, indices) in chunks.iter().enumerate() {
-                let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-                    indices.iter().map(|&i| &extracted[i]).collect();
-                let glb = build_cell_glb(&cell_members, schema, options, render, &mut textures)?;
-                write_tile(content_path(*cell, n, max_contents > 1), glb)?;
-            }
-            Ok(())
-        })?;
+    let tile_count: usize = content_counts.values().sum();
+    let capped_cells = cell_results.iter().filter(|(_, _, capped)| *capped).count();
+    if capped_cells > 0 {
+        tracing::warn!(
+            "Cesium3DTilesWriter: {capped_cells} tile(s) reached the {MAX_CONTENTS_PER_TILE} \
+             contents-per-tile limit and carry contents over targetTileSize"
+        );
+    }
 
     let tileset_bytes =
         render_tileset_json(&root, available_levels, max_contents, &property_stats)?;
@@ -171,81 +232,216 @@ pub(super) fn build(
     })
 }
 
-/// Partition a cell's features into fetch-parallel content chunks, each kept
-/// under `target_tile_size` where possible and each holding a single feature
-/// type (grouped by type before the cost split, so a type never disappears
-/// into an emptier neighbour's chunk); a single feature already over the
-/// target is kept whole in its own chunk (features are never split). Type
-/// order is by type name, so output is deterministic regardless of `indices`'
-/// order.
-fn split_by_type_and_cost(
-    indices: &[usize],
-    extracted: &[(&Feature, mesh::ExtractedMesh)],
-    feature_cost: &[u64],
-    target_tile_size: u64,
-) -> Vec<Vec<usize>> {
-    let mut by_type: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-    for &i in indices {
-        let feature_type = extracted[i].0.feature_type().unwrap_or_default();
-        by_type.entry(feature_type).or_default().push(i);
+/// A group of same-type features whose glb, built on its own, takes `bytes` in
+/// transfer.
+struct Unit {
+    /// CityGML type shared by every feature of the unit; a content never mixes
+    /// types, so units only ever group with units of the same type.
+    feature_type: String,
+    features: Vec<usize>,
+    bytes: u64,
+}
+
+/// Transfer bytes of a glb holding all of `units`, taken as their sum.
+fn group_bytes(units: &[Unit]) -> u64 {
+    units.iter().map(|u| u.bytes).sum()
+}
+
+/// Split a cell's units into one group per feature type, in type-name order
+/// and with each group's units in feature order, so contents are deterministic
+/// however the units reached this cell.
+fn group_by_type(units: Vec<Unit>) -> Vec<Vec<Unit>> {
+    let mut by_type: BTreeMap<String, Vec<Unit>> = BTreeMap::new();
+    for unit in units {
+        by_type
+            .entry(unit.feature_type.clone())
+            .or_default()
+            .push(unit);
     }
     by_type
         .into_values()
-        .flat_map(|group| split_by_cost(&group, feature_cost, target_tile_size))
+        .map(|mut group| {
+            group.sort_by_key(|u| u.features.first().copied().unwrap_or(0));
+            group
+        })
         .collect()
 }
 
-/// Partition a single feature type's indices into fetch-parallel content
-/// chunks, each kept under `target_tile_size` where possible; a single
-/// feature already over the target is kept whole in its own chunk (features
-/// are never split).
-fn split_by_cost(indices: &[usize], feature_cost: &[u64], target_tile_size: u64) -> Vec<Vec<usize>> {
-    let mut chunks: Vec<Vec<usize>> = Vec::new();
-    let mut current: Vec<usize> = Vec::new();
-    let mut current_cost = 0u64;
-    for &i in indices {
-        let cost = feature_cost[i];
-        if !current.is_empty() && current_cost + cost > target_tile_size {
-            chunks.push(std::mem::take(&mut current));
-            current_cost = 0;
-        }
-        current.push(i);
-        current_cost += cost;
+/// A [`Write`] sink that keeps only the number of bytes written to it.
+struct ByteCounter(u64);
+
+impl Write for ByteCounter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0 += buf.len() as u64;
+        Ok(buf.len())
     }
-    if !current.is_empty() {
-        chunks.push(current);
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
-    chunks
 }
 
-/// Fold small sibling cells upward into their parent while staying within
-/// `target_tile_size`, deepest level first so a fold can cascade to the root.
-fn merge_small_cells(
-    by_cell: &mut HashMap<Cell, Vec<usize>>,
-    cell_cost: &mut HashMap<Cell, u64>,
+/// Bytes `glb` occupies in transfer: its gzipped length, tile contents being
+/// served with `Content-Encoding: gzip`.
+fn transfer_bytes(glb: &[u8]) -> u64 {
+    const COUNTER_NEVER_FAILS: &str = "writing to a byte counter never fails";
+    let mut encoder = GzEncoder::new(ByteCounter(0), Compression::fast());
+    encoder.write_all(glb).expect(COUNTER_NEVER_FAILS);
+    encoder.finish().expect(COUNTER_NEVER_FAILS).0
+}
+
+/// The content glbs one type group splits into, in slot order.
+struct CellContents {
+    glbs: Vec<Vec<u8>>,
+    /// Whether `max_contents` stopped a split, leaving at least one content
+    /// over the target.
+    capped: bool,
+}
+
+/// Partition one type group's units into fetch-parallel content chunks of at
+/// most `target_tile_size` bytes each. Units are first grouped by their
+/// measured bytes, then every chunk is built, measured, and cut further while
+/// it is over the target: a chunk of several units is cut between units, a
+/// chunk of one unit is cut into equal feature counts. A single feature is
+/// never split, and no group yields more than `max_contents` chunks.
+fn split_by_size(
+    units: Vec<Unit>,
     target_tile_size: u64,
-) {
-    let max_level = by_cell.keys().map(|c| c.level).max().unwrap_or(0);
+    max_contents: usize,
+    textures: &TextureCache,
+    build_chunk: impl Fn(&[usize], &TextureCache) -> crate::errors::Result<Vec<u8>> + Sync,
+) -> crate::errors::Result<CellContents> {
+    let expected = group_bytes(&units);
+    let parts = if target_tile_size == 0 {
+        max_contents
+    } else {
+        (expected.div_ceil(target_tile_size) as usize).clamp(1, max_contents)
+    };
+    let mut pending: Vec<Vec<Unit>> = if parts >= 2 && units.len() >= 2 {
+        split_into(units, |u| u.bytes, parts)
+    } else {
+        vec![units]
+    };
+
+    let mut glbs: Vec<Vec<u8>> = Vec::new();
+    let mut capped = false;
+    while !pending.is_empty() {
+        let built: Vec<(Vec<Unit>, Vec<u8>)> = std::mem::take(&mut pending)
+            .into_par_iter()
+            .map(|chunk| {
+                let features: Vec<usize> = chunk
+                    .iter()
+                    .flat_map(|u| u.features.iter().copied())
+                    .collect();
+                build_chunk(&features, textures).map(|glb| (chunk, glb))
+            })
+            .collect::<crate::errors::Result<_>>()?;
+        let total = built.len();
+        for (k, (chunk, glb)) in built.into_iter().enumerate() {
+            let bytes = transfer_bytes(&glb);
+            let feature_count: usize = chunk.iter().map(|u| u.features.len()).sum();
+            if bytes <= target_tile_size || feature_count == 1 {
+                glbs.push(glb);
+                continue;
+            }
+            let unprocessed = total - k - 1;
+            let room = max_contents - glbs.len() - pending.len() - unprocessed;
+            if room < 2 {
+                capped = true;
+                glbs.push(glb);
+                continue;
+            }
+            let wanted = if target_tile_size == 0 {
+                room
+            } else {
+                bytes.div_ceil(target_tile_size) as usize
+            };
+            let parts = wanted.clamp(2, room).min(feature_count);
+            if chunk.len() >= 2 {
+                let parts = parts.min(chunk.len());
+                pending.extend(split_into(chunk, |u| u.bytes, parts));
+            } else {
+                let unit = chunk
+                    .into_iter()
+                    .next()
+                    .expect("a chunk holds at least one unit");
+                let per_unit = bytes / parts as u64;
+                let feature_type = unit.feature_type;
+                pending.extend(split_into(unit.features, |_| 0, parts).into_iter().map(
+                    |features| {
+                        vec![Unit {
+                            feature_type: feature_type.clone(),
+                            features,
+                            bytes: per_unit,
+                        }]
+                    },
+                ));
+            }
+        }
+    }
+    Ok(CellContents { glbs, capped })
+}
+
+/// Cut `items` into between two and `parts` contiguous groups of roughly equal
+/// summed `weight`. Both `items` and `parts` must be at least two. Falls back
+/// to equal counts when every weight is zero.
+fn split_into<T>(items: Vec<T>, weight: impl Fn(&T) -> u64, parts: usize) -> Vec<Vec<T>> {
+    debug_assert!(items.len() >= 2 && parts >= 2);
+    let total: u64 = items.iter().map(&weight).sum();
+    if total == 0 {
+        let per = items.len().div_ceil(parts).max(1);
+        let mut groups: Vec<Vec<T>> = Vec::new();
+        for item in items {
+            match groups.last_mut() {
+                Some(last) if last.len() < per => last.push(item),
+                _ => groups.push(vec![item]),
+            }
+        }
+        return groups;
+    }
+    let budget = total as f64 / parts as f64;
+    let mut groups: Vec<Vec<T>> = Vec::new();
+    let mut current: Vec<T> = Vec::new();
+    let mut current_weight = 0u64;
+    for item in items {
+        let w = weight(&item);
+        if !current.is_empty() && groups.len() + 1 < parts && (current_weight + w) as f64 > budget {
+            groups.push(std::mem::take(&mut current));
+            current_weight = 0;
+        }
+        current.push(item);
+        current_weight += w;
+    }
+    if !current.is_empty() {
+        groups.push(current);
+    }
+    groups
+}
+
+/// Fold small sibling cells upward into their parent while their summed
+/// transfer bytes stay within `target_tile_size`, deepest level first so a
+/// fold can cascade to the root.
+fn merge_small_cells(units: &mut HashMap<Cell, Vec<Unit>>, target_tile_size: u64) {
+    let max_level = units.keys().map(|c| c.level).max().unwrap_or(0);
     for level in (1..=max_level).rev() {
         let mut by_parent: HashMap<Cell, Vec<Cell>> = HashMap::new();
-        for cell in by_cell.keys().filter(|c| c.level == level) {
+        for cell in units.keys().filter(|c| c.level == level) {
             if let Some(parent) = cell.parent() {
                 by_parent.entry(parent).or_default().push(*cell);
             }
         }
         for (parent, mut children) in by_parent {
-            children.sort_by_key(|c| cell_cost[c]);
-            let mut parent_cost = cell_cost.get(&parent).copied().unwrap_or(0);
+            children.sort_by_key(|c| (group_bytes(&units[c]), *c));
             for child in children {
-                let child_cost = cell_cost[&child];
-                if parent_cost + child_cost > target_tile_size {
+                let parent_bytes: u64 = units
+                    .get(&parent)
+                    .map(|units| group_bytes(units))
+                    .unwrap_or(0);
+                if parent_bytes + group_bytes(&units[&child]) > target_tile_size {
                     continue;
                 }
-                let features = by_cell.remove(&child).unwrap();
-                by_cell.entry(parent).or_default().extend(features);
-                cell_cost.remove(&child);
-                parent_cost += child_cost;
-                cell_cost.insert(parent, parent_cost);
+                let moved = units.remove(&child).unwrap();
+                units.entry(parent).or_default().extend(moved);
             }
         }
     }
@@ -285,15 +481,13 @@ fn render_tileset_json(
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
 
-/// `multi` picks the naming scheme: plain `{y}.glb` when every cell in the
-/// dataset has a single content (the common case), else `{y}_{n}.glb` for
-/// every cell, since the content URI template is declared once for the whole
-/// tileset.
-fn content_path(cell: Cell, n: usize, multi: bool) -> String {
-    if multi {
-        format!("content/{}/{}/{}_{}.glb", cell.level, cell.x, cell.y, n)
-    } else {
+/// Content slot `n` of a cell: slot 0 is the plain `{y}.glb`, further slots
+/// are `{y}_{n}.glb`.
+fn content_path(cell: Cell, n: usize) -> String {
+    if n == 0 {
         format!("content/{}/{}/{}.glb", cell.level, cell.x, cell.y)
+    } else {
+        format!("content/{}/{}/{}_{}.glb", cell.level, cell.x, cell.y, n)
     }
 }
 
@@ -327,14 +521,14 @@ fn build_cell_glb(
     schema: &nusamai_citygml::schema::Schema,
     options: MetadataOptions,
     render: RenderOptions,
-    textures: &mut TextureCache,
+    textures: &TextureCache,
 ) -> crate::errors::Result<Vec<u8>> {
     let cells = primitive::collect(cell_members);
 
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
-    // Every cell_members entry shares one feature type (see
-    // `split_by_type_and_cost`), so the first feature's type names the class
-    // and picks the schema attribute definitions.
+    // Every cell_members entry shares one feature type (see `group_by_type`),
+    // so the first feature's type names the class and picks the schema
+    // attribute definitions.
     let feature_type = cell_features.first().and_then(|f| f.feature_type());
     let schema_attrs = feature_type
         .as_deref()
@@ -453,7 +647,7 @@ fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
     render: RenderOptions,
-    textures: &mut TextureCache,
+    textures: &TextureCache,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
     let polygon_paths: Vec<PathBuf> = textured
         .polygon_texture
@@ -774,5 +968,46 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
             sum[1] / count as f64,
             sum[2] / count as f64,
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn split_into_weights_items_and_never_yields_one_group() {
+        let weights = [10u64, 10, 10, 10, 100, 1, 1];
+        let all: Vec<usize> = (0..weights.len()).collect();
+        let w = |i: &usize| weights[*i];
+        assert_eq!(
+            split_into(all.clone(), w, 3),
+            vec![vec![0, 1, 2, 3], vec![4], vec![5, 6]]
+        );
+        assert_eq!(split_into(all, w, 2), vec![vec![0, 1, 2, 3], vec![4, 5, 6]]);
+        // The dominant item first: the rest still forms a second group.
+        let weights = [100u64, 1, 1];
+        assert_eq!(
+            split_into(vec![0usize, 1, 2], |i| weights[*i], 2),
+            vec![vec![0], vec![1, 2]]
+        );
+        // No weight signal at all: equal counts.
+        assert_eq!(
+            split_into((0..5).collect::<Vec<usize>>(), |_| 0, 2),
+            vec![vec![0, 1, 2], vec![3, 4]]
+        );
+    }
+
+    // Slot 0 keeps the plain name so a single-content cell is unchanged;
+    // further slots get the suffix the tileset's content URI template declares.
+    #[test]
+    fn content_slot_zero_keeps_the_plain_name() {
+        let cell = Cell {
+            level: 3,
+            x: 1,
+            y: 2,
+        };
+        assert_eq!(content_path(cell, 0), "content/3/1/2.glb");
+        assert_eq!(content_path(cell, 1), "content/3/1/2_1.glb");
     }
 }

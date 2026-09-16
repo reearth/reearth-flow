@@ -186,6 +186,9 @@ mod tests {
         let mut feature = Feature::from(attrs);
         feature.update_feature_type(FEATURE_TYPE.to_string());
         let stats = collect(&[feature], &schema(), MetadataOptions::default());
-        assert_eq!(stats["height"].minimum.as_ref().unwrap().as_f64(), Some(7.5));
+        assert_eq!(
+            stats["height"].minimum.as_ref().unwrap().as_f64(),
+            Some(7.5)
+        );
     }
 }

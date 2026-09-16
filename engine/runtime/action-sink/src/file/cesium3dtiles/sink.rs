@@ -197,11 +197,13 @@ pub struct Cesium3DTilesWriterParam {
     /// chunk's value must map to a different output path.
     pub(super) chunk_by_attribute: Option<String>,
     /// # Target Tile Size
-    /// Target content size per tile, in bytes. Tiles are split when they'd
-    /// exceed it and merged with neighbours when they'd otherwise be smaller;
-    /// a single feature that alone exceeds it is kept whole (features are
-    /// never clipped). A value of 0 disables merging and splits every feature
-    /// into its own content. Defaults to 1,048,576 (1 MiB).
+    /// Target content size per tile, in gzipped bytes as served. Tiles are
+    /// split when they'd exceed it and merged with neighbours when they'd
+    /// otherwise be smaller; a single feature that alone exceeds it is kept
+    /// whole (features are never clipped). A tile carries at most 15 contents,
+    /// so a cell needing more than that keeps contents over the target. A
+    /// value of 0 splits as far as that limit allows. Defaults to 1,048,576
+    /// (1 MiB).
     pub(super) target_tile_size: Option<u64>,
     /// # Compute Flat Normals
     /// Compute per-polygon flat normals for lighting. Defaults to true.
@@ -546,10 +548,8 @@ impl Cesium3DTilesWriter {
                 let buffer = Vec::new();
                 let mut cursor = Cursor::new(buffer);
                 let writer = BufWriter::new(&mut cursor);
-                let zip_result =
-                    reearth_flow_common::zip::write(writer, output.path().as_path()).map_err(
-                        |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
-                    );
+                let zip_result = reearth_flow_common::zip::write(writer, output.path().as_path())
+                    .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()));
                 match zip_result {
                     Ok(_) => {
                         match storage

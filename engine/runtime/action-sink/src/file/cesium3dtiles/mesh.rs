@@ -3,8 +3,8 @@ use flatgeom::MultiPolygon;
 use indexmap::IndexSet;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use nusamai_projection::ellipsoid::Ellipsoid;
-use reearth_flow_gltf::calculate_normal;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+use reearth_flow_gltf::calculate_normal;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType};
 use reearth_flow_types::material::{self, Material, X3DMaterial};
 
@@ -186,10 +186,10 @@ fn extract_polygon(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nusamai_citygml::Color;
     use reearth_flow_geometry::types::coordinate::{Coordinate2D, Coordinate3D};
     use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
     use reearth_flow_types::geometry::GmlGeometry;
-    use nusamai_citygml::Color;
     use reearth_flow_types::material::Texture;
 
     fn quad_feature(with_texture: bool) -> CityGmlGeometry {
