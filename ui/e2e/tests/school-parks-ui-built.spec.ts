@@ -8,7 +8,7 @@ import {
   newEditorSession,
   teardownSession,
 } from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
 import { AssetsPage } from "../pages/assetsPage";
 import {
   DeploymentsPage,
@@ -218,9 +218,7 @@ test.describe.serial(
     });
 
     test("filters parks down to those within a school buffer, with valid NZ geometry", async () => {
-      const outputUrl = jobDetailsArtifact(page, OUTPUT_FILE);
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, OUTPUT_FILE);
       test.info().annotations.push({
         type: "output-url",
         description: artifactUrl,
