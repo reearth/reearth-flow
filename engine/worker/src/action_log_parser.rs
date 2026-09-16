@@ -54,7 +54,8 @@ impl LogParser {
                 r"Finish workflow = .* \((success|failed|completed with \d+ failed node\(s\))\)",
             )
             .unwrap(),
-            factory_error: Regex::new(r#"Failed to workflow: ExecutionError\(Factory \{ node_id: "([^"]+)", node_name: "([^"]+)", error: ([^(]+)\("#).unwrap(),
+            // `action: "..."` is optional so logs from engines predating the field still parse.
+            factory_error: Regex::new(r#"Failed to workflow: ExecutionError\(Factory \{ node_id: "([^"]+)", node_name: "([^"]+)", (?:action: "[^"]*", )?error: ([^(]+)\("#).unwrap(),
         }
     }
 

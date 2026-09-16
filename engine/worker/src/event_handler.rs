@@ -79,6 +79,16 @@ impl reearth_flow_runtime::event::EventHandler for NodeFailureHandler {
                     name: Some(name.clone()),
                 });
             }
+            // Named twin of NodeStatusChanged(Failed): status transitions carry no
+            // action name, so a source-only failure would otherwise land with
+            // action_type=null. all_success() deliberately stays blind to source
+            // failures (they're caught by RunSummary.failed_nodes cross-check).
+            reearth_flow_runtime::event::Event::SourceFailed { node, name } => {
+                self.failed_details.lock().push(FailedNode {
+                    id: node.id.to_string(),
+                    name: Some(name.clone()),
+                });
+            }
             reearth_flow_runtime::event::Event::SinkFinishFailed { name } => {
                 self.failed_sinks.lock().push(name.clone());
                 self.failed_details.lock().push(FailedNode {

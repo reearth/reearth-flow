@@ -23,6 +23,10 @@ pub enum Event {
         node: NodeHandle,
         name: String,
     },
+    SourceFailed {
+        node: NodeHandle,
+        name: String,
+    },
     SinkFinishFailed {
         name: String,
     },

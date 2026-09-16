@@ -146,6 +146,13 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         format!("{} source error: {:?}", source.name(), e),
                     );
 
+                    // Named twin of NodeStatusChanged(Failed) so the failure handler can
+                    // attribute this source to its action name (status-only events carry
+                    // no name). Mirrors the ProcessorFailed / SinkFinishFailed pattern.
+                    event_hub.send(Event::SourceFailed {
+                        node: source_node_handle.clone(),
+                        name: node_name.clone(),
+                    });
                     event_hub.send(Event::NodeStatusChanged {
                         node_handle: source_node_handle,
                         status: NodeStatus::Failed,

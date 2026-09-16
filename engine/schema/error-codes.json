@@ -35,6 +35,13 @@
     "help": "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
   },
   {
+    "code": "config.factory_build_failed",
+    "category": "config",
+    "defaultDisposition": "fatal",
+    "message": "action failed to build from workflow parameters",
+    "help": "Check the workflow's `with` block for the failing node against the action's parameter schema."
+  },
+  {
     "code": "csv.no_data_rows",
     "category": "io",
     "defaultDisposition": "warn_drop",
@@ -196,11 +203,32 @@
     "help": "This is an engine bug. Please report it with the workflow, the failing node, and the job id."
   },
   {
+    "code": "internal.processor_execution_failed",
+    "category": "internal",
+    "defaultDisposition": "fatal",
+    "message": "processor terminated with an unhandled error",
+    "help": "See the message and the failing action's log for details. If the input to this processor is malformed, fix it upstream and retry."
+  },
+  {
     "code": "internal.unclassified",
     "category": "internal",
     "defaultDisposition": "fatal",
     "message": "node failed with an unclassified error",
     "help": "See the message and the failing action's log for details. If it points at a workflow parameter or input, fix that and retry."
+  },
+  {
+    "code": "io.sink_write_failed",
+    "category": "io",
+    "defaultDisposition": "fatal",
+    "message": "sink failed to write to its output",
+    "help": "Verify that the sink's output path is writable and there is enough disk or bucket quota."
+  },
+  {
+    "code": "io.source_read_failed",
+    "category": "io",
+    "defaultDisposition": "fatal",
+    "message": "source failed to read from its input",
+    "help": "Verify that the source's input path or URL is reachable and readable by the worker."
   },
   {
     "code": "raster.image_save_failed",

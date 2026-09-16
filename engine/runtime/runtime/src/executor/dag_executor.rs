@@ -10,9 +10,10 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
+#[cfg(test)]
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_diagnostics::{
-    Diagnostic, DiagnosticDraft, Disposition, DispositionPolicy, ErrorCode, OnFatalInput,
-    RunSummary,
+    Diagnostic, DiagnosticDraft, Disposition, DispositionPolicy, OnFatalInput, RunSummary,
 };
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -422,9 +423,13 @@ fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
 }
 
 /// `meta` is stamped only on synthesized fallbacks — a recovered diagnostic
-/// keeps its own `node_id`/`action_type`.
+/// keeps its own `node_id`/`action_type`. The synthesized fallback carries
+/// the ExecutionError variant's `error_code` (config/io/internal) rather
+/// than a blanket `InternalUnclassified`, so consumers can filter and
+/// aggregate meaningfully even before every action returns typed Diagnostics.
 fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagnostic {
     let rendered = e.to_string();
+    let synthesized_code = e.error_code();
     let boxed = match e {
         ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
             Some(b)
@@ -434,7 +439,7 @@ fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagno
     match boxed.map(|b| b.downcast::<Diagnostic>()) {
         Some(Ok(diag)) => *diag,
         _ => Diagnostic::from_draft(
-            DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(rendered),
+            DiagnosticDraft::new(synthesized_code).with_message(rendered),
             Some(meta.composed_id.clone()),
             Some(meta.action.clone()),
             None,
@@ -824,7 +829,11 @@ mod fold_outcomes_tests {
     }
 
     #[test]
-    fn synthesizes_unclassified_for_non_diagnostic_boxed_error() {
+    fn synthesizes_variant_specific_code_for_non_diagnostic_boxed_error() {
+        // A Processor error whose payload isn't a Diagnostic falls back to
+        // the ExecutionError variant's coarse code (rather than the blanket
+        // InternalUnclassified), so consumers can filter processor failures
+        // even before every action returns typed Diagnostics.
         let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
         let results = vec![(
             some_meta(),
@@ -835,10 +844,34 @@ mod fold_outcomes_tests {
 
         assert_eq!(summary.failed_nodes.len(), 1);
         let synthesized = &summary.failed_nodes[0];
-        assert_eq!(synthesized.code, ErrorCode::InternalUnclassified);
+        assert_eq!(
+            synthesized.code,
+            ErrorCode::InternalProcessorExecutionFailed
+        );
         assert_eq!(synthesized.effective_disposition, Some(Disposition::Fatal));
         assert!(synthesized.message.contains("io boom"));
         assert!(synthesized.message.contains("Processor error"));
+    }
+
+    #[test]
+    fn synthesizes_variant_specific_codes_for_source_and_sink() {
+        // Same coarse-code contract for the other two node kinds.
+        let src_boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("source boom"));
+        let snk_boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("sink boom"));
+        let summary = fold_outcomes(vec![
+            (
+                some_meta(),
+                (outcome(vec![]), Err(ExecutionError::Source(src_boxed))),
+            ),
+            (
+                some_meta(),
+                (outcome(vec![]), Err(ExecutionError::Sink(snk_boxed))),
+            ),
+        ]);
+
+        assert_eq!(summary.failed_nodes.len(), 2);
+        assert_eq!(summary.failed_nodes[0].code, ErrorCode::IoSourceReadFailed);
+        assert_eq!(summary.failed_nodes[1].code, ErrorCode::IoSinkWriteFailed);
     }
 
     #[test]
