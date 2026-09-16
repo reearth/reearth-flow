@@ -373,6 +373,23 @@ impl CountHoles for Polygon3D {
     }
 }
 
+// Exterior and interior rings share one coordinate array, so its length is
+// already the face's total — closing vertices included, since the rings are
+// stored verbatim.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Polygon2D {
+    fn count_vertices(&self) -> usize {
+        self.coords.len()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Polygon3D {
+    fn count_vertices(&self) -> usize {
+        self.coords.len()
+    }
+}
+
 // A face with no exterior ring bounds no area, so it is not area geometry to
 // take apart — the one case where a polygon itself is rejected.
 impl ExtractHoles for Polygon2D {

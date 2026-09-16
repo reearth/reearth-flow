@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::coords_iter::CoordsIter;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::CountVertices;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -8,7 +11,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -88,6 +93,31 @@ pub struct VertexCounter {
 }
 
 impl Processor for VertexCounter {
+    /// Counts the coordinates the geometry stores, as stored: a ring keeps its
+    /// closing vertex and a mesh counts its shared vertex pool once. A feature
+    /// with no geometry passes through without the attribute, the way an empty
+    /// geometry does, rather than claiming a count of zero.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let geometry = &ctx.feature.geometry;
+        if matches!(**geometry, reearth_flow_geometry::Geometry::None) {
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
+            return Ok(());
+        }
+        let count = geometry.count_vertices();
+        let mut feature = ctx.feature.clone();
+        feature.attributes_mut().insert(
+            self.output_attribute.clone(),
+            AttributeValue::Number(count.into()),
+        );
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -148,7 +178,6 @@ impl Processor for VertexCounter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -162,7 +191,7 @@ impl Processor for VertexCounter {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use super::*;
     use crate::tests::utils::create_default_execute_context;
@@ -172,7 +201,6 @@ mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{feature::Attributes, Attribute, Feature, Geometry, GeometryValue};
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_point_2d() {
         let noop = NoopChannelForwarder::default();
@@ -204,7 +232,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_linestring_2d() {
         let noop = NoopChannelForwarder::default();
@@ -237,7 +264,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_polygon_2d() {
         let noop = NoopChannelForwarder::default();
@@ -278,7 +304,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_polygon_with_hole() {
         let noop = NoopChannelForwarder::default();
@@ -327,7 +352,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_vertex_counter_empty_geometry() {
         let noop = NoopChannelForwarder::default();
@@ -358,5 +382,90 @@ mod tests {
                 None
             );
         }
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod new_geometry_tests {
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::polygon::Polygon3D;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::Feature;
+
+    fn face(ring: Vec<[f64; 3]>) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                ring,
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )))
+    }
+
+    /// Run the processor over `feature`, returning the single feature it forwards.
+    fn count(feature: Feature) -> Feature {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let ctx = create_default_execute_context(&feature);
+        VertexCounter {
+            output_attribute: Attribute::new("vertexCount"),
+        }
+        .process(ctx, &fw)
+        .unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("the forwarder is the one built above");
+        };
+        let ports = noop.send_ports.lock().unwrap();
+        assert_eq!(ports.len(), 1);
+        assert_eq!(ports[0], *FEATURES_PORT);
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        features[0].clone()
+    }
+
+    fn vertex_count(feature: &Feature) -> Option<&AttributeValue> {
+        feature.attributes.get(&Attribute::new("vertexCount"))
+    }
+
+    /// The closing vertex counts, matching the legacy path where a closed
+    /// square reports five.
+    #[test]
+    fn a_closed_square_counts_its_repeated_first_vertex() {
+        let feature = count(Feature::from(face(vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ])));
+        assert_eq!(
+            vertex_count(&feature),
+            Some(&AttributeValue::Number(5.into()))
+        );
+    }
+
+    /// A triangle written without its closing vertex reports three, so a
+    /// downstream check can tell it apart from the well-formed four.
+    #[test]
+    fn an_open_triangle_counts_three() {
+        let feature = count(Feature::from(face(vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ])));
+        assert_eq!(
+            vertex_count(&feature),
+            Some(&AttributeValue::Number(3.into()))
+        );
+    }
+
+    #[test]
+    fn a_feature_without_geometry_passes_through_uncounted() {
+        let feature = count(Feature::from(Geometry::None));
+        assert_eq!(vertex_count(&feature), None);
     }
 }
