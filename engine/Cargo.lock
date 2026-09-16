@@ -6487,6 +6487,7 @@ dependencies = [
  "nusamai-citygml",
  "nusamai-gltf",
  "once_cell",
+ "pretty_assertions",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",

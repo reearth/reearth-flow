@@ -741,6 +741,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: false
@@ -771,6 +772,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -801,6 +803,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: false
@@ -831,6 +834,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -861,6 +865,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: false
@@ -891,6 +896,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -921,6 +927,7 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
+      dracoQuantizationError: 0.001
       minZoom: 15
       maxZoom: 18
       attachTexture: false

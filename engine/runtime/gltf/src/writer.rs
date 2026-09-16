@@ -16,6 +16,20 @@ pub struct PrimitiveInfo {
 
 pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
+/// Draco geometry compression settings for a written glb.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DracoCompression {
+    /// Upper bound on the error the position quantization may introduce, in the
+    /// unit of the vertex coordinates. Must be positive. `None` leaves the
+    /// encoder's default resolution.
+    pub max_position_error: Option<f64>,
+}
+
+/// Writes the mesh as a glb, optionally Draco-compressed.
+///
+/// A [`DracoCompression::max_position_error`] is resolved against the bounding box
+/// of all `vertices`, so every primitive in the glb is quantized at the same
+/// resolution.
 pub fn write_gltf_glb<W: Write>(
     mut writer: W,
     translation: Option<[f64; 3]>,
@@ -23,7 +37,7 @@ pub fn write_gltf_glb<W: Write>(
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
-    draco_compression: bool,
+    draco_compression: Option<DracoCompression>,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -32,11 +46,12 @@ pub fn write_gltf_glb<W: Write>(
     let mut gltf_buffer_views = vec![];
     let mut gltf_accessors = vec![];
 
+    let mut position_max = [f64::MIN; 3];
+    let mut position_min = [f64::MAX; 3];
+
     // vertices
     {
         let mut vertices_count = 0;
-        let mut position_max = [f64::MIN; 3];
-        let mut position_min = [f64::MAX; 3];
 
         const VERTEX_BYTE_STRIDE: usize = 4 * 9; // 4-bytes (f32) x 9
 
@@ -294,7 +309,7 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    if draco_compression {
+    if let Some(draco) = draco_compression {
         let mut tmp_buffer = Vec::new();
         let indirect_writer = IndirectWriter {
             buffer: &mut tmp_buffer,
@@ -309,7 +324,11 @@ pub fn write_gltf_glb<W: Write>(
         tmp_buffer.flush()?;
 
         // Now the glb data is in `tmp_buffer`. We compress it.
-        let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::default();
+        let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::new(
+            draco_oxide::io::gltf::transcoder::TranscoderConfig {
+                draco: draco_config(&draco, position_min, position_max),
+            },
+        );
         let (buff, warnings) = transcoder.transcode_to_glb(&tmp_buffer)?;
         for warning in warnings {
             tracing::warn!("Draco warning: {}", warning);
@@ -330,6 +349,41 @@ pub fn write_gltf_glb<W: Write>(
     Ok(())
 }
 
+/// Builds the Draco encoder configuration, resolving a requested position error
+/// bound against the bounding box spanned by `position_min`..`position_max`.
+fn draco_config(
+    draco: &DracoCompression,
+    position_min: [f64; 3],
+    position_max: [f64; 3],
+) -> draco_oxide::encode::Config {
+    use draco_oxide::ConfigType;
+
+    let config = <draco_oxide::encode::Config as ConfigType>::default();
+    let Some(max_error) = draco.max_position_error.filter(|e| {
+        *e > 0.0
+            && position_min
+                .iter()
+                .zip(&position_max)
+                .all(|(lo, hi)| lo <= hi)
+    }) else {
+        return config;
+    };
+
+    let min = position_min.map(|v| v as f32);
+    let max = position_max.map(|v| v as f32);
+    config.with_attribute(
+        draco_oxide::AttributeType::Position,
+        draco_oxide::encode::AttributeConfig {
+            quantization: Some(draco_oxide::encode::Quantization::from_bounding_box(
+                &min,
+                &max,
+                max_error as f32,
+            )),
+            ..Default::default()
+        },
+    )
+}
+
 // A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if
 // A struct that writes data to a buffer. The buffer persists even when the writer is dropped.
 struct IndirectWriter<'a> {
@@ -343,5 +397,156 @@ impl<'a> std::io::Write for IndirectWriter<'a> {
 
     fn flush(&mut self) -> std::io::Result<()> {
         self.buffer.flush()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use draco_oxide::encode::Quantization;
+    use pretty_assertions::assert_eq;
+
+    fn resolved_quantization(
+        max_position_error: Option<f64>,
+        min: [f64; 3],
+        max: [f64; 3],
+    ) -> Option<Quantization> {
+        draco_config(&DracoCompression { max_position_error }, min, max)
+            .attribute_config(draco_oxide::AttributeType::Position)
+            .quantization
+    }
+
+    #[test]
+    fn error_bound_resolves_against_the_whole_bounding_box() {
+        let quantization =
+            resolved_quantization(Some(0.001), [-500.0, -20.0, -500.0], [500.0, 80.0, 500.0])
+                .unwrap();
+        assert_eq!(
+            quantization,
+            Quantization::Bounded {
+                range: 1000.0,
+                max_error: 0.001,
+            }
+        );
+
+        // A primitive covering only part of the box quantizes no coarser than the bound.
+        let bits = quantization.resolve(0.0);
+        assert!(100.0 / ((1u64 << bits) - 1) as f32 <= 0.001);
+    }
+
+    #[test]
+    fn no_error_bound_keeps_the_encoder_default() {
+        assert_eq!(
+            resolved_quantization(None, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            None
+        );
+    }
+
+    fn vertex(position: [f32; 3]) -> [u32; 9] {
+        let [x, y, z] = position;
+        [
+            x.to_bits(),
+            y.to_bits(),
+            z.to_bits(),
+            0f32.to_bits(),
+            1f32.to_bits(),
+            0f32.to_bits(),
+            0f32.to_bits(),
+            0f32.to_bits(),
+            0f32.to_bits(),
+        ]
+    }
+
+    /// Decodes the positions of every Draco primitive in a transcoded glb.
+    fn decoded_positions(glb: &[u8]) -> Vec<[f32; 3]> {
+        use draco_oxide::core::types::{NdVector, Vector};
+
+        let parsed = draco_oxide::io::gltf::glb::parse_glb(glb).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&parsed.json).unwrap();
+        let views = json["bufferViews"].as_array().unwrap();
+
+        let mut positions = Vec::new();
+        for mesh in json["meshes"].as_array().unwrap() {
+            for primitive in mesh["primitives"].as_array().unwrap() {
+                let view = primitive["extensions"]["KHR_draco_mesh_compression"]["bufferView"]
+                    .as_u64()
+                    .unwrap() as usize;
+                let offset = views[view]["byteOffset"].as_u64().unwrap_or(0) as usize;
+                let length = views[view]["byteLength"].as_u64().unwrap() as usize;
+                let decoded =
+                    draco_oxide::decode::decode_mesh(&parsed.buffer[offset..offset + length])
+                        .unwrap();
+                let attribute = decoded
+                    .get_attributes()
+                    .iter()
+                    .find(|a| a.get_attribute_type() == draco_oxide::AttributeType::Position)
+                    .unwrap();
+                for i in 0..attribute.num_unique_values() {
+                    let v: NdVector<3, f32> = attribute.get_unique_val(i.into());
+                    positions.push([*v.get(0), *v.get(1), *v.get(2)]);
+                }
+            }
+        }
+        positions
+    }
+
+    #[test]
+    fn error_bound_holds_through_a_glb_round_trip() {
+        // Two triangles a kilometer apart, each small enough that its own extent
+        // would otherwise buy it a much finer grid than the tile deserves.
+        let originals = [
+            [-500.0, 0.0, -500.0],
+            [-499.0, 0.0, -500.0],
+            [-500.0, 0.5, -499.0],
+            [500.0, 0.0, 500.0],
+            [499.0, 0.0, 500.0],
+            [500.0, 0.5, 499.0],
+        ];
+        let mut primitives = Primitives::default();
+        primitives.insert(
+            material::Material::default(),
+            PrimitiveInfo {
+                indices: vec![0, 1, 2, 3, 4, 5],
+                feature_ids: Default::default(),
+            },
+        );
+
+        let schema = nusamai_citygml::schema::Schema::default();
+        let mut glb = Vec::new();
+        write_gltf_glb(
+            &mut glb,
+            None,
+            originals.iter().map(|p| vertex(*p)),
+            primitives,
+            1,
+            MetadataEncoder::new(&schema),
+            Some(DracoCompression {
+                max_position_error: Some(0.001),
+            }),
+        )
+        .unwrap();
+
+        let decoded = decoded_positions(&glb);
+        assert_eq!(decoded.len(), originals.len());
+        for position in decoded {
+            let error = originals
+                .iter()
+                .map(|o| {
+                    ((o[0] - position[0]).powi(2)
+                        + (o[1] - position[1]).powi(2)
+                        + (o[2] - position[2]).powi(2))
+                    .sqrt()
+                })
+                .fold(f32::INFINITY, f32::min);
+            assert!(error <= 0.001, "position error {error} exceeds 1mm");
+        }
+    }
+
+    #[test]
+    fn empty_bounding_box_keeps_the_encoder_default() {
+        assert_eq!(
+            resolved_quantization(Some(0.001), [f64::MAX; 3], [f64::MIN; 3]),
+            None
+        );
     }
 }

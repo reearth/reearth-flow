@@ -1369,6 +1369,15 @@
               "null"
             ]
           },
+          "dracoQuantizationError": {
+            "title": "Draco Quantization Error",
+            "description": "Upper bound, in meters, on the positional error draco compression may introduce. Must be positive. Ignored when draco compression is off; when unset, the draco encoder's default resolution is used.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
           "maxZoom": {
             "title": "Maximum Zoom Level",
             "description": "Maximum zoom level for tile generation (0-24)",

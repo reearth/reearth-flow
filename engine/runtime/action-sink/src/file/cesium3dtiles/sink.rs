@@ -105,6 +105,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
+                draco_quantization_error: params.draco_quantization_error,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 chunk_by_attribute: params.chunk_by_attribute,
             },
@@ -151,6 +152,11 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
+    /// # Draco Quantization Error
+    /// Upper bound, in meters, on the positional error draco compression may
+    /// introduce. Must be positive. Ignored when draco compression is off; when
+    /// unset, the draco encoder's default resolution is used.
+    pub(super) draco_quantization_error: Option<f64>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -169,6 +175,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>,
+    pub(super) draco_quantization_error: Option<f64>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) chunk_by_attribute: Option<String>,
 }
@@ -411,6 +418,11 @@ impl Cesium3DTilesWriter {
         let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
+        let draco_compression = self.params.draco_compression.unwrap_or(true).then_some(
+            reearth_flow_gltf::DracoCompression {
+                max_position_error: self.params.draco_quantization_error,
+            },
+        );
 
         std::thread::scope(|s| {
             {
@@ -486,7 +498,7 @@ impl Cesium3DTilesWriter {
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
-                            self.params.draco_compression.unwrap_or(true),
+                            draco_compression,
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();
