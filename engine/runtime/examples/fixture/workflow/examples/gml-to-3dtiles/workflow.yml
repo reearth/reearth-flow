@@ -26,9 +26,9 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "codelists": env.get("codelistsPath"),
-                  "schemas": env.get("schemasPath"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath"),
+                  "schemas": variables.get("schemasPath"),
                 },
               ]
 

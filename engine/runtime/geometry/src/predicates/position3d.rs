@@ -225,7 +225,21 @@ fn shell_position_impl(
     if shell.is_empty() {
         return CoordPos::Outside;
     }
-    let (min, max) = pool_bounds(shell.pool());
+    shell_position_bounded(coord, shell, tree, pool_bounds(shell.pool()))
+}
+
+/// [`shell_position_impl`] with the shell's pool bounds supplied by the
+/// caller: a caller classifying many coordinates against one shell computes
+/// the bounds once instead of rescanning the pool per query.
+pub(crate) fn shell_position_bounded(
+    coord: [f64; 3],
+    shell: &TriangleSet<'_>,
+    tree: Option<&RTree<TriBox>>,
+    (min, max): ([f64; 3], [f64; 3]),
+) -> CoordPos {
+    if shell.is_empty() {
+        return CoordPos::Outside;
+    }
     if (0..3).any(|k| coord[k] < min[k] || coord[k] > max[k]) {
         return CoordPos::Outside;
     }
@@ -395,7 +409,7 @@ fn unit_f64(bits: u64) -> f64 {
 
 /// The bounding box of a vertex pool (which is non-empty for a non-empty
 /// triangle set).
-fn pool_bounds(pool: &[[f64; 3]]) -> ([f64; 3], [f64; 3]) {
+pub(crate) fn pool_bounds(pool: &[[f64; 3]]) -> ([f64; 3], [f64; 3]) {
     let mut min = [f64::INFINITY; 3];
     let mut max = [f64::NEG_INFINITY; 3];
     for p in pool {

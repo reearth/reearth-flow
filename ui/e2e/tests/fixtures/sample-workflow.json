@@ -40,7 +40,7 @@
           "type": "action",
           "action": "JSON Writer",
           "with": {
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"result.json\")"
+            "output": "file::join_path(variables.get(\"workerArtifactPath\"), \"result.json\")"
           }
         }
       ],

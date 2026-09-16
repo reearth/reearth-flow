@@ -132,7 +132,7 @@ impl Processor for FeatureFilePathExtractor {
         let source_dataset = self
             .params
             .source_dataset
-            .eval_string(feature, ctx.env_vars.clone())
+            .eval_string(feature, ctx.variables.clone())
             .map_err(|e| {
                 FeatureProcessorError::FilePathExtractor(format!(
                     "Failed to evaluate `source_dataset` expression: {e}"

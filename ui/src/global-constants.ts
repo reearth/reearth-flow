@@ -5,6 +5,9 @@ export const DEFAULT_NODE_SIZE = { width: 150, height: 25 };
 export const DEFAULT_GRID_SIZE = 16.5;
 export const DEFAULT_LAYOUT_X_SPACING = DEFAULT_GRID_SIZE * 5; // 82.5px — 5 grid units
 export const DEFAULT_LAYOUT_Y_SPACING = DEFAULT_GRID_SIZE * 3; // 49.5px — 3 grid units
+// A batch node's inner padding, and the smallest size it can be resized to
+export const DEFAULT_BATCH_PADDING = 8;
+export const DEFAULT_BATCH_MIN_SIZE = { width: 250, height: 150 };
 export const ALLOWED_WORKFLOW_FILE_EXTENSIONS = ".json, .yaml, .yml";
 export const ALLOWED_PROJECT_IMPORT_EXTENSIONS = ".zip";
 export const ALLOWED_ASSET_IMPORT_EXTENSIONS =

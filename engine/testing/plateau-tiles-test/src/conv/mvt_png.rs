@@ -1,6 +1,6 @@
 use crate::compare_attributes::make_feature_key;
 use crate::conv::mvt::tinymvt_value_to_json;
-use crate::rasterize::Canvas;
+use crate::rasterize::{Canvas, RasterMode};
 use prost::Message;
 use std::fs;
 use std::path::Path;
@@ -17,6 +17,7 @@ fn render_feature(
     width: usize,
     height: usize,
     stroke: f64,
+    mode: RasterMode,
 ) {
     let geom_type = feature.r#type.unwrap_or(0);
     let mut decoder = GeometryDecoder::new(&feature.geometry);
@@ -59,18 +60,38 @@ fn render_feature(
                                 .collect()
                         })
                         .collect();
-                    canvas.scanline_fill(&px);
-                    for ring in &px {
-                        for w in ring.windows(2) {
-                            canvas.draw_wu_line(w[0].0, w[0].1, w[1].0, w[1].1);
+                    match mode {
+                        RasterMode::Fill => {
+                            canvas.scanline_fill(&px);
+                            for ring in &px {
+                                for w in ring.windows(2) {
+                                    canvas.draw_wu_line(w[0].0, w[0].1, w[1].0, w[1].1);
+                                }
+                                if ring.len() >= 2 {
+                                    canvas.draw_wu_line(
+                                        ring[ring.len() - 1].0,
+                                        ring[ring.len() - 1].1,
+                                        ring[0].0,
+                                        ring[0].1,
+                                    );
+                                }
+                            }
                         }
-                        if ring.len() >= 2 {
-                            canvas.draw_wu_line(
-                                ring[ring.len() - 1].0,
-                                ring[ring.len() - 1].1,
-                                ring[0].0,
-                                ring[0].1,
-                            );
+                        RasterMode::Wireframe => {
+                            for ring in &px {
+                                for w in ring.windows(2) {
+                                    canvas.draw_capsule(w[0].0, w[0].1, w[1].0, w[1].1, stroke);
+                                }
+                                if ring.len() >= 2 {
+                                    canvas.draw_capsule(
+                                        ring[ring.len() - 1].0,
+                                        ring[ring.len() - 1].1,
+                                        ring[0].0,
+                                        ring[0].1,
+                                        stroke,
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -87,6 +108,7 @@ fn rasterize_tile_to_canvases(
     width: usize,
     height: usize,
     stroke: f64,
+    mode: RasterMode,
 ) -> std::collections::HashMap<String, Canvas> {
     let mut canvases: std::collections::HashMap<String, Canvas> = std::collections::HashMap::new();
     for layer in &tile.layers {
@@ -105,7 +127,7 @@ fn rasterize_tile_to_canvases(
             let canvas = canvases
                 .entry(ident)
                 .or_insert_with(|| Canvas::new(width, height));
-            render_feature(canvas, feature, scale, width, height, stroke);
+            render_feature(canvas, feature, scale, width, height, stroke, mode);
         }
     }
     canvases
@@ -123,6 +145,7 @@ pub fn write_png_truth(
     width: usize,
     height: usize,
     stroke: f64,
+    mode: RasterMode,
 ) -> Result<(), String> {
     if !mvt_dir.exists() {
         return Err(format!("MVT directory does not exist: {:?}", mvt_dir));
@@ -149,7 +172,7 @@ pub fn write_png_truth(
         let tile = Tile::decode(&data[..])
             .map_err(|e| format!("Failed to decode MVT {:?}: {}", path, e))?;
 
-        for (ident, canvas) in rasterize_tile_to_canvases(&tile, width, height, stroke) {
+        for (ident, canvas) in rasterize_tile_to_canvases(&tile, width, height, stroke, mode) {
             if canvas.is_blank() {
                 continue;
             }

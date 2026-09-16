@@ -21,7 +21,7 @@ graphs:
           format: csv
           inline:
             type: flowExpr
-            value: env.get("stations")
+            value: variables.get("stations")
           # lon/lat columns become Point geometry and are dropped from attributes.
           geometry:
             xColumn: lon

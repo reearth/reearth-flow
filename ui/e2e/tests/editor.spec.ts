@@ -94,11 +94,15 @@ test.describe.serial("Editor canvas", { tag: "@regression" }, () => {
     );
     await expect(editor.nodes).toHaveCount(base + 1);
 
-    await editor.undo();
-    await expect(editor.nodes).toHaveCount(base);
+    await expect(async () => {
+      await editor.undo();
+      await expect(editor.nodes).toHaveCount(base, { timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
 
-    await editor.redo();
-    await expect(editor.nodes).toHaveCount(base + 1);
+    await expect(async () => {
+      await editor.redo();
+      await expect(editor.nodes).toHaveCount(base + 1, { timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
   });
 
   test("copies and pastes a node", async () => {

@@ -201,7 +201,7 @@ impl Processor for XmlFragmenter {
             &self.params,
             &self.elements_to_match_ast,
             &self.elements_to_exclude_ast,
-            ctx.env_vars.clone(),
+            ctx.variables.clone(),
         )?;
         Ok(())
     }
@@ -226,14 +226,14 @@ fn send_xml_fragment(
     params: &XmlFragmenterParam,
     elements_to_match_ast: &CompiledCode,
     elements_to_exclude_ast: &CompiledCode,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<()> {
     let t_total = Instant::now();
 
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
     let elements_to_match = match elements_to_match_ast
-        .eval(feature, env_vars.clone())
+        .eval(feature, variables.clone())
         .map_err(|e| {
             XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
         })? {
@@ -250,7 +250,7 @@ fn send_xml_fragment(
 
     let elements_to_exclude =
         match elements_to_exclude_ast
-            .eval(feature, env_vars)
+            .eval(feature, variables)
             .map_err(|e| {
                 XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
             })? {

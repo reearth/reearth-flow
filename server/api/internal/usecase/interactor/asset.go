@@ -18,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 )
 
@@ -47,13 +48,24 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 		return nil, err
 	}
 
-	if len(res) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily an asset — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, a := range res {
+		if a != nil {
+			ws, haveWorkspace = a.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
 		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, res[0].Workspace()); err != nil {
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
 			return nil, err
 		}
 	}
@@ -295,7 +307,8 @@ func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, 
 		return aid, err
 	}
 
-	return Run1(
+	var deletedURL string
+	if _, err := Run1(
 		ctx, i.repos,
 		Usecase().Transaction(),
 		func(ctx context.Context) (id.AssetID, error) {
@@ -303,16 +316,29 @@ func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, 
 			if err != nil {
 				return aid, err
 			}
-
-			if url, _ := url.Parse(asset.URL()); url != nil {
-				if err := i.gateways.File.DeleteAsset(ctx, url); err != nil {
-					return aid, err
-				}
+			if asset == nil {
+				return aid, rerror.ErrNotFound
 			}
+			deletedURL = asset.URL()
 
 			return aid, i.repos.Asset.Delete(ctx, aid)
 		},
-	)
+	); err != nil {
+		return aid, err
+	}
+
+	// Only now is it safe to drop the object: the row that stopped referencing
+	// it is durable. Best-effort, since a failure here leaks an object rather
+	// than leaving a listed asset with no bytes behind it.
+	if deletedURL != "" {
+		if u, _ := url.Parse(deletedURL); u != nil {
+			if err := i.gateways.File.DeleteAsset(ctx, u); err != nil {
+				log.Errorfc(ctx, "asset: could not remove object for deleted asset %s: %v", aid, err)
+			}
+		}
+	}
+
+	return aid, nil
 }
 
 func (i *Asset) CreateUpload(ctx context.Context, inp interfaces.CreateAssetUploadParam) (*interfaces.AssetUpload, error) {

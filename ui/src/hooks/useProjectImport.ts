@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import type { AnyWorkflowVariable, Workspace } from "@flow/types";
+import { redactPrivateWorkflowVariableValues } from "@flow/utils";
 
 export default () => {
   const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
@@ -39,10 +40,13 @@ export default () => {
           return;
         }
 
-        if (workflowVariables && workflowVariables.length > 0) {
+        const importableVariables =
+          redactPrivateWorkflowVariableValues(workflowVariables);
+
+        if (importableVariables.length > 0) {
           await updateMultipleWorkflowVariables({
             projectId: project.id,
-            creates: workflowVariables.map((pv, index) => ({
+            creates: importableVariables.map((pv, index) => ({
               name: pv.name,
               defaultValue: pv.defaultValue,
               type: pv.type,

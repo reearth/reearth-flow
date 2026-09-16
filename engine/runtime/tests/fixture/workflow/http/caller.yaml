@@ -40,9 +40,6 @@ graphs:
                 value: "json"
           response:
             responseBodyAttribute: "_response"
-            statusCodeAttribute: "_status"
-            headersAttribute: "_response_headers"
-            errorAttribute: "_error"
           timeouts:
             connectionTimeout: 30
             transferTimeout: 60
@@ -54,7 +51,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["outputFilePath"]'
+            value: 'variables["outputFilePath"]'
 
     edges:
       - id: 2379a497-9e4e-40fb-8361-d2eeeb491763

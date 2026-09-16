@@ -82,6 +82,15 @@ table "triggers" {
   index "triggers_deployment_id_idx" {
     columns = [column.deployment_id]
   }
+  index "triggers_workspace_id_updated_at_idx" {
+    on {
+      column = column.workspace_id
+    }
+    on {
+      column = column.updated_at
+      desc   = true
+    }
+  }
 }
 
 table "parameters" {
@@ -369,6 +378,15 @@ table "deployments" {
   index "deployments_workspace_id_is_head_idx" {
     columns = [column.workspace_id, column.is_head]
   }
+  index "deployments_workspace_id_updated_at_idx" {
+    on {
+      column = column.workspace_id
+    }
+    on {
+      column = column.updated_at
+      desc   = true
+    }
+  }
 }
 
 table "jobs" {
@@ -464,6 +482,15 @@ table "jobs" {
   index "jobs_workspace_id_debug_idx" {
     columns = [column.workspace_id, column.debug]
   }
+  index "jobs_workspace_id_started_at_idx" {
+    on {
+      column = column.workspace_id
+    }
+    on {
+      column = column.started_at
+      desc   = true
+    }
+  }
 }
 
 table "projects" {
@@ -524,6 +551,18 @@ table "projects" {
   }
   index "projects_workspace_id_is_archived_idx" {
     columns = [column.workspace_id, column.is_archived]
+  }
+  index "projects_workspace_id_is_archived_updated_at_idx" {
+    on {
+      column = column.workspace_id
+    }
+    on {
+      column = column.is_archived
+    }
+    on {
+      column = column.updated_at
+      desc   = true
+    }
   }
 }
 
@@ -598,6 +637,15 @@ table "assets" {
 
   index "assets_workspace_id_idx" {
     columns = [column.workspace_id]
+  }
+  index "assets_workspace_id_created_at_idx" {
+    on {
+      column = column.workspace_id
+    }
+    on {
+      column = column.created_at
+      desc   = true
+    }
   }
 }
 

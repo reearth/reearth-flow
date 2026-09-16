@@ -36,6 +36,7 @@ import useProjectExportFromCard from "./useProjectExportFromCard";
 
 type Props = {
   project: Project;
+  readonly?: boolean;
   isDuplicating: boolean;
   setEditProject: (project: Project | undefined) => void;
   setDuplicateProject: (project: Project | undefined) => void;
@@ -45,6 +46,7 @@ type Props = {
 
 const ProjectCard: React.FC<Props> = ({
   project,
+  readonly,
   isDuplicating,
   setEditProject,
   setDuplicateProject,
@@ -131,6 +133,7 @@ const ProjectCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
                 className="justify-between gap-2 text-warning"
+                disabled={readonly}
                 onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
                 <PencilLineIcon />
@@ -145,6 +148,7 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
+                disabled={readonly}
                 onClick={() => setDuplicateProject({ ...project })}>
                 {t("Duplicate Project")}
                 <CopyIcon weight="light" />
@@ -159,6 +163,7 @@ const ProjectCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-4 text-destructive"
+                disabled={readonly}
                 onClick={(e) => {
                   e.stopPropagation();
                   setProjectToBeDeleted(id);

@@ -8,6 +8,7 @@ import type {
   NodeType,
   PseudoPort,
 } from "@flow/types";
+import { normalizeParams } from "@flow/utils/normalizeParams";
 
 export const convertNodes = async (
   engineNodes: EngineReadyNode[],
@@ -45,7 +46,7 @@ export const convertNodes = async (
         measured: DEFAULT_NODE_SIZE,
         data: {
           officialName: isSubworkflow ? "Subworkflow" : en.action || en.name,
-          params: en.with,
+          params: normalizeParams(en.with),
           customizations: {
             customName: en.name,
           },

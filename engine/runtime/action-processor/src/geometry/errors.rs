@@ -77,8 +77,6 @@ pub(super) enum GeometryProcessorError {
     LineOnLineOverlayer(String),
     #[error("Bufferer Factory error: {0}")]
     BuffererFactory(String),
-    #[error("Bufferer error: {0}")]
-    Bufferer(String),
     #[error("AreaOnAreaOverlayer Factory error: {0}")]
     AreaOnAreaOverlayerFactory(String),
     #[error("AreaOnAreaOverlayer error: {0}")]
@@ -131,6 +129,10 @@ pub(super) enum GeometryProcessorError {
     BoundsExtractorFactory(String),
     #[error("BoundsExtractor error: {0}")]
     BoundsExtractor(String),
+    #[error("GeometryIdentifier Factory error: {0}")]
+    GeometryIdentifierFactory(String),
+    #[error("GeometryIdentifier error: {0}")]
+    GeometryIdentifier(String),
     #[error("GeometryPartExtractor Factory error: {0}")]
     GeometryPartExtractorFactory(String),
     #[error("GeometryPartExtractor error: {0}")]

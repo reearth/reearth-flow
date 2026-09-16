@@ -43,7 +43,7 @@ graphs:
           creator: |
             [
               #{
-                csvPath: file::join_path(env.get("workerAssetPath"), env.get("csvPath"))
+                csvPath: file::join_path(variables.get("workerAssetPath"), variables.get("csvPath"))
               },
             ]
 
@@ -54,7 +54,7 @@ graphs:
         with:
           format: tsv
           dataset: |
-            env.get("__value").csvPath
+            attributes["csvPath"]
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: JsonWriter
@@ -62,7 +62,7 @@ graphs:
         action: JsonWriter
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("outputPath"))
+            file::join_path(variables.get("workerArtifactPath"), variables.get("outputPath"))
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -80,13 +80,13 @@ graphs:
 #### `workerAssetPath`
 * The path to the assets local directory.
 ``` yaml
-  env.get("workerAssetPath")
+  variables.get("workerAssetPath")
 ```
 
 #### `workerArtifactPath`
 * The path to the artifacts local directory.
 ``` yaml
-  env.get("workerArtifactPath")
+  variables.get("workerArtifactPath")
 ```
 
 ### PubSub
@@ -103,3 +103,4 @@ graphs:
 | FLOW_WORKER_NODE_STATUS_TOPIC             | Topic name of the event that will occur when each when Feature passes the node | flow-node-status-topic        |
 | FLOW_WORKER_USER_FACING_LOG_TOPIC         | Topic name for the user-facing log event                                       | flow-worker-user-facing-log-topic |
 | FLOW_WORKER_ENABLE_JSON_LOG               | Enable log format to JSON format                                               | false                        |
+| OTEL_COLLECTOR_ENDPOINT                   | OTLP/gRPC collector endpoint. When set, enables OTel trace + metric export (also read by the CLI). When unset, OTel export is fully disabled — no exporter is built, zero overhead. | (unset — OTel export disabled) |

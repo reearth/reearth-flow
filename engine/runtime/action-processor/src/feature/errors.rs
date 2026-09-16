@@ -61,10 +61,6 @@ pub(super) enum FeatureProcessorError {
     FeatureGeoJsonWriterFactory(String),
     #[error("FeatureGeoJsonWriter error: {0}")]
     FeatureGeoJsonWriter(String),
-    #[error("BuildingPartConnectivityCheckerFactory error: {0}")]
-    BuildingPartConnectivityCheckerFactory(String),
-    #[error("BuildingPartConnectivityChecker error: {0}")]
-    BuildingPartConnectivityChecker(String),
     #[error("Feature Joiner Factory error: {0}")]
     JoinerFactory(String),
     #[error("Feature Joiner error: {0}")]
@@ -73,6 +69,10 @@ pub(super) enum FeatureProcessorError {
     JSONFragmenterFactory(String),
     #[error("JSONFragmenter error: {0}")]
     JSONFragmenter(String),
+    #[error("Feature Group Mapper Factory error: {0}")]
+    GroupMapperFactory(String),
+    #[error("Feature Group Mapper error: {0}")]
+    GroupMapper(String),
 }
 
 pub(super) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;

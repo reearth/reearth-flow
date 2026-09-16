@@ -4,16 +4,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// # HTTP Caller Parameters
-/// Configure HTTP/HTTPS requests to enrich features with response data
+/// Configure the HTTP request made for each feature and how the response is stored
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpCallerParam {
     /// # URL
-    /// The target URL for the HTTP request (supports expressions)
+    /// The URL to request, evaluated for each feature (supports expressions). Only http and https URLs are allowed, and requests to private or internal network addresses are blocked.
     pub url: Code,
 
     /// # HTTP Method
-    /// The HTTP method to use for the request
+    /// The HTTP method to use for the request (default: GET)
     #[serde(default = "default_method")]
     pub method: HttpMethod,
 
@@ -37,23 +37,8 @@ pub struct HttpCallerParam {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_body: Option<RequestBody>,
 
-    /// # Content Type
-    /// Override the Content-Type header for the request
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_type: Option<String>,
-
-    /// # Timeouts
-    /// Connection and transfer timeout settings
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timeouts: Option<TimeoutConfig>,
-
-    /// # HTTP Options
-    /// HTTP client behavior settings (SSL, redirects, user agent)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub http_options: Option<HttpOptions>,
-
     /// # Response Configuration
-    /// Configure how response data is stored and processed
+    /// Configure how the response is stored on the feature
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response: Option<ResponseConfig>,
 
@@ -67,10 +52,15 @@ pub struct HttpCallerParam {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate_limit: Option<RateLimitConfig>,
 
-    /// # Observability
-    /// Track additional metrics and diagnostics
+    /// # Timeouts
+    /// Connection and transfer timeout settings
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub observability: Option<ObservabilityConfig>,
+    pub timeouts: Option<TimeoutConfig>,
+
+    /// # HTTP Options
+    /// HTTP client behavior settings (SSL verification, redirects, user agent)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_options: Option<HttpOptions>,
 }
 
 fn default_method() -> HttpMethod {
@@ -99,12 +89,12 @@ pub struct TimeoutConfig {
 #[serde(rename_all = "camelCase")]
 pub struct HttpOptions {
     /// # User Agent
-    /// Custom User-Agent header value
+    /// Custom User-Agent header value sent with each request
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_agent: Option<String>,
 
     /// # Verify SSL
-    /// Whether to verify SSL/TLS certificates (default: true)
+    /// Whether to verify SSL/TLS certificates; disable only for servers with self-signed certificates (default: true)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verify_ssl: Option<bool>,
 
@@ -120,65 +110,38 @@ pub struct HttpOptions {
 }
 
 /// # Response Configuration
-/// Configure how HTTP response data is stored and processed
+/// Configure how the response is stored. The status code, response headers, and any error message are always stored in the `_http_status_code`, `_headers`, and `_http_error` attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ResponseConfig {
     /// # Response Body Attribute
-    /// Feature attribute name to store the response body (default: "_response_body")
+    /// Feature attribute name to store the response body (default: `_response_body`)
     #[serde(default = "default_response_body_attr")]
     pub response_body_attribute: String,
 
-    /// # Status Code Attribute
-    /// Feature attribute name to store the HTTP status code (default: "_http_status_code")
-    #[serde(default = "default_status_code_attr")]
-    pub status_code_attribute: String,
-
-    /// # Headers Attribute
-    /// Feature attribute name to store the response headers (default: "_headers")
-    #[serde(default = "default_headers_attr")]
-    pub headers_attribute: String,
-
-    /// # Error Attribute
-    /// Feature attribute name to store any error messages (default: "_http_error")
-    #[serde(default = "default_error_attr")]
-    pub error_attribute: String,
-
     /// # Response Handling
-    /// How to handle the response data (attribute or file)
+    /// Whether to store the response body in a feature attribute or save it to a file (default: attribute)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_handling: Option<ResponseHandling>,
 
-    /// # Max Response Size
-    /// Maximum response body size in bytes (unlimited if not set)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_response_size: Option<u64>,
-
     /// # Response Encoding
-    /// How to encode the response body (text, base64, or binary)
+    /// How to store the response body: as UTF-8 text or as a base64-encoded string. When omitted, the encoding is chosen from the response's Content-Type header.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_encoding: Option<ResponseEncoding>,
 
     /// # Auto Detect Encoding
-    /// Automatically detect character encoding from response headers
+    /// Choose text or base64 storage from the response's Content-Type header when Response Encoding is not set (default: true)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_detect_encoding: Option<bool>,
+
+    /// # Max Response Size
+    /// Maximum response body size in bytes; the download is stopped and the feature rejected when a response exceeds it (unlimited if not set)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_response_size: Option<u64>,
 }
 
-fn default_response_body_attr() -> String {
+pub(crate) fn default_response_body_attr() -> String {
     "_response_body".to_string()
-}
-
-fn default_status_code_attr() -> String {
-    "_http_status_code".to_string()
-}
-
-fn default_headers_attr() -> String {
-    "_headers".to_string()
-}
-
-fn default_error_attr() -> String {
-    "_http_error".to_string()
 }
 
 /// # HTTP Method
@@ -207,27 +170,6 @@ pub enum HttpMethod {
     /// # OPTIONS
     /// Query supported methods
     Options,
-    /// # COPY
-    /// WebDAV: Copy a resource
-    Copy,
-    /// # LOCK
-    /// WebDAV: Lock a resource
-    Lock,
-    /// # MKCOL
-    /// WebDAV: Create a collection
-    Mkcol,
-    /// # MOVE
-    /// WebDAV: Move a resource
-    Move,
-    /// # PROPFIND
-    /// WebDAV: Retrieve properties
-    Propfind,
-    /// # PROPPATCH
-    /// WebDAV: Update properties
-    Proppatch,
-    /// # UNLOCK
-    /// WebDAV: Unlock a resource
-    Unlock,
 }
 
 impl From<HttpMethod> for Method {
@@ -240,13 +182,6 @@ impl From<HttpMethod> for Method {
             HttpMethod::Patch => Method::PATCH,
             HttpMethod::Head => Method::HEAD,
             HttpMethod::Options => Method::OPTIONS,
-            HttpMethod::Copy => Method::from_bytes(b"COPY").unwrap(),
-            HttpMethod::Lock => Method::from_bytes(b"LOCK").unwrap(),
-            HttpMethod::Mkcol => Method::from_bytes(b"MKCOL").unwrap(),
-            HttpMethod::Move => Method::from_bytes(b"MOVE").unwrap(),
-            HttpMethod::Propfind => Method::from_bytes(b"PROPFIND").unwrap(),
-            HttpMethod::Proppatch => Method::from_bytes(b"PROPPATCH").unwrap(),
-            HttpMethod::Unlock => Method::from_bytes(b"UNLOCK").unwrap(),
         }
     }
 }
@@ -341,41 +276,30 @@ fn default_api_key_location() -> ApiKeyLocation {
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum ResponseHandling {
     /// # Store in Attribute
-    /// Store response body in a feature attribute
+    /// Store the response body in a feature attribute
     #[serde(rename_all = "camelCase")]
     Attribute,
     /// # Save to File
-    /// Save response body to a file
+    /// Save the response body to a file under the job's output directory, recording its location in the `_response_file_path` attribute
     #[serde(rename_all = "camelCase")]
     File {
         /// # File Path
-        /// Path where the response should be saved
+        /// Relative path under the job's output directory where the response is saved (supports expressions)
         path: Code,
-        /// # Store Path in Attribute
-        /// Whether to store the file path in a feature attribute
-        #[serde(skip_serializing_if = "Option::is_none")]
-        store_path_in_attribute: Option<bool>,
-        /// # Path Attribute Name
-        /// Attribute name for storing the file path
-        #[serde(skip_serializing_if = "Option::is_none")]
-        path_attribute: Option<String>,
     },
 }
 
 /// # Response Encoding
-/// How to encode the response body data
+/// How to store the response body
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum ResponseEncoding {
     /// # Text
-    /// Decode response as UTF-8 text
+    /// Store the response body as UTF-8 text
     Text,
     /// # Base64
-    /// Encode response as base64 string
+    /// Store the response body as a base64-encoded string (for binary data)
     Base64,
-    /// # Binary
-    /// Store response as raw binary data
-    Binary,
 }
 
 /// # Retry Configuration
@@ -384,12 +308,12 @@ pub enum ResponseEncoding {
 #[serde(rename_all = "camelCase")]
 pub struct RetryConfig {
     /// # Max Attempts
-    /// Maximum number of retry attempts (default: 3)
+    /// Maximum total number of attempts including the initial request; 1 disables retries (default: 3)
     #[serde(default = "default_max_attempts")]
     pub max_attempts: u32,
 
     /// # Initial Delay
-    /// Initial delay in milliseconds before first retry (default: 100ms)
+    /// Initial delay in milliseconds before the first retry (default: 100)
     #[serde(default = "default_initial_delay")]
     pub initial_delay_ms: u64,
 
@@ -399,17 +323,17 @@ pub struct RetryConfig {
     pub backoff_multiplier: f64,
 
     /// # Max Delay
-    /// Maximum delay in milliseconds between retries (default: 10000ms)
+    /// Maximum delay in milliseconds between retries, also capping delays requested by the Retry-After header (default: 10000)
     #[serde(default = "default_max_delay")]
     pub max_delay_ms: u64,
 
     /// # Retry on Status Codes
-    /// List of HTTP status codes that should trigger a retry (e.g., [429, 503])
+    /// HTTP status codes that trigger a retry, such as [429, 503]. When omitted, all 5xx status codes are retried.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retry_on_status: Option<Vec<u16>>,
 
     /// # Honor Retry-After Header
-    /// Whether to respect the Retry-After header from server responses (default: true)
+    /// Whether to respect the Retry-After response header, in seconds or HTTP-date form, when scheduling a retry (default: true)
     #[serde(default = "default_honor_retry_after")]
     pub honor_retry_after: bool,
 }
@@ -444,12 +368,12 @@ pub struct RateLimitConfig {
     pub requests: u32,
 
     /// # Interval
-    /// Time interval in milliseconds for the rate limit (default: 1000ms)
+    /// Time interval in milliseconds for the rate limit (default: 1000)
     #[serde(default = "default_rate_interval")]
     pub interval_ms: u64,
 
     /// # Timing Strategy
-    /// How to distribute requests within the interval (default: Burst)
+    /// How to distribute requests within the interval (default: burst)
     #[serde(default = "default_timing_strategy")]
     pub timing: TimingStrategy,
 }
@@ -475,68 +399,6 @@ pub enum TimingStrategy {
     Distributed,
 }
 
-/// # Observability Configuration
-/// Track additional metrics and diagnostics about HTTP requests
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ObservabilityConfig {
-    /// # Track Duration
-    /// Whether to track the total request duration (default: true)
-    #[serde(default = "default_track_duration")]
-    pub track_duration: bool,
-
-    /// # Duration Attribute
-    /// Feature attribute name to store request duration in milliseconds
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub duration_attribute: Option<String>,
-
-    /// # Track Final URL
-    /// Whether to track the final URL after redirects (default: false)
-    #[serde(default = "default_track_final_url")]
-    pub track_final_url: bool,
-
-    /// # Final URL Attribute
-    /// Feature attribute name to store the final URL after redirects
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub final_url_attribute: Option<String>,
-
-    /// # Track Retry Count
-    /// Whether to track the number of retry attempts (default: true)
-    #[serde(default = "default_track_retry_count")]
-    pub track_retry_count: bool,
-
-    /// # Retry Count Attribute
-    /// Feature attribute name to store the number of retry attempts
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub retry_count_attribute: Option<String>,
-
-    /// # Track Bytes
-    /// Whether to track the response body size in bytes (default: false)
-    #[serde(default = "default_track_bytes")]
-    pub track_bytes: bool,
-
-    /// # Bytes Attribute
-    /// Feature attribute name to store the response body size
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bytes_attribute: Option<String>,
-}
-
-fn default_track_duration() -> bool {
-    true
-}
-
-fn default_track_final_url() -> bool {
-    false
-}
-
-fn default_track_retry_count() -> bool {
-    true
-}
-
-fn default_track_bytes() -> bool {
-    false
-}
-
 /// # Request Body
 /// The body content to send with the HTTP request
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -550,7 +412,7 @@ pub enum RequestBody {
         /// The text content to send (supports expressions)
         content: Code,
         /// # Content Type
-        /// Override Content-Type header (e.g., application/json, text/plain)
+        /// Content-Type header for the body, such as application/json or text/plain
         #[serde(skip_serializing_if = "Option::is_none")]
         content_type: Option<String>,
     },
@@ -562,7 +424,7 @@ pub enum RequestBody {
         /// Source of the binary data (base64 string or file path)
         source: BinarySource,
         /// # Content Type
-        /// Content-Type header (e.g., application/octet-stream, image/png)
+        /// Content-Type header for the body (default: application/octet-stream)
         #[serde(skip_serializing_if = "Option::is_none")]
         content_type: Option<String>,
     },
@@ -575,7 +437,7 @@ pub enum RequestBody {
         fields: Vec<FormField>,
     },
     /// # Multipart Form Data
-    /// Send multipart/form-data (for file uploads)
+    /// Send multipart/form-data (for file uploads); cannot be combined with retry
     #[serde(rename_all = "camelCase")]
     Multipart {
         /// # Parts
@@ -662,11 +524,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_webdav_method_conversion() {
-        assert_eq!(
-            Method::from(HttpMethod::Propfind),
-            Method::from_bytes(b"PROPFIND").unwrap()
-        );
+    fn test_method_conversion() {
+        assert_eq!(Method::from(HttpMethod::Get), Method::GET);
+        assert_eq!(Method::from(HttpMethod::Patch), Method::PATCH);
     }
 
     #[test]

@@ -7,7 +7,7 @@ mod simplicity;
 pub(crate) use containment::{check_holes_in_exterior_2d, check_holes_in_exterior_3d};
 pub(crate) use measure::{
     check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
-    check_degenerate_ring_3d, check_planarity_3d,
+    check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
 pub(crate) use simplicity::{
     check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
@@ -16,7 +16,8 @@ pub(crate) use simplicity::{
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use kiddo::{KdTree, SquaredEuclidean};
+use kiddo::{ImmutableKdTree, SquaredEuclidean};
+use reearth_flow_common::union_find::{Parity, UnionFind};
 use serde::{Deserialize, Serialize};
 
 use crate::coordinate::{CoordinateFrame, UnitKind};
@@ -61,8 +62,11 @@ pub enum ValidationType {
     /// A 3D mesh or solid means coherent winding across shared edges (each shared
     /// edge traversed in opposite directions by its two faces).
     Orientation,
-    /// Whether a solid's boundary is not a closed 2-manifold (watertight). Solid only.
+    /// Whether a solid's shell is a closed 2-manifold (watertight: every edge shared
+    /// by exactly two faces). Solid only.
     ShellManifold,
+    /// Whether a solid's shell is a single connected component. Solid only.
+    ShellConnected,
     /// Whether a solid's shell normals face the correct way: the exterior shell must enclose
     /// positive volume (outward normals) and each void shell negative volume
     /// (normals into the void). Defined on a closed, consistently-oriented solid.
@@ -78,7 +82,7 @@ impl ValidationType {
     pub fn dependencies(&self) -> &'static [ValidationType] {
         use ValidationType::*;
         match self {
-            Finite | TooFewPoints | Orientable | ShellManifold => &[],
+            Finite | TooFewPoints | Orientable | ShellManifold | ShellConnected => &[],
             UnclosedRing | DuplicatePoints | Degenerate | Planarity => &[Finite],
             SelfIntersection => &[Finite, TooFewPoints, UnclosedRing],
             InteriorRingContainment => &[Finite, SelfIntersection],
@@ -483,6 +487,8 @@ validation_checks! {
     check_orientation => Orientation,
     /// [`ShellManifold`](ValidationType::ShellManifold).
     check_shell_manifold => ShellManifold,
+    /// [`ShellConnected`](ValidationType::ShellConnected).
+    check_shell_connected => ShellConnected,
     /// [`ShellOrientation`](ValidationType::ShellOrientation).
     check_shell_orientation => ShellOrientation,
 }
@@ -518,6 +524,7 @@ validation_checks! {
 /// | Orientation             |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellManifold           |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | ShellConnected          |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellOrientation        |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 ///
 /// # Check dependencies
@@ -541,6 +548,7 @@ validation_checks! {
 /// | `Orientable`                 | (none) |
 /// | `Orientation`                | `Finite`, `Orientable` |
 /// | `ShellManifold`              | (none) |
+/// | `ShellConnected`             | (none) |
 /// | `ShellOrientation`           | `Orientation`, `ShellManifold` |
 pub fn validate(geometry: &Geometry) -> ValidationResults {
     validate_with(geometry, &ValidationParams::default())
@@ -892,16 +900,21 @@ impl DuplicateCoord for [f64; 3] {
 /// point. Exact bit-equality when `tolerance` is `None`; otherwise two coords are
 /// coincident when within `tolerance` distance.
 ///
+/// The tolerant path indexes the coordinates in a k-d tree; see
+/// [`duplicates_within`].
+///
+/// A tolerance that is not a positive finite number carries no usable radius and
+/// is treated as exact equality.
+///
 /// # Precondition
 ///
 /// Every coordinate must be finite. `DuplicatePoints` depends on
 /// [`Finite`](ValidationType::Finite) (see
 /// [`dependencies`](ValidationType::dependencies)), so the gated driver never
 /// reaches this check until finiteness has passed, and this routine relies on
-/// that rather than re-checking. A non-finite coordinate would corrupt
-/// detection: [`norm_bits`] collides distinct NaNs into a false duplicate, and a
-/// NaN poisons the k-d tree, so any caller outside the gated driver must uphold
-/// it.
+/// that rather than re-checking. A non-finite coordinate would corrupt detection:
+/// [`norm_bits`] collides distinct NaNs into a false duplicate, and a NaN poisons
+/// the k-d tree, so any caller outside the gated driver must uphold it.
 pub(crate) fn check_duplicate_points<const N: usize>(
     frame: &CoordinateFrame,
     coords: impl IntoIterator<Item = [f64; N]>,
@@ -911,7 +924,7 @@ pub(crate) fn check_duplicate_points<const N: usize>(
     [f64; N]: DuplicateCoord,
 {
     let mut push = |c: [f64; N]| report.push(c.into_point(frame));
-    match tolerance {
+    match tolerance.filter(|t| t.is_finite() && *t > 0.0) {
         None => {
             let mut seen = HashSet::new();
             for c in coords {
@@ -922,19 +935,48 @@ pub(crate) fn check_duplicate_points<const N: usize>(
             }
         }
         Some(t) => {
-            let radius = t * t;
-            let mut tree: KdTree<f64, N> = KdTree::new();
-            let mut n: u64 = 0;
-            for c in coords {
-                if n > 0 && tree.nearest_one::<SquaredEuclidean>(&c).distance <= radius {
-                    push(c);
-                } else {
-                    tree.add(&c, n);
-                    n += 1;
+            let coords: Vec<[f64; N]> = coords.into_iter().collect();
+            for (c, duplicate) in coords.iter().zip(duplicates_within(&coords, t)) {
+                if duplicate {
+                    push(*c);
                 }
             }
         }
     }
+}
+
+/// Which of `coords` coincide with an earlier coordinate, within `tolerance`.
+///
+/// Scanning in index order, a coordinate that is not already flagged claims every
+/// later coordinate within `tolerance` of it, so a cluster of coincident
+/// coordinates is reported against its first member alone.
+///
+/// # Precondition
+///
+/// Every coordinate must be finite; a NaN poisons the k-d tree.
+fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec<bool> {
+    let mut duplicate = vec![false; coords.len()];
+    if coords.len() < 2 {
+        return duplicate;
+    }
+    // The mutable KdTree panics on degenerate point distributions;
+    // ImmutableKdTree does not.
+    let tree: ImmutableKdTree<f64, N> = ImmutableKdTree::new_from_slice(coords);
+    // `within_unsorted` excludes the radius itself, so step it up to keep a pair
+    // exactly `tolerance` apart coincident.
+    let radius = (tolerance * tolerance).next_up();
+    for i in 0..coords.len() {
+        if duplicate[i] {
+            continue;
+        }
+        for neighbour in tree.within_unsorted::<SquaredEuclidean>(&coords[i], radius) {
+            let j = neighbour.item as usize;
+            if j > i {
+                duplicate[j] = true;
+            }
+        }
+    }
+    duplicate
 }
 
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
@@ -1126,62 +1168,6 @@ pub(crate) fn tetra_volume_6x(a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> f64 {
     a[0] * cross[0] + a[1] * cross[1] + a[2] * cross[2]
 }
 
-/// Union-find with edge parity: each element carries a bit relative to its set
-/// representative, so a "same" (`0`) or "different" (`1`) constraint between two
-/// elements can be recorded and contradictions detected. Backs the connectivity
-/// and orientability checks.
-struct ParityUnionFind {
-    parent: Vec<usize>,
-    /// Parity of each element relative to its parent.
-    parity: Vec<u8>,
-    rank: Vec<u8>,
-}
-
-impl ParityUnionFind {
-    fn new(n: usize) -> Self {
-        Self {
-            parent: (0..n).collect(),
-            parity: vec![0; n],
-            rank: vec![0; n],
-        }
-    }
-
-    /// The set root of `x` and `x`'s parity relative to that root, compressing
-    /// the path on the way out.
-    fn find(&mut self, x: usize) -> (usize, u8) {
-        if self.parent[x] == x {
-            return (x, 0);
-        }
-        let (root, p) = self.find(self.parent[x]);
-        self.parent[x] = root;
-        self.parity[x] ^= p;
-        (root, self.parity[x])
-    }
-
-    /// Record that `x` and `y` differ by `rel` (`0` = same, `1` = opposite),
-    /// merging their sets. Returns `false` if this contradicts an existing
-    /// constraint (they are already related with the other parity).
-    fn union(&mut self, x: usize, y: usize, rel: u8) -> bool {
-        let (rx, px) = self.find(x);
-        let (ry, py) = self.find(y);
-        if rx == ry {
-            return px ^ py == rel;
-        }
-        let new_parity = px ^ py ^ rel;
-        if self.rank[rx] < self.rank[ry] {
-            self.parent[rx] = ry;
-            self.parity[rx] = new_parity;
-        } else {
-            self.parent[ry] = rx;
-            self.parity[ry] = new_parity;
-            if self.rank[rx] == self.rank[ry] {
-                self.rank[rx] += 1;
-            }
-        }
-        true
-    }
-}
-
 /// Face-adjacency topology of a surface: which faces meet at each undirected edge
 /// and in which direction, plus the face count. Built from the faces' vertex-index
 /// rings and shared by the mesh modules' `pub(crate)` connectivity, `Orientable`,
@@ -1206,8 +1192,16 @@ impl FaceTopology {
     /// wraps to the first). Self-loop edges (`a == b`) are skipped. Lets faces be
     /// fed one at a time (e.g. streamed from a decoder into a reused buffer).
     pub(crate) fn add_face(&mut self, ring: &[u32]) {
-        let f = self.n_faces;
-        self.n_faces += 1;
+        self.add_ring(self.n_faces, ring);
+    }
+
+    /// Add one ring of face `face` (closure optional; the last vertex wraps to the
+    /// first). A face with holes feeds its exterior and every hole ring under the
+    /// same `face`, so they count as one face for connectivity and orientability.
+    /// Self-loop edges (`a == b`) are skipped.
+    pub(crate) fn add_ring(&mut self, face: usize, ring: &[u32]) {
+        let f = face;
+        self.n_faces = self.n_faces.max(face + 1);
         let n = ring.len();
         if n < 2 {
             return;
@@ -1242,25 +1236,52 @@ impl FaceTopology {
         !self.edges.is_empty() && self.edges.values().all(|inc| inc.len() == 2)
     }
 
+    /// Report every edge that breaks [`is_closed_manifold`](Self::is_closed_manifold)
+    /// as the segment between its two vertices: the boundary edges of a torn
+    /// surface and the edges where more than two faces meet. Reported in vertex-index
+    /// order so the output does not depend on the hash iteration order.
+    pub(crate) fn report_non_manifold_edges(
+        &self,
+        frame: &CoordinateFrame,
+        vertices: &[[f64; 3]],
+        report: &mut ValidationReport,
+    ) {
+        let mut offending: Vec<(u32, u32)> = self
+            .edges
+            .iter()
+            .filter(|(_, inc)| inc.len() != 2)
+            .map(|(&key, _)| key)
+            .collect();
+        offending.sort_unstable();
+        for (a, b) in offending {
+            report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+                LineString3D::from_coords(
+                    frame.clone(),
+                    [vertices[a as usize], vertices[b as usize]],
+                ),
+            )));
+        }
+    }
+
     /// Whether the faces form a single connected component through shared edges.
     pub(crate) fn is_connected(&self) -> bool {
         if self.n_faces == 0 {
             return false;
         }
-        let mut uf = ParityUnionFind::new(self.n_faces);
+        let mut uf: UnionFind = UnionFind::new(self.n_faces);
         for inc in self.edges.values() {
             for w in inc.windows(2) {
-                uf.union(w[0].0, w[1].0, 0);
+                uf.merge(w[0].0, w[1].0);
             }
         }
-        let root = uf.find(0).0;
-        (1..self.n_faces).all(|f| uf.find(f).0 == root)
+        let root = uf.root(0);
+        (1..self.n_faces).all(|f| uf.root(f) == root)
     }
 
     /// Whether a consistent orientation exists: no edge is shared by more than two
     /// faces, and the per-face flip constraints have no contradiction.
     pub(crate) fn is_orientable(&self) -> bool {
-        let mut uf = ParityUnionFind::new(self.n_faces);
+        let mut uf: UnionFind<Parity> = UnionFind::new(self.n_faces);
         for inc in self.edges.values() {
             if inc.len() > 2 {
                 return false;
@@ -1268,8 +1289,14 @@ impl FaceTopology {
             if inc.len() == 2 {
                 let (f1, forward1) = inc[0];
                 let (f2, forward2) = inc[1];
-                let rel = (forward1 == forward2) as u8;
-                if !uf.union(f1, f2, rel) {
+                // Two faces that traverse a shared edge the same way disagree
+                // on which side is out.
+                let relation = if forward1 == forward2 {
+                    Parity::Opposite
+                } else {
+                    Parity::Same
+                };
+                if !uf.union(f1, f2, relation) {
                     return false;
                 }
             }
@@ -1457,6 +1484,52 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_tolerance_handles_many_coordinates_on_one_axis_value() {
+        // Hundreds of vertices sharing an axis value, spaced wider than the
+        // tolerance: none coincide.
+        let coords: Vec<[f64; 3]> = (0..500).map(|i| [0.0, i as f64, 0.0]).collect();
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &lenient),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_many_coordinates_on_one_position() {
+        // All coordinates exactly coincident: every vertex past the first is a
+        // duplicate.
+        let coords: Vec<[f64; 3]> = vec![[1.0, 2.0, 3.0]; 500];
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 499);
+    }
+
+    #[test]
+    fn duplicate_tolerance_flags_a_non_adjacent_pair() {
+        // The coincident pair is 0.0002 apart but not adjacent in the list.
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.9999, 0.0, 0.0], [5.0, 0.0, 0.0], [1.0001, 0.0, 0.0]],
+        );
+        let lenient = ValidationParams {
+            duplicate_tolerance: Some(0.001),
+            ..Default::default()
+        };
+        let positions = one_failure(validate_one(&ls, ValidationType::DuplicatePoints, &lenient));
+        assert_eq!(positions.len(), 1);
+        assert_eq!(offending_point(&positions[0]), [1.0001, 0.0, 0.0]);
+    }
+
+    #[test]
     fn dispatch_reaches_leaf_through_geometry() {
         let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
             CoordinateFrame::Euclidean,
@@ -1576,6 +1649,7 @@ mod tests {
             ValidationType::InteriorRingContainment,
             ValidationType::Degenerate,
             ValidationType::ShellManifold,
+            ValidationType::ShellConnected,
         ] {
             assert!(!core.is_optional(), "{core:?} should be core");
         }
@@ -1583,7 +1657,7 @@ mod tests {
 
     /// Every `ValidationType` variant, so the dependency graph can be walked in
     /// full.
-    const ALL_TYPES: [ValidationType; 12] = [
+    const ALL_TYPES: [ValidationType; 13] = [
         ValidationType::Finite,
         ValidationType::TooFewPoints,
         ValidationType::DuplicatePoints,
@@ -1595,6 +1669,7 @@ mod tests {
         ValidationType::Orientable,
         ValidationType::Orientation,
         ValidationType::ShellManifold,
+        ValidationType::ShellConnected,
         ValidationType::ShellOrientation,
     ];
 

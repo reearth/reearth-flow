@@ -145,17 +145,28 @@ func (c *DeploymentLoader) FindVersions(ctx context.Context, wsID gqlmodel.ID, p
 	return deployments, nil
 }
 
-func (c *DeploymentLoader) FindByProject(ctx context.Context, pID gqlmodel.ID) (*gqlmodel.Deployment, error) {
-	pid, err := gqlmodel.ToID[id.Project](pID)
+// FetchByProjects is the batch fetch function for DeploymentByProjectLoader.
+// It preserves alignment with keys: every key gets an entry (nil if not found
+// or not visible to the caller), so dataloaden's position-based matching stays correct.
+func (c *DeploymentLoader) FetchByProjects(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Deployment, []error) {
+	pids, err := util.TryMap(ids, gqlmodel.ToID[id.Project])
 	if err != nil {
-		return nil, err
+		return nil, []error{err}
 	}
 
-	res, _ := c.usecase.FindByProject(ctx, pid)
+	res, err := c.usecase.FindByProjects(ctx, pids)
+	if err != nil {
+		return nil, []error{err}
+	}
 
-	dep := gqlmodel.ToDeployment(res)
+	deployments := make([]*gqlmodel.Deployment, len(pids))
+	for i, pid := range pids {
+		if dep, ok := res[pid]; ok {
+			deployments[i] = gqlmodel.ToDeployment(dep)
+		}
+	}
 
-	return dep, nil
+	return deployments, nil
 }
 
 // data loaders
@@ -173,6 +184,31 @@ func (c *DeploymentLoader) DataLoader(ctx context.Context) DeploymentDataLoader 
 			return c.Fetch(ctx, keys)
 		},
 	})
+}
+
+// ByProjectDataLoader batches deploymentResolver's sibling, projectResolver.Deployment
+// (Project -> its Deployment), keyed by project ID instead of deployment ID.
+type DeploymentByProjectDataLoader interface {
+	Load(gqlmodel.ID) (*gqlmodel.Deployment, error)
+	LoadAll([]gqlmodel.ID) ([]*gqlmodel.Deployment, []error)
+}
+
+func (c *DeploymentLoader) ByProjectDataLoader(ctx context.Context) DeploymentByProjectDataLoader {
+	return gqldataloader.NewDeploymentByProjectLoader(gqldataloader.DeploymentByProjectLoaderConfig{
+		Wait:     dataLoaderWait,
+		MaxBatch: dataLoaderMaxBatch,
+		Fetch: func(keys []gqlmodel.ID) ([]*gqlmodel.Deployment, []error) {
+			return c.FetchByProjects(ctx, keys)
+		},
+	})
+}
+
+func (c *DeploymentLoader) OrdinaryByProjectDataLoader(ctx context.Context) DeploymentByProjectDataLoader {
+	return &ordinaryDeploymentLoader{
+		fetch: func(keys []gqlmodel.ID) ([]*gqlmodel.Deployment, []error) {
+			return c.FetchByProjects(ctx, keys)
+		},
+	}
 }
 
 func (c *DeploymentLoader) OrdinaryDataLoader(ctx context.Context) DeploymentDataLoader {

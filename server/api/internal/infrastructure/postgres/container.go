@@ -26,8 +26,6 @@ func New(ctx context.Context, pool *pgxpool.Pool, account *accountrepo.Container
 		Workflow:      NewWorkflow(client),
 		Project:       NewProject(client),
 		Deployment:    NewDeployment(client),
-		EdgeExecution: NewEdgeExecution(client),
-		NodeExecution: NewNodeExecution(client),
 		Job:           NewJob(client),
 		Asset:         NewAsset(client),
 		AssetUpload:   NewAssetUpload(client),

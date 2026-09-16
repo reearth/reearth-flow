@@ -20,7 +20,6 @@ make e2e              # Run end-to-end tests
 # Code Generation
 make gql              # Generate GraphQL resolvers and types
 make gen-policies     # Generate RBAC policies
-make gen-thrift       # Generate Thrift code
 make proto            # Generate gRPC code from protobuf
 ```
 

@@ -103,8 +103,6 @@ fn test_proximity_search_with_geojson() {
         ),
         Uri::for_test("ram:///log/").path(),
     ));
-    let ingress_state =
-        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
     let feature_state =
         Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
 
@@ -117,7 +115,6 @@ fn test_proximity_search_with_geojson() {
         BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver.clone(),
-        ingress_state,
         feature_state,
         None,
         sandbox_root,

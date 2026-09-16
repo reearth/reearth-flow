@@ -26,11 +26,11 @@ impl FileReaderCommonParam {
             .dataset
             .map(|c| {
                 let compiled = c.compile().map_err(|e| format!("dataset compile: {e}"))?;
-                match compiled.eval_env_only(ctx.env_vars.clone()) {
+                match compiled.eval_variables_only(ctx.variables.clone()) {
                     Ok(AttributeValue::Null) => Ok::<Option<String>, String>(None),
                     _ => {
                         let s = compiled
-                            .eval_string_env_only(ctx.env_vars.clone())
+                            .eval_string_variables_only(ctx.variables.clone())
                             .map_err(|e| format!("dataset eval: {e}"))?;
                         Ok(if s.is_empty() { None } else { Some(s) })
                     }
@@ -43,7 +43,7 @@ impl FileReaderCommonParam {
             .map(|c| {
                 let compiled = c.compile().map_err(|e| format!("inline compile: {e}"))?;
                 let s = compiled
-                    .eval_string_env_only(ctx.env_vars.clone())
+                    .eval_string_variables_only(ctx.variables.clone())
                     .map_err(|e| format!("inline eval: {e}"))?;
                 Ok::<Bytes, String>(Bytes::from(s))
             })

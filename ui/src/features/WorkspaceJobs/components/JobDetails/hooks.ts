@@ -5,7 +5,7 @@ import { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
-import { formatTimestamp } from "@flow/utils";
+import { formatTimestamp, toArtifactFiles } from "@flow/utils";
 
 export default ({ jobId }: { jobId: string }) => {
   const t = useT();
@@ -87,19 +87,22 @@ export default ({ jobId }: { jobId: string }) => {
                   ? formatTimestamp(job.completedAt)
                   : t("N/A"),
             },
-            {
-              id: "outputURLs",
-              name: t("Output URLs"),
-              value: job.outputURLs || t("N/A"),
-              type: job.outputURLs ? "link" : undefined,
-            },
           ]
         : undefined,
     [t, job, jobStatus],
   );
+
+  // The server returns the job's artifacts as one flat list of URLs, so the
+  // folder a grouped writer created is read back out of the URLs.
+  const outputFiles = useMemo(
+    () => toArtifactFiles(job?.outputURLs ?? []),
+    [job?.outputURLs],
+  );
+
   return {
     job,
     details,
+    outputFiles,
     jobStatus,
     handleCancelJob,
     handleBack,

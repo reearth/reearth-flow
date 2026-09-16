@@ -14,7 +14,7 @@ import { memo, type DragEvent } from "react";
 import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow/buildNewCanvasNode";
 import {
@@ -72,31 +72,31 @@ const Toolbox: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { screenToFlowPosition } = useReactFlow();
-  const { isLocked } = useEditorContext();
+  const isDisabled = useIsReadOnly();
   const availableTools: Tool[] = [
     {
       id: "reader" as const,
       name: t("Reader"),
       icon: <DatabaseIcon weight="thin" size={16} />,
-      disabled: !isMainWorkflow || isLocked,
+      disabled: !isMainWorkflow || isDisabled,
     },
     {
       id: "transformer" as const,
       name: t("Transformer"),
       icon: <LightningIcon weight="thin" size={16} />,
-      disabled: isLocked,
+      disabled: isDisabled,
     },
     {
       id: "writer" as const,
       name: t("Writer"),
       icon: <DiscIcon weight="thin" size={16} />,
-      disabled: !isMainWorkflow || isLocked,
+      disabled: !isMainWorkflow || isDisabled,
     },
     {
       id: "note" as const,
       name: t("Note"),
       icon: <NoteIcon weight="thin" size={16} />,
-      disabled: isLocked,
+      disabled: isDisabled,
     },
     {
       id: "batch" as const,
@@ -108,13 +108,13 @@ const Toolbox: React.FC<Props> = ({
           size={16}
         />
       ),
-      disabled: isLocked,
+      disabled: isDisabled,
     },
     {
       id: "subworkflow" as const,
       name: t("Subworkflow"),
       icon: <GraphIcon weight="thin" size={16} />,
-      disabled: isLocked,
+      disabled: isDisabled,
     },
   ];
 
@@ -124,21 +124,21 @@ const Toolbox: React.FC<Props> = ({
       name: t("Auto layout"),
       icon: <LayoutIcon weight="thin" size={16} />,
       onClick: onLayoutChange,
-      disabled: isLocked,
+      disabled: isDisabled,
     },
     { id: "break" },
     {
       id: "undo",
       name: t("Undo last action"),
       icon: <ArrowArcLeftIcon weight="thin" size={16} />,
-      disabled: !canUndo || isLocked,
+      disabled: !canUndo || isDisabled,
       onClick: onUndo,
     },
     {
       id: "redo",
       name: t("Redo action"),
       icon: <ArrowArcRightIcon weight="thin" size={16} />,
-      disabled: !canRedo || isLocked,
+      disabled: !canRedo || isDisabled,
       onClick: onRedo,
     },
   ];

@@ -1,3 +1,5 @@
+//! LOG-PROSE FROZEN: the strings/regexes below must match engine log output verbatim.
+
 use regex::Regex;
 use std::time::Duration;
 
@@ -47,13 +49,16 @@ impl LogParser {
             source_error: Regex::new(r#"([\w][\w ]*) source error: (.+)"#).unwrap(),
             sink_error: Regex::new(r#"([\w][\w ]*) sink error: (.+)"#).unwrap(),
             workflow_failed: Regex::new(r"Failed nodes:").unwrap(),
-            workflow_completed: Regex::new(r"Finish workflow = .* \((success|failed)\)").unwrap(),
+            // Must match both old `(success|failed)` and newer `completed with N failed node(s)` forms; success/failure comes from `workflow_error_occurred`, not this regex.
+            workflow_completed: Regex::new(
+                r"Finish workflow = .* \((success|failed|completed with \d+ failed node\(s\))\)",
+            )
+            .unwrap(),
             factory_error: Regex::new(r#"Failed to workflow: ExecutionError\(Factory \{ node_id: "([^"]+)", node_name: "([^"]+)", error: ([^(]+)\("#).unwrap(),
         }
     }
 
     pub fn parse(&self, log_line: &str) -> Option<LogPattern> {
-        // Workflow patterns
         if self.workflow_start.is_match(log_line) {
             return Some(LogPattern::WorkflowStart);
         }
@@ -62,7 +67,6 @@ impl LogParser {
             return Some(LogPattern::WorkflowCompleted);
         }
 
-        // Check specific error patterns before generic workflow error
         if let Some(caps) = self.factory_error.captures(log_line) {
             let node_id = caps.get(1).unwrap().as_str();
             let node_name = caps.get(2).unwrap().as_str();
@@ -72,7 +76,6 @@ impl LogParser {
             } else {
                 factory_name
             };
-            // Extract the actual error message from the log
             let error_detail =
                 if let Some(error_match) = log_line.split(&format!("{factory_name}(\"")).nth(1) {
                     if let Some(msg_end) = error_match.find("\")") {
@@ -84,7 +87,6 @@ impl LogParser {
                 } else {
                     format!("Invalid configuration for {action_name}")
                 };
-            // For now, still return as WorkflowFailed but include node info in the message
             return Some(LogPattern::NodeError {
                 node_name: node_name.to_string(),
                 node_id: Some(node_id.to_string()),
@@ -135,15 +137,12 @@ impl LogParser {
             let node_id = Some(caps.get(3).unwrap().as_str().to_string());
             let mut error = caps.get(4).unwrap().as_str().to_string();
 
-            // Handle error format like: BulkRenamer(\"error message\")
             if let Some(start_idx) = error.find("(\\\"") {
                 if let Some(end_idx) = error.rfind("\\\")") {
                     let prefix_len = "(\\\"".len();
                     error = error[start_idx + prefix_len..end_idx].to_string();
                 }
-            }
-            // Handle error format like: "error message"
-            else if error.starts_with('"') && error.ends_with('"') {
+            } else if error.starts_with('"') && error.ends_with('"') {
                 error = error[1..error.len() - 1].to_string();
             }
 
@@ -161,7 +160,6 @@ impl LogParser {
             let node_name = caps.get(1).unwrap().as_str().to_string();
             let mut error = caps.get(2).unwrap().as_str().to_string();
 
-            // Handle CannotReceiveFromChannel wrapper
             const CHANNEL_ERROR_PREFIX: &str = "CannotReceiveFromChannel(\"";
             const CHANNEL_ERROR_SUFFIX: &str = "\")";
 
@@ -169,7 +167,6 @@ impl LogParser {
                 error = error[CHANNEL_ERROR_PREFIX.len()..error.len() - CHANNEL_ERROR_SUFFIX.len()]
                     .to_string();
 
-                // Handle nested error patterns like SinkType("error message")
                 if let Some(paren_start) = error.find('(') {
                     if let Some(quote_start) = error[paren_start..].find('"') {
                         let quote_start = paren_start + quote_start + 1;
@@ -201,5 +198,123 @@ impl LogParser {
             "µs" => Duration::from_secs_f64(value / 1_000_000.0),
             _ => Duration::from_secs_f64(value),
         }
+    }
+}
+
+#[cfg(test)]
+mod workflow_completed_shape_tests {
+    use super::*;
+
+    #[test]
+    fn matches_legacy_success_form() {
+        let parser = LogParser::new();
+        let msg = r#"Finish workflow = "My Workflow" (success), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+
+    #[test]
+    fn matches_legacy_failed_form() {
+        let parser = LogParser::new();
+        let msg = r#"Finish workflow = "My Workflow" (failed), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+
+    #[test]
+    fn matches_new_completed_with_failed_nodes_form() {
+        let parser = LogParser::new();
+        let msg =
+            r#"Finish workflow = "My Workflow" (completed with 2 failed node(s)), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+
+    #[test]
+    fn matches_new_form_with_a_single_failed_node() {
+        let parser = LogParser::new();
+        let msg =
+            r#"Finish workflow = "My Workflow" (completed with 1 failed node(s)), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+}
+
+#[cfg(test)]
+mod sink_and_processor_error_shape_tests {
+    use super::*;
+
+    fn node_error(pattern: LogPattern) -> (String, Option<String>, String) {
+        match pattern {
+            LogPattern::NodeError {
+                node_name,
+                node_id,
+                error,
+            } => (node_name, node_id, error),
+            other => panic!("expected NodeError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn sink_error_strips_legacy_debug_wrapper_when_present() {
+        let parser = LogParser::new();
+        let msg = r#"JSON Writer sink error: CannotReceiveFromChannel("boom")"#;
+
+        let pattern = parser.parse(msg).expect("sink_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "JSON Writer");
+        assert_eq!(node_id, None);
+        assert_eq!(error, "boom");
+    }
+
+    #[test]
+    fn sink_error_passes_through_new_structured_shape_untouched() {
+        let parser = LogParser::new();
+        let msg = "JSON Writer sink error: Sink error: boom";
+
+        let pattern = parser.parse(msg).expect("sink_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "JSON Writer");
+        assert_eq!(node_id, None);
+        assert_eq!(error, "Sink error: boom");
+    }
+
+    #[test]
+    fn processor_error_shape_is_unaffected_by_the_executionerror_display_change() {
+        let parser = LogParser::new();
+        let msg = "Error operation, processor node name = Attribute Aggregator (ErrorProcessor), node_id = b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae, feature id = None, error = \"Attribute not found: nonexistentAttribute\"";
+
+        let pattern = parser.parse(msg).expect("processor_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "ErrorProcessor");
+        assert_eq!(
+            node_id.as_deref(),
+            Some("b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae")
+        );
+        assert_eq!(error, "Attribute not found: nonexistentAttribute");
+    }
+
+    #[test]
+    fn sink_error_parses_real_legacy_channel_display_text() {
+        let parser = LogParser::new();
+        let msg = r#"MyWriter sink error: Cannot receive from channel: SinkError("boom")"#;
+
+        let pattern = parser.parse(msg).expect("sink_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "MyWriter");
+        assert_eq!(node_id, None);
+        assert_eq!(error, r#"Cannot receive from channel: SinkError("boom")"#);
     }
 }

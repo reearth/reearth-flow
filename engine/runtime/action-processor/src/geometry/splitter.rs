@@ -49,7 +49,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// # Geometry Splitter Parameters
-/// Parameters for GeometrySplitter
+/// Configure how multi-part geometries are split into individual features.
 #[cfg(feature = "new-geometry")]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -72,21 +72,24 @@ const FILE_BACKED_THRESHOLD: usize = 64;
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SplitLevel {
-    /// Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)
+    /// # Element
+    /// Splits by surface element, such as a roof surface or a wall surface.
     #[default]
     Element,
-    /// Split down to individual polygons within each element
+    /// # Polygon
+    /// Splits further, down to the individual polygons within each surface element.
     Polygon,
 }
 
-/// Parameters for GeometrySplitter
+/// # Geometry Splitter Parameters
+/// Configure how multi-part geometries are split into individual features.
 #[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometrySplitterParam {
-    /// Split level for CityGML geometry.
-    /// - "element": Split by surface elements (RoofSurface, WallSurface, etc.) - default
-    /// - "polygon": Split down to individual polygons within each element
+    /// # Split Level
+    /// How far to split CityGML geometry. Applies only to CityGML; other geometry
+    /// types are always split into their individual parts.
     #[serde(default)]
     pub split_level: SplitLevel,
 }
@@ -101,7 +104,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
     }
 
     fn description(&self) -> &str {
-        "Split Multi-Geometries into Individual Features"
+        "Splits multi-part geometries into individual single-geometry features."
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -119,7 +122,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["split", "geometry"]
+        &[]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -231,7 +234,10 @@ impl Processor for GeometrySplitter {
         }
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
+        // Nothing to split, but the feature is still valid: pass it through
+        // rather than discarding it silently.
         if geometry.is_empty() {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
         match &geometry.value {
@@ -382,7 +388,7 @@ impl GeometrySplitter {
         new_feature.set_geometry(member);
         new_feature.extend(attributes);
         new_feature.insert(
-            "_split_index",
+            "__split_idx",
             AttributeValue::Number(serde_json::Number::from(index)),
         );
         fw.send(ExecutorContext::new_with_context_feature_and_port(
@@ -409,7 +415,7 @@ impl GeometrySplitter {
                 for (index, polygon) in polygons.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -424,7 +430,7 @@ impl GeometrySplitter {
                 for (index, line_string) in line_strings.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -454,7 +460,7 @@ impl GeometrySplitter {
                 for (index, polygon) in polygons.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -469,7 +475,7 @@ impl GeometrySplitter {
                 for (index, line_string) in line_strings.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -516,7 +522,7 @@ impl GeometrySplitter {
                 let polygon = Polygon3D::new(ring, vec![]);
                 let mut new_feature = ctx.feature.clone();
                 new_feature.insert(
-                    Attribute::new("_split_index"),
+                    Attribute::new("__split_idx"),
                     AttributeValue::Number(serde_json::Number::from(index + 1)),
                 );
                 new_feature.geometry_mut().value =
@@ -538,7 +544,7 @@ impl GeometrySplitter {
             let polygon = Polygon3D::new(ring, vec![]);
             let mut new_feature = ctx.feature.clone();
             new_feature.insert(
-                Attribute::new("_split_index"),
+                Attribute::new("__split_idx"),
                 AttributeValue::Number(serde_json::Number::from(index + 1)),
             );
             new_feature.geometry_mut().value =

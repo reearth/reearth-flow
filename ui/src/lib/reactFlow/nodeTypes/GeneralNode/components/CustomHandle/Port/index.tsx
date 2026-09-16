@@ -14,10 +14,9 @@ type Props = {
   nodeId: string;
   nodeData: NodeData;
   portName: string;
-  readonly: boolean;
 };
 
-const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
+const Port: React.FC<Props> = ({ nodeId, nodeData, portName }) => {
   const {
     hasIntermediateData,
     isSelected,
@@ -28,7 +27,6 @@ const Port: React.FC<Props> = ({ nodeId, nodeData, portName, readonly }) => {
     nodeId,
     nodeData,
     portName,
-    readonly,
   });
 
   const hasData = hasIntermediateData && jobStatus === "completed";

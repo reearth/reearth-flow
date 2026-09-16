@@ -34,7 +34,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -216,7 +216,7 @@ impl Processor for BuildingUsageAttributeValidator {
             self.city_code_to_name = Some(build_city_code_to_name(
                 &ctx.feature,
                 &self.codelists_path_expr,
-                ctx.env_vars.clone(),
+                ctx.variables.clone(),
                 &ctx.storage_resolver,
             )?);
         }
@@ -293,7 +293,7 @@ impl BuildingUsageAttributeValidator {
 /// Builds the L-bldg-04,05 violation messages for a `uro:BuildingDetailAttribute`
 /// map: one message per derived attribute present without its parent.
 pub(crate) fn usage_violation_messages(
-    building_detail_attr: &HashMap<String, AttributeValue>,
+    building_detail_attr: &Attributes,
     survey_year: &str,
 ) -> Vec<String> {
     USAGE_ATTRIBUTES
@@ -332,11 +332,11 @@ pub(crate) fn classify_city_code(
 fn build_city_code_to_name(
     feature: &Feature,
     codelists_path_expr: &CompiledCode,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<HashMap<String, String>, BoxedError> {
     let codelists_path = codelists_path_expr
-        .eval_string(feature, env_vars)
+        .eval_string(feature, variables)
         .map_err(|e| {
             PlateauProcessorError::BuildingUsageAttributeValidator(format!(
                 "Failed to evaluate codelists_path expression: {e:?}"

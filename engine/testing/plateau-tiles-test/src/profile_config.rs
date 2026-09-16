@@ -1,5 +1,5 @@
 use crate::cast_config::CastConfigValue;
-use crate::rasterize::{RasterSize, DEFAULT_STROKE, RASTER3D_SIZE};
+use crate::rasterize::{RasterMode, RasterSize, DEFAULT_STROKE, RASTER3D_SIZE};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -27,6 +27,8 @@ pub struct ConvMvtPngEntry {
     pub size: RasterSize,
     #[serde(default = "default_stroke")]
     pub stroke: f64,
+    #[serde(default)]
+    pub mode: RasterMode,
 }
 
 #[derive(Debug, Deserialize)]

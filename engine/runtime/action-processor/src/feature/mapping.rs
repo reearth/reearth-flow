@@ -8,7 +8,7 @@ use super::{
     duplicate_filter::FeatureDuplicateFilterFactory,
     file_path_extractor::FeatureFilePathExtractorFactory,
     filter::FeatureFilterFactory,
-    geojson_writer::FeatureGeoJsonWriterFactory,
+    group_mapper::FeatureGroupMapperFactory,
     joiner::FeatureJoinerFactory,
     json_fragmenter::JSONFragmenterFactory,
     list_concatenator::ListConcatenatorFactory,
@@ -23,7 +23,7 @@ use super::{
     sorter::FeatureSorterFactory,
     transformer::FeatureTransformerFactory,
     type_filter::FeatureTypeFilterFactory,
-    writer::FeatureWriterFactory,
+    writer::{geojson::FeatureGeoJsonWriterFactory, FeatureWriterFactory},
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -33,6 +33,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<FeatureSorterFactory>::default(),
         Box::<FeatureFilterFactory>::default(),
         Box::<FeatureTransformerFactory>::default(),
+        Box::<FeatureGroupMapperFactory>::default(),
         Box::<FeatureCounterFactory>::default(),
         Box::<FeatureReaderFactory>::default(),
         Box::<ListConcatenatorFactory>::default(),

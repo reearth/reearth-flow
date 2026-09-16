@@ -60,12 +60,23 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 		return nil, err
 	}
 
-	if len(triggers) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a trigger — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, t := range triggers {
+		if t != nil {
+			ws, haveWorkspace = t.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := i.checkPermission(ctx, rbac.ActionAny, triggers[0].Workspace()); err != nil { // single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil { // single-workspace batch assumption
 			return nil, err
 		}
 	}

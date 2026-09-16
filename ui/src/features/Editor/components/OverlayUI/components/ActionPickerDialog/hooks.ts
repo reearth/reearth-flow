@@ -68,6 +68,7 @@ export default ({
     { value: "Merge", label: t("Merge") },
     { value: "Output", label: t("Output") },
     { value: "Transform", label: t("Transform") },
+    { value: "PLATEAU", label: t("PLATEAU") },
   ];
 
   const actionTags: { value: TagFiltering; label: string }[] = [
@@ -86,6 +87,7 @@ export default ({
     { value: "geojson", label: t("GeoJSON") },
     { value: "geometry", label: t("Geometry") },
     { value: "geopackage", label: t("GeoPackage") },
+    { value: "gltf", label: t("glTF") },
     { value: "hierarchy", label: t("Hierarchy") },
     { value: "image", label: t("Image") },
     { value: "intersection", label: t("Intersection") },
@@ -97,6 +99,7 @@ export default ({
     { value: "measurement", label: t("Measurement") },
     { value: "mvt", label: t("MVT") },
     { value: "normal", label: t("Normal") },
+    { value: "obj", label: t("OBJ") },
     { value: "path", label: t("Path") },
     { value: "projection", label: t("Projection") },
     { value: "raster", label: t("Raster") },

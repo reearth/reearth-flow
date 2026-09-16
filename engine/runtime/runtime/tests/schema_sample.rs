@@ -117,7 +117,7 @@ fn unresolved_source_falls_back_to_open_with_note() {
     assert!(outcome.note.is_some(), "a note should explain the failure");
 }
 
-/// A `dataset` of `env.get("...")` must resolve from the engine's variables
+/// A `dataset` of `variables.get("...")` must resolve from the engine's variables
 /// while sampling — i.e. datasets provided via workflow vars (as `run` does)
 /// are honored, not just hardcoded literals. This is the regression guard for
 /// `probe-schema` threading `workflow.with` into the sampling engine.
@@ -132,22 +132,22 @@ fn samples_geojson_dataset_resolved_from_engine_var() {
     let path = tmp.path().to_str().expect("utf8 temp path").to_string();
     let uri = format!("file://{path}");
 
-    // dataset := env.get("datasetPath"); the value lives only in the engine vars.
+    // dataset := variables.get("datasetPath"); the value lives only in the engine vars.
     let mut with = HashMap::new();
     with.insert(
         "dataset".to_string(),
-        json!({ "type": "flowExpr", "value": "env.get(\"datasetPath\")" }),
+        json!({ "type": "flowExpr", "value": "variables.get(\"datasetPath\")" }),
     );
 
     let mut vars = serde_json::Map::new();
     vars.insert("datasetPath".to_string(), json!(uri));
-    let env_vars = Arc::new(vars);
+    let variables = Arc::new(vars);
 
-    let outcome = sample_source(geojson_factory(), &Some(with), 10, env_vars);
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, variables);
 
     assert!(
         outcome.note.is_none(),
-        "env.get() dataset should resolve from engine vars, got note: {:?}",
+        "variables.get() dataset should resolve from engine vars, got note: {:?}",
         outcome.note
     );
     assert!(!outcome.schema.open, "schema should be closed");

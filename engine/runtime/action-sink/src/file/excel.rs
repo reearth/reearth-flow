@@ -1,88 +1,42 @@
+use std::collections::HashSet;
+
 use indexmap::IndexMap;
-use reearth_flow_types::Attribute;
-use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet};
+use rust_xlsxwriter::{Formula, Url, Workbook, Worksheet};
 
-use reearth_flow_types::{AttributeValue, Feature};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
-/// # Excel Writer Parameters
-///
-/// Configuration for writing features to Microsoft Excel format.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ExcelWriterParam {
-    pub(super) sheet_name: Option<String>,
-}
+/// Suffix marking an attribute that supplies a formula for another column's
+/// cell rather than a value of its own.
+const FORMULA_SUFFIX: &str = ".formula";
+/// Suffix marking an attribute that supplies a hyperlink for another column's
+/// cell rather than a value of its own.
+const HYPERLINK_SUFFIX: &str = ".hyperlink";
 
 pub(super) fn write_excel(
     output: &crate::SinkOutput,
-    params: &ExcelWriterParam,
+    sheet_name: &str,
     features: &[Feature],
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
-
-    let sheet_name = params
-        .sheet_name
-        .clone()
-        .unwrap_or_else(|| "Sheet1".to_string());
     worksheet
         .set_name(sheet_name)
         .map_err(crate::errors::SinkError::excel_writer)?;
 
-    let mut title_map = std::collections::HashMap::new();
-    if let Some(first_row) = features.first() {
-        for (col_num, (key, _)) in first_row.iter().enumerate() {
-            worksheet
-                .write_string_with_format(
-                    0,
-                    col_num as u16,
-                    key.clone().into_inner(),
-                    &Default::default(),
-                )
-                .map_err(crate::errors::SinkError::excel_writer)?;
-            title_map.insert(key.clone().into_inner(), col_num);
+    let columns = columns_of(features);
+    for (key, &col) in &columns {
+        worksheet
+            .write_string(0, col as u16, key)
+            .map_err(crate::errors::SinkError::excel_writer)?;
+    }
+
+    for (row_num, feature) in features.iter().enumerate() {
+        let row = row_num as u32 + 1;
+        for (col, cell) in row_of(&feature.attributes, &columns) {
+            write_cell(worksheet, row, col, cell)?;
         }
     }
 
-    let row_index = 1;
-    for (row_num, row) in features.iter().enumerate() {
-        for (key, value) in row.iter() {
-            match title_map.get(&key.clone().into_inner()) {
-                Some(&col_num) => {
-                    write_cell_value(worksheet, row_num + row_index, col_num, value)?;
-                    write_cell_formatting(
-                        worksheet,
-                        row_num + row_index,
-                        col_num,
-                        key.clone().into_inner(),
-                        &row.attributes,
-                    )?;
-                    write_cell_formula(
-                        worksheet,
-                        row_num + row_index,
-                        col_num,
-                        key.clone().into_inner(),
-                        &row.attributes,
-                    )?;
-                    write_cell_hyperlink(
-                        worksheet,
-                        row_num + row_index,
-                        col_num,
-                        key.clone().into_inner(),
-                        &row.attributes,
-                    )?;
-                }
-                None => {
-                    return Err(crate::errors::SinkError::excel_writer(format!(
-                        "Key '{}' not found in title_map",
-                        key.clone().into_inner()
-                    )));
-                }
-            }
-        }
-    }
     let buf = workbook
         .save_to_buffer()
         .map_err(crate::errors::SinkError::excel_writer)?;
@@ -94,325 +48,256 @@ pub(super) fn write_excel(
     Ok(())
 }
 
-fn write_cell_value(
-    worksheet: &mut Worksheet,
-    row: usize,
-    col: usize,
-    value: &AttributeValue,
-) -> Result<(), crate::errors::SinkError> {
-    let cell_value = match value {
-        AttributeValue::String(s) => s.clone(),
-        AttributeValue::Number(n) => n.to_string(),
-        _ => "".to_string(),
-    };
+/// The sheet's columns, in the order the features first mention them.
+///
+/// Every feature contributes its keys, not just the first one: an attribute
+/// that only some features carry is a column like any other, and dropping the
+/// later ones would silently lose data. Companion attributes are excluded —
+/// they configure another column's cell and are not data themselves.
+fn columns_of(features: &[Feature]) -> IndexMap<String, usize> {
+    let keys: Vec<String> = features
+        .iter()
+        .flat_map(|feature| feature.iter().map(|(key, _)| key.clone().into_inner()))
+        .collect();
+    let all: HashSet<&str> = keys.iter().map(String::as_str).collect();
 
-    worksheet
-        .write_string_with_format(row as u32, col as u16, &cell_value, &Default::default())
-        .map_err(crate::errors::SinkError::excel_writer)?;
+    let mut columns = IndexMap::new();
+    for key in &keys {
+        if is_companion(key, &all) {
+            continue;
+        }
+        let next = columns.len();
+        columns.entry(key.clone()).or_insert(next);
+    }
+    columns
+}
+
+/// Whether the attribute configures another column's cell rather than holding a
+/// value of its own.
+///
+/// The column it configures has to exist: an attribute that merely happens to
+/// end in `.formula` with nothing named after it is ordinary data, and giving it
+/// no column would drop it silently.
+fn is_companion(key: &str, all_keys: &HashSet<&str>) -> bool {
+    [FORMULA_SUFFIX, HYPERLINK_SUFFIX]
+        .iter()
+        .filter_map(|suffix| key.strip_suffix(suffix))
+        .any(|base| all_keys.contains(base))
+}
+
+/// What a column's cell holds for one feature.
+#[derive(Debug, PartialEq)]
+enum Cell<'a> {
+    /// The column's `.formula` companion asked for a formula.
+    Formula(&'a str),
+    /// The column's `.hyperlink` companion asked for a link.
+    Hyperlink(&'a str),
+    /// The feature's own value for the column.
+    Value(&'a AttributeValue),
+    /// The feature has nothing for this column.
+    Empty,
+}
+
+/// What the column named `key` holds for a feature carrying `attributes`.
+///
+/// A companion wins over the plain value, and it applies whether or not the
+/// feature also carries that value: a formula is usually the cell's content
+/// rather than an annotation on it.
+fn cell_of<'a>(attributes: &'a IndexMap<Attribute, AttributeValue>, key: &str) -> Cell<'a> {
+    if let Some(AttributeValue::String(formula)) = companion(attributes, key, FORMULA_SUFFIX) {
+        return Cell::Formula(formula);
+    }
+    if let Some(AttributeValue::String(url)) = companion(attributes, key, HYPERLINK_SUFFIX) {
+        return Cell::Hyperlink(url);
+    }
+    match attributes.get(&Attribute::new(key)) {
+        Some(value) => Cell::Value(value),
+        None => Cell::Empty,
+    }
+}
+
+/// One feature's row: what every column holds for it, in column order.
+///
+/// Walks the COLUMNS, not the feature's own attributes. A feature can carry
+/// `a.formula` without carrying `a` — a formula is usually the cell's content
+/// rather than an annotation on a value beside it — and walking the feature
+/// would never reach column `a` to write it.
+fn row_of<'a>(
+    attributes: &'a IndexMap<Attribute, AttributeValue>,
+    columns: &IndexMap<String, usize>,
+) -> Vec<(u16, Cell<'a>)> {
+    columns
+        .iter()
+        .map(|(key, &col)| (col as u16, cell_of(attributes, key)))
+        .collect()
+}
+
+/// Write one cell in the type its content calls for.
+fn write_cell(
+    worksheet: &mut Worksheet,
+    row: u32,
+    col: u16,
+    cell: Cell<'_>,
+) -> Result<(), crate::errors::SinkError> {
+    match cell {
+        Cell::Formula(formula) => worksheet.write_formula(row, col, Formula::new(formula)),
+        Cell::Hyperlink(url) => worksheet.write_url(row, col, Url::new(url)),
+        // Numbers and booleans are written in their own type rather than
+        // stringified, so the sheet can sum, sort and filter them.
+        Cell::Value(AttributeValue::String(s)) => worksheet.write_string(row, col, s),
+        Cell::Value(AttributeValue::Number(n)) => match n.as_f64() {
+            Some(n) => worksheet.write_number(row, col, n),
+            None => worksheet.write_string(row, col, n.to_string()),
+        },
+        Cell::Value(AttributeValue::Bool(b)) => worksheet.write_boolean(row, col, *b),
+        Cell::Value(AttributeValue::Null) => worksheet.write_string(row, col, ""),
+        // A cell holds one value, so a nested array or map is written as its
+        // JSON rather than silently dropped.
+        Cell::Value(other) => worksheet.write_string(row, col, json_text(other)),
+        // Nothing to write leaves the cell untouched rather than blanking it.
+        Cell::Empty => return Ok(()),
+    }
+    .map_err(crate::errors::SinkError::excel_writer)?;
 
     Ok(())
 }
 
-fn write_cell_formatting(
-    worksheet: &mut Worksheet,
-    row: usize,
-    col: usize,
-    key: String,
-    row_data: &IndexMap<Attribute, AttributeValue>,
-) -> Result<(), crate::errors::SinkError> {
-    if let Some(AttributeValue::String(formatting_str)) =
-        row_data.get(&Attribute::new(format!("{key}.formatting")))
-    {
-        let format = parse_formatting(formatting_str.as_str())?;
-        worksheet
-            .write_string_with_format(row as u32, col as u16, "", &format)
-            .map_err(crate::errors::SinkError::excel_writer)?;
+/// The companion attribute `<key><suffix>`, when the feature carries one.
+fn companion<'a>(
+    attributes: &'a IndexMap<Attribute, AttributeValue>,
+    key: &str,
+    suffix: &str,
+) -> Option<&'a AttributeValue> {
+    attributes.get(&Attribute::new(format!("{key}{suffix}")))
+}
+
+/// A composite value as compact JSON.
+fn json_text(value: &AttributeValue) -> String {
+    serde_json::to_string(value).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn feature(pairs: &[(&str, AttributeValue)]) -> Feature {
+        let mut attributes = IndexMap::new();
+        for (key, value) in pairs {
+            attributes.insert(Attribute::new(*key), value.clone());
+        }
+        Feature::new_with_attributes(attributes)
     }
 
-    Ok(())
-}
-
-fn write_cell_formula(
-    worksheet: &mut Worksheet,
-    row: usize,
-    col: usize,
-    key: String,
-    row_data: &IndexMap<Attribute, AttributeValue>,
-) -> Result<(), crate::errors::SinkError> {
-    if let Some(AttributeValue::String(formula_str)) =
-        row_data.get(&Attribute::new(format!("{key}.formula")))
-    {
-        worksheet
-            .write_formula(row as u32, col as u16, Formula::new(formula_str))
-            .map_err(crate::errors::SinkError::excel_writer)?;
+    #[test]
+    fn columns_span_every_feature_not_only_the_first() {
+        let features = vec![
+            feature(&[("a", AttributeValue::String("1".into()))]),
+            feature(&[("b", AttributeValue::String("2".into()))]),
+        ];
+        let columns = columns_of(&features);
+        assert_eq!(columns.get("a"), Some(&0));
+        assert_eq!(columns.get("b"), Some(&1));
     }
 
-    Ok(())
-}
+    #[test]
+    fn a_formula_fills_its_column_even_with_no_value_beside_it() {
+        // A formula is usually the cell's content, so a feature supplying only
+        // `a.formula` must still fill column `a`. Building the row from the
+        // feature's own attributes instead of from the columns skipped this row
+        // entirely, dropping the formula with no trace.
+        let with_value = feature(&[("a", AttributeValue::String("1".into()))]);
+        let formula_only = feature(&[("a.formula", AttributeValue::String("=1+1".into()))]);
+        let features = vec![with_value.clone(), formula_only.clone()];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 1, "`a.formula` is a companion, not a column");
 
-fn write_cell_hyperlink(
-    worksheet: &mut Worksheet,
-    row: usize,
-    col: usize,
-    key: String,
-    row_data: &IndexMap<Attribute, AttributeValue>,
-) -> Result<(), crate::errors::SinkError> {
-    if let Some(AttributeValue::String(hyperlink_str)) =
-        row_data.get(&Attribute::new(format!("{key}.hyperlink")))
-    {
-        worksheet
-            .write_url(row as u32, col as u16, Url::new(hyperlink_str))
-            .map_err(crate::errors::SinkError::excel_writer)?;
+        assert_eq!(
+            row_of(&formula_only.attributes, &columns),
+            vec![(0, Cell::Formula("=1+1"))]
+        );
+        assert_eq!(
+            row_of(&with_value.attributes, &columns),
+            vec![(0, Cell::Value(&AttributeValue::String("1".into())))]
+        );
     }
 
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn write_map_entry(
-    worksheet: &mut Worksheet,
-    row_index: &mut usize,
-    key: String,
-    value: AttributeValue,
-) -> Result<(), crate::errors::SinkError> {
-    worksheet
-        .write_string_with_format(*row_index as u32, 0, &key, &Default::default())
-        .map_err(crate::errors::SinkError::excel_writer)?;
-
-    match value {
-        AttributeValue::String(s) => {
-            worksheet
-                .write_string_with_format(*row_index as u32, 1, &s, &Default::default())
-                .map_err(crate::errors::SinkError::excel_writer)?;
-        }
-        AttributeValue::Number(n) => {
-            if let Some(num) = n.as_f64() {
-                worksheet
-                    .write_number(*row_index as u32, 1, num)
-                    .map_err(crate::errors::SinkError::excel_writer)?;
-            } else {
-                worksheet
-                    .write_string_with_format(
-                        *row_index as u32,
-                        1,
-                        n.to_string(),
-                        &Default::default(),
-                    )
-                    .map_err(crate::errors::SinkError::excel_writer)?;
-            }
-        }
-        AttributeValue::Bool(b) => {
-            worksheet
-                .write_boolean(*row_index as u32, 1, b)
-                .map_err(crate::errors::SinkError::excel_writer)?;
-        }
-        AttributeValue::Array(arr) => {
-            for (col_num, value) in arr.iter().enumerate() {
-                match value {
-                    AttributeValue::String(s) => {
-                        worksheet
-                            .write_string_with_format(
-                                *row_index as u32,
-                                col_num as u16 + 1,
-                                s,
-                                &Default::default(),
-                            )
-                            .map_err(crate::errors::SinkError::excel_writer)?;
-                    }
-                    AttributeValue::Number(n) => {
-                        if let Some(num) = n.as_f64() {
-                            worksheet
-                                .write_number(*row_index as u32, col_num as u16 + 1, num)
-                                .map_err(crate::errors::SinkError::excel_writer)?;
-                        } else {
-                            worksheet
-                                .write_string_with_format(
-                                    *row_index as u32,
-                                    col_num as u16 + 1,
-                                    n.to_string(),
-                                    &Default::default(),
-                                )
-                                .map_err(crate::errors::SinkError::excel_writer)?;
-                        }
-                    }
-                    AttributeValue::Bool(b) => {
-                        worksheet
-                            .write_boolean(*row_index as u32, col_num as u16 + 1, *b)
-                            .map_err(crate::errors::SinkError::excel_writer)?;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        _ => {}
-    }
-
-    *row_index += 1;
-
-    Ok(())
-}
-
-struct FormatBuilder {
-    format: Format,
-}
-
-impl FormatBuilder {
-    fn new() -> Self {
-        Self {
-            format: Format::new(),
+    #[test]
+    fn every_row_covers_every_column() {
+        // Each row must have one entry per column regardless of which
+        // attributes the feature happens to carry, so a sparse feature cannot
+        // shift later columns or skip them.
+        let features = vec![
+            feature(&[("a", AttributeValue::String("1".into()))]),
+            feature(&[("c", AttributeValue::String("3".into()))]),
+            feature(&[("b", AttributeValue::String("2".into()))]),
+        ];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 3);
+        for f in &features {
+            let row = row_of(&f.attributes, &columns);
+            assert_eq!(row.len(), 3);
+            assert_eq!(
+                row.iter().map(|(col, _)| *col).collect::<Vec<_>>(),
+                vec![0, 1, 2]
+            );
+            assert_eq!(row.iter().filter(|(_, c)| *c == Cell::Empty).count(), 2);
         }
     }
 
-    fn set_font_name(mut self, value: String) -> Self {
-        self.format = self.format.set_font_name(value);
-        self
+    #[test]
+    fn a_hyperlink_fills_its_column_even_with_no_value_beside_it() {
+        let f = feature(&[(
+            "site.hyperlink",
+            AttributeValue::String("https://e.test".into()),
+        )]);
+        // `site` is not a column here, but the resolution is what matters: were
+        // any feature to carry `site`, this row would still link.
+        assert_eq!(
+            cell_of(&f.attributes, "site"),
+            Cell::Hyperlink("https://e.test")
+        );
     }
 
-    fn set_font_size(mut self, size: f64) -> Self {
-        self.format = self.format.set_font_size(size);
-        self
+    #[test]
+    fn a_companion_wins_over_the_value_beside_it() {
+        let f = feature(&[
+            ("a", AttributeValue::String("stale".into())),
+            ("a.formula", AttributeValue::String("=1+1".into())),
+        ]);
+        assert_eq!(cell_of(&f.attributes, "a"), Cell::Formula("=1+1"));
     }
 
-    fn set_font_color(mut self, value: &str) -> Self {
-        self.format = self.format.set_font_color(value);
-        self
+    #[test]
+    fn a_column_the_feature_has_nothing_for_is_empty() {
+        let f = feature(&[("a", AttributeValue::String("1".into()))]);
+        assert_eq!(cell_of(&f.attributes, "b"), Cell::Empty);
     }
 
-    fn set_bold(mut self) -> Self {
-        self.format = self.format.set_bold();
-        self
+    #[test]
+    fn a_companion_naming_no_existing_column_is_ordinary_data() {
+        // Nothing is called `b`, so `b.formula` configures nothing and must keep
+        // a column of its own rather than vanishing.
+        let features = vec![feature(&[
+            ("a", AttributeValue::String("1".into())),
+            ("b.formula", AttributeValue::String("=1+1".into())),
+        ])];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 2);
+        assert_eq!(columns.get("b.formula"), Some(&1));
     }
 
-    fn set_italic(mut self) -> Self {
-        self.format = self.format.set_italic();
-        self
-    }
-
-    fn set_underline(mut self, value: FormatUnderline) -> Self {
-        self.format = self.format.set_underline(value);
-        self
-    }
-
-    fn set_background_color(mut self, value: &str) -> Self {
-        self.format = self.format.set_background_color(value);
-        self
-    }
-
-    fn set_align(mut self, value: FormatAlign) -> Self {
-        self.format = self.format.set_align(value);
-        self
-    }
-
-    fn set_text_wrap(mut self) -> Self {
-        self.format = self.format.set_text_wrap();
-        self
-    }
-
-    fn build(self) -> Format {
-        self.format
-    }
-}
-
-fn parse_formatting(formatting_str: &str) -> Result<Format, crate::errors::SinkError> {
-    let mut builder = FormatBuilder::new();
-    for pair in formatting_str.split(';') {
-        let mut parts = pair.splitn(2, ',');
-        let key = parts
-            .next()
-            .ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid formatting key"))?;
-        let value = parts
-            .next()
-            .ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid formatting value"))?;
-        match key {
-            "font" => builder = builder.set_font_name(value.to_string()),
-            "size" => {
-                let size = value
-                    .parse::<f64>()
-                    .map_err(|_| crate::errors::SinkError::excel_writer("Invalid font size"))?;
-                builder = builder.set_font_size(size);
-            }
-            "color" => builder = builder.set_font_color(value),
-            "bold" => builder = builder.set_bold(),
-            "italic" => builder = builder.set_italic(),
-            "background_color" => builder = builder.set_background_color(value),
-            "align" => {
-                let align = ExcelFormatAlign::try_from(value)
-                    .map_err(crate::errors::SinkError::excel_writer)?;
-                builder = builder.set_align(align.0);
-            }
-            "underline" => {
-                let underline = ExcelFormatUnderline::try_from(value)
-                    .map_err(crate::errors::SinkError::excel_writer)?;
-                builder = builder.set_underline(underline.0);
-            }
-            "wrap" => builder = builder.set_text_wrap(),
-            _ => {
-                return Err(crate::errors::SinkError::excel_writer(
-                    "Unknown formatting key",
-                ))
-            }
-        };
-    }
-    Ok(builder.build())
-}
-
-// TODO: Row Format works with worksheet directly
-// fn parse_row_formatting(row_formatting: &str, worksheet: &worksheet) -> Result<Format> {
-//     let mut format = Format::new();
-//     for pair in row_formatting.split(';') {
-//         let mut parts = pair.splitn(2, ',');
-//         let key = parts.next().ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid row formatting key"))?;
-//         let value = parts.next().ok_or_else(|| crate::errors::SinkError::excel_writer("Invalid row formatting value"))?;
-//         match key {
-//             "row_height" => format.set_row_height(value.parse().map_err(|_| crate::errors::SinkError::excel_writer("Invalid row height"))?),
-//             _ => return Err(crate::errors::SinkError::excel_writer("Unknown row formatting key")),
-//         }
-//     }
-//     Ok(format)
-// }
-
-pub struct ExcelFormatAlign(pub FormatAlign);
-
-impl TryFrom<&str> for ExcelFormatAlign {
-    type Error = crate::errors::SinkError;
-
-    fn try_from(value: &str) -> Result<Self, crate::errors::SinkError> {
-        match value {
-            "General" => Ok(ExcelFormatAlign(FormatAlign::General)),
-            "Left" => Ok(ExcelFormatAlign(FormatAlign::Left)),
-            "Center" => Ok(ExcelFormatAlign(FormatAlign::Center)),
-            "Right" => Ok(ExcelFormatAlign(FormatAlign::Right)),
-            "Fill" => Ok(ExcelFormatAlign(FormatAlign::Fill)),
-            "Justify" => Ok(ExcelFormatAlign(FormatAlign::Justify)),
-            "CenterAcross" => Ok(ExcelFormatAlign(FormatAlign::CenterAcross)),
-            "Distributed" => Ok(ExcelFormatAlign(FormatAlign::Distributed)),
-            "Top" => Ok(ExcelFormatAlign(FormatAlign::Top)),
-            "Bottom" => Ok(ExcelFormatAlign(FormatAlign::Bottom)),
-            "VerticalCenter" => Ok(ExcelFormatAlign(FormatAlign::VerticalCenter)),
-            "VerticalJustify" => Ok(ExcelFormatAlign(FormatAlign::VerticalJustify)),
-            "VerticalDistributed" => Ok(ExcelFormatAlign(FormatAlign::VerticalDistributed)),
-            _ => Err(crate::errors::SinkError::excel_writer(format!(
-                "Invalid alignment value: {value}"
-            ))),
-        }
-    }
-}
-
-pub struct ExcelFormatUnderline(pub FormatUnderline);
-
-impl TryFrom<&str> for ExcelFormatUnderline {
-    type Error = crate::errors::SinkError;
-
-    fn try_from(value: &str) -> Result<Self, crate::errors::SinkError> {
-        match value {
-            "None" => Ok(ExcelFormatUnderline(FormatUnderline::None)),
-            "Single" => Ok(ExcelFormatUnderline(FormatUnderline::Single)),
-            "Double" => Ok(ExcelFormatUnderline(FormatUnderline::Double)),
-            "SingleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::SingleAccounting)),
-            "DoubleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::DoubleAccounting)),
-            _ => Err(crate::errors::SinkError::excel_writer(format!(
-                "Invalid underline value: {value}"
-            ))),
-        }
+    #[test]
+    fn companion_attributes_get_no_column_of_their_own() {
+        let features = vec![feature(&[
+            ("a", AttributeValue::String("1".into())),
+            ("a.formula", AttributeValue::String("=1+1".into())),
+            (
+                "a.hyperlink",
+                AttributeValue::String("https://e.test".into()),
+            ),
+        ])];
+        let columns = columns_of(&features);
+        assert_eq!(columns.len(), 1);
+        assert_eq!(columns.get("a"), Some(&0));
     }
 }

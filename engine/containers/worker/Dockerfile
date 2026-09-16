@@ -38,6 +38,7 @@ RUN \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
     --mount=type=bind,source=runtime,target=runtime \
     --mount=type=bind,source=cli,target=cli \
+    --mount=type=bind,source=schema,target=schema \
     --mount=type=bind,source=testing/plateau-tiles-test,target=testing/plateau-tiles-test \
     --mount=type=bind,source=testing/workflow-tests,target=testing/workflow-tests \
     --mount=type=bind,source=worker,target=worker \
@@ -54,7 +55,8 @@ RUN \
     apt-get install -y \
     ca-certificates \
     python3 \
-    libproj25 && \
+    libtiff6 \
+    libstdc++6 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin

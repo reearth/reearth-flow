@@ -19,6 +19,8 @@
 use super::kernel::{self, Orientation};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
 use crate::ops::{Aabb, BoundingBox};
 use crate::point::Point2D;
 use crate::polygon::{Polygon2D, Polygon3D};
@@ -338,6 +340,17 @@ impl<'a> AreaView<'a> {
     pub fn edges(&self) -> impl Iterator<Item = ([f64; 2], [f64; 2])> + '_ {
         self.faces().flat_map(FaceView::edges)
     }
+
+    /// The unsigned planar area the view covers: the shoelace sum over every
+    /// boundary edge, so wound-CW holes subtract themselves and a mesh's
+    /// non-overlapping faces add up. Elevation does not contribute.
+    pub fn area(&self) -> f64 {
+        let doubled: f64 = self
+            .edges()
+            .map(|(a, b)| a[0] * b[1] - b[0] * a[1])
+            .sum::<f64>();
+        (doubled / 2.0).abs()
+    }
 }
 
 // --- flattened leaf normal form ----------------------------------------------
@@ -375,6 +388,11 @@ impl<'a> Leaf2D<'a> {
         }
     }
 
+    /// The unsigned planar area the leaf covers; zero for a point or a line.
+    pub fn area(&self) -> f64 {
+        self.area_view().map_or(0.0, |area| area.area())
+    }
+
     /// The leaf's bounding box, `None` for an empty leaf.
     pub(crate) fn bbox(&self) -> Option<Aabb> {
         match self {
@@ -385,6 +403,20 @@ impl<'a> Leaf2D<'a> {
             Leaf2D::TriangularMesh(m) => m.bounding_box(),
         }
         .ok()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Leaf2D<'_> {
+    /// The elevation the leaf lies at, or `None` when it is planar.
+    fn elevation(&self) -> Option<f64> {
+        match self {
+            Leaf2D::Point(p) => p.elevation(),
+            Leaf2D::Line(l) => l.elevation(),
+            Leaf2D::Polygon(p) => p.elevation(),
+            Leaf2D::PolygonMesh(m) => m.elevation(),
+            Leaf2D::TriangularMesh(m) => m.elevation(),
+        }
     }
 }
 

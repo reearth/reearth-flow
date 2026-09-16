@@ -10,16 +10,15 @@
     "workflowId"
   ],
   "properties": {
+    "workflowId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "jobId": {
       "type": "string",
       "format": "uuid"
     },
     "logLevel": {
-      "type": "string",
-      "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
-      "description": "The severity level of the log message"
-    },
-    "message": {
       "type": "string"
     },
     "nodeId": {
@@ -28,13 +27,12 @@
         "null"
       ]
     },
+    "message": {
+      "type": "string"
+    },
     "timestamp": {
       "type": "string",
       "format": "date-time"
-    },
-    "workflowId": {
-      "type": "string",
-      "format": "uuid"
     }
   }
 }
