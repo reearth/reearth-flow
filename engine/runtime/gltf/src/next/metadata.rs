@@ -27,10 +27,12 @@ pub struct MetadataOptions<'a> {
 }
 
 // Decided per column from the values actually present (no schema here); `Bool` counts as numeric.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Variants are declared in widening order so a column's kind is the `max` over its values'
+// kinds: unsigned -> signed -> float -> string, each able to represent everything below it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ColumnKind {
-    SignedInt,
     UnsignedInt,
+    SignedInt,
     Float64,
     String,
 }
@@ -85,28 +87,28 @@ fn as_numeric(value: &AttributeValue) -> Option<f64> {
     }
 }
 
+/// The narrowest kind that can hold `value` on its own. `Bool` rides along as
+/// unsigned 0/1; anything nonnumeric only fits as a string.
+fn value_kind(value: &AttributeValue) -> ColumnKind {
+    match value {
+        AttributeValue::Number(n) if n.is_u64() => ColumnKind::UnsignedInt,
+        AttributeValue::Number(n) if n.is_i64() => ColumnKind::SignedInt,
+        AttributeValue::Number(_) => ColumnKind::Float64,
+        AttributeValue::Bool(_) => ColumnKind::UnsignedInt,
+        _ => ColumnKind::String,
+    }
+}
+
+/// Widen across every value in the column, so a single nonnumeric value forces
+/// `String` no matter where it sits and a single float forces `Float64` over
+/// its integer neighbours. A column with no values at all encodes as `String`.
 fn column_kind(flattened: &[BTreeMap<String, AttributeValue>], path: &str) -> ColumnKind {
-    let mut any_value = false;
-    let mut any_negative = false;
-    for f in flattened {
-        let Some(value) = f.get(path) else { continue };
-        match value {
-            AttributeValue::Number(n) if n.is_f64() => return ColumnKind::Float64,
-            AttributeValue::Number(n) => {
-                any_value = true;
-                any_negative |= n.as_i64().is_some_and(|v| v < 0);
-            }
-            AttributeValue::Bool(_) => any_value = true,
-            _ => return ColumnKind::String,
-        }
-    }
-    if !any_value {
-        ColumnKind::String
-    } else if any_negative {
-        ColumnKind::SignedInt
-    } else {
-        ColumnKind::UnsignedInt
-    }
+    flattened
+        .iter()
+        .filter_map(|f| f.get(path))
+        .map(value_kind)
+        .max()
+        .unwrap_or(ColumnKind::String)
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
