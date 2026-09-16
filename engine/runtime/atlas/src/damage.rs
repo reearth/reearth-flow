@@ -86,7 +86,9 @@ fn merge_regions(regions: Vec<DamageRegion>) -> Vec<DamageRegion> {
 }
 
 /// Collect per-texture damage rectangles from polygon UV coverages.
-pub fn collect_damage(materials: &[TextureInput]) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
+pub fn collect_damage<'a>(
+    materials: impl IntoIterator<Item = &'a TextureInput>,
+) -> crate::Result<Vec<(PathBuf, TextureDamage)>> {
     let mut candidates: HashMap<PathBuf, Vec<DamageRegion>> = HashMap::new();
     let mut dims: HashMap<PathBuf, (u32, u32)> = HashMap::new();
 
@@ -224,6 +226,7 @@ mod tests {
         TextureInput {
             path,
             uvs: vec![uvs.iter().map(|&(u, v)| [u, v]).collect()],
+            scale: 1.0,
         }
     }
 
@@ -248,6 +251,7 @@ mod tests {
                 vec![[0.0, 0.5], [0.3, 0.5], [0.3, 1.0], [0.0, 1.0]],
                 vec![[0.7, 0.0], [1.0, 0.0], [1.0, 0.5], [0.7, 0.5]],
             ],
+            scale: 1.0,
         };
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result.len(), 1);
@@ -269,6 +273,7 @@ mod tests {
                 vec![[0.0, 0.0], [0.6, 0.0], [0.6, 1.0], [0.0, 1.0]],
                 vec![[0.4, 0.0], [1.0, 0.0], [1.0, 1.0], [0.4, 1.0]],
             ],
+            scale: 1.0,
         };
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");
