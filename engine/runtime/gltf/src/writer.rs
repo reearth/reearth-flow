@@ -16,20 +16,22 @@ pub struct PrimitiveInfo {
 
 pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
-/// Draco geometry compression settings for a written glb.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DracoCompression {
-    /// Upper bound on the error the position quantization may introduce, in the
-    /// unit of the vertex coordinates. Must be positive. `None` leaves the
-    /// encoder's default resolution.
-    pub max_position_error: Option<f64>,
+/// Draco geometry compression setting for a written glb.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum DracoCompression {
+    /// Positions are written uncompressed.
+    #[default]
+    Disabled,
+    /// Positions are compressed. The value bounds how far quantization may move a
+    /// vertex, in the unit of the vertex coordinates, and must be positive; `None`
+    /// leaves the encoder's default resolution.
+    Enabled(Option<f64>),
 }
 
 /// Writes the mesh as a glb, optionally Draco-compressed.
 ///
-/// A [`DracoCompression::max_position_error`] is resolved against the bounding box
-/// of all `vertices`, so every primitive in the glb is quantized at the same
-/// resolution.
+/// An error bound is resolved against the bounding box of all `vertices`, so every
+/// primitive in the glb is quantized at the same resolution.
 pub fn write_gltf_glb<W: Write>(
     mut writer: W,
     translation: Option<[f64; 3]>,
@@ -37,7 +39,7 @@ pub fn write_gltf_glb<W: Write>(
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
-    draco_compression: Option<DracoCompression>,
+    draco_compression: DracoCompression,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -309,7 +311,7 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    if let Some(draco) = draco_compression {
+    if draco_compression != DracoCompression::Disabled {
         let mut tmp_buffer = Vec::new();
         let indirect_writer = IndirectWriter {
             buffer: &mut tmp_buffer,
@@ -326,7 +328,7 @@ pub fn write_gltf_glb<W: Write>(
         // Now the glb data is in `tmp_buffer`. We compress it.
         let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::new(
             draco_oxide::io::gltf::transcoder::TranscoderConfig {
-                draco: draco_config(&draco, position_min, position_max),
+                draco: draco_config(draco_compression, position_min, position_max),
             },
         );
         let (buff, warnings) = transcoder.transcode_to_glb(&tmp_buffer)?;
@@ -351,23 +353,29 @@ pub fn write_gltf_glb<W: Write>(
 
 /// Builds the Draco encoder configuration, resolving a requested position error
 /// bound against the bounding box spanned by `position_min`..`position_max`.
+///
+/// Draco sizes its lattice so that the quantization *step* stays within the value it
+/// is given, while a vertex is snapped to the nearest lattice point and so moves by at
+/// most half a step. The requested bound is therefore doubled on the way in.
 fn draco_config(
-    draco: &DracoCompression,
+    draco: DracoCompression,
     position_min: [f64; 3],
     position_max: [f64; 3],
 ) -> draco_oxide::encode::Config {
     use draco_oxide::ConfigType;
 
     let config = <draco_oxide::encode::Config as ConfigType>::default();
-    let Some(max_error) = draco.max_position_error.filter(|e| {
-        *e > 0.0
-            && position_min
-                .iter()
-                .zip(&position_max)
-                .all(|(lo, hi)| lo <= hi)
-    }) else {
+    let DracoCompression::Enabled(Some(max_error)) = draco else {
         return config;
     };
+    if max_error <= 0.0
+        || !position_min
+            .iter()
+            .zip(&position_max)
+            .all(|(lo, hi)| lo <= hi)
+    {
+        return config;
+    }
 
     let min = position_min.map(|v| v as f32);
     let max = position_max.map(|v| v as f32);
@@ -377,7 +385,7 @@ fn draco_config(
             quantization: Some(draco_oxide::encode::Quantization::from_bounding_box(
                 &min,
                 &max,
-                max_error as f32,
+                (max_error * 2.0) as f32,
             )),
             ..Default::default()
         },
@@ -407,37 +415,45 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn resolved_quantization(
-        max_position_error: Option<f64>,
+        draco: DracoCompression,
         min: [f64; 3],
         max: [f64; 3],
     ) -> Option<Quantization> {
-        draco_config(&DracoCompression { max_position_error }, min, max)
+        draco_config(draco, min, max)
             .attribute_config(draco_oxide::AttributeType::Position)
             .quantization
     }
 
     #[test]
     fn error_bound_resolves_against_the_whole_bounding_box() {
-        let quantization =
-            resolved_quantization(Some(0.001), [-500.0, -20.0, -500.0], [500.0, 80.0, 500.0])
-                .unwrap();
+        let quantization = resolved_quantization(
+            DracoCompression::Enabled(Some(0.001)),
+            [-500.0, -20.0, -500.0],
+            [500.0, 80.0, 500.0],
+        )
+        .unwrap();
+        // Draco bounds the step, a vertex moves by at most half of one.
         assert_eq!(
             quantization,
             Quantization::Bounded {
                 range: 1000.0,
-                max_error: 0.001,
+                max_error: 0.002,
             }
         );
 
         // A primitive covering only part of the box quantizes no coarser than the bound.
         let bits = quantization.resolve(0.0);
-        assert!(100.0 / ((1u64 << bits) - 1) as f32 <= 0.001);
+        assert!(100.0 / ((1u64 << bits) - 1) as f32 / 2.0 <= 0.001);
     }
 
     #[test]
     fn no_error_bound_keeps_the_encoder_default() {
         assert_eq!(
-            resolved_quantization(None, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]),
+            resolved_quantization(
+                DracoCompression::Enabled(None),
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0]
+            ),
             None
         );
     }
@@ -520,9 +536,7 @@ mod tests {
             primitives,
             1,
             MetadataEncoder::new(&schema),
-            Some(DracoCompression {
-                max_position_error: Some(0.001),
-            }),
+            DracoCompression::Enabled(Some(0.001)),
         )
         .unwrap();
 
@@ -545,7 +559,11 @@ mod tests {
     #[test]
     fn empty_bounding_box_keeps_the_encoder_default() {
         assert_eq!(
-            resolved_quantization(Some(0.001), [f64::MAX; 3], [f64::MIN; 3]),
+            resolved_quantization(
+                DracoCompression::Enabled(Some(0.001)),
+                [f64::MAX; 3],
+                [f64::MIN; 3]
+            ),
             None
         );
     }

@@ -1372,7 +1372,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
     },
     "dracoQuantizationError": {
       "title": "Draco Quantization Error",
-      "description": "Upper bound, in meters, on the positional error draco compression may introduce. Must be positive. Ignored when draco compression is off; when unset, the draco encoder's default resolution is used.",
+      "description": "Upper bound, in meters, on how far draco compression may move a vertex. Must be positive. Ignored when draco compression is off; when unset, the draco encoder's default resolution is used.",
       "type": [
         "number",
         "null"

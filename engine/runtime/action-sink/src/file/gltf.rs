@@ -263,8 +263,11 @@ impl Sink for GltfWriter {
                     primitives,
                     filtered_features.len(),
                     metadata_encoder,
-                    self.draco_compression
-                        .then(reearth_flow_gltf::DracoCompression::default),
+                    if self.draco_compression {
+                        reearth_flow_gltf::DracoCompression::Enabled(None)
+                    } else {
+                        reearth_flow_gltf::DracoCompression::Disabled
+                    },
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(

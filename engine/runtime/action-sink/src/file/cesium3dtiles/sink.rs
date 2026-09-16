@@ -153,9 +153,9 @@ pub struct Cesium3DTilesWriterParam {
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
     /// # Draco Quantization Error
-    /// Upper bound, in meters, on the positional error draco compression may
-    /// introduce. Must be positive. Ignored when draco compression is off; when
-    /// unset, the draco encoder's default resolution is used.
+    /// Upper bound, in meters, on how far draco compression may move a vertex. Must
+    /// be positive. Ignored when draco compression is off; when unset, the draco
+    /// encoder's default resolution is used.
     pub(super) draco_quantization_error: Option<f64>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
@@ -418,11 +418,11 @@ impl Cesium3DTilesWriter {
         let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
-        let draco_compression = self.params.draco_compression.unwrap_or(true).then_some(
-            reearth_flow_gltf::DracoCompression {
-                max_position_error: self.params.draco_quantization_error,
-            },
-        );
+        let draco_compression = if self.params.draco_compression.unwrap_or(true) {
+            reearth_flow_gltf::DracoCompression::Enabled(self.params.draco_quantization_error)
+        } else {
+            reearth_flow_gltf::DracoCompression::Disabled
+        };
 
         std::thread::scope(|s| {
             {

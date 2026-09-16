@@ -214,7 +214,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.001
+          dracoQuantizationError: 0.003
           minZoom: 15
           maxZoom: 18
           attachTexture: true

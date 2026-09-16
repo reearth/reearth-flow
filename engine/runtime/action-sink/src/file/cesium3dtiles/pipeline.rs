@@ -359,7 +359,7 @@ pub(super) fn tile_writing_stage(
     receiver_sorted: mpsc::Receiver<(u64, String, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
     schema: &Schema,
-    draco_compression: Option<reearth_flow_gltf::DracoCompression>,
+    draco_compression: reearth_flow_gltf::DracoCompression,
 ) -> crate::errors::Result<()> {
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
 
