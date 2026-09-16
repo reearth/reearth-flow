@@ -37,7 +37,7 @@ graphs:
         with:
           cityGmlPath:
             type: flowExpr
-            value: variables.get("__value")["path"]
+            value: attributes["path"]
 
       - id: abd47145-383b-4703-8710-e5becfdc055a
         name: Keep Building Package
@@ -53,11 +53,11 @@ graphs:
       - id: 30a2626c-886c-4bd5-96d4-30e4c9c26f07
         name: Read Building CityGML
         type: action
-        action: Feature CityGML Reader
+        action: Feature CityGML 2 Reader
         with:
           dataset:
             type: flowExpr
-            value: variables.get("__value")["path"]
+            value: attributes["path"]
 
       - id: 5f5f1dbd-7891-40db-8e4d-629cd5586b0a
         name: Keep Core Attributes
@@ -66,11 +66,11 @@ graphs:
         with:
           mappers:
             - attribute: gmlId
-              valueAttribute: gmlId
+              valueAttribute: __citygml_gml_id
             - attribute: featureType
-              valueAttribute: featureType
-            - attribute: maxLod
-              valueAttribute: maxLod
+              valueAttribute: __citygml_feature_type
+            - attribute: lodMask
+              valueAttribute: __citygml_lod_mask
             - attribute: meshcode
               expr:
                 type: flowExpr
