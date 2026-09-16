@@ -475,8 +475,8 @@ fn build_cell_glb(
 
     let mut builder = glb::Builder::new();
     // Each primitive keeps its own per-vertex feature IDs (its vertex buffer is
-    // compacted independently), attached together in `metadata::encode`.
-    let mut primitives: Vec<(glb::PrimitiveHandle, Vec<u32>)> = Vec::new();
+    // compacted independently), pushed with it as a dedup attribute.
+    let mut primitives: Vec<glb::PrimitiveHandle> = Vec::new();
 
     if let Some(textured) = cells.textured {
         // `Untextured` skips texturing entirely and renders the textured
@@ -502,7 +502,7 @@ fn build_cell_glb(
                         Some(page.corner_uv),
                         render.compute_flat_normal,
                     );
-                    primitives.push((handle, page.geom.feature_ids));
+                    primitives.push(handle);
                 }
             }
             // Packing failed or produced no image: render the textured geometry
@@ -516,7 +516,7 @@ fn build_cell_glb(
                     None,
                     render.compute_flat_normal,
                 );
-                primitives.push((handle, textured.geom.feature_ids));
+                primitives.push(handle);
             }
         }
     }
@@ -531,14 +531,10 @@ fn build_cell_glb(
             None,
             render.compute_flat_normal,
         );
-        primitives.push((handle, color.geom.feature_ids));
+        primitives.push(handle);
     }
 
-    let refs: Vec<(glb::PrimitiveHandle, &[u32])> = primitives
-        .iter()
-        .map(|(h, ids)| (*h, ids.as_slice()))
-        .collect();
-    metadata::encode(&table, &mut builder, &refs);
+    metadata::encode(&table, &mut builder, &primitives);
 
     let gltf_origin = [origin[0], origin[2], -origin[1]];
     let glb = builder.build(gltf_origin);
@@ -860,6 +856,11 @@ fn push_geom(
     if let Some(uv) = uv {
         dedup_attrs.push(glb::texcoord(uv));
     }
+    dedup_attrs.push(glb::scalar_u32(
+        "FEATURE_ID_0",
+        Granularity::PerVertex,
+        geom.feature_ids.clone(),
+    ));
 
     builder.push_primitive(
         positions,

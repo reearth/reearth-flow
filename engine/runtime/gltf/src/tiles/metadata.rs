@@ -6,7 +6,6 @@
 
 use std::collections::BTreeMap;
 
-use gltf::json;
 use indexmap::IndexMap;
 use nusamai_citygml::schema::{Map as SchemaMap, TypeRef};
 use reearth_flow_types::{AttributeValue, Feature};
@@ -129,17 +128,11 @@ fn as_numeric(value: &AttributeValue) -> Option<f64> {
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
-/// (built once) plus, on each `(primitive, feature_ids)` in `primitives`, an
-/// `EXT_mesh_features` feature-ID attribute tagging each of that primitive's
-/// vertices with `feature_ids[original_vertex]`. All primitives share the one
-/// property table (reference `propertyTable` 0), but each carries its own
-/// per-vertex `feature_ids` (their vertex buffers are independent). No-op if
-/// `table` has no properties.
-pub fn encode(
-    table: &PropertyTable,
-    builder: &mut Builder,
-    primitives: &[(PrimitiveHandle, &[u32])],
-) {
+/// (built once) plus, on each primitive, an `EXT_mesh_features` declaration
+/// reading the `FEATURE_ID_0` attribute the caller pushed with it. All
+/// primitives share the one property table (reference `propertyTable` 0).
+/// No-op if `table` has no properties.
+pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[PrimitiveHandle]) {
     if table.properties.is_empty() {
         return;
     }
@@ -183,7 +176,7 @@ pub fn encode(
             .expect("EXT_structural_metadata is always serializable"),
     );
 
-    for &(primitive, feature_ids) in primitives {
+    for &primitive in primitives {
         builder.extend(
             primitive,
             "EXT_mesh_features",
@@ -195,14 +188,6 @@ pub fn encode(
                 }],
             })
             .expect("EXT_mesh_features is always serializable"),
-        );
-
-        // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
-        // leading underscore; the crate adds it on (de)serialization.
-        builder.set_attribute(
-            primitive,
-            json::mesh::Semantic::Extras("FEATURE_ID_0".to_string()),
-            feature_ids,
         );
     }
 }

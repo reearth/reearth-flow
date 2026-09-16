@@ -20,7 +20,7 @@ use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
 pub use codec::{Codec, CodecError, JpegCodec, PngCodec};
-pub use primitive::{normal, texcoord, DedupAttribute, Granularity};
+pub use primitive::{normal, scalar_u32, texcoord, DedupAttribute, Granularity};
 pub use texture::{ImageRef, MagFilter, MinFilter, SamplerDesc, TextureRef, Wrap};
 
 /// A material's PBR metallic-roughness description: the base factors, plus an
@@ -263,10 +263,6 @@ impl Builder {
             );
             for attr in p.dedup_attrs {
                 let (semantic, accessor) = attr.into_accessor(&mut self);
-                attributes.insert(Checked::Valid(semantic), accessor);
-            }
-            for (semantic, data) in p.extra_attributes {
-                let accessor = self.push_scalar_u32(&data, json::buffer::Target::ArrayBuffer);
                 attributes.insert(Checked::Valid(semantic), accessor);
             }
 
