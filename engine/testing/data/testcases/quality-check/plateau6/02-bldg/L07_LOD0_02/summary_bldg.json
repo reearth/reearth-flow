@@ -25,7 +25,7 @@
   },
   {
     "name": "LOD0 面のエラー",
-    "count": 1
+    "count": 2
   },
   {
     "name": "LOD0 面の向きエラー",
@@ -90,9 +90,5 @@
   {
     "name": "LOD0-1のBuildingPart",
     "count": 0
-  },
-  {
-    "name": "totalErrorCount",
-    "count": 1
   }
 ]

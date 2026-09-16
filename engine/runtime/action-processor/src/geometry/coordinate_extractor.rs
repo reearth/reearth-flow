@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, CityGmlGeometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, CityGmlGeometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -189,17 +189,17 @@ impl Processor for CoordinateExtractor {
                 let array: Vec<AttributeValue> = coords
                     .iter()
                     .map(|&(x, y, z)| {
-                        let mut map = HashMap::new();
+                        let mut map = Attributes::new();
                         map.insert(
-                            "x".to_string(),
+                            Attribute::new("x"),
                             AttributeValue::try_from(x).unwrap_or(AttributeValue::Null),
                         );
                         map.insert(
-                            "y".to_string(),
+                            Attribute::new("y"),
                             AttributeValue::try_from(y).unwrap_or(AttributeValue::Null),
                         );
                         map.insert(
-                            "z".to_string(),
+                            Attribute::new("z"),
                             z.and_then(|v| AttributeValue::try_from(v).ok())
                                 .unwrap_or(AttributeValue::Null),
                         );
@@ -341,7 +341,7 @@ mod tests {
     use reearth_flow_geometry::types::point::{Point2D, Point3D};
     use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::{feature::Attributes, Feature, Geometry};
+    use reearth_flow_types::{Feature, Geometry};
 
     #[cfg(not(feature = "new-geometry"))]
     #[test]

@@ -12,7 +12,7 @@
 - Uses **Flow Expression Language** (FlowExpr) for dynamic parameter evaluation
 - Available in action parameters and workflow variables
 - Python users can get started quickly with similar basic operators and semantics
-- Access feature attributes with `attributes[key]` and environment variables with `env[key]`
+- Access feature attributes with `attributes[key]` and workflow variables with `variables[key]`
 
 ## Environment Variables
 
@@ -30,6 +30,10 @@ Runtime behavior controlled by `FLOW_RUNTIME_*` variables.
 - `FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY` - Optional override for the directory where job-scoped temporary artifacts are written. Defaults to a subdirectory under the working directory derived from `FLOW_RUNTIME_WORKING_DIRECTORY` and the project key.
 - `FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD` - Buffer size before writing features to disk (default: 512)
 - `FLOW_RUNTIME_FEATURE_WRITER_DISABLE` - Set to `"true"` to disable intermediate data capture (impacts debugging)
+
+### Geodetic Grids
+
+`FLOW_PROJ_GRID_DIR` and `FLOW_PROJ_GRID_CACHE_DIR` control where PROJ finds the geoid grids a vertical datum change needs. See [Geodetic grids](../runtime/geometry/grids/README.md#supplying-grids-at-runtime).
 
 ### Workflow Variables
 
@@ -102,7 +106,7 @@ The engine implements an actor model where each node (source, processor, sink) r
 <working_directory>/
 ├── projects/<project_key>/
 │   ├── jobs/<job_id>/
-│   │   ├── feature-store/        # Feature data streams by edge ID
+│   │   ├── feature-store/        # Feature data streams by node output port
 │   │   ├── action-log/           # Action execution logs
 │   │   └── temp/                 # Job-specific temporary files
 │   └── temp/<temp_id>/           # Project-level temporary files
@@ -111,8 +115,8 @@ The engine implements an actor model where each node (source, processor, sink) r
 ### Feature Store - Intermediate Data Capture
 
 - **All intermediate feature data** is automatically captured as features flow between nodes
-- **File format**: JSON Lines (`.jsonl`) - one feature per line, organized by edge ID
-- **Location**: `<job_id>/feature-store/<edge_id>.jsonl`
+- **File format**: JSON Lines (`.jsonl`, or `.jsonl.zst` when compression is enabled) - one feature per line, one file per node output port
+- **Location**: `<job_id>/feature-store/<node_id>.<port>.jsonl`. Nodes inside a subgraph are prefixed with the dot-joined ids of the subgraph call-site nodes, and a subgraph's output router writes `<prefix>.<port>.jsonl`
 - **Critical for debugging**: Examine exact data transformations between workflow nodes
 
 Data handling variables are listed in [Environment Variables > Data Handling & Debugging](#data-handling--debugging).
@@ -122,8 +126,8 @@ Data handling variables are listed in [Environment Variables > Data Handling & D
 **View intermediate data**:
 
 ```bash
-# Examine feature data for specific workflow edge
-cat <working_dir>/projects/<project>/jobs/<job_id>/feature-store/<edge_id>.jsonl
+# Examine feature data emitted by a specific node output port
+cat <working_dir>/projects/<project>/jobs/<job_id>/feature-store/<node_id>.<port>.jsonl
 
 # Check action execution logs
 ls <working_dir>/projects/<project>/jobs/<job_id>/action-log/

@@ -143,6 +143,10 @@ impl ConvertFrame for Solid {
 // result, so it has no 2D counterpart.
 crate::unsupported!(Solid: ForceTwoDimension);
 
+// A solid is a volume, not the areal geometry this op divides.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: DivideByGrid);
+
 use crate::ops::{
     emit_face_3d, emit_triangles_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
 };
@@ -193,6 +197,137 @@ impl RemoveAppearance for Solid {
                 Shell::PolygonMesh(data) => data.remove_appearance(),
                 Shell::TriangularMesh(data) => data.remove_appearance(),
             }
+        }
+    }
+}
+
+use crate::ops::coerce::{push_face_lines_3d, triangle_ring, unchanged, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+use crate::polygon::Polygon3D;
+
+impl Solid {
+    /// Invoke `f` once per boundary face of the solid, the exterior shell's
+    /// faces first, then each void shell's. A triangle-mesh shell contributes
+    /// one closed triangle per face.
+    fn for_each_boundary_face(&self, mut f: impl FnMut(Polygon3D)) {
+        let frame = self.frame();
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.for_each_face_polygon(frame, &mut f),
+                Shell::TriangularMesh(data) => {
+                    let vertices = data.vertices();
+                    for triangle in data.triangles() {
+                        f(Polygon3D::from_rings(
+                            frame.clone(),
+                            triangle_ring(vertices, triangle),
+                            Vec::<Vec<[f64; 3]>>::new(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Coerce for Solid {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            // `Triangulate` on a volume yields a volume with a triangulated
+            // boundary, not a bare mesh — the result stays a `Solid`.
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_boundary_face(|face| {
+                    faces.push(Euclidean3DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_3d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_boundary_face(|face| push_face_lines_3d(&face, &mut lines));
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Solid {
+    /// Push the faces of every shell, voids included.
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.footprint_faces(sink),
+                Shell::TriangularMesh(data) => data.footprint_faces(sink),
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::Area;
+
+#[cfg(feature = "new-geometry")]
+impl Area for Solid {
+    /// The true surface of every shell, voids included: a void's faces are real
+    /// surfaces, so a hollow body has *more* surface than a solid one. That is
+    /// deliberately unlike a polygon's holes, which subtract.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        let mut total = 0.0;
+        self.for_each_boundary_face(|face| total += polygon_3d_surface_area(&face));
+        Ok(total)
+    }
+}
+
+use crate::ops::boundary::{Boundary, ExtractBoundary};
+use crate::polygon_mesh::PolygonMesh3D;
+use crate::triangular_mesh::TriangularMesh3D;
+
+// The shells the volume already carries, paired with the frame they are
+// expressed in. Nothing is re-triangulated and appearance stays on them.
+//
+// Whether the shells close is not asserted here: taking the boundary of the
+// result answers that, and is empty exactly when they do.
+impl ExtractBoundary for Solid {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let frame = self.frame();
+        let shells = std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| match shell {
+                Shell::PolygonMesh(data) => Euclidean3DGeometry::PolygonMesh(Box::new(
+                    PolygonMesh3D::new(frame.clone(), data.clone()),
+                )),
+                Shell::TriangularMesh(data) => Euclidean3DGeometry::TriangularMesh(Box::new(
+                    TriangularMesh3D::new(frame.clone(), data.clone()),
+                )),
+            })
+            .collect();
+        Ok(wrap_3d(shells).unwrap_or(Geometry::None).into())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Solid {
+    /// The exterior shell's first face; the voids are inside it and are not
+    /// reached. A shell with no face has no vertex to read.
+    fn elevation(&self) -> Option<f64> {
+        match &self.exterior {
+            Shell::PolygonMesh(data) => data.first_face_elevation(),
+            Shell::TriangularMesh(data) => data.first_triangle_elevation(),
         }
     }
 }

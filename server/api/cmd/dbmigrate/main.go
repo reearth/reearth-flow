@@ -161,7 +161,6 @@ func main() {
 	acc(migrate(ctx, db, "trigger", (*mongodoc.TriggerDocument).Model, postgres.NewTrigger(c).Save))
 	acc(migrate(ctx, db, "job", (*mongodoc.JobDocument).Model, postgres.NewJob(c).Save))
 	acc(migrate(ctx, db, "edgeExecutions", (*mongodoc.EdgeExecutionDocument).Model, postgres.NewEdgeExecution(c).Save))
-	acc(migrate(ctx, db, "nodeExecutions", (*mongodoc.NodeExecutionDocument).Model, postgres.NewNodeExecution(c).Save))
 	acc(migrate(ctx, db, "projectAccess", (*mongodoc.ProjectAccessDocument).Model, postgres.NewProjectAccess(c).Save))
 	acc(migrate(ctx, db, "asset", (*mongodoc.AssetDocument).Model, postgres.NewAsset(c).Save))
 	acc(migrate(ctx, db, "asset_upload", (*mongodoc.AssetUploadDocument).Model, postgres.NewAssetUpload(c).Save))

@@ -32,6 +32,8 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked: true,
+      isReaderRestricted: false,
+      canViewIntermediateData: false,
       onNodeSettings:
         handleNodeSettings as unknown as EditorContextType["onNodeSettings"],
     }),

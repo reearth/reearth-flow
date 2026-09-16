@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { config } from "@flow/config";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
@@ -14,13 +15,12 @@ export default ({
   nodeId,
   nodeData,
   portName,
-  readonly,
 }: {
   nodeId: string;
   nodeData: NodeData;
   portName: string;
-  readonly: boolean;
 }) => {
+  const { canViewIntermediateData } = useEditorContext();
   const [currentProject] = useCurrentProject();
   const { api } = config();
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
@@ -52,7 +52,7 @@ export default ({
 
   useEffect(() => {
     if (
-      readonly ||
+      !canViewIntermediateData ||
       debugJobState?.status !== "completed" ||
       !debugJobState?.jobId ||
       !dataUrl
@@ -84,7 +84,7 @@ export default ({
       controller.abort();
     };
   }, [
-    readonly,
+    canViewIntermediateData,
     debugJobState?.status,
     debugJobState?.jobId,
     dataUrl,

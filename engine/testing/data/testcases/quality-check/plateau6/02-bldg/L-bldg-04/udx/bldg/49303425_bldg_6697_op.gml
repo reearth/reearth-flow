@@ -13,6 +13,8 @@
   Building 1 (16211-bldg-78): normal - has uro:detailedUsage only (no derived attr).
   Building 2 (16211-bldg-77): error - has uro:majorUsage2 without the required
   upper attribute uro:majorUsage -> 1 L-bldg-04 error.
+  Building 3 (16211-bldg-79): error - the same violation on a bldg:BuildingPart, which
+  carries its own uro:BuildingDetailAttribute -> 1 L-bldg-04 error on the part.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -277,6 +279,59 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:detailedUsage>461</uro:detailedUsage>
 					<uro:surveyYear>2020-04-01</uro:surveyYear>
 				</uro:BuildingDetailAttribute>
+			</bldg:adeOfAbstractBuilding>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 3: the usage attributes sit on a bldg:BuildingPart, which carries its own
+	     uro:BuildingDetailAttribute. Same violation as Building 2 -> 1 L-bldg-04 error,
+	     reported against the BuildingPart. The parent Building has no detail attribute. -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_lbu04-0003-4a01-8001-cccccccccccc">
+			<gml:name>16211-bldg-79</gml:name>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:buildingPart>
+				<bldg:BuildingPart gml:id="bpart_lbu04-0003-4a01-8001-cccccccccccc">
+					<gml:name>16211-bldg-79-1</gml:name>
+					<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+					<core:lod1Solid>
+						<gml:Solid gml:id="solid_lod1_lbu04-0003">
+							<gml:exterior>
+								<gml:CompositeSurface>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6480 137.0516 0 36.6481 137.0516 0 36.6481 137.0517 0 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6481 137.0517 0 36.6481 137.0517 9 36.6480 137.0517 9 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0517 0 36.6481 137.0516 0 36.6481 137.0516 9 36.6481 137.0517 9 36.6481 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0516 0 36.6480 137.0516 0 36.6480 137.0516 9 36.6481 137.0516 9 36.6481 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0516 0 36.6480 137.0517 0 36.6480 137.0517 9 36.6480 137.0516 9 36.6480 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 9 36.6481 137.0517 9 36.6481 137.0516 9 36.6480 137.0516 9 36.6480 137.0517 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
+								</gml:CompositeSurface>
+							</gml:exterior>
+						</gml:Solid>
+					</core:lod1Solid>
+					<bldg:adeOfAbstractBuilding>
+						<uro:BuildingIDAttribute>
+							<uro:buildingID>16211-bldg-79</uro:buildingID>
+							<uro:partID>1</uro:partID>
+							<uro:prefecture>16</uro:prefecture>
+							<uro:city>16211</uro:city>
+						</uro:BuildingIDAttribute>
+					</bldg:adeOfAbstractBuilding>
+					<bldg:adeOfAbstractBuilding>
+						<uro:BuildingDetailAttribute>
+							<uro:buildingRoofEdgeArea uom="m2">15.5</uro:buildingRoofEdgeArea>
+							<!-- TEST: L-bldg-04 on a BuildingPart - majorUsage2 present, majorUsage absent. -->
+							<uro:majorUsage2>01002</uro:majorUsage2>
+							<uro:detailedUsage>461</uro:detailedUsage>
+							<uro:surveyYear>2020-04-01</uro:surveyYear>
+						</uro:BuildingDetailAttribute>
+					</bldg:adeOfAbstractBuilding>
+				</bldg:BuildingPart>
+			</bldg:buildingPart>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-79</uro:buildingID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
 	</core:cityObjectMember>

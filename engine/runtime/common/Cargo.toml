@@ -52,3 +52,6 @@ uuid.workspace = true
 walkdir.workspace = true
 zip.workspace = true
 zstd.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

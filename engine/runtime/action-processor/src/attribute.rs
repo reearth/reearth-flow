@@ -13,3 +13,4 @@ pub(crate) mod mapping;
 pub(crate) mod null_attribute_mapper;
 pub(crate) mod range_mapper;
 pub(crate) mod statistics_calculator;
+pub(crate) mod table_extractor;

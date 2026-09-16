@@ -12,11 +12,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
+use crate::ops::coerce::unchanged;
+use crate::ops::triangulation::Cache;
 use crate::ops::union_results;
 use crate::ops::{
-    Aabb, BoundingBox, ForceTwoDimension, ForceTwoDimensionError, Reproject, ReprojectionCache,
-    UnsupportedOperation,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ForceTwoDimension, ForceTwoDimensionError,
+    Reproject, ReprojectionCache, UnsupportedOperation,
 };
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Elevation, Footprint, FootprintError, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -335,6 +339,34 @@ impl crate::ops::CountHoles for Collection3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection2D {
+    /// The measurable members' areas, summed. An unmeasurable member is skipped
+    /// rather than failing its siblings; [`area_report`](crate::ops::area::area_report)
+    /// counts the skips so a caller can say how many there were. An empty
+    /// collection measures zero.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Area for Collection3D {
+    /// See [`Collection2D`]'s impl: measurable members summed, unmeasurable
+    /// ones skipped, empty is zero.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
 // Deaggregate: a member that is not area geometry is handed back as `Rejected`
 // rather than failing the whole collection, so one curve among the surfaces does
 // not discard the surfaces.
@@ -424,6 +456,239 @@ impl ForceTwoDimension for Collection3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+mod grid_impl {
+    //! `DivideByGrid` for `Collection2D`/`Collection3D`, plus the regrouping
+    //! `GeometryCollection` (in `lib.rs`) reuses through
+    //! [`grid_divide_members`].
+    //!
+    //! A collection is a bag: a member that cannot be divided (`Unsupported`,
+    //! e.g. a bare `Point`) or has nothing to give (`Empty`) is skipped rather
+    //! than failing its siblings, so one undividable member never costs the
+    //! caller the rest. Any other error (`MixedFrames`, `InvalidSpec`)
+    //! propagates, since those describe the request itself, not one member's
+    //! shape.
+    //!
+    //! Pieces are regrouped by cell into a `BTreeMap` keyed `(row, col)` --
+    //! sorting row-major for free, the same idiom the mesh leaves use -- so one
+    //! cell yields one `GeometryCollection` holding every survivor that landed
+    //! there, not one geometry per member. Coverage is judged once per cell
+    //! over that whole group's XY area (`geometry_area_xy`, summed), so
+    //! members that only *together* fill a cell still report `Full`. A
+    //! container whose members all declined reports `Empty`, not
+    //! `Unsupported`: a collection is something this op knows how to divide,
+    //! it just had nothing to give.
+    //!
+    //! `Collection2D`/`Collection3D` members each carry their own frame (see
+    //! the module doc above), and this op lays one grid over all of them, so
+    //! they must agree or the grid would be silently misapplied to whichever
+    //! member does not share it -- checked by [`frames_agree`]. Every leaf
+    //! that exposes a frame is considered, divisible or not (a bare `Point`
+    //! is `Unsupported` here yet still contributes its frame), so this stays
+    //! the same question `Geometry::frame()` answers: `PointCloud` and `Csg`
+    //! are the only leaves left out, and only because neither exposes a frame
+    //! to read (`Csg`'s lives on its operand `Solid`s) -- exactly the pair
+    //! `Geometry::frame` omits, and for the same reason. `Solid` *does*
+    //! expose one (`Solid::frame`) and is collected, even though
+    //! `DivideByGrid` is `Unsupported` for it: were it skipped here, this
+    //! check and `Geometry::frame()` -- which the grid-divider action reads
+    //! to warn about angular units -- would disagree about the very same
+    //! geometry. `GeometryCollection` members are `Geometry`, which carry no
+    //! single frame to compare at all, so [`grid_divide_members`] skips this
+    //! check entirely rather than fabricating one.
+
+    use std::collections::BTreeMap;
+
+    use super::{Collection2D, Collection3D};
+    use crate::coordinate::CoordinateFrame;
+    use crate::ops::grid::{
+        geometry_area_xy, CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec,
+    };
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    /// Collect the frame of every member that exposes one, recursing into a
+    /// nested `Collection`. Deliberately the same set of leaves
+    /// `lib.rs`'s `collect_leaf_frames_2d`/`collect_leaf_frames_3d` gather,
+    /// so this check and `Geometry::frame()` never disagree; see the module
+    /// doc for why `PointCloud`/`Csg` (3D-only) are the only omissions.
+    fn collect_frames_2d(m: &Euclidean2DGeometry, out: &mut Vec<CoordinateFrame>) {
+        match m {
+            Euclidean2DGeometry::Point(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::LineString(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::Polygon(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::PolygonMesh(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::TriangularMesh(g) => out.push(g.frame().clone()),
+            Euclidean2DGeometry::Collection(c) => {
+                c.members().iter().for_each(|m| collect_frames_2d(m, out));
+            }
+        }
+    }
+
+    /// As [`collect_frames_2d`], for the 3D leaf.
+    fn collect_frames_3d(m: &Euclidean3DGeometry, out: &mut Vec<CoordinateFrame>) {
+        match m {
+            Euclidean3DGeometry::Point(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::LineString(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::Polygon(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::PolygonMesh(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::TriangularMesh(g) => out.push(g.frame().clone()),
+            // Collected even though `DivideByGrid` is `Unsupported` for it:
+            // it exposes a frame, and `collect_leaf_frames_3d` counts it, so
+            // leaving it out would make this check and `Geometry::frame()`
+            // disagree about the same geometry.
+            Euclidean3DGeometry::Solid(g) => out.push(g.frame().clone()),
+            Euclidean3DGeometry::Collection(c) => {
+                c.members().iter().for_each(|m| collect_frames_3d(m, out));
+            }
+            // The only leaves with no frame to read: `PointCloud` has none,
+            // and `Csg`'s lives on its operand `Solid`s.
+            Euclidean3DGeometry::PointCloud(_) | Euclidean3DGeometry::Csg(_) => {}
+        }
+    }
+
+    /// Whether every collected frame agrees (vacuously true when none were
+    /// collected at all).
+    fn frames_agree<T>(members: &[T], collect: impl Fn(&T, &mut Vec<CoordinateFrame>)) -> bool {
+        let mut frames = Vec::new();
+        for m in members {
+            collect(m, &mut frames);
+        }
+        match frames.split_first() {
+            Some((first, rest)) => rest.iter().all(|f| f == first),
+            None => true,
+        }
+    }
+
+    /// Divide every member, regroup the pieces by cell, and emit one geometry
+    /// per cell. See the module doc for the skip/propagate and coverage
+    /// rules; this performs no frame check of its own -- callers that need
+    /// one (`Collection2D`/`Collection3D`) run it first.
+    fn regroup_and_emit(
+        members: impl Iterator<Item = Geometry>,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        // BTreeMap keyed `(row, col)` sorts row-major for free, which is the
+        // emission order the op promises.
+        let mut by_cell: BTreeMap<(i64, i64), Vec<Geometry>> = BTreeMap::new();
+        let mut any = false;
+
+        for member in members {
+            let divided = member.divide_by_grid(grid, &mut |cell, _cov, piece| {
+                by_cell.entry((cell.row, cell.col)).or_default().push(piece);
+            });
+            match divided {
+                Ok(()) => any = true,
+                // A member with nothing to give is not the container's failure.
+                Err(GridDivideError::Unsupported(_)) | Err(GridDivideError::Empty) => {}
+                Err(other) => return Err(other),
+            }
+        }
+
+        if !any || by_cell.is_empty() {
+            return Err(GridDivideError::Empty);
+        }
+
+        for ((row, col), pieces) in by_cell {
+            let cell = GridCell { row, col };
+            let area: f64 = pieces.iter().map(geometry_area_xy).sum();
+            let geom = crate::GeometryCollection::new(pieces);
+            emit(
+                cell,
+                // The cell's *own* window area, never `cell_size^2`: the clip
+                // pins a full piece's area to `window.area()`, which differs
+                // from the square of the side by more than
+                // `COVERAGE_TOLERANCE` at a large origin. Judging against the
+                // nominal square would then call an exactly-filled cell
+                // `Partial` and drop it under `completeCellsOnly`.
+                CellCoverage::from_area(area, grid.window(cell).area()),
+                Geometry::GeometryCollection(geom),
+            );
+        }
+        Ok(())
+    }
+
+    /// Entry point [`GeometryCollection`](crate::GeometryCollection) reuses
+    /// from `lib.rs`: its members are already `Geometry`, which carry no
+    /// single frame to compare, so this skips straight to regrouping with no
+    /// frame check.
+    pub(crate) fn grid_divide_members(
+        members: impl Iterator<Item = Geometry>,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        regroup_and_emit(members, grid, emit)
+    }
+
+    impl DivideByGrid for Collection2D {
+        fn divide_by_grid(
+            &self,
+            grid: &GridSpec,
+            emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+        ) -> Result<(), GridDivideError> {
+            if !frames_agree(self.members(), collect_frames_2d) {
+                return Err(GridDivideError::MixedFrames);
+            }
+            regroup_and_emit(
+                self.members().iter().cloned().map(Geometry::Euclidean2D),
+                grid,
+                emit,
+            )
+        }
+    }
+
+    impl DivideByGrid for Collection3D {
+        fn divide_by_grid(
+            &self,
+            grid: &GridSpec,
+            emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+        ) -> Result<(), GridDivideError> {
+            if !frames_agree(self.members(), collect_frames_3d) {
+                return Err(GridDivideError::MixedFrames);
+            }
+            regroup_and_emit(
+                self.members().iter().cloned().map(Geometry::Euclidean3D),
+                grid,
+                emit,
+            )
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+pub(crate) use grid_impl::grid_divide_members;
+
+// A collection reports the first member that has an elevation, rather than only
+// its head: a member with none (an absent geometry, a 2D point, an empty leaf) is
+// ordinary and must not hide the ones behind it.
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection2D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Collection3D {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.
@@ -432,6 +697,126 @@ impl Validate for Collection2D {}
 
 #[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
+
+impl Coerce for Collection2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean2D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                // A 2D leaf coerces to a 2D geometry, so the other `Ok` shapes
+                // do not arise; an `Err` left the member untouched.
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
+
+impl Coerce for Collection3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean3D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
+
+impl crate::ops::ExtractBoundary for Collection2D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean2D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_2d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
+    }
+}
+
+impl crate::ops::ExtractBoundary for Collection3D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        crate::ops::container_boundary(
+            self.members(),
+            self.member_attributes(),
+            |geometry| match geometry {
+                crate::Geometry::Euclidean3D(g) => Some(g),
+                _ => None,
+            },
+            wrap_members_3d,
+        )
+        .ok_or_else(crate::ops::boundary::unsupported::<Self>)
+    }
+}
+
+/// Gather members into a collection, keeping their attributes when the source
+/// carried any. A collection's boundary stays a collection even when one member
+/// gave it, so the shape does not turn on how many members contributed.
+fn wrap_members_2d(members: Vec<Euclidean2DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D {
+        members,
+        attrs,
+    }))
+}
+
+/// The 3D counterpart of [`wrap_members_2d`].
+fn wrap_members_3d(members: Vec<Euclidean3DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D {
+        members,
+        attrs,
+    }))
+}
 
 #[cfg(test)]
 mod tests {

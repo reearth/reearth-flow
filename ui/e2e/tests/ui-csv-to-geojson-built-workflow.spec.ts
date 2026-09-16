@@ -5,7 +5,7 @@ import {
   newEditorSession,
   teardownSession,
 } from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
 import {
   DeploymentsPage,
   uniqueDeploymentDescription,
@@ -124,9 +124,7 @@ test.describe.serial(
     });
 
     test("produces stations.geojson listing all five stations", async () => {
-      const outputUrl = jobDetailsArtifact(page, "stations.geojson");
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, "stations.geojson");
       test.info().annotations.push({
         type: "output-url",
         description: artifactUrl,

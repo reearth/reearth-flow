@@ -22,14 +22,7 @@ pub(super) fn write_csv(
         .from_writer(vec![]);
     let rows: Vec<AttributeValue> = features
         .iter()
-        .map(|f| {
-            AttributeValue::Map(
-                f.attributes
-                    .iter()
-                    .map(|(k, v)| (k.clone().into_inner(), v.clone()))
-                    .collect(),
-            )
-        })
+        .map(|f| AttributeValue::Map((*f.attributes).clone()))
         .collect();
     let mut fields = if let Some(first_row) = rows.first() {
         get_fields(first_row)
@@ -95,7 +88,7 @@ pub(super) fn write_csv(
 
 fn get_fields(row: &AttributeValue) -> Option<Vec<String>> {
     match row {
-        AttributeValue::Map(row) => Some(row.keys().cloned().collect::<Vec<_>>()),
+        AttributeValue::Map(row) => Some(row.keys().map(|k| k.to_string()).collect::<Vec<_>>()),
         _ => None,
     }
 }
@@ -107,9 +100,13 @@ fn get_row_values(
     fields
         .iter()
         .map(|field| match row {
-            AttributeValue::Map(row) => row.get(field).map(|v| v.to_string()).ok_or_else(|| {
-                FeatureProcessorError::FeatureWriter(format!("Field not found: {field}"))
-            }),
+            AttributeValue::Map(row) => {
+                row.get(field.as_str())
+                    .map(|v| v.to_string())
+                    .ok_or_else(|| {
+                        FeatureProcessorError::FeatureWriter(format!("Field not found: {field}"))
+                    })
+            }
             _ => Err(FeatureProcessorError::FeatureWriter(
                 "Unsupported input".to_string(),
             )),

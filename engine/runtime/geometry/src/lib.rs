@@ -59,14 +59,20 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, CountHoles, ExtractHoles, ExtractedPart, ForceTwoDimension,
-    ForceTwoDimensionError, RemoveAppearance, Reproject, ReprojectionCache, Translate, Triangulate,
-    UnsupportedOperation,
+    Aabb, Boundary, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractBoundary,
+    ExtractHoles, ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
+    Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
 use ops::Split;
+#[cfg(feature = "new-geometry")]
+use ops::{Area, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink};
+#[cfg(feature = "new-geometry")]
+use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
+#[cfg(feature = "new-geometry")]
+use predicates::{Equal, PredicateError};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -181,13 +187,15 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        ExtractBoundary
     )
 )]
 #[cfg_attr(
@@ -196,6 +204,7 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
@@ -203,7 +212,12 @@ impl GeometryCollection {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        ExtractBoundary,
+        Footprint,
+        DivideByGrid,
+        Elevation,
+        Area
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -235,13 +249,15 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        ExtractBoundary
     )
 )]
 #[cfg_attr(
@@ -250,6 +266,7 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
@@ -257,7 +274,12 @@ pub enum Euclidean2DGeometry {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        ExtractBoundary,
+        Footprint,
+        DivideByGrid,
+        Elevation,
+        Area
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -307,6 +329,113 @@ impl BoundingBox for GeometryCollection {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Area for Geometry {
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        match self {
+            // An absent geometry encloses nothing. Unlike `bounding_box`, which
+            // refuses because there is no box to give, there is a correct number
+            // here — and the action's promise is that the attribute is always
+            // written.
+            Geometry::None => Ok(0.0),
+            Geometry::Euclidean2D(g) => g.surface_area(),
+            Geometry::Euclidean3D(g) => g.surface_area(),
+            Geometry::GeometryCollection(c) => c.surface_area(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Area for GeometryCollection {
+    /// The measurable members' areas, summed across dimensions and frames.
+    /// Members sitting in different frames are summed anyway; the caller is
+    /// told through [`area_report`](ops::area::area_report) that the sum mixes
+    /// units.
+    fn surface_area(&self) -> Result<f64, UnsupportedOperation> {
+        Ok(self
+            .members
+            .iter()
+            .filter_map(|m| m.surface_area().ok())
+            .sum())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for Geometry {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
+        use Geometry as G;
+        // Ahead of the match: the arms that answer without reaching a leaf
+        // would otherwise never see the tolerance at all.
+        predicates::require_tolerance(tolerance)?;
+        match (self, rhs) {
+            // Two absent geometries occupy the same nothing.
+            (G::None, G::None) => Ok(true),
+            (G::Euclidean2D(a), G::Euclidean2D(b)) => a.equal(b, tolerance),
+            (G::Euclidean3D(a), G::Euclidean3D(b)) => a.equal(b, tolerance),
+            // A collection is refused whatever it is weighed against, on either
+            // side; see the `unsupported!` invocations in `predicates::equal`.
+            (G::GeometryCollection(_), _) | (_, G::GeometryCollection(_)) => {
+                Err(PredicateError::Unsupported {
+                    geometry: core::any::type_name::<GeometryCollection>(),
+                })
+            }
+            // There is no implicit promotion between the embeddings, so the same
+            // numbers in 2D and in 3D are not a question this can answer; the
+            // caller settles it by projecting or lifting first.
+            (G::Euclidean2D(_), G::Euclidean3D(_)) | (G::Euclidean3D(_), G::Euclidean2D(_)) => {
+                Err(PredicateError::CrossDimension)
+            }
+            // One is a geometry, the other is absent.
+            (G::None, _) | (_, G::None) => Ok(false),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for Euclidean2DGeometry {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
+        use Euclidean2DGeometry as G;
+        predicates::require_tolerance(tolerance)?;
+        match (self, rhs) {
+            (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
+            (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
+            (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
+            (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
+            (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
+            // A collection is refused rather than descended, on either side.
+            (G::Collection(_), _) | (_, G::Collection(_)) => Err(PredicateError::Unsupported {
+                geometry: core::any::type_name::<Collection2D>(),
+            }),
+            // A face and the curve bounding it cover different point sets;
+            // neither is the other.
+            _ => Ok(false),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Equal for Euclidean3DGeometry {
+    fn equal(&self, rhs: &Self, tolerance: f64) -> predicates::Result<bool> {
+        use Euclidean3DGeometry as G;
+        predicates::require_tolerance(tolerance)?;
+        match (self, rhs) {
+            (G::Point(a), G::Point(b)) => a.equal(b, tolerance),
+            (G::PointCloud(a), G::PointCloud(b)) => a.equal(b, tolerance),
+            (G::LineString(a), G::LineString(b)) => a.equal(b, tolerance),
+            (G::Polygon(a), G::Polygon(b)) => a.equal(b, tolerance),
+            (G::PolygonMesh(a), G::PolygonMesh(b)) => a.equal(b, tolerance),
+            (G::TriangularMesh(a), G::TriangularMesh(b)) => a.equal(b, tolerance),
+            (G::Solid(a), G::Solid(b)) => a.equal(b, tolerance),
+            (G::Csg(a), G::Csg(b)) => a.equal(b, tolerance),
+            // A collection is refused rather than descended, on either side.
+            (G::Collection(_), _) | (_, G::Collection(_)) => Err(PredicateError::Unsupported {
+                geometry: core::any::type_name::<Collection3D>(),
+            }),
+            _ => Ok(false),
+        }
+    }
+}
+
 impl Triangulate for Geometry {
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         match self {
@@ -330,7 +459,40 @@ impl Triangulate for GeometryCollection {
     }
 }
 
+impl Euclidean3DGeometry {
+    /// The concrete type name of this variant, for diagnostics.
+    pub(crate) fn type_name(&self) -> &'static str {
+        match self {
+            Self::Point(_) => "Point3D",
+            Self::PointCloud(_) => "PointCloud",
+            Self::LineString(_) => "LineString3D",
+            Self::Polygon(_) => "Polygon3D",
+            Self::PolygonMesh(_) => "PolygonMesh3D",
+            Self::TriangularMesh(_) => "TriangularMesh3D",
+            Self::Solid(_) => "Solid",
+            Self::Csg(_) => "Csg",
+            Self::Collection(_) => "Collection3D",
+        }
+    }
+}
+
 impl Euclidean2DGeometry {
+    /// The concrete type name of this variant, for diagnostics.
+    ///
+    /// Only the `new-geometry` predicates need the 2D half; its 3D counterpart
+    /// is reached from `contains` on every build.
+    #[cfg(feature = "new-geometry")]
+    pub(crate) fn type_name(&self) -> &'static str {
+        match self {
+            Self::Point(_) => "Point2D",
+            Self::LineString(_) => "LineString2D",
+            Self::Polygon(_) => "Polygon2D",
+            Self::PolygonMesh(_) => "PolygonMesh2D",
+            Self::TriangularMesh(_) => "TriangularMesh2D",
+            Self::Collection(_) => "Collection2D",
+        }
+    }
+
     /// Whether any part of this geometry lies at an elevation (2.5D).
     pub(crate) fn carries_elevation(&self) -> bool {
         match self {
@@ -372,7 +534,7 @@ impl Euclidean2DGeometry {
 
     /// The 3D counterpart of this geometry, with every coordinate placed at the
     /// elevation its leaf lies at, or at `0.0` where there is none.
-    pub(crate) fn into_3d(self) -> Euclidean3DGeometry {
+    pub fn into_3d(self) -> Euclidean3DGeometry {
         match self {
             Self::Point(g) => Euclidean3DGeometry::Point(g.into_3d()),
             Self::LineString(g) => Euclidean3DGeometry::LineString(g.into_3d()),
@@ -536,6 +698,37 @@ impl ExtractHoles for GeometryCollection {
     }
 }
 
+impl ExtractBoundary for Geometry {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no extent, so there is nothing to bound —
+            // which is not the same as being bounded by nothing.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "extract_boundary",
+            }),
+            Geometry::Euclidean2D(g) => g.extract_boundary(),
+            Geometry::Euclidean3D(g) => g.extract_boundary(),
+            Geometry::GeometryCollection(c) => c.extract_boundary(),
+        }
+    }
+}
+
+impl ExtractBoundary for GeometryCollection {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        ops::container_boundary(&self.members, &self.attrs, Some, |members, mut attrs| {
+            if members.is_empty() {
+                return Geometry::None;
+            }
+            if attrs.len() != members.len() {
+                attrs.clear();
+            }
+            Geometry::GeometryCollection(GeometryCollection { members, attrs })
+        })
+        .ok_or_else(ops::boundary::unsupported::<Self>)
+    }
+}
+
 impl Split for Geometry {
     fn split(
         &mut self,
@@ -567,6 +760,148 @@ impl Split for GeometryCollection {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Footprint for Geometry {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.footprint(sink),
+            Geometry::Euclidean3D(g) => g.footprint(sink),
+            Geometry::GeometryCollection(c) => c.footprint(sink),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for GeometryCollection {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl DivideByGrid for Geometry {
+    fn divide_by_grid(
+        &self,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        match self {
+            Geometry::None => Err(GridDivideError::Empty),
+            Geometry::Euclidean2D(g) => g.divide_by_grid(grid, emit),
+            Geometry::Euclidean3D(g) => g.divide_by_grid(grid, emit),
+            Geometry::GeometryCollection(c) => c.divide_by_grid(grid, emit),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl DivideByGrid for GeometryCollection {
+    fn divide_by_grid(
+        &self,
+        grid: &GridSpec,
+        emit: &mut dyn FnMut(GridCell, CellCoverage, Geometry),
+    ) -> Result<(), GridDivideError> {
+        collection::grid_divide_members(self.members.iter().cloned(), grid, emit)
+    }
+}
+
+/// Collect the frame of every leaf reachable from `g` that exposes one,
+/// recursing into `GeometryCollection`. See [`Geometry::frame`] for why
+/// `PointCloud`/`Csg` are absent.
+#[cfg(feature = "new-geometry")]
+fn collect_leaf_frames<'a>(g: &'a Geometry, out: &mut Vec<&'a CoordinateFrame>) {
+    match g {
+        Geometry::None => {}
+        Geometry::Euclidean2D(g) => collect_leaf_frames_2d(g, out),
+        Geometry::Euclidean3D(g) => collect_leaf_frames_3d(g, out),
+        Geometry::GeometryCollection(c) => {
+            c.members().iter().for_each(|m| collect_leaf_frames(m, out))
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+fn collect_leaf_frames_2d<'a>(g: &'a Euclidean2DGeometry, out: &mut Vec<&'a CoordinateFrame>) {
+    match g {
+        Euclidean2DGeometry::Point(p) => out.push(p.frame()),
+        Euclidean2DGeometry::LineString(l) => out.push(l.frame()),
+        Euclidean2DGeometry::Polygon(p) => out.push(p.frame()),
+        Euclidean2DGeometry::PolygonMesh(m) => out.push(m.frame()),
+        Euclidean2DGeometry::TriangularMesh(m) => out.push(m.frame()),
+        Euclidean2DGeometry::Collection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_leaf_frames_2d(m, out)),
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+fn collect_leaf_frames_3d<'a>(g: &'a Euclidean3DGeometry, out: &mut Vec<&'a CoordinateFrame>) {
+    match g {
+        Euclidean3DGeometry::Point(p) => out.push(p.frame()),
+        Euclidean3DGeometry::LineString(l) => out.push(l.frame()),
+        Euclidean3DGeometry::Polygon(p) => out.push(p.frame()),
+        Euclidean3DGeometry::PolygonMesh(m) => out.push(m.frame()),
+        Euclidean3DGeometry::TriangularMesh(m) => out.push(m.frame()),
+        Euclidean3DGeometry::Solid(s) => out.push(s.frame()),
+        Euclidean3DGeometry::PointCloud(_) | Euclidean3DGeometry::Csg(_) => {}
+        Euclidean3DGeometry::Collection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_leaf_frames_3d(m, out)),
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Geometry {
+    /// The coordinate frame shared by every leaf this geometry carries, or
+    /// `None` when leaves disagree or none exposes a frame at all.
+    ///
+    /// `PointCloud` and `Csg` are not represented here: neither carries a frame
+    /// this can read directly (`Csg`'s frame lives on its operand `Solid`s), so
+    /// they are skipped rather than manufacturing a mismatch. A caller that
+    /// wants to warn about an angular frame (e.g. before dividing on a grid)
+    /// reads this rather than assuming a unit.
+    pub fn frame(&self) -> Option<&CoordinateFrame> {
+        let mut frames = Vec::new();
+        collect_leaf_frames(self, &mut frames);
+        let (first, rest) = frames.split_first()?;
+        rest.iter().all(|f| *f == *first).then_some(*first)
+    }
+
+    /// The footprint of this geometry on `plane`: every face projected and
+    /// dissolved into its union, curves and points projected as they are, as 2D
+    /// geometry in the plane's frame. See [`Footprint`] and
+    /// [`FootprintSink::finish`] for the contract, and [`FootprintPlane`] for
+    /// the frame each plane needs.
+    pub fn footprint_on(&self, plane: &FootprintPlane) -> Result<Geometry, FootprintError> {
+        let mut sink = FootprintSink::new(plane);
+        self.footprint(&mut sink)?;
+        sink.finish()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Geometry {
+    fn elevation(&self) -> Option<f64> {
+        match self {
+            // An absent geometry has no vertex to read.
+            Geometry::None => None,
+            Geometry::Euclidean2D(g) => g.elevation(),
+            Geometry::Euclidean3D(g) => g.elevation(),
+            Geometry::GeometryCollection(c) => c.elevation(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for GeometryCollection {
+    fn elevation(&self) -> Option<f64> {
+        self.members.iter().find_map(Elevation::elevation)
+    }
+}
+
 impl Geometry {
     /// Force this geometry into a 2D embedding by dropping the Z coordinate,
     /// recursing into collection members. All-or-nothing: one member that cannot
@@ -585,6 +920,88 @@ impl Geometry {
     }
 }
 
+impl Geometry {
+    /// Lift every 2D-embedded leaf into 3D, recursing into collection members.
+    /// A 3D leaf, and an absent geometry, pass through unchanged, so a
+    /// cross-dimensional collection comes back wholly 3D.
+    ///
+    /// See [`Euclidean2DGeometry::into_3d`] for the elevation each lifted
+    /// coordinate takes. The frame is untouched: a leaf in a 2D CRS keeps that
+    /// CRS, with its heights read as that CRS's ellipsoidal heights.
+    pub fn into_3d(self) -> Geometry {
+        match self {
+            Geometry::None => Geometry::None,
+            Geometry::Euclidean2D(g) => Geometry::Euclidean3D(g.into_3d()),
+            Geometry::Euclidean3D(g) => Geometry::Euclidean3D(g),
+            Geometry::GeometryCollection(c) => Geometry::GeometryCollection(c.into_3d()),
+        }
+    }
+}
+
+impl GeometryCollection {
+    /// Lift every member into 3D. Members may differ in coordinate frame, so
+    /// each is lifted on its own.
+    fn into_3d(self) -> GeometryCollection {
+        GeometryCollection {
+            members: self.members.into_iter().map(Geometry::into_3d).collect(),
+            attrs: self.attrs,
+        }
+    }
+}
+
+#[cfg(test)]
+mod into_3d_tests {
+    use super::*;
+    use coordinate::{CoordinateFrame, EpsgCode};
+    use line_string::{LineString2D, LineString3D};
+    use point::{Point2D, Point3D};
+
+    fn crs() -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(4326))
+    }
+
+    /// A cross-dimensional collection comes back wholly 3D: the 2.5D member at
+    /// the elevation it lay at, the pure-2D member at 0, the 3D member as it was.
+    #[test]
+    fn a_cross_dimensional_collection_lifts_every_2d_member() {
+        let already_3d = Point3D::new(crs(), [35.0, 139.0, 7.0]);
+        let collection = Geometry::GeometryCollection(GeometryCollection::new([
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+                LineString2D::from_coords_at_elevation(crs(), [[35.0, 139.0], [36.0, 140.0]], 25.0),
+            )),
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                crs(),
+                [35.0, 139.0],
+            ))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(already_3d.clone())),
+        ]));
+
+        let Geometry::GeometryCollection(lifted) = collection.into_3d() else {
+            panic!("a collection stays a collection");
+        };
+
+        assert_eq!(
+            lifted.members(),
+            [
+                Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                    crs(),
+                    [[35.0, 139.0, 25.0], [36.0, 140.0, 25.0]],
+                ))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                    crs(),
+                    [35.0, 139.0, 0.0]
+                ))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(already_3d)),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_absent_geometry_lifts_to_itself() {
+        assert_eq!(Geometry::None.into_3d(), Geometry::None);
+    }
+}
+
 impl GeometryCollection {
     /// Force every member to 2D. Members may differ in coordinate frame, so each
     /// is demoted on its own.
@@ -597,6 +1014,48 @@ impl GeometryCollection {
             members,
             attrs: std::mem::take(&mut self.attrs),
         })
+    }
+}
+
+impl Coerce for Geometry {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no vertices to re-represent.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "coerce",
+            }),
+            Geometry::Euclidean2D(g) => g.coerce(target, cache),
+            Geometry::Euclidean3D(g) => g.coerce(target, cache),
+            Geometry::GeometryCollection(c) => c.coerce(target, cache),
+        }
+    }
+}
+
+impl Coerce for GeometryCollection {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        for member in self.members_mut() {
+            if let Ok(coerced) = member.coerce(target, cache) {
+                *member = coerced;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Err(UnsupportedOperation {
+                geometry: "GeometryCollection",
+                operation: "coerce",
+            });
+        }
+        Ok(Geometry::GeometryCollection(std::mem::take(self)))
     }
 }
 

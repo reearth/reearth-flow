@@ -111,7 +111,6 @@ func createPubSubCheck(client *pubsub.Client, conf *Config) func(ctx context.Con
 	return func(ctx context.Context) error {
 		subscriptions := []string{
 			conf.LogSubscriptionID,
-			conf.NodeSubscriptionID,
 			conf.UserFacingLogSubscriptionID,
 			conf.JobCompleteSubscriptionID,
 		}

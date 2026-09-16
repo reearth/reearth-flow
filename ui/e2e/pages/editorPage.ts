@@ -96,7 +96,7 @@ export class EditorPage {
   }
 
   async gotoProjectPath(projectPath: string) {
-    await this.page.goto(projectPath);
+    await this.page.goto(projectPath, { waitUntil: "domcontentloaded" });
     await this.waitForLoaded();
   }
 

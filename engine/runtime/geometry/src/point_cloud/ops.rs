@@ -148,6 +148,20 @@ pub(super) fn segment_positions(seg: &Segment) -> impl Iterator<Item = [f64; 3]>
     })
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for PointCloud {
+    fn elevation(&self) -> Option<f64> {
+        self.segments
+            .iter()
+            .flat_map(segment_positions)
+            .next()
+            .map(|p| p[2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

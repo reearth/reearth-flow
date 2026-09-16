@@ -40,12 +40,12 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 						<gml:Polygon gml:id="poly_lod0_b3eef114-02e4-11f0-a3af-18ece7a5508c">
 							<gml:exterior>
 								<gml:LinearRing>
-									<gml:posList>0.0 0.0 0.0 1.0 0.0 0.0 1.0 1.0 0.0 0.0 1.0 0.0</gml:posList>
+									<gml:posList>0.0 0.0 0.0 1.0 0.0 0.0 1.0 1.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0</gml:posList>
 								</gml:LinearRing>
 							</gml:exterior>
 							<gml:interior>
 								<gml:LinearRing>
-									<gml:posList>0.1 0.1 0.0 1.1 1.1 0.0 1.1 0.1 0.0 0.1 1.1 0.0</gml:posList>
+									<gml:posList>0.1 0.1 0.0 1.1 1.1 0.0 1.1 0.1 0.0 0.1 1.1 0.0 0.1 0.1 0.0</gml:posList>
 								</gml:LinearRing>
 							</gml:interior>
 						</gml:Polygon>

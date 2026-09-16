@@ -50,6 +50,12 @@ pub(crate) struct PropertyI18n {
     pub(crate) title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) description: Option<String>,
+    /// Overrides for the sub-parameters a `oneOf` variant carries. Without this
+    /// the variant's own label translates but the fields belonging to it do not,
+    /// which is most of the surface on any mode that takes settings of its own.
+    /// Keys are alphabetical (BTreeMap) for stable diffs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) properties: Option<BTreeMap<String, PropertyI18n>>,
 }
 
 fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -89,7 +95,8 @@ pub(crate) struct I18nSchema {
     pub(crate) enum_i18n: Option<BTreeMap<String, BTreeMap<String, PropertyI18n>>>,
 }
 
-/// Stamps translated `title` / `description` values onto a JSON Schema node.
+/// Stamps translated `title` / `description` values onto a JSON Schema node, and
+/// recurses into the node's own `properties` for any nested overrides.
 fn patch_node(node: &mut serde_json::Value, i18n: &PropertyI18n) {
     if let Some(title) = &i18n.title {
         if !title.is_empty() {
@@ -101,6 +108,63 @@ fn patch_node(node: &mut serde_json::Value, i18n: &PropertyI18n) {
             node["description"] = serde_json::Value::String(desc.clone());
         }
     }
+    if let Some(nested) = &i18n.properties {
+        if let Some(properties) = node.get_mut("properties").and_then(|p| p.as_object_mut()) {
+            for (name, child) in nested {
+                if let Some(target) = properties.get_mut(name) {
+                    patch_node(target, child);
+                }
+            }
+        }
+    }
+}
+
+/// The key identifying one `oneOf`/`anyOf` variant of an enum definition.
+///
+/// schemars renders a variant three different ways depending on how the Rust
+/// enum is tagged, and only the first carries a top-level `enum`:
+///
+/// - a unit variant of an untagged or externally-tagged enum — `{"enum": ["csv"]}`
+/// - an internally-tagged variant — `{"properties": {"type": {"enum": ["csv"]}}}`,
+///   with the tag named in `required`
+/// - an externally-tagged variant carrying fields — `{"required": ["csv"],
+///   "properties": {"csv": {...}}}`
+///
+/// Keying only off the first shape is why every variant that carries
+/// sub-parameters used to be invisible to both the scaffold and the applier, so
+/// the labels a user picks between stayed English however the enum was written.
+pub(crate) fn enum_variant_key(variant: &serde_json::Value) -> Option<String> {
+    if let Some(value) = variant
+        .get("enum")
+        .and_then(|e| e.as_array())
+        .and_then(|a| a.first())
+        .and_then(|v| v.as_str())
+    {
+        return Some(value.to_string());
+    }
+
+    let properties = variant.get("properties").and_then(|p| p.as_object())?;
+    let required = variant.get("required").and_then(|r| r.as_array())?;
+
+    // Internally tagged: exactly one required property pins a single-valued
+    // string enum, and that value is the variant's name.
+    let tagged = required.iter().filter_map(|r| r.as_str()).find_map(|name| {
+        let values = properties.get(name)?.get("enum")?.as_array()?;
+        match values.as_slice() {
+            [serde_json::Value::String(value)] => Some(value.clone()),
+            _ => None,
+        }
+    });
+    if tagged.is_some() {
+        return tagged;
+    }
+
+    // Externally tagged: the variant is an object holding exactly one required
+    // property, named for the variant itself.
+    match required.as_slice() {
+        [serde_json::Value::String(name)] if properties.contains_key(name) => Some(name.clone()),
+        _ => None,
+    }
 }
 
 /// Applies flat property-path i18n overrides to a parameter JSON Schema.
@@ -109,7 +173,7 @@ fn patch_node(node: &mut serde_json::Value, i18n: &PropertyI18n) {
 ///   The special key `""` targets the root schema object itself.
 /// - `def_i18n` keys map to `schema["definitions"][def_name]["properties"][prop_name]`.
 /// - `enum_i18n` keys map to `schema["definitions"][def_name]["oneOf"|"anyOf"]` variants,
-///   looked up by the variant's enum value (e.g. `"max"`, `"min"`).
+///   looked up by the variant's key (see [`enum_variant_key`]).
 ///
 /// Missing keys are silently skipped — if a property was renamed or removed in
 /// the Rust struct the i18n entry simply has no effect.
@@ -159,12 +223,7 @@ pub(crate) fn apply_parameter_i18n(
                 for keyword in &["oneOf", "anyOf"] {
                     if let Some(arr) = def_schema.get_mut(*keyword).and_then(|v| v.as_array_mut()) {
                         for variant in arr.iter_mut() {
-                            let enum_val = variant
-                                .get("enum")
-                                .and_then(|e| e.as_array())
-                                .and_then(|a| a.first())
-                                .and_then(|v| v.as_str())
-                                .map(str::to_string);
+                            let enum_val = enum_variant_key(variant);
                             if let Some(val) = enum_val {
                                 if let Some(i18n) = variants.get(&val) {
                                     patch_node(variant, i18n);

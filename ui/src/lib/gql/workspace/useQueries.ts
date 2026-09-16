@@ -19,23 +19,26 @@ export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
 
-  const updateWorkspace = (workspace?: Workspace) => {
-    if (!workspace) return;
-    queryClient.setQueryData(
-      [WorkspaceQueryKeys.GetWorkspaces],
-      (data: Workspace[]) => {
-        data.splice(
-          data.findIndex((w) => w.id === workspace?.id),
-          1,
-          workspace,
-        );
-        return [...data];
-      },
-    );
-    queryClient.setQueryData(
-      [WorkspaceQueryKeys.GetWorkspace, workspace.id],
-      () => workspace,
-    );
+  const invalidateWorkspace = async (
+    workspaceId?: string,
+    invalidateList = true,
+  ) => {
+    const tasks: Promise<unknown>[] = [];
+    if (invalidateList) {
+      tasks.push(
+        queryClient.invalidateQueries({
+          queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+        }),
+      );
+    }
+    if (workspaceId) {
+      tasks.push(
+        queryClient.invalidateQueries({
+          queryKey: [WorkspaceQueryKeys.GetWorkspace, workspaceId],
+        }),
+      );
+    }
+    await Promise.all(tasks);
   };
 
   const createWorkspaceMutation = useMutation({
@@ -44,12 +47,7 @@ export const useQueries = () => {
       if (!data?.createWorkspace?.workspace) return;
       return toWorkspace(data.createWorkspace.workspace);
     },
-    onSuccess: (createdWorkspace) => {
-      queryClient.setQueryData(
-        [WorkspaceQueryKeys.GetWorkspaces],
-        (data: Workspace[]) => [...data, createdWorkspace],
-      );
-    },
+    onSuccess: (createdWorkspace) => invalidateWorkspace(createdWorkspace?.id),
   });
 
   const useGetWorkspacesQuery = () =>
@@ -89,7 +87,7 @@ export const useQueries = () => {
 
       return toWorkspace(data.updateWorkspace.workspace);
     },
-    onSuccess: updateWorkspace,
+    onSuccess: (_workspace, input) => invalidateWorkspace(input.workspaceId),
   });
 
   const deleteWorkspaceMutation = useMutation({
@@ -100,16 +98,13 @@ export const useQueries = () => {
       return data?.deleteWorkspace?.workspaceId;
     },
     onSuccess: (deletedWorkspaceId) => {
-      queryClient.setQueryData(
-        [WorkspaceQueryKeys.GetWorkspaces],
-        (data: Workspace[]) => {
-          data.splice(
-            data.findIndex((w) => w.id === deletedWorkspaceId),
-            1,
-          );
-          return [...data];
-        },
-      );
+      if (!deletedWorkspaceId) return;
+      queryClient.removeQueries({
+        queryKey: [WorkspaceQueryKeys.GetWorkspace, deletedWorkspaceId],
+      });
+      return queryClient.invalidateQueries({
+        queryKey: [WorkspaceQueryKeys.GetWorkspaces],
+      });
     },
   });
 
@@ -122,7 +117,8 @@ export const useQueries = () => {
       if (!data?.addMemberToWorkspace) return;
       return toWorkspace(data.addMemberToWorkspace.workspace);
     },
-    onSuccess: updateWorkspace,
+    onSuccess: (_workspace, input) =>
+      invalidateWorkspace(input.workspaceId, false),
   });
 
   const removeMemberFromWorkspaceMutation = useMutation({
@@ -134,7 +130,8 @@ export const useQueries = () => {
 
       return toWorkspace(data.removeMemberFromWorkspace.workspace);
     },
-    onSuccess: updateWorkspace,
+    onSuccess: (_workspace, input) =>
+      invalidateWorkspace(input.workspaceId, false),
   });
 
   const updateMemberOfWorkspaceMutation = useMutation({
@@ -146,7 +143,8 @@ export const useQueries = () => {
 
       return toWorkspace(data.updateMemberOfWorkspace.workspace);
     },
-    onSuccess: updateWorkspace,
+    onSuccess: (_workspace, input) =>
+      invalidateWorkspace(input.workspaceId, false),
   });
 
   return {

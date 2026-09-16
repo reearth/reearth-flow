@@ -45,7 +45,6 @@ num-traits.workspace = true
 nutype.workspace = true
 object_store.workspace = true
 once_cell.workspace = true
-parking_lot.workspace = true
 petgraph.workspace = true
 proj.workspace = true
 quick-xml.workspace = true

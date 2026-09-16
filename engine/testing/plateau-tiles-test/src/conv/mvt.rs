@@ -105,13 +105,16 @@ pub fn write_mvt_json(
 
     let raw = load_mvt_attr(mvt_dir)?;
 
-    let normalized: serde_json::Map<String, Value> = raw
+    let mut normalized: serde_json::Map<String, Value> = raw
         .into_iter()
         .map(|(feature_key, props)| {
             let props = apply_casts_to_value(props, "", &casts);
             (feature_key, props)
         })
         .collect();
+    // Sort by feature key so the truth file's diff is stable across runs, but
+    // leave each feature's attribute key order untouched (it reflects source order).
+    normalized.sort_keys();
 
     let json = serde_json::to_string_pretty(&Value::Object(normalized))
         .map_err(|e| format!("Failed to serialize: {}", e))?;

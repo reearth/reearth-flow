@@ -145,7 +145,7 @@ impl Processor for UdxFolderExtractor {
         let res = mapper(
             feature,
             &self.city_gml_path,
-            Arc::clone(&ctx.env_vars),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             &self.codelists_path,
             &self.schemas_path,
@@ -186,13 +186,13 @@ impl Processor for UdxFolderExtractor {
 fn mapper(
     feature: &Feature,
     expr: &CompiledCode,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     codelists_path: &Option<String>,
     schemas_path: &Option<String>,
 ) -> super::errors::Result<Response> {
     let city_gml_path = expr
-        .eval_string(feature, env_vars)
+        .eval_string(feature, variables)
         .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
     let folders = city_gml_path
         .split(MAIN_SEPARATOR)

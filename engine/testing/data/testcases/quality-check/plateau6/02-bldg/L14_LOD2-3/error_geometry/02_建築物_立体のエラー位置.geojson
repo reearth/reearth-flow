@@ -1,0 +1,97 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            26830.24000000004,
+            -138778.18000010774,
+            93.017
+          ],
+          [
+            26819.090000001175,
+            -138779.52000010753,
+            93.017
+          ],
+          [
+            26817.449999999895,
+            -138765.75000010856,
+            93.017
+          ],
+          [
+            26828.570000000378,
+            -138764.18000010858,
+            93.017
+          ],
+          [
+            26830.24000000004,
+            -138778.18000010774,
+            93.017
+          ]
+        ]
+      },
+      "properties": {
+        "check": "立体のエラー位置",
+        "issue": "Orientation",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_l14lod2-0001",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_l14lod2-0001",
+        "lod": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            26830.24000000004,
+            -138778.18000010774,
+            93.017
+          ],
+          [
+            26819.090000001175,
+            -138779.52000010753,
+            93.017
+          ],
+          [
+            26817.449999999895,
+            -138765.75000010856,
+            93.017
+          ],
+          [
+            26828.570000000378,
+            -138764.18000010858,
+            93.017
+          ],
+          [
+            26830.24000000004,
+            -138778.18000010774,
+            93.017
+          ]
+        ]
+      },
+      "properties": {
+        "check": "立体のエラー位置",
+        "issue": "Orientation",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_l14lod3-0001",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_l14lod3-0001",
+        "lod": 3
+      }
+    }
+  ]
+}

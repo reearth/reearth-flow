@@ -5,9 +5,13 @@ use crate::error::{Error, Result};
 use crate::Geometry;
 
 mod ffi;
+pub(crate) mod grids;
 
 pub use ffi::ReprojectionCache;
 pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
+// Reached from outside the crate: the readers and writers of formats that
+// describe a CRS by its definition rather than by code.
+pub use ffi::{esri_wkt1, identify_epsg};
 
 /// Reproject a geometry's coordinates to a target CRS.
 ///
@@ -61,7 +65,7 @@ pub fn transform_coords_3d(
 }
 
 /// Reproject a 2D coordinate buffer in place from `from` to `target` (EPSG).
-pub(crate) fn transform_coords_2d(
+pub fn transform_coords_2d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,

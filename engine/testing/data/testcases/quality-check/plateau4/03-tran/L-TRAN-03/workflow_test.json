@@ -1,6 +1,5 @@
 {
   "description": "Test for plateau4 L-TRAN-03 inspection.",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
   "workflowVariables": [
     {

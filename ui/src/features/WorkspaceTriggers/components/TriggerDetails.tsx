@@ -28,11 +28,13 @@ import { TriggerEditDialog } from "./TriggerEditDialog";
 
 type Props = {
   selectedTrigger?: Trigger;
+  readonly?: boolean;
   setTriggerToBeDeleted: (trigger?: Trigger) => void;
 };
 
 const TriggerDetails: React.FC<Props> = ({
   selectedTrigger,
+  readonly,
   setTriggerToBeDeleted,
 }) => {
   const t = useT();
@@ -164,7 +166,7 @@ const TriggerDetails: React.FC<Props> = ({
             <Button
               variant="outline"
               size="sm"
-              disabled={!selectedTrigger}
+              disabled={readonly}
               onClick={() => setOpenTriggerEditDialog(true)}>
               <PencilLineIcon />
               {t("Update Trigger")}
@@ -172,6 +174,7 @@ const TriggerDetails: React.FC<Props> = ({
             <Button
               variant="destructive"
               size="sm"
+              disabled={readonly}
               onClick={() => setTriggerToBeDeleted(selectedTrigger)}>
               <TrashIcon />
               {t("Delete")}
@@ -185,6 +188,7 @@ const TriggerDetails: React.FC<Props> = ({
             content={details}
             toggle
             toggleValue={updatedIsTriggerEnabled}
+            disableToggle={readonly}
             onToggleChange={handleTriggerEnableChange}
           />
         </div>

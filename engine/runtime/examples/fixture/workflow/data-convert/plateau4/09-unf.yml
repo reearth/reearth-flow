@@ -148,7 +148,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env.get("exceptSplit", false)
+          value: variables.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -290,10 +290,10 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env["cityGmlPath"],
-              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables["cityGmlPath"],
+              "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
@@ -320,7 +320,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+          value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
   - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
     name: AttributeManagerDict
@@ -489,7 +489,7 @@ graphs:
         type: flowExpr
         value: |
           ft = attributes["feature_type"].split(":")[-1];
-          city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+          city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
           city_gml + "_" + attributes["package"] + "_" + ft + "_3dtiles_lod" + attributes["lod"] + ".zip"
   - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     name: FeatureSorterDmGeometricAttribute
@@ -575,7 +575,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+          stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
           ft = attributes["feature_type"].split(":")[1];
           stem + "_" + attributes["__package"] + "_" + ft + "_dm_geometric_attributes.zip"
       skipUnexposedAttributes: true

@@ -1,6 +1,5 @@
 {
   "description": "Test L-bldg-02 error detection: Multiple isolated BuildingParts (3 parts, all disconnected, status='alone')",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

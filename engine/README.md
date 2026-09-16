@@ -173,7 +173,7 @@ You can override this location by setting the `FLOW_RUNTIME_WORKING_DIRECTORY` e
 ├── projects/<project_key>/
 │   ├── jobs/<job_id>/
 │   │   ├── feature-store/        # Feature data streams (JSONL format)
-│   │   │   ├── <edge_id>.jsonl   # Features flowing through each edge
+│   │   │   ├── <node_id>.<port>.jsonl   # Features emitted by each node output port
 │   │   │   └── ...
 │   │   ├── action-log/           # Action execution logs
 │   │   └── temp/                 # Temporary files for this job
@@ -185,8 +185,8 @@ You can override this location by setting the `FLOW_RUNTIME_WORKING_DIRECTORY` e
 The intermediate feature data is stored in JSON Lines format and can be examined for debugging:
 
 ```bash
-# View features flowing through a specific edge
-cat <cache_directory>/projects/<project>/jobs/<job_id>/feature-store/<edge_id>.jsonl
+# View features emitted by a specific node output port
+cat <cache_directory>/projects/<project>/jobs/<job_id>/feature-store/<node_id>.<port>.jsonl
 
 # List available job data
 ls <cache_directory>/projects/<project>/jobs/<job_id>/

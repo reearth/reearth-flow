@@ -9,3 +9,6 @@ package gqldataloader
 //go:generate go run github.com/vektah/dataloaden UserLoader github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.ID *github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.User
 //go:generate go run github.com/vektah/dataloaden WorkspaceLoader github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.ID *github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.Workspace
 //go:generate go run github.com/vektah/dataloaden WorkerConfigLoader github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.ID *github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.WorkerConfig
+//go:generate go run github.com/vektah/dataloaden DeploymentByProjectLoader github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.ID *github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.Deployment
+//go:generate go run github.com/vektah/dataloaden ParametersByProjectLoader github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.ID []*github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.Parameter
+//go:generate go run github.com/vektah/dataloaden LogsByJobLoader string []*github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.Log

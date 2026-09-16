@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/reearth/ygo/persistence"
 )
 
 // keepUpdates is the update-object retention count for the cleanup routes.
@@ -55,6 +58,13 @@ type DocStore interface {
 	Delete(ctx context.Context, room string) error
 	// CleanupAll runs Compact(keep) across every known document.
 	CleanupAll(ctx context.Context, keep int) (int, error)
+	// ListSnapshots returns the room's labelled snapshots newest-first. A store
+	// without snapshot support returns an empty slice, not an error.
+	ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error)
+	// GetSnapshotState returns one snapshot's V1 state. persistence.ErrSnapshotNotFound ⇒ 404.
+	GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error)
+	// SaveSnapshot captures the room's current state as a new labelled snapshot.
+	SaveSnapshot(ctx context.Context, room, label string) (int64, error)
 }
 
 // Signaler toggles metadata.rollbackInProgress on a live room so UI clients hide
@@ -94,6 +104,9 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /api/document/{id}/{source}/copy", r.copyDocument)
 	mux.HandleFunc("POST /api/document/{id}/import", r.importDocument)
 	mux.HandleFunc("POST /api/document/{id}/cleanup", r.cleanupUpdates)
+	mux.HandleFunc("GET /api/document/{id}/snapshots", r.getSnapshots)
+	mux.HandleFunc("POST /api/document/{id}/snapshots", r.postSnapshot)
+	mux.HandleFunc("GET /api/document/{id}/snapshots/{sid}", r.getSnapshotState)
 	mux.HandleFunc("DELETE /api/document/{id}", r.deleteDocument)
 	mux.HandleFunc("POST /api/admin/cleanup", r.adminCleanup)
 	return mux
@@ -319,6 +332,95 @@ func (r *router) cleanupUpdates(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": deleted})
+}
+
+// getSnapshots lists the room's labelled snapshots, newest first. An unknown
+// or empty room yields an empty JSON array, not an error.
+func (r *router) getSnapshots(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	items, err := r.store.ListSnapshots(req.Context(), id)
+	if err != nil {
+		r.fail(w, "list snapshots failed", err, "doc", id)
+		return
+	}
+	if items == nil {
+		// Guard the wire contract regardless of the DocStore impl: an unknown
+		// or snapshot-less room must render as `[]`, never JSON null.
+		items = []SnapshotItem{}
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+// maxSnapshotLabel bounds the user-supplied label. GCS custom object metadata
+// caps at 8 KiB per object, and the label is written there; without a bound an
+// oversized label fails deep in the storage layer as an opaque 500, after the
+// snapshot id counter has already been consumed.
+const maxSnapshotLabel = 256
+
+// postSnapshot captures the room's current state as a labelled snapshot.
+func (r *router) postSnapshot(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	var body SaveSnapshotRequest
+	// The label is optional, so an absent body is fine — but a MALFORMED body is
+	// not. Silently ignoring a decode error loses the label the user typed and
+	// still reports success, leaving them with an unnamed version and no error.
+	// Every other POST handler here 400s on a bad body; match them.
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if len(body.Label) > maxSnapshotLabel {
+		writeErr(w, http.StatusBadRequest, "label too long")
+		return
+	}
+	sid, err := r.store.SaveSnapshot(req.Context(), id, body.Label)
+	if errors.Is(err, persistence.ErrSnapshotsUnsupported) {
+		// A backend without snapshot support is a permanent deployment fact, not
+		// a server fault: 501, and not logged at ERROR on every click.
+		writeErr(w, http.StatusNotImplemented, "snapshots not supported by this backend")
+		return
+	}
+	if err != nil {
+		r.fail(w, "save snapshot failed", err, "doc", id)
+		return
+	}
+	// SaveSnapshot reports "nothing worth versioning" as (0, nil). Snapshot ids
+	// start at 1, so 0 names no object: returning 200 with id 0 would tell the
+	// client a snapshot exists when none does, and it would show up as a phantom
+	// version row that vanishes on refetch. Reachable by the most ordinary path
+	// there is — Save version on a project with no edits yet.
+	if sid == 0 {
+		writeErr(w, http.StatusConflict, "nothing to snapshot: document is empty")
+		return
+	}
+	writeJSON(w, http.StatusOK, SnapshotItem{ID: sid, Label: body.Label})
+}
+
+// getSnapshotState returns one snapshot's V1 state for preview or restore.
+func (r *router) getSnapshotState(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	sid, err := strconv.ParseInt(req.PathValue("sid"), 10, 64)
+	if err != nil || sid < 1 {
+		// Ids are allocated from 1 up, so 0 and negatives can never match; reject
+		// them here rather than reporting a misleading 404.
+		writeErr(w, http.StatusBadRequest, "invalid snapshot id")
+		return
+	}
+	state, err := r.store.GetSnapshotState(req.Context(), id, sid)
+	if errors.Is(err, persistence.ErrSnapshotsUnsupported) {
+		// Distinct from 404: the snapshot is not missing, the feature is absent.
+		writeErr(w, http.StatusNotImplemented, "snapshots not supported by this backend")
+		return
+	}
+	if errors.Is(err, persistence.ErrSnapshotNotFound) {
+		writeErr(w, http.StatusNotFound, "snapshot not found")
+		return
+	}
+	if err != nil {
+		r.fail(w, "get snapshot state failed", err, "doc", id)
+		return
+	}
+	writeJSON(w, http.StatusOK, SnapshotStateResponse{ID: id, SnapshotID: sid, Updates: state})
 }
 
 func (r *router) deleteDocument(w http.ResponseWriter, req *http.Request) {
