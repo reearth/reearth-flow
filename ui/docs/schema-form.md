@@ -159,9 +159,19 @@ outgoing variant's data so switching back is not destructive.
 
 An **untagged** variant is recognised only by the fields it carries, so the
 moment one is chosen — before any of them are filled in — the value matches
-nothing. `UnionField` therefore remembers the choice in component state, and a
-value that does identify a variant always wins over it, so a collaborator
-switching it is still followed.
+nothing. Choosing one therefore **writes its required keys as `null`**, which
+puts the choice in the data where it travels: component state alone would show
+it to the person who clicked and to nobody else.
+
+A `null` where the schema permits none means "chosen, not filled in yet". It is
+shown like a missing required property — the asterisk, nothing written
+underneath — and is still invalid, which is what keeps Update disabled.
+`normalizeParams` drops it on save, so the placeholder never reaches the engine.
+
+A variant told apart by the **type of the value itself** (Text | Number |
+True-or-False) has no keys to mark, so choosing one writes nothing and
+`UnionField` falls back to remembering it locally until the user types. The
+window is one keystroke wide.
 
 Where a union is required with no null branch (`destinationFrame` on Coordinate
 Frame Reprojector), there is no such thing as unset — only unchosen. The

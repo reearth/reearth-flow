@@ -76,6 +76,16 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
         return;
       }
 
+      if (variant.node.kind !== "object") {
+        // A scalar variant is told apart by the type of the value itself, so
+        // there is nothing to write until the user types one. Writing `{}` —
+        // which is what fell out of seeding an object into a string — stored an
+        // object where the schema wants a string, and made all three of Text,
+        // Number and True-or-False identical.
+        onChange(path, undefined);
+        return;
+      }
+
       // Keys the target variant also has carry over — switching a CSV reader
       // between WKT and coordinate columns should not clear the column names
       // the two spellings share.
@@ -91,9 +101,20 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
         ...carried,
       });
       const next = isRecord(seeded) ? { ...seeded } : {};
+
       if (variant.discriminator) {
         next[variant.discriminator.property] = variant.discriminator.value;
+      } else {
+        // An untagged variant is recognised by the keys it carries, so a choice
+        // with none of them filled in is invisible — including to the other
+        // people editing the node, who see only the `{}` it used to write and
+        // no reason to move their own control. Marking the required keys as
+        // present-but-empty puts the choice in the data, where it travels.
+        for (const key of variant.requiredKeys) {
+          if (next[key] === undefined) next[key] = null;
+        }
       }
+
       onChange(path, next);
     },
     [node.variants, onChange, path, selected, value],

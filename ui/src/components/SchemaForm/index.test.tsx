@@ -13,7 +13,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { FlowSchema } from "@flow/lib/schemaForm";
+import { isValid, validate, type FlowSchema } from "@flow/lib/schemaForm";
 
 import { SchemaForm } from "./index";
 
@@ -484,6 +484,73 @@ describe("a required union with no null branch", () => {
     expect(
       screen.getByRole("button", { name: "Destination Frame" }),
     ).toHaveTextContent("Euclidean");
+  });
+
+  it("puts the choice where another editor can see it", async () => {
+    // The choice has to be in the data, not in component state: a collaborator
+    // renders from the value alone. Picking CRS used to write `{}`, which
+    // identified no variant, so everyone else went on seeing "Select..." until
+    // the first EPSG code was typed.
+    const { onChange } = mountFrame();
+
+    const items = await openDropdown("Destination Frame");
+    await userEvent.click(
+      items.find((item) => item.textContent === "CRS") as HTMLElement,
+    );
+
+    const [data] = lastCall(onChange) as [Record<string, unknown>];
+    expect(data.destinationFrame).toEqual({ crs: null });
+  });
+
+  it("shows that choice on a client that only received the value", () => {
+    // A second editor, rendering from the value with no state of its own.
+    render(
+      <SchemaForm
+        schema={schemaFor("Coordinate Frame Reprojector")}
+        actionName="Coordinate Frame Reprojector"
+        defaultFormData={{ destinationFrame: { crs: null } }}
+        onChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("CRS");
+    expect(screen.getByText("crs")).toBeInTheDocument();
+    // Chosen but unfilled is not an error to shout about — and not savable.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stays unsavable until the chosen variant is filled in", () => {
+    const schema = schemaFor("Coordinate Frame Reprojector");
+    expect(isValid(validate(schema, { destinationFrame: { crs: null } }))).toBe(
+      false,
+    );
+    expect(
+      isValid(
+        validate(schema, {
+          destinationFrame: { crs: { type: "flowExpr", value: "EPSG:4326" } },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("writes nothing for a variant told apart by its own type", async () => {
+    // Attribute Range Mapper's default value is Text | Number | True-or-False.
+    // Seeding an object into a string variant wrote `{}` — an object where the
+    // schema wants a string, and identical for all three variants.
+    const { onChange } = mount("Attribute Range Mapper", {});
+
+    const items = await openDropdown("Default Value");
+    await userEvent.click(
+      items.find((item) => item.textContent === "Number") as HTMLElement,
+    );
+
+    const [data] = lastCall(onChange) as [Record<string, unknown>];
+    expect(data).not.toHaveProperty("defaultValue");
+    expect(
+      screen.getByRole("button", { name: "Default Value" }),
+    ).toHaveTextContent("Number");
   });
 
   it("still reports a value inside the chosen branch that is wrong", () => {

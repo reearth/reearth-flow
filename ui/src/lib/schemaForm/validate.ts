@@ -11,7 +11,7 @@ import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 import type { JSONSchema7Definition } from "json-schema";
 
-import { pathKey } from "./path";
+import { getAtPath, pathKey } from "./path";
 import type { FieldPath } from "./types";
 
 /**
@@ -127,6 +127,19 @@ const CHOICE_MESSAGE = "Choose one of the available options";
  */
 const BRANCH_INTERNAL = /\/(anyOf|oneOf)\/\d+\//;
 
+/**
+ * A field holding an explicit `null` where the schema permits none.
+ *
+ * That is how a chosen-but-unfilled field is recorded — picking a union variant
+ * marks its required keys `null` so the choice reaches other editors — so it
+ * means "not filled in yet", exactly like a missing required property, and is
+ * shown the same way: by the asterisk, with nothing written underneath. It is
+ * still invalid, which is what keeps Update disabled.
+ */
+const isUnfilled = (error: ErrorObject, root: unknown): boolean =>
+  error.keyword === "type" &&
+  getAtPath(root, instancePathToPath(error.instancePath, root)) === null;
+
 /** The message to write under the field, or null to show the highlight alone. */
 const messageFor = (error: ErrorObject): string | null => {
   switch (error.keyword) {
@@ -183,7 +196,7 @@ export const validate = (
     if (isNullBranchNoise(error)) continue;
     const key = keyForError(error, value);
     const existing = (errors[key] ??= []);
-    const message = messageFor(error);
+    const message = isUnfilled(error, value) ? null : messageFor(error);
     if (message === null) continue;
     if (!existing.includes(message)) existing.push(message);
 
