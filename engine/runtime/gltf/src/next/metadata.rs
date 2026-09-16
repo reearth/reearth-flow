@@ -11,7 +11,7 @@ use reearth_flow_types::{AttributeValue, Feature};
 use serde::Serialize;
 
 use super::glb::{Builder, PrimitiveHandle};
-use crate::metadata::int_type_selector::{SignedIntCollector, UnsignedIntCollector};
+use crate::metadata::int_type_selector::SignedIntCollector;
 use crate::{FLOAT_NO_DATA, STRING_NO_DATA};
 
 const METADATA_SCHEMA_ID: &str = "Schema";
@@ -28,11 +28,10 @@ pub struct MetadataOptions<'a> {
 
 // Decided per column from the values actually present (no schema here); `Bool` counts as numeric.
 // Variants are declared in widening order so a column's kind is the `max` over its values'
-// kinds: unsigned -> signed -> float -> string, each able to represent everything below it.
+// kinds: int -> float -> string, each able to represent everything below it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ColumnKind {
-    UnsignedInt,
-    SignedInt,
+    Int,
     Float64,
     String,
 }
@@ -79,22 +78,23 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
     PropertyTable { properties, rows }
 }
 
-fn as_numeric(value: &AttributeValue) -> Option<f64> {
-    match value {
-        AttributeValue::Number(n) => n.as_f64(),
-        AttributeValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-        _ => None,
-    }
+fn as_int(value: &AttributeValue) -> Option<i64> {
+    value.as_i64().or_else(|| value.as_bool().map(i64::from))
+}
+
+fn as_float(value: &AttributeValue) -> Option<f64> {
+    value
+        .as_f64()
+        .or_else(|| value.as_bool().map(|b| if b { 1.0 } else { 0.0 }))
 }
 
 /// The narrowest kind that can hold `value` on its own. `Bool` rides along as
-/// unsigned 0/1; anything nonnumeric only fits as a string.
+/// 0/1; anything nonnumeric only fits as a string.
 fn value_kind(value: &AttributeValue) -> ColumnKind {
     match value {
-        AttributeValue::Number(n) if n.is_u64() => ColumnKind::UnsignedInt,
-        AttributeValue::Number(n) if n.is_i64() => ColumnKind::SignedInt,
+        AttributeValue::Number(n) if n.is_i64() => ColumnKind::Int,
         AttributeValue::Number(_) => ColumnKind::Float64,
-        AttributeValue::Bool(_) => ColumnKind::UnsignedInt,
+        AttributeValue::Bool(_) => ColumnKind::Int,
         _ => ColumnKind::String,
     }
 }
@@ -128,8 +128,7 @@ pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[Primit
         let (class_property, table_property) = match kind {
             ColumnKind::String => encode_string_column(raw_name, values, builder),
             ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
-            ColumnKind::SignedInt => encode_signed_column(raw_name, values, builder),
-            ColumnKind::UnsignedInt => encode_unsigned_column(raw_name, values, builder),
+            ColumnKind::Int => encode_int_column(raw_name, values, builder),
         };
         class_properties.insert(id.clone(), class_property);
         table_properties.insert(id.clone(), table_property);
@@ -216,7 +215,7 @@ fn encode_float_column<'a>(
 ) -> (ClassProperty, MetadataPropertyTableProperty) {
     let mut value_bytes = Vec::new();
     for value in values {
-        let v = value.and_then(as_numeric).unwrap_or(FLOAT_NO_DATA);
+        let v = value.and_then(as_float).unwrap_or(FLOAT_NO_DATA);
         value_bytes.extend_from_slice(&v.to_le_bytes());
     }
     let values_bufferview = builder.push_buffer_view(&value_bytes);
@@ -236,15 +235,15 @@ fn encode_float_column<'a>(
     )
 }
 
-fn encode_signed_column<'a>(
+fn encode_int_column<'a>(
     raw_name: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
 ) -> (ClassProperty, MetadataPropertyTableProperty) {
     let mut collector = SignedIntCollector::new();
     for value in values {
-        match value.and_then(as_numeric) {
-            Some(n) => collector.push(n as i64),
+        match value.and_then(as_int) {
+            Some(n) => collector.push(n),
             None => collector.push_no_data(),
         }
     }
@@ -257,7 +256,7 @@ fn encode_signed_column<'a>(
         ClassProperty {
             name: raw_name.to_string(),
             type_: "SCALAR",
-            component_type: Some(int_component_type(finalized.byte_size(), true)),
+            component_type: Some(int_component_type(finalized.byte_size())),
             no_data: finalized.no_data_json(),
         },
         MetadataPropertyTableProperty {
@@ -268,48 +267,12 @@ fn encode_signed_column<'a>(
     )
 }
 
-fn encode_unsigned_column<'a>(
-    raw_name: &str,
-    values: impl Iterator<Item = Option<&'a AttributeValue>>,
-    builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
-    let mut collector = UnsignedIntCollector::new();
-    for value in values {
-        match value.and_then(as_numeric) {
-            Some(n) => collector.push(n as u64),
-            None => collector.push_no_data(),
-        }
-    }
-    let finalized = collector.finalize();
-    let mut value_bytes = Vec::new();
-    finalized.encode_all(&mut value_bytes);
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
-
-    (
-        ClassProperty {
-            name: raw_name.to_string(),
-            type_: "SCALAR",
-            component_type: Some(int_component_type(finalized.byte_size(), false)),
-            no_data: finalized.no_data_json(),
-        },
-        MetadataPropertyTableProperty {
-            values: values_bufferview,
-            string_offset_type: None,
-            string_offsets: None,
-        },
-    )
-}
-
-fn int_component_type(byte_size: usize, signed: bool) -> &'static str {
-    match (byte_size, signed) {
-        (1, true) => "INT8",
-        (1, false) => "UINT8",
-        (2, true) => "INT16",
-        (2, false) => "UINT16",
-        (4, true) => "INT32",
-        (4, false) => "UINT32",
-        (8, true) => "INT64",
-        (8, false) => "UINT64",
+fn int_component_type(byte_size: usize) -> &'static str {
+    match byte_size {
+        1 => "INT8",
+        2 => "INT16",
+        4 => "INT32",
+        8 => "INT64",
         _ => unreachable!("int_type_selector only produces 1/2/4/8-byte widths"),
     }
 }
@@ -500,10 +463,10 @@ mod tests {
     #[test]
     fn column_kind_picks_narrowest_matching_type() {
         let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
-        assert_eq!(column_kind(&all_nonneg_ints, "k"), ColumnKind::UnsignedInt);
+        assert_eq!(column_kind(&all_nonneg_ints, "k"), ColumnKind::Int);
 
         let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
-        assert_eq!(column_kind(&has_negative, "k"), ColumnKind::SignedInt);
+        assert_eq!(column_kind(&has_negative, "k"), ColumnKind::Int);
 
         let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
         assert_eq!(
@@ -518,7 +481,7 @@ mod tests {
             "k".to_string(),
             AttributeValue::Bool(true),
         )])];
-        assert_eq!(column_kind(&bool_only, "k"), ColumnKind::UnsignedInt);
+        assert_eq!(column_kind(&bool_only, "k"), ColumnKind::Int);
 
         let has_string = [BTreeMap::from([
             ("k".to_string(), int_number(1)),
