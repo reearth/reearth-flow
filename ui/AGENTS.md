@@ -97,6 +97,18 @@ yarn test --run     # Ensure all tests pass
 
 ## Common Tasks
 
+### Changing the Action Parameter Form
+
+`src/lib/schemaForm/` compiles an action's JSON Schema into a field tree and
+`src/components/SchemaForm/` renders it. Read
+[docs/schema-form.md](docs/schema-form.md) first — the invariants there (nullability
+is carried, validation runs against the published schema, clearing deletes the
+key, dot-path segments are escaped) are the ones whose failures are quiet.
+
+`corpus.test.ts` compiles every action in `engine/schema/actions.json` and fails
+on any shape the renderer cannot draw. When it fails, teach the compiler the
+shape — do not widen the assertion.
+
 ### Adding New Workflow Actions
 
 1. Update server schema for new action type
@@ -134,4 +146,5 @@ See [docs/flow-expr-editor.md](docs/flow-expr-editor.md) for architecture detail
 ## Documentation
 
 - [UI Architecture](docs/architecture.md) - Technologies, data flow, component patterns, environment configuration
+- [Schema Form Architecture](docs/schema-form.md) - Compile pipeline, field kinds, path encoding, invariants
 - [FlowExpr Editor Architecture](docs/flow-expr-editor.md) - Overlay stack, tokenizer, validator, autocomplete
