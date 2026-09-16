@@ -1,2 +1,3 @@
 "gml_id","filename","lod","issue","feature_type"
-"bldg_l13lod1a-0001","49303425_bldg_6697_op.gml",1,"InteriorRingNotContainedInExteriorRing","bldg:Building"
+"bldg_l13lod1a-0001","49303425_bldg_6697_op.gml",1,"IncorrectInteriorOrientation","bldg:Building"
+"bldg_l13lod1a-0001","49303425_bldg_6697_op.gml",1,"SelfIntersection","bldg:Building"

@@ -20,6 +20,8 @@ mod constructor;
 mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};

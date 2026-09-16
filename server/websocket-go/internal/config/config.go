@@ -51,6 +51,13 @@ type Config struct {
 	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
 
+	// AutoVersionEvery caps how often ygo snapshots a changed room. 0 disables.
+	AutoVersionEvery time.Duration
+
+	// KeepSnapshots bounds retained snapshots per room. Applies on the auto path
+	// only and ignores labels, so named snapshots are also evicted: reearth/ygo#212.
+	KeepSnapshots int
+
 	// OTLP tracing config.
 	OTLPEnabled            bool
 	OTLPEndpoint           string
@@ -75,6 +82,9 @@ const (
 	defaultMaxConnections  = 10000
 	defaultMaxPeersPerRoom = 256
 	defaultMaxRooms        = 50000
+
+	defaultAutoVersionEvery = 15 * time.Minute
+	defaultKeepSnapshots    = 50
 
 	defaultOTLPExporterType       = "otlp"
 	defaultOTLPServiceName        = "reearth-flow-websocket"
@@ -120,6 +130,9 @@ func Load() *Config {
 
 		SlowPeerResync: envBool("REEARTH_FLOW_SLOW_PEER_RESYNC", true),
 
+		AutoVersionEvery: envDuration("REEARTH_FLOW_AUTO_VERSION_EVERY", defaultAutoVersionEvery),
+		KeepSnapshots:    envPositive("REEARTH_FLOW_KEEP_SNAPSHOTS", defaultKeepSnapshots),
+
 		OTLPEnabled:            envBool("REEARTH_FLOW_ENABLE_OTLP", false),
 		OTLPEndpoint:           os.Getenv("REEARTH_FLOW_OTLP_ENDPOINT"),
 		GCPProjectID:           os.Getenv("REEARTH_FLOW_GCP_PROJECT_ID"),
@@ -140,6 +153,19 @@ func (c *Config) Validate() error {
 	if raw := os.Getenv("REEARTH_FLOW_WS_PROTECTED"); strings.TrimSpace(raw) != "" {
 		if _, ok := parseBool(raw); !ok {
 			return fmt.Errorf("REEARTH_FLOW_WS_PROTECTED=%q is not a valid boolean (use true/false, on/off, yes/no); refusing to start with an ambiguous WS auth setting", raw)
+		}
+	}
+	// Auto-versioning is ON by default and envDuration silently falls back, so an
+	// unparseable kill switch would leave it running. Use "0" to disable.
+	if raw := os.Getenv("REEARTH_FLOW_AUTO_VERSION_EVERY"); strings.TrimSpace(raw) != "" {
+		d, err := time.ParseDuration(strings.TrimSpace(raw))
+		if err != nil {
+			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is not a valid Go duration (e.g. 15m, 30s; use 0 to disable auto-versioning); refusing to start rather than silently keeping auto-versioning enabled", raw)
+		}
+		// ygo treats <= 0 as disabled, but "0" is the documented spelling, so a
+		// negative value is more likely a typo than an intent.
+		if d < 0 {
+			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is negative; use exactly 0 to disable auto-versioning, or a positive duration such as 15m", raw)
 		}
 	}
 	return nil

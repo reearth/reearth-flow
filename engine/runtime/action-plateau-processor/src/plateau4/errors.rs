@@ -41,18 +41,10 @@ pub(super) enum PlateauProcessorError {
     BuildingUsageAttributeValidator(String),
     #[error("BuildingUsageAttributeValidator Factory error: {0}")]
     BuildingUsageAttributeValidatorFactory(String),
-    #[error("BuildingPartConnectivityChecker error: {0}")]
-    BuildingPartConnectivityChecker(String),
-    #[error("BuildingPartConnectivityChecker Factory error: {0}")]
-    BuildingPartConnectivityCheckerFactory(String),
     #[error("SolidIntersectionTestPairCreator error: {0}")]
     SolidIntersectionTestPairCreator(String),
     #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
     SolidIntersectionTestPairCreatorFactory(String),
-    #[error("TranXlinkDetector error: {0}")]
-    TranXlinkDetector(String),
-    #[error("TranXlinkDetector Factory error: {0}")]
-    TranXlinkDetectorFactory(String),
     #[error("CityGmlMeshBuilder error: {0}")]
     CityGmlMeshBuilder(String),
     #[error("CityGmlMeshBuilder Factory error: {0}")]

@@ -92,7 +92,6 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         </div>
         <Handles
           id={id}
-          readonly={readonly}
           nodeType={type}
           nodeData={data}
           inputs={inputs}

@@ -58,12 +58,14 @@ pub fn to_date_string(dt: &chrono::DateTime<Utc>) -> String {
     dt.format("%Y-%m-%d").to_string()
 }
 
-use chrono::{
-    offset::LocalResult, DateTime as ChronoDateTime, Datelike, FixedOffset, NaiveDate, TimeZone,
-};
+use chrono::{offset::LocalResult, DateTime as ChronoDateTime, Datelike, FixedOffset, TimeZone};
 use serde::{de::Visitor, Deserialize, Serialize};
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
+
+/// Re-exported so callers can build a [`DateTime::NaiveDate`] without depending
+/// on `chrono` themselves.
+pub use chrono::NaiveDate;
 
 /// DateTime enum representing different datetime value types.
 /// Follows the "correct typing" principle:

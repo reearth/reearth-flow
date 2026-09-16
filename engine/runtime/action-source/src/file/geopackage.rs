@@ -46,7 +46,7 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from GeoPackage (.gpkg) files, supporting vector features, tiles, and metadata."
+        "Reads vector features from GeoPackage (.gpkg) files, or the file's spatial reference and extension metadata."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -94,12 +94,7 @@ impl SourceFactory for GeoPackageReaderFactory {
             })?,
             read_mode: params.read_mode,
             layer_name: params.layer_name,
-            _include_metadata: params.include_metadata,
-            tile_format: params.tile_format,
-            _attribute_filter: params.attribute_filter,
-            _batch_size: params.batch_size,
             force_2d: params.force_2d,
-            _spatial_filter: params.spatial_filter,
         };
         Ok(Box::new(GeoPackageReader {
             params: compiled_params,
@@ -119,57 +114,25 @@ pub(super) struct GeoPackageReaderParam {
     #[serde(default)]
     read_mode: GeoPackageReadMode,
     /// # Layer Name
-    /// Name of the layer to read. When omitted, the first available layer is used.
+    /// Name of the layer to read. When omitted, every feature layer in the file is read.
     layer_name: Option<String>,
-    #[serde(default)]
-    include_metadata: bool,
-    /// # Tile Format
-    /// Image format to decode when reading raster tiles. Defaults to PNG.
-    #[serde(default)]
-    tile_format: TileFormat,
-    #[serde(default)]
-    attribute_filter: Option<String>,
-    #[serde(default)]
-    batch_size: Option<usize>,
     /// # Force 2D
-    /// If true, forces all geometries to be 2D (ignoring Z values).
+    /// Drops the Z value from every geometry, producing 2D output.
     #[serde(default, rename = "force2D")]
     force_2d: bool,
-    #[serde(default)]
-    spatial_filter: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum GeoPackageReadMode {
     /// # Features
-    /// Reads vector features (geometry and attributes).
+    /// Reads vector features, each carrying its geometry and attributes.
     #[default]
     Features,
-    /// # Tiles
-    /// Reads raster tiles.
-    Tiles,
-    /// # All
-    /// Reads both vector features and raster tiles.
-    All,
     /// # Metadata Only
-    /// Reads only the file's metadata, without features or tiles.
+    /// Reads the file's spatial reference systems and registered extensions
+    /// instead of its features. Emits one feature per metadata record.
     MetadataOnly,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
-#[serde(rename_all = "lowercase")]
-enum TileFormat {
-    /// # PNG
-    /// Decodes tiles as PNG images.
-    #[default]
-    Png,
-    /// # JPEG
-    /// Decodes tiles as JPEG images.
-    Jpeg,
-    /// # WebP
-    /// Decodes tiles as WebP images.
-    Webp,
 }
 
 #[derive(Debug, Clone)]
@@ -177,12 +140,7 @@ struct GeoPackageReaderCompiledParam {
     common: FileReaderCompiledParam,
     read_mode: GeoPackageReadMode,
     layer_name: Option<String>,
-    _include_metadata: bool,
-    tile_format: TileFormat,
-    _attribute_filter: Option<String>,
-    _batch_size: Option<usize>,
     force_2d: bool,
-    _spatial_filter: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -279,16 +237,8 @@ async fn process_geopackage(
         GeoPackageReadMode::Features => {
             all_features.extend(read_features(&adapter, params).await?);
         }
-        GeoPackageReadMode::Tiles => {
-            // Temporarily disabled tile processing - only read features instead
-            all_features.extend(read_features(&adapter, params).await?);
-        }
-        GeoPackageReadMode::All => {
-            // Temporarily disabled tile processing - only read features
-            all_features.extend(read_features(&adapter, params).await?);
-        }
         GeoPackageReadMode::MetadataOnly => {
-            all_features.extend(read_metadata(&adapter, params).await?);
+            all_features.extend(read_metadata(&adapter).await?);
         }
     }
 
@@ -1134,35 +1084,6 @@ fn parse_geometrycollection(
     ))
 }
 
-#[allow(dead_code)]
-fn get_wkb_size(wkb: &[u8]) -> Result<usize, SourceError> {
-    if wkb.len() < 5 {
-        return Err(SourceError::GeoPackageReader("WKB too short".to_string()));
-    }
-
-    let mut cursor = std::io::Cursor::new(wkb);
-    use byteorder::{LittleEndian, ReadBytesExt};
-
-    let _byte_order = cursor
-        .read_u8()
-        .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read byte order: {e}")))?;
-
-    let wkb_type = cursor
-        .read_u32::<LittleEndian>()
-        .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-
-    let has_z = (wkb_type & 0x80000000) != 0;
-    let has_m = (wkb_type & 0x40000000) != 0;
-    let geom_type = wkb_type & 0x1FFFFFFF;
-
-    let coord_size = 16 + if has_z { 8 } else { 0 } + if has_m { 8 } else { 0 };
-
-    match geom_type {
-        1 => Ok(5 + coord_size),
-        _ => Ok(wkb.len()),
-    }
-}
-
 fn read_coordinates(
     cursor: &mut std::io::Cursor<&[u8]>,
     count: u32,
@@ -1221,156 +1142,7 @@ fn read_coordinates(
     Ok(coords)
 }
 
-#[allow(dead_code)]
-#[cfg(not(feature = "new-geometry"))]
-async fn read_tiles(
-    adapter: &SqlAdapter,
-    params: &GeoPackageReaderCompiledParam,
-) -> Result<Vec<Feature>, SourceError> {
-    let layers = if let Some(ref layer_name) = params.layer_name {
-        vec![layer_name.clone()]
-    } else {
-        get_tile_layers(adapter).await?
-    };
-
-    let mut all_features = Vec::new();
-    for layer in layers {
-        let features = read_layer_tiles(adapter, &layer, &params.tile_format).await?;
-        all_features.extend(features);
-    }
-
-    Ok(all_features)
-}
-
-#[allow(dead_code)]
-async fn get_tile_layers(adapter: &SqlAdapter) -> Result<Vec<String>, SourceError> {
-    let query = "SELECT table_name FROM gpkg_contents WHERE data_type = 'tiles'";
-    let rows = adapter
-        .fetch_many(query)
-        .await
-        .map_err(|e| SourceError::GeoPackageReader(format!("Failed to query tile layers: {e}")))?;
-
-    let layers: Vec<String> = rows
-        .into_iter()
-        .filter_map(|row| row.try_get::<String, _>(0).ok())
-        .collect();
-
-    Ok(layers)
-}
-
-#[allow(dead_code)]
-#[cfg(not(feature = "new-geometry"))]
-async fn read_layer_tiles(
-    adapter: &SqlAdapter,
-    layer_name: &str,
-    tile_format: &TileFormat,
-) -> Result<Vec<Feature>, SourceError> {
-    let query =
-        format!("SELECT zoom_level, tile_column, tile_row, tile_data FROM \"{layer_name}\"");
-    let rows = adapter.fetch_many(&query).await.map_err(|e| {
-        SourceError::GeoPackageReader(format!("Failed to query tiles from {layer_name}: {e}"))
-    })?;
-
-    let mut features = Vec::new();
-    for row in rows {
-        let zoom = row.try_get::<i32, _>(0).unwrap_or(0);
-        let col = row.try_get::<i32, _>(1).unwrap_or(0);
-        let tile_row = row.try_get::<i32, _>(2).unwrap_or(0);
-        let tile_data = row.try_get::<Vec<u8>, _>(3).unwrap_or_default();
-
-        let mut attributes = IndexMap::new();
-        // Add a marker to indicate this is from a tile layer
-        attributes.insert(
-            Attribute::new("_geopackage_source".to_string()),
-            AttributeValue::String("tiles".to_string()),
-        );
-        attributes.insert(
-            Attribute::new("_geopackage_layer".to_string()),
-            AttributeValue::String(layer_name.to_string()),
-        );
-        attributes.insert(
-            Attribute::new("zoomLevel".to_string()),
-            AttributeValue::Number(serde_json::Number::from(zoom)),
-        );
-        attributes.insert(
-            Attribute::new("tileColumn".to_string()),
-            AttributeValue::Number(serde_json::Number::from(col)),
-        );
-        attributes.insert(
-            Attribute::new("tileRow".to_string()),
-            AttributeValue::Number(serde_json::Number::from(tile_row)),
-        );
-
-        let format_str = match tile_format {
-            TileFormat::Png => "png",
-            TileFormat::Jpeg => "jpeg",
-            TileFormat::Webp => "webp",
-        };
-        attributes.insert(
-            Attribute::new("format".to_string()),
-            AttributeValue::String(format_str.to_string()),
-        );
-
-        let encoded = base64::engine::general_purpose::STANDARD.encode(&tile_data);
-        attributes.insert(
-            Attribute::new("tileData".to_string()),
-            AttributeValue::String(encoded),
-        );
-
-        let bounds = calculate_tile_bounds(zoom, col, tile_row);
-        let geometry = create_tile_bounds_geometry(bounds);
-
-        let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
-        features.push(feature);
-    }
-
-    Ok(features)
-}
-
-#[allow(dead_code)]
-fn calculate_tile_bounds(zoom: i32, col: i32, row: i32) -> (f64, f64, f64, f64) {
-    let n = 2_f64.powi(zoom);
-    let lon_min = col as f64 / n * 360.0 - 180.0;
-    let lon_max = (col + 1) as f64 / n * 360.0 - 180.0;
-
-    let lat_rad_min = (std::f64::consts::PI * (1.0 - 2.0 * (row + 1) as f64 / n))
-        .sinh()
-        .atan();
-    let lat_rad_max = (std::f64::consts::PI * (1.0 - 2.0 * row as f64 / n))
-        .sinh()
-        .atan();
-
-    let lat_min = lat_rad_min.to_degrees();
-    let lat_max = lat_rad_max.to_degrees();
-
-    (lon_min, lat_min, lon_max, lat_max)
-}
-
-#[allow(dead_code)]
-fn create_tile_bounds_geometry(bounds: (f64, f64, f64, f64)) -> Geometry {
-    let (lon_min, lat_min, lon_max, lat_max) = bounds;
-
-    let coords = vec![
-        (lon_min, lat_min),
-        (lon_max, lat_min),
-        (lon_max, lat_max),
-        (lon_min, lat_max),
-        (lon_min, lat_min),
-    ];
-
-    Geometry {
-        epsg: Some(4326),
-        value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(Polygon2D::new(
-            LineString2D::from(coords),
-            vec![],
-        ))),
-    }
-}
-
-async fn read_metadata(
-    adapter: &SqlAdapter,
-    _params: &GeoPackageReaderCompiledParam,
-) -> Result<Vec<Feature>, SourceError> {
+async fn read_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, SourceError> {
     let mut all_features = Vec::new();
 
     all_features.extend(read_srs_metadata(adapter).await?);
@@ -1527,17 +1299,6 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_tile_bounds() {
-        let bounds = calculate_tile_bounds(0, 0, 0);
-        assert!(bounds.0 < -170.0);
-        assert!(bounds.2 > 170.0);
-
-        let bounds2 = calculate_tile_bounds(1, 0, 0);
-        assert!(bounds2.0 < -170.0);
-        assert!(bounds2.2 < 10.0);
-    }
-
-    #[test]
     fn test_camelcase_serialization() {
         use crate::file::reader::runner::FileReaderCommonParam;
         use reearth_flow_types::{Code, CodeType};
@@ -1552,12 +1313,7 @@ mod tests {
             },
             read_mode: GeoPackageReadMode::Features,
             layer_name: Some("test_layer".to_string()),
-            include_metadata: true,
-            tile_format: TileFormat::Png,
-            attribute_filter: None,
-            batch_size: None,
             force_2d: false,
-            spatial_filter: None,
         };
 
         let json = serde_json::to_string(&params).unwrap();
@@ -1565,14 +1321,10 @@ mod tests {
         // Check that snake_case fields are serialized as camelCase
         assert!(json.contains("\"readMode\""));
         assert!(json.contains("\"layerName\""));
-        assert!(json.contains("\"includeMetadata\""));
-        assert!(json.contains("\"tileFormat\""));
         assert!(json.contains("\"force2D\"")); // Verify explicit rename
 
         // Check that values are serialized correctly
         assert!(json.contains("\"layerName\":\"test_layer\""));
-        assert!(json.contains("\"includeMetadata\":true"));
-        assert!(json.contains("\"tileFormat\":\"png\""));
         assert!(json.contains("\"readMode\":\"features\""));
     }
 }

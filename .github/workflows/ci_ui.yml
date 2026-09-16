@@ -35,6 +35,20 @@ jobs:
             ${{ runner.os }}-yarn-
       - name: Install
         run: yarn install --immutable
+      # The UI keeps its own copy of the engine's intermediate-data schema: it
+      # cannot import across the package boundary, because the web image builds
+      # with `context: ui` and so has no `engine/` tree. The engine owns the
+      # original and never writes outside itself, so the copy is refreshed here
+      # by hand — this fails the build when the two drift.
+      - name: engine schema copy is in sync
+        run: |
+          schema=schema/feature-intermediate.schema.json
+          copy=src/lib/intermediateData/feature-intermediate.schema.json
+          if ! cmp -s "../engine/$schema" "$copy"; then
+            echo "::error file=ui/$copy::Out of date with engine/$schema. From the repo root, run: cp engine/$schema ui/$copy"
+            diff "../engine/$schema" "$copy" || true
+            exit 1
+          fi
       - name: type
         run: yarn run type
       - name: eslint

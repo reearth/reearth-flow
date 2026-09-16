@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
@@ -21,6 +22,7 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/log"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -38,12 +40,12 @@ func Start(debug bool, version string) {
 
 	initProfiler(conf.Profiler, version)
 
-	closer := initTracer(ctx, conf)
+	tracerProvider := initTracer(ctx, conf)
 	defer func() {
-		if closer != nil {
-			if err := closer.Close(); err != nil {
-				log.Errorf("Failed to close tracer: %s\n", err.Error())
-			}
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tracerProvider.Shutdown(shutdownCtx); err != nil {
+			log.Errorf("Failed to shut down tracer: %s\n", err.Error())
 		}
 	}()
 
@@ -63,7 +65,7 @@ func Start(debug bool, version string) {
 
 	// AccountGQLClient
 	const accountsTimeoutSec = 30
-	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, authserver.NewDynamicAuthTransport())
+	accountGQLClient := gqlclient.NewClient(conf.AccountsApiHost, accountsTimeoutSec, otelhttp.NewTransport(authserver.NewDynamicAuthTransport()))
 
 	// PermissionChecker
 	permissionChecker := permission.NewChecker(accountGQLClient.CerbosRepo, accountGQLClient.WorkspaceRepo, rbac.ServiceName)

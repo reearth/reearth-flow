@@ -10,7 +10,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_runtime::errors::BoxedError;
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use crate::common::building_usage_attribute_validator::{
     classify_city_code, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
@@ -65,10 +65,7 @@ impl BuildingUsageAttributeStrategy for Plateau6BuildingUsageStrategy {
 /// `bldg:adeOfAbstractBuilding`, which may itself be a single Map or an Array of
 /// Maps depending on how many ADE hooks the building carries. When the attribute
 /// is stored as an Array, the first Map element is used.
-fn ade_child_map<'a>(
-    ade: Option<&'a AttributeValue>,
-    key: &str,
-) -> Option<&'a HashMap<String, AttributeValue>> {
+fn ade_child_map<'a>(ade: Option<&'a AttributeValue>, key: &str) -> Option<&'a Attributes> {
     let child = match ade? {
         AttributeValue::Map(map) => map.get(key),
         AttributeValue::Array(items) => items.iter().find_map(|item| match item {

@@ -33,7 +33,6 @@ type Querier interface {
 	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
 	GetEdgeExecutionByJobEdgeID(ctx context.Context, arg GetEdgeExecutionByJobEdgeIDParams) (EdgeExecution, error)
 	GetJob(ctx context.Context, id string) (Job, error)
-	GetNodeExecutionByJobNodeID(ctx context.Context, arg GetNodeExecutionByJobNodeIDParams) (NodeExecution, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
@@ -59,7 +58,6 @@ type Querier interface {
 	UpsertDeployment(ctx context.Context, arg UpsertDeploymentParams) error
 	UpsertEdgeExecution(ctx context.Context, arg UpsertEdgeExecutionParams) error
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
-	UpsertNodeExecution(ctx context.Context, arg UpsertNodeExecutionParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
 	UpsertProject(ctx context.Context, arg UpsertProjectParams) error
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error

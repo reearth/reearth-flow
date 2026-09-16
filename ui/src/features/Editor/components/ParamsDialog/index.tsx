@@ -12,9 +12,10 @@ import {
   DialogTitle,
 } from "@flow/components";
 import { applySchemaDefaults } from "@flow/components/SchemaForm/patchSchemaTypes";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser, Node } from "@flow/types";
+import { normalizeParams } from "@flow/utils";
 
 import {
   ParamEditor,
@@ -63,7 +64,7 @@ const ParamsDialog: React.FC<Props> = ({
   onParamFieldFocus,
 }) => {
   const t = useT();
-  const { isLocked } = useEditorContext();
+  const readonly = useIsReadOnly();
   const clientId = String(yDoc?.clientID ?? "local");
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
@@ -166,9 +167,12 @@ const ParamsDialog: React.FC<Props> = ({
         "paramsPatch",
       );
 
-      const updatedParams = paramsSchema
-        ? applySchemaDefaults(paramsSchema, mergedParams)
-        : mergedParams;
+      // Normalize after defaults are applied to prevent issues with whitespace-only values in flowExpr fields, which are considered empty.
+      const updatedParams = normalizeParams(
+        paramsSchema
+          ? applySchemaDefaults(paramsSchema, mergedParams)
+          : mergedParams,
+      );
 
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
@@ -221,7 +225,7 @@ const ParamsDialog: React.FC<Props> = ({
         onDataSubmit?.([
           {
             nodeId: id,
-            updatedParams: newParams,
+            updatedParams: normalizeParams(newParams),
             updatedCustomizations,
             paramsSchema,
           },
@@ -391,7 +395,7 @@ const ParamsDialog: React.FC<Props> = ({
           </DialogHeader>
           {openNode && (
             <ParamEditor
-              readonly={isLocked}
+              readonly={readonly}
               nodeId={openNode.id}
               nodeMeta={openNode.data}
               nodeType={openNode.type}

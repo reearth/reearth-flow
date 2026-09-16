@@ -8,11 +8,10 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 
-use reearth_flow_types::AttributeValue;
+use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::warn;
 
 use super::errors::AttributeProcessorError;
 
@@ -25,7 +24,7 @@ impl ProcessorFactory for AttributeRangeMapperFactory {
     }
 
     fn description(&self) -> &str {
-        "Map attribute values to ranges and assign corresponding output values"
+        "Classifies a numeric attribute by looking its value up in a table of ranges and writing the matched range's output value to another attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -34,6 +33,10 @@ impl ProcessorFactory for AttributeRangeMapperFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Attribute"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["mapping"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -80,25 +83,62 @@ struct AttributeRangeMapper {
 }
 
 /// # Attribute Range Mapper Parameters
+/// Defines the attribute to classify, the table of ranges to match it against, and where the
+/// matched value is written.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeRangeMapperParam {
     /// # Input Attribute
-    /// The attribute to evaluate for range mapping
+    /// Attribute holding the value to classify. Numbers are used directly, numeric strings are
+    /// parsed, and booleans count as 1 and 0. Any other type is treated as unclassifiable and
+    /// takes the default value.
     pub input_attribute: String,
 
     /// # Output Attribute
-    /// The attribute to store the mapped value
+    /// Attribute the matched value is written to. An existing value is overwritten.
     pub output_attribute: String,
 
     /// # Range Lookup Table
-    /// List of ranges and their corresponding output values
+    /// Ranges to test the input against, in order. The first match wins, so overlapping ranges
+    /// resolve to whichever is listed first.
     pub range_table: Vec<RangeEntry>,
 
     /// # Default Value
-    /// Value to use when input doesn't match any range (can be string, number, boolean, etc.)
+    /// Value written when no range matches, and also when the input attribute is absent or is
+    /// not a number, numeric string, or boolean. When omitted, those features pass through with
+    /// the output attribute left unset rather than being rejected.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_value: Option<Value>,
+    pub default_value: Option<MappedValue>,
+}
+
+/// # Mapped Value
+///
+/// A value written to an attribute. Accepts text, a number, or true/false, written as the type
+/// given — `"3"` stays text and `3` stays a number.
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(untagged)]
+pub enum MappedValue {
+    /// # Text
+    /// Written as text.
+    Text(String),
+    /// # Number
+    /// Written as a number.
+    Number(serde_json::Number),
+    /// # True or False
+    /// Written as a true/false value.
+    Boolean(bool),
+}
+
+impl MappedValue {
+    /// The attribute value this writes. Closed over the three scalar types, so unlike an
+    /// open JSON value it cannot fail to convert at runtime.
+    fn to_attribute_value(&self) -> AttributeValue {
+        match self {
+            MappedValue::Text(value) => AttributeValue::String(value.clone()),
+            MappedValue::Number(value) => AttributeValue::Number(value.clone()),
+            MappedValue::Boolean(value) => AttributeValue::Bool(*value),
+        }
+    }
 }
 
 /// # Range Entry
@@ -106,16 +146,56 @@ pub struct AttributeRangeMapperParam {
 #[serde(rename_all = "camelCase")]
 pub struct RangeEntry {
     /// # From (Minimum)
-    /// The minimum value of the range (inclusive)
+    /// Lower bound of the range, inclusive.
     pub from: f64,
 
     /// # To (Maximum)
-    /// The maximum value of the range (exclusive)
+    /// Upper bound of the range, exclusive — a value equal to it falls into the next range.
+    /// Setting it equal to the lower bound makes the entry match that one exact value instead.
     pub to: f64,
 
     /// # Output Value
-    /// The value to assign when input falls within this range (can be string, number, boolean, etc.)
-    pub output_value: Value,
+    /// Value written to the output attribute when the input falls in this range.
+    pub output_value: MappedValue,
+}
+
+impl AttributeRangeMapper {
+    /// The value to write to the output attribute, or `None` to leave it unset.
+    ///
+    /// A feature whose input is a number, a numeric string or a boolean is tested against each
+    /// range in order and takes the first match. Anything else — including an absent attribute —
+    /// takes the default value, which is itself optional.
+    fn mapped_value(&self, feature: &Feature) -> Option<AttributeValue> {
+        let numeric_value: Option<f64> =
+            feature
+                .get(&self.params.input_attribute)
+                .and_then(|v| match v {
+                    AttributeValue::Number(n) => n.as_f64(),
+                    AttributeValue::String(s) => s.parse::<f64>().ok(),
+                    AttributeValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+                    _ => None,
+                });
+
+        if let Some(num_val) = numeric_value {
+            for range in &self.params.range_table {
+                // A range is [from, to) — inclusive start, exclusive end — except when the
+                // bounds are equal, which matches that one exact value.
+                let is_in_range = if (range.to - range.from).abs() < f64::EPSILON {
+                    (num_val - range.from).abs() < f64::EPSILON
+                } else {
+                    num_val >= range.from && num_val < range.to
+                };
+                if is_in_range {
+                    return Some(range.output_value.to_attribute_value());
+                }
+            }
+        }
+
+        self.params
+            .default_value
+            .as_ref()
+            .map(MappedValue::to_attribute_value)
+    }
 }
 
 impl Processor for AttributeRangeMapper {
@@ -125,81 +205,8 @@ impl Processor for AttributeRangeMapper {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-
-        // Get the input attribute value
-        let input_value = feature.get(&self.params.input_attribute);
-
-        // Convert to f64 for range comparison
-        let numeric_value: Option<f64> = input_value.and_then(|v| match v {
-            AttributeValue::Number(n) => n.as_f64(),
-            AttributeValue::String(s) => s.parse::<f64>().ok(),
-            AttributeValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-            _ => None,
-        });
-
-        // Find matching range and set output value
-        if let Some(num_val) = numeric_value {
-            let mut matched = false;
-
-            for range in &self.params.range_table {
-                // Check if value falls within range
-                // Use inclusive for both bounds if it's a single-value range
-                // Otherwise use [from, to) - inclusive start, exclusive end
-                let is_in_range = if (range.to - range.from).abs() < f64::EPSILON {
-                    (num_val - range.from).abs() < f64::EPSILON
-                } else {
-                    num_val >= range.from && num_val < range.to
-                };
-
-                if is_in_range {
-                    // Convert Value to AttributeValue
-                    match serde_json::from_value(range.output_value.clone()) {
-                        Ok(attr_value) => {
-                            feature.insert(self.params.output_attribute.clone(), attr_value);
-                        }
-                        Err(e) => {
-                            warn!(
-                                "Failed to deserialize range output value for attribute '{}': {}. Feature will pass through without output attribute.",
-                                self.params.output_attribute, e
-                            );
-                        }
-                    }
-                    matched = true;
-                    break;
-                }
-            }
-
-            // Apply default value if no range matched
-            if !matched {
-                if let Some(default_value) = &self.params.default_value {
-                    match serde_json::from_value(default_value.clone()) {
-                        Ok(attr_value) => {
-                            feature.insert(self.params.output_attribute.clone(), attr_value);
-                        }
-                        Err(e) => {
-                            warn!(
-                                "Failed to deserialize default value for attribute '{}': {}. Feature will pass through without output attribute.",
-                                self.params.output_attribute, e
-                            );
-                        }
-                    }
-                }
-            }
-        } else {
-            // If input value is not numeric, apply default value
-            if let Some(default_value) = &self.params.default_value {
-                match serde_json::from_value(default_value.clone()) {
-                    Ok(attr_value) => {
-                        feature.insert(self.params.output_attribute.clone(), attr_value);
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to deserialize default value for attribute '{}': {}. Feature will pass through without output attribute.",
-                            self.params.output_attribute, e
-                        );
-                    }
-                }
-            }
+        if let Some(value) = self.mapped_value(&feature) {
+            feature.insert(self.params.output_attribute.clone(), value);
         }
 
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
@@ -223,7 +230,7 @@ impl Processor for AttributeRangeMapper {
 mod tests {
     use super::*;
     use reearth_flow_types::{Attributes, Feature};
-    use serde_json::{json, Number};
+    use serde_json::Number;
 
     #[test]
     fn test_range_mapper_numeric_input() {
@@ -234,20 +241,20 @@ mod tests {
                 RangeEntry {
                     from: 0.0,
                     to: 5.0,
-                    output_value: json!("#ff0000"),
+                    output_value: MappedValue::Text("#ff0000".to_string()),
                 },
                 RangeEntry {
                     from: 5.0,
                     to: 10.0,
-                    output_value: json!("#00ff00"),
+                    output_value: MappedValue::Text("#00ff00".to_string()),
                 },
                 RangeEntry {
                     from: 10.0,
                     to: 20.0,
-                    output_value: json!("#0000ff"),
+                    output_value: MappedValue::Text("#0000ff".to_string()),
                 },
             ],
-            default_value: Some(json!("#cccccc")),
+            default_value: Some(MappedValue::Text("#cccccc".to_string())),
         };
 
         let processor = AttributeRangeMapper { params };
@@ -306,12 +313,12 @@ mod tests {
                 RangeEntry {
                     from: 0.0,
                     to: 10.0,
-                    output_value: json!("low"),
+                    output_value: MappedValue::Text("low".to_string()),
                 },
                 RangeEntry {
                     from: 10.0,
                     to: 20.0,
-                    output_value: json!("high"),
+                    output_value: MappedValue::Text("high".to_string()),
                 },
             ],
             default_value: None,
@@ -351,20 +358,20 @@ mod tests {
                 RangeEntry {
                     from: 0.0,
                     to: 60.0,
-                    output_value: json!("F"),
+                    output_value: MappedValue::Text("F".to_string()),
                 },
                 RangeEntry {
                     from: 60.0,
                     to: 80.0,
-                    output_value: json!("C"),
+                    output_value: MappedValue::Text("C".to_string()),
                 },
                 RangeEntry {
                     from: 80.0,
                     to: 100.0,
-                    output_value: json!("A"),
+                    output_value: MappedValue::Text("A".to_string()),
                 },
             ],
-            default_value: Some(json!("N/A")),
+            default_value: Some(MappedValue::Text("N/A".to_string())),
         };
 
         let processor = AttributeRangeMapper { params };
@@ -386,48 +393,84 @@ mod tests {
         );
     }
 
-    // Helper function to simulate feature processing
+    /// The description has always claimed booleans count as 1 and 0, but the old test helper
+    /// reimplemented the coercion and omitted that arm, so it was never exercised.
+    #[test]
+    fn test_range_mapper_boolean_input() {
+        let processor = AttributeRangeMapper {
+            params: AttributeRangeMapperParam {
+                input_attribute: "flag".to_string(),
+                output_attribute: "label".to_string(),
+                range_table: vec![
+                    RangeEntry {
+                        from: 0.0,
+                        to: 1.0,
+                        output_value: MappedValue::Text("false".to_string()),
+                    },
+                    RangeEntry {
+                        from: 1.0,
+                        to: 2.0,
+                        output_value: MappedValue::Text("true".to_string()),
+                    },
+                ],
+                default_value: None,
+            },
+        };
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert("flag", AttributeValue::Bool(true));
+        assert_eq!(
+            map_feature(&processor, &feature).get("label"),
+            Some(&AttributeValue::String("true".to_string()))
+        );
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert("flag", AttributeValue::Bool(false));
+        assert_eq!(
+            map_feature(&processor, &feature).get("label"),
+            Some(&AttributeValue::String("false".to_string()))
+        );
+    }
+
+    /// A number written as a number, not coerced to text.
+    #[test]
+    fn test_range_mapper_writes_a_number_as_a_number() {
+        let processor = AttributeRangeMapper {
+            params: AttributeRangeMapperParam {
+                input_attribute: "score".to_string(),
+                output_attribute: "band".to_string(),
+                range_table: vec![RangeEntry {
+                    from: 0.0,
+                    to: 10.0,
+                    output_value: MappedValue::Number(Number::from(1)),
+                }],
+                default_value: Some(MappedValue::Boolean(false)),
+            },
+        };
+
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert("score", AttributeValue::Number(Number::from(5)));
+        assert_eq!(
+            map_feature(&processor, &feature).get("band"),
+            Some(&AttributeValue::Number(Number::from(1)))
+        );
+
+        // Nothing matches, so the default applies — and keeps its own type.
+        let mut feature = Feature::new_with_attributes(Attributes::new());
+        feature.insert("score", AttributeValue::Number(Number::from(99)));
+        assert_eq!(
+            map_feature(&processor, &feature).get("band"),
+            Some(&AttributeValue::Bool(false))
+        );
+    }
+
+    /// Runs the processor's own classification over `feature`, so the tests exercise the
+    /// same code path `process` does rather than a copy of it.
     fn map_feature(processor: &AttributeRangeMapper, feature: &Feature) -> Feature {
         let mut result = feature.clone();
-
-        let input_value = feature.get(&processor.params.input_attribute);
-        let numeric_value: Option<f64> = input_value.and_then(|v| match v {
-            AttributeValue::Number(n) => n.as_f64(),
-            AttributeValue::String(s) => s.parse::<f64>().ok(),
-            _ => None,
-        });
-
-        if let Some(num_val) = numeric_value {
-            let mut matched = false;
-            for range in &processor.params.range_table {
-                let is_in_range = if (range.to - range.from).abs() < f64::EPSILON {
-                    (num_val - range.from).abs() < f64::EPSILON
-                } else {
-                    num_val >= range.from && num_val < range.to
-                };
-
-                if is_in_range {
-                    if let Ok(attr_value) = serde_json::from_value(range.output_value.clone()) {
-                        result.insert(processor.params.output_attribute.clone(), attr_value);
-                    }
-                    matched = true;
-                    break;
-                }
-            }
-
-            if !matched {
-                if let Some(default_value) = &processor.params.default_value {
-                    if let Ok(attr_value) = serde_json::from_value(default_value.clone()) {
-                        result.insert(processor.params.output_attribute.clone(), attr_value);
-                    }
-                }
-            }
-        } else if let Some(default_value) = &processor.params.default_value {
-            if let Ok(attr_value) = serde_json::from_value(default_value.clone()) {
-                result.insert(processor.params.output_attribute.clone(), attr_value);
-            }
+        if let Some(value) = processor.mapped_value(feature) {
+            result.insert(processor.params.output_attribute.clone(), value);
         }
-
         result
     }
 }

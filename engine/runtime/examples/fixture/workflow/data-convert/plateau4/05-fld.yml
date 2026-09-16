@@ -133,10 +133,10 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env["cityGmlPath"],
-              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables["cityGmlPath"],
+              "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
@@ -163,7 +163,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+          value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
   - id: e2441531-649a-4dcd-916f-ac59f7d56de3
     name: AttributeManagerPreFlattener
@@ -286,7 +286,7 @@ graphs:
       compressOutput:
         type: flowExpr
         value: |
-          citygml = env["cityGmlPath"].split("/")[-1].split("_op_")[0];
+          citygml = variables["cityGmlPath"].split("/")[-1].split("_op_")[0];
           udx_dirs = attributes["udxDirs"].replace("/", "_");
           scale = "";
           if attributes.get("__scale") { scale = "_" + attributes["__scale"] }

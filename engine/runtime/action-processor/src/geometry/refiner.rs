@@ -11,11 +11,11 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REMAIN_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::geometry::Geometry as TypeGeometry;
 use reearth_flow_types::Feature;
-use reearth_flow_types::{CityGmlGeometry, GeometryValue};
+use reearth_flow_types::GeometryValue;
 
 use serde_json::Value;
 use std::collections::HashMap;
@@ -32,7 +32,7 @@ impl ProcessorFactory for RefinerFactory {
     }
 
     fn description(&self) -> &str {
-        "Refine Complex Geometries into Simple Geometries"
+        "Refines complex geometry types into simpler primitives."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -52,7 +52,7 @@ impl ProcessorFactory for RefinerFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone(), REMAIN_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -79,48 +79,41 @@ impl Processor for Refiner {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = feature.geometry.clone();
-        let geometry_value = geometry.value.clone();
-
-        let gc = geometry.clone();
-        let geom_epsg = gc.epsg;
+        let geom_epsg = geometry.epsg;
         let attributes = feature.attributes.clone();
 
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), REMAIN_PORT.clone()));
-
-        match geometry_value {
-            GeometryValue::None => {}
-            GeometryValue::CityGmlGeometry(city_gml) => {
-                let _geometries = Self::refine_city_gml(&city_gml);
-            }
-            GeometryValue::FlowGeometry2D(flow_2d) => {
-                let geometries = Self::refine_2d(&flow_2d);
-                for geo in geometries {
-                    let feature = Feature {
-                        id: Uuid::new_v4(),
-                        geometry: Arc::new(TypeGeometry {
-                            epsg: geom_epsg,
-                            value: GeometryValue::FlowGeometry2D(geo),
-                        }),
-                        attributes: attributes.clone(),
-                    };
-                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
-                }
-            }
-            GeometryValue::FlowGeometry3D(flow_3d) => {
-                let geometries = Self::refine_3d(&flow_3d);
-                for geo in geometries {
-                    let feature = Feature {
-                        id: Uuid::new_v4(),
-                        geometry: Arc::new(TypeGeometry {
-                            epsg: geom_epsg,
-                            value: GeometryValue::FlowGeometry3D(geo),
-                        }),
-                        attributes: attributes.clone(),
-                    };
-                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
-                }
-            }
+        let refined: Vec<GeometryValue> = match &geometry.value {
+            GeometryValue::None => Vec::new(),
+            // TODO: refine CityGML geometry. Until then it passes through whole.
+            GeometryValue::CityGmlGeometry(_) => Vec::new(),
+            GeometryValue::FlowGeometry2D(flow_2d) => Self::refine_2d(flow_2d)
+                .into_iter()
+                .map(GeometryValue::FlowGeometry2D)
+                .collect(),
+            GeometryValue::FlowGeometry3D(flow_3d) => Self::refine_3d(flow_3d)
+                .into_iter()
+                .map(GeometryValue::FlowGeometry3D)
+                .collect(),
         };
+
+        // Geometry this action cannot break down is passed through unchanged
+        // rather than dropped, so every input feature leaves on `features`.
+        if refined.is_empty() {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
+            return Ok(());
+        }
+
+        for value in refined {
+            let feature = Feature {
+                id: Uuid::new_v4(),
+                geometry: Arc::new(TypeGeometry {
+                    epsg: geom_epsg,
+                    value,
+                }),
+                attributes: attributes.clone(),
+            };
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        }
 
         Ok(())
     }
@@ -142,11 +135,6 @@ impl Processor for Refiner {
 type RefinedGeometry<T, Z> = (Vec<Point<T, Z>>, Vec<LineString<T, Z>>, Vec<Polygon<T, Z>>);
 
 impl Refiner {
-    fn refine_city_gml(_geos: &CityGmlGeometry) -> Vec<CityGmlGeometry> {
-        // not implemented
-        Vec::new()
-    }
-
     fn refine_2d(geos: &Geometry2D) -> Vec<Geometry2D<f64>> {
         let (points, lines, polygons) = Self::refine_geometry(geos.clone());
         let mut geometories: Vec<Geometry2D<f64>> = Vec::new();

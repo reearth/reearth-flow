@@ -15,8 +15,11 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type Project struct {
@@ -63,12 +66,23 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 		return nil, err
 	}
 
-	if len(projects) == 0 {
+	// FindByIDs pads not-found/unreadable entries with nil, so the first
+	// element isn't necessarily a project — use the first non-nil one.
+	var ws accountsid.WorkspaceID
+	var haveWorkspace bool
+	for _, p := range projects {
+		if p != nil {
+			ws, haveWorkspace = p.Workspace(), true
+			break
+		}
+	}
+
+	if !haveWorkspace {
 		if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := i.checkPermission(ctx, rbac.ActionList, projects[0].Workspace()); err != nil { // single-workspace batch assumption
+		if err := i.checkPermission(ctx, rbac.ActionList, ws); err != nil { // single-workspace batch assumption
 			return nil, err
 		}
 	}
@@ -182,26 +196,46 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 		return err
 	}
 
-	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		prj, err := i.projectRepo.FindByID(ctx, projectID)
 		if err != nil {
 			return err
 		}
 
 		deleter := ProjectDeleter{
-			File:      i.file,
-			Project:   i.projectRepo,
-			Websocket: i.websocket,
+			File:    i.file,
+			Project: i.projectRepo,
 		}
 		if err := deleter.Delete(ctx, prj, true); err != nil {
 			return err
 		}
 
 		return i.jobRepo.RemoveByProject(ctx, projectID)
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Only now is the project row durably gone: deleting the document earlier
+	// would destroy it even if the transaction failed or was retried.
+	if i.websocket != nil {
+		if err := i.websocket.DeleteDocument(ctx, projectID.String()); err != nil {
+			log.Errorfc(ctx, "project: could not delete websocket document for %s: %v", projectID, err)
+		}
+	}
+
+	return nil
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.Project.Run")
+	span.SetAttributes(attribute.String("project.id", p.ProjectID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
 	proj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
 	if err != nil {
 		return nil, err
@@ -209,7 +243,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if proj == nil {
 		return nil, rerror.ErrNotFound
 	}
-	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
+	// A debug run executes the project without changing it, so anyone who can
+	// see the project may run one. ActionRead is the only rule carrying
+	// reader; ActionAny is writer and above, ActionEdit maintainer and above.
+	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -322,8 +359,24 @@ const previewSampleSizeCap = 1000
 // dedicated code path: it never calls Run, tags the job Mode=preview-schema, does
 // NOT upload metadata (the probe does not consume it), and dispatches through the
 // worker's dedicated probe-schema route.
-func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaParam) (_ *job.Job, err error) {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.Project.PreviewSchema")
+	span.SetAttributes(attribute.String("project.id", p.ProjectID.String()))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+		}
+		span.End()
+	}()
+
+	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if prj == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionEdit, prj.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -338,14 +391,6 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 	variables := parametersToVariables(p.Parameters)
 	sampleSize := capSampleSize(p.SampleSize)
 	useCloudRun := i.cloudRunWorker != nil
-
-	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-	if err != nil {
-		return nil, err
-	}
-	if prj == nil {
-		return nil, rerror.ErrNotFound
-	}
 
 	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
 	if err != nil {
@@ -463,7 +508,7 @@ func parametersToVariables(params []*parameter.Parameter) map[string]string {
 			continue
 		}
 		// A parameter with no default must not be sent: stringifying nil yields
-		// the literal "<nil>", which would override the workflow's env.get(...)
+		// the literal "<nil>", which would override the workflow's variables.get(...)
 		// resolution / the engine default. Leave it unset instead.
 		dv := p.DefaultValue()
 		if dv == nil {

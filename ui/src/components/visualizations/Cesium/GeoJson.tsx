@@ -5,7 +5,7 @@ import {
   Entity,
   GeoJsonDataSource,
 } from "cesium";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   useCesium,
   GeoJsonDataSource as ResiumGeoJsonDataSource,
@@ -26,47 +26,6 @@ type EntityRecord = {
   origPolylineMaterial?: any;
   origBillboardColor?: any;
 };
-
-function sanitizeCoords(coords: any): any {
-  if (!Array.isArray(coords)) return null;
-
-  if (typeof coords[0] === "number") {
-    const [lon, lat] = coords;
-    if (typeof lon === "number" && typeof lat === "number") {
-      return coords;
-    }
-    return null;
-  }
-
-  const cleaned = coords
-    .map((c) => sanitizeCoords(c))
-    .filter((c) => c !== null);
-
-  return cleaned.length ? cleaned : null;
-}
-
-function sanitizeGeoJson(geoJson: any) {
-  if (!geoJson) return undefined;
-
-  if (geoJson.type === "FeatureCollection") {
-    geoJson.features = geoJson.features
-      .map((feature: any) => {
-        const cleaned = sanitizeCoords(feature?.geometry?.coordinates);
-        if (!cleaned) return null;
-
-        return {
-          ...feature,
-          geometry: {
-            ...feature.geometry,
-            coordinates: cleaned,
-          },
-        };
-      })
-      .filter(Boolean);
-  }
-
-  return geoJson;
-}
 
 const HIGHLIGHT_COLOR = Color.CYAN.withAlpha(0.7);
 const HIGHLIGHT_FILL = Color.CYAN.withAlpha(0.4);
@@ -100,14 +59,9 @@ const GeoJsonData: React.FC<Props> = ({
   const showSelectedFeatureOnlyRef = useRef(showSelectedFeatureOnly);
   showSelectedFeatureOnlyRef.current = showSelectedFeatureOnly;
 
-  const sanitizedData = useMemo(() => {
-    if (!geoJsonData) return null;
-    return sanitizeGeoJson(structuredClone(geoJsonData));
-  }, [geoJsonData]);
-
   useEffect(() => {
     setDataSourceKey((k) => k + 1);
-  }, [sanitizedData]);
+  }, [geoJsonData]);
 
   const updateVisibility = useCallback(() => {
     featureMapRef.current.forEach((records) => {
@@ -286,12 +240,12 @@ const GeoJsonData: React.FC<Props> = ({
     viewer?.scene.requestRender();
   }, [selectedFeatureId, showSelectedFeatureOnly, updateVisibility, viewer]);
 
-  if (!sanitizedData) return null;
+  if (!geoJsonData) return null;
 
   return (
     <ResiumGeoJsonDataSource
       key={dataSourceKey}
-      data={sanitizedData}
+      data={geoJsonData}
       onLoad={handleLoad}
       clampToGround={clampToGround}
     />

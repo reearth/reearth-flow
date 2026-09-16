@@ -7,6 +7,8 @@ use super::coordinate::CoordinateFrame;
 mod constructor;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A single position in 2D space.
@@ -78,3 +80,32 @@ crate::unsupported!(Point3D: CountHoles);
 // A point bounds no area, so there is nothing to take apart.
 crate::unsupported!(Point2D: ExtractHoles);
 crate::unsupported!(Point3D: ExtractHoles);
+
+// A single position is none of the coercion targets, and has no vertices to
+// re-arrange into one.
+crate::unsupported!(Point2D: Coerce);
+crate::unsupported!(Point3D: Coerce);
+
+// A point is a location, not an extent.
+#[cfg(feature = "new-geometry")]
+crate::no_area!(Point2D, Point3D);
+
+// A point has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point3D: DivideByGrid);
+
+// A position has no extent, so it reports the empty boundary rather than
+// refusing the operation.
+impl crate::ops::ExtractBoundary for Point2D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        Ok(crate::ops::Boundary::EMPTY)
+    }
+}
+
+impl crate::ops::ExtractBoundary for Point3D {
+    fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {
+        Ok(crate::ops::Boundary::EMPTY)
+    }
+}

@@ -2,18 +2,13 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Workflow",
   "type": "object",
-  "required": ["entryGraphId", "graphs", "id", "name"],
+  "required": [
+    "entryGraphId",
+    "graphs",
+    "id",
+    "name"
+  ],
   "properties": {
-    "entryGraphId": {
-      "type": "string",
-      "format": "uuid"
-    },
-    "graphs": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Graph"
-      }
-    },
     "id": {
       "type": "string",
       "format": "uuid"
@@ -21,46 +16,44 @@
     "name": {
       "type": "string"
     },
+    "entryGraphId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "with": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": true
+    },
+    "graphs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Graph"
+      }
+    },
+    "errorPolicy": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ErrorPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
-    "Edge": {
-      "type": "object",
-      "required": ["from", "fromPort", "id", "to", "toPort"],
-      "properties": {
-        "from": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "fromPort": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "to": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "toPort": {
-          "type": "string"
-        }
-      }
-    },
     "Graph": {
       "type": "object",
-      "required": ["edges", "id", "name", "nodes"],
+      "required": [
+        "edges",
+        "id",
+        "name",
+        "nodes"
+      ],
       "properties": {
-        "edges": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Edge"
-          }
-        },
         "id": {
           "type": "string",
           "format": "uuid"
@@ -73,6 +66,12 @@
           "items": {
             "$ref": "#/definitions/Node"
           }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Edge"
+          }
         }
       }
     },
@@ -80,8 +79,19 @@
       "oneOf": [
         {
           "type": "object",
-          "required": ["action", "id", "name", "type"],
+          "required": [
+            "action",
+            "id",
+            "name",
+            "type"
+          ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "action"
+              ]
+            },
             "action": {
               "type": "string"
             },
@@ -92,20 +102,34 @@
             "name": {
               "type": "string"
             },
-            "type": {
-              "type": "string",
-              "enum": ["action"]
-            },
             "with": {
-              "type": ["object", "null"],
+              "type": [
+                "object",
+                "null"
+              ],
               "additionalProperties": true
             }
           }
         },
         {
           "type": "object",
-          "required": ["id", "name", "subGraphId", "type"],
+          "required": [
+            "id",
+            "name",
+            "subGraphId",
+            "type"
+          ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "subGraph"
+              ]
+            },
+            "subGraphId": {
+              "type": "string",
+              "format": "uuid"
+            },
             "id": {
               "type": "string",
               "format": "uuid"
@@ -113,19 +137,153 @@
             "name": {
               "type": "string"
             },
-            "subGraphId": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "type": {
-              "type": "string",
-              "enum": ["subGraph"]
-            },
             "with": {
-              "type": ["object", "null"],
+              "type": [
+                "object",
+                "null"
+              ],
               "additionalProperties": true
             }
           }
+        }
+      ]
+    },
+    "Edge": {
+      "type": "object",
+      "required": [
+        "from",
+        "fromPort",
+        "id",
+        "to",
+        "toPort"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "from": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "to": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "fromPort": {
+          "type": "string"
+        },
+        "toPort": {
+          "type": "string"
+        }
+      }
+    },
+    "ErrorPolicy": {
+      "description": "Workflow-level configuration for how diagnostics of severity `Fatal` are handled at run time, and per-selector overrides of the default disposition. Absent (`None`) behaves byte-identically to a workflow with no error-handling configuration at all — this type is additive.\n\nRegistry-aware rules (unknown diagnostic codes, codeless demotion of an authored-`Fatal` override, node-id existence in the graph) are enforced later, by the resolver that consumes this configuration — `validate` here only checks the structural rules that don't need the registry or graph.",
+      "type": "object",
+      "properties": {
+        "onFatal": {
+          "default": "terminate",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OnFatal"
+            }
+          ]
+        },
+        "treatAllAsFatal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "allowRelaxInternal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sideFile": {
+          "description": "D7: switch that enables writing rejected features to a side file instead of only counting/logging them. Consumed by a later task.",
+          "default": false,
+          "type": "boolean"
+        },
+        "overrides": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PolicyOverride"
+          }
+        }
+      }
+    },
+    "OnFatal": {
+      "description": "What to do when a `Fatal`-severity diagnostic is raised (after override resolution) and is not otherwise handled.",
+      "oneOf": [
+        {
+          "description": "Stop the run. This is the safe default.",
+          "type": "string",
+          "enum": [
+            "terminate"
+          ]
+        },
+        {
+          "description": "Keep running, treating the diagnostic as non-terminating.",
+          "type": "string",
+          "enum": [
+            "continue"
+          ]
+        }
+      ]
+    },
+    "PolicyOverride": {
+      "description": "Overrides the disposition of diagnostics matching the given selectors. At least one of `node`, `code`, `category` must be set, and `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).",
+      "type": "object",
+      "required": [
+        "disposition"
+      ],
+      "properties": {
+        "node": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disposition": {
+          "$ref": "#/definitions/PolicyDisposition"
+        }
+      }
+    },
+    "PolicyDisposition": {
+      "description": "How a matched diagnostic should be handled.",
+      "oneOf": [
+        {
+          "description": "Warn and drop the affected feature; the run continues.",
+          "type": "string",
+          "enum": [
+            "warn_drop"
+          ]
+        },
+        {
+          "description": "Reject the affected feature (optionally to the D7 side file); the run continues.",
+          "type": "string",
+          "enum": [
+            "reject"
+          ]
+        },
+        {
+          "description": "Treat as fatal, subject to `on_fatal`.",
+          "type": "string",
+          "enum": [
+            "fatal"
+          ]
         }
       ]
     }

@@ -221,13 +221,13 @@ impl Processor for AttributeMapper {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {
                 Some(attribute) => {
                     if let Some(expr) = &mapper.expr {
-                        let new_value = match expr.eval(feature, Arc::clone(&env_vars)) {
+                        let new_value = match expr.eval(feature, Arc::clone(&variables)) {
                             Ok(v) => v,
                             Err(e) => {
                                 tracing::error!(
@@ -251,7 +251,7 @@ impl Processor for AttributeMapper {
                         (&mapper.parent_attribute, &mapper.child_attribute)
                     {
                         if let Some(AttributeValue::Map(parent)) = feature.get(parent_attribute) {
-                            if let Some(child) = parent.get(child_attribute) {
+                            if let Some(child) = parent.get(child_attribute.as_str()) {
                                 attributes.insert(Attribute::new(attribute.clone()), child.clone());
                             }
                         }
@@ -259,16 +259,12 @@ impl Processor for AttributeMapper {
                 }
                 None => {
                     if let Some(multiple_expr) = &mapper.multiple_expr {
-                        match multiple_expr.eval(feature, Arc::clone(&env_vars)) {
+                        match multiple_expr.eval(feature, Arc::clone(&variables)) {
                             Err(e) => {
                                 tracing::error!("Failed to evaluate multiple_expr: {e:?}");
                             }
                             Ok(AttributeValue::Map(new_value)) => {
-                                attributes.extend(
-                                    new_value
-                                        .iter()
-                                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone())),
-                                );
+                                attributes.extend(new_value);
                             }
                             Ok(other) => {
                                 tracing::error!(

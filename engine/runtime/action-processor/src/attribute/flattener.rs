@@ -101,11 +101,7 @@ impl Processor for AttributeFlattener {
         for attribute in &self.params.attributes {
             if feature.get(attribute).is_some() {
                 if let Some(AttributeValue::Map(value)) = feature.get(attribute).cloned() {
-                    let new_attributes = value
-                        .iter()
-                        .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                        .collect::<HashMap<_, _>>();
-                    feature.extend(new_attributes);
+                    feature.extend(value);
                     feature.remove(attribute);
                 } else {
                     continue;
@@ -135,15 +131,15 @@ mod test {
     use crate::tests::utils::create_default_execute_context;
     use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::Feature;
+    use reearth_flow_types::{Attributes, Feature};
 
     use super::*;
     #[test]
     fn test_attribute_flattener() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let flattener: HashMap<String, AttributeValue> = vec![(
-            "hoge".to_string(),
+        let flattener: Attributes = vec![(
+            Attribute::new("hoge"),
             AttributeValue::String("hogehoge".to_string()),
         )]
         .into_iter()

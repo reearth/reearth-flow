@@ -4,20 +4,18 @@ import (
 	"context"
 
 	"github.com/labstack/echo/v4"
-	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
-	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 )
 
-func UsecaseMiddleware(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker, GQLClient *gqlclient.Client, sharedJob interfaces.Job, config interactor.ContainerConfig) echo.MiddlewareFunc {
+func UsecaseMiddleware(uc *interfaces.Container) echo.MiddlewareFunc {
 	return ContextMiddleware(func(ctx context.Context) context.Context {
-		repos := r
-
-		uc := interactor.NewContainer(repos, g, permissionChecker, GQLClient, sharedJob, config)
-		ctx = adapter.AttachUsecases(ctx, &uc)
+		ctx = adapter.AttachUsecases(ctx, uc)
+		// Request-scoped memo for non-GraphQL routes (e.g. job cancel, which
+		// checks permission twice for the same workspace). GraphqlAPI attaches
+		// its own memo per operation in AroundOperations, which shadows this
+		// one and is what actually scopes GraphQL/websocket verdicts correctly.
+		ctx = adapter.AttachPermissionVerdictMemo(ctx)
 		return ctx
 	})
 }

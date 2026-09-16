@@ -23,6 +23,7 @@ fn property_i18n_from_schema(node: &serde_json::Value) -> PropertyI18n {
             .get("description")
             .and_then(|v| v.as_str())
             .map(str::to_string),
+        properties: None,
     }
 }
 
@@ -39,8 +40,31 @@ fn collect_top_level_properties(parameter: &serde_json::Value) -> Vec<(String, P
         .unwrap_or_default()
 }
 
-/// Collects definitions that use oneOf/anyOf with enum values, returning
-/// `def_name → [(enum_value, PropertyI18n)]` for seeding `enumI18n`.
+/// Extracts a variant's own `PropertyI18n` plus overrides for the sub-parameters
+/// it carries. The discriminator property is skipped: it has no user-facing text.
+fn variant_i18n_from_schema(variant: &serde_json::Value) -> PropertyI18n {
+    let mut i18n = property_i18n_from_schema(variant);
+    let nested: BTreeMap<String, PropertyI18n> = variant
+        .get("properties")
+        .and_then(|p| p.as_object())
+        .map(|properties| {
+            properties
+                .iter()
+                .filter(|(_, schema)| {
+                    schema.get("title").is_some() || schema.get("description").is_some()
+                })
+                .map(|(name, schema)| (name.clone(), property_i18n_from_schema(schema)))
+                .collect()
+        })
+        .unwrap_or_default();
+    if !nested.is_empty() {
+        i18n.properties = Some(nested);
+    }
+    i18n
+}
+
+/// Collects definitions that use oneOf/anyOf, returning
+/// `def_name → [(variant_key, PropertyI18n)]` for seeding `enumI18n`.
 fn collect_enum_definitions(
     parameter: &serde_json::Value,
 ) -> BTreeMap<String, Vec<(String, PropertyI18n)>> {
@@ -56,13 +80,8 @@ fn collect_enum_definitions(
                     let enum_variants: Vec<(String, PropertyI18n)> = variants
                         .iter()
                         .filter_map(|variant| {
-                            let enum_val = variant
-                                .get("enum")
-                                .and_then(|e| e.as_array())
-                                .and_then(|a| a.first())
-                                .and_then(|v| v.as_str())
-                                .map(str::to_string)?;
-                            Some((enum_val, property_i18n_from_schema(variant)))
+                            let enum_val = crate::utils::enum_variant_key(variant)?;
+                            Some((enum_val, variant_i18n_from_schema(variant)))
                         })
                         .collect();
                     if enum_variants.is_empty() {
@@ -206,6 +225,23 @@ fn reconcile_action(existing: &mut I18nSchema, action: &ActionSchema) {
             }
             if e.description.is_none() {
                 e.description = seed.description.clone();
+            }
+            // Sub-parameters the variant carries, seeded and pruned the same way.
+            match &seed.properties {
+                Some(seed_properties) => {
+                    let nested = e.properties.get_or_insert_with(BTreeMap::new);
+                    nested.retain(|name, _| seed_properties.contains_key(name));
+                    for (name, seed_property) in seed_properties {
+                        let n = nested.entry(name.clone()).or_default();
+                        if n.title.is_none() {
+                            n.title = seed_property.title.clone();
+                        }
+                        if n.description.is_none() {
+                            n.description = seed_property.description.clone();
+                        }
+                    }
+                }
+                None => e.properties = None,
             }
         }
     }

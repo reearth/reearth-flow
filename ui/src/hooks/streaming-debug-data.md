@@ -40,9 +40,18 @@ JSONL File → streamJsonl → useStreamingDebugRunQuery → useStreamingDataCol
 
 ### 🔍 **Geometry Type Detection**
 
-- **FlowGeometry2D/3D**: Detects Flow-specific geometry types
-- **CityGmlGeometry**: Supports CityGML geometry with case variations
-- **Mixed File Handling**: Returns `null` for files with <50% recognizable geometry
+Both geometry formats are detected per feature, so no state is needed when
+switching files. See `src/lib/intermediateData/`.
+
+- **New format** (`new-geometry`): the geometry's own key is its type, so the
+  label comes from the engine's schema — "Point (2D)", "Polygon mesh (3D)"
+- **Legacy format**: sniffs `geometry.value` for `FlowGeometry2D/3D` or
+  `CityGmlGeometry`, tolerating case variations, then maps to the same style of
+  label
+- **Mixed File Handling**: reports `"Mixed"` when a sample holds more than one
+  type, and `null` when it holds none
+- **Viewer Selection**: `2d-map`, `3d-map`, or `3d-model` — the last for
+  model-space coordinates (an OBJ or glTF read, which carries no CRS)
 
 ### 📊 **Dynamic Table Features**
 

@@ -15,10 +15,14 @@ import (
 // I/O-backed stores abort in-flight writes on shutdown.
 func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.VersionedPersistence) *Server {
 	adapter := persistence.NewLegacyAdapterContext(ctx, p)
+	// Bound retained snapshots. LegacyAdapter.SaveVersion applies this after each
+	// save; it is a different axis from KeepVersions (the update log).
+	adapter.KeepSnapshots = cfg.KeepSnapshots
 	s := &Server{
-		cfg: cfg,
-		ws:  ygws.NewServerWithPersistence(adapter),
-		log: slog.Default(),
+		cfg:     cfg,
+		ws:      ygws.NewServerWithPersistence(adapter),
+		log:     slog.Default(),
+		adapter: adapter, // retained so tests can assert the retention wiring
 	}
 	s.ws.AllowedOrigins = cfg.Origins
 	s.ws.Logger = s.log
@@ -29,5 +33,9 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	if cfg.SlowPeerResync {
 		s.ws.SlowPeerPolicy = ygws.SlowPeerResync
 	}
+	// Auto-versioning: ygo captures a labelled snapshot at most once per interval
+	// per room, and only when the room changed. Requires the store to implement
+	// persistence.SnapshotStore, which the GCS adapter does.
+	s.ws.AutoVersionEvery = cfg.AutoVersionEvery
 	return s
 }

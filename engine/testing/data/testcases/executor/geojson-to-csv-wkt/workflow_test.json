@@ -1,0 +1,7 @@
+{
+  "description": "GeoJSON Reader to CSV Writer with WKT geometry, in both geometry worlds",
+  "workflowPath": "executor-testing/geojson-to-csv-wkt.yml",
+  "expectedOutput": {
+    "expectedFile": "output.csv"
+  }
+}

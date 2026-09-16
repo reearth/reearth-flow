@@ -8,9 +8,12 @@ pub mod geojson;
 pub(super) mod geopackage;
 pub(super) mod gltf;
 pub(super) mod json;
-pub(super) mod mvt;
+pub mod mvt;
 pub(super) mod obj;
+#[cfg(not(feature = "new-geometry"))]
 pub(super) mod shapefile;
+#[cfg(feature = "new-geometry")]
+pub(super) mod shapefile_next;
 pub(super) mod writer_geometry;
 pub(super) mod xml;
 pub(super) mod zip;

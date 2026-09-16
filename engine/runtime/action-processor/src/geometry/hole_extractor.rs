@@ -22,7 +22,7 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
 
-pub static OUTERSHELL_PORT: Lazy<Port> = Lazy::new(|| Port::new("outershell"));
+pub static EXTERIOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("exterior"));
 pub static HOLE_PORT: Lazy<Port> = Lazy::new(|| Port::new("hole"));
 
 #[derive(Debug, Clone, Default)]
@@ -34,7 +34,8 @@ impl ProcessorFactory for HoleExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extract Polygon Holes as Separate Features"
+        "Splits each face of a geometry into its rings, emitting the exterior ring and \
+         every interior ring (hole) as a feature of its own."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -51,7 +52,7 @@ impl ProcessorFactory for HoleExtractorFactory {
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            OUTERSHELL_PORT.clone(),
+            EXTERIOR_PORT.clone(),
             HOLE_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
@@ -71,9 +72,9 @@ impl ProcessorFactory for HoleExtractorFactory {
 pub struct HoleExtractor;
 
 impl Processor for HoleExtractor {
-    /// Take every face of the geometry apart, sending its outer boundary (holes
-    /// removed) to `outershell` and each hole, as an area of its own, to `hole`.
-    /// A face without holes still leaves via `outershell`.
+    /// Take every face of the geometry apart, sending its exterior ring (holes
+    /// removed) to `exterior` and each hole, as an area of its own, to `hole`.
+    /// A face without holes still leaves via `exterior`.
     ///
     /// Geometry that bounds no area has nothing to take apart and leaves via
     /// `rejected`, as does a feature with no geometry. A multi-part geometry is
@@ -90,7 +91,7 @@ impl Processor for HoleExtractor {
         // decomposed into memory all at once.
         let result = ctx.feature.geometry.extract_holes(&mut |geometry, part| {
             let port = match part {
-                ExtractedPart::Outershell => OUTERSHELL_PORT.clone(),
+                ExtractedPart::Outershell => EXTERIOR_PORT.clone(),
                 ExtractedPart::Hole => HOLE_PORT.clone(),
                 ExtractedPart::Rejected => REJECTED_PORT.clone(),
             };
@@ -259,20 +260,20 @@ mod tests {
     }
 
     #[test]
-    fn a_donut_leaves_as_an_outer_shell_and_one_feature_per_hole() {
+    fn a_donut_leaves_as_an_exterior_ring_and_one_feature_per_hole() {
         let input = feature(face_with_holes(2));
         let sent = extract(&input);
 
-        assert_eq!(ports(&sent), ["outershell", "hole", "hole"]);
+        assert_eq!(ports(&sent), ["exterior", "hole", "hole"]);
         assert_eq!(exterior(&sent[0].1), SQUARE);
         assert_eq!(exterior(&sent[1].1), hole_ring(1.0, 1.0));
         assert_eq!(exterior(&sent[2].1), hole_ring(2.5, 1.0));
     }
 
     #[test]
-    fn a_non_donut_area_leaves_untouched_via_the_outer_shell() {
+    fn a_non_donut_area_leaves_untouched_via_its_exterior_ring() {
         let sent = extract(&feature(face_with_holes(0)));
-        assert_eq!(ports(&sent), ["outershell"]);
+        assert_eq!(ports(&sent), ["exterior"]);
         assert_eq!(exterior(&sent[0].1), SQUARE);
     }
 
@@ -320,7 +321,7 @@ mod tests {
             ])));
         let sent = extract(&feature(collection));
 
-        assert_eq!(ports(&sent), ["outershell", "hole", "rejected"]);
+        assert_eq!(ports(&sent), ["exterior", "hole", "rejected"]);
         assert_eq!(
             &*sent[2].1.geometry,
             &Geometry::Euclidean3D(point()),
@@ -343,7 +344,7 @@ fn handle_polygon2d(
     let mut exterior_geometry = (*feature.geometry).clone();
     exterior_geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(exterior_polygon));
     exterior_feature.geometry = Arc::new(exterior_geometry);
-    fw.send(ctx.new_with_feature_and_port(exterior_feature, OUTERSHELL_PORT.clone()));
+    fw.send(ctx.new_with_feature_and_port(exterior_feature, EXTERIOR_PORT.clone()));
     for interior in polygon.interiors().iter() {
         let interior_polygon = Polygon2D::new(interior.clone(), vec![]);
         let mut interior_feature = feature.clone();
@@ -370,7 +371,7 @@ fn handle_polygon3d(
     let mut exterior_geometry = (*feature.geometry).clone();
     exterior_geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::Polygon(exterior_polygon));
     exterior_feature.geometry = Arc::new(exterior_geometry);
-    fw.send(ctx.new_with_feature_and_port(exterior_feature, OUTERSHELL_PORT.clone()));
+    fw.send(ctx.new_with_feature_and_port(exterior_feature, EXTERIOR_PORT.clone()));
     for interior in polygon.interiors().iter() {
         let interior_polygon = Polygon3D::new(interior.clone(), vec![]);
         let mut interior_feature = feature.clone();

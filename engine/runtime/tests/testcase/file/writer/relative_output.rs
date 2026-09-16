@@ -17,7 +17,7 @@ fn relative_output_writes_under_sandbox_root() {
 
 #[test]
 fn absolute_output_fails_with_migration_hint() {
-    // Fixture uses OLD Url(env["workerArtifactPath"]) / "x" pattern.
+    // Fixture uses OLD Url(variables["workerArtifactPath"]) / "x" pattern.
     // The new chokepoint rejects absolute URIs; the error must name
     // workerArtifactPath so customers can locate the migration from logs.
     let err = execute_expect_err(

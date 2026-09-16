@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::Feature;
@@ -32,7 +32,7 @@ impl ProcessorFactory for GeometryReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Replace Feature Geometry from Attribute"
+        "Replaces a feature's geometry with the compressed geometry data stored in a named attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -48,7 +48,11 @@ impl ProcessorFactory for GeometryReplacerFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["attribute"]
     }
 
     fn build(
@@ -80,12 +84,15 @@ impl ProcessorFactory for GeometryReplacerFactory {
 }
 
 /// # Geometry Replacer Parameters
-/// Configure which attribute contains the geometry data to replace the feature's current geometry
+/// Configure which attribute holds the geometry that replaces the feature's current geometry.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryReplacer {
     /// # Source Attribute
-    /// Name of the attribute containing the compressed geometry data to use as the new geometry
+    /// Attribute holding the compressed geometry to apply, as written by Geometry
+    /// Extractor. The attribute is removed once its geometry has been applied, and a
+    /// feature that does not carry it passes through unchanged. A feature whose
+    /// stored geometry cannot be decoded is sent to the rejected port.
     source_attribute: Attribute,
 }
 
@@ -93,7 +100,9 @@ pub struct GeometryReplacer {
 impl GeometryReplacer {
     /// Replace the feature's geometry with the one encoded in the source
     /// attribute, and drop that attribute. A feature whose source attribute is
-    /// absent or does not hold a string is left untouched.
+    /// absent or does not hold a string is left untouched. An error means the
+    /// attribute held something that would not decode, which the caller routes
+    /// to the rejected port.
     fn replace(&self, feature: &mut Feature) -> Result<(), BoxedError> {
         let Some(AttributeValue::String(dump)) = feature.attributes.get(&self.source_attribute)
         else {
@@ -121,8 +130,18 @@ impl Processor for GeometryReplacer {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        self.replace(&mut feature)?;
-        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        // Geometry that is present but will not decode is a failure of this
+        // feature, not of the run, so it is routed rather than propagated.
+        match self.replace(&mut feature) {
+            Ok(()) => fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone())),
+            Err(e) => {
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    format!("geometry replace rejected: {e}"),
+                );
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
         Ok(())
     }
 
@@ -132,18 +151,38 @@ impl Processor for GeometryReplacer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let mut feature = feature.clone();
-        let Some(source) = feature.attributes.get(&self.source_attribute) else {
+        let mut feature = ctx.feature.clone();
+
+        // A source attribute that is absent, or holds something other than a
+        // string, means there is no stored geometry to restore — not a failure.
+        // Geometry Extractor skips features with empty geometry, so its
+        // counterpart here is expected to receive them and pass them through.
+        let Some(AttributeValue::String(dump)) = feature.attributes.get(&self.source_attribute)
+        else {
             fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             return Ok(());
         };
-        let AttributeValue::String(dump) = source else {
-            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
-            return Ok(());
+
+        // Geometry that is present but will not decode is a failure of this
+        // feature, not of the run. Emitting it on `features` would pass it off as
+        // transformed, so it is routed to `rejected` instead.
+        let geometry = match decode(dump).map_err(|e| e.to_string()).and_then(|dump| {
+            serde_json::from_str::<Geometry>(&dump).map_err(|e: serde_json::Error| e.to_string())
+        }) {
+            Ok(geometry) => geometry,
+            Err(e) => {
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    format!(
+                        "geometry replace rejected: attribute `{}` does not decode to geometry: {e}",
+                        self.source_attribute
+                    ),
+                );
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            }
         };
-        let dump = decode(dump)?;
-        let geometry: Geometry = serde_json::from_str(&dump)?;
+
         feature.geometry = Arc::new(geometry);
         feature.remove(&self.source_attribute);
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));

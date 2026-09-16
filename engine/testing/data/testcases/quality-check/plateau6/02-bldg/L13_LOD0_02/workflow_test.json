@@ -1,6 +1,5 @@
 {
-  "description": "Test quality check L13 for LOD0 #2 on plateau6 (CityGML 3.0 + i-UR 4.0). #02: triangle exterior, interior ring touches its boundary. Reported as InteriorRingNotContainedInExteriorRing under 'LOD0 面のエラー'.",
-  "skipNewGeometry": true,
+  "description": "Test quality check L13 for LOD0 #2 on plateau6 (CityGML 3.0 + i-UR 4.0). #02: triangle exterior, interior ring touches its boundary. Reported as IncorrectInteriorOrientation and SelfIntersection under 'LOD0 面のエラー'.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

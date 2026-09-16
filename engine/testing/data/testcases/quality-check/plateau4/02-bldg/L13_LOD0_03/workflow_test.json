@@ -1,6 +1,5 @@
 {
   "description": "Test quality check L13 for LOD0 #3",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

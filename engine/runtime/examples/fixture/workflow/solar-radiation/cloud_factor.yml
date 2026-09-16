@@ -26,7 +26,7 @@ nodes:
       format: tsv
       dataset:
         type: flowExpr
-        value: env["dailySunDataPath"]
+        value: variables["dailySunDataPath"]
 
   # ========================================
   # Node 2: Parse Date and Calculate DayTime
@@ -106,7 +106,7 @@ nodes:
       headerRows: 2
       dataset:
         type: flowExpr
-        value: env["monthlyWeatherDataPath"]
+        value: variables["monthlyWeatherDataPath"]
 
   # ========================================
   # Node 5: Prepare Weather Data Year/Month for Merge

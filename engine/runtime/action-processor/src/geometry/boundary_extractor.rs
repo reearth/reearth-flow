@@ -1,11 +1,22 @@
 use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
 use std::sync::Arc;
 
+use once_cell::sync::Lazy;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::{Boundary, ExtractBoundary};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry3D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::multi_line_string::{MultiLineString2D, MultiLineString3D};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::triangular_mesh::TriangularMesh;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -13,12 +24,21 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+
+/// The boundary itself.
+pub static BOUNDARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("boundary"));
+/// Geometry that closes on itself, or carries no extent to bound, leaves here
+/// with the geometry it arrived with, minus any part that had no boundary to
+/// give.
+#[cfg(feature = "new-geometry")]
+pub static NO_BOUNDARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("no-boundary"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct BoundaryExtractorFactory;
@@ -29,9 +49,18 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry"
+        "Replaces a geometry with its boundary: the endpoints of a curve, the boundary rings of a surface, and the bounding shells of a volume."
     }
 
+    // The ports carry what `keepEmptyBoundaries` used to, and a boundary includes
+    // the interior rings `exteriorOnly` dropped, so the new world takes no
+    // parameters. The old world keeps its own, unchanged.
+    #[cfg(feature = "new-geometry")]
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
+    }
+
+    #[cfg(not(feature = "new-geometry"))]
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(BoundaryExtractorParams))
     }
@@ -40,12 +69,26 @@ impl ProcessorFactory for BoundaryExtractorFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["3d", "spatial"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(feature = "new-geometry")]
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone()]
+        vec![
+            BOUNDARY_PORT.clone(),
+            NO_BOUNDARY_PORT.clone(),
+            REJECTED_PORT.clone(),
+        ]
+    }
+
+    #[cfg(not(feature = "new-geometry"))]
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![BOUNDARY_PORT.clone()]
     }
 
     fn build(
@@ -73,33 +116,6 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     }
 }
 
-// AUDIT NOTE (left by the Geometry A batch, 2026-07-30). This action has not been
-// audited yet. The observations below came from reading this file while deciding
-// something else, so treat them as leads to CHECK, not conclusions to apply —
-// verify each against the code and the standard before acting, and disagree freely
-// if the reading is wrong.
-//
-// 1. Suspected silent data loss. When `keepEmptyBoundaries` is false — the default —
-//    a feature whose boundary cannot be extracted appears to be dropped entirely:
-//    no port receives it and there is no `rejected` port. CityGML geometry looks
-//    worst affected, since the match arm for it extracts nothing at all, so every
-//    CityGML feature may vanish by default. Confirm by tracing each `None` branch
-//    in `process`. If it holds, §4.3 wants a `rejected` port.
-// 2. If `rejected` is added, re-examine whether `keepEmptyBoundaries` should exist
-//    at all. It reads as a routing decision expressed as a parameter, which ports
-//    already express; §3.5 would call that implementation leakage. Check whether any
-//    workflow relies on it before removing.
-// 3. `exteriorOnly` looks like a genuine semantic choice worth keeping, but it is
-//    negatively framed. Consider inverting it to `includeHoles` (default true).
-// 4. The description is three sentences, has no terminating period, and leaks
-//    implementation detail — see §2.
-//
-// Cross-check before consolidating this with any other action: its shape is one
-// feature in, one feature out with the geometry replaced. Geometry Part Extractor
-// and Hole Extractor instead emit one feature per part. Ports are declared
-// statically by the factory and cannot vary by parameter, so merging actions of
-// different shapes forces dead ports onto the node.
-
 /// # Boundary Extractor Parameters
 ///
 /// Configuration for extracting boundaries from geometries.
@@ -117,10 +133,56 @@ pub struct BoundaryExtractorParams {
 
 #[derive(Debug, Clone)]
 struct BoundaryExtractor {
+    #[cfg_attr(feature = "new-geometry", allow(dead_code))]
     params: BoundaryExtractorParams,
 }
 
 impl Processor for BoundaryExtractor {
+    /// Replace the geometry with what bounds it, one dimension down: a volume
+    /// with its shells, a surface with the rings around it, a curve with its two
+    /// ends.
+    ///
+    /// Geometry bounded by nothing leaves via `no-boundary` with the geometry it
+    /// arrived with, so a workflow can tell "closed" from "not a surface". A
+    /// feature with no geometry, or one whose type has no boundary to give,
+    /// leaves via `rejected`.
+    ///
+    /// A container is bounded member by member, and a member with no boundary to
+    /// give drops out of it, from the boundary and from the geometry `no-boundary`
+    /// carries alike: an empty boundary is a claim about parts that were bounded.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        match ctx.feature.geometry.extract_boundary() {
+            Ok(Boundary::Bounded(boundary)) => {
+                let mut feature = ctx.feature.clone();
+                feature.set_geometry(boundary);
+                fw.send(ctx.new_with_feature_and_port(feature, BOUNDARY_PORT.clone()));
+            }
+            // An answer, not a failure, so the feature goes on with the geometry
+            // it came in with, narrowed only where a part of it was not bounded.
+            Ok(Boundary::Empty { evaluated }) => {
+                let mut feature = ctx.feature.clone();
+                if let Some(evaluated) = evaluated {
+                    feature.set_geometry(evaluated);
+                }
+                fw.send(ctx.new_with_feature_and_port(feature, NO_BOUNDARY_PORT.clone()));
+            }
+            Err(e) => {
+                // This port's normal business, so not worth a warning per feature.
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    format!("boundary extraction rejected: {e}"),
+                );
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
+        Ok(())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -132,7 +194,7 @@ impl Processor for BoundaryExtractor {
 
         if geometry.is_empty() {
             if self.params.keep_empty_boundaries {
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), BOUNDARY_PORT.clone()));
             }
             return Ok(());
         }
@@ -169,17 +231,16 @@ impl Processor for BoundaryExtractor {
         if let Some(new_geo) = new_geometry {
             let mut new_feature = feature.clone();
             new_feature.geometry = new_geo;
-            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, BOUNDARY_PORT.clone()));
         } else if self.params.keep_empty_boundaries {
             let mut new_feature = feature.clone();
             new_feature.geometry = Arc::new(Geometry::default());
-            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, BOUNDARY_PORT.clone()));
         }
 
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -197,6 +258,7 @@ impl Processor for BoundaryExtractor {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl BoundaryExtractor {
     fn extract_2d_boundary(&self, geo: &Geometry2D) -> Option<Geometry2D> {
         match geo {
@@ -607,6 +669,163 @@ impl BoundaryExtractor {
             None
         } else {
             Some(MultiLineString3D::new(chains))
+        }
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::csg::Csg;
+    use reearth_flow_geometry::line_string::LineString3D;
+    use reearth_flow_geometry::point::Point3D;
+    use reearth_flow_geometry::polygon::Polygon3D;
+    use reearth_flow_geometry::polygon_mesh::PolygonMesh3DData;
+    use reearth_flow_geometry::solid::Solid;
+    use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+    use reearth_flow_geometry::Euclidean3DGeometry;
+    use reearth_flow_geometry::Geometry as NextGeometry;
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::{Attribute, AttributeValue, Feature};
+
+    /// A closed 4x4 square, as an exterior ring.
+    const SQUARE: [[f64; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 0.0],
+        [0.0, 4.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ];
+
+    fn face() -> Polygon3D {
+        Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            SQUARE,
+            Vec::<Vec<[f64; 3]>>::new(),
+        )
+    }
+
+    fn area() -> NextGeometry {
+        NextGeometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(face())))
+    }
+
+    /// A closed tetrahedron: bounded by nothing.
+    fn closed_shell() -> NextGeometry {
+        NextGeometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+            TriangularMesh3D::from_parts(
+                CoordinateFrame::Euclidean,
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                [0u32, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3],
+            )
+            .unwrap(),
+        )))
+    }
+
+    fn boolean_tree() -> NextGeometry {
+        let solid = || {
+            Solid::from_exterior(
+                CoordinateFrame::Euclidean,
+                PolygonMesh3DData::from_polygons([&face()]),
+            )
+        };
+        NextGeometry::Euclidean3D(Euclidean3DGeometry::Csg(Csg::union(solid(), solid())))
+    }
+
+    /// A feature carrying `geometry` and one attribute to trace through.
+    fn feature(geometry: NextGeometry) -> Feature {
+        let mut feature = Feature::from(geometry);
+        feature.insert("surfaceId", AttributeValue::Number(7.into()));
+        feature
+    }
+
+    /// Run the processor over `feature`, returning what it sent, port by port.
+    fn extract(feature: &Feature) -> Vec<(Port, Feature)> {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        BoundaryExtractor {
+            params: Default::default(),
+        }
+        .process(create_default_execute_context(feature), &fw)
+        .unwrap();
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        let features = noop.send_features.lock().unwrap().clone();
+        ports.into_iter().zip(features).collect()
+    }
+
+    fn ports(sent: &[(Port, Feature)]) -> Vec<String> {
+        sent.iter().map(|(port, _)| port.to_string()).collect()
+    }
+
+    #[test]
+    fn an_area_leaves_with_the_curve_that_bounds_it() {
+        let input = feature(area());
+        let sent = extract(&input);
+
+        assert_eq!(ports(&sent), ["boundary"]);
+        let NextGeometry::Euclidean3D(Euclidean3DGeometry::LineString(ring)) = &*sent[0].1.geometry
+        else {
+            panic!("expected one ring, got {:?}", sent[0].1.geometry);
+        };
+        assert_eq!(ring.coords(), SQUARE);
+    }
+
+    // One feature in, one feature out, so nothing has to be traced back: the id
+    // and the attributes are the ones it arrived with.
+    #[test]
+    fn the_boundary_leaves_on_the_feature_it_came_from() {
+        let input = feature(area());
+        let sent = extract(&input);
+
+        assert_eq!(sent[0].1.id, input.id);
+        assert_eq!(
+            sent[0].1.attributes.get(&Attribute::new("surfaceId")),
+            Some(&AttributeValue::Number(7.into()))
+        );
+    }
+
+    // Closed geometry keeps what it came in with, so a workflow can go on using
+    // it after learning that it closes.
+    #[test]
+    fn geometry_bounded_by_nothing_leaves_intact() {
+        for geometry in [
+            closed_shell(),
+            NextGeometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                CoordinateFrame::Euclidean,
+                SQUARE,
+            ))),
+            NextGeometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                [1.0, 2.0, 3.0],
+            ))),
+        ] {
+            let input = feature(geometry);
+            let sent = extract(&input);
+            assert_eq!(ports(&sent), ["no-boundary"]);
+            assert_eq!(sent[0].1.id, input.id);
+            assert_eq!(&*sent[0].1.geometry, &*input.geometry);
+        }
+    }
+
+    // An unevaluated tree has no boundary to give, and a feature with no geometry
+    // has nothing to bound. Neither fails the run.
+    #[test]
+    fn geometry_with_no_boundary_to_give_is_rejected_intact() {
+        for geometry in [boolean_tree(), NextGeometry::None] {
+            let input = feature(geometry);
+            let sent = extract(&input);
+            assert_eq!(ports(&sent), ["rejected"]);
+            assert_eq!(sent[0].1.id, input.id);
+            assert_eq!(&*sent[0].1.geometry, &*input.geometry);
         }
     }
 }
