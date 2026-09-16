@@ -1,5 +1,5 @@
 import { CaretDownIcon } from "@phosphor-icons/react";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -40,7 +40,20 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
   const t = useT();
   const field = useField(path);
 
-  const index = selectVariant(node, value);
+  /**
+   * The variant the user picked, when the value cannot say so itself.
+   *
+   * An untagged variant is recognised by the fields it carries, so the moment
+   * it is chosen — before any of them are filled in — the value matches
+   * nothing. Choosing "CRS" wrote `{}`, which identified no variant, and the
+   * control fell straight back to showing nothing selected.
+   *
+   * A value that does identify a variant always wins, so a collaborator
+   * switching it is still followed.
+   */
+  const [chosen, setChosen] = useState<number | null>(null);
+  const matched = selectVariant(node, value);
+  const index = matched >= 0 ? matched : (chosen ?? -1);
   const selected = index >= 0 ? node.variants[index] : undefined;
   const title = node.title ?? node.name;
 
@@ -55,6 +68,8 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
       if (selected && isRecord(value)) {
         stash.current[selected.key] = value;
       }
+
+      setChosen(nextIndex);
 
       if (variant.constant !== undefined) {
         onChange(path, variant.constant);
@@ -85,6 +100,10 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
   );
 
   const canClear = node.nullable && !required;
+  // "Not set" is a state this field can be left in; where it cannot be, the
+  // placeholder is a prompt instead. `destinationFrame` is required with no
+  // null branch, so nothing there is unset — it is only unchosen.
+  const placeholder = canClear ? t("Not set") : t("Select...");
 
   return (
     <div>
@@ -108,7 +127,7 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
             aria-required={required}
             aria-invalid={field.hasErrors}>
             <span className={selected ? "" : "text-muted-foreground"}>
-              {selected?.title ?? t("Not set")}
+              {selected?.title ?? placeholder}
             </span>
             <CaretDownIcon className="size-4" />
           </DropdownMenuTrigger>
@@ -116,7 +135,10 @@ const UnionField: React.FC<FieldProps<UnionFieldNode>> = ({
             {canClear && (
               <DropdownMenuItem
                 className={`text-muted-foreground ${selected ? "" : "bg-accent"}`}
-                onClick={() => onChange(path, undefined)}>
+                onClick={() => {
+                  setChosen(null);
+                  onChange(path, undefined);
+                }}>
                 {t("Not set")}
               </DropdownMenuItem>
             )}

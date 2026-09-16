@@ -417,6 +417,84 @@ describe("density", () => {
   });
 });
 
+describe("a required union with no null branch", () => {
+  // Coordinate Frame Reprojector's destinationFrame: required, `oneOf` of a CRS
+  // object and the bare string "euclidean", and no null branch at all. There is
+  // no such thing as unset here — only unchosen.
+  const mountFrame = () => mount("Coordinate Frame Reprojector", {});
+
+  it("prompts for a choice instead of claiming to be unset", async () => {
+    mountFrame();
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("Select...");
+
+    const items = await openDropdown("Destination Frame");
+    // No way to go back to nothing, because the schema does not allow it.
+    expect(items.map((item) => item.textContent)).toEqual(["CRS", "Euclidean"]);
+  });
+
+  it("keeps an untagged variant selected before its fields are filled", async () => {
+    mountFrame();
+
+    const items = await openDropdown("Destination Frame");
+    await userEvent.click(
+      items.find((item) => item.textContent === "CRS") as HTMLElement,
+    );
+
+    // CRS is recognised by the `crs` field it carries, so the moment it is
+    // chosen the value matches nothing. The choice has to be remembered, or the
+    // control falls straight back to showing nothing selected.
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("CRS");
+    expect(screen.getByText("crs")).toBeInTheDocument();
+  });
+
+  it("says nothing about the branch the user did not choose", async () => {
+    mountFrame();
+
+    const items = await openDropdown("Destination Frame");
+    await userEvent.click(
+      items.find((item) => item.textContent === "CRS") as HTMLElement,
+    );
+
+    // The Euclidean branch reports "must be string" for a CRS object. That is
+    // AJV describing a shape the user did not pick, not a problem with theirs.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("switches to the variant that is a bare constant", async () => {
+    const { onChange } = mountFrame();
+
+    const items = await openDropdown("Destination Frame");
+    await userEvent.click(
+      items.find((item) => item.textContent === "Euclidean") as HTMLElement,
+    );
+
+    const [data] = lastCall(onChange) as [Record<string, unknown>];
+    expect(data.destinationFrame).toBe("euclidean");
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("Euclidean");
+  });
+
+  it("follows the value when it identifies a different variant", () => {
+    mount("Coordinate Frame Reprojector", { destinationFrame: "euclidean" });
+    expect(
+      screen.getByRole("button", { name: "Destination Frame" }),
+    ).toHaveTextContent("Euclidean");
+  });
+
+  it("still reports a value inside the chosen branch that is wrong", () => {
+    const { onValidationChange } = mount("Coordinate Frame Reprojector", {
+      destinationFrame: { crs: "not a code object" },
+    });
+    // Suppressing the other branch's complaints must not suppress this one.
+    expect(lastOf(validity(onValidationChange))).toBe(false);
+  });
+});
+
 describe("clearing a field", () => {
   it("removes the key instead of leaving it present and undefined", async () => {
     const { onChange } = mount("HTTP Caller", {

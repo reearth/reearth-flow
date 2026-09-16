@@ -29,6 +29,8 @@ const EnumField: React.FC<FieldProps<EnumFieldNode>> = ({
   // a "-" that produced `undefined` against a schema which no longer permitted
   // absence at all, so the choice was both unreachable and invalid.
   const canClear = node.nullable && !required;
+  // A field that cannot be left unset gets a prompt, not a state it is in.
+  const placeholder = canClear ? t("Not set") : t("Select...");
 
   return (
     <FieldRow
@@ -52,7 +54,7 @@ const EnumField: React.FC<FieldProps<EnumFieldNode>> = ({
           aria-invalid={field.hasErrors}
           aria-describedby={field.describedBy}>
           <span className={selected ? "" : "text-muted-foreground"}>
-            {selected?.label ?? t("Not set")}
+            {selected?.label ?? placeholder}
           </span>
           <CaretDownIcon className="size-4" />
         </DropdownMenuTrigger>

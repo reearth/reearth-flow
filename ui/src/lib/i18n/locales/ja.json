@@ -28,6 +28,7 @@
   "Remove item": "アイテムを削除",
   "Add item": "アイテムを追加",
   "Not set": "未設定",
+  "Select...": "選択...",
   "Open FlowExpr Editor": "FlowExprエディタを開く",
   "expr": "expr",
   "(empty)": "(空)",

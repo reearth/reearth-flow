@@ -28,6 +28,7 @@
   "Remove item": "移除项目",
   "Add item": "添加项目",
   "Not set": "未设置",
+  "Select...": "选择...",
   "Open FlowExpr Editor": "打开FlowExpr编辑器",
   "expr": "expr",
   "(empty)": "(空)",

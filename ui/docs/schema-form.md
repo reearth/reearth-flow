@@ -138,8 +138,12 @@ Two kinds of AJV noise are suppressed in `validate.ts`:
   is present but incomplete, and the child's complaint is the useful one. It is
   a real error for a schema whose only permitted value is `null`, so the branch
   must be confirmed rather than assumed.
-- `Choose one of the available options` where a more specific error already
-  exists underneath it.
+- Everything a failed choice reports **at its own path** — `Choose one of the
+available options`, and each branch's own complaint ("must be string" from a
+  `"euclidean"` branch while the user fills in the CRS one) — but only once
+  something deeper is known, on a field of the branch they are actually filling
+  in. With nothing deeper to go on those reports are all there is, and a plain
+  enum has no depth at all, so `Not one of the allowed values` survives there.
 
 ## Unions
 
@@ -152,6 +156,17 @@ The discriminator is **dropped from the variant's rendered fields**, since the
 dropdown already asks that question; it is re-attached to the data on change.
 Switching variants carries over keys the target also has, and stashes the
 outgoing variant's data so switching back is not destructive.
+
+An **untagged** variant is recognised only by the fields it carries, so the
+moment one is chosen — before any of them are filled in — the value matches
+nothing. `UnionField` therefore remembers the choice in component state, and a
+value that does identify a variant always wins over it, so a collaborator
+switching it is still followed.
+
+Where a union is required with no null branch (`destinationFrame` on Coordinate
+Frame Reprojector), there is no such thing as unset — only unchosen. The
+placeholder reads `Select...` rather than `Not set`, and no clear option is
+offered.
 
 ## Making changes
 

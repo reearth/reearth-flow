@@ -121,6 +121,12 @@ const isNullBranchNoise = (error: ErrorObject): boolean =>
 
 const CHOICE_MESSAGE = "Choose one of the available options";
 
+/**
+ * An error raised while AJV was trying one branch of a choice, as opposed to
+ * one about the value itself.
+ */
+const BRANCH_INTERNAL = /\/(anyOf|oneOf)\/\d+\//;
+
 /** The message to write under the field, or null to show the highlight alone. */
 const messageFor = (error: ErrorObject): string | null => {
   switch (error.keyword) {
@@ -156,29 +162,64 @@ export const validate = (
 
   if (ok || !validator.errors) return {};
 
+  // Where a choice failed, AJV reports it once for the choice and again for
+  // every branch it tried. A branch's own complaint lands on the choice itself
+  // — "must be string" from a `"euclidean"` branch, while the user is filling
+  // in the CRS one — and describes a shape they did not pick. Only the errors
+  // that land deeper, on a field of the branch they did pick, are about
+  // anything they can act on.
+  const choicePaths = new Set(
+    validator.errors
+      .filter((error) => error.keyword === "oneOf" || error.keyword === "anyOf")
+      .map((error) => error.instancePath),
+  );
+
   const errors: ValidationErrors = {};
+  // Messages that came from trying one branch, by the path they landed on.
+  // Whether they are worth showing depends on what else was found — see below.
+  const branchOnly: Record<string, Set<string>> = {};
+
   for (const error of validator.errors) {
     if (isNullBranchNoise(error)) continue;
     const key = keyForError(error, value);
     const existing = (errors[key] ??= []);
     const message = messageFor(error);
-    if (message !== null && !existing.includes(message)) existing.push(message);
+    if (message === null) continue;
+    if (!existing.includes(message)) existing.push(message);
+
+    if (
+      BRANCH_INTERNAL.test(error.schemaPath) &&
+      // `required` re-keys onto the missing property, which is deeper than the
+      // choice and is always about the user's own value.
+      error.keyword !== "required" &&
+      choicePaths.has(error.instancePath)
+    ) {
+      (branchOnly[key] ??= new Set()).add(message);
+    }
   }
 
-  // A union that failed reports itself as well as each branch it did not match.
-  // Where something more specific is already known, "choose an option" adds
-  // nothing but a second red line above the field the user has to fix.
+  // A choice that failed reports itself, and again for every branch it tried.
+  // Once something deeper is known — a field of the branch the user is actually
+  // filling in — the shallow reports are all noise: "choose an option" above a
+  // field that already says what is wrong, and "must be string" from a branch
+  // they did not pick.
+  //
+  // With nothing deeper to go on, they are all there is, and a plain enum has
+  // no depth at all — so "Not one of the allowed values" survives there.
   const keys = Object.keys(errors);
   const pruned: ValidationErrors = {};
   for (const key of keys) {
     const messages = errors[key];
-    const hasDetail =
-      messages.includes(CHOICE_MESSAGE) &&
-      keys.some((other) => other !== key && other.startsWith(`${key}.`));
-    // The key stays either way: the field is still invalid, it just has
-    // nothing left to say that the field below it is not saying better.
+    const hasDetail = keys.some(
+      (other) => other !== key && other.startsWith(`${key}.`),
+    );
+    const noise = branchOnly[key];
+    // The key stays either way: the field is still invalid, it just has nothing
+    // left to say that the field below it is not saying better.
     pruned[key] = hasDetail
-      ? messages.filter((message) => message !== CHOICE_MESSAGE)
+      ? messages.filter(
+          (message) => message !== CHOICE_MESSAGE && !noise?.has(message),
+        )
       : messages;
   }
 

@@ -28,6 +28,7 @@
   "Remove item": "Supprimer l'élément",
   "Add item": "Ajouter un élément",
   "Not set": "Non défini",
+  "Select...": "Sélectionner...",
   "Open FlowExpr Editor": "Ouvrir l'éditeur FlowExpr",
   "expr": "expr",
   "(empty)": "(vide)",
