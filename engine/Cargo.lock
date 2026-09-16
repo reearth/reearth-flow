@@ -5189,6 +5189,7 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-expr",
  "reearth-flow-geometry",
+ "reearth-flow-gltf",
  "reearth-flow-storage",
  "reearth-flow-types",
  "serde_json",
