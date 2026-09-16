@@ -167,10 +167,18 @@ impl BuilderDag {
                     .map_err(|e| ExecutionError::Factory {
                         node_id: node.handle.id.to_string(),
                         node_name: node.name.clone(),
+                        action: node.node.action().to_string(),
                         error: e,
                     })?;
 
-                let state = sink.get_source_state().map_err(ExecutionError::Sink)?;
+                let state = sink
+                    .get_source_state()
+                    .map_err(|e| ExecutionError::Factory {
+                        node_id: node.handle.id.to_string(),
+                        node_name: node.name.clone(),
+                        action: node.node.action().to_string(),
+                        error: e,
+                    })?;
                 if let Some(state) = state {
                     match source_states.entry(source.clone()) {
                         Entry::Occupied(entry) => {
@@ -231,21 +239,38 @@ impl BuilderDag {
                         .map_err(|e| ExecutionError::Factory {
                             node_id: node.handle.id.to_string(),
                             node_name: node.name.clone(),
+                            action: node.node.action().to_string(),
                             error: e,
                         })?;
 
                     // Write state to relevant sink.
-                    let state = source
-                        .serialize_state()
-                        .await
-                        .map_err(ExecutionError::Source)?;
+                    let state =
+                        source
+                            .serialize_state()
+                            .await
+                            .map_err(|e| ExecutionError::Factory {
+                                node_id: node.handle.id.to_string(),
+                                node_name: node.name.clone(),
+                                action: node.node.action().to_string(),
+                                error: e,
+                            })?;
                     for sink in source_id_to_sinks.remove(&node.handle).unwrap_or_default() {
-                        let sink = &mut graph[sink];
-                        let NodeKind::Sink(sink) = &mut sink.kind else {
+                        let sink_node = &mut graph[sink];
+                        let (sink_id, sink_name, sink_action) = (
+                            sink_node.handle.id.to_string(),
+                            sink_node.name.clone(),
+                            sink_node.action.clone(),
+                        );
+                        let NodeKind::Sink(sink) = &mut sink_node.kind else {
                             unreachable!()
                         };
                         sink.set_source_state(&state)
-                            .map_err(ExecutionError::Sink)?;
+                            .map_err(|e| ExecutionError::Factory {
+                                node_id: sink_id,
+                                node_name: sink_name,
+                                action: sink_action,
+                                error: e,
+                            })?;
                     }
 
                     NodeType {
@@ -330,6 +355,7 @@ impl BuilderDag {
                         .map_err(|e| ExecutionError::Factory {
                             node_id: node.handle.id.to_string(),
                             node_name: node.name.clone(),
+                            action: node.node.action().to_string(),
                             error: e,
                         })?;
                     let is_subgraph_output = node.subgraph_prefix.is_some()

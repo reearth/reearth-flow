@@ -50,3 +50,23 @@ pub enum Error {
     #[error("workflow errorPolicy is invalid:\n{0}")]
     PolicyValidationError(String),
 }
+
+impl Error {
+    /// The failing node's identity when the underlying execution error carries
+    /// one; `None` for errors with no single-node attribution.
+    pub fn failing_node(&self) -> Option<reearth_flow_runtime::errors::FailingNode> {
+        match self {
+            Error::ExecutionError(e) => e.failing_node(),
+            _ => None,
+        }
+    }
+
+    /// The registry code that best classifies this error, used when
+    /// synthesizing a Diagnostic for it.
+    pub fn error_code(&self) -> reearth_flow_diagnostics::ErrorCode {
+        match self {
+            Error::ExecutionError(e) => e.error_code(),
+            _ => reearth_flow_diagnostics::ErrorCode::InternalUnclassified,
+        }
+    }
+}

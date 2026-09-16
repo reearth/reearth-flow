@@ -18,3 +18,10 @@ category = "internal"
 default_disposition = "warn_drop"
 message = "additional diagnostics collapsed into this overflow marker"
 help = "The run produced more warnings than the summary shows. Fix the highest-count warnings first to reduce the tail."
+
+[[codes]]
+code = "internal.processor_execution_failed"
+category = "internal"
+default_disposition = "fatal"
+message = "processor terminated with an unhandled error"
+help = "See the message and the failing action's log for details. If the input to this processor is malformed, fix it upstream and retry."

@@ -1,0 +1,6 @@
+[[codes]]
+code = "config.factory_build_failed"
+category = "config"
+default_disposition = "fatal"
+message = "action failed to build from workflow parameters"
+help = "Check the workflow's `with` block for the failing node against the action's parameter schema."

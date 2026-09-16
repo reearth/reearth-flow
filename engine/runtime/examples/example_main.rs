@@ -72,6 +72,9 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::ProcessorFailed { .. } => {
                 // TODO: Implement this
             }
+            reearth_flow_runtime::event::Event::SourceFailed { .. } => {
+                // TODO: Implement this
+            }
             reearth_flow_runtime::event::Event::SinkFinished { .. } => {
                 // TODO: Implement this
             }

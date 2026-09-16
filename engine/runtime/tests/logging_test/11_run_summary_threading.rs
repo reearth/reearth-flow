@@ -892,7 +892,10 @@ fn branch_completion_terminate_default_still_errors_for_same_workflow() {
 
 const SCENARIO_12_WRITER_NODE_ID: &str = "cbd5f624-b7cd-4a11-b6dd-181063c314d4";
 
-// Code lands as internal.unclassified, not the original: SinkError isn't a boxed Diagnostic, so fold_outcomes' downcast falls through to the catch-all (original code stays in the message).
+// Code lands as io.sink_write_failed rather than the original diagnostic's
+// code: the SinkError payload isn't a boxed Diagnostic, so fold_outcomes'
+// downcast falls through to the ExecutionError-variant-specific fallback.
+// The original code stays visible in the rendered message.
 #[test]
 fn fatal_override_under_continue_policy_surfaces_the_writer_in_failed_nodes() {
     use reearth_flow_diagnostics::{Disposition, ErrorCode};
@@ -922,7 +925,7 @@ fn fatal_override_under_continue_policy_surfaces_the_writer_in_failed_nodes() {
     let failed = &summary.failed_nodes[0];
     assert_eq!(failed.node_id.as_deref(), Some(SCENARIO_12_WRITER_NODE_ID));
     assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
-    assert_eq!(failed.code, ErrorCode::InternalUnclassified);
+    assert_eq!(failed.code, ErrorCode::IoSinkWriteFailed);
     assert!(
         failed.message.contains("cesium3dtiles.empty_geometry"),
         "the original diagnostic's code must still be visible in the synthesized \

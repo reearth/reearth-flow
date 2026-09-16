@@ -90,6 +90,7 @@ pub enum ExecutionError {
     Factory {
         node_id: String,
         node_name: String,
+        action: String,
         #[source]
         error: BoxedError,
     },
@@ -125,6 +126,72 @@ pub enum ExecutionError {
 impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
     fn from(_: crossbeam::channel::SendError<T>) -> Self {
         ExecutionError::CannotSendToChannel("SendError".to_string())
+    }
+}
+
+/// Identity of the failing node, for error paths that know which node they
+/// were building or running when they failed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FailingNode {
+    pub node_id: String,
+    pub action: Option<String>,
+}
+
+impl ExecutionError {
+    /// The failing node's identity, where the construction site knew it.
+    ///
+    /// `None` means the error genuinely has no single-node attribution, so
+    /// consumers should fall back to a workflow-level report.
+    pub fn failing_node(&self) -> Option<FailingNode> {
+        match self {
+            ExecutionError::Factory {
+                node_id, action, ..
+            } => Some(FailingNode {
+                node_id: node_id.clone(),
+                action: Some(action.clone()),
+            }),
+            ExecutionError::ActionNameMismatch(node_id, _, action) => Some(FailingNode {
+                node_id: node_id.clone(),
+                action: Some(action.clone()),
+            }),
+            ExecutionError::DuplicateOutputPort { node_id, .. } => Some(FailingNode {
+                node_id: node_id.clone(),
+                action: None,
+            }),
+            ExecutionError::MissingInput { node, .. }
+            | ExecutionError::DuplicateInput { node, .. } => Some(FailingNode {
+                node_id: node.id.to_string(),
+                action: None,
+            }),
+            ExecutionError::SourceStateConflict(node) => Some(FailingNode {
+                node_id: node.id.to_string(),
+                action: None,
+            }),
+            ExecutionError::Source(e) | ExecutionError::Processor(e) | ExecutionError::Sink(e) => e
+                .downcast_ref::<reearth_flow_diagnostics::Diagnostic>()
+                .and_then(|d| {
+                    d.node_id.as_ref().map(|id| FailingNode {
+                        node_id: id.clone(),
+                        action: d.action_type.clone(),
+                    })
+                }),
+            _ => None,
+        }
+    }
+
+    /// The registry code best matching this error's shape, used as the
+    /// fallback code when the boxed error cannot be downcast to a Diagnostic.
+    /// A recovered Diagnostic keeps its own code; this only fills in for
+    /// synthesized rows.
+    pub fn error_code(&self) -> reearth_flow_diagnostics::ErrorCode {
+        use reearth_flow_diagnostics::ErrorCode;
+        match self {
+            ExecutionError::Factory { .. } => ErrorCode::ConfigFactoryBuildFailed,
+            ExecutionError::Source(_) => ErrorCode::IoSourceReadFailed,
+            ExecutionError::Sink(_) => ErrorCode::IoSinkWriteFailed,
+            ExecutionError::Processor(_) => ErrorCode::InternalProcessorExecutionFailed,
+            _ => ErrorCode::InternalUnclassified,
+        }
     }
 }
 

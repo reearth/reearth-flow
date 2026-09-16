@@ -1,0 +1,13 @@
+[[codes]]
+code = "io.source_read_failed"
+category = "io"
+default_disposition = "fatal"
+message = "source failed to read from its input"
+help = "Verify that the source's input path or URL is reachable and readable by the worker."
+
+[[codes]]
+code = "io.sink_write_failed"
+category = "io"
+default_disposition = "fatal"
+message = "sink failed to write to its output"
+help = "Verify that the sink's output path is writable and there is enough disk or bucket quota."

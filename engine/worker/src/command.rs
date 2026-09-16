@@ -8,6 +8,7 @@ use reearth_flow_common::{
 };
 use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_runner::runner::AsyncRunner;
+use reearth_flow_runtime::errors::FailingNode;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
@@ -263,7 +264,12 @@ impl RunWorkerCommand {
         // rebuild the terminal view from the failure handler instead.
         let run_summary: RunSummary = match &result {
             Ok(summary) => summary.clone(),
-            Err(e) => failure_summary(format!("{e:?}"), &node_failure_handler),
+            Err(e) => failure_summary(
+                format!("{e:?}"),
+                e.error_code(),
+                e.failing_node(),
+                &node_failure_handler,
+            ),
         };
         let job_result = match &result {
             Ok(summary) => {
@@ -586,12 +592,24 @@ fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -
 
 /// Rebuilds the terminal failed-nodes view for a run whose runner errored out
 /// before producing a RunSummary: one fatal row per failed node the handler
-/// captured, or a single workflow-level row when it captured none.
-fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSummary {
+/// captured; when it captured none, one row carrying whatever node identity
+/// the error itself knows (workflow-level only when it knows none).
+///
+/// `error_code` picks the code stamped on every synthesized row — Factory
+/// errors get `config.factory_build_failed`, source/sink/processor errors
+/// get their `io.*`/`internal.*` codes, everything else stays
+/// `internal.unclassified`. This lets consumers filter and aggregate a
+/// failed run's rows meaningfully without waiting for every action to return
+/// typed Diagnostics.
+fn failure_summary(
+    error_detail: String,
+    error_code: ErrorCode,
+    failing_node: Option<FailingNode>,
+    handler: &NodeFailureHandler,
+) -> RunSummary {
     let fatal = |node_id: Option<String>, name: Option<String>| {
         let mut d = Diagnostic::from_draft(
-            DiagnosticDraft::new(ErrorCode::InternalUnclassified)
-                .with_message(error_detail.clone()),
+            DiagnosticDraft::new(error_code).with_message(error_detail.clone()),
             node_id,
             name,
             None,
@@ -605,10 +623,15 @@ fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSum
         .into_iter()
         .map(|node| fatal(Some(node.id), node.name))
         .collect();
-    // A run that died before any node event (e.g. a graph-build error) still
-    // gets a workflow-level row carrying the execution error.
+    // A run that died before any node event (e.g. a graph-build error) fired
+    // no per-node failures; the error itself may still know which node it was
+    // building, so prefer that identity over a bare workflow-level row.
     if failed_nodes.is_empty() {
-        failed_nodes.push(fatal(None, None));
+        let (node_id, action) = match failing_node {
+            Some(node) => (Some(node.node_id), node.action),
+            None => (None, None),
+        };
+        failed_nodes.push(fatal(node_id, action));
     }
 
     RunSummary {
@@ -642,7 +665,16 @@ mod tests {
             name: None,
         });
 
-        let summary = failure_summary("ExecutionError(Source(..))".to_string(), &handler);
+        // Handler-captured rows win: the error's own identity must not add a row.
+        let summary = failure_summary(
+            "ExecutionError(Source(..))".to_string(),
+            ErrorCode::IoSourceReadFailed,
+            Some(FailingNode {
+                node_id: "node-a".to_string(),
+                action: Some("CityGML Reader".to_string()),
+            }),
+            &handler,
+        );
 
         assert_eq!(summary.failed_nodes.len(), 2);
         for row in &summary.failed_nodes {
@@ -661,10 +693,38 @@ mod tests {
     }
 
     #[test]
+    fn failure_summary_uses_the_errors_node_identity_when_no_events_fired() {
+        let handler = NodeFailureHandler::new();
+
+        let summary = failure_summary(
+            "ExecutionError(Factory { .. })".to_string(),
+            ErrorCode::ConfigFactoryBuildFailed,
+            Some(FailingNode {
+                node_id: "node-src".to_string(),
+                action: Some("FileReader".to_string()),
+            }),
+            &handler,
+        );
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let row = &summary.failed_nodes[0];
+        assert_eq!(row.node_id.as_deref(), Some("node-src"));
+        assert_eq!(row.action_type.as_deref(), Some("FileReader"));
+        assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
+        assert_eq!(row.code, ErrorCode::ConfigFactoryBuildFailed);
+        assert_eq!(row.message, "ExecutionError(Factory { .. })");
+    }
+
+    #[test]
     fn failure_summary_falls_back_to_a_workflow_level_row() {
         let handler = NodeFailureHandler::new();
 
-        let summary = failure_summary("boom".to_string(), &handler);
+        let summary = failure_summary(
+            "boom".to_string(),
+            ErrorCode::InternalUnclassified,
+            None,
+            &handler,
+        );
 
         assert_eq!(summary.failed_nodes.len(), 1);
         assert_eq!(summary.failed_nodes[0].node_id, None);
