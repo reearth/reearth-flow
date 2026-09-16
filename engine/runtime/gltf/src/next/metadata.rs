@@ -503,8 +503,7 @@ mod tests {
         let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
         assert_eq!(column_kind(&has_negative, "k"), ColumnKind::SignedInt);
 
-        let is_f64_typed_even_though_whole =
-            [BTreeMap::from([("k".to_string(), number(3.0))])];
+        let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
         assert_eq!(
             column_kind(&is_f64_typed_even_though_whole, "k"),
             ColumnKind::Float64
@@ -513,7 +512,10 @@ mod tests {
         let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
         assert_eq!(column_kind(&has_fraction, "k"), ColumnKind::Float64);
 
-        let bool_only = [BTreeMap::from([("k".to_string(), AttributeValue::Bool(true))])];
+        let bool_only = [BTreeMap::from([(
+            "k".to_string(),
+            AttributeValue::Bool(true),
+        )])];
         assert_eq!(column_kind(&bool_only, "k"), ColumnKind::UnsignedInt);
 
         let has_string = [BTreeMap::from([
@@ -545,10 +547,7 @@ mod tests {
         let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
         let features = crate::extract_feature_properties(&gltf).unwrap();
 
-        assert_eq!(
-            features[0].get("height"),
-            Some(&serde_json::json!(11.4))
-        );
+        assert_eq!(features[0].get("height"), Some(&serde_json::json!(11.4)));
         assert_eq!(features[0].get("count"), Some(&serde_json::json!(3)));
         assert_eq!(
             features[0].get("elevation_delta"),

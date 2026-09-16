@@ -310,7 +310,9 @@ pub fn resolve_texture_source<'a>(
         .and_then(|v| v.as_u64());
     match ext_source_index {
         Some(index) => document.images().nth(index as usize).ok_or_else(|| {
-            GltfReaderError::Parse(format!("KHR_texture_basisu source index {index} out of range"))
+            GltfReaderError::Parse(format!(
+                "KHR_texture_basisu source index {index} out of range"
+            ))
         }),
         None => Ok(texture.source()),
     }

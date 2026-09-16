@@ -134,7 +134,11 @@ pub fn normal(granularity: Granularity, values: Vec<[f32; 3]>) -> Box<dyn DedupA
 /// glTF-spec-mandated leading underscore is added on serialization), folded
 /// into [`Builder::push_primitive`]'s vertex dedup like any other attribute:
 /// vertices disagreeing on it are never welded.
-pub fn scalar_u32(name: &str, granularity: Granularity, values: Vec<u32>) -> Box<dyn DedupAttribute> {
+pub fn scalar_u32(
+    name: &str,
+    granularity: Granularity,
+    values: Vec<u32>,
+) -> Box<dyn DedupAttribute> {
     Box::new(DedupValue {
         semantic: json::mesh::Semantic::Extras(name.to_string()),
         granularity,
