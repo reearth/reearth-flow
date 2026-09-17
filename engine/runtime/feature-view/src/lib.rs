@@ -1139,7 +1139,15 @@ mod tests {
         let contains = |n: &str| glb.windows(n.len()).any(|w| w == n.as_bytes());
         assert_eq!(&glb[..4], b"glTF");
         assert!(contains(ROW_INDEX_PROPERTY), "the row index is carried");
-        assert!(contains("4242"), "the row is the one it came from");
+        // The row is numeric, so it is carried as a typed column rather than
+        // as text: read it back rather than grepping the bytes for it.
+        let parsed = reearth_flow_gltf::parse_gltf(&Bytes::from(glb.clone())).expect("a glb");
+        let properties = reearth_flow_gltf::extract_feature_properties(&parsed).expect("metadata");
+        assert_eq!(
+            properties[0].get(ROW_INDEX_PROPERTY),
+            Some(&serde_json::json!(4242)),
+            "the row is the one it came from"
+        );
         assert!(!contains("kind"), "no source attribute name");
         assert!(!contains("keep"), "no source attribute value");
 

@@ -34,5 +34,6 @@ zstd.workspace = true
 
 [dev-dependencies]
 prost.workspace = true
+reearth-flow-gltf.workspace = true
 tempfile.workspace = true
 tinymvt.workspace = true
