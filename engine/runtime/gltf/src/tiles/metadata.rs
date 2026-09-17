@@ -12,7 +12,7 @@ use reearth_flow_types::{AttributeValue, Feature};
 use serde::Serialize;
 
 use super::glb::{Builder, PrimitiveHandle};
-use crate::metadata::int_type_selector::{SignedIntCollector, UnsignedIntCollector};
+use crate::metadata::int_type_selector::SignedIntCollector;
 use crate::{FLOAT_NO_DATA, STRING_NO_DATA};
 
 const METADATA_SCHEMA_ID: &str = "Schema";
@@ -27,10 +27,11 @@ pub struct MetadataOptions<'a> {
     pub array_map_separator: Option<&'a str>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// Variants are declared in widening order so a column's kind is the `max` over its values'
+// kinds: int -> float -> string, each able to represent everything below it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ColumnKind {
-    SignedInt,
-    UnsignedInt,
+    Int,
     Float64,
     String,
 }
@@ -38,30 +39,11 @@ enum ColumnKind {
 impl From<&TypeRef> for ColumnKind {
     fn from(type_ref: &TypeRef) -> Self {
         match type_ref {
-            TypeRef::Integer => ColumnKind::SignedInt,
-            TypeRef::NonNegativeInteger => ColumnKind::UnsignedInt,
+            TypeRef::Integer => ColumnKind::Int,
+            TypeRef::NonNegativeInteger => ColumnKind::Int,
             TypeRef::Double | TypeRef::Measure => ColumnKind::Float64,
-            TypeRef::Boolean => ColumnKind::SignedInt,
+            TypeRef::Boolean => ColumnKind::Int,
             _ => ColumnKind::String,
-        }
-    }
-}
-
-impl ColumnKind {
-    fn generality(self) -> u8 {
-        match self {
-            ColumnKind::UnsignedInt => 0,
-            ColumnKind::SignedInt => 1,
-            ColumnKind::Float64 => 2,
-            ColumnKind::String => 3,
-        }
-    }
-
-    fn widen(self, other: Self) -> Self {
-        if other.generality() > self.generality() {
-            other
-        } else {
-            self
         }
     }
 }
@@ -92,7 +74,7 @@ pub fn build_table(
             let kind = ColumnKind::from(&attr.type_ref);
             declared
                 .entry(name)
-                .and_modify(|held| *held = held.widen(kind))
+                .and_modify(|held| *held = (*held).max(kind))
                 .or_insert(kind);
         }
     }
@@ -115,12 +97,14 @@ pub fn build_table(
     PropertyTable { properties, rows }
 }
 
-fn as_numeric(value: &AttributeValue) -> Option<f64> {
-    match value {
-        AttributeValue::Number(n) => n.as_f64(),
-        AttributeValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-        _ => None,
-    }
+fn as_int(value: &AttributeValue) -> Option<i64> {
+    value.as_i64().or_else(|| value.as_bool().map(i64::from))
+}
+
+fn as_float(value: &AttributeValue) -> Option<f64> {
+    value
+        .as_f64()
+        .or_else(|| value.as_bool().map(|b| if b { 1.0 } else { 0.0 }))
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
@@ -140,8 +124,7 @@ pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[Primit
         let (class_property, table_property) = match kind {
             ColumnKind::String => encode_string_column(raw_name, values, builder),
             ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
-            ColumnKind::SignedInt => encode_signed_column(raw_name, values, builder),
-            ColumnKind::UnsignedInt => encode_unsigned_column(raw_name, values, builder),
+            ColumnKind::Int => encode_int_column(raw_name, values, builder),
         };
         class_properties.insert(id.clone(), class_property);
         table_properties.insert(id.clone(), table_property);
@@ -202,9 +185,9 @@ fn encode_string_column<'a>(
         value_bytes.extend_from_slice(s.as_bytes());
         offsets.push(value_bytes.len() as u32);
     }
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, 1);
     let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
-    let offsets_bufferview = builder.push_buffer_view(&offset_bytes);
+    let offsets_bufferview = builder.push_buffer_view(&offset_bytes, 4);
 
     (
         ClassProperty {
@@ -228,10 +211,10 @@ fn encode_float_column<'a>(
 ) -> (ClassProperty, MetadataPropertyTableProperty) {
     let mut value_bytes = Vec::new();
     for value in values {
-        let v = value.and_then(as_numeric).unwrap_or(FLOAT_NO_DATA);
+        let v = value.and_then(as_float).unwrap_or(FLOAT_NO_DATA);
         value_bytes.extend_from_slice(&v.to_le_bytes());
     }
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, 8);
 
     (
         ClassProperty {
@@ -248,28 +231,28 @@ fn encode_float_column<'a>(
     )
 }
 
-fn encode_signed_column<'a>(
+fn encode_int_column<'a>(
     raw_name: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
 ) -> (ClassProperty, MetadataPropertyTableProperty) {
     let mut collector = SignedIntCollector::new();
     for value in values {
-        match value.and_then(as_numeric) {
-            Some(n) => collector.push(n as i64),
+        match value.and_then(as_int) {
+            Some(n) => collector.push(n),
             None => collector.push_no_data(),
         }
     }
     let finalized = collector.finalize();
     let mut value_bytes = Vec::new();
     finalized.encode_all(&mut value_bytes);
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, finalized.byte_size());
 
     (
         ClassProperty {
             name: raw_name.to_string(),
             type_: "SCALAR",
-            component_type: Some(int_component_type(finalized.byte_size(), true)),
+            component_type: Some(int_component_type(finalized.byte_size())),
             no_data: finalized.no_data_json(),
         },
         MetadataPropertyTableProperty {
@@ -280,48 +263,12 @@ fn encode_signed_column<'a>(
     )
 }
 
-fn encode_unsigned_column<'a>(
-    raw_name: &str,
-    values: impl Iterator<Item = Option<&'a AttributeValue>>,
-    builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
-    let mut collector = UnsignedIntCollector::new();
-    for value in values {
-        match value.and_then(as_numeric) {
-            Some(n) => collector.push(n as u64),
-            None => collector.push_no_data(),
-        }
-    }
-    let finalized = collector.finalize();
-    let mut value_bytes = Vec::new();
-    finalized.encode_all(&mut value_bytes);
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
-
-    (
-        ClassProperty {
-            name: raw_name.to_string(),
-            type_: "SCALAR",
-            component_type: Some(int_component_type(finalized.byte_size(), false)),
-            no_data: finalized.no_data_json(),
-        },
-        MetadataPropertyTableProperty {
-            values: values_bufferview,
-            string_offset_type: None,
-            string_offsets: None,
-        },
-    )
-}
-
-fn int_component_type(byte_size: usize, signed: bool) -> &'static str {
-    match (byte_size, signed) {
-        (1, true) => "INT8",
-        (1, false) => "UINT8",
-        (2, true) => "INT16",
-        (2, false) => "UINT16",
-        (4, true) => "INT32",
-        (4, false) => "UINT32",
-        (8, true) => "INT64",
-        (8, false) => "UINT64",
+fn int_component_type(byte_size: usize) -> &'static str {
+    match byte_size {
+        1 => "INT8",
+        2 => "INT16",
+        4 => "INT32",
+        8 => "INT64",
         _ => unreachable!("int_type_selector only produces 1/2/4/8-byte widths"),
     }
 }
@@ -452,8 +399,8 @@ mod tests {
             "addr".to_string(),
             AttributeValue::Map(
                 [("city".to_string(), AttributeValue::String("X".to_string()))]
-                .into_iter()
-                .collect(),
+                    .into_iter()
+                    .collect(),
             ),
         );
         attrs.insert(
@@ -541,9 +488,9 @@ mod tests {
         let double = schema_map(&[("k", TypeRef::Double)]);
         let string = schema_map(&[("k", TypeRef::String)]);
 
-        assert_eq!(kind_of(&[&unsigned]), ColumnKind::UnsignedInt);
-        assert_eq!(kind_of(&[&unsigned, &signed]), ColumnKind::SignedInt);
-        assert_eq!(kind_of(&[&signed, &unsigned]), ColumnKind::SignedInt);
+        assert_eq!(kind_of(&[&unsigned]), ColumnKind::Int);
+        assert_eq!(kind_of(&[&unsigned, &signed]), ColumnKind::Int);
+        assert_eq!(kind_of(&[&signed, &unsigned]), ColumnKind::Int);
         assert_eq!(kind_of(&[&unsigned, &double]), ColumnKind::Float64);
         assert_eq!(kind_of(&[&double, &signed]), ColumnKind::Float64);
         assert_eq!(kind_of(&[&string, &double]), ColumnKind::String);
@@ -582,10 +529,7 @@ mod tests {
         let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
         let features = crate::extract_feature_properties(&gltf).unwrap();
 
-        assert_eq!(
-            features[0].get("height"),
-            Some(&serde_json::json!(11.4))
-        );
+        assert_eq!(features[0].get("height"), Some(&serde_json::json!(11.4)));
         assert_eq!(features[0].get("count"), Some(&serde_json::json!(3)));
         assert_eq!(
             features[0].get("elevation_delta"),
