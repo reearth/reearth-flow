@@ -389,7 +389,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 Ok(op) => op,
                 Err(e) => {
                     self.flush_summaries_on_abort();
-                    return Err(ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
+                    return Err(ExecutionError::UpstreamDisconnected(format!("{e:?}")));
                 }
             };
             match op {

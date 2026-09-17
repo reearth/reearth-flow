@@ -80,6 +80,12 @@ pub enum ExecutionError {
     CannotSendToChannel(String),
     #[error("Cannot receive from channel: {0}")]
     CannotReceiveFromChannel(String),
+    /// Every upstream sender dropped without sending `Terminate` — this node did not fail on its
+    /// own account, it noticed another node's failure. Distinct from `CannotReceiveFromChannel`,
+    /// which also covers real faults reading a node's file-backed spill (open/read/deserialize)
+    /// and must never be treated as a cascade.
+    #[error("Upstream node terminated unexpectedly: {0}")]
+    UpstreamDisconnected(String),
     #[error("Cannot spawn worker thread: {0}")]
     CannotSpawnWorkerThread(#[source] std::io::Error),
     #[error("Invalid source name {0}")]

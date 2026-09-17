@@ -3,7 +3,36 @@
 **Scope:** `engine/runtime/runtime/src/executor/dag_executor.rs`, the runner's public
 `Result<RunSummary, Error>` contract, golden-log tests.
 **Fixes:** other failed nodes, `aggregatedDiagnostics`.
-**Largest blast radius of the four. Do this last, on its own branch.**
+> ## ✅ IMPLEMENTED — branch `fix/terminate-preserves-run-summary`
+>
+> `join()` always folds. The `Terminate` early-return is gone, so both policies produce the same
+> complete summary and a non-empty `failed_nodes` is the run-failed signal
+> (`summary_into_unit_result` still converts that to `Err` for the unit-returning wrappers).
+>
+> **Measured before/after** on `repro/fatal-plus-warns.yml` — a run with one fatal node and one
+> warn-emitting node — by reverting just the `join()` change and rebuilding:
+> `aggregatedDiagnostics: []` → `[('expr.attribute_operation_failed', 3)]`. (That row is
+> `WarnContinue`: Attribute Manager reports via `ctx.warn`, which keeps the feature. `ctx.report`
+> is what produces `warn_drop`.)
+>
+> **Exactly the 3 predicted tests broke**, no golden-log re-baselining, as the enumeration said.
+>
+> ### Two things this surfaced that the plan did not anticipate
+>
+> **1. `onFatal` now has no behavioural consumer.** Decided (option A): keep parsing it for
+> compatibility, documented on the type and in `workflow.json` as having no effect, with a note
+> that if `terminate` is ever given real meaning it should be actual early cancellation. Also
+> corrected `PolicyDisposition::Fatal`'s doc, which described the removed behaviour.
+> `workflow.json` turned out to be **stale on main** — `doc-workflow` is not part of
+> `check-schema`, so the regeneration picks up unrelated drift.
+>
+> **2. Cascade failures became visible.** Reporting every node surfaced
+> `JSON Writer: Cannot receive from channel: RecvError` next to the real failure — the writer
+> noticing its upstream died, not an independent fault. `fold_outcomes` now drops those rows
+> **only when a real failure exists**, so a lone channel failure is never hidden. This mirrors the
+> existing `start_source` behaviour, which already swallows `CannotSendToChannel` when a listener
+> quits. Note this also improves `onFatal: continue`, where the noise already existed — two
+> pre-existing tests asserted `failed_nodes.len() == 2` to codify it and now expect 1.
 
 ---
 
@@ -110,15 +139,61 @@ failed runs, which is likely to be reported as a separate bug later.
 
 ---
 
-## Open questions — resolve before implementing
+## Open questions — RESOLVED
 
-- [ ] Which golden-log tests actually pin the `Err` return? Enumerate them first;
-      the scope of A is unknowable until this is answered.
-- [ ] Does anything besides `summary_into_unit_result` depend on `join()` returning `Err`
-      under `Terminate`?
-- [ ] Is `Terminate` expected to mean early cancellation anywhere? (It does not here.)
-- [ ] Should a `Terminate` run report *all* failed nodes, or first-fatal plus a count?
-      This is a product question — it changes what the UI shows.
+The blocking question is answered, and **the scope is far smaller than this doc assumed.**
+
+### Which tests pin the `Err` return? — 3, all in `11_run_summary_threading.rs`
+
+Nine `expect_err` assertions exist across the logging suite. Only three reach `join()`:
+
+| Test | Affected? | Why |
+|---|---|---|
+| `failing_source_workflow_yields_err` | ✅ **yes** | calls `run_with_event_handler` directly |
+| `processor_failure_event_converges_with_thread_result` | ✅ **yes** | same |
+| `branch_completion_terminate_default_still_errors_for_same_workflow` | ✅ **yes** | same |
+| `run_with_sandbox_root_wrapper_still_returns_err_for_failing_source` | ❌ no | unit wrapper → `summary_into_unit_result` converts back to `Err` |
+| `run_with_sandbox_root_wrapper_still_returns_err_under_continue_policy` | ❌ no | same — and this test **already proves** the conversion holds under `Continue` |
+| `reject_promoting_override_on_a_sink_without_side_file_aborts_the_run` | ❌ no | `validate_reject_routing`, pre-`join` |
+| `reject_promoting_override_on_a_processor_with_unwired_rejected_port_aborts_the_run` | ❌ no | same |
+| `unknown_error_code_in_policy_aborts_before_dag_construction` | ❌ no | policy validation, pre-`join` |
+| `unmatched_node_selector_aborts_after_dag_construction` | ❌ no | same |
+
+Those three assert *"the run fails"*, which stays true under A — only the reporting shape moves
+from `Err(e)` to `Ok(summary)` with a non-empty `failed_nodes`. They need rewriting, not deleting.
+
+### No golden-log re-baselining is needed
+
+The `user-facing.log` / `action.log` fixtures capture **user-facing** entries, not the runner's
+raw tracing. `grep -rl "Finish workflow\|Failed to workflow"` over
+`runtime/tests/fixture/testdata/logging/` returns nothing. `result.json` is *workflow output
+data* and exists only for the three succeeding scenarios.
+
+The "golden logs byte-identical" note at [`executor.rs:76`](../../runtime/runner/src/executor.rs#L76)
+overstates the constraint for this change.
+
+### The worker's log parser is unaffected — and improves
+
+`worker/src/action_log_parser.rs` scrapes runner tracing with regexes. Two matter:
+
+- `workflow_completed` **already accepts both forms**:
+  `r"Finish workflow = .* \((success|failed|completed with \d+ failed node\(s\))\)"` —
+  the `Ok(summary)` branch's wording is already handled.
+- `workflow_failed` is `r"Failed nodes:"`, emitted by `command.rs` — **only in its `Ok(summary)`
+  branch**. Under today's `Terminate` that line never fires for a node failure; under A it would.
+  So A gives the parser a failure signal it currently lacks.
+- `factory_error` parses the **Debug shape** of `ExecutionError::Factory`. Factory errors are
+  raised pre-`join` and keep returning `Err`, so this is untouched — but it is a live coupling to
+  a `{:?}` rendering and worth noting before anyone "cleans up" that log line.
+
+### Remaining answers
+
+- **Anything else depending on the `Err`?** Only `summary_into_unit_result`, which already
+  converts and is covered by two passing tests.
+- **Does `Terminate` mean early cancellation?** No. Every node thread is joined before `join()`
+  is reached; "terminate" only ever described how the result is reported.
+- **Report all failed nodes, or first-fatal plus a count?** A reports all, which is what
+  `Continue` already does. Keeping the two policies' summaries identical is the point.
 
 ## Checklist
 
