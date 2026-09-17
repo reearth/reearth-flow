@@ -293,7 +293,10 @@ mod tests {
 
     #[test]
     fn a_single_fatal_reports_a_count_of_one() {
-        // A build()-time fatal really did happen once; saying so is the point of the field.
+        // A fatal with no feature id — a `report_drop` that policy resolved to Fatal, such as
+        // a source reader finding no rows. It happened exactly once, and the field should say
+        // so rather than go absent. (A build-time factory error never reaches here: it carries
+        // no Diagnostic, so it never enters the fatal slot at all.)
         let agg = make();
         agg.record_fatal(fatal(ErrorCode::InternalUnclassified, "bad param", None));
         let info = agg.take_fatal().unwrap().aggregated.expect("count");
