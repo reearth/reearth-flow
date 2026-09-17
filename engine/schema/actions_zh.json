@@ -2467,7 +2467,8 @@
                       "number",
                       "null"
                     ],
-                    "format": "double"
+                    "format": "double",
+                    "exclusiveMinimum": 0.0
                   }
                 }
               }

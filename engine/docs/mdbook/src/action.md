@@ -2410,12 +2410,13 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
             },
             "quantizationError": {
               "title": "Quantization Error",
-              "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+              "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used.",
               "type": [
                 "number",
                 "null"
               ],
-              "format": "double"
+              "format": "double",
+              "exclusiveMinimum": 0.0
             }
           }
         }

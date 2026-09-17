@@ -18,8 +18,14 @@ pub enum DracoCompression {
     Enabled {
         /// # Quantization Error
         /// Upper bound, in meters, on how far compression may move a vertex. Must
-        /// be positive. When unset, the encoder's default resolution is used.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        /// be positive; a zero, negative or non-finite value is rejected. When
+        /// unset, the encoder's default resolution is used.
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "deserialize_quantization_error"
+        )]
+        #[schemars(schema_with = "quantization_error_schema")]
         quantization_error: Option<f64>,
     },
 }
@@ -34,6 +40,33 @@ impl DracoCompression {
     pub fn is_enabled(self) -> bool {
         matches!(self, Self::Enabled { .. })
     }
+}
+
+/// Reads the quantization error, rejecting any value that is not strictly positive
+/// and finite.
+fn deserialize_quantization_error<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let error = Option::<f64>::deserialize(deserializer)?;
+    if let Some(error) = error {
+        if !error.is_finite() || error <= 0.0 {
+            return Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::Float(error),
+                &"a positive quantization error in meters",
+            ));
+        }
+    }
+    Ok(error)
+}
+
+/// JSON schema for the quantization error: a positive number, or absent.
+fn quantization_error_schema(
+    generator: &mut schemars::gen::SchemaGenerator,
+) -> schemars::schema::Schema {
+    let mut schema = <Option<f64>>::json_schema(generator).into_object();
+    schema.number().exclusive_minimum = Some(0.0);
+    schema.into()
 }
 
 /// Upper bound, in texels of the referenced texture, on how far texture coordinate
@@ -55,12 +88,22 @@ pub(crate) fn draco_config(
     let position_bound = match draco {
         DracoCompression::Enabled {
             quantization_error: Some(max_error),
-        } => {
+        } if max_error.is_finite() && max_error > 0.0 => {
+            // An empty glb spans no box, and has no position to bound.
             let box_is_valid = position_min
                 .iter()
                 .zip(&position_max)
                 .all(|(lo, hi)| lo <= hi);
-            (max_error > 0.0 && box_is_valid).then_some(max_error)
+            box_is_valid.then_some(max_error)
+        }
+        DracoCompression::Enabled {
+            quantization_error: Some(max_error),
+        } => {
+            tracing::warn!(
+                "ignoring non-positive Draco quantization error {max_error}, \
+                 falling back to the encoder's default resolution"
+            );
+            None
         }
         _ => None,
     };
@@ -164,5 +207,50 @@ mod tests {
         assert!(texels_per_step(1.0) <= 1.0);
         assert_eq!(quantization.resolve(8.0), 15);
         assert!(texels_per_step(8.0) <= 1.0);
+    }
+
+    fn parse(quantization_error: serde_json::Value) -> Result<DracoCompression, serde_json::Error> {
+        serde_json::from_value(serde_json::json!({
+            "type": "enabled",
+            "quantizationError": quantization_error,
+        }))
+    }
+
+    #[test]
+    fn a_positive_quantization_error_is_accepted() {
+        assert_eq!(parse(serde_json::json!(0.003)).unwrap(), enabled(0.003));
+    }
+
+    #[test]
+    fn a_non_positive_quantization_error_is_rejected() {
+        for value in [serde_json::json!(0.0), serde_json::json!(-0.001)] {
+            let error = parse(value.clone()).unwrap_err().to_string();
+            assert!(
+                error.contains("a positive quantization error in meters"),
+                "{value} was accepted: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_absent_quantization_error_keeps_the_default_resolution() {
+        let parsed: DracoCompression =
+            serde_json::from_value(serde_json::json!({"type": "enabled"})).unwrap();
+        assert_eq!(parsed, DracoCompression::DEFAULT_ENABLED);
+    }
+
+    #[test]
+    fn the_schema_bounds_the_quantization_error_to_positive_numbers() {
+        let schema = serde_json::to_value(schemars::schema_for!(DracoCompression)).unwrap();
+        let enabled = schema["oneOf"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|variant| variant["properties"]["type"]["enum"][0] == "enabled")
+            .unwrap();
+        assert_eq!(
+            enabled["properties"]["quantizationError"]["exclusiveMinimum"],
+            serde_json::json!(0.0)
+        );
     }
 }

@@ -684,28 +684,6 @@ impl Cesium3DTilesWriter {
     }
 }
 
-#[cfg(test)]
-mod draco_parameter_tests {
-    use pretty_assertions::assert_eq;
-    use reearth_flow_gltf::DracoCompression;
-
-    use super::Cesium3DTilesWriterParam;
-
-    fn parse(extra: serde_json::Value) -> DracoCompression {
-        let mut value = serde_json::json!({
-            "output": {"type": "flowExpr", "value": "\"out\""},
-            "minZoom": 15,
-            "maxZoom": 18,
-        });
-        if let serde_json::Value::Object(extra) = extra {
-            value.as_object_mut().unwrap().extend(extra);
-        }
-        serde_json::from_value::<Cesium3DTilesWriterParam>(value)
-            .unwrap()
-            .draco_compression
-    }
-}
-
 #[cfg(all(test, not(feature = "new-geometry")))]
 mod diagnostics_tests {
     use std::sync::Arc;
