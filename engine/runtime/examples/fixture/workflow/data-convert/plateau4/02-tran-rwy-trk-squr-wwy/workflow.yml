@@ -186,9 +186,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3")
           compressOutput: |

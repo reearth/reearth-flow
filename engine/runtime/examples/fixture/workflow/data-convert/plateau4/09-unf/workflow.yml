@@ -214,9 +214,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["package"];

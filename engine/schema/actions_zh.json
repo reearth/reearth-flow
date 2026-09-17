@@ -1328,18 +1328,38 @@
         "title": "Cesium3DTilesWriter Parameters",
         "type": "object",
         "required": [
-          "maxZoom",
-          "minZoom",
           "output"
         ],
         "properties": {
-          "attachTexture": {
-            "title": "Attach Textures",
-            "description": "Whether to include texture information in the generated tiles",
+          "arrayMapSeparator": {
+            "title": "Array/Map Separator",
+            "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into metadata columns. Leave unset to drop array and map attributes from the output entirely.",
             "type": [
-              "boolean",
+              "string",
               "null"
             ]
+          },
+          "atlasExtrusion": {
+            "title": "Atlas Extrusion",
+            "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "maximum": 65536.0,
+            "minimum": 0.0
+          },
+          "atlasSize": {
+            "title": "Atlas Size",
+            "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 2048.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "maximum": 65536.0,
+            "minimum": 1.0
           },
           "chunkByAttribute": {
             "title": "Chunk By Attribute",
@@ -1361,6 +1381,12 @@
               }
             ]
           },
+          "computeFlatNormal": {
+            "title": "Compute Flat Normals",
+            "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself).",
+            "default": true,
+            "type": "boolean"
+          },
           "dracoCompression": {
             "title": "Draco Compression",
             "description": "Use draco compression. Defaults to true.",
@@ -1368,20 +1394,6 @@
               "boolean",
               "null"
             ]
-          },
-          "maxZoom": {
-            "title": "Maximum Zoom Level",
-            "description": "Maximum zoom level for tile generation (0-24)",
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "minZoom": {
-            "title": "Minimum Zoom Level",
-            "description": "Minimum zoom level for tile generation (0-24)",
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
           },
           "output": {
             "title": "Output Path",
@@ -1392,6 +1404,14 @@
               }
             ]
           },
+          "schemaKey": {
+            "title": "Schema Key",
+            "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "skipUnexposedAttributes": {
             "title": "Skip unexposed Attributes",
             "description": "Skip attributes with double underscore prefix",
@@ -1399,11 +1419,92 @@
               "boolean",
               "null"
             ]
+          },
+          "targetTileSize": {
+            "title": "Target Tile Size",
+            "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB).",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "texelSize": {
+            "title": "Texel Size",
+            "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it. Defaults to 0, which keeps full texture detail.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "textureCodec": {
+            "title": "Texture Codec",
+            "description": "Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select `Untextured` to attach no textures.",
+            "default": "KTX2/ETC1S",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              }
+            ]
+          },
+          "wrapTolerance": {
+            "title": "Wrap Tolerance",
+            "description": "How far outside 0-1 a texture coordinate may stray and still be clamped as dataset drift. Past it the texture is taken to tile and is given an atlas page of its own so the sampler can repeat it. Defaults to 0.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "maximum": 1.0,
+            "minimum": 0.0
           }
         },
         "definitions": {
           "Expr": {
             "type": "string"
+          },
+          "TextureCodec": {
+            "title": "Texture Codec",
+            "description": "Texture image codec for the writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
+                "type": "string",
+                "enum": [
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
+                ]
+              },
+              {
+                "description": "PNG, lossless with alpha.",
+                "type": "string",
+                "enum": [
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG, lossy and opaque (alpha is dropped).",
+                "type": "string",
+                "enum": [
+                  "JPEG"
+                ]
+              },
+              {
+                "description": "Attach no textures; textured geometry falls back to its neutral colour.",
+                "type": "string",
+                "enum": [
+                  "Untextured"
+                ]
+              }
+            ]
           }
         }
       },

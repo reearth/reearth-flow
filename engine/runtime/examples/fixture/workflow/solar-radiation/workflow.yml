@@ -930,9 +930,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
           dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
@@ -1304,9 +1301,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
           dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
@@ -1353,9 +1347,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
           dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
@@ -1402,9 +1393,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
           dracoCompression: false
           output: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod4")

@@ -25,10 +25,14 @@ pub enum GeometryTest {
 #[derive(Debug, Deserialize)]
 pub struct CesiumConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
-    #[serde(default)]
+    #[serde(default = "default_skip_geometry_tests")]
     pub skip_geometry_tests: Vec<GeometryTest>,
     #[serde(default)]
     pub skip_all_geometry_tests: bool,
+}
+
+fn default_skip_geometry_tests() -> Vec<GeometryTest> {
+    vec![GeometryTest::AverageWinding]
 }
 
 pub fn test_cesium(

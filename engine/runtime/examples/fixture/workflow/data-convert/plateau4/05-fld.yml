@@ -257,9 +257,6 @@ graphs:
     type: action
     action: Cesium3DTilesWriter
     with:
-      minZoom: 15
-      maxZoom: 18
-      attachTexture: false
       chunkByAttribute: udxDirs
       output: |
         let udx_dirs = env.get("__value")["udxDirs"];
