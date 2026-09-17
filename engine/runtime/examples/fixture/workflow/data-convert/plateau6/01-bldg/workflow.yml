@@ -436,6 +436,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.01
           targetTileSize: 1048576
           attachTexture: false
           wrapTolerance: 0.1
@@ -498,6 +501,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.01
           targetTileSize: 1048576
           attachTexture: true
           wrapTolerance: 0.1
@@ -511,6 +517,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.01
           targetTileSize: 1048576
           textureCodec: Untextured
           skipUnexposedAttributes: true
@@ -572,6 +581,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.003
           targetTileSize: 1048576
           attachTexture: true
           wrapTolerance: 0.1
@@ -585,6 +597,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.003
           targetTileSize: 1048576
           textureCodec: Untextured
           skipUnexposedAttributes: true
