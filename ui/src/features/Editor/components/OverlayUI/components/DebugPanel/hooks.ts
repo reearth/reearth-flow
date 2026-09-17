@@ -152,6 +152,8 @@ export default () => {
     setFullscreenDebug((prev) => !prev);
   };
 
+  const handleFullscreenExit = useCallback(() => setFullscreenDebug(false), []);
+
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
       if (!selectedFeature) return;
@@ -407,6 +409,7 @@ export default () => {
     handleFeatureSelect,
     // setEnableClustering,
     handleFullscreenExpand,
+    handleFullscreenExit,
     handleExpand,
     handleMinimize,
     handleTabChange,

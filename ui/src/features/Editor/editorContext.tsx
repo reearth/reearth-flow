@@ -40,6 +40,12 @@ export type EditorContextType = {
   workflowNodeIds?: string[];
   /** nodeId -> worst diagnostic severity from the current debug run. */
   diagnosticSeverityByNodeId?: Map<string, string>;
+  /**
+   * Reveals a node by id: opens its workflow, centres on it and selects it.
+   * Panels that only know a node id — the diagnostics table, say — use this to
+   * send the user to the action that the row is about.
+   */
+  onNodeNavigate?: (nodeId: string) => void;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

@@ -1,6 +1,9 @@
+import { useCallback } from "react";
+
 import { DiagnosticsTable } from "@flow/components";
 import useJobDiagnostics from "@flow/hooks/useJobDiagnostics";
 import { useT } from "@flow/lib/i18n";
+import type { Diagnostic } from "@flow/types";
 
 type Props = {
   jobId: string;
@@ -17,6 +20,12 @@ type Props = {
   nodeIds?: string[];
   /** Controls rendered beside the table's search input. */
   leadingActions?: React.ReactNode;
+  /**
+   * Reveals the action a diagnostic came from. Rows carry a node id at most —
+   * a failure before the DAG starts carries none — so rows without one stay
+   * inert rather than navigating somewhere arbitrary.
+   */
+  onNodeNavigate?: (nodeId: string) => void;
 };
 
 /**
@@ -28,6 +37,7 @@ const DiagnosticsConsole: React.FC<Props> = ({
   isJobActive,
   nodeIds,
   leadingActions,
+  onNodeNavigate,
 }) => {
   const t = useT();
 
@@ -35,6 +45,14 @@ const DiagnosticsConsole: React.FC<Props> = ({
     jobId,
     isJobActive,
     nodeIds,
+  );
+
+  const handleRowDoubleClick = useCallback(
+    (diagnostic: Diagnostic) => {
+      if (!diagnostic.nodeId) return;
+      onNodeNavigate?.(diagnostic.nodeId);
+    },
+    [onNodeNavigate],
   );
 
   // No wrapper: LogsConsole renders its table directly, and this view swaps
@@ -45,6 +63,7 @@ const DiagnosticsConsole: React.FC<Props> = ({
       isFetching={isFetching && !diagnostics.length}
       leadingActions={leadingActions}
       flush
+      onRowDoubleClick={onNodeNavigate ? handleRowDoubleClick : undefined}
       noResultsMessage={t(
         "No diagnostics reported for this run yet. Diagnostics appear while a run is in progress and are persisted once it finishes.",
       )}

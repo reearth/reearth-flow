@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Diagnostic } from "@flow/types";
@@ -230,5 +230,43 @@ describe("DiagnosticsConsole", () => {
     render(<DiagnosticsConsole jobId="job-1" />);
 
     expect(screen.getByText("1,204")).toBeInTheDocument();
+  });
+
+  test("double-clicking a row reveals the action that reported it", () => {
+    // The table names the action but gives no way to reach it; on a large graph
+    // hunting down the node by hand is the slow part of reading a failure.
+    const onNodeNavigate = vi.fn();
+    useGetJobDiagnostics.mockReturnValue({
+      failedNodes: [],
+      bucketRows: [diagnostic({ nodeId: "node-9", message: "reachable" })],
+      isFetching: false,
+    });
+
+    render(
+      <DiagnosticsConsole jobId="job-1" onNodeNavigate={onNodeNavigate} />,
+    );
+
+    fireEvent.doubleClick(screen.getByText("reachable"));
+
+    expect(onNodeNavigate).toHaveBeenCalledWith("node-9");
+  });
+
+  test("double-clicking a row with no nodeId navigates nowhere", () => {
+    // A failure before the DAG starts carries no node context at all, so there
+    // is nothing to fly to — the row must stay inert rather than pick a node.
+    const onNodeNavigate = vi.fn();
+    useGetJobDiagnostics.mockReturnValue({
+      failedNodes: [],
+      bucketRows: [diagnostic({ nodeId: undefined, message: "unattributed" })],
+      isFetching: false,
+    });
+
+    render(
+      <DiagnosticsConsole jobId="job-1" onNodeNavigate={onNodeNavigate} />,
+    );
+
+    fireEvent.doubleClick(screen.getByText("unattributed"));
+
+    expect(onNodeNavigate).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import { YWorkflow } from "@flow/lib/yjs/types";
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
+import useNodeNavigation from "./useNodeNavigation";
 import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";
 
 type Props = {
@@ -126,6 +127,13 @@ export default function Editor({
   const workflowNodeIds = useWorkflowNodeIds(yWorkflows);
   const diagnosticSeverityByNodeId = useDebugDiagnosticNodes(workflowNodeIds);
 
+  const handleNodeNavigate = useNodeNavigation({
+    rawWorkflows,
+    currentWorkflowId,
+    onWorkflowOpen: handleWorkflowOpen,
+    onNodesChange: handleNodesChange,
+  });
+
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
@@ -146,6 +154,7 @@ export default function Editor({
       staleNodeIds,
       workflowNodeIds,
       diagnosticSeverityByNodeId,
+      onNodeNavigate: handleNodeNavigate,
     }),
     [
       isLocked,
@@ -163,6 +172,7 @@ export default function Editor({
       staleNodeIds,
       workflowNodeIds,
       diagnosticSeverityByNodeId,
+      handleNodeNavigate,
     ],
   );
 

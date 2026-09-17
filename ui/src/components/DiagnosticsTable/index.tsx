@@ -7,7 +7,6 @@ import {
   type Diagnostic,
   diagnosticOccurrences,
   isAggregatedDiagnostic,
-  isFatalDiagnostic,
 } from "@flow/types";
 
 import { Badge } from "../Badge";
@@ -21,6 +20,8 @@ type Props = {
   leadingActions?: React.ReactNode;
   /** Edge-to-edge console styling, to match LogsTable when swapped with it. */
   flush?: boolean;
+  /** Double-clicking a row, e.g. to reveal the action that reported it. */
+  onRowDoubleClick?: (diagnostic: Diagnostic) => void;
 };
 
 // Severity is a display level only, so it drives nothing but the colour here.
@@ -36,10 +37,10 @@ const DiagnosticsTable: React.FC<Props> = ({
   noResultsMessage,
   leadingActions,
   flush,
+  onRowDoubleClick,
 }) => {
   const t = useT();
-  const { severityLabel, dispositionLabel, categoryLabel } =
-    useDiagnosticLabels();
+  const { severityLabel, categoryLabel } = useDiagnosticLabels();
 
   const columns: ColumnDef<Diagnostic>[] = useMemo(
     () => [
@@ -57,37 +58,11 @@ const DiagnosticsTable: React.FC<Props> = ({
           );
         },
       },
-      {
-        accessorKey: "effectiveDisposition",
-        header: t("Disposition"),
-        cell: ({ row }) => {
-          // The only field that says whether the run actually failed, so it is
-          // spelled out rather than folded into the severity badge.
-          return (
-            <span
-              className={
-                isFatalDiagnostic(row.original)
-                  ? "text-destructive"
-                  : "font-light"
-              }>
-              {dispositionLabel(row.original.effectiveDisposition) ?? t("N/A")}
-            </span>
-          );
-        },
-      },
-      {
-        accessorKey: "code",
-        header: t("Code"),
-      },
+
       {
         accessorKey: "category",
         header: t("Category"),
         cell: ({ row }) => categoryLabel(row.original.category),
-      },
-      {
-        accessorKey: "nodeId",
-        header: t("Action Id"),
-        cell: ({ row }) => row.original.nodeId ?? t("N/A"),
       },
       {
         accessorKey: "actionType",
@@ -123,6 +98,10 @@ const DiagnosticsTable: React.FC<Props> = ({
         },
       },
       {
+        accessorKey: "code",
+        header: t("Code"),
+      },
+      {
         id: "features",
         accessorFn: (diagnostic) =>
           diagnostic.featureId ?? diagnostic.sampleFeatureIds?.join(" ") ?? "",
@@ -146,7 +125,7 @@ const DiagnosticsTable: React.FC<Props> = ({
         },
       },
     ],
-    [t, severityLabel, dispositionLabel, categoryLabel],
+    [t, severityLabel, categoryLabel],
   );
 
   return (
@@ -160,6 +139,7 @@ const DiagnosticsTable: React.FC<Props> = ({
       isFetching={isFetching}
       leadingActions={leadingActions}
       flush={flush}
+      onRowDoubleClick={onRowDoubleClick}
       noResultsMessage={noResultsMessage ?? t("No diagnostics")}
     />
   );
