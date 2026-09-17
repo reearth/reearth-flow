@@ -97,7 +97,7 @@ Proposed entry in a new or existing `expression`-domain file:
 
 ```toml
 [[codes]]
-code = "expression.evaluation_failed"
+code = "expr.evaluation_failed"
 category = "expression"
 default_disposition = "fatal"
 message = "expression evaluation failed"
@@ -159,7 +159,30 @@ what makes `errorPolicy` apply to it.
 > Treat it as *"the policy mechanism does not reach this path"*, which is the verifiable claim,
 > rather than as evidence of demand.
 
-### 3. Sweep, don't spot-fix
+### 3. How wide is this, really? — measured
+
+Counted across `action-processor`, `action-sink`, `action-source` on this branch:
+
+- **113** action files have a `process()`/`finish()` that can return an error
+- **11** use the diagnostics API (`ctx.report`/`ctx.warn`/`ctx.warn_once`) at all
+- **102** have **zero** classification — every error they return is blanket-wrapped as
+  `internal.unclassified`, hardcoded Fatal, and bypasses `errorPolicy`
+
+So this is **systemic, not three actions**. But 102 is not 102 bugs: some failures genuinely
+should be fatal and unclassifiable. Which is which is a per-action judgement.
+
+The 11 that do classify correlate strongly with recently-audited actions (`area_calculator`,
+`spatial_filter`, `grid_divider`, `table_extractor`, `image_rasterizer`, the three sinks).
+**Classification is already arriving via the action audit, action by action.** What is missing
+is a *rule*: [action-standard.md](../action-standard.md) §2 governs diagnostic `message`/`help`
+text, but nothing requires an action to classify its failures in the first place, so an auditor
+has no criterion prompting them to add any.
+
+**Recommendation:** add that criterion to the action standard in its own PR, rather than opening
+a 102-file sweep. The remaining unaudited actions then get it for free, and a sweep would need
+the same per-action judgement anyway, without the audit's structure.
+
+### 4. Sweep, don't spot-fix
 
 `expr.eval(...)` failures are not unique to Statistics Calculator. Grep for other actions
 mapping an eval failure into a plain factory/processor error and give them the same code.

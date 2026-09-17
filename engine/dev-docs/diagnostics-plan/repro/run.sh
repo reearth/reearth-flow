@@ -41,5 +41,12 @@ echo
 echo "=== diagnostics.json (what the frontend eventually receives) ==="
 python3 -m json.tool "$CACHE/diagnostics.json" 2>/dev/null || echo "(no diagnostics artifact — run.log: $WORK/run.log)"
 echo
+# The data the workflow actually wrote. A diagnostics payload can look correct while the
+# output is silently wrong (a demoted failure once emitted a fabricated 0), so always check
+# both before calling a diagnostics change verified.
+echo "=== output data the workflow wrote ==="
+cat "$WORK/artifacts/out.json" 2>/dev/null || cat "$CACHE/artifacts/out.json" 2>/dev/null \
+  || echo "(no output file — no features reached the writer)"
+echo
 echo "artifact : $CACHE/diagnostics.json"
 echo "full log : $CACHE/worker/worker.log"

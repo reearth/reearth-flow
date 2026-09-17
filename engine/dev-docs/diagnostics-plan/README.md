@@ -1,7 +1,20 @@
 # Terminal Diagnostics — Fidelity Plan
 
 Working doc for a set of fixes to what the frontend receives in `Job.failedNodes`.
-Delete this directory when all four items have landed.
+
+> ## 📌 TODO before this directory is deleted
+> The plan docs here are disposable — they are status tracking, and they carry ~44 `#L` line
+> references that rot as the code moves. **Delete them when the remaining items land.**
+>
+> [`repro/`](repro/) is **not** disposable: it is a general way to see the real `failedNodes`
+> payload locally with no GCP/MongoDB/pubsub, useful for any diagnostic, and it has no line
+> references to rot. **In a later PR, move it to `engine/tools/diagnostics-repro/` with a
+> section in [`engine/tools/README.md`](../../tools/README.md)**, matching the existing
+> cesium/mvt tooling convention.
+>
+> Whatever scope is still open at that point (02, 04B, the repo-wide `{e:?}` sweep, and the
+> action-standard criterion for diagnostic classification) should move to a GitHub issue rather
+> than staying here.
 
 **Trigger:** the frontend receives a `Diagnostic` whose `message` is a Rust `Debug` dump
 of a struct, while every other field on the row is a generic placeholder.

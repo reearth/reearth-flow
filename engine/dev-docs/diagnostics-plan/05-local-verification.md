@@ -125,7 +125,7 @@ diff <(python3 -m json.tool ...terminate.../diagnostics.json | grep -v '"jobId"\
 ./repro/run.sh repro/expr-fatal.yml
 ```
 - **Before:** `"code": "internal.unclassified"`, `"category": "internal"`, generic `help`.
-- **After:** `"code": "expression.evaluation_failed"`, `"category": "expression"`, and `help`
+- **After:** `"code": "expr.evaluation_failed"`, `"category": "expression"`, and `help`
   that names the likely cause.
 
 **And the part that actually matters** — `errorPolicy` must start working:
