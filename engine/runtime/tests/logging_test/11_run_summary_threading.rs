@@ -124,9 +124,9 @@ fn failing_source_workflow_reports_the_failure_in_the_summary() {
     // wrapper test below.
     let summary = run_with_event_handler("05_source_error")
         .expect("join now folds every outcome into a summary instead of returning the first Err");
-    // One row, not two: the JSON Writer downstream also fails with
-    // `Cannot receive from channel` once the source dies, and that cascade is filtered out so the
-    // user is not pointed at an innocent node.
+    // One row, not two: the JSON Writer downstream also fails once the source dies, but that is an
+    // `UpstreamDisconnected` cascade and is filtered out so the user is not pointed at an
+    // innocent node.
     assert_eq!(
         summary.failed_nodes.len(),
         1,
@@ -158,7 +158,8 @@ fn run_with_sandbox_root_wrapper_still_returns_err_for_failing_source() {
 const SCENARIO_05_SOURCE_NODE_ID: &str = "a1f90a3e-61d3-48e2-a328-e7226c2ad1ae";
 const SCENARIO_05_SINK_NODE_ID: &str = "c1f90a3e-61d3-48e2-a328-e7226c2ad1ae";
 
-// Two failed_nodes, not one: the orphaned sink also fails when its upstream source dies (disconnected channel on recv()), not just the source itself.
+// One failed_node, not two: the orphaned sink also fails when its upstream source dies, but that
+// is an `UpstreamDisconnected` cascade and `fold_outcomes` drops it when a real failure exists.
 #[test]
 fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
     use reearth_flow_diagnostics::Disposition;
@@ -183,8 +184,8 @@ fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
     )
     .expect("onFatal: continue must turn the failing source's Err into Ok(summary)");
 
-    // One row, not two. The sink's `Cannot receive from channel` is a consequence of the source
-    // dying, not an independent failure, and reporting it points the user at an innocent node.
+    // One row, not two. The sink's `UpstreamDisconnected` is a consequence of the source dying,
+    // not an independent failure, and reporting it points the user at an innocent node.
     assert_eq!(
         summary.failed_nodes.len(),
         1,

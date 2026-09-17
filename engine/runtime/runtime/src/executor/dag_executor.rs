@@ -344,8 +344,9 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    /// Under `OnFatalInput::Continue`, this always returns `Ok(_)` even with
-    /// failures — check `failed_nodes`, don't rely on `is_ok()`.
+    /// Always returns `Ok(_)` even when nodes failed, under every policy — check
+    /// `failed_nodes`, don't rely on `is_ok()`. `Err` here means the run could not be
+    /// assembled at all, not that a node failed.
     pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
         let mut results: Vec<(NodeMeta, NodeThreadResult)> =
             Vec::with_capacity(self.join_handles.len());
@@ -395,35 +396,38 @@ impl DagExecutorJoinHandle {
     }
 }
 
-/// A node whose upstream died reports `CannotReceiveFromChannel` — it did not fail on its own
-/// account. Reporting it alongside the real failure points the user at an innocent node, so it is
-/// dropped **only when some other node also failed**; if it is the sole failure, something really
-/// did go wrong with the channel and hiding it would lose the run's only signal.
-///
-/// The mirror case is already handled for sources, which swallow `CannotSendToChannel` when a
-/// listener quits (see `start_source`).
-fn is_upstream_cascade(diagnostic: &Diagnostic) -> bool {
-    diagnostic.message.contains("Cannot receive from channel")
-}
-
 /// Every `failed_nodes` entry is stamped `effective_disposition = Fatal`
 /// here, regardless of the diagnostic's original severity.
+///
+/// A node whose upstream died reports `UpstreamDisconnected`: it did not fail on its own account,
+/// it noticed another node's failure. Listing it beside the real error points the user at an
+/// innocent node, so those rows are dropped **only when some other node also failed** — a lone
+/// disconnect is kept, because then it is the run's only signal.
+///
+/// Matched on the variant, never on message text: `CannotReceiveFromChannel` also covers real
+/// faults reading a node's file-backed spill, which must keep being reported. The mirror case is
+/// already handled for sources, which swallow `CannotSendToChannel` when a listener quits (see
+/// `start_source`).
 fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
     let mut aggregated_diagnostics = Vec::new();
-    let mut failed_nodes = Vec::new();
+    let mut failed: Vec<(Diagnostic, bool)> = Vec::new();
 
     for (meta, (outcome, result)) in results {
         aggregated_diagnostics.extend(outcome.summaries);
         if let Err(e) = result {
+            let is_cascade = matches!(e, ExecutionError::UpstreamDisconnected(_));
             let mut diagnostic = diagnostic_from_execution_error(e, &meta);
             diagnostic.effective_disposition = Some(Disposition::Fatal);
-            failed_nodes.push(diagnostic);
+            failed.push((diagnostic, is_cascade));
         }
     }
 
-    if failed_nodes.iter().any(|d| !is_upstream_cascade(d)) {
-        failed_nodes.retain(|d| !is_upstream_cascade(d));
-    }
+    let has_independent_failure = failed.iter().any(|(_, is_cascade)| !is_cascade);
+    let failed_nodes = failed
+        .into_iter()
+        .filter(|(_, is_cascade)| !(has_independent_failure && *is_cascade))
+        .map(|(diagnostic, _)| diagnostic)
+        .collect();
 
     RunSummary {
         failed_nodes,
@@ -960,7 +964,7 @@ mod fold_outcomes_tests {
                 meta("node-sink", "JSON Writer"),
                 (
                     outcome(vec![]),
-                    Err(ExecutionError::CannotReceiveFromChannel("RecvError".into())),
+                    Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
                 ),
             ),
         ];
@@ -978,6 +982,41 @@ mod fold_outcomes_tests {
         );
     }
 
+    /// The regression Copilot's review caught: `CannotReceiveFromChannel` also covers real faults
+    /// reading a node's file-backed spill. Those are independent failures and must survive.
+    #[test]
+    fn a_file_backed_read_fault_is_not_treated_as_a_cascade() {
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-spill", "Attribute Manager"),
+                (
+                    outcome(vec![]),
+                    // Same variant the old string-matching filter would have swallowed.
+                    Err(ExecutionError::CannotReceiveFromChannel(
+                        "Failed to deserialize feature from file-backed op: eof".into(),
+                    )),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            2,
+            "a genuine file-backed read fault must not be filtered as an upstream cascade"
+        );
+    }
+
     /// Never hide the only signal: a lone channel failure is still reported.
     #[test]
     fn a_sole_cascade_failure_is_still_reported() {
@@ -985,7 +1024,7 @@ mod fold_outcomes_tests {
             meta("node-sink", "JSON Writer"),
             (
                 outcome(vec![]),
-                Err(ExecutionError::CannotReceiveFromChannel("RecvError".into())),
+                Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
             ),
         )];
 
@@ -1018,7 +1057,7 @@ mod fold_outcomes_tests {
                 meta("node-sink", "JSON Writer"),
                 (
                     outcome(vec![warn]),
-                    Err(ExecutionError::CannotReceiveFromChannel("RecvError".into())),
+                    Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
                 ),
             ),
         ];

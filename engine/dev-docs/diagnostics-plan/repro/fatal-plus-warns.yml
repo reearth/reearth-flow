@@ -2,7 +2,7 @@
 #
 # Under the old `Terminate` behaviour, join() returned the first Err and discarded every other
 # node's outcome — so `aggregatedDiagnostics` came back empty even though the Attribute Manager
-# had recorded warn_drop diagnostics. It should now carry them alongside the fatal.
+# had recorded diagnostics. It should now carry them alongside the fatal.
 id: 550e8400-e29b-41d4-a716-446655440a00
 name: "Repro: fatal node alongside a warn-emitting node"
 entryGraphId: 550e8400-e29b-41d4-a716-446655440a01
@@ -25,7 +25,8 @@ graphs:
                 {"height": 30},
               ]
 
-      # Emits expr.attribute_operation_failed (warn_drop) per feature — never fatal.
+      # Emits expr.attribute_operation_failed per feature via ctx.warn, so it lands in the
+      # WarnContinue bucket (the feature is kept) — never fatal.
       - id: 550e8400-e29b-41d4-a716-446655440a03
         name: "AttributeManager"
         type: action

@@ -11,7 +11,9 @@
 >
 > **Measured before/after** on `repro/fatal-plus-warns.yml` — a run with one fatal node and one
 > warn-emitting node — by reverting just the `join()` change and rebuilding:
-> `aggregatedDiagnostics: []` → `[('expr.attribute_operation_failed', 3)]`.
+> `aggregatedDiagnostics: []` → `[('expr.attribute_operation_failed', 3)]`. (That row is
+> `WarnContinue`: Attribute Manager reports via `ctx.warn`, which keeps the feature. `ctx.report`
+> is what produces `warn_drop`.)
 >
 > **Exactly the 3 predicted tests broke**, no golden-log re-baselining, as the enumeration said.
 >
