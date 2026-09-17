@@ -200,7 +200,7 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: "4326"
+          targetEpsgCode: "6697"
 
       - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         name: VerticalReprojector
