@@ -178,9 +178,13 @@ is a *rule*: [action-standard.md](../action-standard.md) §2 governs diagnostic 
 text, but nothing requires an action to classify its failures in the first place, so an auditor
 has no criterion prompting them to add any.
 
-**Recommendation:** add that criterion to the action standard in its own PR, rather than opening
-a 102-file sweep. The remaining unaudited actions then get it for free, and a sweep would need
-the same per-action judgement anyway, without the audit's structure.
+**Decision:** add that criterion to [action-standard.md](../action-standard.md) in the **final PR
+of this diagnostics task**, not as a standalone PR. A lone action-standard change reads as the
+opening of an audit and risks one being started off the back of it; landing it as the closing
+piece of this task keeps it scoped as "the rule the work we just did implies".
+
+Not a 102-file sweep either way. The remaining unaudited actions pick the criterion up for free,
+and a sweep would need the same per-action judgement without the audit's structure around it.
 
 ### 4. Sweep, don't spot-fix
 

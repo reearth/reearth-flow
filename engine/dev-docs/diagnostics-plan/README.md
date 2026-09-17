@@ -12,9 +12,13 @@ Working doc for a set of fixes to what the frontend receives in `Job.failedNodes
 > section in [`engine/tools/README.md`](../../tools/README.md)**, matching the existing
 > cesium/mvt tooling convention.
 >
-> Whatever scope is still open at that point (02, 04B, the repo-wide `{e:?}` sweep, and the
-> action-standard criterion for diagnostic classification) should move to a GitHub issue rather
-> than staying here.
+> Whatever scope is still open at that point (02, 04B, and the repo-wide `{e:?}` sweep) should
+> move to a GitHub issue rather than staying here.
+>
+> **The action-standard criterion for diagnostic classification is the exception:** it lands in
+> the *final PR of this task*, not an issue and not a PR of its own — see
+> [03 §3](03-expression-error-classification.md). A standalone standard change reads as the
+> opening of an audit; as the closing piece of this work it reads as the rule this work implies.
 
 **Trigger:** the frontend receives a `Diagnostic` whose `message` is a Rust `Debug` dump
 of a struct, while every other field on the row is a generic placeholder.
