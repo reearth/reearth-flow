@@ -200,14 +200,14 @@ graphs:
         type: action
         action: HorizontalReprojector
         with:
-          targetEpsgCode: "4326"
+          targetEpsgCode: "6697"
 
       - id: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         name: VerticalReprojector
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       - id: 782c6a8d-a772-4238-a32e-32caadbbb91f
         name: Cesium3DTilesWriter

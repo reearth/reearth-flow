@@ -341,7 +341,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       # LOD2 processing pipeline
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
@@ -349,7 +349,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       # LOD3 processing pipeline
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
@@ -357,7 +357,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       # LOD4 processing pipeline
       - id: c4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80
@@ -376,7 +376,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       # 3D Tiles Writers - Bridge/Cons outputs (no no_texture variants per FME spec)
       - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571

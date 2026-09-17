@@ -1,4 +1,4 @@
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use crate::types::{
@@ -73,7 +73,7 @@ impl CSG<f64, f64> {
         self.right.transform_offset(x, y, z);
     }
 
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         self.left.transform_inplace(jgd2wgs);
         self.right.transform_inplace(jgd2wgs);
     }
@@ -258,7 +258,7 @@ impl CSGChild<f64, f64> {
         }
     }
 
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         match self {
             CSGChild::Solid(geom) => geom.transform_inplace(jgd2wgs),
             CSGChild::CSG(csg) => csg.transform_inplace(jgd2wgs),

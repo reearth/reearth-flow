@@ -2,7 +2,7 @@ use core::any::type_name;
 use std::convert::TryFrom;
 
 use approx::{AbsDiffEq, RelativeEq};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
@@ -332,7 +332,7 @@ impl Geometry3D<f64> {
         }
     }
 
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         match self {
             Self::CSG(csg) => csg.transform_inplace(jgd2wgs),
             Self::Point(p) => p.transform_inplace(jgd2wgs),

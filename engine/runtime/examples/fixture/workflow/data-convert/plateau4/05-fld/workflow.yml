@@ -162,7 +162,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       - id: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
         name: FloodingAreaSurfaceGenerator

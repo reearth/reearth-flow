@@ -327,10 +327,10 @@ pub fn entity_to_geometry(
         }
         geometry_entity.polygon_uvs = MultiPolygon2D::from(poly_uvs);
     }
-    Ok(Geometry::new_with(
+    Ok(Geometry {
         epsg,
-        GeometryValue::CityGmlGeometry(geometry_entity),
-    ))
+        value: GeometryValue::CityGmlGeometry(geometry_entity),
+    })
 }
 
 impl AttributeValue {

@@ -240,7 +240,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       - id: 782c6a8d-a772-4238-a32e-32caadbbb91f
         name: Cesium3DTilesWriter
@@ -463,7 +463,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       - id: f8a3b2c1-5d6e-4f7a-9b8c-1d2e3f4a5b6c
         name: AttributeManagerFloatConverterVeg1
@@ -715,7 +715,7 @@ graphs:
         type: action
         action: VerticalReprojector
         with:
-          reprojectorType: jgd2011ToWgs84
+          reprojectorType: jgd2024ToWgs84
 
       - id: 53ab03e0-8b30-4eae-86a3-e17916e32d87
         name: Cesium3DTilesWriterVeg2

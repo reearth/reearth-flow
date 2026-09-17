@@ -1,7 +1,7 @@
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::Bounded;
 use num_traits::Zero;
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use std::iter::FromIterator;
@@ -74,7 +74,7 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
 }
 
 impl LineString3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         for coord in &mut self.0 {
             coord.transform_inplace(jgd2wgs);
         }

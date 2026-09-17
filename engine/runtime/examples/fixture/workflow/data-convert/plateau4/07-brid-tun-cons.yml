@@ -572,19 +572,19 @@ graphs:
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
     name: VerticalReprojectorByLod2
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
     name: VerticalReprojectorByLod3
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: c4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80
     name: FeatureFilterLod4Tunnel
     type: action
@@ -600,7 +600,7 @@ graphs:
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
     name: cesium3DTilesWriterByLod1
     type: action

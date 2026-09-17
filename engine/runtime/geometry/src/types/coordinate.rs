@@ -5,7 +5,7 @@ use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use geo_types::Coord as GeoCoord;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::{Float, NumCast, Zero};
-use nusamai_projection::vshift::Jgd2011ToWgs84;
+use nusamai_projection::vshift::VerticalTransform;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 
@@ -106,7 +106,7 @@ impl From<Coordinate<f64, f64>> for Coordinate<f64, NoValue> {
 }
 
 impl Coordinate3D<f64> {
-    pub fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
+    pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
         let (x, y, z) = jgd2wgs.convert(self.x, self.y, self.z);
         self.x = x;
         self.y = y;

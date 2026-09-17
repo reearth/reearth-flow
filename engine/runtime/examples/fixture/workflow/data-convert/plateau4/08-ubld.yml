@@ -353,7 +353,7 @@ graphs:
     type: action
     action: VerticalReprojector
     with:
-      reprojectorType: jgd2011ToWgs84
+      reprojectorType: jgd2024ToWgs84
   - id: 20489caa-c78b-4be4-808e-a8e8881c8847
     name: AttributeManager
     type: action
