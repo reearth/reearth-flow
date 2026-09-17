@@ -320,6 +320,9 @@ ActionName
   impl:    [parameters declared but never applied; enum variants with no branch;
               defaults or "when omitted" text the code contradicts; declared
               ports never emitted]
+  diag:    [fallible paths with no registry code and no stated reason to stay
+              `internal.*` (§9); a reported-and-skipped failure that leaves
+              partial state behind; user-facing text built with `{:?}`]
   name:    [proposed space-case name if different]
   desc:    [issue if any]
   params:  [list issues by param name; flag if count exceeds 8 without justification (§3.5)]
@@ -328,7 +331,7 @@ ActionName
   tags:    [missing cross-cutting tag | tag that restates the category (§6)]
 ```
 
-**Every line except `impl:` can be answered from the generated `actions.json`. `impl:` cannot.** It is the only one that requires opening the code, and it is therefore the only one that catches a description which is well-written and false, or a parameter the UI offers and the code ignores. An action marked clean without `impl:` having been worked through has been *read*, not checked.
+**Every line except `impl:` and `diag:` can be answered from the generated `actions.json`. Those two cannot.** They are the ones that require opening the code, and therefore the only ones that catch a description which is well-written and false, a parameter the UI offers and the code ignores, or a failure the user is given no way to handle. An action marked clean without `impl:` and `diag:` having been worked through has been *read*, not checked.
 
 If an action is clean on all dimensions, write: `ActionName — OK`
 
@@ -336,9 +339,52 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 
 ---
 
+## 9. Diagnostics
+
+How an action reports failure is part of its user-facing surface: it decides whether a user can
+see what went wrong, and whether they have any way to carry on. None of the four points below
+can be discovered by reading an action in isolation — each is a property of the runtime around
+it, and the call site looks unremarkable in every case.
+
+**A plain `Err` from `process()`/`finish()` is unclassifiable.** The runtime blanket-wraps any
+such error as `internal.unclassified` and stamps it Fatal. Nothing at the call site says so —
+the code reads like ordinary error handling — so this has to be checked deliberately. Ask of
+every fallible path: *is this failure the user's to recover from?* If it is, it needs a registry
+code raised through `ctx.report`, not a plain `Err`.
+
+**An unclassified failure is close to impossible for a user to tolerate.** Relaxing one means
+naming `internal.unclassified` in an override *and* setting `allowRelaxInternal` on the policy;
+without that flag the policy fails to compile and `resolve` clamps every `internal` code to at
+least its registry default. The flag is run-wide, so a user cannot relax this action's failure
+without also relaxing a genuine engine invariant violation. "The user can set an `errorPolicy`"
+is therefore not an answer for an unclassified failure — there is nothing specific to name.
+
+**Reporting and continuing carries a state-cleanup obligation.** When `ctx.report` resolves below
+Fatal the action keeps going, so per-feature or per-group state created *before* the failing
+operation is now partial, and downstream finalization cannot tell partial state from real state.
+Statistics Calculator created its accumulator before evaluating the expression; a demoted failure
+left a zero-valued accumulator that finalized as `0` — a fabricated statistic, on a run reported
+as successful. Create such state only once the value exists, and check what `finish()` does with
+an absent entry versus an empty one.
+
+**A fatal does not stop the node.** `process()` returns `()` on a thread pool and the fatal slot
+is not read until terminate, so every remaining feature is still processed and only the *first*
+fatal per node is kept as the reported diagnostic. A per-feature failure therefore repeats across
+the whole input while the node runs to completion, and the user sees one diagnostic — carrying an
+occurrence count for its code — rather than one per feature. Weigh that when deciding whether a
+failure deserves Fatal at all.
+
+For the wording of the `message` and `help` strings themselves, see §2.
+
+---
+
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-09-18
+
+- **§9 added — Diagnostics**, with a matching `diag:` line in the §8 checklist. Covers what an auditor cannot see from the call site: a plain `Err` is blanket-wrapped as `internal.unclassified` and stamped Fatal; an unclassified failure can only be relaxed with the run-wide `allowRelaxInternal`, so `errorPolicy` is no escape hatch for it; reporting-and-continuing leaves partial state that finalization cannot distinguish from real state; and a fatal does not stop the node. **Placed after §8 so that §8 keeps meaning "the review checklist"** in the audit log and in past entries here. **No past verdict changes automatically, but no previously-audited action has been checked against this section** — 11 of 113 fallible action files classify their failures at all, so most actions reviewed to date owe a `diag:` re-check. Written from the diagnostics fidelity work in #2487, #2488 and #2491.
 
 ### 2026-09-11
 

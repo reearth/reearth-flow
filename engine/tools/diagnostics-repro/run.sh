@@ -7,7 +7,7 @@
 # No GCP, no MongoDB, no pubsub — `--pubsub-backend noop` covers all of it.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ENGINE="$(cd "$HERE/../../.." && pwd)"          # .../engine
+ENGINE="$(cd "$HERE/../.." && pwd)"             # .../engine
 WF="${1:?usage: run.sh <workflow.yml>}"
 BIN="$ENGINE/target/debug/reearth-flow-worker"
 
