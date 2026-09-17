@@ -10,10 +10,7 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use reearth_flow_diagnostics::{
-    Diagnostic, DiagnosticDraft, Disposition, DispositionPolicy, ErrorCode, OnFatalInput,
-    RunSummary,
-};
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
@@ -76,7 +73,6 @@ pub struct DagExecutorJoinHandle {
     executor_id: uuid::Uuid,
     subscriber: Option<tokio::task::JoinHandle<()>>,
     dropped_events: Arc<AtomicU64>,
-    disposition_policy: Arc<DispositionPolicy>,
 }
 
 impl DagExecutor {
@@ -334,7 +330,6 @@ impl DagExecutor {
             executor_id,
             subscriber: Some(subscriber),
             dropped_events,
-            disposition_policy,
         })
     }
 }
@@ -374,13 +369,14 @@ impl DagExecutorJoinHandle {
 
         cleanup_executor_cache(self.executor_id);
 
-        if self.disposition_policy.on_fatal() == OnFatalInput::Terminate {
-            if let Some(pos) = results.iter().position(|(_, (_, result))| result.is_err()) {
-                let (_, (_, result)) = results.remove(pos);
-                return Err(result.expect_err("position() above guarantees Err"));
-            }
-        }
-
+        // Both policies fold every outcome into the summary. `on_fatal` used to make `Terminate`
+        // return the first `Err` here, which discarded every other node's result and every
+        // aggregated diagnostic in the run — including from nodes that succeeded. It never meant
+        // early cancellation: all node threads are joined above before this point is reached, so
+        // the work has already happened and only the reporting differed.
+        //
+        // A non-empty `failed_nodes` is the run-failed signal, and `summary_into_unit_result`
+        // still converts that back into `Err` for the unit-returning `Runner::run` wrappers.
         Ok(fold_outcomes(results))
     }
 
@@ -399,6 +395,17 @@ impl DagExecutorJoinHandle {
     }
 }
 
+/// A node whose upstream died reports `CannotReceiveFromChannel` — it did not fail on its own
+/// account. Reporting it alongside the real failure points the user at an innocent node, so it is
+/// dropped **only when some other node also failed**; if it is the sole failure, something really
+/// did go wrong with the channel and hiding it would lose the run's only signal.
+///
+/// The mirror case is already handled for sources, which swallow `CannotSendToChannel` when a
+/// listener quits (see `start_source`).
+fn is_upstream_cascade(diagnostic: &Diagnostic) -> bool {
+    diagnostic.message.contains("Cannot receive from channel")
+}
+
 /// Every `failed_nodes` entry is stamped `effective_disposition = Fatal`
 /// here, regardless of the diagnostic's original severity.
 fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
@@ -412,6 +419,10 @@ fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
             diagnostic.effective_disposition = Some(Disposition::Fatal);
             failed_nodes.push(diagnostic);
         }
+    }
+
+    if failed_nodes.iter().any(|d| !is_upstream_cascade(d)) {
+        failed_nodes.retain(|d| !is_upstream_cascade(d));
     }
 
     RunSummary {
@@ -900,9 +911,9 @@ mod fold_outcomes_tests {
                 meta("node-second", "Second Action"),
                 (
                     outcome(vec![]),
-                    Err(ExecutionError::CannotReceiveFromChannel(
-                        "second boom".into(),
-                    )),
+                    Err(ExecutionError::Sink(Box::new(std::io::Error::other(
+                        "second boom",
+                    )))),
                 ),
             ),
         ];
@@ -931,6 +942,95 @@ mod fold_outcomes_tests {
         for failed in &summary.failed_nodes {
             assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
         }
+    }
+
+    #[test]
+    fn upstream_cascade_is_dropped_when_a_real_failure_is_present() {
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-sink", "JSON Writer"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::CannotReceiveFromChannel("RecvError".into())),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            1,
+            "the downstream node only failed because its upstream died"
+        );
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("node-source")
+        );
+    }
+
+    /// Never hide the only signal: a lone channel failure is still reported.
+    #[test]
+    fn a_sole_cascade_failure_is_still_reported() {
+        let results = vec![(
+            meta("node-sink", "JSON Writer"),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::CannotReceiveFromChannel("RecvError".into())),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("node-sink")
+        );
+    }
+
+    #[test]
+    fn cascade_filtering_never_touches_aggregated_diagnostics() {
+        let warn = diagnostic(
+            ErrorCode::GltfZeroFaceSolid,
+            "a warning from a healthy node",
+        );
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-sink", "JSON Writer"),
+                (
+                    outcome(vec![warn]),
+                    Err(ExecutionError::CannotReceiveFromChannel("RecvError".into())),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.aggregated_diagnostics.len(),
+            1,
+            "a filtered node's aggregated diagnostics must survive"
+        );
     }
 
     #[test]
