@@ -189,9 +189,9 @@ fn encode_string_column<'a>(
         value_bytes.extend_from_slice(s.as_bytes());
         offsets.push(value_bytes.len() as u32);
     }
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, 1);
     let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
-    let offsets_bufferview = builder.push_buffer_view(&offset_bytes);
+    let offsets_bufferview = builder.push_buffer_view(&offset_bytes, 4);
 
     (
         ClassProperty {
@@ -218,7 +218,7 @@ fn encode_float_column<'a>(
         let v = value.and_then(as_float).unwrap_or(FLOAT_NO_DATA);
         value_bytes.extend_from_slice(&v.to_le_bytes());
     }
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, 8);
 
     (
         ClassProperty {
@@ -250,7 +250,7 @@ fn encode_int_column<'a>(
     let finalized = collector.finalize();
     let mut value_bytes = Vec::new();
     finalized.encode_all(&mut value_bytes);
-    let values_bufferview = builder.push_buffer_view(&value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, finalized.byte_size());
 
     (
         ClassProperty {
