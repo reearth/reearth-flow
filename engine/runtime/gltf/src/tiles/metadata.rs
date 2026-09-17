@@ -24,13 +24,12 @@ const METADATA_CLASS_NAME: &str = "Feature";
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
     pub skip_unexposed_attributes: bool,
-    pub array_map_separator: Option<&'a str>,
 }
 
 // Variants are declared in widening order so a column's kind is the `max` over its values'
 // kinds: int -> float -> string, each able to represent everything below it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum ColumnKind {
+pub enum ColumnKind {
     Int,
     Float64,
     String,
@@ -48,6 +47,56 @@ impl From<&TypeRef> for ColumnKind {
     }
 }
 
+/// The narrowest kind that can hold `value` on its own. `Bool` rides along as
+/// 0/1; anything nonnumeric only fits as a string.
+fn value_kind(value: &AttributeValue) -> ColumnKind {
+    match value {
+        AttributeValue::Number(n) if n.is_i64() => ColumnKind::Int,
+        AttributeValue::Number(_) => ColumnKind::Float64,
+        AttributeValue::Bool(_) => ColumnKind::Int,
+        _ => ColumnKind::String,
+    }
+}
+
+/// Every column the glb will carry, with the one kind each is encoded as.
+///
+/// `schemas` runs parallel to `features`: `Some` is that feature's declared
+/// attribute map, `None` a feature type the schema port never declared. A
+/// declared type is authoritative — its columns are exactly the ones declared,
+/// carried even where no feature holds a value, at the declared kind. An
+/// undeclared type derives instead: every path its features carry, widened to
+/// the most general kind over the values actually present. A path reached both
+/// ways widens to the more general of the two.
+pub fn column_kinds(
+    features: &[&Feature],
+    schemas: &[Option<&SchemaMap>],
+    options: MetadataOptions,
+) -> IndexMap<String, ColumnKind> {
+    let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
+    let mut widen = |name: String, kind: ColumnKind| {
+        kinds
+            .entry(name)
+            .and_modify(|held| *held = (*held).max(kind))
+            .or_insert(kind);
+    };
+
+    for (feature, schema_attrs) in features.iter().zip(schemas) {
+        match schema_attrs {
+            Some(schema_attrs) => {
+                for (name, attr) in schema_attrs.iter() {
+                    widen(name.clone(), ColumnKind::from(&attr.type_ref));
+                }
+            }
+            None => {
+                for (path, value) in flatten_attributes(feature, options) {
+                    widen(path, value_kind(&value));
+                }
+            }
+        }
+    }
+    kinds
+}
+
 /// `properties[i] = (raw attribute path, raw attribute path, column type)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`None` if the
 /// feature doesn't carry that path — encoded as the column's no-data
@@ -59,7 +108,7 @@ pub struct PropertyTable {
 
 pub fn build_table(
     features: &[&Feature],
-    schemas: &[&SchemaMap],
+    schemas: &[Option<&SchemaMap>],
     options: MetadataOptions,
 ) -> PropertyTable {
     let flattened: Vec<BTreeMap<String, AttributeValue>> = features
@@ -67,21 +116,10 @@ pub fn build_table(
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
-    // Property table keys are the schema-declared attribute name, unsanitized.
-    let mut declared: IndexMap<&String, ColumnKind> = IndexMap::new();
-    for schema_attrs in schemas {
-        for (name, attr) in schema_attrs.iter() {
-            let kind = ColumnKind::from(&attr.type_ref);
-            declared
-                .entry(name)
-                .and_modify(|held| *held = (*held).max(kind))
-                .or_insert(kind);
-        }
-    }
-    let properties: Vec<(String, String, ColumnKind)> = declared
+    // Property table keys are the attribute name, unsanitized.
+    let properties: Vec<(String, String, ColumnKind)> = column_kinds(features, schemas, options)
         .into_iter()
-        .filter(|(name, _)| flattened.iter().any(|f| f.contains_key(name.as_str())))
-        .map(|(name, kind)| (name.clone(), name.clone(), kind))
+        .map(|(name, kind)| (name.clone(), name, kind))
         .collect();
 
     let rows = flattened
@@ -211,7 +249,19 @@ fn encode_float_column<'a>(
 ) -> (ClassProperty, MetadataPropertyTableProperty) {
     let mut value_bytes = Vec::new();
     for value in values {
-        let v = value.and_then(as_float).unwrap_or(FLOAT_NO_DATA);
+        let v = match value {
+            Some(value) => match as_float(value) {
+                Some(v) => v,
+                None => {
+                    tracing::error!(
+                        "Cesium3DTilesWriter: {raw_name:?} is a FLOAT64 column but {value:?} is \
+                         not convertible; encoding it as no-data"
+                    );
+                    FLOAT_NO_DATA
+                }
+            },
+            None => FLOAT_NO_DATA,
+        };
         value_bytes.extend_from_slice(&v.to_le_bytes());
     }
     let values_bufferview = builder.push_buffer_view(&value_bytes, 8);
@@ -240,7 +290,15 @@ fn encode_int_column<'a>(
     for value in values {
         match value.and_then(as_int) {
             Some(n) => collector.push(n),
-            None => collector.push_no_data(),
+            None => {
+                if let Some(value) = value {
+                    tracing::error!(
+                        "Cesium3DTilesWriter: {raw_name:?} is an integer column but {value:?} is \
+                         not convertible; encoding it as no-data"
+                    );
+                }
+                collector.push_no_data()
+            }
         }
     }
     let finalized = collector.finalize();
@@ -343,37 +401,11 @@ pub fn flatten_attributes(
         if is_excluded(&key, options) {
             continue;
         }
-        match options.array_map_separator {
-            Some(sep) => flatten(key, value, sep, &mut out),
-            None => {
-                if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
-                    insert_leaf(key, value, &mut out);
-                }
-            }
+        if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
+            insert_leaf(key, value, &mut out);
         }
     }
     out
-}
-
-fn flatten(
-    path: String,
-    value: &AttributeValue,
-    sep: &str,
-    out: &mut BTreeMap<String, AttributeValue>,
-) {
-    match value {
-        AttributeValue::Map(map) => {
-            for (key, child) in map {
-                flatten(format!("{path}{sep}{key}"), child, sep, out);
-            }
-        }
-        AttributeValue::Array(items) => {
-            for (i, child) in items.iter().enumerate() {
-                flatten(format!("{path}{sep}{i}"), child, sep, out);
-            }
-        }
-        leaf => insert_leaf(path, leaf, out),
-    }
 }
 
 fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, AttributeValue>) {
@@ -433,39 +465,14 @@ mod tests {
     }
 
     #[test]
-    fn none_separator_drops_maps_and_arrays() {
+    fn maps_and_arrays_are_dropped() {
         let feature = feature_with_nested();
-        let options = MetadataOptions {
-            array_map_separator: None,
-            ..Default::default()
-        };
-        let schema = schema_map(&[
-            ("name", TypeRef::String),
-            ("addr.city", TypeRef::String),
-            ("heights.0", TypeRef::String),
-        ]);
-        let table = build_table(&[&feature], &[&schema], options);
+        let schema = schema_map(&[("name", TypeRef::String)]);
+        let table = build_table(&[&feature], &[Some(&schema)], MetadataOptions::default());
 
         // Only the top-level scalar survives; the map and array contribute
         // no columns at all.
         assert_eq!(raw_paths(&table), vec!["name"]);
-    }
-
-    #[test]
-    fn separator_flattens_nested_paths() {
-        let feature = feature_with_nested();
-        let options = MetadataOptions {
-            array_map_separator: Some("."),
-            ..Default::default()
-        };
-        let schema = schema_map(&[
-            ("addr.city", TypeRef::String),
-            ("heights.0", TypeRef::String),
-            ("name", TypeRef::String),
-        ]);
-        let table = build_table(&[&feature], &[&schema], options);
-
-        assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
     }
 
     fn number(n: f64) -> AttributeValue {
@@ -479,8 +486,9 @@ mod tests {
     #[test]
     fn a_path_declared_twice_widens_to_the_more_general_type() {
         let feature = Feature::from(IndexMap::from([("k".to_string(), int_number(3))]));
-        let kind_of = |schemas: &[&SchemaMap]| {
-            build_table(&[&feature], schemas, MetadataOptions::default()).properties[0].2
+        let kind_of = |schemas: &[Option<&SchemaMap>]| {
+            let features = vec![&feature; schemas.len()];
+            build_table(&features, schemas, MetadataOptions::default()).properties[0].2
         };
 
         let unsigned = schema_map(&[("k", TypeRef::NonNegativeInteger)]);
@@ -488,12 +496,18 @@ mod tests {
         let double = schema_map(&[("k", TypeRef::Double)]);
         let string = schema_map(&[("k", TypeRef::String)]);
 
-        assert_eq!(kind_of(&[&unsigned]), ColumnKind::Int);
-        assert_eq!(kind_of(&[&unsigned, &signed]), ColumnKind::Int);
-        assert_eq!(kind_of(&[&signed, &unsigned]), ColumnKind::Int);
-        assert_eq!(kind_of(&[&unsigned, &double]), ColumnKind::Float64);
-        assert_eq!(kind_of(&[&double, &signed]), ColumnKind::Float64);
-        assert_eq!(kind_of(&[&string, &double]), ColumnKind::String);
+        assert_eq!(kind_of(&[Some(&unsigned)]), ColumnKind::Int);
+        assert_eq!(kind_of(&[Some(&unsigned), Some(&signed)]), ColumnKind::Int);
+        assert_eq!(kind_of(&[Some(&signed), Some(&unsigned)]), ColumnKind::Int);
+        assert_eq!(
+            kind_of(&[Some(&unsigned), Some(&double)]),
+            ColumnKind::Float64
+        );
+        assert_eq!(
+            kind_of(&[Some(&double), Some(&signed)]),
+            ColumnKind::Float64
+        );
+        assert_eq!(kind_of(&[Some(&string), Some(&double)]), ColumnKind::String);
     }
 
     #[test]
@@ -519,7 +533,7 @@ mod tests {
         ]);
         let table = build_table(
             &[&feature1, &feature2],
-            &[&schema],
+            &[Some(&schema)],
             MetadataOptions::default(),
         );
         let mut builder = Builder::new();

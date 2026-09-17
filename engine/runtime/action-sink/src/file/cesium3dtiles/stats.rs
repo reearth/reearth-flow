@@ -1,10 +1,10 @@
 use indexmap::IndexMap;
-use nusamai_citygml::schema::{Schema, TypeDef, TypeRef};
-use reearth_flow_gltf::tiles::metadata::{flatten_attributes, MetadataOptions};
+use nusamai_citygml::schema::{Schema, TypeDef};
+use reearth_flow_gltf::tiles::metadata::{
+    column_kinds, flatten_attributes, ColumnKind, MetadataOptions,
+};
 use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Number;
-
-use crate::schema::schema_attributes;
 
 #[derive(Default)]
 pub(super) struct PropertyStats {
@@ -39,29 +39,40 @@ pub(super) fn collect<'a>(
     schema: &Schema,
     options: MetadataOptions,
 ) -> IndexMap<String, PropertyStats> {
-    let mut stats: IndexMap<String, PropertyStats> = IndexMap::new();
+    let features: Vec<&Feature> = features.into_iter().collect();
+    let schemas = super::builder::declared_schemas(&features, schema);
+
+    // Tileset-wide, so every declared type is listed whether or not this run
+    // carried a feature of it; the per-feature kinds then add the derived ones.
+    let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
     for typedef in schema.types.values() {
         if let TypeDef::Feature(fdef) = typedef {
-            for key in fdef.attributes.keys() {
-                stats.entry(key.clone()).or_default();
+            for (name, attr) in fdef.attributes.iter() {
+                kinds.insert(name.clone(), ColumnKind::from(&attr.type_ref));
             }
         }
     }
+    for (name, kind) in column_kinds(&features, &schemas, options) {
+        kinds
+            .entry(name)
+            .and_modify(|held| *held = (*held).max(kind))
+            .or_insert(kind);
+    }
 
-    for feature in features {
-        let Some(feature_type) = feature.feature_type() else {
-            continue;
-        };
-        let Some(schema_attrs) = schema_attributes(&feature_type, schema) else {
-            continue;
-        };
+    let mut stats: IndexMap<String, PropertyStats> = kinds
+        .keys()
+        .map(|name| (name.clone(), PropertyStats::default()))
+        .collect();
+
+    for feature in &features {
         for (path, value) in flatten_attributes(feature, options) {
-            let Some(attr_def) = schema_attrs.get(path.as_str()) else {
+            let Some(kind) = kinds.get(&path) else {
                 continue;
             };
-            let numeric = numeric_value(&attr_def.type_ref, &value);
-            let entry = stats.entry(path).or_default();
-            if let Some(n) = numeric {
+            let Some(entry) = stats.get_mut(&path) else {
+                continue;
+            };
+            if let Some(n) = numeric_value(*kind, &value) {
                 entry.update(&n);
             }
         }
@@ -69,30 +80,20 @@ pub(super) fn collect<'a>(
     stats
 }
 
-fn numeric_value(type_ref: &TypeRef, value: &AttributeValue) -> Option<Number> {
-    match type_ref {
-        TypeRef::Integer => match value {
-            AttributeValue::Number(n) => n.as_i64().map(Number::from),
-            AttributeValue::String(s) => s.parse::<i64>().ok().map(Number::from),
-            _ => None,
-        },
-        TypeRef::NonNegativeInteger => match value {
-            AttributeValue::Number(n) => n.as_u64().map(Number::from),
-            AttributeValue::String(s) => s.parse::<u64>().ok().map(Number::from),
-            _ => None,
-        },
-        TypeRef::Double | TypeRef::Measure => match value {
+fn numeric_value(kind: ColumnKind, value: &AttributeValue) -> Option<Number> {
+    match kind {
+        ColumnKind::String => None,
+        ColumnKind::Int | ColumnKind::Float64 => match value {
             AttributeValue::Number(n) => Some(n.clone()),
             AttributeValue::String(s) => serde_json::from_str::<Number>(s).ok(),
             _ => None,
         },
-        _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use nusamai_citygml::schema::{FeatureTypeDef, TypeDef};
+    use nusamai_citygml::schema::{FeatureTypeDef, TypeDef, TypeRef};
 
     use super::*;
 
@@ -156,10 +157,19 @@ mod tests {
     }
 
     #[test]
-    fn feature_type_with_no_schema_entry_contributes_nothing() {
-        let features = vec![feature(1.0, "a")];
+    fn feature_type_with_no_schema_entry_is_derived_from_its_data() {
+        let features = vec![feature(1.0, "a"), feature(4.0, "b")];
         let stats = collect(&features, &Schema::default(), MetadataOptions::default());
-        assert!(stats.is_empty());
+        assert_eq!(stats.keys().collect::<Vec<_>>(), vec!["height", "name"]);
+        assert_eq!(
+            stats["height"].minimum.as_ref().unwrap().as_f64(),
+            Some(1.0)
+        );
+        assert_eq!(
+            stats["height"].maximum.as_ref().unwrap().as_f64(),
+            Some(4.0)
+        );
+        assert!(stats["name"].minimum.is_none());
     }
 
     #[test]

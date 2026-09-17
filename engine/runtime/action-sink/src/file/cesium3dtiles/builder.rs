@@ -442,6 +442,21 @@ fn page_sampler(wrap: reearth_flow_atlas::PageWrap) -> glb::SamplerDesc {
     }
 }
 
+/// Each feature's declared attribute map, or `None` where the schema port
+/// never declared that feature's type; runs parallel to `features`.
+pub(super) fn declared_schemas<'a>(
+    features: &[&Feature],
+    schema: &'a nusamai_citygml::schema::Schema,
+) -> Vec<Option<&'a nusamai_citygml::schema::Map>> {
+    features
+        .iter()
+        .map(|feature| {
+            let feature_type = feature.feature_type()?;
+            crate::schema::schema_attributes(&feature_type, schema)
+        })
+        .collect()
+}
+
 /// Render one occupied cell to a glb: one primitive per resolved colour-only
 /// material, plus one textured primitive per atlas page covering the cell's
 /// textured faces (see [`primitive::collect`], [`build_textured_pages`]).
@@ -457,14 +472,7 @@ fn build_cell_glb(
     let cells = primitive::collect(cell_members);
 
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
-    let feature_types: BTreeSet<String> = cell_features
-        .iter()
-        .filter_map(|f| f.feature_type())
-        .collect();
-    let schemas: Vec<&nusamai_citygml::schema::Map> = feature_types
-        .iter()
-        .filter_map(|ft| crate::schema::schema_attributes(ft, schema))
-        .collect();
+    let schemas = declared_schemas(&cell_features, schema);
     let table = metadata::build_table(&cell_features, &schemas, options);
 
     // Per-tile local origin keeps the f32 positions small next to ECEF's
@@ -988,7 +996,6 @@ mod tests {
         MetadataOptions {
             schema_key: None,
             skip_unexposed_attributes: false,
-            array_map_separator: Some("_"),
         }
     }
 

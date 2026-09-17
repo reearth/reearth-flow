@@ -141,7 +141,6 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 wrap_tolerance: params.wrap_tolerance,
                 texture_codec: params.texture_codec,
                 schema_key: params.schema_key,
-                array_map_separator: params.array_map_separator,
             },
         };
         Ok(Box::new(sink))
@@ -231,11 +230,6 @@ pub struct Cesium3DTilesWriterParam {
     /// output filename: all features sharing the same value are written to the
     /// same file. This attribute is excluded from output.
     pub(super) schema_key: Option<String>,
-    /// # Array/Map Separator
-    /// Separator joining a nested array or map attribute to its child key or
-    /// index when flattening it into metadata columns. Leave unset to drop array
-    /// and map attributes from the output entirely.
-    pub(super) array_map_separator: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -253,7 +247,6 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) wrap_tolerance: Option<f64>,
     pub(super) texture_codec: TextureCodec,
     pub(super) schema_key: Option<String>,
-    pub(super) array_map_separator: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -466,10 +459,20 @@ impl Cesium3DTilesWriter {
         output: &Uri,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<()> {
+        let mut schema: Schema = self.schema.clone();
+        for feature in features {
+            let Some(feature_type) = feature.feature_type() else {
+                continue;
+            };
+            if !schema.types.contains_key(&feature_type) {
+                let typedef: TypeDef = feature.into();
+                schema.types.insert(feature_type, typedef);
+            }
+        }
+
         let options = super::builder::MetadataOptions {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
-            array_map_separator: self.params.array_map_separator.as_deref(),
         };
         let render = super::builder::RenderOptions {
             draco: self.params.draco_compression.unwrap_or(true),
@@ -496,7 +499,7 @@ impl Cesium3DTilesWriter {
         let now = time::Instant::now();
         let built = super::builder::build(
             features,
-            &self.schema,
+            &schema,
             options,
             target_tile_size,
             render,
