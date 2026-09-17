@@ -904,6 +904,220 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nusamai_citygml::schema::Schema;
+    use reearth_flow_geometry::types::coordinate::{Coordinate2D, Coordinate3D};
+    use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+    use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+    use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+    use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
+    use reearth_flow_types::metadata::Metadata;
+    use reearth_flow_types::{Attributes, Geometry};
+    use std::sync::Mutex;
+
+    const DEFAULT_TARGET_TILE_SIZE: u64 = 1_048_576;
+
+    /// A plain untextured triangle at `lat, lon`, far enough from other test
+    /// features to land in its own quadtree cell at deep placement levels.
+    fn untextured_feature(lat: f64, lon: f64) -> Feature {
+        attributed_feature(lat, lon, &[])
+    }
+
+    /// [`untextured_feature`] carrying `attributes`, so cells can be given
+    /// disjoint metadata schemas.
+    fn attributed_feature(lat: f64, lon: f64, attributes: &[(&str, &str)]) -> Feature {
+        let exterior = LineString3D::new(vec![
+            Coordinate3D::new__(lon, lat, 10.0),
+            Coordinate3D::new__(lon + 0.0001, lat, 10.0),
+            Coordinate3D::new__(lon, lat + 0.0001, 10.0),
+        ]);
+        let uv_exterior = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(1.0, 0.0),
+            Coordinate2D::new_(0.0, 1.0),
+        ]);
+        let city_gml = CityGmlGeometry {
+            gml_geometries: vec![GmlGeometry {
+                id: None,
+                ty: GeometryType::Surface,
+                gml_trait: None,
+                lod: Some(2),
+                pos: 0,
+                len: 1,
+                polygons: vec![Polygon3D::new(exterior, vec![])],
+                line_strings: vec![],
+                points: vec![],
+                feature_id: None,
+                feature_type: None,
+            }],
+            materials: vec![],
+            textures: vec![],
+            polygon_materials: vec![None],
+            polygon_textures: vec![None],
+            polygon_uvs: MultiPolygon2D::new(vec![Polygon2D::new(uv_exterior, vec![])]),
+        };
+        let mut attrs = Attributes::new();
+        for (key, value) in attributes {
+            attrs.insert(
+                reearth_flow_types::Attribute::new(*key),
+                reearth_flow_types::AttributeValue::String((*value).to_string()),
+            );
+        }
+        Feature::new_with_attributes_and_geometry(
+            attrs,
+            Geometry {
+                epsg: Some(4979),
+                value: GeometryValue::CityGmlGeometry(city_gml),
+            },
+            Metadata::default(),
+        )
+    }
+
+    fn plain_render_options() -> RenderOptions {
+        RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+            wrap_tolerance: 0.0,
+            texture_codec: TextureCodec::Png,
+        }
+    }
+
+    fn plain_metadata_options() -> MetadataOptions<'static> {
+        MetadataOptions {
+            schema_key: None,
+            skip_unexposed_attributes: false,
+            array_map_separator: Some("_"),
+        }
+    }
+
+    // Two features far enough apart to place in different leaf cells must still
+    // land in one content glb once `target_tile_size` is large relative to their
+    // (tiny) combined cost — proving `merge_small_cells` folds undersized sibling
+    // cells upward instead of leaving the tileset needlessly fragmented.
+    #[test]
+    fn small_cells_merge_into_one_tile_under_a_large_target_size() {
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(36.0, 140.0),
+        ];
+        let tiles = Mutex::new(Vec::new());
+        let built = build(
+            &features,
+            &Schema::default(),
+            plain_metadata_options(),
+            DEFAULT_TARGET_TILE_SIZE,
+            plain_render_options(),
+            |_path: String, glb| {
+                tiles.lock().unwrap().push(glb);
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(
+            built.tile_count, 1,
+            "two spatially separate but tiny-cost features merge into one tile"
+        );
+        assert_eq!(tiles.into_inner().unwrap().len(), 1);
+    }
+
+    // The same two features, but with `target_tile_size` set below what even one
+    // of them costs alone, so no merge/co-placement can fit them together —
+    // proving `split_by_size` (and, since they'd otherwise share a cell, its
+    // per-cell same-tile-content splitting) keeps every chunk under the target.
+    #[test]
+    fn oversized_cell_splits_into_multiple_same_tile_contents() {
+        // Same location twice: both are forced into the same leaf cell
+        // regardless of `SAFETY_MAX_DEPTH`, isolating `split_by_size`'s
+        // same-tile-content behaviour from `merge_small_cells`.
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(35.0, 139.0),
+        ];
+        let paths = Mutex::new(Vec::new());
+        let built = build(
+            &features,
+            &Schema::default(),
+            plain_metadata_options(),
+            1,
+            plain_render_options(),
+            |path: String, _glb| {
+                paths.lock().unwrap().push(path);
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(
+            built.tile_count, 2,
+            "target size of 1 byte forces each feature into its own content chunk"
+        );
+        let paths = paths.into_inner().unwrap();
+        assert_eq!(paths.len(), 2);
+        assert!(
+            paths.iter().any(|p| p.ends_with("/0.glb"))
+                && paths.iter().any(|p| p.ends_with("/0_1.glb")),
+            "slot 0 keeps the plain name and slot 1 gets a suffix once a cell splits: {paths:?}"
+        );
+    }
+
+    /// Transfer bytes of every content glb written for `features` under
+    /// `target`.
+    fn content_sizes(features: &[Feature], target: u64) -> Vec<u64> {
+        let sizes = Mutex::new(Vec::new());
+        build(
+            features,
+            &Schema::default(),
+            plain_metadata_options(),
+            target,
+            plain_render_options(),
+            |_path: String, glb| {
+                sizes.lock().unwrap().push(transfer_bytes(&glb));
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+        sizes.into_inner().unwrap()
+    }
+
+    // The split decision follows the transfer bytes the writer emits: a target
+    // one byte under the pair's gzipped glb splits the cell into one content
+    // per feature, while a target equal to it keeps the cell whole.
+    #[test]
+    fn split_follows_measured_transfer_bytes() {
+        let one = content_sizes(&[untextured_feature(35.0, 139.0)], u64::MAX);
+        assert_eq!(one.len(), 1);
+        let single = one[0];
+
+        let pair = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(35.0, 139.0),
+        ];
+        let whole = content_sizes(&pair, u64::MAX);
+        assert_eq!(whole.len(), 1);
+        let both = whole[0];
+        assert!(both > single);
+
+        let split = content_sizes(&pair, both - 1);
+        assert_eq!(split.len(), 2, "pair glb exceeds the target");
+        assert!(split.iter().all(|&b| b == single));
+
+        let kept = content_sizes(&pair, both);
+        assert_eq!(kept.len(), 1, "pair glb fits the target exactly");
+    }
+
+    // A cell that would need more contents than `MAX_CONTENTS_PER_TILE` stops
+    // splitting at the cap and keeps oversized contents instead.
+    #[test]
+    fn contents_per_tile_are_capped() {
+        let features: Vec<Feature> = (0..MAX_CONTENTS_PER_TILE * 3)
+            .map(|_| untextured_feature(35.0, 139.0))
+            .collect();
+        let sizes = content_sizes(&features, 1);
+        assert_eq!(sizes.len(), MAX_CONTENTS_PER_TILE);
+    }
 
     #[test]
     fn split_into_weights_items_and_never_yields_one_group() {
@@ -926,6 +1140,23 @@ mod tests {
             split_into((0..5).collect::<Vec<usize>>(), |_| 0, 2),
             vec![vec![0, 1, 2], vec![3, 4]]
         );
+    }
+
+    // Merging follows the summed transfer bytes of the cells being folded:
+    // two far-apart features share a tile exactly when their separate contents
+    // together fit the target.
+    #[test]
+    fn merge_follows_summed_transfer_bytes() {
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(36.0, 140.0),
+        ];
+        let apart = content_sizes(&features, 1);
+        assert_eq!(apart.len(), 2);
+        let summed: u64 = apart.iter().sum();
+
+        assert_eq!(content_sizes(&features, summed).len(), 1);
+        assert_eq!(content_sizes(&features, summed - 1).len(), 2);
     }
 
     #[test]
