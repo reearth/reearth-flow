@@ -16,8 +16,7 @@
     "city_code": "08220",
     "feature_type": "tran:TrafficArea",
     "gml_id": "synth_trafficarea_1",
-    "lod": "2",
-    "tran:function": ""
+    "lod": 2
   },
   "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
     "attributes": [
@@ -38,7 +37,7 @@
     "city_code": "08220",
     "feature_type": "tran:TrafficArea",
     "gml_id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
-    "lod": "2",
+    "lod": 2,
     "tran:function": "歩道部"
   }
 }
