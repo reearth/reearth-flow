@@ -48,8 +48,6 @@ impl From<&TypeRef> for ColumnKind {
 }
 
 impl ColumnKind {
-    /// How many other kinds this one can hold; a glb whose feature types
-    /// declare one attribute path differently takes the most general of them.
     fn generality(self) -> u8 {
         match self {
             ColumnKind::UnsignedInt => 0,
@@ -87,9 +85,7 @@ pub fn build_table(
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
-    // Property table keys are the schema-declared attribute name, unsanitized;
-    // an attribute no feature actually carries is dropped rather than encoded
-    // as an all-no-data column.
+    // Property table keys are the schema-declared attribute name, unsanitized.
     let mut declared: IndexMap<&String, ColumnKind> = IndexMap::new();
     for schema_attrs in schemas {
         for (name, attr) in schema_attrs.iter() {
@@ -533,8 +529,6 @@ mod tests {
         AttributeValue::Number(serde_json::Number::from(n))
     }
 
-    // A glb holding several feature types takes, for a path they declare
-    // differently, the most general of their declared types.
     #[test]
     fn a_path_declared_twice_widens_to_the_more_general_type() {
         let feature = Feature::from(IndexMap::from([("k".to_string(), int_number(3))]));

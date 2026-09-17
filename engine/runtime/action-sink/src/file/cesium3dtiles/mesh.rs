@@ -10,9 +10,6 @@ use reearth_flow_types::material::{self, Material, X3DMaterial};
 
 use super::appearance::{self, ResolvedMaterial};
 
-/// A `CityGmlGeometry`'s polygons, triangulated and reprojected, merged into
-/// one combined mesh (index-offset concatenation, no cross-polygon vertex
-/// welding — later stages weld as needed).
 #[derive(Default)]
 pub(super) struct ExtractedMesh {
     /// Vertex positions in ECEF (WGS84 geocentric), metres.
@@ -102,8 +99,7 @@ pub(super) fn extract(city_gml: &CityGmlGeometry) -> Option<ExtractedMesh> {
     }
 }
 
-/// Reproject one polygon's rings to ECEF, triangulate via earcut, and append
-/// the result (vertices, triangles, flat normal, per-corner UV) to `mesh`.
+/// Triangulate and reproject one polygon.
 fn extract_polygon(
     poly: &Polygon3D<f64>,
     uv_poly: &Polygon2D<f64>,
@@ -115,8 +111,6 @@ fn extract_polygon(
     let flat_poly: flatgeom::Polygon3 = poly.clone().into();
     let flat_uv: flatgeom::Polygon2 = uv_poly.clone().into();
 
-    // Built in parallel, ring by ring (closed), so `geo_points[i]` is the
-    // geographic counterpart of `local_poly.raw_coords()[i]` (ECEF+uv) below.
     let mut local: MultiPolygon<'static, [f64; 5]> = MultiPolygon::new();
     let mut geo_points: Vec<[f64; 3]> = Vec::new();
     let mut ring_buf: Vec<[f64; 5]> = Vec::new();
@@ -193,7 +187,6 @@ mod tests {
     use reearth_flow_types::material::Texture;
 
     fn quad_feature(with_texture: bool) -> CityGmlGeometry {
-        // A flat, roughly-1m-square quad near Tokyo (lng/lat degrees, height metres).
         let base_lng = 139.767;
         let base_lat = 35.681;
         let d = 0.00001; // ~1m at this latitude
@@ -267,7 +260,6 @@ mod tests {
         assert_eq!(mesh.corner_uv.len(), 6);
         assert_eq!(mesh.triangle_material, vec![Some(0), Some(0)]);
 
-        // ECEF magnitude should be close to Earth's radius.
         for v in &mesh.ecef_vertices {
             let mag = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
             assert!(

@@ -65,11 +65,9 @@ const SAFETY_MAX_DEPTH: u32 = 24;
 /// need more keeps contents over `target_tile_size` instead.
 const MAX_CONTENTS_PER_TILE: usize = 15;
 
-/// Build one tileset (tileset.json + subtrees + streamed content glbs) from a
-/// batch of features already resolved to one output path. Content glbs stream
-/// through `write_tile` as each cell is built rather than being retained, so
-/// peak memory stays at one cell's contents per rayon worker regardless of
-/// tile count. Features without a `CityGmlGeometry` are skipped.
+/// Content glbs stream through `write_tile` as each cell is built rather than
+/// being retained, so peak memory stays at one cell's contents regardless of
+/// tile count.
 pub(super) fn build(
     features: &[Feature],
     schema: &nusamai_citygml::schema::Schema,

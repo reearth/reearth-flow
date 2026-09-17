@@ -39,8 +39,6 @@ pub(super) fn collect<'a>(
     schema: &Schema,
     options: MetadataOptions,
 ) -> IndexMap<String, PropertyStats> {
-    // Pre-initialize from the schema so every declared attribute is listed, in
-    // schema order, even when no feature carries a value for it.
     let mut stats: IndexMap<String, PropertyStats> = IndexMap::new();
     for typedef in schema.types.values() {
         if let TypeDef::Feature(fdef) = typedef {

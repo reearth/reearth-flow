@@ -172,16 +172,13 @@ pub struct Cesium3DTilesWriterParam {
     /// Directory path where the 3D tiles will be written
     pub(super) output: Expr,
     /// # Minimum Zoom Level
-    /// Unused: implicit tiling derives tile depth from `targetTileSize`
-    /// instead. Kept only so older workflow files still deserialize.
+    /// Minimum zoom level for tile generation (0-24)
     pub(super) min_zoom: Option<u8>,
     /// # Maximum Zoom Level
-    /// Unused: implicit tiling derives tile depth from `targetTileSize`
-    /// instead. Kept only so older workflow files still deserialize.
+    /// Maximum zoom level for tile generation (0-24)
     pub(super) max_zoom: Option<u8>,
     /// # Attach Textures
-    /// Unused: use `textureCodec: Untextured` to attach no textures instead.
-    /// Kept only so older workflow files still deserialize.
+    /// Whether to include texture information in the generated tiles
     pub(super) attach_texture: Option<bool>,
     /// # Compressed Output Path
     /// Optional path for compressed archive output
