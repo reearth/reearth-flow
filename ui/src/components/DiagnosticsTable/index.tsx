@@ -3,11 +3,7 @@ import { useMemo } from "react";
 
 import useDiagnosticLabels from "@flow/hooks/useDiagnosticLabels";
 import { useT } from "@flow/lib/i18n";
-import {
-  type Diagnostic,
-  diagnosticOccurrences,
-  isAggregatedDiagnostic,
-} from "@flow/types";
+import { type Diagnostic, diagnosticOccurrences } from "@flow/types";
 
 import { Badge } from "../Badge";
 import { DataTable as Table } from "../DataTable";
@@ -73,12 +69,15 @@ const DiagnosticsTable: React.FC<Props> = ({
         id: "occurrences",
         accessorFn: (diagnostic) => diagnosticOccurrences(diagnostic),
         header: t("Occurrences"),
-        cell: ({ row }) =>
-          // An aggregated row stands for many features; every other row is a
-          // single occurrence. Never parse the count out of the message.
-          isAggregatedDiagnostic(row.original)
-            ? diagnosticOccurrences(row.original).toLocaleString()
-            : "1",
+        cell: ({ row }) => {
+          // Only an aggregated row carries a count. A non-aggregated row says
+          // nothing about how many features were affected, so show it as
+          // unknown rather than inventing 1. Never parse it out of the message.
+          const occurrences = diagnosticOccurrences(row.original);
+          return occurrences === undefined
+            ? t("Unknown")
+            : occurrences.toLocaleString();
+        },
       },
       {
         accessorKey: "message",

@@ -70,6 +70,13 @@
     "help": "Check the operation's expression for the attribute it reads or produces."
   },
   {
+    "code": "expr.evaluation_failed",
+    "category": "expression",
+    "defaultDisposition": "fatal",
+    "message": "expression evaluation failed",
+    "help": "Check the expression for this parameter. A common cause is referencing an attribute that does not exist on the incoming feature — verify the attribute name, and that an upstream action produces it."
+  },
+  {
     "code": "geometry.area_angular_crs",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
