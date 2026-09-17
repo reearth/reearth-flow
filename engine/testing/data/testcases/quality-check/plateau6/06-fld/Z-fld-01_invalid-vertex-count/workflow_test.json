@@ -39,7 +39,7 @@
   ],
   "expectedOutput": {
     "expectedFile": [
-      "error_geometry/06_浸水想定区域_fld/natl/1_1_shogawa_頂点数が不正な三角形.geojson"
+      "error_geometry/fld/natl/1_1_shogawa/頂点数が不正な三角形.geojson"
     ]
   },
   "summaryOutput": {

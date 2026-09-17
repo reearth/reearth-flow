@@ -39,7 +39,7 @@
   ],
   "expectedOutput": {
     "expectedFile": [
-      "error_geometry/06_浸水想定区域_fld/natl/1_1_shogawa_線状・点状の三角形.geojson"
+      "error_geometry/fld/natl/1_1_shogawa/線状・点状の三角形.geojson"
     ]
   },
   "summaryOutput": {

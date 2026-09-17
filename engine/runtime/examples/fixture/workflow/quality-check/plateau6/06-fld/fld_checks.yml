@@ -487,8 +487,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          [package, rest] = attributes["folder"].split("/", 1);
-          "error_geometry/" + variables["packagePrefixes"][package] + "/" + rest + "_頂点数が不正な三角形.geojson"
+          "error_geometry/" + attributes["folder"] + "/頂点数が不正な三角形.geojson"
       writeCrs: true
 
   - id: d8000000-0000-4000-8000-000000000020
@@ -512,8 +511,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          [package, rest] = attributes["folder"].split("/", 1);
-          "error_geometry/" + variables["packagePrefixes"][package] + "/" + rest + "_線状・点状の三角形.geojson"
+          "error_geometry/" + attributes["folder"] + "/線状・点状の三角形.geojson"
       writeCrs: true
 
   - id: d8000000-0000-4000-8000-000000000022
@@ -537,8 +535,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          [package, rest] = attributes["folder"].split("/", 1);
-          "error_geometry/" + variables["packagePrefixes"][package] + "/" + rest + "_向きが不正な三角形.geojson"
+          "error_geometry/" + attributes["folder"] + "/向きが不正な三角形.geojson"
       writeCrs: true
 
   # A ring that never closes bounds no face, so it cannot be drawn as one. The
@@ -569,8 +566,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          [package, rest] = attributes["folder"].split("/", 1);
-          "error_geometry/" + variables["packagePrefixes"][package] + "/" + rest + "_閉じていない三角形.geojson"
+          "error_geometry/" + attributes["folder"] + "/閉じていない三角形.geojson"
       writeCrs: true
 
   - id: d8000000-0000-4000-8000-000000000027
@@ -594,8 +590,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          [package, rest] = attributes["folder"].split("/", 1);
-          "error_geometry/" + variables["packagePrefixes"][package] + "/" + rest + "_共有先のない辺.geojson"
+          "error_geometry/" + attributes["folder"] + "/共有先のない辺.geojson"
       writeCrs: true
 
   - id: d8000000-0000-4000-8000-000000000029
