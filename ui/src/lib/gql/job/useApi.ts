@@ -6,7 +6,12 @@ import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { useQueries } from "./useQueries";
 
 export const useJob = () => {
-  const { useGetJobsQuery, useGetJobQuery, cancelJobMutation } = useQueries();
+  const {
+    useGetJobsQuery,
+    useGetJobQuery,
+    useGetJobDiagnosticsQuery,
+    cancelJobMutation,
+  } = useQueries();
   const { toast } = useToast();
   const t = useT();
   const useGetJobs = (
@@ -29,6 +34,27 @@ export const useJob = () => {
     const { data, ...rest } = useGetJobQuery(jobId);
     return {
       job: data,
+      ...rest,
+    };
+  };
+
+  /**
+   * `poll` should track whether the job is still running: diagnostics never
+   * arrive over a subscription, so a live job has to be re-read on an interval
+   * to keep them current.
+   *
+   * `nodeIds` should be every node in the run's workflows: diagnostics are
+   * bucketed by node and a node left out of the list is silently invisible.
+   */
+  const useGetJobDiagnostics = (
+    jobId?: string,
+    poll?: boolean,
+    nodeIds?: string[],
+  ) => {
+    const { data, ...rest } = useGetJobDiagnosticsQuery(jobId, poll, nodeIds);
+    return {
+      failedNodes: data?.failedNodes,
+      bucketRows: data?.bucketRows,
       ...rest,
     };
   };
@@ -57,6 +83,7 @@ export const useJob = () => {
   return {
     useGetJob,
     useGetJobs,
+    useGetJobDiagnostics,
     useJobCancel,
   };
 };

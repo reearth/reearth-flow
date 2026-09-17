@@ -3,11 +3,14 @@ import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
+import useDebugDiagnosticNodes from "@flow/hooks/useDebugDiagnosticNodes";
+import useWorkflowNodeIds from "@flow/hooks/useWorkflowNodeIds";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
+import useNodeNavigation from "./useNodeNavigation";
 import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";
 
 type Props = {
@@ -121,6 +124,16 @@ export default function Editor({
     undoTrackerActionWrapper,
   });
 
+  const workflowNodeIds = useWorkflowNodeIds(yWorkflows);
+  const diagnosticSeverityByNodeId = useDebugDiagnosticNodes(workflowNodeIds);
+
+  const handleNodeNavigate = useNodeNavigation({
+    rawWorkflows,
+    currentWorkflowId,
+    onWorkflowOpen: handleWorkflowOpen,
+    onNodesChange: handleNodesChange,
+  });
+
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
@@ -139,6 +152,9 @@ export default function Editor({
         onEditStart: handleWorkflowVarEditStart,
       },
       staleNodeIds,
+      workflowNodeIds,
+      diagnosticSeverityByNodeId,
+      onNodeNavigate: handleNodeNavigate,
     }),
     [
       isLocked,
@@ -154,6 +170,9 @@ export default function Editor({
       handleWorkflowVarFieldFocus,
       handleWorkflowVarEditStart,
       staleNodeIds,
+      workflowNodeIds,
+      diagnosticSeverityByNodeId,
+      handleNodeNavigate,
     ],
   );
 

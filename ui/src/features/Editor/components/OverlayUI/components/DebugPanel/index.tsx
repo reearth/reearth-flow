@@ -38,6 +38,7 @@ const DebugPanel: React.FC = () => {
   const {
     debugJobId,
     debugJobState,
+    isDebugJobActive,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -52,6 +53,7 @@ const DebugPanel: React.FC = () => {
     formattedData,
     handleFeatureSelect,
     handleFullscreenExpand,
+    handleFullscreenExit,
     handleExpand,
     handleMinimize,
     handleTabChange,
@@ -181,7 +183,11 @@ const DebugPanel: React.FC = () => {
               debugJobIdRef.current !== debugJobId ? undefined : true
             }
             hidden={tabValue !== "debug-logs"}>
-            <DebugLogs debugJobId={debugJobId} />
+            <DebugLogs
+              debugJobId={debugJobId}
+              isJobActive={isDebugJobActive}
+              onExitFullscreen={handleFullscreenExit}
+            />
           </TabsContent>
           {dataURLs && (
             <TabsContent

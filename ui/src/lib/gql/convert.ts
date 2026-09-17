@@ -21,6 +21,7 @@ import {
   type WorkerConfigFragment,
   type ParameterType,
   type ProjectSnapshotFragment,
+  type DiagnosticFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
@@ -47,6 +48,7 @@ import type {
   CmsAsset,
   UserFacingLog,
   WorkerConfig,
+  Diagnostic,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
@@ -111,6 +113,23 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
     ...v,
     type: toUserParamVarType(v.type),
   })),
+});
+
+// category/severity/effectiveDisposition stay as the strings the engine sent:
+// they are not enums, and an unrecognised value has to reach the screen rather
+// than be coerced into something we happen to know about.
+export const toDiagnostic = (diagnostic: DiagnosticFragment): Diagnostic => ({
+  code: diagnostic.code,
+  category: diagnostic.category,
+  severity: diagnostic.severity,
+  effectiveDisposition: diagnostic.effectiveDisposition ?? undefined,
+  nodeId: diagnostic.nodeId ?? undefined,
+  actionType: diagnostic.actionType ?? undefined,
+  featureId: diagnostic.featureId ?? undefined,
+  message: diagnostic.message,
+  help: diagnostic.help ?? undefined,
+  aggregatedCount: diagnostic.aggregatedCount ?? undefined,
+  sampleFeatureIds: diagnostic.sampleFeatureIds ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({
