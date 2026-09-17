@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
 import {
@@ -48,11 +48,26 @@ const diagnosticKey = (diagnostic: Diagnostic) =>
 export default (jobId?: string, isJobActive?: boolean, nodeIds?: string[]) => {
   const { useGetJobDiagnostics } = useJob();
 
-  const { failedNodes, bucketRows, isFetching } = useGetJobDiagnostics(
+  const { failedNodes, bucketRows, isFetching, refetch } = useGetJobDiagnostics(
     jobId,
     isJobActive,
     nodeIds,
   );
+
+  // Polling stops the moment a run ends, but `failedNodes` is written at
+  // completion — so the last poll of a failing run saw everything except the
+  // terminal rows. Without this read the panel can sit open on a stale count
+  // until it remounts.
+  const wasActiveRef = useRef(false);
+  useEffect(() => {
+    if (isJobActive) {
+      wasActiveRef.current = true;
+      return;
+    }
+    if (!wasActiveRef.current) return;
+    wasActiveRef.current = false;
+    refetch();
+  }, [isJobActive, refetch]);
 
   const terminalKeys = useMemo(
     () => new Set((failedNodes ?? []).map(diagnosticKey)),

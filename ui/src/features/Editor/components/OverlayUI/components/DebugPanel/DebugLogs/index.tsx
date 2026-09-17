@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import DiagnosticsConsole from "@flow/features/DiagnosticsConsole";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
@@ -53,6 +53,41 @@ const DebugLogs: React.FC<Props> = ({
     if (!count) setView("logs");
   }, [count]);
 
+  // Auto-switching is per run and happens at most once. It needs to know the
+  // run was watched live — a job that was already finished when the panel
+  // opened must not hijack the view — and it is spent as soon as the user
+  // picks a view, so nobody reading the logs is pulled away from them.
+  const autoSwitch = useRef({
+    jobId: debugJobId,
+    wasActive: false,
+    spent: false,
+  });
+
+  useEffect(() => {
+    if (autoSwitch.current.jobId === debugJobId) return;
+    autoSwitch.current = { jobId: debugJobId, wasActive: false, spent: false };
+  }, [debugJobId]);
+
+  // Diagnostics are the point of a run that reported something, and the switch
+  // that holds them is easy to miss, so a finished run lands on them itself.
+  // Rows keep arriving after the status flips — the terminal ones are only
+  // written at completion — so this waits on the count, not just the status.
+  useEffect(() => {
+    if (isJobActive) {
+      autoSwitch.current.wasActive = true;
+      return;
+    }
+    if (!autoSwitch.current.wasActive || autoSwitch.current.spent || !count)
+      return;
+    autoSwitch.current.spent = true;
+    setView("diagnostics");
+  }, [isJobActive, count]);
+
+  const handleViewChange = useCallback((next: DebugLogsView) => {
+    autoSwitch.current.spent = true;
+    setView(next);
+  }, []);
+
   if (!debugJobId) return null;
 
   const switchControl = (
@@ -60,7 +95,7 @@ const DebugLogs: React.FC<Props> = ({
       view={view}
       diagnosticsCount={count}
       hasBlocking={hasBlocking}
-      onViewChange={setView}
+      onViewChange={handleViewChange}
     />
   );
 
