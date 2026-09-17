@@ -18,6 +18,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+
 use super::errors::{Result, XmlProcessorError};
 
 #[derive(Debug, Clone, Default)]
@@ -227,42 +229,52 @@ fn send_xml_fragment(
     elements_to_match_ast: &CompiledCode,
     elements_to_exclude_ast: &CompiledCode,
     variables: Arc<serde_json::Map<String, serde_json::Value>>,
-) -> Result<()> {
+) -> std::result::Result<(), BoxedError> {
     let t_total = Instant::now();
 
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-    let elements_to_match = match elements_to_match_ast
-        .eval(feature, variables.clone())
-        .map_err(|e| {
-            XmlProcessorError::Fragmenter(format!("Failed to evaluate elementsToMatch: {e}"))
-        })? {
+    let matched = match elements_to_match_ast.eval(feature, variables.clone()) {
+        Ok(value) => value,
+        Err(e) => {
+            ctx.report(
+                DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed)
+                    .with_message(format!("Failed to evaluate elementsToMatch: {e}")),
+            )?;
+            // Resolved below Fatal: this feature produces no fragments rather than failing the node.
+            return Ok(());
+        }
+    };
+    let elements_to_match = match matched {
         AttributeValue::Array(arr) => arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
         _ => {
-            return Err(XmlProcessorError::Fragmenter(
+            return Err(Box::new(XmlProcessorError::Fragmenter(
                 "elements_to_match must be an array".to_string(),
-            ))
+            )))
         }
     };
     if elements_to_match.is_empty() {
         return Ok(());
     }
 
-    let elements_to_exclude =
-        match elements_to_exclude_ast
-            .eval(feature, variables)
-            .map_err(|e| {
-                XmlProcessorError::Fragmenter(format!("Failed to evaluate elementsToExclude: {e}"))
-            })? {
-            AttributeValue::Array(arr) => {
-                arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>()
-            }
-            _ => {
-                return Err(XmlProcessorError::Fragmenter(
-                    "elements_to_exclude must be an array".to_string(),
-                ))
-            }
-        };
+    let excluded_value = match elements_to_exclude_ast.eval(feature, variables) {
+        Ok(value) => value,
+        Err(e) => {
+            ctx.report(
+                DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed)
+                    .with_message(format!("Failed to evaluate elementsToExclude: {e}")),
+            )?;
+            return Ok(());
+        }
+    };
+    let elements_to_exclude = match excluded_value {
+        AttributeValue::Array(arr) => arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
+        _ => {
+            return Err(Box::new(XmlProcessorError::Fragmenter(
+                "elements_to_exclude must be an array".to_string(),
+            )))
+        }
+    };
 
     let excluded: HashSet<String> = elements_to_exclude.into_iter().collect();
     let mut match_tags = Vec::new();
@@ -286,10 +298,10 @@ fn send_xml_fragment(
                 Some(AttributeValue::String(url)) => Uri::from_str(url)
                     .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?,
                 _ => {
-                    return Err(XmlProcessorError::Fragmenter(format!(
+                    return Err(Box::new(XmlProcessorError::Fragmenter(format!(
                         "No XML file path or URL found in attribute `{}`",
                         property.attribute
-                    )))
+                    ))))
                 }
             };
             let storage = storage_resolver
@@ -304,10 +316,10 @@ fn send_xml_fragment(
         }
         XmlFragmenterParam::Text { property } => {
             let Some(AttributeValue::String(raw_xml)) = feature.get(&property.attribute) else {
-                return Err(XmlProcessorError::Fragmenter(format!(
+                return Err(Box::new(XmlProcessorError::Fragmenter(format!(
                     "No XML text found in attribute `{}`",
                     property.attribute
-                )));
+                ))));
             };
             generate_fragment_streaming(
                 ctx,
@@ -325,7 +337,7 @@ fn send_xml_fragment(
         gen_ms = %t_gen.elapsed().as_millis(),
         "XmlFragmenter::send_xml_fragment END"
     );
-    result
+    result.map_err(Into::into)
 }
 
 fn generate_fragment_streaming(

@@ -232,9 +232,20 @@ impl Processor for AttributeAggregator {
         let calc = if let Some(value) = self.calculation_value {
             value
         } else if let Some(calculation) = &self.calculation {
-            calculation.eval_int(feature, variables).map_err(|e| {
-                AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
-            })?
+            match calculation.eval_int(feature, variables) {
+                Ok(value) => value,
+                Err(e) => {
+                    ctx.report(
+                        DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(
+                            format!("Failed to evaluate the calculation expression: {e}"),
+                        ),
+                    )?;
+                    // Resolved below Fatal: this feature contributes nothing to the aggregate
+                    // rather than failing the node. Returning before touching `self.buffer` keeps
+                    // an all-failed group absent instead of emitting a zero for it.
+                    return Ok(());
+                }
+            }
         } else {
             return Err(
                 AttributeProcessorError::Aggregator("Calculation not found".to_string()).into(),

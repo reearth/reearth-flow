@@ -400,16 +400,20 @@ impl Processor for StatisticsCalculator {
             .join("|");
 
         for calculation in &self.calculations {
-            let acc = self
-                .aggregate_buffer
-                .entry(aggregate_key.clone())
-                .or_default()
-                .entry(calculation.new_attribute.clone())
-                .or_default();
-
+            // The accumulator is created only once there is something to record. Creating it up
+            // front and then skipping a failed evaluation leaves a zero-valued accumulator behind,
+            // which `finish` finalizes as 0 rather than omitting — silently emitting a fabricated
+            // statistic for a calculation that never evaluated. `finish` maps an absent
+            // accumulator to Null, which is the honest result.
             match &calculation.expr {
                 // Count is the only method without a value expression.
-                None => acc.ingest_count(),
+                None => self
+                    .aggregate_buffer
+                    .entry(aggregate_key.clone())
+                    .or_default()
+                    .entry(calculation.new_attribute.clone())
+                    .or_default()
+                    .ingest_count(),
                 Some(expr) => {
                     let attr_val = match expr.eval(feature, Arc::clone(&variables)) {
                         Ok(value) => value,
@@ -424,8 +428,8 @@ impl Processor for StatisticsCalculator {
                                     ),
                                 ),
                             )?;
-                            // Resolved below Fatal: skip this one calculation for this feature and
-                            // keep aggregating the rest.
+                            // Resolved below Fatal: no accumulator is created, so this calculation
+                            // finalizes as Null instead of a made-up 0.
                             continue;
                         }
                     };
@@ -454,7 +458,12 @@ impl Processor for StatisticsCalculator {
                             )))
                         }
                     };
-                    acc.ingest_value(numeric_value);
+                    self.aggregate_buffer
+                        .entry(aggregate_key.clone())
+                        .or_default()
+                        .entry(calculation.new_attribute.clone())
+                        .or_default()
+                        .ingest_value(numeric_value);
                 }
             }
         }
