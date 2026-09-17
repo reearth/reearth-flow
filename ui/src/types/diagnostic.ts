@@ -48,11 +48,18 @@ export const isAggregatedDiagnostic = (diagnostic: Diagnostic): boolean =>
   diagnostic.aggregatedCount !== undefined;
 
 /**
- * How many occurrences a row stands for: an aggregated row carries its own
- * count, every other row is a single occurrence.
+ * How many occurrences a row stands for, or `undefined` when the row carries no
+ * count.
+ *
+ * Only aggregated (`finish()`-time) rows carry a count. A fatal row does **not**
+ * mean "this happened once": the engine keeps the first fatal per node and drops
+ * the rest, so a single fatal row can stand for any number of failed features.
+ * Returning 1 for those would state something the payload does not say — render
+ * an unknown count as unknown instead.
  */
-export const diagnosticOccurrences = (diagnostic: Diagnostic): number =>
-  diagnostic.aggregatedCount ?? 1;
+export const diagnosticOccurrences = (
+  diagnostic: Diagnostic,
+): number | undefined => diagnostic.aggregatedCount;
 
 /**
  * Rank used for ordering and for picking the worst diagnostic in a set.

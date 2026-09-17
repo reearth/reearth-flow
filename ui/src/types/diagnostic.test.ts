@@ -43,10 +43,13 @@ describe("isFatalDiagnostic", () => {
 });
 
 describe("aggregated rows", () => {
-  test("a per-feature row counts as one occurrence", () => {
+  test("a row without a count reports an unknown occurrence count", () => {
+    // A fatal row is NOT "one occurrence": the engine keeps the first fatal per
+    // node and drops the rest, so the payload genuinely does not say how many
+    // features failed. Reporting 1 here would invent a number.
     const perFeature = diagnostic({ featureId: "feature-1" });
     expect(isAggregatedDiagnostic(perFeature)).toBe(false);
-    expect(diagnosticOccurrences(perFeature)).toBe(1);
+    expect(diagnosticOccurrences(perFeature)).toBeUndefined();
   });
 
   test("an aggregated row carries its own count", () => {
