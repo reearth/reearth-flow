@@ -50,7 +50,7 @@ jobs:
           git config --global pull.rebase false
       - id: changelog
         name: Generate CHANGELOG
-        uses: reearth/changelog-action@main
+        uses: reearth/changelog-action@86cb9d7a3727f3cb6afe36a1536fad61e9775287 # main
         with:
           version: ${{ github.event.inputs.version == 'custom' && github.event.inputs.custom_version || github.event.inputs.version }}
           repo: ${{ github.repository }}
