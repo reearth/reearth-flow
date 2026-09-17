@@ -1,5 +1,4 @@
 import { GearFineIcon } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
@@ -11,9 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@flow/components";
-import { applySchemaDefaults } from "@flow/components/SchemaForm/patchSchemaTypes";
+import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
+import type { FlowSchema } from "@flow/lib/schemaForm";
+import {
+  applyDefaults,
+  compile,
+  getAtPath,
+  parsePathKey,
+} from "@flow/lib/schemaForm";
 import type { AwarenessUser, Node } from "@flow/types";
 import { normalizeParams } from "@flow/utils";
 
@@ -25,12 +31,13 @@ import {
   type CodeValue,
 } from "./components";
 import { AutocompleteSuggestion } from "./components/ValueEditorDialog/components/flowExprConstants";
-import { FieldContext, getValueAtPath } from "./utils/fieldUtils";
 import {
   applyMergedPatch,
+  changedFieldPath,
   DraftPatch,
   DraftStore,
-  rjsfIdToPath,
+  nextSeq,
+  type NodeDrafts,
 } from "./utils/paramsAwareness";
 
 type Props = {
@@ -43,7 +50,7 @@ type Props = {
       nodeId: string;
       updatedParams: any;
       updatedCustomizations: any;
-      paramsSchema?: RJSFSchema;
+      paramsSchema?: FlowSchema;
     }[],
   ) => void;
   onNodeParamsSaved?: (node: Node) => void;
@@ -99,23 +106,41 @@ const ParamsDialog: React.FC<Props> = ({
     );
   }, [openNode, nodeDrafts]);
 
+  /**
+   * This node's drafts as the document holds them *now*.
+   *
+   * `rawDrafts` is a render snapshot, so it is a frame behind: two edits
+   * dispatched in one React tick both read the state the render began with,
+   * and the second overwrites the first. Keystrokes arrive in exactly that
+   * pattern. Yjs is the authority, so every read that precedes a write goes to
+   * the map rather than to the snapshot — which also makes the callbacks below
+   * stable, since they no longer close over a value that changes every render.
+   */
+  const liveNodeDrafts = useCallback(
+    (nodeId: string): NodeDrafts => (yDrafts?.get(nodeId) ?? {}) as NodeDrafts,
+    [yDrafts],
+  );
+
   const setMyDraft = useCallback(
-    (nodeId: string, updater: (existing: DraftPatch) => DraftPatch) => {
-      const existingNodeDrafts = rawDrafts[nodeId] ?? {};
+    (
+      nodeId: string,
+      updater: (existing: DraftPatch, nodeDrafts: NodeDrafts) => DraftPatch,
+    ) => {
+      const existingNodeDrafts = liveNodeDrafts(nodeId);
       const existingMyDraft = existingNodeDrafts[clientId] ?? {};
-      const nextMyDraft = updater(existingMyDraft);
+      const nextMyDraft = updater(existingMyDraft, existingNodeDrafts);
 
       yDrafts?.set(nodeId, {
         ...existingNodeDrafts,
         [clientId]: nextMyDraft,
       });
     },
-    [rawDrafts, yDrafts, clientId],
+    [liveNodeDrafts, yDrafts, clientId],
   );
 
   const removeMyDraft = useCallback(
     (nodeId: string) => {
-      const existingNodeDrafts = rawDrafts[nodeId];
+      const existingNodeDrafts = yDrafts?.get(nodeId) as NodeDrafts | undefined;
       if (!existingNodeDrafts) return;
 
       const { [clientId]: _removed, ...remainingDrafts } = existingNodeDrafts;
@@ -126,7 +151,7 @@ const ParamsDialog: React.FC<Props> = ({
         yDrafts?.set(nodeId, remainingDrafts);
       }
     },
-    [rawDrafts, yDrafts, clientId],
+    [yDrafts, clientId],
   );
 
   const updateMyFieldPatch = useCallback(
@@ -136,13 +161,20 @@ const ParamsDialog: React.FC<Props> = ({
       path: string,
       value: any,
     ) => {
-      setMyDraft(nodeId, (existing) => ({
+      setMyDraft(nodeId, (existing, nodeDrafts) => ({
         ...existing,
         [patchKey]: {
           ...(existing[patchKey] ?? {}),
           [path]: {
             value,
             updatedAt: Date.now(),
+            // Stamped above every counter already in this node's drafts, so
+            // edits order by what each client had seen rather than by its
+            // clock. Counted from the drafts `setMyDraft` is about to write
+            // over, not from the render snapshot: two edits in one tick would
+            // otherwise claim the same counter and fall back to `updatedAt`,
+            // which cannot separate them inside a millisecond.
+            seq: nextSeq(nodeDrafts),
           },
         },
       }));
@@ -155,11 +187,11 @@ const ParamsDialog: React.FC<Props> = ({
       id: string,
       _updatedParams: any,
       _updatedCustomizations: any,
-      paramsSchema?: RJSFSchema,
+      paramsSchema?: FlowSchema,
     ) => {
       if (!openNode || openNode.id !== id) return;
 
-      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const latestNodeDrafts = liveNodeDrafts(id);
 
       const mergedParams = applyMergedPatch(
         openNode.data.params,
@@ -170,7 +202,7 @@ const ParamsDialog: React.FC<Props> = ({
       // Normalize after defaults are applied to prevent issues with whitespace-only values in flowExpr fields, which are considered empty.
       const updatedParams = normalizeParams(
         paramsSchema
-          ? applySchemaDefaults(paramsSchema, mergedParams)
+          ? (applyDefaults(compile(paramsSchema), mergedParams) ?? mergedParams)
           : mergedParams,
       );
 
@@ -201,7 +233,7 @@ const ParamsDialog: React.FC<Props> = ({
     },
     [
       openNode,
-      rawDrafts,
+      liveNodeDrafts,
       onDataSubmit,
       onNodeParamsSaved,
       yDoc,
@@ -211,10 +243,10 @@ const ParamsDialog: React.FC<Props> = ({
   );
 
   const handleMigrate = useCallback(
-    (id: string, newParams: any, paramsSchema?: RJSFSchema) => {
+    (id: string, newParams: any, paramsSchema?: FlowSchema) => {
       if (!openNode || openNode.id !== id) return;
 
-      const latestNodeDrafts = rawDrafts[id] ?? {};
+      const latestNodeDrafts = liveNodeDrafts(id);
       const updatedCustomizations = applyMergedPatch(
         openNode.data.customizations,
         latestNodeDrafts,
@@ -235,7 +267,7 @@ const ParamsDialog: React.FC<Props> = ({
       removeMyDraft(id);
       // Dialog stays open — user reviews migrated values in normal editor and saves explicitly
     },
-    [openNode, rawDrafts, onDataSubmit, yDoc, removeMyDraft],
+    [openNode, liveNodeDrafts, onDataSubmit, yDoc, removeMyDraft],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -304,10 +336,12 @@ const ParamsDialog: React.FC<Props> = ({
     (data: any, changedFieldId?: string) => {
       if (!openNode) return;
 
-      const path = rjsfIdToPath(changedFieldId);
-      if (!path) return;
+      const path = changedFieldPath(changedFieldId);
+      // `""` is the root, which a union-rooted schema writes to; only an
+      // absent path means there is nothing to record.
+      if (path === undefined) return;
 
-      const value = getValueAtPath(data, path.split("."));
+      const value = getAtPath(data, parsePathKey(path));
 
       updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
     },
@@ -318,10 +352,12 @@ const ParamsDialog: React.FC<Props> = ({
     (data: any, changedFieldId?: string) => {
       if (!openNode) return;
 
-      const path = rjsfIdToPath(changedFieldId);
-      if (!path) return;
+      const path = changedFieldPath(changedFieldId);
+      // `""` is the root, which a union-rooted schema writes to; only an
+      // absent path means there is nothing to record.
+      if (path === undefined) return;
 
-      const value = getValueAtPath(data, path.split("."));
+      const value = getAtPath(data, parsePathKey(path));
 
       updateMyFieldPatch(openNode.id, "customizationsPatch", path, value);
     },
@@ -330,10 +366,8 @@ const ParamsDialog: React.FC<Props> = ({
 
   const applyFieldPatch = (fieldContext: FieldContext, value: any) => {
     if (!fieldContext || !openNode) return;
-    const path = Array.isArray(fieldContext.path)
-      ? fieldContext.path.join(".")
-      : fieldContext.path;
-    updateMyFieldPatch(openNode.id, "paramsPatch", path, value);
+    // `key` is the same dot path a draft patch is filed under.
+    updateMyFieldPatch(openNode.id, "paramsPatch", fieldContext.key, value);
   };
 
   const handleValueChange = (value: any) => {

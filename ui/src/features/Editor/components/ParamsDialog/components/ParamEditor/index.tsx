@@ -4,7 +4,6 @@ import {
   PuzzlePieceIcon,
   QuestionIcon,
 } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { memo, useEffect, useState } from "react";
 
 import {
@@ -21,14 +20,15 @@ import {
   ActionDetails,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
+import type { FlowSchema } from "@flow/lib/schemaForm";
 import type { AwarenessUser, NodeData, NodeParams } from "@flow/types";
 
 import { extractDescriptions } from "../../utils/extractDescriptions";
-import { FieldContext } from "../../utils/fieldUtils";
 import { schemasMatch } from "../../utils/schemaFingerprint";
 
 import SchemaMigrationView from "./SchemaMigrationView";
@@ -47,12 +47,12 @@ type Props = {
     nodeId: string,
     updatedParams: any,
     updatedCustomizations: any,
-    paramsSchema?: RJSFSchema,
+    paramsSchema?: FlowSchema,
   ) => Promise<void>;
   onMigrate: (
     nodeId: string,
     newParams: NodeParams,
-    paramsSchema?: RJSFSchema,
+    paramsSchema?: FlowSchema,
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
   onParamFieldFocus?: (fieldId: string | null) => void;
