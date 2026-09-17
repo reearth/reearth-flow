@@ -2281,9 +2281,15 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     },
     "dracoCompression": {
       "title": "Draco Compression",
-      "description": "Whether to compress mesh geometry with Draco. Defaults to true.",
-      "default": true,
-      "type": "boolean"
+      "description": "Whether to compress mesh geometry with Draco, and how precisely. Defaults to enabled at the encoder's default resolution.",
+      "default": {
+        "type": "enabled"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/DracoCompression"
+        }
+      ]
     },
     "computeFlatNormal": {
       "title": "Compute Flat Normals",
@@ -2369,6 +2375,52 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     }
   },
   "definitions": {
+    "DracoCompression": {
+      "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+      "oneOf": [
+        {
+          "title": "Disabled",
+          "description": "Write mesh geometry uncompressed.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "disabled"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Enabled",
+          "description": "Compress mesh geometry with Draco.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "enabled"
+              ]
+            },
+            "quantizationError": {
+              "title": "Quantization Error",
+              "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+              "type": [
+                "number",
+                "null"
+              ],
+              "format": "double"
+            }
+          }
+        }
+      ]
+    },
     "TextureCodec": {
       "title": "Texture Codec",
       "description": "Texture image codec for the new-geometry writer's atlas pages.",

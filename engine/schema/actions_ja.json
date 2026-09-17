@@ -2333,9 +2333,15 @@
           },
           "dracoCompression": {
             "title": "Draco 圧縮",
-            "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）",
-            "default": true,
-            "type": "boolean"
+            "description": "メッシュジオメトリを Draco で圧縮するかと、その精度。デフォルトはエンコーダー既定の解像度で有効。",
+            "default": {
+              "type": "enabled"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DracoCompression"
+              }
+            ]
           },
           "computeFlatNormal": {
             "title": "フラット法線を計算",
@@ -2421,6 +2427,52 @@
           }
         },
         "definitions": {
+          "DracoCompression": {
+            "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+            "oneOf": [
+              {
+                "title": "無効",
+                "description": "メッシュジオメトリを圧縮せずに書き出す。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "disabled"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "有効",
+                "description": "メッシュジオメトリを Draco で圧縮する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "enabled"
+                    ]
+                  },
+                  "quantizationError": {
+                    "title": "Quantization Error",
+                    "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "format": "double"
+                  }
+                }
+              }
+            ]
+          },
           "TextureCodec": {
             "title": "Texture Codec",
             "description": "Texture image codec for the new-geometry writer's atlas pages.",

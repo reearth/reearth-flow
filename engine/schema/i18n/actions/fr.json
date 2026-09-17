@@ -867,7 +867,7 @@
         },
         "dracoCompression": {
           "title": "Compression Draco",
-          "description": "Utiliser la compression Draco. Vrai par défaut."
+          "description": "Indique si la géométrie du maillage est compressée avec Draco, et avec quelle précision. Activée par défaut avec la résolution par défaut de l'encodeur."
         },
         "output": {
           "title": "Chemin de Sortie",
@@ -899,6 +899,22 @@
         }
       },
       "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "Désactivée",
+            "description": "Écrit la géométrie du maillage sans compression."
+          },
+          "enabled": {
+            "title": "Activée",
+            "description": "Compresse la géométrie du maillage avec Draco.",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
         "TextureCodec": {
           "JPEG": {
             "description": "JPEG, avec perte et opaque (le canal alpha est supprimé)."

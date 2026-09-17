@@ -867,7 +867,7 @@
         },
         "dracoCompression": {
           "title": "Draco 压缩",
-          "description": "使用 Draco 压缩。默认为 true。"
+          "description": "是否使用 Draco 压缩网格几何体，以及压缩精度。默认以编码器的默认精度启用。"
         },
         "output": {
           "title": "输出路径",
@@ -899,6 +899,22 @@
         }
       },
       "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "禁用",
+            "description": "不压缩网格几何体直接写出。"
+          },
+          "enabled": {
+            "title": "启用",
+            "description": "使用 Draco 压缩网格几何体。",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
         "TextureCodec": {
           "JPEG": {
             "description": "JPEG，有损且不透明（丢弃 alpha 通道）。"

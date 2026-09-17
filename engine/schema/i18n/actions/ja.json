@@ -867,7 +867,7 @@
         },
         "dracoCompression": {
           "title": "Draco 圧縮",
-          "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）"
+          "description": "メッシュジオメトリを Draco で圧縮するかと、その精度。デフォルトはエンコーダー既定の解像度で有効。"
         },
         "output": {
           "title": "出力パス",
@@ -899,6 +899,22 @@
         }
       },
       "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "無効",
+            "description": "メッシュジオメトリを圧縮せずに書き出す。"
+          },
+          "enabled": {
+            "title": "有効",
+            "description": "メッシュジオメトリを Draco で圧縮する。",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
         "TextureCodec": {
           "JPEG": {
             "description": "JPEG。非可逆で不透明（アルファは破棄される）。"

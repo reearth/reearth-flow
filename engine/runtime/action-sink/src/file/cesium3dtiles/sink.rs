@@ -146,6 +146,12 @@ fn default_true() -> bool {
     true
 }
 
+/// Serde default for the draco parameter: compression at the encoder's default
+/// resolution.
+fn default_draco_compression() -> reearth_flow_gltf::DracoCompression {
+    reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
+}
+
 /// # Texture Codec
 /// Texture image codec for the new-geometry writer's atlas pages.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
@@ -201,9 +207,10 @@ pub struct Cesium3DTilesWriterParam {
     #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     /// # Draco Compression
-    /// Whether to compress mesh geometry with Draco. Defaults to true.
-    #[serde(default = "default_true")]
-    pub(super) draco_compression: bool,
+    /// Whether to compress mesh geometry with Draco, and how precisely. Defaults to
+    /// enabled at the encoder's default resolution.
+    #[serde(default = "default_draco_compression")]
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     /// # Compute Flat Normals
     /// Compute per-polygon flat normals for lighting. Defaults to true.
     /// When disabled, no normals are written and the mesh is smaller, but the
@@ -270,7 +277,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<CompiledCode>,
-    pub(super) draco_compression: bool,
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     #[cfg(feature = "new-geometry")]
     pub(super) compute_flat_normal: bool,
     #[cfg(feature = "new-geometry")]
@@ -677,6 +684,28 @@ impl Cesium3DTilesWriter {
     }
 }
 
+#[cfg(test)]
+mod draco_parameter_tests {
+    use pretty_assertions::assert_eq;
+    use reearth_flow_gltf::DracoCompression;
+
+    use super::Cesium3DTilesWriterParam;
+
+    fn parse(extra: serde_json::Value) -> DracoCompression {
+        let mut value = serde_json::json!({
+            "output": {"type": "flowExpr", "value": "\"out\""},
+            "minZoom": 15,
+            "maxZoom": 18,
+        });
+        if let serde_json::Value::Object(extra) = extra {
+            value.as_object_mut().unwrap().extend(extra);
+        }
+        serde_json::from_value::<Cesium3DTilesWriterParam>(value)
+            .unwrap()
+            .draco_compression
+    }
+}
+
 #[cfg(all(test, not(feature = "new-geometry")))]
 mod diagnostics_tests {
     use std::sync::Arc;
@@ -699,7 +728,7 @@ mod diagnostics_tests {
                 max_zoom: 0,
                 attach_texture: None,
                 compress_output: None,
-                draco_compression: true,
+                draco_compression: reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED,
                 skip_unexposed_attributes: false,
                 schema_key: None,
             },

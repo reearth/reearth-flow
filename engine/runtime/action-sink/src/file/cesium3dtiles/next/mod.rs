@@ -36,6 +36,7 @@ use reearth_flow_common::image::MimeType;
 use reearth_flow_geometry::appearance::RasterData;
 use reearth_flow_gltf::next::glb::{self, Granularity};
 use reearth_flow_gltf::next::metadata;
+use reearth_flow_gltf::DracoCompression;
 
 use appearance::TextureSource;
 use primitive::{Geom, TexturedPrimitive, DEFAULT_MATERIAL};
@@ -167,8 +168,8 @@ pub struct BuiltTileset {
 /// Rendering knobs shared by every cell of a tileset.
 #[derive(Clone, Copy)]
 pub struct RenderOptions {
-    /// Draco-compress each glb.
-    pub draco: bool,
+    /// Draco compression of each glb.
+    pub draco: DracoCompression,
     /// Attach per-polygon flat normals for lighting.
     pub compute_flat_normal: bool,
     /// Target texel size in metres per pixel: textures finer than this are
@@ -707,6 +708,8 @@ fn build_cell_glb(
     // Per-tile local origin keeps the f32 positions small next to ECEF's
     // ~6.378e6 m magnitude (see [`push_geom`]).
     let origin = cell_origin(&cells);
+    let (position_min, position_max) = position_bounds(&cells, origin);
+    let mut texture_size: Option<u32> = None;
 
     let mut builder = glb::Builder::new();
     // Each primitive keeps its own per-vertex feature IDs (its vertex buffer is
@@ -722,6 +725,7 @@ fn build_cell_glb(
         };
         match pages {
             Some(pages) => {
+                texture_size = pages.iter().map(|page| page.extent).max();
                 for page in pages {
                     let material = glb::MaterialDesc {
                         base_color_factor: [1.0, 1.0, 1.0, 1.0],
@@ -774,12 +778,41 @@ fn build_cell_glb(
     let gltf_origin = [origin[0], origin[2], -origin[1]];
     let glb = builder.build(gltf_origin);
 
-    if render.draco {
-        reearth_flow_gltf::next::draco::compress(&glb)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("draco compression failed: {e:?}")))
+    if render.draco.is_enabled() {
+        reearth_flow_gltf::next::draco::compress(
+            &glb,
+            render.draco,
+            texture_size,
+            position_min,
+            position_max,
+        )
+        .map_err(|e| SinkError::Cesium3DTilesWriter(format!("draco compression failed: {e:?}")))
     } else {
         Ok(glb)
     }
+}
+
+/// Bounding box of every primitive's vertices relative to `origin`, as the
+/// `(min, max)` the glb positions span. An empty cell yields an inverted box.
+fn position_bounds(cells: &primitive::CellPrimitives, origin: [f64; 3]) -> ([f64; 3], [f64; 3]) {
+    let mut min = [f64::MAX; 3];
+    let mut max = [f64::MIN; 3];
+    let mut add = |positions: &[[f64; 3]]| {
+        for p in positions {
+            for axis in 0..3 {
+                let v = p[axis] - origin[axis];
+                min[axis] = min[axis].min(v);
+                max[axis] = max[axis].max(v);
+            }
+        }
+    };
+    for color in &cells.color {
+        add(&color.geom.positions);
+    }
+    if let Some(textured) = &cells.textured {
+        add(&textured.geom.positions);
+    }
+    (min, max)
 }
 
 fn color_material(factors: primitive::MaterialFactors) -> glb::MaterialDesc {
@@ -796,6 +829,8 @@ fn color_material(factors: primitive::MaterialFactors) -> glb::MaterialDesc {
 /// atlas-space per-corner UVs (parallel to the sub-geometry's corners).
 struct TexturedPage {
     texture: glb::TextureRef,
+    /// Larger page dimension in pixels.
+    extent: u32,
     geom: Geom,
     corner_uv: Vec<[f32; 2]>,
 }
@@ -875,7 +910,7 @@ fn build_textured_pages(
         let texture = builder
             .push_atlas_texture(page, codec.as_ref(), page_sampler(*wrap))
             .map_err(SinkError::cesium3dtiles_writer)?;
-        page_textures.push(texture);
+        page_textures.push((texture, page.width().max(page.height())));
     }
 
     Ok(Some(split_textured_by_page(
@@ -996,7 +1031,7 @@ fn split_textured_by_page(
     textured: &TexturedPrimitive,
     remapped: &[Vec<reearth_flow_atlas::PolygonPlacement>],
     slots: &[(usize, usize)],
-    textures: Vec<glb::TextureRef>,
+    textures: Vec<(glb::TextureRef, u32)>,
 ) -> Vec<TexturedPage> {
     let pages = textures.len();
     let mut geoms: Vec<Geom> = (0..pages).map(|_| Geom::default()).collect();
@@ -1044,8 +1079,9 @@ fn split_textured_by_page(
         .into_iter()
         .zip(geoms)
         .zip(corner_uvs)
-        .map(|((texture, geom), corner_uv)| TexturedPage {
+        .map(|(((texture, extent), geom), corner_uv)| TexturedPage {
             texture,
+            extent,
             geom,
             corner_uv,
         })
@@ -1210,7 +1246,7 @@ mod tests {
             })],
         };
         let render = RenderOptions {
-            draco: false,
+            draco: DracoCompression::Disabled,
             compute_flat_normal: false,
             texel_size: 0.0,
             atlas_size: 1024,
@@ -1299,7 +1335,7 @@ mod tests {
             Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
         );
         let render = RenderOptions {
-            draco: false,
+            draco: DracoCompression::Disabled,
             compute_flat_normal: false,
             texel_size: 0.0,
             atlas_size: 1024,
@@ -1422,7 +1458,7 @@ mod tests {
 
     fn plain_render_options() -> RenderOptions {
         RenderOptions {
-            draco: false,
+            draco: DracoCompression::Disabled,
             compute_flat_normal: false,
             texel_size: 0.0,
             atlas_size: 1024,

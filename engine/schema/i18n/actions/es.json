@@ -867,7 +867,7 @@
         },
         "dracoCompression": {
           "title": "Compresión Draco",
-          "description": "Usar compresión Draco. Verdadero por defecto."
+          "description": "Si se comprime la geometría de malla con Draco y con qué precisión. Por defecto está activada con la resolución predeterminada del codificador."
         },
         "output": {
           "title": "Ruta de Salida",
@@ -899,6 +899,22 @@
         }
       },
       "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "Desactivada",
+            "description": "Escribe la geometría de malla sin comprimir."
+          },
+          "enabled": {
+            "title": "Activada",
+            "description": "Comprime la geometría de malla con Draco.",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
         "TextureCodec": {
           "JPEG": {
             "description": "JPEG, con pérdida y opaco (se descarta el canal alfa)."

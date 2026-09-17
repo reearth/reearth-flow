@@ -1277,9 +1277,9 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "draco-nd-vector"
-version = "0.0.0"
+version = "0.1.0-alpha.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b52e30399ca1a8564f752cdeb76182cebf86c1b3e1359e2cc001a0c6687669d5"
+checksum = "3f9d1be620150af03cab4013218c6ebe38b90fe5372f6a3102ee15b31b7bceae"
 dependencies = [
  "quote",
  "seq-macro",
@@ -1288,11 +1288,12 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b1410f466053b59aae2f498732d346c3ba1f4563fdba25422b01c266c530b23"
+checksum = "f773242a81326f7204133c819df924925b796839ddf67de8a42609776a11573f"
 dependencies = [
  "draco-oxide-core",
+ "draco-oxide-decoder",
  "enum_dispatch",
  "gltf 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "image",
@@ -1305,9 +1306,9 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide-core"
-version = "0.1.0-alpha.8"
+version = "0.1.0-alpha.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a901844e75adb463393e6e05475e8363dc983fce0df855ad8d728f5aac9a485"
+checksum = "52421c109f93463aefa99bd167b3b1785433f71678d0fcb8161dc5a0ccb5d1fe"
 dependencies = [
  "draco-nd-vector",
  "kiddo",
@@ -1316,6 +1317,17 @@ dependencies = [
  "seq-macro",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "draco-oxide-decoder"
+version = "0.1.0-alpha.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "521c29e7b30c62171799d532277800cabd24fb20611c72b7af38f48b625b79cf"
+dependencies = [
+ "draco-oxide-core",
+ "remain",
  "thiserror 2.0.18",
 ]
 
@@ -5259,6 +5271,7 @@ dependencies = [
  "nusamai-citygml",
  "nusamai-gltf",
  "once_cell",
+ "pretty_assertions",
  "reearth-flow-common",
  "reearth-flow-geometry",
  "reearth-flow-runtime",

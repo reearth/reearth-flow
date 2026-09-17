@@ -2333,9 +2333,15 @@
           },
           "dracoCompression": {
             "title": "Compresión Draco",
-            "description": "Usar compresión Draco. Verdadero por defecto.",
-            "default": true,
-            "type": "boolean"
+            "description": "Si se comprime la geometría de malla con Draco y con qué precisión. Por defecto está activada con la resolución predeterminada del codificador.",
+            "default": {
+              "type": "enabled"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DracoCompression"
+              }
+            ]
           },
           "computeFlatNormal": {
             "title": "Calcular Normales Planas",
@@ -2421,6 +2427,52 @@
           }
         },
         "definitions": {
+          "DracoCompression": {
+            "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+            "oneOf": [
+              {
+                "title": "Desactivada",
+                "description": "Escribe la geometría de malla sin comprimir.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "disabled"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Activada",
+                "description": "Comprime la geometría de malla con Draco.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "enabled"
+                    ]
+                  },
+                  "quantizationError": {
+                    "title": "Quantization Error",
+                    "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "format": "double"
+                  }
+                }
+              }
+            ]
+          },
           "TextureCodec": {
             "title": "Texture Codec",
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
