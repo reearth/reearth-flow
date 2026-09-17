@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -245,7 +246,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             let expr = if calculation.aggregation.requires_expr() {
                 match &calculation.expr {
                     Some(expr) => Some(expr.compile().map_err(|e| {
-                        AttributeProcessorError::StatisticsCalculatorFactory(format!("{e:?}"))
+                        AttributeProcessorError::StatisticsCalculatorFactory(format!("{e}"))
                     })?),
                     None => {
                         return Err(
@@ -410,12 +411,24 @@ impl Processor for StatisticsCalculator {
                 // Count is the only method without a value expression.
                 None => acc.ingest_count(),
                 Some(expr) => {
-                    let attr_val = expr.eval(feature, Arc::clone(&variables)).map_err(|e| {
-                        AttributeProcessorError::StatisticsCalculator(format!(
-                            "Failed to evaluate expression for attribute '{}': {e}",
-                            calculation.new_attribute
-                        ))
-                    })?;
+                    let attr_val = match expr.eval(feature, Arc::clone(&variables)) {
+                        Ok(value) => value,
+                        Err(e) => {
+                            // Reported rather than returned so the failure carries a real code and
+                            // `errorPolicy` can resolve it; `?` propagates only a Fatal resolution.
+                            ctx.report(
+                                DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(
+                                    format!(
+                                        "Failed to evaluate expression for attribute '{}': {e}",
+                                        calculation.new_attribute
+                                    ),
+                                ),
+                            )?;
+                            // Resolved below Fatal: skip this one calculation for this feature and
+                            // keep aggregating the rest.
+                            continue;
+                        }
+                    };
 
                     let numeric_value = match attr_val {
                         AttributeValue::Number(n) => {

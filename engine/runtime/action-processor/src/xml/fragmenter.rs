@@ -235,7 +235,7 @@ fn send_xml_fragment(
     let elements_to_match = match elements_to_match_ast
         .eval(feature, variables.clone())
         .map_err(|e| {
-            XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
+            XmlProcessorError::Fragmenter(format!("Failed to evaluate elementsToMatch: {e}"))
         })? {
         AttributeValue::Array(arr) => arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
         _ => {
@@ -252,7 +252,7 @@ fn send_xml_fragment(
         match elements_to_exclude_ast
             .eval(feature, variables)
             .map_err(|e| {
-                XmlProcessorError::Fragmenter(format!("Failed expr engine error with {e:?}"))
+                XmlProcessorError::Fragmenter(format!("Failed to evaluate elementsToExclude: {e}"))
             })? {
             AttributeValue::Array(arr) => {
                 arr.into_iter().map(|v| v.to_string()).collect::<Vec<_>>()

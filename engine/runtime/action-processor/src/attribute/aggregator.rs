@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -79,7 +80,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             if let Some(expr) = aggregte_attribute.attribute_value {
                 let compiled = expr
                     .compile()
-                    .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{e:?}")))?;
+                    .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{e}")))?;
                 aggregate_attributes.push(CompliledAggregateAttribute {
                     attribute_value: Some(compiled),
                     new_attribute: aggregte_attribute.new_attribute,
@@ -213,12 +214,19 @@ impl Processor for AttributeAggregator {
                 continue;
             }
             if let Some(code) = &aggregate_attribute.attribute_value {
-                let result = code.eval(feature, variables.clone()).map_err(|e| {
-                    AttributeProcessorError::Aggregator(format!(
-                        "Failed to evaluate aggregation: {e}"
-                    ))
-                })?;
-                aggregates.push(result);
+                match code.eval(feature, variables.clone()) {
+                    Ok(result) => aggregates.push(result),
+                    Err(e) => {
+                        ctx.report(
+                            DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(
+                                format!("Failed to evaluate aggregation expression: {e}"),
+                            ),
+                        )?;
+                        // Resolved below Fatal: this feature contributes no value for this
+                        // aggregate rather than failing the node.
+                        continue;
+                    }
+                }
             }
         }
         let calc = if let Some(value) = self.calculation_value {
