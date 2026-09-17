@@ -256,8 +256,7 @@ const SCENARIO_06_PROCESSOR_NODE_ID: &str = "b1fa0a3e-61d3-48e2-a328-e7226c2ad1a
 
 #[test]
 fn processor_failure_event_converges_with_thread_result() {
-    use reearth_flow_diagnostics::{Diagnostic, Disposition, ErrorCode};
-    use reearth_flow_runtime::errors::ExecutionError;
+    use reearth_flow_diagnostics::{Disposition, ErrorCode};
 
     // scenario-06's per-feature processor error records a synthesized fatal into the node's fatal
     // slot, so reconcile_terminate_result's (Ok(()), Some(diag)) arm fails the node thread with a
