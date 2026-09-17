@@ -171,15 +171,6 @@ pub struct Cesium3DTilesWriterParam {
     /// # Output Path
     /// Directory path where the 3D tiles will be written
     pub(super) output: Expr,
-    /// # Minimum Zoom Level
-    /// Minimum zoom level for tile generation (0-24)
-    pub(super) min_zoom: Option<u8>,
-    /// # Maximum Zoom Level
-    /// Maximum zoom level for tile generation (0-24)
-    pub(super) max_zoom: Option<u8>,
-    /// # Attach Textures
-    /// Whether to include texture information in the generated tiles
-    pub(super) attach_texture: Option<bool>,
     /// # Compressed Output Path
     /// Optional path for compressed archive output
     pub(super) compress_output: Option<Expr>,
