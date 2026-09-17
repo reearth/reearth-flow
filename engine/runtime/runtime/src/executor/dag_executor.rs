@@ -423,23 +423,21 @@ fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
 
 /// `meta` is stamped only on synthesized fallbacks — a recovered diagnostic
 /// keeps its own `node_id`/`action_type`.
+///
+/// Shares `recover_diagnostic` with the worker's terminal-summary fallback; keeping one
+/// implementation is deliberate, since the two drifting apart is what let a carried
+/// `Diagnostic` reach the frontend as a `{:?}` dump.
 fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagnostic {
-    let rendered = e.to_string();
-    let boxed = match e {
-        ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
-            Some(b)
-        }
-        _ => None,
-    };
-    match boxed.map(|b| b.downcast::<Diagnostic>()) {
-        Some(Ok(diag)) => *diag,
-        _ => Diagnostic::from_draft(
-            DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(rendered),
-            Some(meta.composed_id.clone()),
-            Some(meta.action.clone()),
-            None,
-        ),
+    if let Some(diagnostic) = crate::errors::recover_diagnostic(&e) {
+        return diagnostic.clone();
     }
+    Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::InternalUnclassified)
+            .with_message(crate::errors::render_error_chain(&e)),
+        Some(meta.composed_id.clone()),
+        Some(meta.action.clone()),
+        None,
+    )
 }
 
 fn start_source<F: Send + 'static + Future + Unpin + Debug>(
