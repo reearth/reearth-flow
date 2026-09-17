@@ -5,6 +5,8 @@ use byteorder::{ByteOrder, LittleEndian};
 use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
 use reearth_flow_types::material;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::metadata::MetadataEncoder;
 
@@ -16,16 +18,35 @@ pub struct PrimitiveInfo {
 
 pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
-/// Draco geometry compression setting for a written glb.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+/// Whether mesh geometry is compressed with Draco, and how precisely.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum DracoCompression {
-    /// Positions are written uncompressed.
-    #[default]
+    /// # Disabled
+    /// Write mesh geometry uncompressed.
     Disabled,
-    /// Positions are compressed. The value bounds how far quantization may move a
-    /// vertex, in the unit of the vertex coordinates, and must be positive; `None`
-    /// leaves the encoder's default resolution.
-    Enabled(Option<f64>),
+    /// # Enabled
+    /// Compress mesh geometry with Draco.
+    #[serde(rename_all = "camelCase")]
+    Enabled {
+        /// # Quantization Error
+        /// Upper bound, in meters, on how far compression may move a vertex. Must
+        /// be positive. When unset, the encoder's default resolution is used.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        quantization_error: Option<f64>,
+    },
+}
+
+impl DracoCompression {
+    /// Compression with the encoder's default resolution.
+    pub const DEFAULT_ENABLED: Self = Self::Enabled {
+        quantization_error: None,
+    };
+
+    /// Whether the glb is compressed.
+    pub fn is_enabled(self) -> bool {
+        matches!(self, Self::Enabled { .. })
+    }
 }
 
 /// Upper bound, in texels of the referenced texture, on how far texture coordinate
@@ -319,7 +340,7 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    if draco_compression != DracoCompression::Disabled {
+    if draco_compression.is_enabled() {
         let mut tmp_buffer = Vec::new();
         let indirect_writer = IndirectWriter {
             buffer: &mut tmp_buffer,
@@ -383,7 +404,9 @@ fn draco_config(
     let mut config = <draco_oxide::encode::Config as ConfigType>::default();
 
     let position_bound = match draco {
-        DracoCompression::Enabled(Some(max_error)) => {
+        DracoCompression::Enabled {
+            quantization_error: Some(max_error),
+        } => {
             let box_is_valid = position_min
                 .iter()
                 .zip(&position_max)
@@ -444,6 +467,31 @@ mod tests {
     use draco_oxide::encode::Quantization;
     use pretty_assertions::assert_eq;
 
+    fn enabled(quantization_error: f64) -> DracoCompression {
+        DracoCompression::Enabled {
+            quantization_error: Some(quantization_error),
+        }
+    }
+
+    #[test]
+    fn parameter_is_tagged_by_type() {
+        let value = serde_json::json!({"type": "enabled", "quantizationError": 0.01});
+        assert_eq!(
+            serde_json::from_value::<DracoCompression>(value).unwrap(),
+            enabled(0.01)
+        );
+        let value = serde_json::json!({"type": "enabled"});
+        assert_eq!(
+            serde_json::from_value::<DracoCompression>(value).unwrap(),
+            DracoCompression::DEFAULT_ENABLED
+        );
+        let value = serde_json::json!({"type": "disabled"});
+        assert_eq!(
+            serde_json::from_value::<DracoCompression>(value).unwrap(),
+            DracoCompression::Disabled
+        );
+    }
+
     fn resolved_quantization(
         draco: DracoCompression,
         min: [f64; 3],
@@ -457,7 +505,7 @@ mod tests {
     #[test]
     fn error_bound_resolves_against_the_whole_bounding_box() {
         let quantization = resolved_quantization(
-            DracoCompression::Enabled(Some(0.001)),
+            enabled(0.001),
             [-500.0, -20.0, -500.0],
             [500.0, 80.0, 500.0],
         )
@@ -480,7 +528,7 @@ mod tests {
     fn no_error_bound_keeps_the_encoder_default() {
         assert_eq!(
             resolved_quantization(
-                DracoCompression::Enabled(None),
+                DracoCompression::DEFAULT_ENABLED,
                 [0.0, 0.0, 0.0],
                 [1.0, 1.0, 1.0]
             ),
@@ -566,7 +614,7 @@ mod tests {
             primitives,
             1,
             MetadataEncoder::new(&schema),
-            DracoCompression::Enabled(Some(0.001)),
+            enabled(0.001),
             None,
         )
         .unwrap();
@@ -590,11 +638,7 @@ mod tests {
     #[test]
     fn empty_bounding_box_keeps_the_encoder_default() {
         assert_eq!(
-            resolved_quantization(
-                DracoCompression::Enabled(Some(0.001)),
-                [f64::MAX; 3],
-                [f64::MIN; 3]
-            ),
+            resolved_quantization(enabled(0.001), [f64::MAX; 3], [f64::MIN; 3]),
             None
         );
     }

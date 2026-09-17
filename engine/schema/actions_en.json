@@ -1363,20 +1363,15 @@
           },
           "dracoCompression": {
             "title": "Draco Compression",
-            "description": "Use draco compression. Defaults to true.",
-            "type": [
-              "boolean",
-              "null"
+            "description": "Whether to compress mesh geometry with Draco, and how precisely. Defaults to enabled at the encoder's default resolution.",
+            "default": {
+              "type": "enabled"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DracoCompression"
+              }
             ]
-          },
-          "dracoQuantizationError": {
-            "title": "Draco Quantization Error",
-            "description": "Upper bound, in meters, on how far draco compression may move a vertex. Must be positive. Ignored when draco compression is off; when unset, the draco encoder's default resolution is used.",
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double"
           },
           "maxZoom": {
             "title": "Maximum Zoom Level",
@@ -1411,6 +1406,52 @@
           }
         },
         "definitions": {
+          "DracoCompression": {
+            "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+            "oneOf": [
+              {
+                "title": "Disabled",
+                "description": "Write mesh geometry uncompressed.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "disabled"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Enabled",
+                "description": "Compress mesh geometry with Draco.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "quantizationError": {
+                    "title": "Quantization Error",
+                    "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "format": "double"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "enabled"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
           "Expr": {
             "type": "string"
           }

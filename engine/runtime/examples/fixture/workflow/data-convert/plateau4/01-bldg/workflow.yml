@@ -468,7 +468,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.01
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.01
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -500,7 +502,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.01
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.01
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -532,7 +536,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.01
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.01
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -564,7 +570,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.003
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.003
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -596,7 +604,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.003
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.003
           minZoom: 15
           maxZoom: 18
           attachTexture: false
@@ -628,7 +638,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.003
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.003
           minZoom: 15
           maxZoom: 18
           attachTexture: true
@@ -660,7 +672,9 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          dracoQuantizationError: 0.003
+          dracoCompression:
+            type: enabled
+            quantizationError: 0.003
           minZoom: 15
           maxZoom: 18
           attachTexture: false

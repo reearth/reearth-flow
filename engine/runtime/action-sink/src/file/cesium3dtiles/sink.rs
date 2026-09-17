@@ -105,7 +105,6 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
-                draco_quantization_error: params.draco_quantization_error,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 chunk_by_attribute: params.chunk_by_attribute,
             },
@@ -150,13 +149,13 @@ pub struct Cesium3DTilesWriterParam {
     /// Optional path for compressed archive output
     pub(super) compress_output: Option<Expr>,
     /// # Draco Compression
-    /// Use draco compression. Defaults to true.
-    pub(super) draco_compression: Option<bool>,
-    /// # Draco Quantization Error
-    /// Upper bound, in meters, on how far draco compression may move a vertex. Must
-    /// be positive. Ignored when draco compression is off; when unset, the draco
-    /// encoder's default resolution is used.
-    pub(super) draco_quantization_error: Option<f64>,
+    /// Whether to compress mesh geometry with Draco, and how precisely. Defaults to
+    /// enabled at the encoder's default resolution.
+    #[serde(
+        default = "default_draco_compression",
+        deserialize_with = "deserialize_draco_compression"
+    )]
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -167,6 +166,33 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) chunk_by_attribute: Option<String>,
 }
 
+/// Serde default for the draco parameter: compression at the encoder's default
+/// resolution.
+fn default_draco_compression() -> reearth_flow_gltf::DracoCompression {
+    reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
+}
+
+/// Reads the draco parameter, also accepting a boolean, where `true` enables
+/// compression at the encoder's default resolution.
+fn deserialize_draco_compression<'de, D>(
+    deserializer: D,
+) -> Result<reearth_flow_gltf::DracoCompression, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Repr {
+        Flag(bool),
+        Mode(reearth_flow_gltf::DracoCompression),
+    }
+    Ok(match Repr::deserialize(deserializer)? {
+        Repr::Flag(true) => reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED,
+        Repr::Flag(false) => reearth_flow_gltf::DracoCompression::Disabled,
+        Repr::Mode(mode) => mode,
+    })
+}
+
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: rhai::AST,
@@ -174,8 +200,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
-    pub(super) draco_compression: Option<bool>,
-    pub(super) draco_quantization_error: Option<f64>,
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) chunk_by_attribute: Option<String>,
 }
@@ -418,11 +443,7 @@ impl Cesium3DTilesWriter {
         let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
-        let draco_compression = if self.params.draco_compression.unwrap_or(true) {
-            reearth_flow_gltf::DracoCompression::Enabled(self.params.draco_quantization_error)
-        } else {
-            reearth_flow_gltf::DracoCompression::Disabled
-        };
+        let draco_compression = self.params.draco_compression;
 
         std::thread::scope(|s| {
             {
@@ -588,5 +609,58 @@ impl Cesium3DTilesWriter {
             }
         });
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod draco_parameter_tests {
+    use reearth_flow_gltf::DracoCompression;
+
+    use super::Cesium3DTilesWriterParam;
+
+    fn parse(extra: serde_json::Value) -> DracoCompression {
+        let mut value = serde_json::json!({"output": "out", "minZoom": 15, "maxZoom": 18});
+        if let serde_json::Value::Object(extra) = extra {
+            value.as_object_mut().unwrap().extend(extra);
+        }
+        serde_json::from_value::<Cesium3DTilesWriterParam>(value)
+            .unwrap()
+            .draco_compression
+    }
+
+    #[test]
+    fn unset_enables_compression_at_the_default_resolution() {
+        assert_eq!(
+            parse(serde_json::json!({})),
+            DracoCompression::DEFAULT_ENABLED
+        );
+    }
+
+    #[test]
+    fn tagged_form_carries_the_quantization_error() {
+        assert_eq!(
+            parse(serde_json::json!({
+                "dracoCompression": {"type": "enabled", "quantizationError": 0.003}
+            })),
+            DracoCompression::Enabled {
+                quantization_error: Some(0.003)
+            }
+        );
+        assert_eq!(
+            parse(serde_json::json!({"dracoCompression": {"type": "disabled"}})),
+            DracoCompression::Disabled
+        );
+    }
+
+    #[test]
+    fn boolean_form_is_still_accepted() {
+        assert_eq!(
+            parse(serde_json::json!({"dracoCompression": true})),
+            DracoCompression::DEFAULT_ENABLED
+        );
+        assert_eq!(
+            parse(serde_json::json!({"dracoCompression": false})),
+            DracoCompression::Disabled
+        );
     }
 }

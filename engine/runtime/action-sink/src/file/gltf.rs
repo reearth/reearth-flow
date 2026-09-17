@@ -264,7 +264,7 @@ impl Sink for GltfWriter {
                     filtered_features.len(),
                     metadata_encoder,
                     if self.draco_compression {
-                        reearth_flow_gltf::DracoCompression::Enabled(None)
+                        reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
                     } else {
                         reearth_flow_gltf::DracoCompression::Disabled
                     },

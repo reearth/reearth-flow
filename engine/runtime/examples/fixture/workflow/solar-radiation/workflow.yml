@@ -933,7 +933,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
+          dracoCompression:
+            type: disabled
           output: |
             file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
           compressOutput: |
@@ -1307,7 +1308,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
+          dracoCompression:
+            type: disabled
           output: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod1")
           compressOutput: |
@@ -1356,7 +1358,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
+          dracoCompression:
+            type: disabled
           output: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
           compressOutput: |
@@ -1405,7 +1408,8 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
+          dracoCompression:
+            type: disabled
           output: |
             file::join_path(env.get("workerArtifactPath"), "bldg_lod4")
           compressOutput: |
