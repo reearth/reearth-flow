@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use nusamai_projection::crs::{EPSG_JGD2011_GEOGRAPHIC_3D, EPSG_JGD2024_GEOGRAPHIC_3D};
-use nusamai_projection::height_revision::{HeightRevisionGrid, Jgd2011ToJgd2024, ParameterSet};
+use nusamai_projection::height_revision::Jgd2011ToJgd2024;
 use nusamai_projection::vshift::{Jgd2011ToWgs84, Jgd2024ToWgs84, VerticalTransform};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -17,25 +17,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
-
-/// The nationwide height revision parameters bundled with nusamai-projection,
-/// shared by every node. GSI's own base map update applied the benchmark set
-/// (水準点) and fell back to the triangulation set (三角点) where the
-/// benchmark set has no coverage; this node does the same per feature.
-static BENCHMARK_GRID: LazyLock<Arc<HeightRevisionGrid>> =
-    LazyLock::new(|| load_embedded(ParameterSet::Benchmark));
-static TRIANGULATION_GRID: LazyLock<Arc<HeightRevisionGrid>> =
-    LazyLock::new(|| load_embedded(ParameterSet::Triangulation));
-
-fn load_embedded(set: ParameterSet) -> Arc<HeightRevisionGrid> {
-    let grid = HeightRevisionGrid::load_embedded(set);
-    tracing::info!(
-        "Loaded embedded height revision parameters {set:?} ({}) with {} grid nodes",
-        grid.version(),
-        grid.node_count()
-    );
-    Arc::new(grid)
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct VerticalReprojectorFactory;
@@ -95,8 +76,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
                 geoid2011: Arc::new(Jgd2011ToWgs84::new()),
             },
             VerticalReprojectorType::Jgd2024ToWgs84 => Mode::Jgd2024ToWgs84 {
-                revision_bm: Arc::new(Jgd2011ToJgd2024::new(Arc::clone(&BENCHMARK_GRID))),
-                revision_tr: Arc::new(Jgd2011ToJgd2024::new(Arc::clone(&TRIANGULATION_GRID))),
+                revision: Arc::new(Jgd2011ToJgd2024::new()),
                 geoid2024: Arc::new(Jgd2024ToWgs84::new()),
                 geoid2011: Arc::new(Jgd2011ToWgs84::new()),
                 outside_coverage: params.outside_coverage.unwrap_or_default(),
@@ -116,7 +96,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
 enum VerticalReprojectorType {
     /// JGD2011 heights (EPSG:6697) to WGS84 ellipsoidal heights (EPSG:4979) using the GSIGEO2011 geoid. The EPSG code of the input is not checked.
     Jgd2011ToWgs84,
-    /// Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail. The revision uses the benchmark parameters (hyokorevBM) and, for a feature with a vertex outside their coverage, the triangulation parameters (hyokorevTR), as GSI did for its own base map.
+    /// Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail.
     Jgd2024ToWgs84,
 }
 
@@ -139,7 +119,7 @@ pub struct VerticalReprojectorParam {
     /// The type of vertical coordinate transformation to apply
     reprojector_type: VerticalReprojectorType,
     /// # Outside Coverage
-    /// What to do with a JGD2011 feature that has a vertex outside the coverage of both height revision parameter sets (`jgd2024ToWgs84` only). Defaults to `passThrough`.
+    /// What to do with a JGD2011 feature that has a vertex outside the coverage of the height revision parameters (`jgd2024ToWgs84` only). Defaults to `passThrough`.
     outside_coverage: Option<OutsideCoveragePolicy>,
 }
 
@@ -149,8 +129,7 @@ enum Mode {
         geoid2011: Arc<Jgd2011ToWgs84>,
     },
     Jgd2024ToWgs84 {
-        revision_bm: Arc<Jgd2011ToJgd2024>,
-        revision_tr: Arc<Jgd2011ToJgd2024>,
+        revision: Arc<Jgd2011ToJgd2024>,
         geoid2024: Arc<Jgd2024ToWgs84>,
         geoid2011: Arc<Jgd2011ToWgs84>,
         outside_coverage: OutsideCoveragePolicy,
@@ -160,30 +139,10 @@ enum Mode {
 #[derive(Debug, Clone)]
 pub struct VerticalReprojector {
     mode: Mode,
-    /// JGD2011 features revised with the triangulation parameters.
+    /// JGD2011 features revised with the fallback parameter set.
     fallback: u64,
-    /// JGD2011 features outside both parameter sets, converted unrevised.
+    /// JGD2011 features outside the parameter coverage, converted unrevised.
     skipped: u64,
-}
-
-/// Revises a JGD2011 geometry with the benchmark parameters, or with the
-/// triangulation parameters when a vertex is outside the benchmark coverage.
-/// Returns the revised geometry and which set was used, or `None` when both
-/// sets miss.
-fn revise(
-    geometry: &Geometry,
-    bm: &Jgd2011ToJgd2024,
-    tr: &Jgd2011ToJgd2024,
-) -> Option<(Option<Geometry>, ParameterSet)> {
-    let revised = transform_geometry(geometry, bm);
-    if !bm.take_missed() {
-        return Some((revised, ParameterSet::Benchmark));
-    }
-    let revised = transform_geometry(geometry, tr);
-    if !tr.take_missed() {
-        return Some((revised, ParameterSet::Triangulation));
-    }
-    None
 }
 
 /// Applies a vertical transform to the geometries that carry heights. Returns
@@ -236,8 +195,7 @@ impl Processor for VerticalReprojector {
                 }
             }
             Mode::Jgd2024ToWgs84 {
-                revision_bm,
-                revision_tr,
+                revision,
                 geoid2024,
                 geoid2011,
                 outside_coverage,
@@ -248,17 +206,15 @@ impl Processor for VerticalReprojector {
                             transform_geometry(&feature.geometry, geoid2024.as_ref())
                         }
                         Some(EPSG_JGD2011_GEOGRAPHIC_3D) => {
-                            match revise(&feature.geometry, revision_bm, revision_tr) {
-                                Some((revised, set)) => {
-                                    if set == ParameterSet::Triangulation {
-                                        self.fallback += 1;
-                                    }
-                                    revised.and_then(|g| transform_geometry(&g, geoid2024.as_ref()))
-                                }
-                                None => match outside_coverage {
+                            let revised = transform_geometry(&feature.geometry, revision.as_ref());
+                            if revision.take_used_fallback() {
+                                self.fallback += 1;
+                            }
+                            if revision.take_missed() {
+                                match outside_coverage {
                                     OutsideCoveragePolicy::Error => {
                                         return Err(GeometryProcessorError::VerticalReprojector(format!(
-                                            "Feature {} has a vertex outside the coverage of both height revision parameter sets",
+                                            "Feature {} has a vertex outside the coverage of the height revision parameters",
                                             feature.id
                                         ))
                                         .into());
@@ -267,7 +223,9 @@ impl Processor for VerticalReprojector {
                                         self.skipped += 1;
                                         transform_geometry(&feature.geometry, geoid2011.as_ref())
                                     }
-                                },
+                                }
+                            } else {
+                                revised.and_then(|g| transform_geometry(&g, geoid2024.as_ref()))
                             }
                         }
                         Some(other) => {
@@ -302,13 +260,13 @@ impl Processor for VerticalReprojector {
     ) -> Result<(), BoxedError> {
         if self.fallback > 0 {
             tracing::info!(
-                "VerticalReprojector revised {} feature(s) with the triangulation parameters because they fall outside the benchmark parameter coverage",
+                "VerticalReprojector revised {} feature(s) with the fallback height revision parameter set",
                 self.fallback
             );
         }
         if self.skipped > 0 {
             tracing::warn!(
-                "VerticalReprojector converted {} feature(s) with the GSIGEO2011 geoid because they fall outside both height revision parameter sets",
+                "VerticalReprojector converted {} feature(s) with the GSIGEO2011 geoid because they fall outside the height revision parameter coverage",
                 self.skipped
             );
         }
@@ -345,22 +303,13 @@ mod tests {
         }
     }
 
-    fn revisions() -> (Jgd2011ToJgd2024, Jgd2011ToJgd2024) {
-        (
-            Jgd2011ToJgd2024::new(Arc::clone(&BENCHMARK_GRID)),
-            Jgd2011ToJgd2024::new(Arc::clone(&TRIANGULATION_GRID)),
-        )
-    }
-
     #[test]
-    fn jgd2011_input_is_revised_with_benchmarks_then_lifted_by_the_2024_geoid() {
-        let (bm, tr) = revisions();
+    fn jgd2011_input_is_revised_then_lifted_by_the_2024_geoid() {
+        let revision = Jgd2011ToJgd2024::new();
         let g = point(Some(EPSG_JGD2011_GEOGRAPHIC_3D), LON, LAT, 10.0);
-        let (revised, set) = revise(&g, &bm, &tr).unwrap();
-        let revised = revised.unwrap();
-        assert_eq!(set, ParameterSet::Benchmark);
-        // The benchmark correction here is -0.0205 m; the triangulation
-        // correction would have been +0.1236 m.
+        let revised = transform_geometry(&g, &revision).unwrap();
+        assert!(!revision.take_missed());
+        // The benchmark correction here is -0.0205 m.
         assert!(
             (height(&revised) - 9.9795).abs() < 5e-4,
             "{}",
@@ -383,11 +332,12 @@ mod tests {
     }
 
     #[test]
-    fn outside_both_sets_is_reported() {
-        let (bm, tr) = revisions();
+    fn outside_coverage_is_flagged() {
+        let revision = Jgd2011ToJgd2024::new();
         let sea = point(Some(EPSG_JGD2011_GEOGRAPHIC_3D), 135.0, 30.0, 10.0);
-        assert!(revise(&sea, &bm, &tr).is_none());
-        assert!(!bm.take_missed() && !tr.take_missed());
+        let out = transform_geometry(&sea, &revision).unwrap();
+        assert_eq!(height(&out), 10.0);
+        assert!(revision.take_missed());
     }
 
     #[test]

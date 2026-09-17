@@ -10226,7 +10226,7 @@
         "properties": {
           "outsideCoverage": {
             "title": "Outside Coverage",
-            "description": "What to do with a JGD2011 feature that has a vertex outside the coverage of both height revision parameter sets (`jgd2024ToWgs84` only). Defaults to `passThrough`.",
+            "description": "What to do with a JGD2011 feature that has a vertex outside the coverage of the height revision parameters (`jgd2024ToWgs84` only). Defaults to `passThrough`.",
             "anyOf": [
               {
                 "$ref": "#/definitions/OutsideCoveragePolicy"
@@ -10275,7 +10275,7 @@
                 ]
               },
               {
-                "description": "Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail. The revision uses the benchmark parameters (hyokorevBM) and, for a feature with a vertex outside their coverage, the triangulation parameters (hyokorevTR), as GSI did for its own base map.",
+                "description": "Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail.",
                 "type": "string",
                 "enum": [
                   "jgd2024ToWgs84"
