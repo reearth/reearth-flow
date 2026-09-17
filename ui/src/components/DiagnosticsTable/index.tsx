@@ -70,9 +70,9 @@ const DiagnosticsTable: React.FC<Props> = ({
         accessorFn: (diagnostic) => diagnosticOccurrences(diagnostic),
         header: t("Occurrences"),
         cell: ({ row }) => {
-          // Only an aggregated row carries a count. A non-aggregated row says
-          // nothing about how many features were affected, so show it as
-          // unknown rather than inventing 1. Never parse it out of the message.
+          // A row without a count says nothing about how many features were
+          // affected, so show it as unknown rather than inventing 1. Never
+          // parse it out of the message.
           const occurrences = diagnosticOccurrences(row.original);
           return occurrences === undefined
             ? t("Unknown")
