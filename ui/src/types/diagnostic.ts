@@ -27,8 +27,10 @@ export type Diagnostic = {
   message: string;
   help?: string;
   /**
-   * Set only on `finish()`-time aggregated rows (e.g. "1,204 features dropped,
-   * 5 samples"); absent on per-feature and terminal rows. Read it structurally
+   * How many times this row's error code fired, on the rows that know: a
+   * `finish()`-time roll-up (e.g. "1,204 features dropped, 5 samples") and a
+   * node's terminal failure, which counts the features that failed with its
+   * code. Absent on a per-feature row reported on its own. Read it structurally
    * — never parse the count out of `message`.
    */
   aggregatedCount?: number;
@@ -43,7 +45,7 @@ export type Diagnostic = {
 export const isFatalDiagnostic = (diagnostic: Diagnostic): boolean =>
   diagnostic.effectiveDisposition === "fatal";
 
-/** Whether this row is a `finish()`-time roll-up rather than a single occurrence. */
+/** Whether this row stands for a counted set of occurrences rather than one unquantified event. */
 export const isAggregatedDiagnostic = (diagnostic: Diagnostic): boolean =>
   diagnostic.aggregatedCount !== undefined;
 
@@ -51,11 +53,9 @@ export const isAggregatedDiagnostic = (diagnostic: Diagnostic): boolean =>
  * How many occurrences a row stands for, or `undefined` when the row carries no
  * count.
  *
- * Only aggregated (`finish()`-time) rows carry a count. A fatal row does **not**
- * mean "this happened once": the engine keeps the first fatal per node and drops
- * the rest, so a single fatal row can stand for any number of failed features.
- * Returning 1 for those would state something the payload does not say — render
- * an unknown count as unknown instead.
+ * Never substitute 1 for `undefined`. A row without a count is not a row that
+ * happened once — it is a row whose payload does not say, and rendering it as 1
+ * states something the engine did not. Show it as unknown instead.
  */
 export const diagnosticOccurrences = (
   diagnostic: Diagnostic,

@@ -186,6 +186,48 @@ piece of this task keeps it scoped as "the rule the work we just did implies".
 Not a 102-file sweep either way. The remaining unaudited actions pick the criterion up for free,
 and a sweep would need the same per-action judgement without the audit's structure around it.
 
+### 3b. Draft criterion for the action standard — paste into the FINAL PR
+
+Written while the findings were fresh. Four things an auditor cannot discover by reading an
+action in isolation; everything else this work turned up was either action-specific or already
+covered by §2.
+
+---
+
+#### N. Diagnostics
+
+**A plain `Err` from `process()`/`finish()` is unclassifiable, and nothing says so at the call
+site.** The runtime blanket-wraps any such error as `internal.unclassified`, stamps it Fatal, and
+**never consults the workflow's `errorPolicy`**. The code reads like ordinary error handling, so
+this has to be checked deliberately. Ask of every fallible path: *is this failure the user's to
+recover from?* If it is, it needs a registry code raised through `ctx.report`, not a plain `Err`.
+
+**A failure with no code cannot be made tolerable by any means.** `errorPolicy` demotion requires
+a `code` selector — a node-level override can only *promote* severity, never relax it
+(`policy.rs` `codeless_wins`). So "the user can just set an errorPolicy" is not an escape hatch
+for an unclassified failure; there is nothing for the override to name.
+
+**Reporting and continuing carries a state-cleanup obligation.** When `ctx.report` resolves below
+Fatal the action keeps going, so any per-feature or per-group state created *before* the failing
+operation is now partial. Downstream finalization cannot tell partial state from real state.
+Statistics Calculator created its accumulator before evaluating, and a demoted failure left a
+zero-valued accumulator that finalized as `0` — a fabricated statistic reported on a successful
+run. Create such state only once the value exists, and check what the action's `finish()` does
+with an absent entry versus an empty one.
+
+**A fatal does not stop the node.** `process()` returns `()` on a thread pool and the fatal slot
+is not read until terminate, so every remaining feature is still processed and only the *first*
+fatal per node is kept. A per-feature failure will therefore repeat across the whole input while
+reporting one diagnostic. Weigh that when deciding whether a failure deserves Fatal at all.
+
+**Review checklist additions (§8):**
+- Does every fallible path either raise a registry code or have a stated reason to stay
+  `internal.*`?
+- Does a reported-and-skipped failure leave partial state behind?
+- Is any user-facing message built with `{:?}`? (Use `Display`; see §2.)
+
+---
+
 ### 4. Sweep, don't spot-fix
 
 `expr.eval(...)` failures are not unique to Statistics Calculator. Grep for other actions
