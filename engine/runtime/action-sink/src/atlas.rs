@@ -203,7 +203,7 @@ fn build_atlas_pages(
         DEFAULT_EXTRUSION,
         1,
         0.0,
-        &mut TextureCache::default(),
+        &TextureCache::default(),
     )
     .map_err(crate::errors::SinkError::atlas_builder)?
     .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;

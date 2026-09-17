@@ -149,7 +149,7 @@ pub(super) fn build(
         .map(
             |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
                 let textures = TextureCache::default();
-                let contents = split_by_size(units, target_tile_size, &textures, &build_chunk)?;
+                let contents = split_by_size(units, target_tile_size, &textures, build_chunk)?;
                 let count = contents.glbs.len();
                 for (n, glb) in contents.glbs.into_iter().enumerate() {
                     write_tile(content_path(cell, n), glb)?;

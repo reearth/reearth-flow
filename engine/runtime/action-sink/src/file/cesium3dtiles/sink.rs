@@ -504,7 +504,7 @@ impl Cesium3DTilesWriter {
 
         let now = time::Instant::now();
         let built = super::builder::build(
-            &features,
+            features,
             &self.schema,
             options,
             target_tile_size,
