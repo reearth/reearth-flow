@@ -2335,7 +2335,7 @@
             "title": "Compresión Draco",
             "description": "Si se comprime la geometría de malla con Draco y con qué precisión. Por defecto está activada con la resolución predeterminada del codificador.",
             "default": {
-              "type": "enabled"
+              "enabled": {}
             },
             "allOf": [
               {
@@ -2433,44 +2433,37 @@
               {
                 "title": "Desactivada",
                 "description": "Escribe la geometría de malla sin comprimir.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "disabled"
-                    ]
-                  }
-                }
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
               },
               {
                 "title": "Activada",
                 "description": "Comprime la geometría de malla con Draco.",
                 "type": "object",
                 "required": [
-                  "type"
+                  "enabled"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "enabled"
-                    ]
-                  },
-                  "quantizationError": {
-                    "title": "Quantization Error",
-                    "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "format": "double",
-                    "exclusiveMinimum": 0.0
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
                   }
-                }
+                },
+                "additionalProperties": false
               }
             ]
           },

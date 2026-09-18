@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Whether mesh geometry is compressed with Draco, and how precisely.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum DracoCompression {
     /// # Disabled
     /// Write mesh geometry uncompressed.
@@ -211,8 +211,7 @@ mod tests {
 
     fn parse(quantization_error: serde_json::Value) -> Result<DracoCompression, serde_json::Error> {
         serde_json::from_value(serde_json::json!({
-            "type": "enabled",
-            "quantizationError": quantization_error,
+            "enabled": {"quantizationError": quantization_error},
         }))
     }
 
@@ -235,7 +234,7 @@ mod tests {
     #[test]
     fn an_absent_quantization_error_keeps_the_default_resolution() {
         let parsed: DracoCompression =
-            serde_json::from_value(serde_json::json!({"type": "enabled"})).unwrap();
+            serde_json::from_value(serde_json::json!({"enabled": {}})).unwrap();
         assert_eq!(parsed, DracoCompression::DEFAULT_ENABLED);
     }
 
@@ -246,10 +245,10 @@ mod tests {
             .as_array()
             .unwrap()
             .iter()
-            .find(|variant| variant["properties"]["type"]["enum"][0] == "enabled")
+            .find(|variant| variant["required"][0] == "enabled")
             .unwrap();
         assert_eq!(
-            enabled["properties"]["quantizationError"]["exclusiveMinimum"],
+            enabled["properties"]["enabled"]["properties"]["quantizationError"]["exclusiveMinimum"],
             serde_json::json!(0.0)
         );
     }

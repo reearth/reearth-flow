@@ -2335,7 +2335,7 @@
             "title": "Draco 压缩",
             "description": "是否使用 Draco 压缩网格几何体，以及压缩精度。默认以编码器的默认精度启用。",
             "default": {
-              "type": "enabled"
+              "enabled": {}
             },
             "allOf": [
               {
@@ -2433,44 +2433,37 @@
               {
                 "title": "禁用",
                 "description": "不压缩网格几何体直接写出。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "disabled"
-                    ]
-                  }
-                }
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
               },
               {
                 "title": "启用",
                 "description": "使用 Draco 压缩网格几何体。",
                 "type": "object",
                 "required": [
-                  "type"
+                  "enabled"
                 ],
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "enabled"
-                    ]
-                  },
-                  "quantizationError": {
-                    "title": "Quantization Error",
-                    "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "format": "double",
-                    "exclusiveMinimum": 0.0
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
                   }
-                }
+                },
+                "additionalProperties": false
               }
             ]
           },

@@ -40,11 +40,13 @@ fn collect_top_level_properties(parameter: &serde_json::Value) -> Vec<(String, P
         .unwrap_or_default()
 }
 
-/// Extracts a variant's own `PropertyI18n` plus overrides for the sub-parameters
-/// it carries. The discriminator property is skipped: it has no user-facing text.
-fn variant_i18n_from_schema(variant: &serde_json::Value) -> PropertyI18n {
+/// Extracts a variant's own `PropertyI18n` plus overrides for the sub-parameters it
+/// carries, wherever its tagging keeps them. Properties with no user-facing text,
+/// such as an internally tagged variant's discriminator, are skipped.
+fn variant_i18n_from_schema(variant: &serde_json::Value, key: &str) -> PropertyI18n {
     let mut i18n = property_i18n_from_schema(variant);
-    let nested: BTreeMap<String, PropertyI18n> = variant
+    let nested: BTreeMap<String, PropertyI18n> = crate::utils::variant_sub_parameters(variant, key)
+        .unwrap_or(variant)
         .get("properties")
         .and_then(|p| p.as_object())
         .map(|properties| {
@@ -81,7 +83,8 @@ fn collect_enum_definitions(
                         .iter()
                         .filter_map(|variant| {
                             let enum_val = crate::utils::enum_variant_key(variant)?;
-                            Some((enum_val, variant_i18n_from_schema(variant)))
+                            let i18n = variant_i18n_from_schema(variant, &enum_val);
+                            Some((enum_val, i18n))
                         })
                         .collect();
                     if enum_variants.is_empty() {
