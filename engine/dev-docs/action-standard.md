@@ -346,11 +346,29 @@ see what went wrong, and whether they have any way to carry on. None of the four
 can be discovered by reading an action in isolation — each is a property of the runtime around
 it, and the call site looks unremarkable in every case.
 
-**A plain `Err` from `process()`/`finish()` is unclassifiable.** The runtime blanket-wraps any
-such error as `internal.unclassified` and stamps it Fatal. Nothing at the call site says so —
-the code reads like ordinary error handling — so this has to be checked deliberately. Ask of
-every fallible path: *is this failure the user's to recover from?* If it is, it needs a registry
-code raised through `ctx.report`, not a plain `Err`.
+**A plain `Err` returned to the runtime is unclassifiable.** The runtime blanket-wraps any such
+error as `internal.unclassified` and stamps it Fatal. Nothing at the call site says so — the code
+reads like ordinary error handling — so this has to be checked deliberately. Ask of every fallible
+path: *is this failure the user's to recover from?* If it is, it needs a registry code raised
+through `ctx.report`, not a plain `Err`.
+
+This covers **every entry point the runtime calls**, not just `process()`:
+
+| Entry point | Classifiable? |
+|---|---|
+| Processor / Sink `process()`, `finish()` | Yes — `ctx.report`, `ctx.warn`, `report_drop` |
+| Source `start()` | Yes — same handle; `CSV Reader` raises `csv.no_data_rows` this way |
+| Factory `build()` | **No — see below** |
+
+**A factory's `build()` cannot classify its failures today.** It becomes `ExecutionError::Factory`
+and reaches the user as `internal.unclassified`/Fatal like any other, but the `NodeContext` handed
+to `build()` carries no diagnostics handle: per-node handles are created in `processor_node` and
+`sink_node` *after* the DAG is built, so `ctx.diagnostics` is `None` for every factory. A
+parameter or expression that fails to compile is exactly the kind of failure a user could fix,
+so this is a platform gap rather than a licence to skip the question — but there is nothing an
+auditor can do about it in the action. Flag it against the gap, do not write a finding asking the
+action to classify a `build()` error. What *is* in the action's control is the message text:
+`build()` errors are user-facing (§2), so give them a real cause, not a Debug dump.
 
 **An unclassified failure is close to impossible for a user to tolerate.** Relaxing one means
 naming `internal.unclassified` in an override *and* setting `allowRelaxInternal` on the policy;
@@ -384,7 +402,7 @@ Material rule changes, newest first. **A rule added here does not retroactively 
 
 ### 2026-09-18
 
-- **§9 added — Diagnostics**, with a matching `diag:` line in the §8 checklist. Covers what an auditor cannot see from the call site: a plain `Err` is blanket-wrapped as `internal.unclassified` and stamped Fatal; an unclassified failure can only be relaxed with the run-wide `allowRelaxInternal`, so `errorPolicy` is no escape hatch for it; reporting-and-continuing leaves partial state that finalization cannot distinguish from real state; and a fatal does not stop the node. **Placed after §8 so that §8 keeps meaning "the review checklist"** in the audit log and in past entries here. **No past verdict changes automatically, but no previously-audited action has been checked against this section** — 11 of 113 fallible action files classify their failures at all, so most actions reviewed to date owe a `diag:` re-check. Written from the diagnostics fidelity work in #2487, #2488 and #2491.
+- **§9 added — Diagnostics**, with a matching `diag:` line in the §8 checklist. Covers what an auditor cannot see from the call site: a plain `Err` is blanket-wrapped as `internal.unclassified` and stamped Fatal; an unclassified failure can only be relaxed with the run-wide `allowRelaxInternal`, so `errorPolicy` is no escape hatch for it; reporting-and-continuing leaves partial state that finalization cannot distinguish from real state; and a fatal does not stop the node. It covers every entry point the runtime calls — processor/sink `process()`/`finish()` and source `start()` — and records that a factory's `build()` cannot classify at all, because the `NodeContext` it is handed carries no diagnostics handle. **Placed after §8 so that §8 keeps meaning "the review checklist"** in the audit log and in past entries here. **No past verdict changes automatically, but no previously-audited action has been checked against this section** — 11 of 113 fallible action files classify their failures at all, so most actions reviewed to date owe a `diag:` re-check. Written from the diagnostics fidelity work in #2487, #2488 and #2491.
 
 ### 2026-09-11
 
