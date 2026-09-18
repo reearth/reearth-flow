@@ -1,5 +1,5 @@
-import { ApiResponse } from "./api";
-import { JobStatus } from "./job";
+import type { ApiResponse } from "./api";
+import type { JobStatus } from "./job";
 import type { Workspace } from "./workspace";
 
 export type Me = {

@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 
 export default (projectToDuplicate?: Project) => {
   const [isDuplicating, setIsDuplicating] = useState<boolean>(false);

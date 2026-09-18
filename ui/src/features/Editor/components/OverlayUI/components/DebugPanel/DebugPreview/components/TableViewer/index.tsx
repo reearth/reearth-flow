@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
-import useDataColumnizer from "@flow/hooks/useDataColumnizer";
+import type useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useLang, useT } from "@flow/lib/i18n";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";

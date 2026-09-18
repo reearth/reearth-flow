@@ -1,8 +1,11 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { ShareProject, UnshareProject } from "@flow/types";
+import type { ShareProject, UnshareProject } from "@flow/types";
 
-import { ShareProjectInput, UnshareProjectInput } from "../__gen__/graphql";
+import type {
+  ShareProjectInput,
+  UnshareProjectInput,
+} from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

@@ -12,7 +12,7 @@ import { Button } from "@flow/components/buttons/BaseButton";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
+import type { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
 
 import { ArrayEditor } from "./components/ArrayEditor";
 // import { AttributeNameEditor } from "./components/AttributeNameEditor";

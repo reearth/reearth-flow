@@ -1,4 +1,4 @@
-import { EdgeChange } from "@xyflow/react";
+import type { EdgeChange } from "@xyflow/react";
 import { memo } from "react";
 
 import {

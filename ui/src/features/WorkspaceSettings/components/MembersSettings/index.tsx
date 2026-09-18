@@ -1,5 +1,4 @@
 import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 import {
@@ -12,8 +11,10 @@ import {
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
-import { Role, UserMember } from "@flow/types";
+import type { UserMember } from "@flow/types";
+import { Role } from "@flow/types";
 
 import { MemberAddDialog } from "./components";
 
@@ -121,7 +122,7 @@ const MembersSettings: React.FC = () => {
     }
   };
 
-  const columns: ColumnDef<UserMember>[] = [
+  const columns: AppColumnDef<UserMember>[] = [
     {
       accessorKey: "user.name",
       header: t("Name"),

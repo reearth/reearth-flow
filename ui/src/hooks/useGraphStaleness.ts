@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import type { YEdgesMap, YNodesMap, YWorkflow } from "@flow/lib/yjs/types";
-import { GraphSnapshot, JobState, useCurrentProject } from "@flow/stores";
+import type { GraphSnapshot, JobState } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
 
 // Yjs Y.Map doesn't guarantee key insertion order, so we sort keys before
 // stringifying to ensure identical param objects always produce the same hash.
@@ -54,16 +55,14 @@ function captureSnapshot(yWorkflows: Y.Map<YWorkflow>): GraphSnapshot {
       )?.toString();
       if (isSubworkflow) {
         const pseudoOutputs = yData?.get("pseudoOutputs") as
-          | Y.Array<Y.Map<any>>
-          | undefined;
+          Y.Array<Y.Map<any>> | undefined;
         pseudoOutputs?.forEach((po) => {
           const routerId = (po.get("nodeId") as Y.Text | undefined)?.toString();
           if (routerId) subworkflowBridges.push([routerId, nodeId]);
         });
 
         const pseudoInputs = yData?.get("pseudoInputs") as
-          | Y.Array<Y.Map<any>>
-          | undefined;
+          Y.Array<Y.Map<any>> | undefined;
         pseudoInputs?.forEach((pi) => {
           const routerId = (pi.get("nodeId") as Y.Text | undefined)?.toString();
           if (routerId) subworkflowBridges.push([nodeId, routerId]);
@@ -165,8 +164,7 @@ function buildAdjacency(
         return;
 
       const pseudoOutputs = yData?.get("pseudoOutputs") as
-        | Y.Array<Y.Map<any>>
-        | undefined;
+        Y.Array<Y.Map<any>> | undefined;
       pseudoOutputs?.forEach((po) => {
         const routerId = (po.get("nodeId") as Y.Text | undefined)?.toString();
         if (routerId) {
@@ -176,8 +174,7 @@ function buildAdjacency(
       });
 
       const pseudoInputs = yData?.get("pseudoInputs") as
-        | Y.Array<Y.Map<any>>
-        | undefined;
+        Y.Array<Y.Map<any>> | undefined;
       pseudoInputs?.forEach((pi) => {
         const routerId = (pi.get("nodeId") as Y.Text | undefined)?.toString();
         if (routerId) {
@@ -447,8 +444,7 @@ export default function useGraphStaleness({
         } else if (path.length === 2 && path[1] === "edges") {
           const workflowId = path[0];
           const yEdges = yWorkflows.get(workflowId)?.get("edges") as
-            | YEdgesMap
-            | undefined;
+            YEdgesMap | undefined;
 
           event.changes.keys.forEach((change, edgeId) => {
             if (change.action === "delete") {

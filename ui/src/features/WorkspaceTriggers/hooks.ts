@@ -5,11 +5,12 @@ import { usePagination } from "@flow/hooks";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Trigger, TriggerOrderBy } from "@flow/types";
+import type { Trigger } from "@flow/types";
+import { TriggerOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { lastOfUrl as getTriggerId } from "@flow/utils";
 
-import { RouteOption } from "../WorkspaceLeftPanel";
+import type { RouteOption } from "../WorkspaceLeftPanel";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);

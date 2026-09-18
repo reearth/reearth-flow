@@ -1,6 +1,6 @@
-import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
+import type { Edge, EdgeChange, NodeChange, XYPosition } from "@xyflow/react";
 import { memo, useCallback } from "react";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 
 import {
   useEditorContext,

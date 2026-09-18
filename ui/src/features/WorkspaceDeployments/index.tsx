@@ -4,7 +4,6 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 
 import {
   Button,
@@ -13,8 +12,10 @@ import {
 } from "@flow/components";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { useCurrentUserRole } from "@flow/stores";
-import { Role, type Deployment } from "@flow/types";
+import { Role } from "@flow/types";
+import type { Deployment } from "@flow/types";
 import { formatTimestamp } from "@flow/utils/timestamp";
 
 import {
@@ -56,7 +57,7 @@ const DeploymentManager: React.FC = () => {
     setCurrentPage,
   } = useHooks();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
-  const columns: ColumnDef<Deployment>[] = [
+  const columns: AppColumnDef<Deployment>[] = [
     {
       accessorKey: "description",
       header: t("Description"),

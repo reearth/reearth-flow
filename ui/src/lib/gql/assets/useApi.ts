@@ -2,21 +2,18 @@ import { useCallback, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { Asset, CreateAsset, DeleteAsset, UpdateAsset } from "@flow/types";
+import type { Asset, CreateAsset, DeleteAsset, UpdateAsset } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 
-import {
+import type {
   CreateAssetInput,
   UpdateAssetInput,
   DeleteAssetInput,
   CreateAssetUploadInput,
 } from "../__gen__/graphql";
 
-import {
-  putFileWithProgress,
-  type UploadProgress,
-  type UploadResult,
-} from "./putFileWithProgress";
+import { putFileWithProgress } from "./putFileWithProgress";
+import type { UploadProgress, UploadResult } from "./putFileWithProgress";
 import { useQueries } from "./useQueries";
 // Files larger than 30MB will use direct upload
 const MAX_STANDARD_UPLOAD_SIZE_MB = 30;
@@ -183,6 +180,7 @@ export const useAsset = () => {
         } catch (networkErr) {
           throw new Error(
             `PUT to storage never completed: ${(networkErr as Error).message}. No HTTP response was received.`,
+            { cause: networkErr },
           );
         }
 

@@ -6,7 +6,6 @@
  * and the next local keystroke wrote over it.
  */
 import { render, fireEvent } from "@testing-library/react";
-
 import { describe, expect, it, vi } from "vitest";
 
 import { SchemaForm } from "../index";

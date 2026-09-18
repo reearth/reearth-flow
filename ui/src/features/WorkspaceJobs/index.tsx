@@ -1,8 +1,7 @@
-import { ColumnDef } from "@tanstack/react-table";
-
 import { DataTable as Table } from "@flow/components";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import type { Job } from "@flow/types";
 import { formatTimestamp } from "@flow/utils/timestamp";
 
@@ -28,7 +27,7 @@ const JobsManager: React.FC = () => {
     setCurrentPage,
   } = useHooks();
 
-  const columns: ColumnDef<Job>[] = [
+  const columns: AppColumnDef<Job>[] = [
     {
       accessorKey: "id",
       header: t("ID"),

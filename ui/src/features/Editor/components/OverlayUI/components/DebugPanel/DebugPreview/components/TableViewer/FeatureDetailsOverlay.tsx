@@ -3,15 +3,8 @@ import {
   BracketsCurlyIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
-import {
-  KeyboardEvent,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { KeyboardEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,

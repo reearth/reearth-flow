@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  OrderDirection,
-  type PaginationOptions,
-} from "@flow/types/paginationOptions";
+import { OrderDirection } from "@flow/types/paginationOptions";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 
 import useDebouncedSearch from "./useDebouncedSearch";
 

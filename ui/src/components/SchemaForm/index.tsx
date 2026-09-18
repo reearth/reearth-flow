@@ -11,13 +11,16 @@ import {
   setAtPath,
   pathKey,
   validate,
-  type FieldPath,
-  type ObjectField as ObjectFieldNode,
+} from "@flow/lib/schemaForm";
+import type {
+  FieldPath,
+  ObjectField as ObjectFieldNode,
 } from "@flow/lib/schemaForm";
 import type { AwarenessUser } from "@flow/types";
 
 import { SchemaFormErrorBoundary } from "./components/SchemaFormErrorBoundary";
-import { SchemaFormProvider, type EditorContext } from "./context";
+import { SchemaFormProvider } from "./context";
+import type { EditorContext } from "./context";
 import { Field } from "./fields/Field";
 import { ObjectField } from "./fields/ObjectField";
 

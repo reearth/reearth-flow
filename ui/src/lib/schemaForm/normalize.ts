@@ -23,12 +23,7 @@
 import type { JSONSchema7, JSONSchema7Definition } from "json-schema";
 
 export type JsonType =
-  | "string"
-  | "number"
-  | "integer"
-  | "boolean"
-  | "object"
-  | "array";
+  "string" | "number" | "integer" | "boolean" | "object" | "array";
 
 export type NormalizedNode = {
   type?: JsonType;
@@ -177,8 +172,7 @@ export const normalize = (
   const defs =
     definitions ??
     ((isSchema(schema) ? schema.definitions : undefined) as
-      | Record<string, JSONSchema7Definition>
-      | undefined) ??
+      Record<string, JSONSchema7Definition> | undefined) ??
     {};
   return normalizeNode(schema, defs, new Set());
 };

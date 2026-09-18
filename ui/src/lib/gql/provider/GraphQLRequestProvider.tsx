@@ -1,15 +1,11 @@
 import { GraphQLClient } from "graphql-request";
-import {
-  createContext,
-  useState,
-  ReactNode,
-  useEffect,
-  useContext,
-} from "react";
+import type { ReactNode } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
 
 import { config } from "@flow/config";
 
-import { Sdk, getSdk } from "../__gen__/plugins/graphql-request";
+import type { Sdk } from "../__gen__/plugins/graphql-request";
+import { getSdk } from "../__gen__/plugins/graphql-request";
 
 import { requestMiddleware } from "./GraphQLRequestMiddleware";
 

@@ -1,4 +1,4 @@
-import { CodegenConfig } from "@graphql-codegen/cli";
+import type { CodegenConfig } from "@graphql-codegen/cli";
 
 const rootGQLDirectory = "src/lib/gql/__gen__/";
 const pluginsDirectory = `${rootGQLDirectory}/plugins`;

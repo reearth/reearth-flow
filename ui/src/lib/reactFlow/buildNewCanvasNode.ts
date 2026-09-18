@@ -1,10 +1,11 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 import type { JSONSchema7Definition } from "json-schema";
 
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { applyDefaults, compile } from "@flow/lib/schemaForm";
-import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
+import { nodeTypes } from "@flow/types";
+import type { Action, Node, NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 type CreateNodeOptions = {

@@ -45,4 +45,26 @@ describe("LogsTable", () => {
       screen.getByRole("columnheader", { name: "Message" }),
     ).toBeInTheDocument();
   });
+
+  // LogsTable does not set `manualPagination`, so it is the table that would
+  // actually be cut short if a `paginatedRowModel` were ever registered in the
+  // shared feature set: v9's model slices to `pageSize` (10 by default) without
+  // consulting that flag, and nothing about it fails to typecheck.
+  test("renders every log, without a page limit", () => {
+    const many: UserFacingLog[] = Array.from({ length: 25 }, (_, i) => ({
+      ...logs[0],
+      nodeId: `node-${i}`,
+      message: `message-${i}`,
+    }));
+
+    render(
+      <LogsTable
+        columns={[{ accessorKey: "message", header: "Message" }]}
+        data={many}
+        isFetching={false}
+      />,
+    );
+
+    expect(screen.getAllByRole("cell")).toHaveLength(25);
+  });
 });

@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { compile, type FieldKind, type FieldNode } from "@flow/lib/schemaForm";
+import { compile } from "@flow/lib/schemaForm";
+import type { FieldKind, FieldNode } from "@flow/lib/schemaForm";
 
 import {
   CONTAINERS_SCHEMA,

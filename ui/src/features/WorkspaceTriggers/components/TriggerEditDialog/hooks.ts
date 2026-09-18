@@ -1,8 +1,9 @@
 import { isEqual } from "lodash-es";
-import { ChangeEvent, useCallback, useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
-import { Trigger, TimeInterval, EventSourceType } from "@flow/types";
+import type { Trigger, TimeInterval, EventSourceType } from "@flow/types";
 
 import { useTriggerWorkflowVariables } from "../TriggerWorkflowVariables/useTriggerWorkflowVariables";
 

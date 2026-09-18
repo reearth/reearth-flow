@@ -10,14 +10,12 @@ import {
 } from "react";
 
 import { useT } from "@flow/lib/i18n";
-import { AttrType } from "@flow/types/schemaPreview";
+import type { AttrType } from "@flow/types/schemaPreview";
 
+import { getCompletionContext } from "./flowExprAttributeContext";
+import type { CompletionContext } from "./flowExprAttributeContext";
+import type { AutocompleteSuggestion } from "./flowExprConstants";
 import {
-  getCompletionContext,
-  type CompletionContext,
-} from "./flowExprAttributeContext";
-import {
-  AutocompleteSuggestion,
   getFlowExprAutocompleteSuggestions,
   TYPE_COLOR,
 } from "./flowExprConstants";

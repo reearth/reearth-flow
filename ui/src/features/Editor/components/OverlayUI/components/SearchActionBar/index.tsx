@@ -1,10 +1,10 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react";
-import { NodeChange } from "@xyflow/react";
+import type { NodeChange } from "@xyflow/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Node, Workflow } from "@flow/types";
+import type { Node, Workflow } from "@flow/types";
 
 import { SearchPanel } from "./components";
 

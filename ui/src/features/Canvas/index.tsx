@@ -1,15 +1,18 @@
-import {
-  ReactFlow,
-  Background,
-  BackgroundVariant,
-  SelectionMode,
+import type {
   SnapGrid,
   XYPosition,
   NodeChange,
   EdgeChange,
   OnConnectStart,
 } from "@xyflow/react";
-import { MouseEvent, memo, useMemo } from "react";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  SelectionMode,
+} from "@xyflow/react";
+import type { MouseEvent } from "react";
+import { memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";

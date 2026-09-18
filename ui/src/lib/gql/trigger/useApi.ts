@@ -8,9 +8,9 @@ import type {
   UpdateTrigger,
   Variable,
 } from "@flow/types";
-import { PaginationOptions } from "@flow/types/paginationOptions";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 
-import { TimeDriverInput } from "../__gen__/graphql";
+import type { TimeDriverInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

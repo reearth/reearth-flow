@@ -61,13 +61,11 @@ export default ({
           onNodesChange?.([
             ...getNodes()
               .filter((other) => other.selected && other.id !== nodeId)
-              .map(
-                (other): NodeChange => ({
-                  type: "select",
-                  id: other.id,
-                  selected: false,
-                }),
-              ),
+              .map((other): NodeChange => ({
+                type: "select",
+                id: other.id,
+                selected: false,
+              })),
             { type: "select", id: nodeId, selected: true },
           ]);
         },

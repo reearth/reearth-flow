@@ -1,7 +1,8 @@
-import { EdgeChange } from "@xyflow/react";
-import { Dispatch, SetStateAction, useCallback } from "react";
+import type { EdgeChange } from "@xyflow/react";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback } from "react";
 
-import { Edge } from "@flow/types";
+import type { Edge } from "@flow/types";
 
 import { yEdgeConstructor } from "./conversions";
 import type { YEdge, YEdgesMap, YWorkflow } from "./types";

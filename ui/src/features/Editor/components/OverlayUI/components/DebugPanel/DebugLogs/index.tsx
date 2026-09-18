@@ -5,7 +5,8 @@ import { useEditorContext } from "@flow/features/Editor/editorContext";
 import LogsConsole from "@flow/features/LogsConsole";
 import useJobDiagnostics from "@flow/hooks/useJobDiagnostics";
 
-import ViewSwitch, { type DebugLogsView } from "./ViewSwitch";
+import ViewSwitch from "./ViewSwitch";
+import type { DebugLogsView } from "./ViewSwitch";
 
 type Props = {
   debugJobId?: string;

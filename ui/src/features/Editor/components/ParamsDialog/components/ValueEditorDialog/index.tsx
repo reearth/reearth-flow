@@ -31,11 +31,10 @@ import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { Asset } from "@flow/types";
+import type { Asset } from "@flow/types";
 
-import FlowExprCodeEditor, {
-  type FlowExprCodeEditorRef,
-} from "./components/FlowExprCodeEditor";
+import FlowExprCodeEditor from "./components/FlowExprCodeEditor";
+import type { FlowExprCodeEditorRef } from "./components/FlowExprCodeEditor";
 import { toVariableAutocompleteSuggestions } from "./components/variableAutocomplete";
 
 type Props = {

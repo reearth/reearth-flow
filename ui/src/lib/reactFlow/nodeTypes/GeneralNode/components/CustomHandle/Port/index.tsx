@@ -3,7 +3,7 @@ import { Position } from "@xyflow/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";
-import { NodeData } from "@flow/types";
+import type { NodeData } from "@flow/types";
 
 import CustomHandle from "../CustomHandle";
 import { getBreakClass } from "../utils";

@@ -1,5 +1,5 @@
-import { Dispatch, SetStateAction } from "react";
-import * as Y from "yjs";
+import type { Dispatch, SetStateAction } from "react";
+import type * as Y from "yjs";
 
 import { rebuildWorkflow } from "./conversions";
 import type { YWorkflow } from "./types";
