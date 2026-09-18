@@ -18,6 +18,9 @@ pub struct PrimitiveInfo {
 
 pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
+/// Tool name recorded in the `asset.generator` field of every glTF written here.
+const GLTF_GENERATOR: &str = "Re:Earth Flow";
+
 /// Whether mesh geometry is compressed with Draco, and how precisely.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -346,6 +349,10 @@ pub fn write_gltf_glb<W: Write>(
 
     // Build the JSON part of glTF
     let gltf = Gltf {
+        asset: Asset {
+            generator: Some(GLTF_GENERATOR.to_string()),
+            ..Default::default()
+        },
         scenes: vec![Scene {
             nodes: Some(vec![0]),
             ..Default::default()
