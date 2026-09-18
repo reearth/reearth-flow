@@ -394,6 +394,59 @@ failure deserves Fatal at all.
 
 For the wording of the `message` and `help` strings themselves, see §2.
 
+### 9.1 Adding a code to the registry
+
+Codes live in `schema/error-codes/*.toml` and are compiled into the `ErrorCode` enum by
+`diagnostics/build.rs`. The build enforces the mechanical rules and **fails the build** on a
+breach, so they are not repeated as review items: the code must be `<domain>.<reason>` with both
+parts in `[a-z0-9_]`, it must be unique across every file, `category` must be one of the ten
+below, and `default_disposition` one of `warn_drop` / `reject` / `fatal`. Unknown keys in an entry
+are rejected too.
+
+What the build cannot check is everything that follows.
+
+**Codes are append-only identifiers — deprecate, never rename.** A code is not just a label: a
+saved workflow's `errorPolicy` selects on it by string, and an override naming a code that no
+longer exists **fails to compile, taking the workflow with it**. A code is also the stable token
+a user pastes into an issue or searches for, and it is the same token in every language — codes
+are never translated, for the same reason action names are not. Renaming one to read better
+trades a permanent compatibility break for a cosmetic gain.
+
+**Reuse before adding. A code only one action emits is not a classification.** Before adding
+`myaction.thing_failed`, check whether an existing code already names the *cause*
+— `expr.evaluation_failed` covers any action whose expression fails to evaluate, whatever the
+action. A registry where every action has its own private codes gives a user nothing to learn
+and nothing to write a policy against.
+
+**Pick the category by cause, not by symptom.** The ten are `io`, `parse`, `validation`,
+`geometry`, `schema`, `expression`, `config`, `network`, `resource`, `internal`. A geometry
+operation that fails because its expression parameter is wrong is `expression`, not `geometry`.
+`internal` is for faults the user cannot act on, and choosing it has a policy consequence: an
+`internal` code cannot be relaxed without the run-wide `allowRelaxInternal`, as above.
+
+**`default_disposition` is what happens when the user has set no policy at all**, so it is the
+answer for the majority of runs. Choose the least destructive disposition that is still honest:
+`fatal` only when continuing would produce wrong output or the run cannot mean anything —
+remembering that a fatal does not stop the node, and that a user can always *promote* a warning
+but can barely relax a fatal. A
+failure a user could reasonably want to skip should default below `fatal`, or they have no way
+to skip it.
+
+### 9.2 Choosing how to report
+
+| Call | Feature is | Use for |
+|---|---|---|
+| `ctx.warn(draft)` | **kept** | an advisory that does not change the output |
+| `ctx.warn_once(draft)` | **kept** | the same, when repeating it per feature would be noise — fires once per run per code, across *all* nodes |
+| `ctx.report(draft)` | the action's choice | a real failure: returns `Err(Diagnostic)` when the resolved disposition is `fatal`, otherwise `Ok(disposition)` for the action to act on |
+| `report_drop(code, …)` | dropped | `finish()`-time and other fire-and-forget sites with no `Err` to return |
+
+`warn_drop` and `reject` both drop the feature and both aggregate. `reject` additionally records
+the feature in a reject side-file — but **only at a sink, and only when the policy enables it**,
+so at a processor the two differ in label rather than in effect. Prefer `warn_drop` unless the
+run genuinely needs an auditable list of what was refused.
+
+
 ---
 
 ## Changelog
@@ -402,7 +455,7 @@ Material rule changes, newest first. **A rule added here does not retroactively 
 
 ### 2026-09-18
 
-- **§9 added — Diagnostics**, with a matching `diag:` line in the §8 checklist. Covers what an auditor cannot see from the call site: a plain `Err` is blanket-wrapped as `internal.unclassified` and stamped Fatal; an unclassified failure can only be relaxed with the run-wide `allowRelaxInternal`, so `errorPolicy` is no escape hatch for it; reporting-and-continuing leaves partial state that finalization cannot distinguish from real state; and a fatal does not stop the node. It covers every entry point the runtime calls — processor/sink `process()`/`finish()` and source `start()` — and records that a factory's `build()` cannot classify at all, because the `NodeContext` it is handed carries no diagnostics handle. **Placed after §8 so that §8 keeps meaning "the review checklist"** in the audit log and in past entries here. **No past verdict changes automatically, but no previously-audited action has been checked against this section** — 11 of 113 fallible action files classify their failures at all, so most actions reviewed to date owe a `diag:` re-check. Written from the diagnostics fidelity work in #2487, #2488 and #2491.
+- **§9 added — Diagnostics**, with a matching `diag:` line in the §8 checklist. Covers what an auditor cannot see from the call site: a plain `Err` is blanket-wrapped as `internal.unclassified` and stamped Fatal; an unclassified failure can only be relaxed with the run-wide `allowRelaxInternal`, so `errorPolicy` is no escape hatch for it; reporting-and-continuing leaves partial state that finalization cannot distinguish from real state; and a fatal does not stop the node. It covers every entry point the runtime calls — processor/sink `process()`/`finish()` and source `start()` — and records that a factory's `build()` cannot classify at all, because the `NodeContext` it is handed carries no diagnostics handle. §9.1 covers registry authoring — codes are append-only identifiers because `errorPolicy` selects on them, reuse before adding, category by cause, and what `default_disposition` means — and §9.2 covers choosing between `warn`, `warn_once`, `report` and `report_drop`. **Placed after §8 so that §8 keeps meaning "the review checklist"** in the audit log and in past entries here. **No past verdict changes automatically, but no previously-audited action has been checked against this section** — 11 of 113 fallible action files classify their failures at all, so most actions reviewed to date owe a `diag:` re-check. Written from the diagnostics fidelity work in #2487, #2488 and #2491.
 
 ### 2026-09-11
 
