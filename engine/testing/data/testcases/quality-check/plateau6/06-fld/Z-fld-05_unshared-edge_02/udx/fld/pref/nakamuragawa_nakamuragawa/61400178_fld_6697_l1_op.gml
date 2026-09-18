@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Real PLATEAU data, rewritten as CityGML 3.0 + i-UR 4.0: ajigasawa-machi mesh
-  61400178, pref/nakamuragawa, planning scale. Carried over from the plateau4
-  test of the same name, whose copy is the CityGML 2.0 original; geometry, gml:id
-  values and coded values are unchanged, and only the encoding differs.
+  61400178, pref/nakamuragawa, planning scale. Copied from the plateau4 test
+  Z-fld-05_unshared-edge_04, whose fixture is the CityGML 2.0 original;
+  geometry, gml:id values and coded values are unchanged, and only the encoding
+  differs.
 
   Five wtr:WaterBody features, ranks 5, 3, 4, 1 and 2, hold 40 triangles between
   them in eight patches scattered over 750 m by 570 m. 50 of the 85 edges are

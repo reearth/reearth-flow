@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Real PLATEAU data, rewritten as CityGML 3.0 + i-UR 4.0: ajigasawa-machi mesh
-  61400178, pref/nakamuragawa, largest assumed scale. Carried over from the
-  plateau4 test of the same name, whose copy is the CityGML 2.0 original;
+  61400178, pref/nakamuragawa, largest assumed scale. Copied from the plateau4
+  test Z-fld-05_unshared-edge_04, whose fixture is the CityGML 2.0 original;
   geometry, gml:id values and coded values are unchanged, and only the encoding
   differs.
 
