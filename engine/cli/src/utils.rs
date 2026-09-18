@@ -150,12 +150,21 @@ fn patch_variant(variant: &mut serde_json::Value, key: &str, i18n: &PropertyI18n
 /// externally tagged and so carries them one level down, inside the object named
 /// for the variant itself. `None` for every other shape, which carries them
 /// directly (see [`enum_variant_key`]).
+///
+/// A payload counts only when at least one of its properties carries user-facing
+/// text, which is the same condition the scaffolder seeds an entry on. A newtype
+/// variant wrapping a struct inlines that struct's own fields here, and those are
+/// not the variant's sub-parameters.
 pub(crate) fn variant_sub_parameters<'a>(
     variant: &'a serde_json::Value,
     key: &str,
 ) -> Option<&'a serde_json::Value> {
     let payload = variant.get("properties")?.get(key)?;
-    payload.get("properties").is_some().then_some(payload)
+    let properties = payload.get("properties")?.as_object()?;
+    properties
+        .values()
+        .any(|schema| schema.get("title").is_some() || schema.get("description").is_some())
+        .then_some(payload)
 }
 
 /// The key identifying one `oneOf`/`anyOf` variant of an enum definition.
@@ -411,4 +420,115 @@ pub(crate) fn create_action_schema(
         categories,
         tags,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An externally tagged struct variant, as schemars renders
+    /// `Enabled { quantization_error }`.
+    fn struct_variant() -> serde_json::Value {
+        serde_json::json!({
+            "title": "Enabled",
+            "type": "object",
+            "required": ["enabled"],
+            "properties": {
+                "enabled": {
+                    "type": "object",
+                    "properties": {
+                        "quantizationError": {
+                            "title": "Quantization Error",
+                            "description": "Upper bound in meters.",
+                            "type": ["number", "null"]
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        })
+    }
+
+    /// An externally tagged newtype variant, as schemars renders `Crs(Code)`:
+    /// the wrapped type's own fields are inlined into the payload.
+    fn newtype_variant() -> serde_json::Value {
+        serde_json::json!({
+            "title": "CRS",
+            "type": "object",
+            "required": ["crs"],
+            "properties": {
+                "crs": {
+                    "type": "object",
+                    "format": "code",
+                    "required": ["type", "value"],
+                    "properties": {
+                        "type": {"type": "string", "enum": ["flowExpr"]},
+                        "value": {"type": "string"}
+                    }
+                }
+            },
+            "additionalProperties": false
+        })
+    }
+
+    #[test]
+    fn struct_variant_carries_its_sub_parameters_one_level_down() {
+        let variant = struct_variant();
+        let payload = variant_sub_parameters(&variant, "enabled").expect("payload");
+        assert_eq!(payload, &variant["properties"]["enabled"]);
+    }
+
+    #[test]
+    fn newtype_variant_has_no_sub_parameters() {
+        assert!(variant_sub_parameters(&newtype_variant(), "crs").is_none());
+    }
+
+    #[test]
+    fn sub_parameter_overrides_land_inside_the_payload() {
+        let mut variant = struct_variant();
+        let i18n = PropertyI18n {
+            title: Some("有効".to_string()),
+            description: Some("Draco で圧縮する。".to_string()),
+            properties: Some(BTreeMap::from([(
+                "quantizationError".to_string(),
+                PropertyI18n {
+                    title: Some("量子化誤差".to_string()),
+                    description: None,
+                    properties: None,
+                },
+            )])),
+        };
+
+        patch_variant(&mut variant, "enabled", &i18n);
+
+        assert_eq!(variant["title"], "有効");
+        assert_eq!(
+            variant["properties"]["enabled"]["properties"]["quantizationError"]["title"],
+            "量子化誤差"
+        );
+    }
+
+    #[test]
+    fn a_newtype_payloads_internals_are_left_alone() {
+        let mut variant = newtype_variant();
+        let i18n = PropertyI18n {
+            title: Some("CRS".to_string()),
+            description: None,
+            properties: Some(BTreeMap::from([(
+                "value".to_string(),
+                PropertyI18n {
+                    title: Some("should not be applied".to_string()),
+                    description: None,
+                    properties: None,
+                },
+            )])),
+        };
+
+        patch_variant(&mut variant, "crs", &i18n);
+
+        assert!(variant["properties"]["crs"]["properties"]["value"]
+            .get("title")
+            .is_none());
+    }
 }
