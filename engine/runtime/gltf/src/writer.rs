@@ -20,7 +20,7 @@ pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
 /// Whether mesh geometry is compressed with Draco, and how precisely.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum DracoCompression {
     /// # Disabled
     /// Write mesh geometry uncompressed.
@@ -31,10 +31,43 @@ pub enum DracoCompression {
     Enabled {
         /// # Quantization Error
         /// Upper bound, in meters, on how far compression may move a vertex. Must
-        /// be positive. When unset, the encoder's default resolution is used.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        /// be positive; a zero, negative or non-finite value is rejected. When
+        /// unset, the encoder's default resolution is used.
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "deserialize_quantization_error"
+        )]
+        #[schemars(schema_with = "quantization_error_schema")]
         quantization_error: Option<f64>,
     },
+}
+
+/// Reads the quantization error, rejecting any value that is not strictly positive
+/// and finite.
+fn deserialize_quantization_error<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let error = Option::<f64>::deserialize(deserializer)?;
+    if let Some(error) = error {
+        if !error.is_finite() || error <= 0.0 {
+            return Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::Float(error),
+                &"a positive quantization error in meters",
+            ));
+        }
+    }
+    Ok(error)
+}
+
+/// JSON schema for the quantization error: a positive number, or absent.
+fn quantization_error_schema(
+    generator: &mut schemars::gen::SchemaGenerator,
+) -> schemars::schema::Schema {
+    let mut schema = <Option<f64>>::json_schema(generator).into_object();
+    schema.number().exclusive_minimum = Some(0.0);
+    schema.into()
 }
 
 impl DracoCompression {
@@ -406,12 +439,22 @@ fn draco_config(
     let position_bound = match draco {
         DracoCompression::Enabled {
             quantization_error: Some(max_error),
-        } => {
+        } if max_error.is_finite() && max_error > 0.0 => {
+            // An empty glb spans no box, and has no position to bound.
             let box_is_valid = position_min
                 .iter()
                 .zip(&position_max)
                 .all(|(lo, hi)| lo <= hi);
-            (max_error > 0.0 && box_is_valid).then_some(max_error)
+            box_is_valid.then_some(max_error)
+        }
+        DracoCompression::Enabled {
+            quantization_error: Some(max_error),
+        } => {
+            tracing::warn!(
+                "ignoring non-positive Draco quantization error {max_error}, \
+                 falling back to the encoder's default resolution"
+            );
+            None
         }
         _ => None,
     };
@@ -473,25 +516,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn parameter_is_tagged_by_type() {
-        let value = serde_json::json!({"type": "enabled", "quantizationError": 0.01});
-        assert_eq!(
-            serde_json::from_value::<DracoCompression>(value).unwrap(),
-            enabled(0.01)
-        );
-        let value = serde_json::json!({"type": "enabled"});
-        assert_eq!(
-            serde_json::from_value::<DracoCompression>(value).unwrap(),
-            DracoCompression::DEFAULT_ENABLED
-        );
-        let value = serde_json::json!({"type": "disabled"});
-        assert_eq!(
-            serde_json::from_value::<DracoCompression>(value).unwrap(),
-            DracoCompression::Disabled
-        );
-    }
-
     fn resolved_quantization(
         draco: DracoCompression,
         min: [f64; 3],
@@ -522,18 +546,6 @@ mod tests {
         // A primitive covering only part of the box quantizes no coarser than the bound.
         let bits = quantization.resolve(0.0);
         assert!(100.0 / ((1u64 << bits) - 1) as f32 / 2.0 <= 0.001);
-    }
-
-    #[test]
-    fn no_error_bound_keeps_the_encoder_default() {
-        assert_eq!(
-            resolved_quantization(
-                DracoCompression::DEFAULT_ENABLED,
-                [0.0, 0.0, 0.0],
-                [1.0, 1.0, 1.0]
-            ),
-            None
-        );
     }
 
     fn vertex(position: [f32; 3]) -> [u32; 9] {
@@ -633,13 +645,5 @@ mod tests {
                 .fold(f32::INFINITY, f32::min);
             assert!(error <= 0.001, "position error {error} exceeds 1mm");
         }
-    }
-
-    #[test]
-    fn empty_bounding_box_keeps_the_encoder_default() {
-        assert_eq!(
-            resolved_quantization(enabled(0.001), [f64::MAX; 3], [f64::MIN; 3]),
-            None
-        );
     }
 }

@@ -480,8 +480,8 @@ graphs:
     action: Cesium3DTilesWriter
     with:
       dracoCompression:
-        type: enabled
-        quantizationError: 0.003
+        enabled:
+          quantizationError: 0.003
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -711,8 +711,8 @@ graphs:
     action: Cesium3DTilesWriter
     with:
       dracoCompression:
-        type: enabled
-        quantizationError: 0.003
+        enabled:
+          quantizationError: 0.003
       minZoom: 15
       maxZoom: 18
       attachTexture: true
@@ -934,8 +934,8 @@ graphs:
     action: Cesium3DTilesWriter
     with:
       dracoCompression:
-        type: enabled
-        quantizationError: 0.003
+        enabled:
+          quantizationError: 0.003
       minZoom: 15
       maxZoom: 18
       attachTexture: true

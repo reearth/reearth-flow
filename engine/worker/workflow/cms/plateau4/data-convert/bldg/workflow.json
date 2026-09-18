@@ -481,8 +481,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.01
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,
@@ -498,8 +499,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.01
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,
@@ -515,8 +517,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.01
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,
@@ -532,8 +535,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.003
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,
@@ -549,8 +553,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.003
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,
@@ -566,8 +571,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.003
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,
@@ -583,8 +589,9 @@
           "action": "Cesium3DTilesWriter",
           "with": {
             "dracoCompression": {
-              "type": "enabled",
-              "quantizationError": 0.001
+              "enabled": {
+                "quantizationError": 0.003
+              }
             },
             "minZoom": 15,
             "maxZoom": 18,

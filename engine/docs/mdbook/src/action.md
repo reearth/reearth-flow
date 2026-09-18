@@ -1366,7 +1366,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "title": "Draco Compression",
       "description": "Whether to compress mesh geometry with Draco, and how precisely. Defaults to enabled at the encoder's default resolution.",
       "default": {
-        "type": "enabled"
+        "enabled": {}
       },
       "allOf": [
         {
@@ -1413,43 +1413,37 @@ Export Features as Cesium 3D Tiles for Web Visualization
         {
           "title": "Disabled",
           "description": "Write mesh geometry uncompressed.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "disabled"
-              ]
-            }
-          }
+          "type": "string",
+          "enum": [
+            "disabled"
+          ]
         },
         {
           "title": "Enabled",
           "description": "Compress mesh geometry with Draco.",
           "type": "object",
           "required": [
-            "type"
+            "enabled"
           ],
           "properties": {
-            "quantizationError": {
-              "title": "Quantization Error",
-              "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
-              "type": [
-                "number",
-                "null"
-              ],
-              "format": "double"
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "enabled"
-              ]
+            "enabled": {
+              "type": "object",
+              "properties": {
+                "quantizationError": {
+                  "title": "Quantization Error",
+                  "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used.",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "format": "double",
+                  "exclusiveMinimum": 0.0
+                }
+              },
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         }
       ]
     },
