@@ -1,7 +1,7 @@
 import { GraphQLRequestProvider } from "./GraphQLRequestProvider";
 import { TanStackQueryProvider } from "./TanStackQueryProvider";
 
-export { useGraphQLContext } from "./GraphQLRequestProvider";
+export { useGraphQLContext, useGraphQLClient } from "./GraphQLRequestProvider";
 
 const GraphQLProvider = ({
   gqlAccessToken,
