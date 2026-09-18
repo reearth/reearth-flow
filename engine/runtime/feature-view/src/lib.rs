@@ -22,6 +22,7 @@ use reearth_flow_action_sink::file::mvt::next::{build as build_tiles, TileFeatur
 use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::Geometry;
+use reearth_flow_gltf::DracoCompression;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -147,7 +148,11 @@ impl Default for ViewOptions {
 impl ViewOptions {
     fn render_options(&self) -> RenderOptions {
         RenderOptions {
-            draco: self.draco,
+            draco: if self.draco {
+                DracoCompression::DEFAULT_ENABLED
+            } else {
+                DracoCompression::Disabled
+            },
             compute_flat_normal: self.compute_flat_normal,
             texel_size: self.texel_size,
             atlas_size: self.atlas_size,

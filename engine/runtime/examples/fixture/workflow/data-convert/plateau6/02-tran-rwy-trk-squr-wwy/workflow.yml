@@ -302,6 +302,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
           targetTileSize: 1048576
           attachTexture: true
           wrapTolerance: 0.1
