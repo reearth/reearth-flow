@@ -15,12 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { DotsSixIcon } from "@phosphor-icons/react";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 
 import {
   Table,
@@ -31,12 +26,13 @@ import {
   TableRow,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { appTableFeatures, type AppColumnDef } from "@flow/lib/table/features";
 import { AwarenessUser, WorkflowVariable } from "@flow/types";
 
 type Props = {
   className?: string;
   workflowVariables: WorkflowVariable[];
-  columns: ColumnDef<WorkflowVariable, unknown>[];
+  columns: AppColumnDef<WorkflowVariable, unknown>[];
   onReorder?: (oldIndex: number, newIndex: number) => void;
   readonly?: boolean;
   variableFocusMap?: Record<string, AwarenessUser[]>;
@@ -143,10 +139,10 @@ const WorkflowVariablesTable: React.FC<Props> = ({
     }
   };
 
-  const table = useReactTable({
+  const table = useTable({
+    features: appTableFeatures,
     data: workflowVariables,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
+    columns: columns as AppColumnDef<WorkflowVariable>[],
     columnResizeMode: "onChange",
     state: {},
   });

@@ -1,4 +1,4 @@
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import { useCallback, useEffect, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
@@ -21,7 +21,7 @@ export default ({
   type?: SupportedDataTypes | null;
 }) => {
   const [data, setData] = useState<any>(null);
-  const [columns, setColumns] = useState<ColumnDef<any>[]>([]);
+  const [columns, setColumns] = useState<AppColumnDef<any>[]>([]);
 
   const handleDataLoaded = useCallback(() => {
     if (type === "geojson") {
@@ -46,7 +46,7 @@ export default ({
         });
 
         // Create columns for table
-        const tableColumns: ColumnDef<any>[] = [
+        const tableColumns: AppColumnDef<any>[] = [
           {
             accessorKey: "id",
             header: "id",
@@ -63,7 +63,7 @@ export default ({
                 maxSize: 400,
                 minSize: 100,
                 cell: (info: any) => truncateDisplayValue(info.getValue()),
-              }) as ColumnDef<any>,
+              }) as AppColumnDef<any>,
           ),
           ...Array.from(allProps).map(
             (prop) =>
@@ -74,7 +74,7 @@ export default ({
                 maxSize: 400,
                 minSize: 100,
                 cell: (info: any) => truncateDisplayValue(info.getValue()),
-              }) as ColumnDef<any>,
+              }) as AppColumnDef<any>,
           ),
         ];
 

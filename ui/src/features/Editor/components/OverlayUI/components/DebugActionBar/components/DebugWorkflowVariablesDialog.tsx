@@ -3,7 +3,7 @@ import {
   ChalkboardTeacherIcon,
   PencilLineIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -149,7 +149,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     onDialogClose();
   };
 
-  const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
+  const columns: AppColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
         accessorKey: "name",

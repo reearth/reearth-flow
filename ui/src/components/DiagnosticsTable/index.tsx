@@ -1,4 +1,4 @@
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import { useMemo } from "react";
 
 import useDiagnosticLabels from "@flow/hooks/useDiagnosticLabels";
@@ -38,7 +38,7 @@ const DiagnosticsTable: React.FC<Props> = ({
   const t = useT();
   const { severityLabel, categoryLabel } = useDiagnosticLabels();
 
-  const columns: ColumnDef<Diagnostic>[] = useMemo(
+  const columns: AppColumnDef<Diagnostic>[] = useMemo(
     () => [
       {
         accessorKey: "severity",

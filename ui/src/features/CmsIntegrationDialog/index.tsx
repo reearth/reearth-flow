@@ -1,5 +1,5 @@
 import { CaretLeftIcon, EyeIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 
 import {
   Dialog,
@@ -66,7 +66,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     workspaceId: currentWorkspace?.id ?? "",
   });
 
-  const columns: ColumnDef<CmsItem>[] = selectedModel
+  const columns: AppColumnDef<CmsItem>[] = selectedModel
     ? [
         {
           accessorKey: "id",

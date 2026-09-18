@@ -1,5 +1,5 @@
 import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import { useCallback, useState } from "react";
 
 import {
@@ -121,7 +121,7 @@ const MembersSettings: React.FC = () => {
     }
   };
 
-  const columns: ColumnDef<UserMember>[] = [
+  const columns: AppColumnDef<UserMember>[] = [
     {
       accessorKey: "user.name",
       header: t("Name"),

@@ -1,13 +1,9 @@
 import {
-  ColumnDef,
-  FilterFn,
+  ColumnVisibilityState,
+  RowData,
   SortingState,
-  VisibilityState,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
+  useTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -36,23 +32,28 @@ import {
   Table,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import {
+  appTableFeatures,
+  type AppColumnDef,
+  type AppFilterFn,
+} from "@flow/lib/table/features";
 
-type DataTableProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[];
+type DataTableProps<TData extends RowData, TValue> = {
+  columns: AppColumnDef<TData, TValue>[];
   data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
   condensed?: boolean;
   searchTerm?: string;
   selectedRowIndex: number;
-  customGlobalFilterFn?: FilterFn<TData>;
+  customGlobalFilterFn?: AppFilterFn<TData>;
   detailsOpen?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setSearchTerm?: (term: string) => void;
 };
 
-function VirtualizedTable<TData, TValue>({
+function VirtualizedTable<TData extends RowData, TValue>({
   columns,
   data,
   selectColumns = false,
@@ -68,7 +69,8 @@ function VirtualizedTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
@@ -80,13 +82,12 @@ function VirtualizedTable<TData, TValue>({
     [setSearchTerm],
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: appTableFeatures,
     data: data ?? [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
+    columns: columns as AppColumnDef<TData>[],
     // Sorting
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     // Visibility
     onColumnVisibilityChange: setColumnVisibility,
     columnResizeMode: "onChange",
@@ -95,7 +96,6 @@ function VirtualizedTable<TData, TValue>({
     // Filtering
     globalFilterFn: customGlobalFilterFn ?? "auto",
     onGlobalFilterChange: setGlobalFilter,
-    getFilteredRowModel: getFilteredRowModel(),
     state: {
       sorting,
       columnVisibility,

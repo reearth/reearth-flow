@@ -2,7 +2,7 @@ import {
   ArrowUDownLeftIcon,
   ChalkboardTeacherIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -164,7 +164,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     handleVariableDialogClose();
   };
 
-  const columns: ColumnDef<TriggerVariableConfig>[] = useMemo(
+  const columns: AppColumnDef<TriggerVariableConfig>[] = useMemo(
     () => [
       {
         accessorKey: "name",

@@ -1,4 +1,4 @@
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 
 import {
   Dialog,
@@ -43,7 +43,7 @@ const DeploymentsDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
-  const columns: ColumnDef<Deployment>[] = [
+  const columns: AppColumnDef<Deployment>[] = [
     {
       accessorKey: "description",
       header: t("Description"),

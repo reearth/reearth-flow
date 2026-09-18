@@ -1,4 +1,4 @@
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import {
   useCallback,
   useEffect,
@@ -22,7 +22,7 @@ type LogsConsoleProps = {
 
 const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
   const t = useT();
-  const columns: ColumnDef<UserFacingLog>[] = [
+  const columns: AppColumnDef<UserFacingLog>[] = [
     {
       accessorKey: "timestamp",
       header: t("Timestamp"),

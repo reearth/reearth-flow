@@ -1,14 +1,10 @@
 import {
-  ColumnDef,
+  ColumnVisibilityState,
   PaginationState,
+  RowData,
   SortingState,
-  VisibilityState,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  useTable,
 } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
@@ -29,6 +25,7 @@ import {
   FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { appTableFeatures, type AppColumnDef } from "@flow/lib/table/features";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 import BasicBoiler from "../BasicBoiler";
@@ -41,8 +38,8 @@ import {
   TableRow,
 } from "../Table";
 
-type DataTableProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[];
+type DataTableProps<TData extends RowData, TValue> = {
+  columns: AppColumnDef<TData, TValue>[];
   data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
@@ -68,7 +65,7 @@ type DataTableProps<TData, TValue> = {
   flush?: boolean;
 };
 
-function DataTable<TData, TValue>({
+function DataTable<TData extends RowData, TValue>({
   columns,
   data,
   selectColumns = false,
@@ -95,7 +92,8 @@ function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
@@ -112,24 +110,21 @@ function DataTable<TData, TValue>({
     pageSize: resultsPerPage ?? 10,
   });
 
-  const table = useReactTable({
+  const table = useTable({
+    features: appTableFeatures,
     data: data ?? [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
+    // The table erases the per-column value type, so its `columns` option is
+    // always `TValue = unknown`. v8 spelled this `ColumnDef<TData, any>[]`
+    // internally; the prop keeps `TValue` so call sites stay unchanged.
+    columns: columns as AppColumnDef<TData>[],
     // Sorting
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     // Visibility
     onColumnVisibilityChange: setColumnVisibility,
-    columnResizeMode: "onChange",
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
     onGlobalFilterChange: setGlobalFilter,
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: enablePagination
-      ? getPaginationRowModel()
-      : undefined,
     onPaginationChange: setPagination,
     state: {
       sorting,

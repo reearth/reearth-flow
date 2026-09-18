@@ -9,7 +9,7 @@ import {
   RectangleDashedIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 import { NodeChange } from "@xyflow/react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -68,92 +68,88 @@ const SearchPanel = ({
     onWorkflowOpen,
   });
 
-  const searchNodeColumns: ColumnDef<SearchNodeResult | undefined, unknown>[] =
-    [
-      {
-        accessorFn: (row) => row?.displayName,
-        id: "displayName",
-        header: t("Display Name"),
-        cell: ({ row }) => (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <div className="flex w-[300px] items-center gap-2">
-                  <div
-                    className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
-                    <p className="self-center text-xs text-zinc-200">
-                      {row.original?.nodeType === "reader" ? (
-                        <DatabaseIcon className="self-center" />
-                      ) : row.original?.nodeType === "writer" ? (
-                        <DiscIcon className="self-center" />
-                      ) : row.original?.nodeType === "subworkflow" ? (
-                        <GraphIcon className="self-center" />
-                      ) : row.original?.nodeType === "batch" ? (
-                        <RectangleDashedIcon className="self-center" />
-                      ) : row.original?.nodeType === "note" ? (
-                        <NoteIcon className="self-center" />
-                      ) : (
-                        <LightningIcon className="self-center" />
-                      )}
-                    </p>
-                  </div>
-                  <div className="truncate">
-                    <span className="block truncate font-medium">
-                      {row.original?.displayName}
-                    </span>
-                    <span className="block truncate font-medium text-muted-foreground">
-                      ({row.original?.officialName})
-                    </span>
-                  </div>
+  const searchNodeColumns: AppColumnDef<SearchNodeResult, unknown>[] = [
+    {
+      accessorFn: (row) => row?.displayName,
+      id: "displayName",
+      header: t("Display Name"),
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <div className="flex w-[300px] items-center gap-2">
+                <div
+                  className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
+                  <p className="self-center text-xs text-zinc-200">
+                    {row.original?.nodeType === "reader" ? (
+                      <DatabaseIcon className="self-center" />
+                    ) : row.original?.nodeType === "writer" ? (
+                      <DiscIcon className="self-center" />
+                    ) : row.original?.nodeType === "subworkflow" ? (
+                      <GraphIcon className="self-center" />
+                    ) : row.original?.nodeType === "batch" ? (
+                      <RectangleDashedIcon className="self-center" />
+                    ) : row.original?.nodeType === "note" ? (
+                      <NoteIcon className="self-center" />
+                    ) : (
+                      <LightningIcon className="self-center" />
+                    )}
+                  </p>
                 </div>
-              }
-            />
-            <TooltipContent
-              side="right"
-              sideOffset={-180}
-              className="bg-primary">
-              {row.original?.displayName}
-            </TooltipContent>
-          </Tooltip>
-        ),
-      },
-      {
-        accessorFn: (row) => row?.workflowName,
-        id: "workflowName",
-        header: t("Workflow"),
-        cell: ({ row }) => (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span className="block max-w-[120px] truncate font-medium text-muted-foreground">
-                  {row.original?.workflowName}
-                </span>
-              }
-            />
-            <TooltipContent
-              side="left"
-              sideOffset={-100}
-              align="center"
-              className="bg-primary">
-              {row.original?.workflowName}
-            </TooltipContent>
-          </Tooltip>
-        ),
-      },
-      {
-        accessorFn: (row) => row?.workflowName,
-        id: "actions",
-        header: undefined,
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <IconButton
-              icon={<ArrowRightIcon />}
-              onClick={() => handleRowDoubleClick(row.original)}
-            />
-          </div>
-        ),
-      },
-    ];
+                <div className="truncate">
+                  <span className="block truncate font-medium">
+                    {row.original?.displayName}
+                  </span>
+                  <span className="block truncate font-medium text-muted-foreground">
+                    ({row.original?.officialName})
+                  </span>
+                </div>
+              </div>
+            }
+          />
+          <TooltipContent side="right" sideOffset={-180} className="bg-primary">
+            {row.original?.displayName}
+          </TooltipContent>
+        </Tooltip>
+      ),
+    },
+    {
+      accessorFn: (row) => row?.workflowName,
+      id: "workflowName",
+      header: t("Workflow"),
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span className="block max-w-[120px] truncate font-medium text-muted-foreground">
+                {row.original?.workflowName}
+              </span>
+            }
+          />
+          <TooltipContent
+            side="left"
+            sideOffset={-100}
+            align="center"
+            className="bg-primary">
+            {row.original?.workflowName}
+          </TooltipContent>
+        </Tooltip>
+      ),
+    },
+    {
+      accessorFn: (row) => row?.workflowName,
+      id: "actions",
+      header: undefined,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <IconButton
+            icon={<ArrowRightIcon />}
+            onClick={() => handleRowDoubleClick(row.original)}
+          />
+        </div>
+      ),
+    },
+  ];
 
   const selectedRowIndex = useMemo(() => {
     if (!selectedNodeId || !filteredNodes) return -1;

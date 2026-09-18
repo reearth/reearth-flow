@@ -1,4 +1,4 @@
-import { FilterFn } from "@tanstack/react-table";
+import { type AppFilterFn } from "@flow/lib/table/features";
 import { NodeChange, useReactFlow } from "@xyflow/react";
 import { useMemo, useCallback, useState, useRef } from "react";
 
@@ -243,7 +243,7 @@ export default ({
     [workflowVariables],
   );
 
-  const nodeSearchOptions: FilterFn<any> = (row, _columnId, filterValue) => {
+  const nodeSearchOptions: AppFilterFn<any> = (row, _columnId, filterValue) => {
     const q = String(filterValue ?? "")
       .trim()
       .toLowerCase();

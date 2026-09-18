@@ -4,7 +4,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 
 import {
   Button,
@@ -56,7 +56,7 @@ const DeploymentManager: React.FC = () => {
     setCurrentPage,
   } = useHooks();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
-  const columns: ColumnDef<Deployment>[] = [
+  const columns: AppColumnDef<Deployment>[] = [
     {
       accessorKey: "description",
       header: t("Description"),

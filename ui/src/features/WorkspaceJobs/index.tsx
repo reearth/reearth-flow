@@ -1,4 +1,4 @@
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 
 import { DataTable as Table } from "@flow/components";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
@@ -28,7 +28,7 @@ const JobsManager: React.FC = () => {
     setCurrentPage,
   } = useHooks();
 
-  const columns: ColumnDef<Job>[] = [
+  const columns: AppColumnDef<Job>[] = [
     {
       accessorKey: "id",
       header: t("ID"),

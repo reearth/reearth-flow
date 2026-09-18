@@ -1,5 +1,5 @@
 import { PencilLineIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
+import { type AppColumnDef } from "@flow/lib/table/features";
 
 import {
   Button,
@@ -45,7 +45,7 @@ const TriggerManager: React.FC = () => {
     handleSortChange,
     setCurrentPage,
   } = useHooks();
-  const columns: ColumnDef<Trigger>[] = [
+  const columns: AppColumnDef<Trigger>[] = [
     {
       accessorKey: "description",
       header: t("Trigger Description"),

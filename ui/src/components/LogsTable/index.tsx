@@ -5,17 +5,13 @@ import {
   XCircleIcon,
 } from "@phosphor-icons/react";
 import {
-  ColumnDef,
   ColumnFiltersState,
+  ColumnVisibilityState,
   SortingState,
-  VisibilityState,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
+  useTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   DropdownMenu,
@@ -29,6 +25,7 @@ import {
   LoadingSkeleton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { appTableFeatures, type AppColumnDef } from "@flow/lib/table/features";
 import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
 
 import BasicBoiler from "../BasicBoiler";
@@ -42,7 +39,7 @@ import {
 } from "../Table";
 
 type LogProps = {
-  columns: ColumnDef<UserFacingLog, unknown>[];
+  columns: AppColumnDef<UserFacingLog, unknown>[];
   data: UserFacingLog[];
   isFetching: boolean;
   selectColumns?: boolean;
@@ -61,25 +58,24 @@ const LogsTable = ({
 }: LogProps) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  const table = useReactTable({
+  const table = useTable({
+    features: appTableFeatures,
     data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
+    columns: columns as AppColumnDef<UserFacingLog>[],
     // Sorting
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     // Visibility
     onColumnVisibilityChange: setColumnVisibility,
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
     onGlobalFilterChange: setGlobalFilter,
-    getFilteredRowModel: getFilteredRowModel(),
     // Column Filtering
     onColumnFiltersChange: setColumnFilters,
     state: {
@@ -92,7 +88,7 @@ const LogsTable = ({
   });
 
   const handleStatusChange = (status: UserFacingLogLevel) => {
-    if (getStatusValue === status) {
+    if (statusValue === status) {
       setColumnFilters([]);
     } else {
       setColumnFilters([{ id: "level", value: status }]);
@@ -103,10 +99,12 @@ const LogsTable = ({
     setColumnFilters([]);
   };
 
-  const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "level");
-    return value?.value;
-  }, [columnFilters]);
+  // Plain computation, not a useMemo: react-table v8 made React Compiler skip
+  // this component wholesale ("Use of incompatible library"), which hid the
+  // fact that it could not preserve this memo. v9 compiles fine, so the memo
+  // now surfaces as an error — and a `.find` over the active filters is not
+  // worth memoizing by hand anyway.
+  const statusValue = columnFilters.find((id) => id.id === "level")?.value;
 
   const hasValidLogs = data.some(
     (log) => log.timestamp || log.level || log.message,
@@ -129,21 +127,21 @@ const LogsTable = ({
         <div className="flex items-center gap-2">
           <IconButton
             size="icon"
-            variant={getStatusValue === "ERROR" ? "default" : "outline"}
+            variant={statusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Error)}
             icon={<XCircleIcon className="text-destructive" />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "INFO" ? "default" : "outline"}
+            variant={statusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Info)}
             icon={<InfoIcon />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "SUCCESS" ? "default" : "outline"}
+            variant={statusValue === "SUCCESS" ? "default" : "outline"}
             tooltipText={t("Success")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Success)}
             icon={<CheckCircleIcon className="text-success" />}
