@@ -10,11 +10,13 @@ import {
   rowSelectionFeature,
   rowSortingFeature,
   tableFeatures,
-  type ColumnDef,
-  type FilterFn,
-  type Row,
-  type RowData,
-  type Table,
+} from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  FilterFn,
+  Row,
+  RowData,
+  Table,
 } from "@tanstack/react-table";
 
 /**

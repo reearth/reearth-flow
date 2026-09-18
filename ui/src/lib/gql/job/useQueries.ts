@@ -1,13 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Job } from "@flow/types";
-import {
-  OrderDirection,
-  type PaginationOptions,
-} from "@flow/types/paginationOptions";
+import { OrderDirection } from "@flow/types/paginationOptions";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
-import { CancelJobInput } from "../__gen__/graphql";
+import type { CancelJobInput } from "../__gen__/graphql";
 import { toDiagnostic, toJob } from "../convert";
 import { useGraphQLClient, useGraphQLContext } from "../provider";
 

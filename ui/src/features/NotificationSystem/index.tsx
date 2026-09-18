@@ -12,7 +12,8 @@ import {
   ToastViewport,
 } from "@flow/components";
 
-import { toastManager, type ToastData } from "./useToast";
+import { toastManager } from "./useToast";
+import type { ToastData } from "./useToast";
 
 export function NotificationSystem() {
   return (

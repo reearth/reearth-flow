@@ -2,7 +2,11 @@ import { Input, Label, Switch } from "@flow/components";
 import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { DateTimeDefaultValueInput } from "@flow/components/workflowVariables";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser, WorkflowVariable, DateTimeConfig } from "@flow/types";
+import type {
+  AwarenessUser,
+  WorkflowVariable,
+  DateTimeConfig,
+} from "@flow/types";
 import { formatDateOnly } from "@flow/utils";
 
 type Props = {

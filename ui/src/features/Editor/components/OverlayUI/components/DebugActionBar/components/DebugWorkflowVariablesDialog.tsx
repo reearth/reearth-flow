@@ -3,7 +3,6 @@ import {
   ChalkboardTeacherIcon,
   PencilLineIcon,
 } from "@phosphor-icons/react";
-import { type AppColumnDef } from "@flow/lib/table/features";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -21,7 +20,8 @@ import {
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, Asset } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, Asset } from "@flow/types";
 
 type Props = {
   debugRunWorkflowVariables?: AnyWorkflowVariable[];

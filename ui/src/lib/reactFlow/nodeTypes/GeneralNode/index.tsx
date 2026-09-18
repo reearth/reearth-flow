@@ -5,11 +5,12 @@ import {
   LightningIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
-import { NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";
-import { type Node, isBlockingSeverity } from "@flow/types";
+import { isBlockingSeverity } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import { Handles } from "./components";
 import useHooks from "./hooks";

@@ -86,7 +86,7 @@
     "react-yjs": "2.0.1",
     "resium": "1.26.0",
     "three": "0.186.0",
-    "use-resize-observer": "9.1.0",
+    "use-resize-observer": "10.0.0",
     "uuid": "14.0.2",
     "vite-plugin-svgr": "5.2.0",
     "y-presence": "0.2.3",
@@ -130,9 +130,10 @@
     "eslint": "9.39.4",
     "eslint-config-reearth": "0.4.0",
     "eslint-plugin-import": "2.32.0",
+    "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-storybook": "10.3.5",
     "i18next-parser": "9.4.0",
-    "jsdom": "29.1.1",
+    "jsdom": "30.1.0",
     "msw": "2.15.0",
     "prettier": "3.9.8",
     "read-env": "2.0.0",
@@ -144,7 +145,7 @@
     "typescript": "6.0.3",
     "vite": "8.3.0",
     "vite-plugin-cesium": "1.2.23",
-    "vitest": "4.1.11"
+    "vitest": "5.0.1"
   },
   "msw": {
     "workerDirectory": [

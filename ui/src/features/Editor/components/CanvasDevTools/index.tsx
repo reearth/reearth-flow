@@ -1,9 +1,9 @@
-import {
-  useState,
-  type Dispatch,
-  type SetStateAction,
-  type ReactNode,
+import { useState } from "react";
+import type {
   HTMLAttributes,
+  Dispatch,
+  SetStateAction,
+  ReactNode,
 } from "react";
 
 import { NodeInspector, ChangeLogger, ViewportLogger } from "./components";

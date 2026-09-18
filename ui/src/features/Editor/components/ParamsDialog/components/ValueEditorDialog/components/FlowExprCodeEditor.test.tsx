@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 
 import FlowExprCodeEditor from "./FlowExprCodeEditor";
-import { type AutocompleteSuggestion } from "./flowExprConstants";
+import type { AutocompleteSuggestion } from "./flowExprConstants";
 
 beforeAll(() => {
   globalThis.ResizeObserver = class {

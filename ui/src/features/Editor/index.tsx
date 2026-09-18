@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 import type { Awareness } from "y-protocols/awareness";
-import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
+import type { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
 import useDebugDiagnosticNodes from "@flow/hooks/useDebugDiagnosticNodes";
 import useWorkflowNodeIds from "@flow/hooks/useWorkflowNodeIds";
-import { YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
-import { EditorContextType, EditorProvider } from "./editorContext";
+import type { EditorContextType } from "./editorContext";
+import { EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 import useNodeNavigation from "./useNodeNavigation";
 import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";

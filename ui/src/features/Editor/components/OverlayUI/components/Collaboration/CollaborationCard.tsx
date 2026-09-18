@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { JobStatus, UserDebugRun } from "@flow/types";
+import type { JobStatus, UserDebugRun } from "@flow/types";
 
 type Props = {
   self?: boolean;

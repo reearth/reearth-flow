@@ -1,7 +1,7 @@
-import { type AppColumnDef } from "@flow/lib/table/features";
 import { useCallback, useEffect, useState } from "react";
 
-import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
+import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { safeSerialize } from "@flow/utils/valueSummary";
 
 // Truncate a pre-serialized string for display only, to prevent large payloads

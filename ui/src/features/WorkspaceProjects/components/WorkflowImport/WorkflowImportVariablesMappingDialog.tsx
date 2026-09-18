@@ -15,7 +15,7 @@ import {
   TextArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, VarType } from "@flow/types";
+import type { AnyWorkflowVariable, VarType } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 import {

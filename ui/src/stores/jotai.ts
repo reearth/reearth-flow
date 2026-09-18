@@ -1,6 +1,6 @@
 import { atom, useAtom } from "jotai";
 
-import { Workspace, Project, Role } from "@flow/types";
+import type { Workspace, Project, Role } from "@flow/types";
 
 const currentProject = atom<Project | undefined>(undefined);
 export const useCurrentProject = () => useAtom(currentProject);

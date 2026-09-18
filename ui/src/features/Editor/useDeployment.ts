@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
-import { Map as YMap } from "yjs";
+import type { Map as YMap } from "yjs";
 
 import { useDeployment, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
-import { YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 import { useCurrentProject } from "@flow/stores";
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";

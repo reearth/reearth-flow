@@ -1,11 +1,11 @@
 import { useCallback } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
-import { Algorithm, Direction, Edge, Node, Workflow } from "@flow/types";
+import type { Algorithm, Direction, Edge, Node, Workflow } from "@flow/types";
 import { autoLayout } from "@flow/utils/autoLayout";
 
 import { yNodeConstructor } from "./conversions";
-import { YNodesMap, YWorkflow } from "./types";
+import type { YNodesMap, YWorkflow } from "./types";
 
 export default ({
   currentWorkflowId,

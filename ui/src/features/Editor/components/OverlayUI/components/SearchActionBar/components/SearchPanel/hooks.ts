@@ -1,13 +1,14 @@
-import { type AppFilterFn } from "@flow/lib/table/features";
-import { NodeChange, useReactFlow } from "@xyflow/react";
+import type { NodeChange } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import { useMemo, useCallback, useState, useRef } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import type { AppFilterFn } from "@flow/lib/table/features";
 import { useCurrentProject } from "@flow/stores";
-import { Node, Workflow } from "@flow/types";
+import type { Node, Workflow } from "@flow/types";
 
 export type SearchNodeResult = {
   id: string;

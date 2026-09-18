@@ -1,4 +1,4 @@
-import { AwarenessUser } from "@flow/types";
+import type { AwarenessUser } from "@flow/types";
 
 type SelectionRectangleProps = {
   user: AwarenessUser;

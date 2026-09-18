@@ -1,19 +1,12 @@
-import {
+import type {
   ColumnVisibilityState,
   RowData,
   SortingState,
-  flexRender,
-  useTable,
 } from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import {
-  KeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { KeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -32,11 +25,8 @@ import {
   Table,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import {
-  appTableFeatures,
-  type AppColumnDef,
-  type AppFilterFn,
-} from "@flow/lib/table/features";
+import { appTableFeatures } from "@flow/lib/table/features";
+import type { AppColumnDef, AppFilterFn } from "@flow/lib/table/features";
 
 type DataTableProps<TData extends RowData, TValue> = {
   columns: AppColumnDef<TData, TValue>[];

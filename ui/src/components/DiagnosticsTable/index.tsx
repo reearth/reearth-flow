@@ -1,9 +1,10 @@
-import { type AppColumnDef } from "@flow/lib/table/features";
 import { useMemo } from "react";
 
 import useDiagnosticLabels from "@flow/hooks/useDiagnosticLabels";
 import { useT } from "@flow/lib/i18n";
-import { type Diagnostic, diagnosticOccurrences } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import { diagnosticOccurrences } from "@flow/types";
+import type { Diagnostic } from "@flow/types";
 
 import { Badge } from "../Badge";
 import { DataTable as Table } from "../DataTable";

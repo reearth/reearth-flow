@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 
-import {
-  AppState,
-  InitialStateKeys,
-  openDatabase,
-  STORE_NAME,
-} from "@flow/stores";
+import type { AppState, InitialStateKeys } from "@flow/stores";
+import { openDatabase, STORE_NAME } from "@flow/stores";
 
 // Simple type for subscribers
 type Subscriber<T> = (value: T) => void;

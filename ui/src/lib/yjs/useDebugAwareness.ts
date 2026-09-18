@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
-import { AwarenessUser, UserDebugRun } from "@flow/types";
+import type { AwarenessUser, UserDebugRun } from "@flow/types";
 
 export default ({
   yAwareness,

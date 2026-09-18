@@ -2,7 +2,8 @@ import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useY } from "react-yjs";
-import { Doc, Map as YMap } from "yjs";
+import type { Doc } from "yjs";
+import { Map as YMap } from "yjs";
 
 import {
   Dialog,
@@ -28,16 +29,18 @@ import {
   ValueEditorDialog,
   PythonEditorDialog,
   FlowExprEditorDialog,
-  type CodeValue,
 } from "./components";
-import { AutocompleteSuggestion } from "./components/ValueEditorDialog/components/flowExprConstants";
+import type { CodeValue } from "./components";
+import type { AutocompleteSuggestion } from "./components/ValueEditorDialog/components/flowExprConstants";
 import {
   applyMergedPatch,
   changedFieldPath,
+  nextSeq,
+} from "./utils/paramsAwareness";
+import type {
   DraftPatch,
   DraftStore,
-  nextSeq,
-  type NodeDrafts,
+  NodeDrafts,
 } from "./utils/paramsAwareness";
 
 type Props = {

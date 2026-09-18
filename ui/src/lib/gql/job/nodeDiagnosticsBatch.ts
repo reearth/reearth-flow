@@ -1,10 +1,8 @@
 import { print } from "graphql";
 import type { GraphQLClient } from "graphql-request";
 
-import {
-  DiagnosticFragmentDoc,
-  type DiagnosticFragment,
-} from "../__gen__/plugins/graphql-request";
+import { DiagnosticFragmentDoc } from "../__gen__/plugins/graphql-request";
+import type { DiagnosticFragment } from "../__gen__/plugins/graphql-request";
 
 /**
  * Reads every bucket of a job's diagnostics in one request.

@@ -1,11 +1,10 @@
-import {
+import type {
   ColumnVisibilityState,
   PaginationState,
   RowData,
   SortingState,
-  flexRender,
-  useTable,
 } from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 import {
@@ -25,7 +24,8 @@ import {
   FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { appTableFeatures, type AppColumnDef } from "@flow/lib/table/features";
+import { appTableFeatures } from "@flow/lib/table/features";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 import BasicBoiler from "../BasicBoiler";

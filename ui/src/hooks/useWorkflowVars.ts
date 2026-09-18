@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
 
 import { useT } from "@flow/lib/i18n";
-import { VARIABLE_TYPE_OPTIONS, VarType } from "@flow/types";
+import type { VarType } from "@flow/types";
+import { VARIABLE_TYPE_OPTIONS } from "@flow/types";
 
 export default () => {
   const t = useT();

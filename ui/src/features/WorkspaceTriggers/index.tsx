@@ -1,5 +1,4 @@
 import { PencilLineIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
-import { type AppColumnDef } from "@flow/lib/table/features";
 
 import {
   Button,
@@ -8,8 +7,10 @@ import {
 } from "@flow/components";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { useCurrentUserRole } from "@flow/stores";
-import { Role, Trigger } from "@flow/types";
+import type { Trigger } from "@flow/types";
+import { Role } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 
 import {

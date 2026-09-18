@@ -2,7 +2,7 @@ import { Button, CmsLogo } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { CmsProject, CmsModel, CmsItem } from "@flow/types/cmsIntegration";
 
-import { ViewMode } from "./hooks";
+import type { ViewMode } from "./hooks";
 
 type Props = {
   viewMode: ViewMode;

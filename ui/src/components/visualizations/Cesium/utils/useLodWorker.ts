@@ -1,7 +1,8 @@
 import { Color } from "cesium";
 import { useCallback, useEffect, useRef } from "react";
 
-import { coordZ, type CityGmlTypeConfig } from "./cityGmlGeometryToPrimitives";
+import { coordZ } from "./cityGmlGeometryToPrimitives";
+import type { CityGmlTypeConfig } from "./cityGmlGeometryToPrimitives";
 import type { PolygonInput, WorkerOutput } from "./lodGeometryWorker";
 
 // ── Types ────────────────────────────────────────────────────────────────────

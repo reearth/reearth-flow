@@ -1,5 +1,5 @@
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { Node, Workflow } from "@flow/types";
+import type { Node, Workflow } from "@flow/types";
 
 export function computeWorkflowPath(
   rawWorkflows: Workflow[],

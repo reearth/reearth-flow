@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import type { YEdgesMap, YNodesMap, YWorkflow } from "@flow/lib/yjs/types";
-import { GraphSnapshot, JobState, useCurrentProject } from "@flow/stores";
+import type { GraphSnapshot, JobState } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
 
 // Yjs Y.Map doesn't guarantee key insertion order, so we sort keys before
 // stringifying to ensure identical param objects always produce the same hash.

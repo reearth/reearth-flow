@@ -4,7 +4,6 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { type AppColumnDef } from "@flow/lib/table/features";
 import { useMemo } from "react";
 
 import {
@@ -28,7 +27,8 @@ import {
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";

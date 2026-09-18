@@ -7,7 +7,8 @@
  * rewritten to `enum` and `allOf` merged away, and so reported valid configs
  * invalid (and the reverse).
  */
-import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
+import Ajv from "ajv";
+import type { ErrorObject, ValidateFunction } from "ajv";
 import addFormats from "ajv-formats";
 import type { JSONSchema7Definition } from "json-schema";
 

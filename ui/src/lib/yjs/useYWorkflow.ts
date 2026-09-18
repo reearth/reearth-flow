@@ -1,7 +1,7 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 import * as Y from "yjs";
-import { Map as YMap } from "yjs";
+import type { Map as YMap } from "yjs";
 
 import { config } from "@flow/config";
 import {

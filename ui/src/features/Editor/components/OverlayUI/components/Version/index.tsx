@@ -1,6 +1,6 @@
 import { XIcon } from "@phosphor-icons/react";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { Button, LoadingSkeleton, LoadingSplashscreen } from "@flow/components";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";

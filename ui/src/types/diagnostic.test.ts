@@ -1,13 +1,13 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  type Diagnostic,
   compareDiagnosticSeverity,
   diagnosticOccurrences,
   diagnosticSeverityRank,
   isAggregatedDiagnostic,
   isFatalDiagnostic,
 } from "./diagnostic";
+import type { Diagnostic } from "./diagnostic";
 
 const diagnostic = (overrides: Partial<Diagnostic> = {}): Diagnostic => ({
   code: "geometry_invalid",

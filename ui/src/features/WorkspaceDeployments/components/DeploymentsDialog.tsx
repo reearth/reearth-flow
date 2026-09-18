@@ -1,5 +1,3 @@
-import { type AppColumnDef } from "@flow/lib/table/features";
-
 import {
   Dialog,
   DialogContent,
@@ -10,8 +8,9 @@ import {
 } from "@flow/components";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
-import { OrderDirection } from "@flow/types/paginationOptions";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { Deployment } from "@flow/types";
+import type { OrderDirection } from "@flow/types/paginationOptions";
 
 type Props = {
   deployments: Deployment[] | undefined;

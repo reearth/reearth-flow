@@ -5,14 +5,8 @@ import {
   Math as CesiumMath,
   Rectangle,
 } from "cesium";
-import {
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/utils/cesiumFunctions";
 import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";

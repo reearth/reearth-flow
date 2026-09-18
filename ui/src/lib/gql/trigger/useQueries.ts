@@ -1,10 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Trigger, Variable } from "@flow/types";
-import {
-  OrderDirection,
-  type PaginationOptions,
-} from "@flow/types/paginationOptions";
+import { OrderDirection } from "@flow/types/paginationOptions";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import type {

@@ -17,10 +17,8 @@
  * own kind would conclude there is nothing to draw.
  */
 import i18n from "@flow/lib/i18n/i18n";
-import {
-  describeGeometry,
-  type GeometryDescription,
-} from "@flow/lib/intermediateData";
+import { describeGeometry } from "@flow/lib/intermediateData";
+import type { GeometryDescription } from "@flow/lib/intermediateData";
 
 type Position = number[];
 

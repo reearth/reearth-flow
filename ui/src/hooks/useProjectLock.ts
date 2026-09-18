@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useY } from "react-yjs";
-import { Doc, Map as YMap } from "yjs";
+import type { Doc } from "yjs";
+import { Map as YMap } from "yjs";
 
 import { useDebouncedCallback } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
-import { Project } from "@flow/types";
-import type { YDocMetadataValue } from "@flow/types";
+import type { Project, YDocMetadataValue } from "@flow/types";
 
 const emptyMetadata = new YMap<YDocMetadataValue>();
 

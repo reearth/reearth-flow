@@ -1,5 +1,4 @@
 import { CaretLeftIcon, EyeIcon } from "@phosphor-icons/react";
-import { type AppColumnDef } from "@flow/lib/table/features";
 
 import {
   Dialog,
@@ -18,6 +17,7 @@ import {
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { CmsItem } from "@flow/types/cmsIntegration";
 

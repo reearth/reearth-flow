@@ -4,13 +4,12 @@ import {
   InfoIcon,
   XCircleIcon,
 } from "@phosphor-icons/react";
-import {
+import type {
   ColumnFiltersState,
   ColumnVisibilityState,
   SortingState,
-  flexRender,
-  useTable,
 } from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { useState } from "react";
 
 import {
@@ -25,8 +24,10 @@ import {
   LoadingSkeleton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { appTableFeatures, type AppColumnDef } from "@flow/lib/table/features";
-import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
+import { appTableFeatures } from "@flow/lib/table/features";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { UserFacingLog } from "@flow/types";
+import { UserFacingLogLevel } from "@flow/types";
 
 import BasicBoiler from "../BasicBoiler";
 import {

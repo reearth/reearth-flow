@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   DndContext,
   closestCenter,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -26,8 +26,9 @@ import {
   TableRow,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { appTableFeatures, type AppColumnDef } from "@flow/lib/table/features";
-import { AwarenessUser, WorkflowVariable } from "@flow/types";
+import { appTableFeatures } from "@flow/lib/table/features";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AwarenessUser, WorkflowVariable } from "@flow/types";
 
 type Props = {
   className?: string;

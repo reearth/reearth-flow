@@ -9,8 +9,7 @@ import {
   RectangleDashedIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { type AppColumnDef } from "@flow/lib/table/features";
-import { NodeChange } from "@xyflow/react";
+import type { NodeChange } from "@xyflow/react";
 import { useEffect, useMemo, useRef } from "react";
 
 import {
@@ -21,11 +20,13 @@ import {
 } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import { useT } from "@flow/lib/i18n";
-import { Node, Workflow } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { Node, Workflow } from "@flow/types";
 
 import SearchFilters from "../SearchFilters";
 
-import useHooks, { SearchNodeResult } from "./hooks";
+import type { SearchNodeResult } from "./hooks";
+import useHooks from "./hooks";
 
 type SearchPanelProps = {
   showSearchPanel: boolean;

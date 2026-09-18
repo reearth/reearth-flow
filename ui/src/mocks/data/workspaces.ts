@@ -1,4 +1,4 @@
-import { WorkspaceFragment } from "@flow/lib/gql/__gen__/graphql";
+import type { WorkspaceFragment } from "@flow/lib/gql/__gen__/graphql";
 
 export const mockWorkspaces: WorkspaceFragment[] = [
   {

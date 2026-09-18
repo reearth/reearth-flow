@@ -1,5 +1,4 @@
 import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
-import { type AppColumnDef } from "@flow/lib/table/features";
 import { memo, useMemo } from "react";
 
 import {
@@ -11,7 +10,8 @@ import {
   DataTable as Table,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, Project } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, Project } from "@flow/types";
 
 import useSharedWorkflowVariables from "../../useSharedWorkflowVariables";
 

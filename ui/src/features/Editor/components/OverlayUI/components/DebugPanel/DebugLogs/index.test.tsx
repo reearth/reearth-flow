@@ -1,10 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
-import {
-  EditorProvider,
-  type EditorContextType,
-} from "@flow/features/Editor/editorContext";
+import { EditorProvider } from "@flow/features/Editor/editorContext";
+import type { EditorContextType } from "@flow/features/Editor/editorContext";
 
 // vi.mock calls below are hoisted by vitest, so this import still gets the mocks.
 import DebugLogs from "./index";

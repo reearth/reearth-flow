@@ -4,7 +4,7 @@ import { useGraphQLContext } from "@flow/lib/gql";
 import type { Workspace } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import {
+import type {
   AddMemberToWorkspaceInput,
   RemoveMemberFromWorkspaceInput,
   UpdateMemberOfWorkspaceInput,

@@ -1,4 +1,4 @@
-import { RequestMiddleware } from "graphql-request";
+import type { RequestMiddleware } from "graphql-request";
 import { isArray, set } from "lodash-es";
 
 const isExtractableFile = <ValueType>(value: ValueType) => {

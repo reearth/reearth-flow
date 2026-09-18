@@ -1,16 +1,11 @@
-import { type AppColumnDef } from "@flow/lib/table/features";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import type { UserFacingLog } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/jsonl";

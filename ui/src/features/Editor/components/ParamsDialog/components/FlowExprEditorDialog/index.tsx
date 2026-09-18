@@ -32,12 +32,11 @@ import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { Asset } from "@flow/types";
+import type { Asset } from "@flow/types";
 
-import FlowExprCodeEditor, {
-  type FlowExprCodeEditorRef,
-} from "../ValueEditorDialog/components/FlowExprCodeEditor";
-import { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
+import FlowExprCodeEditor from "../ValueEditorDialog/components/FlowExprCodeEditor";
+import type { FlowExprCodeEditorRef } from "../ValueEditorDialog/components/FlowExprCodeEditor";
+import type { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
 import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 
 export type CodeValue = {

@@ -1,4 +1,4 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 
 import type { KeyBinding, Node } from "@flow/types";
 

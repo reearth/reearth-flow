@@ -1,6 +1,7 @@
-import { BaseEdge, EdgeProps, getBezierPath } from "@xyflow/react";
+import type { EdgeProps } from "@xyflow/react";
+import { BaseEdge, getBezierPath } from "@xyflow/react";
 
-import { Edge } from "@flow/types";
+import type { Edge } from "@flow/types";
 
 export type CustomEdgeProps = EdgeProps<Edge>;
 

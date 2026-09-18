@@ -1,17 +1,14 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
-import {
-  type EditorSession,
-  newEditorSession,
-  teardownSession,
-} from "../fixtures/session";
+import { newEditorSession, teardownSession } from "../fixtures/session";
+import type { EditorSession } from "../fixtures/session";
 import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
-import {
-  DeploymentsPage,
-  uniqueDeploymentDescription,
-} from "../pages/deploymentsPage";
-import { EditorPage } from "../pages/editorPage";
-import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
+import type { DeploymentsPage } from "../pages/deploymentsPage";
+import { uniqueDeploymentDescription } from "../pages/deploymentsPage";
+import type { EditorPage } from "../pages/editorPage";
+import type { ProjectsPage } from "../pages/projectsPage";
+import { uniqueProjectName } from "../pages/projectsPage";
 
 const CITYGML_URL =
   "https://assets.cms.plateau.reearth.io/assets/45/40a1ee-1e80-4d69-bc6d-d75b77033151/13362_toshima-mura_pref_2024_citygml_1_op.zip";
