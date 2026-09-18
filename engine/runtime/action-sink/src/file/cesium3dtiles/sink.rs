@@ -149,8 +149,10 @@ pub struct Cesium3DTilesWriterParam {
     /// Optional path for compressed archive output
     pub(super) compress_output: Option<Expr>,
     /// # Draco Compression
-    /// Use draco compression. Defaults to true.
-    pub(super) draco_compression: Option<bool>,
+    /// Whether to compress mesh geometry with Draco, and how precisely. Defaults to
+    /// enabled at the encoder's default resolution.
+    #[serde(default = "default_draco_compression")]
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -161,6 +163,12 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) chunk_by_attribute: Option<String>,
 }
 
+/// Serde default for the draco parameter: compression at the encoder's default
+/// resolution.
+fn default_draco_compression() -> reearth_flow_gltf::DracoCompression {
+    reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
+}
+
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: rhai::AST,
@@ -168,7 +176,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
-    pub(super) draco_compression: Option<bool>,
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) chunk_by_attribute: Option<String>,
 }
@@ -411,6 +419,7 @@ impl Cesium3DTilesWriter {
         let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
+        let draco_compression = self.params.draco_compression;
 
         std::thread::scope(|s| {
             {
@@ -486,7 +495,7 @@ impl Cesium3DTilesWriter {
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
-                            self.params.draco_compression.unwrap_or(true),
+                            draco_compression,
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();

@@ -5,6 +5,8 @@ use byteorder::{ByteOrder, LittleEndian};
 use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
 use reearth_flow_types::material;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::metadata::MetadataEncoder;
 
@@ -16,6 +18,81 @@ pub struct PrimitiveInfo {
 
 pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
+/// Whether mesh geometry is compressed with Draco, and how precisely.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub enum DracoCompression {
+    /// # Disabled
+    /// Write mesh geometry uncompressed.
+    Disabled,
+    /// # Enabled
+    /// Compress mesh geometry with Draco.
+    #[serde(rename_all = "camelCase")]
+    Enabled {
+        /// # Quantization Error
+        /// Upper bound, in meters, on how far compression may move a vertex. Must
+        /// be positive; a zero, negative or non-finite value is rejected. When
+        /// unset, the encoder's default resolution is used.
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "deserialize_quantization_error"
+        )]
+        #[schemars(schema_with = "quantization_error_schema")]
+        quantization_error: Option<f64>,
+    },
+}
+
+/// Reads the quantization error, rejecting any value that is not strictly positive
+/// and finite.
+fn deserialize_quantization_error<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let error = Option::<f64>::deserialize(deserializer)?;
+    if let Some(error) = error {
+        if !error.is_finite() || error <= 0.0 {
+            return Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::Float(error),
+                &"a positive quantization error in meters",
+            ));
+        }
+    }
+    Ok(error)
+}
+
+/// JSON schema for the quantization error: a positive number, or absent.
+fn quantization_error_schema(
+    generator: &mut schemars::gen::SchemaGenerator,
+) -> schemars::schema::Schema {
+    let mut schema = <Option<f64>>::json_schema(generator).into_object();
+    schema.number().exclusive_minimum = Some(0.0);
+    schema.into()
+}
+
+impl DracoCompression {
+    /// Compression with the encoder's default resolution.
+    pub const DEFAULT_ENABLED: Self = Self::Enabled {
+        quantization_error: None,
+    };
+
+    /// Whether the glb is compressed.
+    pub fn is_enabled(self) -> bool {
+        matches!(self, Self::Enabled { .. })
+    }
+}
+
+/// Upper bound, in texels of the referenced texture, on how far texture coordinate
+/// quantization may move a vertex.
+const TEXCOORD_MAX_ERROR_TEXELS: f64 = 0.5;
+
+/// Writes the mesh as a glb, optionally Draco-compressed.
+///
+/// A position error bound is resolved against the bounding box of all `vertices`, so
+/// every primitive in the glb is quantized at the same resolution. `texture_size` is
+/// the largest dimension, in pixels, of any texture the `primitives` reference and
+/// bounds the texture coordinate quantization; `None` leaves the encoder's default.
+#[allow(clippy::too_many_arguments)]
 pub fn write_gltf_glb<W: Write>(
     mut writer: W,
     translation: Option<[f64; 3]>,
@@ -23,7 +100,8 @@ pub fn write_gltf_glb<W: Write>(
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
-    draco_compression: bool,
+    draco_compression: DracoCompression,
+    texture_size: Option<u32>,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -32,11 +110,12 @@ pub fn write_gltf_glb<W: Write>(
     let mut gltf_buffer_views = vec![];
     let mut gltf_accessors = vec![];
 
+    let mut position_max = [f64::MIN; 3];
+    let mut position_min = [f64::MAX; 3];
+
     // vertices
     {
         let mut vertices_count = 0;
-        let mut position_max = [f64::MIN; 3];
-        let mut position_min = [f64::MAX; 3];
 
         const VERTEX_BYTE_STRIDE: usize = 4 * 9; // 4-bytes (f32) x 9
 
@@ -294,7 +373,7 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    if draco_compression {
+    if draco_compression.is_enabled() {
         let mut tmp_buffer = Vec::new();
         let indirect_writer = IndirectWriter {
             buffer: &mut tmp_buffer,
@@ -309,7 +388,11 @@ pub fn write_gltf_glb<W: Write>(
         tmp_buffer.flush()?;
 
         // Now the glb data is in `tmp_buffer`. We compress it.
-        let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::default();
+        let transcoder = draco_oxide::io::gltf::transcoder::GltfTranscoder::new(
+            draco_oxide::io::gltf::transcoder::TranscoderConfig {
+                draco: draco_config(draco_compression, texture_size, position_min, position_max),
+            },
+        );
         let (buff, warnings) = transcoder.transcode_to_glb(&tmp_buffer)?;
         for warning in warnings {
             tracing::warn!("Draco warning: {}", warning);
@@ -330,6 +413,81 @@ pub fn write_gltf_glb<W: Write>(
     Ok(())
 }
 
+/// Builds the Draco encoder configuration. A requested position error bound is
+/// resolved against the bounding box spanned by `position_min`..`position_max`, and
+/// `texture_size` bounds the texture coordinate error to
+/// [`TEXCOORD_MAX_ERROR_TEXELS`].
+///
+/// Draco sizes its lattice so that the quantization *step* stays within the value it
+/// is given, while a vertex is snapped to the nearest lattice point and so moves by at
+/// most half a step. Each requested bound is therefore doubled on the way in.
+///
+/// The texture coordinate bound is resolved against each primitive's own coordinate
+/// range, so a primitive whose coordinates tile the texture keeps the same accuracy
+/// in texels.
+fn draco_config(
+    draco: DracoCompression,
+    texture_size: Option<u32>,
+    position_min: [f64; 3],
+    position_max: [f64; 3],
+) -> draco_oxide::encode::Config {
+    use draco_oxide::encode::{AttributeConfig, Quantization};
+    use draco_oxide::{AttributeType, ConfigType};
+
+    let mut config = <draco_oxide::encode::Config as ConfigType>::default();
+
+    let position_bound = match draco {
+        DracoCompression::Enabled {
+            quantization_error: Some(max_error),
+        } if max_error.is_finite() && max_error > 0.0 => {
+            // An empty glb spans no box, and has no position to bound.
+            let box_is_valid = position_min
+                .iter()
+                .zip(&position_max)
+                .all(|(lo, hi)| lo <= hi);
+            box_is_valid.then_some(max_error)
+        }
+        DracoCompression::Enabled {
+            quantization_error: Some(max_error),
+        } => {
+            tracing::warn!(
+                "ignoring non-positive Draco quantization error {max_error}, \
+                 falling back to the encoder's default resolution"
+            );
+            None
+        }
+        _ => None,
+    };
+    if let Some(max_error) = position_bound {
+        let min = position_min.map(|v| v as f32);
+        let max = position_max.map(|v| v as f32);
+        config = config.with_attribute(
+            AttributeType::Position,
+            AttributeConfig {
+                quantization: Some(Quantization::from_bounding_box(
+                    &min,
+                    &max,
+                    (max_error * 2.0) as f32,
+                )),
+                ..Default::default()
+            },
+        );
+    }
+
+    if let Some(texture_size) = texture_size.filter(|size| *size > 0) {
+        let max_error = 2.0 * TEXCOORD_MAX_ERROR_TEXELS / texture_size as f64;
+        config = config.with_attribute(
+            AttributeType::TextureCoordinate,
+            AttributeConfig {
+                quantization: Some(Quantization::MaxError(max_error as f32)),
+                ..Default::default()
+            },
+        );
+    }
+
+    config
+}
+
 // A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if
 // A struct that writes data to a buffer. The buffer persists even when the writer is dropped.
 struct IndirectWriter<'a> {
@@ -343,5 +501,149 @@ impl<'a> std::io::Write for IndirectWriter<'a> {
 
     fn flush(&mut self) -> std::io::Result<()> {
         self.buffer.flush()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use draco_oxide::encode::Quantization;
+    use pretty_assertions::assert_eq;
+
+    fn enabled(quantization_error: f64) -> DracoCompression {
+        DracoCompression::Enabled {
+            quantization_error: Some(quantization_error),
+        }
+    }
+
+    fn resolved_quantization(
+        draco: DracoCompression,
+        min: [f64; 3],
+        max: [f64; 3],
+    ) -> Option<Quantization> {
+        draco_config(draco, None, min, max)
+            .attribute_config(draco_oxide::AttributeType::Position)
+            .quantization
+    }
+
+    #[test]
+    fn error_bound_resolves_against_the_whole_bounding_box() {
+        let quantization = resolved_quantization(
+            enabled(0.001),
+            [-500.0, -20.0, -500.0],
+            [500.0, 80.0, 500.0],
+        )
+        .unwrap();
+        // Draco bounds the step, a vertex moves by at most half of one.
+        assert_eq!(
+            quantization,
+            Quantization::Bounded {
+                range: 1000.0,
+                max_error: 0.002,
+            }
+        );
+
+        // A primitive covering only part of the box quantizes no coarser than the bound.
+        let bits = quantization.resolve(0.0);
+        assert!(100.0 / ((1u64 << bits) - 1) as f32 / 2.0 <= 0.001);
+    }
+
+    fn vertex(position: [f32; 3]) -> [u32; 9] {
+        let [x, y, z] = position;
+        [
+            x.to_bits(),
+            y.to_bits(),
+            z.to_bits(),
+            0f32.to_bits(),
+            1f32.to_bits(),
+            0f32.to_bits(),
+            0f32.to_bits(),
+            0f32.to_bits(),
+            0f32.to_bits(),
+        ]
+    }
+
+    /// Decodes the positions of every Draco primitive in a transcoded glb.
+    fn decoded_positions(glb: &[u8]) -> Vec<[f32; 3]> {
+        use draco_oxide::core::types::{NdVector, Vector};
+
+        let parsed = draco_oxide::io::gltf::glb::parse_glb(glb).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&parsed.json).unwrap();
+        let views = json["bufferViews"].as_array().unwrap();
+
+        let mut positions = Vec::new();
+        for mesh in json["meshes"].as_array().unwrap() {
+            for primitive in mesh["primitives"].as_array().unwrap() {
+                let view = primitive["extensions"]["KHR_draco_mesh_compression"]["bufferView"]
+                    .as_u64()
+                    .unwrap() as usize;
+                let offset = views[view]["byteOffset"].as_u64().unwrap_or(0) as usize;
+                let length = views[view]["byteLength"].as_u64().unwrap() as usize;
+                let decoded =
+                    draco_oxide::decode::decode_mesh(&parsed.buffer[offset..offset + length])
+                        .unwrap();
+                let attribute = decoded
+                    .get_attributes()
+                    .iter()
+                    .find(|a| a.get_attribute_type() == draco_oxide::AttributeType::Position)
+                    .unwrap();
+                for i in 0..attribute.num_unique_values() {
+                    let v: NdVector<3, f32> = attribute.get_unique_val(i.into());
+                    positions.push([*v.get(0), *v.get(1), *v.get(2)]);
+                }
+            }
+        }
+        positions
+    }
+
+    #[test]
+    fn error_bound_holds_through_a_glb_round_trip() {
+        // Two triangles a kilometer apart, each small enough that its own extent
+        // would otherwise buy it a much finer grid than the tile deserves.
+        let originals = [
+            [-500.0, 0.0, -500.0],
+            [-499.0, 0.0, -500.0],
+            [-500.0, 0.5, -499.0],
+            [500.0, 0.0, 500.0],
+            [499.0, 0.0, 500.0],
+            [500.0, 0.5, 499.0],
+        ];
+        let mut primitives = Primitives::default();
+        primitives.insert(
+            material::Material::default(),
+            PrimitiveInfo {
+                indices: vec![0, 1, 2, 3, 4, 5],
+                feature_ids: Default::default(),
+            },
+        );
+
+        let schema = nusamai_citygml::schema::Schema::default();
+        let mut glb = Vec::new();
+        write_gltf_glb(
+            &mut glb,
+            None,
+            originals.iter().map(|p| vertex(*p)),
+            primitives,
+            1,
+            MetadataEncoder::new(&schema),
+            enabled(0.001),
+            None,
+        )
+        .unwrap();
+
+        let decoded = decoded_positions(&glb);
+        assert_eq!(decoded.len(), originals.len());
+        for position in decoded {
+            let error = originals
+                .iter()
+                .map(|o| {
+                    ((o[0] - position[0]).powi(2)
+                        + (o[1] - position[1]).powi(2)
+                        + (o[2] - position[2]).powi(2))
+                    .sqrt()
+                })
+                .fold(f32::INFINITY, f32::min);
+            assert!(error <= 0.001, "position error {error} exceeds 1mm");
+        }
     }
 }
