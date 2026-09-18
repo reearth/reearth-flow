@@ -10,21 +10,18 @@ import {
   RectangleDashedIcon,
 } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { memo, type DragEvent } from "react";
+import { memo } from "react";
+import type { DragEvent } from "react";
 import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow/buildNewCanvasNode";
-import {
-  actionNodeTypes,
-  Node,
-  type NodeType,
-  type ActionNodeType,
-} from "@flow/types";
+import { actionNodeTypes } from "@flow/types";
+import type { Node, NodeType, ActionNodeType } from "@flow/types";
 
-import { XYPosition } from "../ActionPickerDialog";
+import type { XYPosition } from "../ActionPickerDialog";
 
 type BreakItem = { id: "break" };
 

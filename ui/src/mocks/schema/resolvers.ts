@@ -1,19 +1,19 @@
 import * as Y from "yjs";
 
-import {
-  type AssetFragment,
-  type CmsItemFragment,
-  type CmsModelFragment,
-  type CmsProjectFragment,
-  type DeploymentFragment,
-  type ProjectFragment,
-  type WorkspaceFragment,
-  type UserFacingLogFragment,
+import type {
+  AssetFragment,
+  CmsItemFragment,
+  CmsModelFragment,
+  CmsProjectFragment,
+  DeploymentFragment,
+  ProjectFragment,
+  WorkspaceFragment,
+  UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
 // The mock schema models the wire shape, so it needs the unmasked fragment
 // types: `Job.failedNodes` spreads `...Diagnostic`, which the client preset
 // masks behind a fragment ref that no fixture can satisfy.
-import { type JobFragment } from "@flow/lib/gql/__gen__/plugins/graphql-request";
+import type { JobFragment } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 
 import { mockAssets } from "../data/asset";
 import {
@@ -33,10 +33,9 @@ import {
   mockUsers,
   getCurrentUser,
   getCurrentMe,
-  type MockMe,
-  type MockUser,
   Theme as ThemeValues,
 } from "../data/users";
+import type { MockMe, MockUser } from "../data/users";
 import { mockWorkspaces } from "../data/workspaces";
 
 // In-memory storage for mutations

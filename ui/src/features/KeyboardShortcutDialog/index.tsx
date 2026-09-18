@@ -1,5 +1,6 @@
 import { KeyboardIcon, XIcon } from "@phosphor-icons/react";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
 import { Shortcuts } from "./components";

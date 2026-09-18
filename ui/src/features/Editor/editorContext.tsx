@@ -1,17 +1,12 @@
-import {
-  createContext,
-  FC,
-  MouseEvent,
-  PropsWithChildren,
-  useContext,
-} from "react";
+import type { FC, MouseEvent, PropsWithChildren } from "react";
+import { createContext, useContext } from "react";
 import type { Doc } from "yjs";
 
 import type { YWorkflow } from "@flow/lib/yjs/types";
-import {
+import type {
   NodeChange,
-  type AwarenessSelection,
-  type AwarenessSelectionsMap,
+  AwarenessSelection,
+  AwarenessSelectionsMap,
 } from "@flow/types";
 
 export type WorkflowVarAwareness = {

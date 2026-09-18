@@ -1,7 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { expect, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { HomePage } from "./homePage";
 

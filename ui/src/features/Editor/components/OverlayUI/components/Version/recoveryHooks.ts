@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 import * as Y from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";

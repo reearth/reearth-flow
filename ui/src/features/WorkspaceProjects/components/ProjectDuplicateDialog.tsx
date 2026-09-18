@@ -15,7 +15,7 @@ import {
 } from "@flow/components";
 import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
-import { Project, ProjectDocument } from "@flow/types";
+import type { Project, ProjectDocument } from "@flow/types";
 
 type Props = {
   duplicateProject: Project;

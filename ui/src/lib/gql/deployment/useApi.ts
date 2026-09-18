@@ -8,10 +8,10 @@ import type {
   ExecuteDeployment,
   UpdateDeployment,
 } from "@flow/types";
-import { PaginationOptions } from "@flow/types/paginationOptions";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
-import { ExecuteDeploymentInput } from "../__gen__/graphql";
+import type { ExecuteDeploymentInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

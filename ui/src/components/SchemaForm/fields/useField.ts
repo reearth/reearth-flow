@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-import { pathKey, type FieldPath } from "@flow/lib/schemaForm";
+import { pathKey } from "@flow/lib/schemaForm";
+import type { FieldPath } from "@flow/lib/schemaForm";
 
 import { useSchemaForm } from "../context";
 import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";

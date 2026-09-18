@@ -1,7 +1,7 @@
-import { ApiResponse } from "./api";
-import { Deployment } from "./deployment";
-import { Job } from "./job";
-import { Workflow } from "./workflow";
+import type { ApiResponse } from "./api";
+import type { Deployment } from "./deployment";
+import type { Job } from "./job";
+import type { Workflow } from "./workflow";
 
 export enum ProjectOrderBy {
   CreatedAt = "createdAt",

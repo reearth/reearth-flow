@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { CancelJob, Job } from "@flow/types";
+import type { CancelJob, Job } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 
 import { useQueries } from "./useQueries";

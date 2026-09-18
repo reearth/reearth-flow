@@ -1,5 +1,3 @@
-import { ColumnDef } from "@tanstack/react-table";
-
 import {
   Dialog,
   DialogContent,
@@ -10,8 +8,9 @@ import {
 } from "@flow/components";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
-import { OrderDirection } from "@flow/types/paginationOptions";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { Deployment } from "@flow/types";
+import type { OrderDirection } from "@flow/types/paginationOptions";
 
 type Props = {
   deployments: Deployment[] | undefined;
@@ -43,7 +42,7 @@ const DeploymentsDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
-  const columns: ColumnDef<Deployment>[] = [
+  const columns: AppColumnDef<Deployment>[] = [
     {
       accessorKey: "description",
       header: t("Description"),

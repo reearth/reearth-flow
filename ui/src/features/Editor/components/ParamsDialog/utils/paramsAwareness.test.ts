@@ -12,8 +12,8 @@ import {
   changedFieldPath,
   diffToPatch,
   nextSeq,
-  type DraftPatch,
 } from "./paramsAwareness";
+import type { DraftPatch } from "./paramsAwareness";
 
 const drafts = (paramsPatch: DraftPatch["paramsPatch"]) => ({
   someClient: { paramsPatch },

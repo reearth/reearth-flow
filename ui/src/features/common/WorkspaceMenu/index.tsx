@@ -13,7 +13,7 @@ import {
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Workspace } from "@flow/types";
+import type { Workspace } from "@flow/types";
 
 import { WorkspaceAddDialog } from "./WorkspaceAddDialog";
 

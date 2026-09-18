@@ -1,9 +1,5 @@
-import {
-  BoundingSphere,
-  GroundPrimitive,
-  Primitive,
-  ShowGeometryInstanceAttribute,
-} from "cesium";
+import type { BoundingSphere, GroundPrimitive, Primitive } from "cesium";
+import { ShowGeometryInstanceAttribute } from "cesium";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useCesium } from "resium";
 
@@ -11,8 +7,8 @@ import { buildLodPrimitiveCollection } from "./utils/buildLodPrimitives";
 import {
   CITYGML_3D_TYPES,
   convertFeatureCollectionToPrimitives,
-  type FeatureInstanceData,
 } from "./utils/cityGmlGeometryToPrimitives";
+import type { FeatureInstanceData } from "./utils/cityGmlGeometryToPrimitives";
 import { useLodWorker } from "./utils/useLodWorker";
 
 type CityGmlFeature = {

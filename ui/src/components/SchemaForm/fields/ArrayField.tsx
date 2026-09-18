@@ -9,11 +9,8 @@ import { useCallback, useMemo } from "react";
 
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import {
-  applyDefaults,
-  childPath,
-  type ArrayField as ArrayFieldNode,
-} from "@flow/lib/schemaForm";
+import { applyDefaults, childPath } from "@flow/lib/schemaForm";
+import type { ArrayField as ArrayFieldNode } from "@flow/lib/schemaForm";
 
 import { Field } from "./Field";
 import { SectionHeading } from "./SectionHeading";

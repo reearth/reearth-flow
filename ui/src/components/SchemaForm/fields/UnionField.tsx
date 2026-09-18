@@ -8,11 +8,10 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import {
-  applyDefaults,
-  selectVariant,
-  type UnionField as UnionFieldNode,
-  type UnionVariant,
+import { applyDefaults, selectVariant } from "@flow/lib/schemaForm";
+import type {
+  UnionField as UnionFieldNode,
+  UnionVariant,
 } from "@flow/lib/schemaForm";
 
 import { Field } from "./Field";

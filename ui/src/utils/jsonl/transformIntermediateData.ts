@@ -15,10 +15,8 @@
 import { isNextFormat } from "@flow/lib/intermediateData";
 
 import { transformLegacyFeature } from "./transformLegacyFeature";
-import {
-  transformNextFeature,
-  type TransformedFeature,
-} from "./transformNextFeature";
+import { transformNextFeature } from "./transformNextFeature";
+import type { TransformedFeature } from "./transformNextFeature";
 
 export type { TransformedFeature } from "./transformNextFeature";
 

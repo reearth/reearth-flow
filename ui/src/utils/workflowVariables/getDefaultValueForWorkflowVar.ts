@@ -1,4 +1,4 @@
-import { VarType, WorkflowVariableConfig } from "@flow/types";
+import type { VarType, WorkflowVariableConfig } from "@flow/types";
 
 // type DatabaseConnection = {
 //   host: string;

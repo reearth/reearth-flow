@@ -1,4 +1,4 @@
-import { ApiResponse } from "./api";
+import type { ApiResponse } from "./api";
 
 export const VARIABLE_TYPE_OPTIONS = [
   "array",

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import type { YNodesMap, YNodeValue } from "@flow/lib/yjs/types";

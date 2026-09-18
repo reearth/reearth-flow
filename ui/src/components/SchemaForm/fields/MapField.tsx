@@ -3,7 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 
 import { Button, Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { childPath, type MapField as MapFieldNode } from "@flow/lib/schemaForm";
+import { childPath } from "@flow/lib/schemaForm";
+import type { MapField as MapFieldNode } from "@flow/lib/schemaForm";
 
 import { Field } from "./Field";
 import { SectionHeading } from "./SectionHeading";

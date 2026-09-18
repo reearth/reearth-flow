@@ -8,7 +8,8 @@ import {
   TrashIcon,
   LockIcon,
 } from "@phosphor-icons/react";
-import { MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
+import { useState } from "react";
 
 import {
   Card,
@@ -28,7 +29,7 @@ import {
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 

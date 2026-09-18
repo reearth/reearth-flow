@@ -1,10 +1,9 @@
+import type { EdgeChange, XYPosition } from "@xyflow/react";
 import {
   addEdge,
-  EdgeChange,
   getNodesBounds,
   useReactFlow,
   useViewport,
-  XYPosition,
 } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 
@@ -83,8 +82,8 @@ export default ({
       mousePosition?: XYPosition,
       isCutByShortCut?: boolean,
     ) => {
-      let offsetX = 0;
-      let offsetY = 0;
+      let offsetX: number;
+      let offsetY: number;
       const bounds = getNodesBounds(topLevelNodes);
       if (mousePosition) {
         const reactFlowPosition = {

@@ -4,7 +4,7 @@ import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 
 export default ({
   onDebugRunStart,

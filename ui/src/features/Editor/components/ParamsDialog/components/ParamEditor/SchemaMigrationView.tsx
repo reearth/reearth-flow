@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { Alert, AlertDescription, Button, SchemaForm } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useT } from "@flow/lib/i18n";
-import { compile, migrateValue, type FlowSchema } from "@flow/lib/schemaForm";
+import { compile, migrateValue } from "@flow/lib/schemaForm";
+import type { FlowSchema } from "@flow/lib/schemaForm";
 import type { AwarenessUser, NodeParams } from "@flow/types";
 
 type Props = {

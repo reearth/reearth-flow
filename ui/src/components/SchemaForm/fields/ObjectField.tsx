@@ -3,11 +3,8 @@ import { useCallback } from "react";
 
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import {
-  applyDefaults,
-  childPath,
-  type ObjectField as ObjectFieldNode,
-} from "@flow/lib/schemaForm";
+import { applyDefaults, childPath } from "@flow/lib/schemaForm";
+import type { ObjectField as ObjectFieldNode } from "@flow/lib/schemaForm";
 
 import { Field } from "./Field";
 import { SectionHeading } from "./SectionHeading";

@@ -12,7 +12,8 @@
  */
 import type { JSONSchema7Definition } from "json-schema";
 
-import { normalize, type NormalizedNode } from "./normalize";
+import { normalize } from "./normalize";
+import type { NormalizedNode } from "./normalize";
 import { childPath, pathKey } from "./path";
 import type {
   EnumOption,

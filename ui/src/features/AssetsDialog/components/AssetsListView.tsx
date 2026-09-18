@@ -4,12 +4,12 @@ import {
   PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 
 import { Icon, IconButton, LoadingSkeleton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
 import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import type { Asset } from "@flow/types";
 
 import { getIconFileType } from "./utils";
@@ -51,7 +51,7 @@ const AssetsListView: React.FC<Props> = ({
   const t = useT();
 
   const resultsPerPage = ASSET_FETCH_RATE;
-  const columns: ColumnDef<Asset>[] = [
+  const columns: AppColumnDef<Asset>[] = [
     {
       accessorKey: "name",
       header: t("Name"),

@@ -1,11 +1,5 @@
-import {
-  Handle,
-  HandleProps,
-  ReactFlowState,
-  getConnectedEdges,
-  useNodeId,
-  useStore,
-} from "@xyflow/react";
+import type { HandleProps, ReactFlowState } from "@xyflow/react";
+import { Handle, getConnectedEdges, useNodeId, useStore } from "@xyflow/react";
 import { memo, useMemo } from "react";
 
 import { isExistingConnection } from "@flow/lib/reactFlow/utils";

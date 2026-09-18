@@ -1,4 +1,4 @@
-import { AttrType } from "@flow/types/schemaPreview";
+import type { AttrType } from "@flow/types/schemaPreview";
 
 export type AutocompleteSuggestion = {
   label: string;

@@ -1,6 +1,6 @@
 import { getStraightPath, useStore } from "@xyflow/react";
 
-import { AwarenessUser } from "@flow/types";
+import type { AwarenessUser } from "@flow/types";
 
 type AwarenessEdgeProps = {
   user: AwarenessUser;

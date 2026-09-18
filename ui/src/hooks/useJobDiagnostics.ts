@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
 import {
-  type Diagnostic,
   compareDiagnosticSeverity,
   isBlockingSeverity,
   isFatalDiagnostic,
 } from "@flow/types";
+import type { Diagnostic } from "@flow/types";
 
 /**
  * A job's diagnostics, merged from the two sources the API exposes and sorted

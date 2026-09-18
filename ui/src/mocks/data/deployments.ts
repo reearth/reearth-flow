@@ -1,4 +1,4 @@
-import { DeploymentFragment } from "@flow/lib/gql/__gen__/graphql";
+import type { DeploymentFragment } from "@flow/lib/gql/__gen__/graphql";
 
 export const mockDeployments: DeploymentFragment[] = [
   {

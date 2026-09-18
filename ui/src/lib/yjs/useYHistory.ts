@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { UndoManager } from "yjs";
+import type { UndoManager } from "yjs";
 
 // const historyClientPrepend = "undo-redo-operation";
 
