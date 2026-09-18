@@ -31,7 +31,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
         "Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and \
          xlink:href references across every file read. The attributes of the feature naming a \
          file are carried onto the features parsed from it. Coordinate content the file writes \
-         but that cannot be read as geometry is either passed over or reported, as configured."
+         but that cannot be read as geometry leaves the city object without that geometry, and \
+         each such site is reported on the rejected port."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -95,7 +96,6 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             inherit_input_attributes: params.inherit_input_attributes,
-            malformed_geometry: params.malformed_geometry,
             parser,
             file_attributes: HashMap::new(),
         }))
@@ -145,26 +145,6 @@ pub struct FeatureCityGml3ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
-    /// # Malformed Geometry
-    /// What becomes of coordinate content the document writes but that cannot be read as
-    /// geometry — a `gml:posList` holding a non-numeric token, or a coordinate count that is not
-    /// a multiple of three. Defaults to `drop`.
-    #[serde(default)]
-    malformed_geometry: MalformedGeometry,
-}
-
-/// What the reader does with coordinate content it cannot turn into geometry.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum MalformedGeometry {
-    /// Leaves the city object it belongs to without that geometry and says nothing further, so a
-    /// workflow reading the document for its content is not interrupted by a corner of it.
-    #[default]
-    Drop,
-    /// Reports each unreadable site separately, naming the file, the `gml:id` or element it was
-    /// found at, and what was wrong with it, so a workflow checking the document's quality can
-    /// count what it could not read.
-    Report,
 }
 
 fn default_keep_attributes() -> bool {
@@ -183,7 +163,6 @@ pub struct FeatureCityGml3Reader {
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     inherit_input_attributes: bool,
-    malformed_geometry: MalformedGeometry,
     parser: Parser,
     /// The attributes of the input feature that named each source file, keyed by its resolved
     /// URL. Merged into the features parsed from that file when `inherit_input_attributes` is
@@ -209,7 +188,6 @@ impl Clone for FeatureCityGml3Reader {
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             inherit_input_attributes: self.inherit_input_attributes,
-            malformed_geometry: self.malformed_geometry,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone()),
             file_attributes: HashMap::new(),
         }
@@ -286,35 +264,33 @@ impl Processor for FeatureCityGml3Reader {
         // Every malformed site is reported one by one rather than folded into the
         // feature it belonged to: a city object can hold several, and a check
         // that counts them needs each one.
-        if self.malformed_geometry == MalformedGeometry::Report {
-            for malformation in malformations {
-                // A site reached through an `xlink:href` into a file no input
-                // feature named has no attributes to carry; the reported file
-                // still says where it was.
-                let attributes = self
-                    .file_attributes
-                    .get(&malformation.file)
-                    .cloned()
-                    .unwrap_or_default();
-                let mut feature = Feature::new_with_attributes(attributes);
-                feature.insert(
-                    "malformationFile",
-                    AttributeValue::String(malformation.file),
-                );
-                feature.insert(
-                    "malformationLocation",
-                    AttributeValue::String(malformation.location),
-                );
-                feature.insert(
-                    "malformationReason",
-                    AttributeValue::String(malformation.reason),
-                );
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    REJECTED_PORT.clone(),
-                ));
-            }
+        for malformation in malformations {
+            // A site reached through an `xlink:href` into a file no input
+            // feature named has no attributes to carry; the reported file
+            // still says where it was.
+            let attributes = self
+                .file_attributes
+                .get(&malformation.file)
+                .cloned()
+                .unwrap_or_default();
+            let mut feature = Feature::new_with_attributes(attributes);
+            feature.insert(
+                "malformationFile",
+                AttributeValue::String(malformation.file),
+            );
+            feature.insert(
+                "malformationLocation",
+                AttributeValue::String(malformation.location),
+            );
+            feature.insert(
+                "malformationReason",
+                AttributeValue::String(malformation.reason),
+            );
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature,
+                REJECTED_PORT.clone(),
+            ));
         }
         Ok(())
     }
@@ -350,9 +326,9 @@ mod tests {
 
     const SOURCE_URL: &str = "file:///udx/bldg/a.gml";
 
-    /// Parse `BAD_POSLIST` into a reader configured with `malformed_geometry`,
-    /// run `finish`, and return the features it sent per port.
-    fn finish_with(malformed_geometry: MalformedGeometry) -> Vec<(Port, Feature)> {
+    /// Parse `BAD_POSLIST` into a reader, run `finish`, and return the features
+    /// it sent per port.
+    fn parse_and_finish() -> Vec<(Port, Feature)> {
         let mut input_attributes = Attributes::new();
         input_attributes.insert(
             Attribute::new("name"),
@@ -369,7 +345,6 @@ mod tests {
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
             inherit_input_attributes: true,
-            malformed_geometry,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
             file_attributes: HashMap::from([(SOURCE_URL.to_string(), input_attributes)]),
         };
@@ -390,21 +365,12 @@ mod tests {
         ports.into_iter().zip(features).collect()
     }
 
-    /// The default keeps the reader's existing behaviour exactly: the Building
-    /// still arrives, without the geometry, and nothing else is emitted. This is
-    /// what stops the new port from quietly changing existing workflows.
-    #[test]
-    fn dropping_emits_only_the_city_object() {
-        let sent = finish_with(MalformedGeometry::Drop);
-        assert_eq!(sent.len(), 1);
-        assert_eq!(sent[0].0, *FEATURES_PORT);
-    }
-
-    /// Reporting adds the unreadable site alongside the city object, naming
-    /// where it was and what was wrong, so a quality check can count it.
+    /// The unreadable site arrives on `rejected` alongside the city object,
+    /// naming where it was and what was wrong, so a quality check can count it.
+    /// The city object itself still arrives, without that geometry.
     #[test]
     fn reporting_adds_one_feature_naming_the_site() {
-        let sent = finish_with(MalformedGeometry::Report);
+        let sent = parse_and_finish();
         assert_eq!(sent.len(), 2);
         assert_eq!(sent[0].0, *FEATURES_PORT);
 
@@ -438,7 +404,7 @@ mod tests {
     /// findings.
     #[test]
     fn a_reported_site_carries_the_input_file_attributes() {
-        let sent = finish_with(MalformedGeometry::Report);
+        let sent = parse_and_finish();
         let (_, reported) = &sent[1];
         assert_eq!(
             reported.attributes.get(&Attribute::new("name")),

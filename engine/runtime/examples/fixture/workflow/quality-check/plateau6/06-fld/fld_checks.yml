@@ -133,9 +133,9 @@ nodes:
   # 3.0 a WaterBody holds its surfaces through `core:boundary`, so its geometry
   # still arrives on the WaterBody feature.
   #
-  # `malformedGeometry: report` is what makes a posList the geometry layer cannot
-  # read countable: without it such a surface would leave the reader with its
-  # geometry quietly missing and no check would ever see it.
+  # A posList the geometry layer cannot read arrives on `rejected`, which is what
+  # makes it countable: the surface itself reaches no check because its geometry
+  # is missing.
   - id: d8000000-0000-4000-8000-000000000009
     name: FeatureCityGml3Reader
     type: action
@@ -144,7 +144,6 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
-      malformedGeometry: report
 
   # Reprojected before any check: winding and area are only defined once the
   # coordinates are in a linear unit.
