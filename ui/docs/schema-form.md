@@ -197,6 +197,45 @@ recognised. Python vs FlowExpr is not in the schema, so it comes from
 a bare string. Unwrap it for the editor and re-wrap on submit, preserving the
 type the field already had.
 
+## Looking at it
+
+`yarn storybook` → **Components / SchemaForm**. One story per thing the renderer
+has to get visibly right, each wrapped in a harness that holds the form data and
+shows it back, because most of what these stories exist to show is invisible in
+the form itself — a cleared field deleting its key, errors held back until the
+user engages, the dot path an edit reports.
+
+| Story                | Shows                                                       |
+| -------------------- | ----------------------------------------------------------- |
+| `AllFieldKinds`      | Every kind at once. A new kind belongs here                 |
+| `Validation`         | Asterisks, messages, and what gates Update                  |
+| `Nullability`        | Clearing a field removing its key from the data             |
+| `Unions`             | Tagged and untagged, and what a variant switch keeps        |
+| `Containers`         | Array/object/map nesting, and escaped map keys              |
+| `Expressions`        | `format: "code"`, inline vs chip, which editor is asked for |
+| `ReadOnly`           | The whole form inert                                        |
+| `CollaborativeFocus` | `fieldFocusMap` drawn on the field, focus broadcast back    |
+| `Unsupported`        | The raw-JSON fallback, and why each field fell through      |
+| `EngineAction`       | The real schemas, walked one by one off a local engine      |
+| `CustomSchema`       | Paste a schema or a whole action object and see it drawn    |
+
+The fixtures live in `components/SchemaForm/storyFixtures.ts` and are compiled
+by `storyFixtures.test.ts`, so a fixture that stops producing the kind its story
+is named after fails rather than quietly drawing the wrong control. `src/` may
+not import from `engine/`, which is why they are hand-written in the schemars
+dialect and `EngineAction` fetches the published ones over HTTP
+(`cargo make run-api` from `engine/`, on port 8080) instead of reading the file.
+
+Two things to know before reaching for Storybook:
+
+- **`yarn storybook` (dev) works; `yarn build-storybook` does not render any
+  story that reaches `@flow/components`** — the barrel exports the Cesium
+  viewer, whose global `vite-plugin-cesium` injects into the app's `index.html`
+  and not into Storybook's `iframe.html`. Pre-dates these stories; `DataTable`
+  and `LogsTable` are blank in that build for the same reason.
+- The form is **fully controlled**. A story must feed `onChange` back as
+  `defaultFormData` or nothing can be typed into it.
+
 ## Testing
 
 `yarn test --run` — the gates that matter:
