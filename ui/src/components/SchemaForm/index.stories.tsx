@@ -401,16 +401,22 @@ const EngineActionBrowser: React.FC = () => {
 
   useEffect(() => {
     if (!selected) return;
+    let stale = false;
     (async () => {
       try {
         const { parameter } = await fetcher(
           `${ENGINE_URL}/actions/${encodeURIComponent(selected)}`,
         );
-        setSchema(parameter);
+        if (!stale) setSchema(parameter);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (!stale) {
+          setError(e instanceof Error ? e.message : String(e));
+        }
       }
     })();
+    return () => {
+      stale = true;
+    };
   }, [selected]);
 
   const index = useMemo(
@@ -421,9 +427,9 @@ const EngineActionBrowser: React.FC = () => {
   if (error) {
     return (
       <p className="rounded border p-3 text-sm text-destructive">
-        Could not reach the engine at {ENGINE_URL}: {error}. Start it with{" "}
-        <span className="font-mono">cargo make run-api</span> from{" "}
-        <span className="font-mono">engine/</span>, or use the Custom Schema
+        Could not reach the action API at {ENGINE_URL}: {error}. Start it with{" "}
+        <span className="font-mono">make run-app</span> from{" "}
+        <span className="font-mono">server/api/</span>, or use the Custom Schema
         story instead.
       </p>
     );
@@ -518,9 +524,14 @@ const CustomSchemaEditor: React.FC = () => {
     try {
       const value = JSON.parse(text);
       // An action object from actions.json pasted whole is the common case.
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
+        return { error: "Expected a schema object or action object" };
+      }
       return {
-        schema: (value.parameter ?? value) as JSONSchema7,
-        name: value.name as string | undefined,
+        schema: Object.prototype.hasOwnProperty.call(value, "parameter")
+          ? (value.parameter as JSONSchema7)
+          : (value as JSONSchema7),
+        name: typeof value.name === "string" ? value.name : undefined,
       };
     } catch (e) {
       return { error: e instanceof Error ? e.message : String(e) };
