@@ -373,8 +373,7 @@ const DebugRunDropDownMenu: React.FC<{
   const selectedNode =
     selectedNodeIds.length > 0
       ? (getNodes().find((node) => node.id === selectedNodeIds[0]) as
-          | Node
-          | undefined)
+          Node | undefined)
       : undefined;
 
   return (

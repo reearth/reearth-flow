@@ -277,8 +277,7 @@ function shadingOf(appearance: unknown, surfaces: number): Shading | null {
         (entry as Record<string, unknown>)?.theme === record.default_theme,
     ) ?? themes[0];
   const front = (theme as Record<string, unknown>)?.front as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (!front) return null;
 
   let polygonMaterials: (number | null)[];
@@ -703,8 +702,7 @@ function finestLevel(
 function appearanceOfShell(shell: unknown): unknown {
   const record = (shell ?? {}) as Record<string, unknown>;
   const mesh = (record.PolygonMesh ?? record.TriangularMesh) as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   return mesh?.appearance;
 }
 
@@ -719,8 +717,7 @@ function polygonsOfShell(shell: unknown, swap: boolean): Position[][][] {
   }
 
   const triangularMesh = record.TriangularMesh as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (triangularMesh) {
     const triangles = (triangularMesh.triangles ?? []) as Position[][];
     return triangles.map((triangle) => [toRing(triangle, swap, undefined)]);

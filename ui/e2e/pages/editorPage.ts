@@ -1,12 +1,7 @@
 import { expect, Locator, Page } from "@playwright/test";
 
 export type ToolId =
-  | "reader"
-  | "transformer"
-  | "writer"
-  | "note"
-  | "batch"
-  | "subworkflow";
+  "reader" | "transformer" | "writer" | "note" | "batch" | "subworkflow";
 
 export type ActionToolId = "reader" | "transformer" | "writer";
 

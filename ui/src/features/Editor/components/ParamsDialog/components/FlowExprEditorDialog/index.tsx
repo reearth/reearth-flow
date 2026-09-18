@@ -67,8 +67,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const initialCode = fieldContext.value as CodeValue | undefined;
 
   const allowedTypes = (fieldContext.schema as any)?.properties?.type?.enum as
-    | string[]
-    | undefined;
+    string[] | undefined;
   const flowExprAllowed = !allowedTypes || allowedTypes.includes("flowExpr");
   const stringAllowed = !allowedTypes || allowedTypes.includes("string");
 

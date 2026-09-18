@@ -31,10 +31,7 @@ import i18n from "@flow/lib/i18n/i18n";
 import { Theme, useTheme } from "@flow/lib/theme";
 
 type Errors =
-  | "failed"
-  | "passwordNotSame"
-  | "passwordFailed"
-  | "langUpdateFailed";
+  "failed" | "passwordNotSame" | "passwordFailed" | "langUpdateFailed";
 
 type Props = {
   isOpen: boolean;

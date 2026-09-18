@@ -29,8 +29,7 @@ export default ({
       undoTrackerActionWrapper(() => {
         targets.forEach((rawWorkflow) => {
           const yNodes = yWorkflows?.get(rawWorkflow.id)?.get("nodes") as
-            | YNodesMap
-            | undefined;
+            YNodesMap | undefined;
           if (!yNodes) return;
 
           const nodes = rawWorkflow.nodes as Node[];

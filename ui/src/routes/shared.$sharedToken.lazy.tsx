@@ -132,7 +132,7 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   );
 };
 
-const ErrorComponent = ({ error }: { error: Error }) => {
+const ErrorComponent = ({ error }: { error: unknown }) => {
   const t = useT();
 
   return (

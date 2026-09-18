@@ -69,19 +69,17 @@ export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
   id: workspace.id,
   name: workspace.name,
   personal: workspace.personal,
-  members: workspace.members.map(
-    (m): Member => ({
-      userId: m.userId,
-      role: m.role as Role,
-      user: m.user
-        ? {
-            id: m.user?.id,
-            name: m.user?.name,
-            email: m.user?.email,
-          }
-        : undefined,
-    }),
-  ),
+  members: workspace.members.map((m): Member => ({
+    userId: m.userId,
+    role: m.role as Role,
+    user: m.user
+      ? {
+          id: m.user?.id,
+          name: m.user?.name,
+          email: m.user?.email,
+        }
+      : undefined,
+  })),
 });
 
 export const toDeployment = (deployment: DeploymentFragment): Deployment => ({
@@ -219,15 +217,13 @@ export const toCmsModel = (cmsModel: CmsModelFragment): CmsModel => ({
   publicApiEp: cmsModel.publicApiEp,
   schema: {
     schemaId: cmsModel.schema.schemaId,
-    fields: cmsModel.schema.fields.map(
-      (field): CmsSchemaField => ({
-        fieldId: field.fieldId,
-        name: field.name,
-        type: field.type ? toCmsSchemaFieldType(field.type) : "text",
-        key: field.key,
-        description: field.description ?? undefined,
-      }),
-    ),
+    fields: cmsModel.schema.fields.map((field): CmsSchemaField => ({
+      fieldId: field.fieldId,
+      name: field.name,
+      type: field.type ? toCmsSchemaFieldType(field.type) : "text",
+      key: field.key,
+      description: field.description ?? undefined,
+    })),
   },
   createdAt: formatDate(cmsModel.createdAt),
   updatedAt: formatDate(cmsModel.updatedAt),
