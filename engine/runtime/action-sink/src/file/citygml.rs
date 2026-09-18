@@ -781,3 +781,8 @@ mod sandbox_tests {
         }
     }
 }
+
+// Review experiment for #2355; test-only, not part of the writer.
+#[cfg(all(test, feature = "new-geometry"))]
+#[path = "citygml/hand_composed_experiment.rs"]
+mod hand_composed_experiment;
