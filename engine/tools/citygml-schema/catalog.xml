@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- Resolves the OGC schema URLs the driver and the vendored schemas reference
+     to the copies beside this file, so validation needs no network. Prefixes are
+     relative to this catalog, so the tree works from any checkout. -->
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <rewriteURI    uriStartString="http://schemas.opengis.net/"     rewritePrefix="schemas/schemas.opengis.net/"/>
+  <rewriteSystem systemIdStartString="http://schemas.opengis.net/"  rewritePrefix="schemas/schemas.opengis.net/"/>
+  <rewriteURI    uriStartString="https://schemas.opengis.net/"    rewritePrefix="schemas/schemas.opengis.net/"/>
+  <rewriteSystem systemIdStartString="https://schemas.opengis.net/" rewritePrefix="schemas/schemas.opengis.net/"/>
+  <rewriteURI    uriStartString="http://www.w3.org/"              rewritePrefix="schemas/www.w3.org/"/>
+  <rewriteSystem systemIdStartString="http://www.w3.org/"           rewritePrefix="schemas/www.w3.org/"/>
+  <rewriteURI    uriStartString="https://www.w3.org/"             rewritePrefix="schemas/www.w3.org/"/>
+  <rewriteSystem systemIdStartString="https://www.w3.org/"          rewritePrefix="schemas/www.w3.org/"/>
+  <rewriteURI    uriStartString="http://docs.oasis-open.org/"     rewritePrefix="schemas/docs.oasis-open.org/"/>
+  <rewriteSystem systemIdStartString="http://docs.oasis-open.org/"  rewritePrefix="schemas/docs.oasis-open.org/"/>
+  <rewriteURI    uriStartString="https://docs.oasis-open.org/"    rewritePrefix="schemas/docs.oasis-open.org/"/>
+  <rewriteSystem systemIdStartString="https://docs.oasis-open.org/" rewritePrefix="schemas/docs.oasis-open.org/"/>
+</catalog>

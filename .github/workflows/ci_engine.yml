@@ -60,6 +60,8 @@ jobs:
         run: cargo make proj-grids-notice -- --check
       - name: Check action tracing call sites
         run: cargo make check-action-tracing
+      - name: Check CityGML output validates against the OGC schemas
+        run: cargo make check-citygml-schema
 
       # --- version check ---
       # Keep this last; add new steps above it.

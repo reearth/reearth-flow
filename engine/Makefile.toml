@@ -149,6 +149,37 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'unimplemented!')
 git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 ''']
 
+[tasks.check-citygml-schema]
+script = ['''
+#!/usr/bin/env bash -eu
+# Validate the CityGML the writer's golden cases expect against the vendored OGC
+# 2.0 schemas. Offline by necessity: libxml2 has no TLS and OGC is HTTPS-only.
+# Fails both ways, so `known-invalid.txt` has to shrink rather than drift.
+command -v xmllint >/dev/null || {
+  echo "xmllint not found: install libxml2-utils (Debian/Ubuntu) or libxml2 (brew)"
+  exit 1
+}
+cd tools/citygml-schema
+export XML_CATALOG_FILES="$PWD/catalog.xml"
+status=0
+for gml in ../../testing/data/testcases/citygml_writer/*/expected_output.gml; do
+  name=$(basename "$(dirname "$gml")")
+  if grep -qx "$name" known-invalid.txt; then expected_bad=yes; else expected_bad=no; fi
+  if xmllint --noout --nonet --schema citygml-2.0.xsd "$gml" 2>/dev/null; then
+    if [ "$expected_bad" = yes ]; then
+      echo "$name now validates: drop it from tools/citygml-schema/known-invalid.txt"
+      status=1
+    fi
+  elif [ "$expected_bad" = no ]; then
+    echo "$name does not validate against CityGML 2.0:"
+    xmllint --noout --nonet --schema citygml-2.0.xsd "$gml" 2>&1 \
+      | grep "Schemas validity error" | head -3
+    status=1
+  fi
+done
+exit $status
+''']
+
 [tasks.check-action-tracing]
 script = ['''
 #!/usr/bin/env bash -eu
