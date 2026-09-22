@@ -43,6 +43,12 @@ const (
 	awarenessBatch = 50
 )
 
+// minNotifyConns is the smallest pool the notify fan-out can run on. The listener
+// checks out one connection for the life of the process, so a pool of 1 leaves
+// nothing for reads, writes, heartbeats or the election: every query blocks forever
+// and the service serves a healthy /health while documents stop syncing.
+const minNotifyConns = 2
+
 // forceEvictAttempts bounds ForceEvict's re-check loop. Each pass evicts whatever
 // roomState is current; a successor installed mid-pass costs one more. More than a
 // handful means the document is reconnecting faster than it can be torn down, which
@@ -183,6 +189,13 @@ func New(opts Options) (*Relay, error) {
 		p, ok := opts.Q.(*pgxpool.Pool)
 		if !ok {
 			return nil, errors.New("pg: Notify requires Q to be a *pgxpool.Pool (LISTEN needs a dedicated connection)")
+		}
+		// Refuse a pool the listener would monopolise. Starting anyway produces a
+		// service that passes its health check and never syncs a document, which is
+		// far worse to diagnose than a startup error.
+		if max := p.Config().MaxConns; max < minNotifyConns {
+			return nil, fmt.Errorf("pg: %s fan-out needs pool_max_conns >= %d, got %d: the LISTEN connection is held for the process lifetime and would leave none for queries",
+				"notify", minNotifyConns, max)
 		}
 		pool = p
 	}
@@ -478,6 +491,13 @@ func (r *Relay) evict(room string) {
 	}
 	if err := br.Close(); err != nil {
 		r.log.Debug("relay safe-delete close failed", "room", room, "err", err)
+		return
+	}
+	if deleted == 0 {
+		// The election declined: a peer re-activated, or a flush holds the read
+		// lock. Reporting this as an eviction would make the logs claim the document
+		// was cleaned up when its rows are still there.
+		r.log.Debug("relay eviction declined, room still live", "room", room)
 		return
 	}
 	r.log.Debug("relay evicted room", "room", room, "rows", deleted)

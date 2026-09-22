@@ -1,8 +1,11 @@
 package pg
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -397,5 +400,41 @@ func TestElectionLockSurvivesIntoTheDelete(t *testing.T) {
 	}
 	if held != 1 {
 		t.Fatalf("advisory locks held during the second statement = %d, want 1", held)
+	}
+}
+
+// TestEvictionDoesNotClaimSuccessWhenNothingDeleted: safeDeleteSQL returns 0 when
+// the election declines — a peer re-activated, or a flush holds the read lock. The
+// log used to say "evicted room" regardless, so an operator reading it would believe
+// a document had been cleaned up while its rows were still there.
+func TestEvictionDoesNotClaimSuccessWhenNothingDeleted(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+
+	var buf bytes.Buffer
+	r := startRelayWith(t, pool, &fakeSink{}, nil, Options{
+		PollEvery: 5 * time.Millisecond,
+		Logger:    slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	})
+	r.RoomActivated(room)
+
+	// A second instance keeps the document live, so the election must decline.
+	peer := startRelay(t, pool, &fakeSink{}, nil)
+	peer.RoomActivated(room)
+
+	for i := 0; i < 3; i++ {
+		if _, err := pool.Exec(ctx, appendSQL, room, kindSync, []byte("x"), int64(99)); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	r.RoomDeactivated(room)
+
+	logged := buf.String()
+	if strings.Contains(logged, "relay evicted room") {
+		t.Errorf("logged an eviction while a peer was still active:\n%s", logged)
+	}
+	if n := rowCount(t, pool, room); n == 0 {
+		t.Error("rows were deleted while a peer was still active")
 	}
 }

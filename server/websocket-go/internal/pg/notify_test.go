@@ -2,10 +2,12 @@ package pg
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/reearth/ygo/cluster"
 )
 
@@ -195,4 +197,53 @@ func TestWakeRoomBroadcastsToEveryRoom(t *testing.T) {
 			t.Errorf("room %s was not woken by the reconnect broadcast", room)
 		}
 	}
+}
+
+// TestNotifyRefusesAPoolItWouldMonopolise: the listener holds one connection for the
+// life of the process. On a pool of 1 that leaves nothing for reads, writes,
+// heartbeats or the election, and every query blocks until its context expires —
+// while /health still reports ok, because the probe never gets a connection either
+// and simply times out with everything else.
+//
+// Measured before this guard existed: with pool_max_conns=1 and notify enabled, a
+// plain SELECT 1 failed with "context deadline exceeded".
+func TestNotifyRefusesAPoolItWouldMonopolise(t *testing.T) {
+	cfg, err := pgxpool.ParseConfig(os.Getenv(envDSN) + "&pool_max_conns=1")
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	defer pool.Close()
+
+	_, err = New(Options{Q: pool, Notify: true})
+	if err == nil {
+		t.Fatal("New accepted a one-connection pool with notify; the listener would starve every other query")
+	}
+	if !strings.Contains(err.Error(), "pool_max_conns") {
+		t.Errorf("New = %v, want an error naming pool_max_conns", err)
+	}
+}
+
+// TestNotifyAcceptsATwoConnectionPool: two is the hard floor — one for the listener,
+// one for everything else. Rejecting it would make the guard stricter than the
+// constraint.
+func TestNotifyAcceptsATwoConnectionPool(t *testing.T) {
+	cfg, err := pgxpool.ParseConfig(os.Getenv(envDSN) + "&pool_max_conns=2")
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	defer pool.Close()
+
+	r, err := New(Options{Q: pool, Notify: true})
+	if err != nil {
+		t.Fatalf("New with a two-connection pool: %v", err)
+	}
+	_ = r.Close()
 }
