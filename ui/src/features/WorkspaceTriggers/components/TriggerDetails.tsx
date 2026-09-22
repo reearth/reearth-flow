@@ -16,11 +16,12 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import { config } from "@flow/config";
-import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
+import type { DetailsBoxContent } from "@flow/features/common";
+import { DetailsBox } from "@flow/features/common";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types";
+import type { Trigger } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
@@ -28,11 +29,13 @@ import { TriggerEditDialog } from "./TriggerEditDialog";
 
 type Props = {
   selectedTrigger?: Trigger;
+  readonly?: boolean;
   setTriggerToBeDeleted: (trigger?: Trigger) => void;
 };
 
 const TriggerDetails: React.FC<Props> = ({
   selectedTrigger,
+  readonly,
   setTriggerToBeDeleted,
 }) => {
   const t = useT();
@@ -164,7 +167,7 @@ const TriggerDetails: React.FC<Props> = ({
             <Button
               variant="outline"
               size="sm"
-              disabled={!selectedTrigger}
+              disabled={readonly}
               onClick={() => setOpenTriggerEditDialog(true)}>
               <PencilLineIcon />
               {t("Update Trigger")}
@@ -172,6 +175,7 @@ const TriggerDetails: React.FC<Props> = ({
             <Button
               variant="destructive"
               size="sm"
+              disabled={readonly}
               onClick={() => setTriggerToBeDeleted(selectedTrigger)}>
               <TrashIcon />
               {t("Delete")}
@@ -185,6 +189,7 @@ const TriggerDetails: React.FC<Props> = ({
             content={details}
             toggle
             toggleValue={updatedIsTriggerEnabled}
+            disableToggle={readonly}
             onToggleChange={handleTriggerEnableChange}
           />
         </div>

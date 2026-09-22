@@ -6,6 +6,7 @@ use reearth_flow_common::{
     dir::setup_job_directory,
     uri::{Protocol, Uri},
 };
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -14,7 +15,7 @@ use reearth_flow_types::Workflow;
 use uuid::Uuid;
 
 use crate::{
-    artifact::upload_artifact,
+    artifact::{upload_artifact, write_diagnostics_artifact},
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
@@ -42,8 +43,9 @@ pub fn build_worker_command() -> Command {
     // The default (subcommand-less) invocation runs a workflow and preserves the
     // exact flags Batch and the `/run` path depend on (`--workflow`,
     // `--metadata-path`, `--var`, `--previous-job-id`, `--start-node-id`).
-    // `probe-schema` is registered as an optional subcommand; when present it
-    // takes over, otherwise we fall through to the run behavior.
+    // `probe-schema` and `schema-events` are registered as optional
+    // subcommands; when present one takes over, otherwise we fall through to
+    // the run behavior.
     Command::new("Re:Earth Flow Worker")
         .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
@@ -56,9 +58,11 @@ pub fn build_worker_command() -> Command {
         .arg(previous_job_id_arg())
         .arg(start_node_id_arg())
         .subcommand(crate::probe_schema::build_probe_schema_command())
-        // When `probe-schema` is used, the top-level required run args
-        // (`--workflow`, `--metadata-path`) are not required. The default
-        // (subcommand-less) run invocation keeps requiring them exactly as before.
+        .subcommand(crate::schema_events::build_schema_events_command())
+        // When `probe-schema` or `schema-events` is used, the top-level
+        // required run args (`--workflow`, `--metadata-path`) are not
+        // required. The default (subcommand-less) run invocation keeps
+        // requiring them exactly as before.
         .subcommand_negates_reqs(true)
 }
 
@@ -230,9 +234,9 @@ impl RunWorkerCommand {
             }
         };
 
-        let (ingress_state, feature_state, logger_factory, incremental_run_config, artifact_uri) =
-            self.prepare_workflow(&storage_resolver, &meta, &mut workflow)
-                .await?;
+        let (feature_state, logger_factory, incremental_run_config, artifact_uri) = self
+            .prepare_workflow(&storage_resolver, &meta, &mut workflow)
+            .await?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub.clone() {
             PubSubBackend::Google(p) => Arc::new(EventHandler::new(workflow.id, meta.job_id, p)),
@@ -240,6 +244,7 @@ impl RunWorkerCommand {
         };
 
         let workflow_id = workflow.id;
+        // Cross-check against RunSummary.failed_nodes, not the sole success signal — remove once the two are proven to agree.
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
@@ -247,40 +252,64 @@ impl RunWorkerCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver.clone(),
-            ingress_state,
             feature_state,
             incremental_run_config,
             vec![handler, node_failure_handler.clone()],
             artifact_uri,
         )
         .await;
-        let job_result = match result {
-            Ok(_) => {
-                if node_failure_handler.all_success() {
-                    JobResult::Success
-                } else {
-                    tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
-                    JobResult::Failed
-                }
-            }
-            Err(_) => JobResult::Failed,
+        // The runner returns Err without a RunSummary, which would leave exactly
+        // the runs that failed with no failedNodes and no diagnostics artifact;
+        // rebuild the terminal view from the failure handler instead.
+        let run_summary: RunSummary = match &result {
+            Ok(summary) => summary.clone(),
+            Err(e) => failure_summary(e, &node_failure_handler),
         };
+        let job_result = match &result {
+            Ok(summary) => {
+                let handler_success = node_failure_handler.all_success();
+                let summary_success = summary.failed_nodes.is_empty();
+                if handler_success != summary_success {
+                    // Divergence means one signal is missing/duplicating a failure.
+                    tracing::warn!(
+                        "NodeFailureHandler/RunSummary disagree on run success: handler_success={}, summary_success={}, handler_failed_nodes={:?}, summary_failed_nodes={:?}",
+                        handler_success,
+                        summary_success,
+                        node_failure_handler.failed_nodes(),
+                        summary.failed_nodes,
+                    );
+                }
+                let job_result = derive_job_result(Some(summary_success), handler_success);
+                if matches!(job_result, JobResult::Failed) {
+                    tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
+                }
+                job_result
+            }
+            Err(_) => derive_job_result(None, false),
+        };
+        // Written before cleanup so the artifact sweep uploads it; uncapped,
+        // unlike the size-capped complete event. Never fails the run.
+        let artifact_event = JobCompleteEvent::with_full_summary(
+            workflow_id,
+            meta.job_id,
+            job_result.clone(),
+            &run_summary,
+        );
+        if let Err(e) = write_diagnostics_artifact(meta.job_id, &artifact_event) {
+            tracing::warn!("Failed to write diagnostics artifact: {e:?}");
+        }
         self.cleanup(&meta, &storage_resolver).await?;
+        // Pass the uncapped summary — with_summary caps internally; capping twice would double-cap the overflow marker.
+        let complete_event = JobCompleteEvent::with_summary(
+            workflow_id,
+            meta.job_id,
+            job_result.clone(),
+            &run_summary,
+        );
         match &pubsub {
-            PubSubBackend::Google(p) => p
-                .publish(JobCompleteEvent::new(
-                    workflow_id,
-                    meta.job_id,
-                    job_result.clone(),
-                ))
-                .await
-                .map_err(Error::run),
+            PubSubBackend::Google(p) => p.publish(complete_event).await.map_err(Error::run),
             PubSubBackend::Noop(p) => p
-                .publish(JobCompleteEvent::new(
-                    workflow_id,
-                    meta.job_id,
-                    job_result.clone(),
-                ))
+                .publish(complete_event)
                 .await
                 .map_err(|e| Error::run(format!("{e:?}"))),
         }?;
@@ -381,7 +410,6 @@ impl RunWorkerCommand {
         workflow: &mut Workflow,
     ) -> errors::Result<(
         Arc<State>,
-        Arc<State>,
         Arc<LoggerFactory>,
         Option<IncrementalRunConfig>,
         Uri,
@@ -454,7 +482,6 @@ impl RunWorkerCommand {
             setup_job_directory("workers", "feature-store", job_id).map_err(Error::init)?;
         let feature_state =
             Arc::new(State::new(&feature_state_uri, storage_resolver).map_err(Error::init)?);
-        let ingress_state = Arc::clone(&feature_state);
 
         let mut incremental_run_config: Option<IncrementalRunConfig> = None;
 
@@ -477,17 +504,18 @@ impl RunWorkerCommand {
             let prev_job_id = uuid::Uuid::parse_str(prev_job_str).map_err(Error::init)?;
             let start_node_id = uuid::Uuid::parse_str(start_node_str).map_err(Error::init)?;
 
-            let (previous_feature_state, available_edge_ids) = prepare_incremental_feature_store(
-                "workers",
-                workflow,
-                job_id,
-                storage_resolver.as_ref(),
-                meta,
-                prev_job_id,
-                start_node_id,
-                feature_state.as_ref(),
-            )
-            .await?;
+            let (previous_feature_state, available_port_file_ids) =
+                prepare_incremental_feature_store(
+                    "workers",
+                    workflow,
+                    job_id,
+                    storage_resolver.as_ref(),
+                    meta,
+                    prev_job_id,
+                    start_node_id,
+                    feature_state.as_ref(),
+                )
+                .await?;
 
             prepare_incremental_artifacts(
                 "workers",
@@ -512,7 +540,7 @@ impl RunWorkerCommand {
             incremental_run_config = Some(IncrementalRunConfig {
                 start_node_id,
                 previous_feature_state,
-                available_edge_ids,
+                available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
             tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
@@ -525,7 +553,6 @@ impl RunWorkerCommand {
             action_log_uri.path(),
         ));
         Ok((
-            ingress_state,
             feature_state,
             logger_factory,
             incremental_run_config,
@@ -540,5 +567,334 @@ impl RunWorkerCommand {
     ) -> errors::Result<()> {
         upload_artifact(storage_resolver, meta).await?;
         Ok(())
+    }
+}
+
+/// Success only when both NodeFailureHandler and RunSummary agree.
+fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -> JobResult {
+    match summary_success {
+        None => JobResult::Failed,
+        Some(summary_success) => {
+            if handler_all_success && summary_success {
+                JobResult::Success
+            } else {
+                JobResult::Failed
+            }
+        }
+    }
+}
+
+/// A `Diagnostic`'s `node_id` is a *composed* id (`"{subgraph_prefix}.{handle_id}"` for a node
+/// inside a subgraph), while `NodeFailureHandler` only ever sees the raw handle id — the
+/// `ProcessorFailed` event carries a `NodeHandle`, which has no prefix to recover.
+/// Comparing them directly would emit a duplicate row for every subgraph node.
+fn is_same_node(composed_id: &str, handle_id: &str) -> bool {
+    composed_id == handle_id || composed_id.ends_with(&format!(".{handle_id}"))
+}
+
+/// Rebuilds the terminal failed-nodes view for a run whose runner errored out before producing
+/// a RunSummary.
+///
+/// When the error is carrying a real `Diagnostic` (any action fatal is), that diagnostic is
+/// recovered intact and used as its own node's row — preserving the code, severity, help and
+/// `feature_id` that stringifying the error would destroy. Remaining nodes the handler saw get
+/// a synthesized row. Only when nothing can be recovered does the whole-run error text become
+/// a message, rendered through its `source()` chain rather than `{:?}`.
+fn failure_summary(
+    error: &reearth_flow_runner::errors::Error,
+    handler: &NodeFailureHandler,
+) -> RunSummary {
+    let recovered = match error {
+        reearth_flow_runner::errors::Error::ExecutionError(execution_error) => {
+            reearth_flow_runtime::errors::recover_diagnostic(execution_error).cloned()
+        }
+        _ => None,
+    };
+
+    // Without a recovered diagnostic the whole-run error is all we know, so it is the message
+    // for every row. With one, it describes only the recovered node's failure — repeating it on
+    // another node's row would attribute the wrong cause, so those fall back to the registry
+    // default ("node failed with an unclassified error").
+    let synthesized_message = match &recovered {
+        Some(_) => None,
+        None => Some(reearth_flow_runtime::errors::render_error_chain(error)),
+    };
+    let fatal = |node_id: Option<String>, name: Option<String>| {
+        let mut draft = DiagnosticDraft::new(ErrorCode::InternalUnclassified);
+        if let Some(message) = &synthesized_message {
+            draft = draft.with_message(message.clone());
+        }
+        let mut d = Diagnostic::from_draft(draft, node_id, name, None);
+        d.effective_disposition = Some(Disposition::Fatal);
+        d
+    };
+
+    let mut failed_nodes: Vec<Diagnostic> = Vec::new();
+    if let Some(mut diagnostic) = recovered {
+        // fold_outcomes stamps Fatal on every failed_nodes entry regardless of the diagnostic's
+        // own severity; match that so both paths agree.
+        diagnostic.effective_disposition = Some(Disposition::Fatal);
+        failed_nodes.push(diagnostic);
+    }
+    let recovered_node_id = failed_nodes.first().and_then(|d| d.node_id.clone());
+    failed_nodes.extend(
+        handler
+            .failure_details()
+            .into_iter()
+            .filter(|node| match &recovered_node_id {
+                Some(composed_id) => !is_same_node(composed_id, &node.id),
+                None => true,
+            })
+            .map(|node| fatal(Some(node.id), node.name)),
+    );
+    // A run that died before any node event (e.g. a graph-build error) still
+    // gets a workflow-level row carrying the execution error.
+    if failed_nodes.is_empty() {
+        failed_nodes.push(fatal(None, None));
+    }
+
+    RunSummary {
+        failed_nodes,
+        aggregated_diagnostics: Vec::new(),
+        dropped_event_count: 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_runtime::errors::ExecutionError;
+
+    /// A runner error carrying no `Diagnostic`.
+    fn plain_error(message: &str) -> reearth_flow_runner::errors::Error {
+        reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::CannotSendToChannel(
+            message.to_string(),
+        ))
+    }
+
+    fn carried_diagnostic(node_id: &str, feature_id: uuid::Uuid) -> Diagnostic {
+        let mut d = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry)
+                .with_message("real action failure"),
+            Some(node_id.to_string()),
+            Some("Statistics Calculator".to_string()),
+            Some(feature_id),
+        );
+        d.effective_disposition = Some(Disposition::Fatal);
+        d
+    }
+
+    /// The reported bug: a `Diagnostic` boxed inside the error must survive, not be stringified.
+    #[test]
+    fn failure_summary_recovers_a_carried_diagnostic_intact() {
+        for wrap in [
+            ExecutionError::Processor as fn(_) -> ExecutionError,
+            ExecutionError::Sink,
+            ExecutionError::Source,
+        ] {
+            let feature_id = uuid::Uuid::new_v4();
+            let error = reearth_flow_runner::errors::Error::ExecutionError(wrap(Box::new(
+                carried_diagnostic("node-a", feature_id),
+            )));
+
+            let summary = failure_summary(&error, &NodeFailureHandler::new());
+
+            assert_eq!(summary.failed_nodes.len(), 1);
+            let row = &summary.failed_nodes[0];
+            assert_eq!(row.code, ErrorCode::Cesium3dtilesEmptyGeometry);
+            assert_eq!(row.message, "real action failure");
+            assert_eq!(row.feature_id, Some(feature_id));
+            assert_eq!(row.action_type.as_deref(), Some("Statistics Calculator"));
+            assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
+            assert!(
+                !row.message.contains("Diagnostic {"),
+                "Debug dump leaked into message: {}",
+                row.message
+            );
+        }
+    }
+
+    /// The recovered node must not also get a synthesized row.
+    #[test]
+    fn failure_summary_does_not_duplicate_the_recovered_node() {
+        use crate::event_handler::FailedNode;
+
+        let handler = NodeFailureHandler::new();
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: Some("Statistics Calculator".to_string()),
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-b".to_string(),
+            name: None,
+        });
+        let error = reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::Processor(
+            Box::new(carried_diagnostic("node-a", uuid::Uuid::new_v4())),
+        ));
+
+        let summary = failure_summary(&error, &handler);
+
+        assert_eq!(summary.failed_nodes.len(), 2);
+        assert_eq!(summary.failed_nodes[0].node_id.as_deref(), Some("node-a"));
+        assert_eq!(summary.failed_nodes[0].message, "real action failure");
+        // node-b's failure is unrelated to node-a's error; it must not claim node-a's cause.
+        assert_eq!(summary.failed_nodes[1].node_id.as_deref(), Some("node-b"));
+        assert_eq!(
+            summary.failed_nodes[1].message,
+            ErrorCode::InternalUnclassified.default_message()
+        );
+    }
+
+    /// A subgraph node's composed id must still match the handler's raw handle id.
+    #[test]
+    fn failure_summary_matches_a_subgraph_composed_node_id() {
+        use crate::event_handler::FailedNode;
+
+        let handler = NodeFailureHandler::new();
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: None,
+        });
+        let error = reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::Processor(
+            Box::new(carried_diagnostic("sub-1.node-a", uuid::Uuid::new_v4())),
+        ));
+
+        let summary = failure_summary(&error, &handler);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            1,
+            "duplicate row for subgraph node"
+        );
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("sub-1.node-a")
+        );
+    }
+
+    #[test]
+    fn is_same_node_matches_plain_and_subgraph_ids_without_false_positives() {
+        assert!(is_same_node("node-a", "node-a"));
+        assert!(is_same_node("sub-1.node-a", "node-a"));
+        assert!(is_same_node("a.b.node-a", "node-a"));
+        assert!(!is_same_node("node-ab", "node-a"));
+        assert!(!is_same_node("sub-1.node-ab", "node-a"));
+        assert!(!is_same_node("node-a", "node-b"));
+    }
+
+    /// Factory carries a factory error, never a Diagnostic — it must render, not attempt recovery.
+    #[test]
+    fn failure_summary_renders_a_factory_error_without_debug_shape() {
+        let error = reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::Factory {
+            node_id: "node-a".to_string(),
+            node_name: "StatisticsCalculator".to_string(),
+            error: Box::new(std::io::Error::other("bad parameter")),
+        });
+
+        let summary = failure_summary(&error, &NodeFailureHandler::new());
+
+        let message = &summary.failed_nodes[0].message;
+        assert!(message.contains("bad parameter"), "got: {message}");
+        assert!(
+            !message.starts_with("ExecutionError("),
+            "Debug shape: {message}"
+        );
+        // Factory's Display already interpolates its source; it must not be appended twice.
+        assert_eq!(
+            message.matches("bad parameter").count(),
+            1,
+            "doubled: {message}"
+        );
+    }
+
+    #[test]
+    fn failure_summary_builds_a_fatal_row_per_failed_node_deduped() {
+        use crate::event_handler::FailedNode;
+
+        let handler = NodeFailureHandler::new();
+        // A status-Failed capture (no name) followed by the processor event for
+        // the same node (named), plus a second node — 2 rows, name preserved.
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: None,
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: Some("CityGML Reader".to_string()),
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-b".to_string(),
+            name: None,
+        });
+
+        let summary = failure_summary(&plain_error("boom"), &handler);
+
+        assert_eq!(summary.failed_nodes.len(), 2);
+        for row in &summary.failed_nodes {
+            assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
+            // Nothing to recover, so the whole-run error is the message for every row.
+            assert!(row.message.contains("boom"), "got: {}", row.message);
+            assert!(
+                !row.message.contains('{'),
+                "Debug shape leaked: {}",
+                row.message
+            );
+        }
+        assert_eq!(summary.failed_nodes[0].node_id.as_deref(), Some("node-a"));
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("CityGML Reader")
+        );
+        assert_eq!(summary.failed_nodes[1].node_id.as_deref(), Some("node-b"));
+        assert_eq!(summary.failed_nodes[1].action_type, None);
+        assert!(summary.aggregated_diagnostics.is_empty());
+        assert_eq!(summary.dropped_event_count, 0);
+    }
+
+    #[test]
+    fn failure_summary_falls_back_to_a_workflow_level_row() {
+        let handler = NodeFailureHandler::new();
+
+        let summary = failure_summary(&plain_error("boom"), &handler);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(summary.failed_nodes[0].node_id, None);
+        assert_eq!(
+            summary.failed_nodes[0].effective_disposition,
+            Some(Disposition::Fatal)
+        );
+    }
+
+    #[test]
+    fn derive_job_result_success_when_both_signals_agree_on_success() {
+        let result = derive_job_result(Some(true), true);
+        assert!(matches!(result, JobResult::Success));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_handler_catches_what_summary_missed() {
+        let result = derive_job_result(Some(true), false);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_summary_catches_what_handler_missed() {
+        let result = derive_job_result(Some(false), true);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_both_signals_agree_on_failure() {
+        let result = derive_job_result(Some(false), false);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_run_itself_errored() {
+        let result = derive_job_result(None, true);
+        assert!(matches!(result, JobResult::Failed));
+
+        let result = derive_job_result(None, false);
+        assert!(matches!(result, JobResult::Failed));
     }
 }

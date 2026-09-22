@@ -40,9 +40,6 @@ graphs:
                 value: "json"
           response:
             responseBodyAttribute: "_response"
-            statusCodeAttribute: "_status"
-            headersAttribute: "_response_headers"
-            errorAttribute: "_error"
           timeouts:
             connectionTimeout: 30
             transferTimeout: 60

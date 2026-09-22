@@ -1,7 +1,7 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 import * as Y from "yjs";
-import { Map as YMap } from "yjs";
+import type { Map as YMap } from "yjs";
 
 import { config } from "@flow/config";
 import {
@@ -149,8 +149,7 @@ export default ({
 
           const parentWorkflow = currentYWorkflow;
           const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-            | YNodesMap
-            | undefined;
+            YNodesMap | undefined;
           parentWorkflowNodes?.set(workflowId, newSubworkflowNode);
 
           yWorkflows.set(workflowId, newYWorkflow);
@@ -524,11 +523,9 @@ export default ({
 
           const parentWorkflow = currentYWorkflow;
           const parentWorkflowNodesMap = parentWorkflow?.get("nodes") as
-            | YNodesMap
-            | undefined;
+            YNodesMap | undefined;
           const parentWorkflowEdgesMap = parentWorkflow?.get("edges") as
-            | YEdgesMap
-            | undefined;
+            YEdgesMap | undefined;
 
           allIncludedNodeIds.forEach((nodeId) => {
             parentWorkflowNodesMap?.delete(nodeId);

@@ -1,5 +1,4 @@
 import { PencilLineIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 
 import {
   Button,
@@ -8,7 +7,10 @@ import {
 } from "@flow/components";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import { useCurrentUserRole } from "@flow/stores";
+import type { Trigger } from "@flow/types";
+import { Role } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 
 import {
@@ -21,6 +23,8 @@ import useHooks from "./hooks";
 
 const TriggerManager: React.FC = () => {
   const t = useT();
+  const [currentUserRole] = useCurrentUserRole();
+  const readonly = currentUserRole === Role.Reader;
   const {
     triggers,
     selectedTrigger,
@@ -42,7 +46,7 @@ const TriggerManager: React.FC = () => {
     handleSortChange,
     setCurrentPage,
   } = useHooks();
-  const columns: ColumnDef<Trigger>[] = [
+  const columns: AppColumnDef<Trigger>[] = [
     {
       accessorKey: "description",
       header: t("Trigger Description"),
@@ -79,6 +83,7 @@ const TriggerManager: React.FC = () => {
           <ButtonWithTooltip
             variant="outline"
             size="icon"
+            disabled={readonly}
             tooltipText={t("Update Trigger")}
             onClick={() => setTriggerToBeEdited(row.row.original)}>
             <PencilLineIcon />
@@ -86,6 +91,7 @@ const TriggerManager: React.FC = () => {
           <ButtonWithTooltip
             variant="destructive"
             size="icon"
+            disabled={readonly}
             tooltipText={t("Delete Trigger")}
             onClick={() => setTriggerToBeDeleted(row.row.original)}>
             <TrashIcon />
@@ -102,6 +108,7 @@ const TriggerManager: React.FC = () => {
         <div className="flex flex-1">
           <TriggerDetails
             selectedTrigger={selectedTrigger}
+            readonly={readonly}
             setTriggerToBeDeleted={setTriggerToBeDeleted}
           />
         </div>
@@ -114,6 +121,7 @@ const TriggerManager: React.FC = () => {
               </p>
               <Button
                 className="flex gap-2"
+                disabled={readonly}
                 onClick={() => setOpenTriggerAddDialog(true)}>
                 <PlusIcon weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>

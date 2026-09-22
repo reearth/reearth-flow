@@ -26,14 +26,15 @@ graphs:
         with:
           attribute: timestamp
           inputFormat: auto
-          outputFormat: unix_s
+          outputFormat: unixS
 
       - id: 550e8400-e29b-41d4-a716-446655440104
         name: "Output"
         type: action
         action: Feature Writer
         with:
-          format: json
+          format:
+            type: json
           output:
             type: string
             value: expected_output.json

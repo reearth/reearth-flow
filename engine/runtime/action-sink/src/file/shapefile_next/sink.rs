@@ -26,7 +26,8 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to ESRI Shapefile format, optionally grouping them into separate files."
+        "Writes features as shapefiles, optionally grouping them into a separate file set per \
+         group."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -123,20 +124,23 @@ pub(crate) struct ShapefileWriter {
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-/// # ShapefileWriter Parameters
+/// # Shapefile Writer Parameters
 ///
-/// Configuration for writing features to ESRI Shapefile format.
+/// Sets where the shapefiles are written, whether each is archived, and how features are grouped
+/// into separate file sets.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShapefileWriterParam {
     /// # Output Directory
-    /// Output directory path or expression where the generated Shapefile files are written.
+    /// Directory the shapefiles are written to, as a path or an expression. Each file set inside
+    /// it is named after its group value, or "null" when no grouping is configured.
     pub(super) output: Code,
     /// # Compressed Output Directory
     /// Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files.
     pub(super) compress_output: Option<Code>,
     /// # Group By
-    /// Attributes to group features by, writing a separate file for each distinct group.
+    /// Attributes to group features by, writing one file set per distinct group and naming it
+    /// after the group's value. When unset, every feature goes to a single file set.
     pub(super) group_by: Option<Vec<Attribute>>,
 }
 

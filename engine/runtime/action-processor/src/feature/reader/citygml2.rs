@@ -15,9 +15,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use crate::citygml_parser::parser::{CityGmlVersion, Parser};
-use crate::citygml_parser::pipeline::build_features;
 use crate::feature::errors::FeatureProcessorError;
+use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::pipeline::build_features;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct FeatureCityGml2ReaderFactory;
@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across files"
+        "Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,7 +36,11 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Feature"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml", "3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -78,6 +82,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             .map_err(|e| FeatureProcessorError::FileCityGml2ReaderFactory(format!("{e:?}")))?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
+        let parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone());
 
         Ok(Box::new(FeatureCityGml2Reader {
             dataset,
@@ -86,7 +91,8 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            parser: Parser::new(CityGmlVersion::V2),
+            inherit_input_attributes: params.inherit_input_attributes,
+            parser,
             base_attributes: HashMap::new(),
         }))
     }
@@ -126,9 +132,18 @@ pub struct FeatureCityGml2ReaderParam {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     city_gml_attributes_key: Option<String>,
+    /// # Inherit Input Attributes
+    /// When true, the input feature's attributes are merged into every feature parsed from its
+    /// file. Defaults to true.
+    #[serde(default = "default_inherit_input_attributes")]
+    inherit_input_attributes: bool,
 }
 
 fn default_keep_attributes() -> bool {
+    true
+}
+
+fn default_inherit_input_attributes() -> bool {
     true
 }
 
@@ -139,8 +154,10 @@ pub struct FeatureCityGml2Reader {
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
     city_gml_attributes_key: Option<String>,
+    inherit_input_attributes: bool,
     parser: Parser,
-    /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
+    /// Input feature attributes keyed by resolved source file URL, merged into parsed features
+    /// when `inherit_input_attributes` is set.
     base_attributes: HashMap<String, Attributes>,
 }
 
@@ -161,7 +178,8 @@ impl Clone for FeatureCityGml2Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            parser: Parser::new(CityGmlVersion::V2),
+            inherit_input_attributes: self.inherit_input_attributes,
+            parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
         }
     }
@@ -188,10 +206,12 @@ impl Processor for FeatureCityGml2Reader {
             FeatureProcessorError::FileCityGml2Reader(format!("Invalid URI `{path}`: {e}"))
         })?;
         let source_url: Url = uri.clone().into();
-        self.base_attributes.insert(
-            source_url.as_str().to_string(),
-            (*ctx.feature.attributes).clone(),
-        );
+        if self.inherit_input_attributes {
+            self.base_attributes.insert(
+                source_url.as_str().to_string(),
+                (*ctx.feature.attributes).clone(),
+            );
+        }
 
         let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
             FeatureProcessorError::FileCityGml2Reader(format!("Storage resolve error: {e}"))
@@ -219,8 +239,9 @@ impl Processor for FeatureCityGml2Reader {
         } else {
             Vec::new()
         };
+        let next_parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone());
         for feature in build_features(
-            std::mem::replace(&mut self.parser, Parser::new(CityGmlVersion::V2)),
+            std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),

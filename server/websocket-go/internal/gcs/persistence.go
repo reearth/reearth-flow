@@ -531,8 +531,8 @@ func (a *Adapter) RestoreSnapshot(ctx context.Context, room, name string) ([]byt
 	if err != nil {
 		return nil, 0, false, err
 	}
-	doc := crdt.New()
-	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+	doc, err := docFromV2(v2)
+	if err != nil {
 		return nil, 0, false, err
 	}
 	head, err := a.lastClock(ctx, room, oid)

@@ -8,6 +8,7 @@ use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -87,7 +88,7 @@ impl SinkFactory for GltfWriterSinkFactory {
             attach_texture: params.attach_texture.unwrap_or(true),
             #[cfg(not(feature = "new-geometry"))]
             classified_features: Default::default(),
-            draco_compression: params.draco_compression.unwrap_or(false),
+            draco_compression: params.draco_compression,
             schema_key: params.schema_key,
         };
         Ok(Box::new(sink))
@@ -151,7 +152,7 @@ pub struct GltfWriter {
     #[cfg(not(feature = "new-geometry"))]
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
-    draco_compression: bool,
+    draco_compression: reearth_flow_gltf::DracoCompression,
     schema_key: Option<String>,
 }
 
@@ -167,11 +168,20 @@ pub struct GltfWriterParam {
     output: Code,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
-    /// Apply Draco compression to the geometry
-    draco_compression: Option<bool>,
+    /// # Draco Compression
+    /// Whether to compress mesh geometry with Draco, and how precisely. Defaults to
+    /// enabled at the encoder's default resolution.
+    #[serde(default = "default_draco_compression")]
+    draco_compression: reearth_flow_gltf::DracoCompression,
     /// Features are grouped by this attribute and written to separate files.
     /// The key is excluded from output attributes.
     schema_key: Option<String>,
+}
+
+/// Serde default for the draco parameter: compression at the encoder's default
+/// resolution.
+fn default_draco_compression() -> reearth_flow_gltf::DracoCompression {
+    reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
 }
 
 impl Sink for GltfWriter {
@@ -188,7 +198,7 @@ impl Sink for GltfWriter {
                 self.process_citygml(city_gml, feature)?;
             }
             reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(geo) => {
-                self.process_flow_geometry_3d(geo, feature)?;
+                self.process_flow_geometry_3d(&ctx, geo, feature)?;
             }
             _ => {
                 return Err(SinkError::GltfWriter(
@@ -259,7 +269,7 @@ impl Sink for GltfWriter {
                 let mut primitives: reearth_flow_gltf::Primitives = Default::default();
                 let mut vertices: IndexSet<[u32; 9], ahash::RandomState> = IndexSet::default();
 
-                build_atlas_geometry(
+                let texture_size = build_atlas_geometry(
                     &filtered_features,
                     &atlas_dir,
                     image::ImageFormat::Jpeg,
@@ -294,6 +304,7 @@ impl Sink for GltfWriter {
                     filtered_features.len(),
                     metadata_encoder,
                     self.draco_compression,
+                    texture_size,
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(
@@ -494,6 +505,7 @@ impl GltfWriter {
 
     fn process_flow_geometry_3d(
         &mut self,
+        ctx: &ExecutorContext,
         geo: &reearth_flow_geometry::types::geometry::Geometry3D<f64>,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
@@ -502,7 +514,7 @@ impl GltfWriter {
         // Only support Solid, Polygon, and MultiPolygon for now
         match geo {
             Geometry3D::Solid(solid) => {
-                self.convert_solid_to_gltf(solid, feature)?;
+                self.convert_solid_to_gltf(ctx, solid, feature)?;
             }
             Geometry3D::Polygon(polygon) => {
                 self.convert_polygon_to_gltf(polygon, feature)?;
@@ -606,6 +618,7 @@ impl GltfWriter {
 
     fn convert_solid_to_gltf(
         &mut self,
+        ctx: &ExecutorContext,
         solid: &reearth_flow_geometry::types::solid::Solid3D<f64>,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
@@ -615,6 +628,7 @@ impl GltfWriter {
         let faces = solid.all_faces();
 
         if faces.is_empty() {
+            ctx.report(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid))?;
             return Ok(());
         }
 
@@ -731,5 +745,62 @@ mod tests {
             result.is_err(),
             "build must error when flowExpr references a missing workflow variable"
         );
+    }
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_geometry::types::solid::Solid3D;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
+    use reearth_flow_runtime::node::{NodeHandle, FEATURES_PORT};
+    use reearth_flow_types::{AttributeValue, Feature};
+
+    use super::*;
+
+    fn test_writer() -> GltfWriter {
+        GltfWriter {
+            output: String::new(),
+            classified_features: Default::default(),
+            attach_texture: true,
+            draco_compression: reearth_flow_gltf::DracoCompression::Disabled,
+            schema_key: None,
+        }
+    }
+
+    #[test]
+    fn zero_face_solid_is_reported_not_silently_dropped() {
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "GltfWriter".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
+        ));
+        let node_ctx = NodeContext::default();
+        let feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            feature.clone(),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+
+        let solid: Solid3D<f64> = Solid3D::new_with_faces(vec![]);
+
+        let mut writer = test_writer();
+        writer
+            .convert_solid_to_gltf(&ctx, &solid, &feature)
+            .unwrap();
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].message.contains("gltf.zero_face_solid"));
     }
 }

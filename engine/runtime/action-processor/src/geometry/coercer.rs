@@ -45,7 +45,8 @@ impl ProcessorFactory for GeometryCoercerFactory {
     }
 
     fn description(&self) -> &str {
-        "Coerces and converts feature geometries to specified target geometry types"
+        "Coerces a feature's geometry into a different geometry type, rebuilding it as \
+         polylines, faces, or triangles."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -125,7 +126,7 @@ impl From<&CoercionTarget> for ops::CoercionTarget {
 
 /// # Geometry Coercer Parameters
 ///
-/// Configuration for coercing geometries to specific target types.
+/// Which geometry type each feature is coerced into.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct GeometryCoercer {

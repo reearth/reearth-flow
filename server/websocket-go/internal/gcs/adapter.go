@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -270,6 +271,34 @@ func decompressBrotli(data []byte) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
+// ErrPartialV2Decode reports that a stored doc_v2 payload decoded only partially.
+var ErrPartialV2Decode = errors.New("gcs: doc_v2 decoded only partially")
+
+// docFromV2 decodes a stored doc_v2 payload and REFUSES a partial decode.
+//
+// A doc_v2 object is a complete, self-contained state snapshot: every item it
+// references is inside it, so a correct decoder never has anything left over.
+// Items still parked in the pending queue therefore mean the decoder could not
+// integrate part of the document and the doc we are holding is silently smaller
+// than the bytes on disk (reearth/ygo#231 — ApplyUpdateV2 drops content when the
+// update contains GC structs, and returns nil while doing it).
+//
+// Returning the truncated doc would hand a partial document to the room, and the
+// next flush would write that truncation back over the original, destroying data
+// that is still intact in storage. Failing the load is the safe half of that
+// trade: the room refuses to open, loudly, and the stored bytes stay untouched.
+func docFromV2(v2 []byte) (*crdt.Doc, error) {
+	doc := crdt.New()
+	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+		return nil, err
+	}
+	if ps := doc.PendingStats(); ps.Items > 0 {
+		return nil, fmt.Errorf("%w: %d items left unintegrated, awaiting %d clients; refusing to serve a truncated document",
+			ErrPartialV2Decode, ps.Items, len(ps.MissingFor))
+	}
+	return doc, nil
+}
+
 // docFromV1 applies a V1 update to a fresh doc and returns it.
 func docFromV1(v1 []byte) (*crdt.Doc, error) {
 	d := crdt.New()
@@ -360,8 +389,8 @@ func (a *Adapter) loadV2(ctx context.Context, room DocID) ([]byte, bool, error) 
 	if err != nil {
 		return nil, false, err
 	}
-	doc := crdt.New()
-	if err := crdt.ApplyUpdateV2(doc, v2, nil); err != nil {
+	doc, err := docFromV2(v2)
+	if err != nil {
 		return nil, false, err
 	}
 	return crdt.EncodeStateAsUpdateV1(doc, nil), true, nil

@@ -67,6 +67,8 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
 
+	srv.AroundOperations(attachOperationPermissionMemo)
+
 	srv.Use(extension.Introspection{})
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](100),
@@ -102,4 +104,14 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 		srv.ServeHTTP(c.Response(), c.Request())
 		return nil
 	}
+}
+
+// attachOperationPermissionMemo scopes the permission-verdict memo to a
+// single GraphQL operation. It runs for every transport (HTTP and websocket
+// alike) and, critically, re-attaches a fresh memo per operation on
+// long-lived websocket connections, where gqlgen otherwise derives every
+// operation's context from the original upgrade request.
+func attachOperationPermissionMemo(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+	ctx = adapter.AttachPermissionVerdictMemo(ctx)
+	return next(ctx)
 }

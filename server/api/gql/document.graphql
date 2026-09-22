@@ -19,7 +19,8 @@ type ProjectDocument implements Node {
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
-  version: Int!
+  version: Int
+  snapshotNumber: Int
 }
 
 # Project Snapshot Metadata (without updates data)
@@ -52,6 +53,11 @@ extend type Mutation {
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
-  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  # Pass exactly one of version or snapshotNumber.
+  projectSnapshot(
+    projectId: ID!
+    version: Int
+    snapshotNumber: Int
+  ): ProjectSnapshot!
   projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }

@@ -17,8 +17,8 @@ graphs:
   - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
   # Domain-specific graphs
-  - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator.yml
+  - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau4/surface_validator.yml
   - !include unf.yml
   # Entry point graph
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d81
@@ -313,7 +313,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: csv
+          format:
+            type: csv
           output:
             type: string
             value: 12_地下埋設物_検査結果一覧.csv
@@ -367,21 +368,22 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: json
-          converter:
-            type: flowExpr
-            value: |
-              if len(attributes["__features"]) == 0 {
-                []
-              } else {
-                result = [];
-                feature = attributes["__features"][0];
-                keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
-                for key in keys {
-                  result.append({"name": key, "count": feature.get(key, 0)});
+          format:
+            type: json
+            converter:
+              type: flowExpr
+              value: |
+                if len(attributes["__features"]) == 0 {
+                  []
+                } else {
+                  result = [];
+                  feature = attributes["__features"][0];
+                  keys = ["無効な空間属性の型", "非水密立体", "立体のその他のエラー", "立体の境界面のエラー", "面のエラー", "不連続なCompositeSurface"];
+                  for key in keys {
+                    result.append({"name": key, "count": feature.get(key, 0)});
+                  }
+                  result
                 }
-                result
-              }
           output:
             type: string
             value: summary_unf.json

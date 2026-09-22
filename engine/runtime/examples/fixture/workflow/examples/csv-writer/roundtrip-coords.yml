@@ -18,7 +18,6 @@ graphs:
             type: flowExpr
             value: variables["inputCsv"]
           geometry:
-            geometryMode: coordinates
             xColumn: longitude
             yColumn: latitude
             zColumn: elevation
@@ -34,7 +33,6 @@ graphs:
             type: string
             value: ./output-roundtrip-coords.csv
           geometry:
-            geometryMode: coordinates
             xColumn: longitude
             yColumn: latitude
             zColumn: elevation

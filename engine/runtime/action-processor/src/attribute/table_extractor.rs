@@ -2,6 +2,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -9,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -102,11 +103,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
                 ))
             })?
         } else if let Some(inline) = params.inline.clone() {
-            serde_json::from_value(inline).map_err(|e| {
-                AttributeProcessorError::TableExtractorFactory(format!(
-                    "Failed to parse extraction table: {e}"
-                ))
-            })?
+            inline
         } else {
             return Err(AttributeProcessorError::TableExtractorFactory(
                 "Missing required parameter `dataset` or `inline`".to_string(),
@@ -126,31 +123,46 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
 
 /// # Attribute Table Extractor Parameters
 /// Configures the table of source/destination path pairs used to move nested attribute values.
+/// Supply the table either as a file, via Dataset URI, or directly, via Inline Table — one of
+/// the two is required.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeTableExtractorParam {
     /// # Dataset URI
-    /// Path or URI of the extraction table file. Provide either this or inline data.
+    /// Path or URI of a JSON file holding the extraction table. Provide either this or Inline
+    /// Table.
     dataset: Option<Code>,
     /// # Inline Table
-    /// Extraction table content provided directly as JSON. Used when no dataset URI is given.
-    inline: Option<Value>,
+    /// Extraction table given directly, keyed by feature type. Each key is a feature type name
+    /// as it appears in the type attribute, and its value is the list of rules applied to
+    /// features of that type. Provide either this or Dataset URI.
+    inline: Option<HashMap<String, Vec<ExtractRule>>>,
     /// # Feature Type Attribute
     /// Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.
     type_attribute: Option<String>,
 }
 
-/// One extraction rule for a single feature type in the extraction table.
+/// # Extraction Rule
+/// Moves one value from a source path to a destination path.
+///
+/// Both paths are chains of attribute keys separated by **spaces**, not dots — the keys
+/// themselves are qualified XML names such as `bldg:measuredHeight`, which may contain colons
+/// and dots but never whitespace.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ExtractRule {
-    /// Space-separated chain of keys naming where the extracted value is written. A single
-    /// segment writes a top-level attribute; multiple segments write into a nested map,
-    /// creating it (or any missing intermediate map) as needed.
-    attribute: String,
-    /// Space-separated chain of nested keys to walk from the feature's top level down to the value.
-    json_path: String,
-    /// Optional coercion applied to the extracted value before it is written.
+    /// # Destination Path
+    /// Where the value is written, as a space-separated chain of keys. A single segment writes a
+    /// top-level attribute; several segments write into a nested map, creating it and any
+    /// missing intermediate map as needed.
+    destination_path: String,
+    /// # Source Path
+    /// Where the value is read from, as a space-separated chain of keys walked from the
+    /// feature's top level. A segment matches either a key in a map or the first matching
+    /// element of a list, so it works whether a wrapper element appears once or many times.
+    source_path: String,
+    /// # Value Type
+    /// Converts the extracted value before writing it. Leave unset to write it unchanged.
     #[serde(default)]
     data_type: Option<ExtractDataType>,
 }
@@ -186,10 +198,11 @@ impl Processor for AttributeTableExtractor {
         if let Some(feature_type) = feature_type {
             if let Some(rules) = self.table.get(&feature_type) {
                 for rule in rules {
-                    let src_segments: Vec<&str> = rule.json_path.split_whitespace().collect();
+                    let src_segments: Vec<&str> = rule.source_path.split_whitespace().collect();
                     if let Some(value) = resolve_path(&feature, &src_segments) {
-                        let value = coerce(value, rule.data_type);
-                        let dst_segments: Vec<&str> = rule.attribute.split_whitespace().collect();
+                        let value = coerce(&ctx, value, rule.data_type);
+                        let dst_segments: Vec<&str> =
+                            rule.destination_path.split_whitespace().collect();
                         if !dst_segments.is_empty() {
                             write_path(&mut feature, &dst_segments, value);
                         }
@@ -250,7 +263,7 @@ fn write_path(feature: &mut Feature, segments: &[&str], value: AttributeValue) {
     let mut top = feature
         .get(*first)
         .cloned()
-        .unwrap_or_else(|| AttributeValue::Map(HashMap::new()));
+        .unwrap_or_else(|| AttributeValue::Map(Attributes::new()));
     set_nested(&mut top, rest, value);
     feature.insert(Attribute::new(*first), top);
 }
@@ -260,39 +273,60 @@ fn set_nested(current: &mut AttributeValue, segments: &[&str], value: AttributeV
         .split_first()
         .expect("segments is never empty: caller only recurses while rest is non-empty");
     if !matches!(current, AttributeValue::Map(_)) {
-        *current = AttributeValue::Map(HashMap::new());
+        *current = AttributeValue::Map(Attributes::new());
     }
     let AttributeValue::Map(map) = current else {
         unreachable!()
     };
     if rest.is_empty() {
-        map.insert((*first).to_string(), value);
+        map.insert(Attribute::new(*first), value);
     } else {
         let child = map
-            .entry((*first).to_string())
-            .or_insert_with(|| AttributeValue::Map(HashMap::new()));
+            .entry(Attribute::new(*first))
+            .or_insert_with(|| AttributeValue::Map(Attributes::new()));
         set_nested(child, rest, value);
     }
 }
 
-fn coerce(value: AttributeValue, data_type: Option<ExtractDataType>) -> AttributeValue {
-    let AttributeValue::String(s) = &value else {
+fn coerce(
+    ctx: &ExecutorContext,
+    value: AttributeValue,
+    data_type: Option<ExtractDataType>,
+) -> AttributeValue {
+    let Some(data_type) = data_type else {
         return value;
     };
-    match data_type {
-        Some(ExtractDataType::Int) => s
+    let AttributeValue::String(s) = &value else {
+        if !matches!(value, AttributeValue::Number(_)) {
+            ctx.warn(
+                DiagnosticDraft::new(ErrorCode::TableExtractorNonStringValue)
+                    .with_message(format!("data_type={data_type:?}, value={value:?}")),
+            );
+        }
+        return value;
+    };
+    let coerced = match data_type {
+        ExtractDataType::Int => s
             .trim()
             .parse::<i64>()
-            .map(|n| AttributeValue::Number(n.into()))
-            .unwrap_or(value),
-        Some(ExtractDataType::Float) => s
+            .ok()
+            .map(|n| AttributeValue::Number(n.into())),
+        ExtractDataType::Float => s
             .trim()
             .parse::<f64>()
             .ok()
             .and_then(serde_json::Number::from_f64)
-            .map(AttributeValue::Number)
-            .unwrap_or(value),
-        None => value,
+            .map(AttributeValue::Number),
+    };
+    match coerced {
+        Some(v) => v,
+        None => {
+            ctx.warn(
+                DiagnosticDraft::new(ErrorCode::TableExtractorCoerceFailed)
+                    .with_message(format!("data_type={data_type:?}, value={s}")),
+            );
+            value
+        }
     }
 }
 
@@ -300,21 +334,21 @@ fn coerce(value: AttributeValue, data_type: Option<ExtractDataType>) -> Attribut
 mod tests {
     use super::*;
 
-    fn feature_with(attrs: HashMap<String, AttributeValue>) -> Feature {
-        Feature::from(attrs.into_iter().collect::<indexmap::IndexMap<_, _>>())
+    fn feature_with(attrs: Attributes) -> Feature {
+        Feature::from(attrs)
     }
 
     #[test]
     fn resolves_through_list_wrapper() {
-        let inner = HashMap::from([(
-            "uro:BuildingIDAttribute".to_string(),
-            AttributeValue::Map(HashMap::from([(
-                "uro:city".to_string(),
+        let inner = Attributes::from([(
+            Attribute::new("uro:BuildingIDAttribute"),
+            AttributeValue::Map(Attributes::from([(
+                Attribute::new("uro:city"),
                 AttributeValue::String("Tokyo".to_string()),
             )])),
         )]);
-        let feature = feature_with(HashMap::from([(
-            "bldg:adeOfAbstractBuilding".to_string(),
+        let feature = feature_with(Attributes::from([(
+            Attribute::new("bldg:adeOfAbstractBuilding"),
             AttributeValue::Array(vec![AttributeValue::Map(inner)]),
         )]));
         let segments = [
@@ -330,15 +364,15 @@ mod tests {
 
     #[test]
     fn resolves_through_direct_map() {
-        let inner = HashMap::from([(
-            "uro:BuildingIDAttribute".to_string(),
-            AttributeValue::Map(HashMap::from([(
-                "uro:city".to_string(),
+        let inner = Attributes::from([(
+            Attribute::new("uro:BuildingIDAttribute"),
+            AttributeValue::Map(Attributes::from([(
+                Attribute::new("uro:city"),
                 AttributeValue::String("Osaka".to_string()),
             )])),
         )]);
-        let feature = feature_with(HashMap::from([(
-            "bldg:adeOfAbstractBuilding".to_string(),
+        let feature = feature_with(Attributes::from([(
+            Attribute::new("bldg:adeOfAbstractBuilding"),
             AttributeValue::Map(inner),
         )]));
         let segments = [
@@ -354,13 +388,13 @@ mod tests {
 
     #[test]
     fn missing_path_yields_none() {
-        let feature = feature_with(HashMap::new());
+        let feature = feature_with(Attributes::new());
         assert_eq!(resolve_path(&feature, &["bldg:class"]), None);
     }
 
     #[test]
     fn write_path_creates_nested_map() {
-        let mut feature = feature_with(HashMap::new());
+        let mut feature = feature_with(Attributes::new());
         write_path(
             &mut feature,
             &["attributes", "bldg:usage"],
@@ -386,7 +420,7 @@ mod tests {
 
     #[test]
     fn write_path_single_segment_writes_top_level() {
-        let mut feature = feature_with(HashMap::new());
+        let mut feature = feature_with(Attributes::new());
         write_path(
             &mut feature,
             &["bldg:class"],

@@ -2,18 +2,13 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Workflow",
   "type": "object",
-  "required": ["entryGraphId", "graphs", "id", "name"],
+  "required": [
+    "entryGraphId",
+    "graphs",
+    "id",
+    "name"
+  ],
   "properties": {
-    "entryGraphId": {
-      "type": "string",
-      "format": "uuid"
-    },
-    "graphs": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Graph"
-      }
-    },
     "id": {
       "type": "string",
       "format": "uuid"
@@ -21,46 +16,44 @@
     "name": {
       "type": "string"
     },
+    "entryGraphId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "with": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": true
+    },
+    "graphs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Graph"
+      }
+    },
+    "errorPolicy": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ErrorPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
-    "Edge": {
-      "type": "object",
-      "required": ["from", "fromPort", "id", "to", "toPort"],
-      "properties": {
-        "from": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "fromPort": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "to": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "toPort": {
-          "type": "string"
-        }
-      }
-    },
     "Graph": {
       "type": "object",
-      "required": ["edges", "id", "name", "nodes"],
+      "required": [
+        "edges",
+        "id",
+        "name",
+        "nodes"
+      ],
       "properties": {
-        "edges": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Edge"
-          }
-        },
         "id": {
           "type": "string",
           "format": "uuid"
@@ -73,6 +66,12 @@
           "items": {
             "$ref": "#/definitions/Node"
           }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Edge"
+          }
         }
       }
     },
@@ -80,8 +79,19 @@
       "oneOf": [
         {
           "type": "object",
-          "required": ["action", "id", "name", "type"],
+          "required": [
+            "action",
+            "id",
+            "name",
+            "type"
+          ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "action"
+              ]
+            },
             "action": {
               "type": "string"
             },
@@ -92,20 +102,34 @@
             "name": {
               "type": "string"
             },
-            "type": {
-              "type": "string",
-              "enum": ["action"]
-            },
             "with": {
-              "type": ["object", "null"],
+              "type": [
+                "object",
+                "null"
+              ],
               "additionalProperties": true
             }
           }
         },
         {
           "type": "object",
-          "required": ["id", "name", "subGraphId", "type"],
+          "required": [
+            "id",
+            "name",
+            "subGraphId",
+            "type"
+          ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "subGraph"
+              ]
+            },
+            "subGraphId": {
+              "type": "string",
+              "format": "uuid"
+            },
             "id": {
               "type": "string",
               "format": "uuid"
@@ -113,19 +137,145 @@
             "name": {
               "type": "string"
             },
-            "subGraphId": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "type": {
-              "type": "string",
-              "enum": ["subGraph"]
-            },
             "with": {
-              "type": ["object", "null"],
+              "type": [
+                "object",
+                "null"
+              ],
               "additionalProperties": true
             }
           }
+        }
+      ]
+    },
+    "Edge": {
+      "type": "object",
+      "required": [
+        "from",
+        "fromPort",
+        "id",
+        "to",
+        "toPort"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "from": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "to": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "fromPort": {
+          "type": "string"
+        },
+        "toPort": {
+          "type": "string"
+        }
+      }
+    },
+    "ErrorPolicy": {
+      "description": "`None` is byte-identical to no error-handling config (additive); `validate` here checks structural rules only — registry rules are enforced by the resolver.",
+      "type": "object",
+      "properties": {
+        "onFatal": {
+          "default": "terminate",
+          "allOf": [
+            {
+              "$ref": "#/definitions/OnFatal"
+            }
+          ]
+        },
+        "treatAllAsFatal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "allowRelaxInternal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "sideFile": {
+          "default": false,
+          "type": "boolean"
+        },
+        "overrides": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PolicyOverride"
+          }
+        }
+      }
+    },
+    "OnFatal": {
+      "title": "On Fatal",
+      "description": "**Currently has no effect.** Both values behave identically: a run that hits a fatal diagnostic reports every node's outcome and every aggregated diagnostic, and fails.\n\nThis option previously selected how a fatal run was *reported* — `terminate` returned only the first failing node and discarded every other node's outcome, including the aggregated diagnostics of nodes that succeeded. That was a reporting difference, never early cancellation: every node thread runs to completion before the outcome is assembled either way. Since losing that data had no upside, both values now report in full.\n\nAccepted and validated so existing workflows keep parsing. If `terminate` is ever given real meaning it should be actual early cancellation — stopping work once a run is known to be doomed — which is a behaviour change, not a reporting one.",
+      "oneOf": [
+        {
+          "description": "No effect; retained for compatibility. See the note on [`OnFatal`].",
+          "type": "string",
+          "enum": [
+            "terminate"
+          ]
+        },
+        {
+          "description": "No effect; retained for compatibility. See the note on [`OnFatal`].",
+          "type": "string",
+          "enum": [
+            "continue"
+          ]
+        }
+      ]
+    },
+    "PolicyOverride": {
+      "description": "At least one of `node`/`code`/`category` must be set; `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).",
+      "type": "object",
+      "required": [
+        "disposition"
+      ],
+      "properties": {
+        "node": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disposition": {
+          "$ref": "#/definitions/PolicyDisposition"
+        }
+      }
+    },
+    "PolicyDisposition": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "warn_drop",
+            "reject"
+          ]
+        },
+        {
+          "description": "Fails the run. The node's diagnostic lands in `failedNodes`; every other node's outcome and aggregated diagnostics are still reported alongside it.",
+          "type": "string",
+          "enum": [
+            "fatal"
+          ]
         }
       ]
     }

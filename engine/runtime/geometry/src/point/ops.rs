@@ -189,6 +189,21 @@ impl Footprint for Point3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+// Unlike the other 2D leaves, a point has no elevation field: a position is not
+// a shape that could lie at a height. It reports none.
+#[cfg(feature = "new-geometry")]
+impl Elevation for Point2D {}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for Point3D {
+    fn elevation(&self) -> Option<f64> {
+        Some(self.position[2])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

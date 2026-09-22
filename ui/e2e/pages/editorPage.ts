@@ -1,12 +1,8 @@
-import { expect, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 export type ToolId =
-  | "reader"
-  | "transformer"
-  | "writer"
-  | "note"
-  | "batch"
-  | "subworkflow";
+  "reader" | "transformer" | "writer" | "note" | "batch" | "subworkflow";
 
 export type ActionToolId = "reader" | "transformer" | "writer";
 
@@ -96,7 +92,7 @@ export class EditorPage {
   }
 
   async gotoProjectPath(projectPath: string) {
-    await this.page.goto(projectPath);
+    await this.page.goto(projectPath, { waitUntil: "domcontentloaded" });
     await this.waitForLoaded();
   }
 

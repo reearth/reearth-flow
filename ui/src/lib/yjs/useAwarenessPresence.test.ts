@@ -1,9 +1,9 @@
 import { renderHook, act } from "@testing-library/react";
-import { MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Awareness } from "y-protocols/awareness";
 
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import useAwarenessPresence from "./useAwarenessPresence";
 

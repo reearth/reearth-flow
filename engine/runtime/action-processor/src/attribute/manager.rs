@@ -1,9 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
-    executor_operation::{Context, ExecutorContext, NodeContext},
+    executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
@@ -213,7 +214,7 @@ impl Processor for AttributeManager {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let variables = ctx.variables.clone();
-        let feature = process_feature(ctx.as_context(), &ctx.feature, &self.operations, variables);
+        let feature = process_feature(&ctx, &ctx.feature, &self.operations, variables);
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
@@ -232,7 +233,7 @@ impl Processor for AttributeManager {
 }
 
 fn process_feature(
-    ctx: Context,
+    ctx: &ExecutorContext,
     feature: &Feature,
     operations: &[Operate],
     variables: Arc<serde_json::Map<String, serde_json::Value>>,
@@ -250,8 +251,10 @@ fn process_feature(
                             result.insert(attribute.clone(), new_value);
                         }
                         Err(e) => {
-                            ctx.event_hub
-                                .warn_log(None, format!("convert error with: {e:?}"));
+                            ctx.warn(
+                                DiagnosticDraft::new(ErrorCode::ExprAttributeOperationFailed)
+                                    .with_message(format!("convert error with: {e:?}")),
+                            );
                         }
                     }
                 }
@@ -263,8 +266,10 @@ fn process_feature(
                             result.insert(attribute.clone(), new_value);
                         }
                         Err(e) => {
-                            ctx.event_hub
-                                .warn_log(None, format!("create error with: {e:?}"));
+                            ctx.warn(
+                                DiagnosticDraft::new(ErrorCode::ExprAttributeOperationFailed)
+                                    .with_message(format!("create error with: {e:?}")),
+                            );
                         }
                     }
                 }
@@ -283,8 +288,10 @@ fn process_feature(
                         result.insert(new_key_str, value.cloned().unwrap_or_default());
                     }
                     Err(e) => {
-                        ctx.event_hub
-                            .warn_log(None, format!("rename error with: {e:?}"));
+                        ctx.warn(
+                            DiagnosticDraft::new(ErrorCode::ExprAttributeOperationFailed)
+                                .with_message(format!("rename error with: {e:?}")),
+                        );
                     }
                 }
             }
@@ -462,5 +469,136 @@ mod tests {
         );
         // The destination name is an expression, so the schema is open.
         assert!(schema.open);
+    }
+}
+
+#[cfg(test)]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::node::NodeHandle;
+    use reearth_flow_types::{AttributeValue, CodeType};
+
+    use super::*;
+
+    fn make_handle() -> Arc<NodeDiagnosticsHandle> {
+        Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "processor".into(),
+            "Attribute Manager".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            false,
+        ))
+    }
+
+    fn failing_code() -> CompiledCode {
+        // "division by zero" is a deterministic eval-time failure that
+        // still compiles (parsing never inspects operand values), so this
+        // exercises the eval `Err` branch without depending on env/attribute
+        // wiring.
+        let code: Code = Code {
+            ty: CodeType::FlowExpr,
+            value: "1 / 0".to_string(),
+        };
+        code.compile().unwrap()
+    }
+
+    #[test]
+    fn convert_eval_failure_warns_and_keeps_the_feature_flowing_unchanged() {
+        let handle = make_handle();
+        let node_ctx = NodeContext::default();
+        let mut feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+        feature.insert("src", AttributeValue::String("v".into()));
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            feature.clone(),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+
+        let operations = vec![Operate::Convert {
+            code: Some(failing_code()),
+            attribute: "src".to_string(),
+        }];
+
+        let result = process_feature(&ctx, &feature, &operations, ctx.variables.clone());
+
+        // control-flow preservation: the feature keeps flowing, unchanged.
+        assert_eq!(result.attributes, feature.attributes);
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        // warn-and-continue never resolves an effective disposition.
+        assert!(summaries[0].effective_disposition.is_none());
+        assert!(summaries[0]
+            .message
+            .contains("expr.attribute_operation_failed"));
+    }
+
+    #[test]
+    fn create_eval_failure_warns_and_keeps_the_feature_flowing_unchanged() {
+        let handle = make_handle();
+        let node_ctx = NodeContext::default();
+        let feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            feature.clone(),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+
+        let operations = vec![Operate::Create {
+            code: Some(failing_code()),
+            attribute: "computed".to_string(),
+        }];
+
+        let result = process_feature(&ctx, &feature, &operations, ctx.variables.clone());
+
+        assert_eq!(result.attributes, feature.attributes);
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].effective_disposition.is_none());
+        assert!(summaries[0]
+            .message
+            .contains("expr.attribute_operation_failed"));
+    }
+
+    #[test]
+    fn rename_eval_failure_warns_and_keeps_the_feature_flowing_unchanged() {
+        let handle = make_handle();
+        let node_ctx = NodeContext::default();
+        let mut feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+        feature.insert("src", AttributeValue::String("v".into()));
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            feature.clone(),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+
+        let operations = vec![Operate::Rename {
+            new_key: failing_code(),
+            attribute: "src".to_string(),
+        }];
+
+        let result = process_feature(&ctx, &feature, &operations, ctx.variables.clone());
+
+        // rename never applied: source key is untouched.
+        assert_eq!(result.attributes, feature.attributes);
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].effective_disposition.is_none());
+        assert!(summaries[0]
+            .message
+            .contains("expr.attribute_operation_failed"));
     }
 }

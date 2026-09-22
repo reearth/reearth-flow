@@ -2,6 +2,8 @@ use serde_json::Number;
 use std::num::ParseIntError;
 use thiserror::Error;
 
+use reearth_flow_diagnostics::Diagnostic;
+
 use crate::node::{NodeHandle, Port};
 
 #[derive(Error, Debug)]
@@ -78,6 +80,12 @@ pub enum ExecutionError {
     CannotSendToChannel(String),
     #[error("Cannot receive from channel: {0}")]
     CannotReceiveFromChannel(String),
+    /// Every upstream sender dropped without sending `Terminate` — this node did not fail on its
+    /// own account, it noticed another node's failure. Distinct from `CannotReceiveFromChannel`,
+    /// which also covers real faults reading a node's file-backed spill (open/read/deserialize)
+    /// and must never be treated as a cascade.
+    #[error("Upstream node terminated unexpectedly: {0}")]
+    UpstreamDisconnected(String),
     #[error("Cannot spawn worker thread: {0}")]
     CannotSpawnWorkerThread(#[source] std::io::Error),
     #[error("Invalid source name {0}")]
@@ -133,3 +141,126 @@ impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
 pub struct CannotConvertF64ToJson(pub f64);
 
 pub type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NodeErrorKind {
+    Processor,
+    Sink,
+    Source,
+}
+
+/// Recovers the `Diagnostic` a node-kind `ExecutionError` is carrying, if it is carrying one.
+///
+/// `Factory` is deliberately excluded: a factory's `build()` returns its own error type, not a
+/// boxed `Diagnostic`. Add it here only once some factory actually boxes one.
+///
+/// Every reporting surface must go through this rather than stringifying the error — rendering
+/// a carried `Diagnostic` with `{:?}` (or even `{}`) discards its code, severity, help and
+/// `feature_id`, and the caller then has to invent replacements.
+pub fn recover_diagnostic(e: &ExecutionError) -> Option<&Diagnostic> {
+    match e {
+        ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
+            b.downcast_ref::<Diagnostic>()
+        }
+        _ => None,
+    }
+}
+
+/// Renders an error and its `source()` chain as a single readable line.
+///
+/// Several `ExecutionError` variants already interpolate their source into their own `Display`
+/// (`Factory` uses `{error}`; `Source`/`Processor`/`Sink` use `{0}`), so a naive walk would print
+/// the inner message twice. A child whose rendering the parent already contains is skipped.
+pub fn render_error_chain(e: &dyn std::error::Error) -> String {
+    let mut rendered = e.to_string();
+    let mut current = e.source();
+    while let Some(source) = current {
+        let segment = source.to_string();
+        if !rendered.contains(&segment) {
+            rendered.push_str(": ");
+            rendered.push_str(&segment);
+        }
+        current = source.source();
+    }
+    rendered
+}
+
+// Must preserve the box exactly as received — a Diagnostic carrier must not be collapsed via format!(), since the join fold later downcasts it back out.
+pub(crate) fn to_node_error(e: BoxedError, kind: NodeErrorKind) -> ExecutionError {
+    match kind {
+        NodeErrorKind::Processor => ExecutionError::Processor(e),
+        NodeErrorKind::Sink => ExecutionError::Sink(e),
+        NodeErrorKind::Source => ExecutionError::Source(e),
+    }
+}
+
+#[cfg(test)]
+mod to_node_error_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+    fn dummy_diagnostic(message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    #[test]
+    fn boxed_diagnostic_round_trips_through_each_kind() {
+        for kind in [
+            NodeErrorKind::Processor,
+            NodeErrorKind::Sink,
+            NodeErrorKind::Source,
+        ] {
+            let original = dummy_diagnostic("boom");
+            let boxed: BoxedError = Box::new(original);
+
+            let wrapped = to_node_error(boxed, kind);
+
+            let inner = match wrapped {
+                ExecutionError::Processor(b)
+                | ExecutionError::Sink(b)
+                | ExecutionError::Source(b) => b,
+                other => panic!("unexpected variant: {other:?}"),
+            };
+            let recovered = inner
+                .downcast::<Diagnostic>()
+                .expect("boxed Diagnostic must survive to_node_error intact");
+            assert_eq!(recovered.code, ErrorCode::InternalInvariantViolation);
+            assert_eq!(recovered.message, "boom");
+        }
+    }
+
+    #[test]
+    fn non_diagnostic_boxed_error_wraps_opaque() {
+        let boxed: BoxedError = Box::new(std::io::Error::other("plain io boom"));
+
+        let wrapped = to_node_error(boxed, NodeErrorKind::Sink);
+
+        assert!(wrapped.to_string().contains("plain io boom"));
+        match wrapped {
+            ExecutionError::Sink(b) => {
+                assert!(b.downcast::<Diagnostic>().is_err());
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn wraps_into_the_variant_matching_kind() {
+        let err = |kind| to_node_error(Box::new(std::io::Error::other("x")), kind);
+
+        assert!(matches!(
+            err(NodeErrorKind::Processor),
+            ExecutionError::Processor(_)
+        ));
+        assert!(matches!(err(NodeErrorKind::Sink), ExecutionError::Sink(_)));
+        assert!(matches!(
+            err(NodeErrorKind::Source),
+            ExecutionError::Source(_)
+        ));
+    }
+}

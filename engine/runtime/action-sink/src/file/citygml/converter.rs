@@ -6,8 +6,10 @@
 //! never reach it, points are dropped, triangles fold into `MultiSurface`, and
 //! the material/texture palettes are the feature's whole global arrays.
 
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
+use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GeometryValue, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
@@ -34,10 +36,17 @@ pub const STRICT_TEXTURE_STAGING: bool = false;
 pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<ConvertedCityObject, SinkError> {
     let GeometryValue::CityGmlGeometry(ref geometry) = feature.geometry.value else {
-        // A feature carrying some other geometry has never produced a city
-        // object here; it is passed over, not reported.
+        // Wrong geometry kind, which is distinct from converting to nothing.
+        if let Some(diagnostics) = diagnostics {
+            diagnostics.report_drop(
+                ErrorCode::CitygmlNonCitygmlGeometry,
+                Some(feature.id),
+                Some(feature.has_geometry()),
+            );
+        }
         return Ok(ConvertedCityObject {
             geometries: Vec::new(),
             appearance: AppearanceBundle::default(),
@@ -49,6 +58,16 @@ pub fn convert_city_object(
     };
 
     let (geometries, appearance) = convert_citygml_geometry(geometry, lod_mask);
+    // CityGML geometry that converted to nothing, distinct from the wrong kind above.
+    if geometries.is_empty() {
+        if let Some(diagnostics) = diagnostics {
+            diagnostics.report_drop(
+                ErrorCode::CitygmlEmptyGeometry,
+                Some(feature.id),
+                Some(feature.has_geometry()),
+            );
+        }
+    }
     // Deliberately not filtered by LOD: this reproduces the envelope the legacy
     // build has always written, which is folded over every vertex of the
     // feature's geometry.

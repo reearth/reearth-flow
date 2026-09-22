@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::Builder;
 use std::thread::JoinHandle;
@@ -9,6 +10,7 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
@@ -26,7 +28,7 @@ use crate::event::{Event, EventHandler, EventHub};
 use crate::executor_operation::{ExecutorOperation, ExecutorOptions, NodeContext};
 use crate::incremental::IncrementalRunConfig;
 use crate::kvs::KvStore;
-use crate::node::{EdgeId, NodeId, Port};
+use crate::node::{NodeId, Port, REJECTED_PORT};
 
 use super::execution_dag::ExecutionDag;
 use super::source_node::{create_source_node, SourceNode};
@@ -37,10 +39,40 @@ pub struct DagExecutor {
     options: ExecutorOptions,
 }
 
+#[derive(Debug, Default)]
+pub struct NodeOutcome {
+    pub summaries: Vec<Diagnostic>,
+}
+
+type NodeThreadResult = (NodeOutcome, Result<(), ExecutionError>);
+
+#[derive(Debug, Clone)]
+pub struct NodeMeta {
+    pub composed_id: String,
+    pub action: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeKindTag {
+    Source,
+    Processor,
+    Sink,
+}
+
+#[derive(Debug, Clone)]
+pub struct RejectRoutingInfo {
+    pub composed_id: String,
+    pub kind: NodeKindTag,
+    pub output_ports: Vec<Port>,
+    pub rejected_port_wired: bool,
+}
+
 pub struct DagExecutorJoinHandle {
-    join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
+    join_handles: Vec<(NodeMeta, JoinHandle<NodeThreadResult>)>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
+    subscriber: Option<tokio::task::JoinHandle<()>>,
+    dropped_events: Arc<AtomicU64>,
 }
 
 impl DagExecutor {
@@ -72,6 +104,38 @@ impl DagExecutor {
         })
     }
 
+    pub fn node_identities(&self) -> Vec<(String, String)> {
+        self.builder_dag
+            .graph()
+            .node_weights()
+            .map(|n| (n.composed_id(), n.handle.id.to_string()))
+            .collect()
+    }
+
+    pub fn reject_routing_info(&self) -> Vec<RejectRoutingInfo> {
+        let graph = self.builder_dag.graph();
+        graph
+            .node_indices()
+            .map(|idx| {
+                let node = &graph[idx];
+                let kind = match &node.kind {
+                    NodeKind::Source(_) => NodeKindTag::Source,
+                    NodeKind::Processor(_) => NodeKindTag::Processor,
+                    NodeKind::Sink(_) => NodeKindTag::Sink,
+                };
+                let rejected_port_wired = graph
+                    .edges_directed(idx, Direction::Outgoing)
+                    .any(|edge| edge.weight().from == *REJECTED_PORT);
+                RejectRoutingInfo {
+                    composed_id: node.composed_id(),
+                    kind,
+                    output_ports: node.output_ports.clone(),
+                    rejected_port_wired,
+                }
+            })
+            .collect()
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn start<F: Send + 'static + Future + Unpin + Debug + Clone>(
         self,
@@ -80,21 +144,18 @@ impl DagExecutor {
         variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
-        ingress_state: Arc<State>,
         feature_state: Arc<State>,
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         executor_id: uuid::Uuid,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
-        // Extract fields from options before partial moves.
         let sandbox_root = self.options.sandbox_root.clone();
+        let disposition_policy = self.options.disposition_policy.clone();
 
-        // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.feature_flush_threshold,
-            Arc::clone(&ingress_state),
             Arc::clone(&feature_state),
             executor_id,
         )?;
@@ -117,6 +178,9 @@ impl DagExecutor {
             sandbox_root.clone(),
         );
 
+        // Shared across nodes: dedups ctx.warn_once() to once per code per run.
+        let warn_once: reearth_flow_diagnostics::WarnOnceSet = Arc::default();
+
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
             execution_dag.graph()[i].is_source
                 && execute_node_ids.contains(&execution_dag.graph()[i].handle.id)
@@ -127,11 +191,18 @@ impl DagExecutor {
         let notify = Arc::new(Notify::new());
         let notify_publish = Arc::clone(&notify);
         let notify_subscribe = Arc::clone(&notify);
-        runtime.spawn(async move {
-            subscribe_event(&mut receiver, notify_subscribe.clone(), &event_handlers).await;
+        let dropped_events = Arc::new(AtomicU64::new(0));
+        let subscriber_dropped_events = Arc::clone(&dropped_events);
+        let subscriber = runtime.spawn(async move {
+            subscribe_event(
+                &mut receiver,
+                notify_subscribe.clone(),
+                &event_handlers,
+                subscriber_dropped_events,
+            )
+            .await;
         });
 
-        // Start the threads.
         if should_run_sources {
             let source_node = create_source_node(
                 ctx,
@@ -175,7 +246,8 @@ impl DagExecutor {
                         node_index,
                         shutdown.clone(),
                         runtime.clone(),
-                        incremental_run_config.is_some(),
+                        warn_once.clone(),
+                        disposition_policy.clone(),
                     )
                     .await;
                     join_handles.push(start_processor(processor_node)?);
@@ -194,7 +266,8 @@ impl DagExecutor {
                         node_index,
                         shutdown.clone(),
                         runtime.clone(),
-                        incremental_run_config.is_some(),
+                        warn_once.clone(),
+                        disposition_policy.clone(),
                     );
                     join_handles.push(start_sink(sink_node)?);
                 }
@@ -202,15 +275,18 @@ impl DagExecutor {
         }
 
         if let Some(cfg) = incremental_run_config.clone() {
-            let replay_groups =
-                build_replay_groups(&execution_dag, &execute_node_ids, &cfg.available_edge_ids);
+            let replay_groups = build_replay_groups(
+                &execution_dag,
+                &execute_node_ids,
+                &cfg.available_port_file_ids,
+            );
             tracing::info!("Replay groups:");
             for g in &replay_groups {
                 tracing::info!("  group edges={}", g.edges.len());
                 for e in &g.edges {
                     tracing::info!(
-                        "    edge_id={}, port={}",
-                        e.edge_id,
+                        "    port_file={}, port={}",
+                        e.port_file_id,
                         e.downstream_input_port
                     );
                 }
@@ -237,17 +313,23 @@ impl DagExecutor {
                         sandbox_root,
                     );
                     replay_inject(cfg, replay_groups, node_ctx);
-                    Ok::<(), ExecutionError>(())
+                    (NodeOutcome::default(), Ok::<(), ExecutionError>(()))
                 })
                 .map_err(ExecutionError::CannotSpawnWorkerThread)?;
 
-            join_handles.push(injector_handle);
+            let injector_meta = NodeMeta {
+                composed_id: "replay-injector".to_string(),
+                action: "replay-injector".to_string(),
+            };
+            join_handles.push((injector_meta, injector_handle));
         }
 
         Ok(DagExecutorJoinHandle {
             join_handles,
             notify: notify_publish.clone(),
             executor_id,
+            subscriber: Some(subscriber),
+            dropped_events,
         })
     }
 }
@@ -256,98 +338,186 @@ async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
     event_handlers: &[Arc<dyn EventHandler>],
+    dropped: Arc<AtomicU64>,
 ) {
-    crate::event::subscribe_event(receiver, notify, event_handlers).await;
+    crate::event::subscribe_event(receiver, notify, event_handlers, dropped).await;
 }
 
 impl DagExecutorJoinHandle {
-    pub fn join(&mut self) -> Result<(), ExecutionError> {
-        loop {
+    /// Always returns `Ok(_)` even when nodes failed, under every policy — check
+    /// `failed_nodes`, don't rely on `is_ok()`. `Err` here means the run could not be
+    /// assembled at all, not that a node failed.
+    pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
+        let mut results: Vec<(NodeMeta, NodeThreadResult)> =
+            Vec::with_capacity(self.join_handles.len());
+
+        while !self.join_handles.is_empty() {
             let Some(finished) = self
                 .join_handles
                 .iter()
                 .enumerate()
-                .find_map(|(i, handle)| handle.is_finished().then_some(i))
+                .find_map(|(i, (_, handle))| handle.is_finished().then_some(i))
             else {
                 std::thread::sleep(Duration::from_millis(250));
 
                 continue;
             };
-            let handle = self.join_handles.swap_remove(finished);
-            handle.join().unwrap()?;
-
-            if self.join_handles.is_empty() {
-                // `enhanced_flush(5000)` used to live here. Its early-break
-                // condition (`sender.receiver_count() == 0`) never fired in
-                // practice because broadcast subscribers stay attached for
-                // the lifetime of the workflow, so the call effectively
-                // waited the full 5 seconds on every workflow execution
-                // (~11+ minutes across the 141 workflow-tests). The runner-
-                // level shutdown sleep + the trailing settle in any caller
-                // that needs one provides enough of a drain window without
-                // this 5s tax.
-                cleanup_executor_cache(self.executor_id);
-                return Ok(());
-            }
+            let (meta, handle) = self.join_handles.swap_remove(finished);
+            // Panics are re-raised (not folded into RunSummary) — a panic is
+            // a bug, not a per-node failure.
+            results.push((meta, handle.join().unwrap()));
         }
+
+        cleanup_executor_cache(self.executor_id);
+
+        // Both policies fold every outcome into the summary. `on_fatal` used to make `Terminate`
+        // return the first `Err` here, which discarded every other node's result and every
+        // aggregated diagnostic in the run — including from nodes that succeeded. It never meant
+        // early cancellation: all node threads are joined above before this point is reached, so
+        // the work has already happened and only the reporting differed.
+        //
+        // A non-empty `failed_nodes` is the run-failed signal, and `summary_into_unit_result`
+        // still converts that back into `Err` for the unit-returning `Runner::run` wrappers.
+        Ok(fold_outcomes(results))
     }
 
     pub fn notify(&self) {
-        self.notify.notify_waiters();
+        // notify_one (not notify_waiters): stores a permit, so a wakeup fired
+        // before the subscriber parks isn't lost.
+        self.notify.notify_one();
     }
+
+    pub fn take_subscriber(&mut self) -> Option<tokio::task::JoinHandle<()>> {
+        self.subscriber.take()
+    }
+
+    pub fn dropped_events(&self) -> u64 {
+        self.dropped_events.load(Ordering::Relaxed)
+    }
+}
+
+/// Every `failed_nodes` entry is stamped `effective_disposition = Fatal`
+/// here, regardless of the diagnostic's original severity.
+///
+/// A node whose upstream died reports `UpstreamDisconnected`: it did not fail on its own account,
+/// it noticed another node's failure. Listing it beside the real error points the user at an
+/// innocent node, so those rows are dropped **only when some other node also failed** — a lone
+/// disconnect is kept, because then it is the run's only signal.
+///
+/// Matched on the variant, never on message text: `CannotReceiveFromChannel` also covers real
+/// faults reading a node's file-backed spill, which must keep being reported. The mirror case is
+/// already handled for sources, which swallow `CannotSendToChannel` when a listener quits (see
+/// `start_source`).
+fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
+    let mut aggregated_diagnostics = Vec::new();
+    let mut failed: Vec<(Diagnostic, bool)> = Vec::new();
+
+    for (meta, (outcome, result)) in results {
+        aggregated_diagnostics.extend(outcome.summaries);
+        if let Err(e) = result {
+            let is_cascade = matches!(e, ExecutionError::UpstreamDisconnected(_));
+            let mut diagnostic = diagnostic_from_execution_error(e, &meta);
+            diagnostic.effective_disposition = Some(Disposition::Fatal);
+            failed.push((diagnostic, is_cascade));
+        }
+    }
+
+    let has_independent_failure = failed.iter().any(|(_, is_cascade)| !is_cascade);
+    let failed_nodes = failed
+        .into_iter()
+        .filter(|(_, is_cascade)| !(has_independent_failure && *is_cascade))
+        .map(|(diagnostic, _)| diagnostic)
+        .collect();
+
+    RunSummary {
+        failed_nodes,
+        aggregated_diagnostics,
+        dropped_event_count: 0,
+    }
+}
+
+/// `meta` is stamped only on synthesized fallbacks — a recovered diagnostic
+/// keeps its own `node_id`/`action_type`.
+///
+/// Shares `recover_diagnostic` with the worker's terminal-summary fallback; keeping one
+/// implementation is deliberate, since the two drifting apart is what let a carried
+/// `Diagnostic` reach the frontend as a `{:?}` dump.
+fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagnostic {
+    if let Some(diagnostic) = crate::errors::recover_diagnostic(&e) {
+        return diagnostic.clone();
+    }
+    Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::InternalUnclassified)
+            .with_message(crate::errors::render_error_chain(&e)),
+        Some(meta.composed_id.clone()),
+        Some(meta.action.clone()),
+        None,
+    )
 }
 
 fn start_source<F: Send + 'static + Future + Unpin + Debug>(
     source: SourceNode<F>,
-) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
+) -> Result<(NodeMeta, JoinHandle<NodeThreadResult>), ExecutionError> {
+    let meta = source.node_meta();
     let handle = Builder::new()
         .name("sources".into())
-        .spawn(move || match source.run() {
-            Ok(()) => Ok(()),
-            // Channel disconnection means the source listener has quit.
-            // Maybe it quit gracefully so we don't need to propagate the error.
-            Err(e) => {
-                if let ExecutionError::Source(e) = &e {
-                    if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
-                        return Ok(());
+        .spawn(move || {
+            let result = match source.run() {
+                Ok(()) => Ok(()),
+                // CannotSendToChannel here means the listener quit gracefully
+                // — swallowed, not a real failure.
+                Err(e) => {
+                    if let ExecutionError::Source(e) = &e {
+                        if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
+                            return (NodeOutcome::default(), Ok(()));
+                        }
                     }
+                    Err(e)
                 }
-                Err(e)
-            }
+            };
+            (NodeOutcome::default(), result)
         })
         .map_err(ExecutionError::CannotSpawnWorkerThread)?;
 
-    Ok(handle)
+    Ok((meta, handle))
 }
 
 fn start_processor<F: Send + 'static + Future + Unpin + Debug>(
     processor: ProcessorNode<F>,
-) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
-    Builder::new()
-        .name(processor.handle().to_string())
+) -> Result<(NodeMeta, JoinHandle<NodeThreadResult>), ExecutionError> {
+    let name = processor.handle().to_string();
+    let meta = processor.node_meta();
+    let summaries_sink = processor.summaries_sink();
+    let handle = Builder::new()
+        .name(name)
         .spawn(move || {
-            processor.run()?;
-            Ok(())
+            let result = processor.run();
+            let summaries = std::mem::take(&mut *summaries_sink.lock());
+            (NodeOutcome { summaries }, result)
         })
-        .map_err(ExecutionError::CannotSpawnWorkerThread)
+        .map_err(ExecutionError::CannotSpawnWorkerThread)?;
+    Ok((meta, handle))
 }
 
 fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
     sink: SinkNode<F>,
-) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
-    Builder::new()
-        .name(sink.handle().to_string())
-        .spawn(|| {
-            sink.run()?;
-            Ok(())
+) -> Result<(NodeMeta, JoinHandle<NodeThreadResult>), ExecutionError> {
+    let name = sink.handle().to_string();
+    let meta = sink.node_meta();
+    let summaries_sink = sink.summaries_sink();
+    let handle = Builder::new()
+        .name(name)
+        .spawn(move || {
+            let result = sink.run();
+            let summaries = std::mem::take(&mut *summaries_sink.lock());
+            (NodeOutcome { summaries }, result)
         })
-        .map_err(ExecutionError::CannotSpawnWorkerThread)
+        .map_err(ExecutionError::CannotSpawnWorkerThread)?;
+    Ok((meta, handle))
 }
 
-/// Collects nodes that should be executed in incremental run.
-/// Only includes nodes that either:
-/// 1. Are downstream of the start node, OR
-/// 2. Have at least one incoming edge that is NOT in available_edges (need to be executed)
+/// Nodes that must run in an incremental run: the start node, everything downstream
+/// of it, and any node whose upstream port file is not available for replay.
 fn collect_executable_node_ids(
     dag: &ExecutionDag,
     cfg: &IncrementalRunConfig,
@@ -364,7 +534,6 @@ fn collect_executable_node_ids(
             )))
         })?;
 
-    // First, collect all downstream nodes from start_node
     let mut downstream_nodes: HashSet<NodeId> = HashSet::new();
     let mut q = VecDeque::new();
 
@@ -380,27 +549,23 @@ fn collect_executable_node_ids(
         }
     }
 
-    // Second, check all nodes to see if they have incoming edges not in available_edges
     let mut executable_nodes = downstream_nodes.clone();
 
     for node_idx in g.node_indices() {
         let node_id = g[node_idx].handle.id.clone();
 
-        // Skip if already marked as executable
         if executable_nodes.contains(&node_id) {
             continue;
         }
 
-        // Check incoming edges
         let has_unavailable_edge = g.edges_directed(node_idx, Direction::Incoming).any(|edge| {
-            let edge_id = edge.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
-            edge_id.is_none_or(|id| !cfg.available_edge_ids.contains(&id))
+            let port_file_id = g[edge.source()].port_file_id(&edge.weight().input_port);
+            !cfg.available_port_file_ids.contains(&port_file_id)
         });
 
-        // If this node has any incoming edge that's not available, it must be executed
         if has_unavailable_edge {
             tracing::info!(
-                "Node {} marked as executable: has incoming edges not in available_edges",
+                "Node {} marked as executable: has incoming edges whose upstream port file is not available",
                 node_id
             );
             executable_nodes.insert(node_id);
@@ -412,7 +577,8 @@ fn collect_executable_node_ids(
 
 #[derive(Clone)]
 struct ReplayEdge {
-    edge_id: EdgeId,
+    /// Intermediate-data file of the upstream output port feeding this edge.
+    port_file_id: String,
     downstream_input_port: Port,
 }
 
@@ -422,49 +588,47 @@ struct ReplayGroup {
     edges: Vec<ReplayEdge>,
 }
 
-/// Builds replay groups only for edges that are in available_edges.
-/// This ensures we only replay data that was actually copied from the previous run.
+/// Groups the edges from skipped nodes into executed nodes by channel, one group per
+/// (source node, destination node) pair, keeping the sender the replayed features are
+/// injected on.
 fn build_replay_groups(
     dag: &ExecutionDag,
     execute: &HashSet<NodeId>,
-    available_edge_ids: &HashSet<uuid::Uuid>,
+    available_port_file_ids: &HashSet<String>,
 ) -> Vec<ReplayGroup> {
     let g = dag.graph();
 
-    let mut grouped: HashMap<(NodeId, Port), (Sender<ExecutorOperation>, Vec<ReplayEdge>)> =
-        HashMap::new();
+    let mut grouped: HashMap<
+        (petgraph::graph::NodeIndex, petgraph::graph::NodeIndex),
+        (Sender<ExecutorOperation>, Vec<ReplayEdge>),
+    > = HashMap::new();
 
     for e in g.edge_references() {
         let src = g[e.source()].handle.id.clone();
         let dst = g[e.target()].handle.id.clone();
 
-        // Only create replay groups for edges where:
-        // 1. Destination is executable
-        // 2. Source is not executable (i.e., upstream)
-        // 3. Edge is in available_edges (was actually copied)
         if execute.contains(&dst) && !execute.contains(&src) {
-            let edge_id_parsed = e.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
-            let is_available = edge_id_parsed.is_some_and(|id| available_edge_ids.contains(&id));
+            let port_file_id = g[e.source()].port_file_id(&e.weight().input_port);
 
-            if !is_available {
+            if !available_port_file_ids.contains(&port_file_id) {
                 tracing::info!(
-                    "Skipping replay edge {} -> {}: edge {} not in available_edges",
+                    "Skipping replay edge {} -> {}: port file {} not available",
                     src,
                     dst,
-                    e.weight().edge_id
+                    port_file_id
                 );
                 continue;
             }
 
-            let downstream_input_port = e.weight().input_port.clone();
+            let downstream_input_port = e.weight().output_port.clone();
 
             let replay_edge = ReplayEdge {
-                edge_id: e.weight().edge_id.clone(),
+                port_file_id,
                 downstream_input_port: downstream_input_port.clone(),
             };
 
             grouped
-                .entry((dst.clone(), downstream_input_port))
+                .entry((e.source(), e.target()))
                 .and_modify(|(_, v)| v.push(replay_edge.clone()))
                 .or_insert((e.weight().sender.clone(), vec![replay_edge]));
         }
@@ -476,11 +640,12 @@ fn build_replay_groups(
         .collect()
 }
 
+/// Reads every feature of one port file from the previous run's feature store.
 fn read_replay_features(
     state: &reearth_flow_state::State,
-    edge_id: &str,
+    port_file_id: &str,
 ) -> std::io::Result<Vec<reearth_flow_types::Feature>> {
-    let values = state.read_jsonl_auto_sync::<serde_json::Value>(edge_id)?;
+    let values = state.read_jsonl_auto_sync::<serde_json::Value>(port_file_id)?;
     let mut out = Vec::with_capacity(values.len());
     for v in values {
         let f: reearth_flow_types::Feature =
@@ -497,8 +662,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
         let mut sent = 0usize;
 
         for e in &g.edges {
-            let edge_id_str = e.edge_id.to_string();
-            match read_replay_features(&cfg.previous_feature_state, &edge_id_str) {
+            match read_replay_features(&cfg.previous_feature_state, &e.port_file_id) {
                 Ok(features) => {
                     for feature in features {
                         let ctx = crate::executor_operation::ExecutorContext::new(
@@ -519,7 +683,11 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                     }
                 }
                 Err(err) => {
-                    tracing::warn!("Replay inject read failed for {}: {:?}", edge_id_str, err);
+                    tracing::warn!(
+                        "Replay inject read failed for {}: {:?}",
+                        e.port_file_id,
+                        err
+                    );
                 }
             }
         }
@@ -529,5 +697,384 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
         });
 
         tracing::info!("Replay inject done: sent {} op(s) and terminate", sent);
+    }
+}
+
+#[cfg(test)]
+mod fold_outcomes_tests {
+    use super::*;
+    use reearth_flow_diagnostics::Severity;
+
+    fn diagnostic(code: ErrorCode, message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(code).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    fn outcome(summaries: Vec<Diagnostic>) -> NodeOutcome {
+        NodeOutcome { summaries }
+    }
+
+    fn meta(composed_id: &str, action: &str) -> NodeMeta {
+        NodeMeta {
+            composed_id: composed_id.to_string(),
+            action: action.to_string(),
+        }
+    }
+
+    fn some_meta() -> NodeMeta {
+        meta("writer-1", "Cesium 3D Tiles Writer")
+    }
+
+    #[test]
+    fn empty_input_returns_default_summary() {
+        let summary = fold_outcomes(vec![]);
+        assert!(summary.failed_nodes.is_empty());
+        assert!(summary.aggregated_diagnostics.is_empty());
+        assert_eq!(summary.dropped_event_count, 0);
+    }
+
+    #[test]
+    fn all_success_folds_summaries_with_empty_failed_nodes() {
+        let d1 = diagnostic(ErrorCode::GltfZeroFaceSolid, "d1");
+        let d2 = diagnostic(ErrorCode::Cesium3dtilesEmptyGeometry, "d2");
+        let results = vec![
+            (some_meta(), (outcome(vec![d1.clone()]), Ok(()))),
+            (some_meta(), (outcome(vec![d2.clone()]), Ok(()))),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert!(summary.failed_nodes.is_empty());
+        assert_eq!(summary.aggregated_diagnostics.len(), 2);
+        assert_eq!(summary.aggregated_diagnostics[0].message, "d1");
+        assert_eq!(summary.aggregated_diagnostics[1].message, "d2");
+    }
+
+    #[test]
+    fn recovers_diagnostic_via_downcast_from_processor_error() {
+        let original = diagnostic(ErrorCode::InternalInvariantViolation, "boom");
+        let results = vec![(
+            some_meta(),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Processor(Box::new(original))),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let recovered = &summary.failed_nodes[0];
+        assert_eq!(recovered.code, ErrorCode::InternalInvariantViolation);
+        assert_eq!(recovered.message, "boom");
+        assert_eq!(recovered.effective_disposition, Some(Disposition::Fatal));
+    }
+
+    #[test]
+    fn recovers_diagnostic_via_downcast_from_sink_error() {
+        let original = diagnostic(ErrorCode::InternalInvariantViolation, "sink boom");
+        let results = vec![(
+            some_meta(),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Sink(Box::new(original))),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(summary.failed_nodes[0].message, "sink boom");
+        assert_eq!(
+            summary.failed_nodes[0].effective_disposition,
+            Some(Disposition::Fatal)
+        );
+    }
+
+    #[test]
+    fn recovers_diagnostic_via_downcast_from_source_error() {
+        let original = diagnostic(ErrorCode::InternalInvariantViolation, "source boom");
+        let boxed: crate::errors::BoxedError = Box::new(original);
+        let results = vec![(
+            some_meta(),
+            (outcome(vec![]), Err(ExecutionError::Source(boxed))),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(summary.failed_nodes[0].message, "source boom");
+    }
+
+    #[test]
+    fn recovered_diagnostic_keeps_its_own_identity_not_the_thread_meta() {
+        let mut original = diagnostic(ErrorCode::InternalInvariantViolation, "boom");
+        original.node_id = Some("original-composed-id".to_string());
+        original.action_type = Some("Original Action".to_string());
+        let results = vec![(
+            meta("thread-meta-id", "Thread Meta Action"),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Processor(Box::new(original))),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("original-composed-id")
+        );
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("Original Action")
+        );
+    }
+
+    #[test]
+    fn synthesizes_unclassified_for_non_diagnostic_boxed_error() {
+        let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
+        let results = vec![(
+            some_meta(),
+            (outcome(vec![]), Err(ExecutionError::Processor(boxed))),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let synthesized = &summary.failed_nodes[0];
+        assert_eq!(synthesized.code, ErrorCode::InternalUnclassified);
+        assert_eq!(synthesized.effective_disposition, Some(Disposition::Fatal));
+        assert!(synthesized.message.contains("io boom"));
+        assert!(synthesized.message.contains("Processor error"));
+    }
+
+    #[test]
+    fn synthesized_diagnostic_is_stamped_with_the_thread_meta_identity() {
+        let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
+        let results = vec![(
+            meta("prefix-a.node-7", "Some Writer"),
+            (outcome(vec![]), Err(ExecutionError::Sink(boxed))),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("prefix-a.node-7")
+        );
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("Some Writer")
+        );
+    }
+
+    #[test]
+    fn synthesizes_unclassified_for_non_structured_execution_error_variant() {
+        let results = vec![(
+            some_meta(),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::CannotSendToChannel("channel boom".into())),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let synthesized = &summary.failed_nodes[0];
+        assert_eq!(synthesized.code, ErrorCode::InternalUnclassified);
+        assert_eq!(synthesized.severity, Severity::Fatal);
+        assert_eq!(synthesized.effective_disposition, Some(Disposition::Fatal));
+        assert!(synthesized.message.contains("channel boom"));
+    }
+
+    #[test]
+    fn mixed_outcomes_preserve_collection_order_for_both_vecs() {
+        let d_ok_1 = diagnostic(ErrorCode::GltfZeroFaceSolid, "ok-1");
+        let fatal_diag = diagnostic(ErrorCode::InternalInvariantViolation, "fatal-1");
+        let d_ok_2 = diagnostic(ErrorCode::Cesium3dtilesEmptyGeometry, "ok-2");
+
+        let results = vec![
+            (some_meta(), (outcome(vec![d_ok_1.clone()]), Ok(()))),
+            (
+                some_meta(),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Processor(Box::new(fatal_diag))),
+                ),
+            ),
+            (some_meta(), (outcome(vec![d_ok_2.clone()]), Ok(()))),
+            (
+                meta("node-second", "Second Action"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Sink(Box::new(std::io::Error::other(
+                        "second boom",
+                    )))),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.aggregated_diagnostics.len(), 2);
+        assert_eq!(summary.aggregated_diagnostics[0].message, "ok-1");
+        assert_eq!(summary.aggregated_diagnostics[1].message, "ok-2");
+
+        assert_eq!(summary.failed_nodes.len(), 2);
+        assert_eq!(summary.failed_nodes[0].message, "fatal-1");
+        assert_eq!(
+            summary.failed_nodes[0].code,
+            ErrorCode::InternalInvariantViolation
+        );
+        assert_eq!(
+            summary.failed_nodes[1].code,
+            ErrorCode::InternalUnclassified
+        );
+        assert!(summary.failed_nodes[1].message.contains("second boom"));
+        assert_eq!(
+            summary.failed_nodes[1].node_id.as_deref(),
+            Some("node-second")
+        );
+        for failed in &summary.failed_nodes {
+            assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
+        }
+    }
+
+    #[test]
+    fn upstream_cascade_is_dropped_when_a_real_failure_is_present() {
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-sink", "JSON Writer"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            1,
+            "the downstream node only failed because its upstream died"
+        );
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("node-source")
+        );
+    }
+
+    /// The regression Copilot's review caught: `CannotReceiveFromChannel` also covers real faults
+    /// reading a node's file-backed spill. Those are independent failures and must survive.
+    #[test]
+    fn a_file_backed_read_fault_is_not_treated_as_a_cascade() {
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-spill", "Attribute Manager"),
+                (
+                    outcome(vec![]),
+                    // Same variant the old string-matching filter would have swallowed.
+                    Err(ExecutionError::CannotReceiveFromChannel(
+                        "Failed to deserialize feature from file-backed op: eof".into(),
+                    )),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            2,
+            "a genuine file-backed read fault must not be filtered as an upstream cascade"
+        );
+    }
+
+    /// Never hide the only signal: a lone channel failure is still reported.
+    #[test]
+    fn a_sole_cascade_failure_is_still_reported() {
+        let results = vec![(
+            meta("node-sink", "JSON Writer"),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("node-sink")
+        );
+    }
+
+    #[test]
+    fn cascade_filtering_never_touches_aggregated_diagnostics() {
+        let warn = diagnostic(
+            ErrorCode::GltfZeroFaceSolid,
+            "a warning from a healthy node",
+        );
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-sink", "JSON Writer"),
+                (
+                    outcome(vec![warn]),
+                    Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.aggregated_diagnostics.len(),
+            1,
+            "a filtered node's aggregated diagnostics must survive"
+        );
+    }
+
+    #[test]
+    fn fold_outcomes_never_sets_dropped_event_count() {
+        let summary = fold_outcomes(vec![(some_meta(), (outcome(vec![]), Ok(())))]);
+        assert_eq!(summary.dropped_event_count, 0);
     }
 }

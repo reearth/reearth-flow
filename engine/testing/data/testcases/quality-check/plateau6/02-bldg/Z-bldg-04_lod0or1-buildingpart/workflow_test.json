@@ -1,6 +1,5 @@
 {
   "description": "Test Z-bldg-04 for plateau6: a BuildingPart carrying LOD0/LOD1 geometry (LOD0-1 BuildingPart error)",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

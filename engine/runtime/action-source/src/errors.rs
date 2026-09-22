@@ -6,6 +6,14 @@ pub enum SourceError {
     CityGmlReaderFactory(String),
     #[error("CityGmlFileReader error: {0}")]
     CityGmlFileReader(String),
+    #[error("CityGml2ReaderFactory error: {0}")]
+    CityGml2ReaderFactory(String),
+    #[error("CityGml2Reader error: {0}")]
+    CityGml2Reader(String),
+    #[error("CityGml3ReaderFactory error: {0}")]
+    CityGml3ReaderFactory(String),
+    #[error("CityGml3Reader error: {0}")]
+    CityGml3Reader(String),
     #[error("CsvReaderFactory error: {0}")]
     CsvReaderFactory(String),
     #[error("CsvFileReader error: {0}")]
@@ -93,6 +101,16 @@ pub enum GeometryParsingError {
     UnsupportedGeometryCollection,
     #[error("Unsupported geometry type: {0}")]
     UnsupportedGeometryType(String),
+    /// A configuration error, not a row error: every row would fail the same
+    /// way, so this fails the whole read up front instead of rejecting every
+    /// row for an identical reason. Lists the available columns alongside the
+    /// missing one, since that is the actionable half of the message.
+    #[cfg(feature = "new-geometry")]
+    #[error(
+        "configured geometry column '{column}' was not found in the header; \
+         available columns: {available}"
+    )]
+    ConfiguredColumnMissing { column: String, available: String },
 }
 
 pub type Result<T, E = SourceError> = std::result::Result<T, E>;

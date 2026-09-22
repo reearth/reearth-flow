@@ -416,6 +416,10 @@ impl Processor for FeatureMerger {
             self.executor_id = Some(fw.executor_id());
         }
 
+        // Computed once up front: `ctx.port` is moved out below, and `Context` doesn't
+        // borrow from it, so this avoids reconstructing a `Context` field-by-field per arm.
+        let base_context = ctx.as_context();
+
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
@@ -442,16 +446,7 @@ impl Processor for FeatureMerger {
                         if self.requestor_before_value.is_some() {
                             let prev = self.requestor_before_value.clone().unwrap();
                             self.requestor_complete.insert(prev, true);
-                            self.change_group(
-                                Context {
-                                    variables: ctx.variables.clone(),
-                                    storage_resolver: ctx.storage_resolver.clone(),
-                                    kv_store: ctx.kv_store.clone(),
-                                    event_hub: ctx.event_hub.clone(),
-                                    sandbox_root: ctx.sandbox_root.clone(),
-                                },
-                                fw,
-                            )?;
+                            self.change_group(base_context.clone(), fw)?;
                         }
                         self.requestor_before_value = Some(requestor_attribute_value.clone());
                         idx
@@ -484,16 +479,7 @@ impl Processor for FeatureMerger {
                         if self.supplier_before_value.is_some() {
                             let prev = self.supplier_before_value.clone().unwrap();
                             self.supplier_complete.insert(prev, true);
-                            self.change_group(
-                                Context {
-                                    variables: ctx.variables.clone(),
-                                    storage_resolver: ctx.storage_resolver.clone(),
-                                    kv_store: ctx.kv_store.clone(),
-                                    event_hub: ctx.event_hub.clone(),
-                                    sandbox_root: ctx.sandbox_root.clone(),
-                                },
-                                fw,
-                            )?;
+                            self.change_group(base_context.clone(), fw)?;
                         }
                         self.supplier_before_value = Some(supplier_attribute_value.clone());
                         idx

@@ -1,0 +1,63 @@
+id: 550e8400-e29b-41d4-a716-446655440900
+name: "Repro: expression fatal in Statistics Calculator"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440901
+
+errorPolicy:
+  allowRelaxInternal: true
+  overrides:
+    - node: "798af2c6-ccba-54aa-8148-f82fab95596d"
+      disposition: warn_drop
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440901
+    name: "Expression Fatal Graph"
+    nodes:
+      - id: 550e8400-e29b-41d4-a716-446655440902
+        name: "FeatureCreator"
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"height": 10},
+                {"height": 20},
+                {"height": 30},
+                {"height": 40},
+                {"height": 50},
+              ]
+
+      - id: 798af2c6-ccba-54aa-8148-f82fab95596d
+        name: "StatisticsCalculator"
+        type: action
+        action: Statistics Calculator
+        with:
+          calculations:
+            - newAttribute: mean_height_m
+              aggregation: mean
+              expr:
+                type: flowExpr
+                value: "attributes[\"test\"]"
+
+      - id: 550e8400-e29b-41d4-a716-446655440904
+        name: "Output"
+        type: action
+        action: Feature Writer
+        with:
+          format:
+            type: json
+          output:
+            type: string
+            value: out.json
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440905
+        from: 550e8400-e29b-41d4-a716-446655440902
+        to: 798af2c6-ccba-54aa-8148-f82fab95596d
+        fromPort: features
+        toPort: features
+      - id: 550e8400-e29b-41d4-a716-446655440906
+        from: 798af2c6-ccba-54aa-8148-f82fab95596d
+        to: 550e8400-e29b-41d4-a716-446655440904
+        fromPort: features
+        toPort: features

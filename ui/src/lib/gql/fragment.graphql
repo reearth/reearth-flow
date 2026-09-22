@@ -80,14 +80,18 @@ fragment Trigger on Trigger {
   enabled
 }
 
-fragment NodeExecution on NodeExecution {
-  id
+fragment Diagnostic on Diagnostic {
+  code
+  category
+  severity
+  effectiveDisposition
   nodeId
-  jobId
-  status
-  createdAt
-  startedAt
-  completedAt
+  actionType
+  featureId
+  message
+  help
+  aggregatedCount
+  sampleFeatureIds
 }
 
 fragment Job on Job {

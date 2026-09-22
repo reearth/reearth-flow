@@ -8,7 +8,7 @@ import {
 import { Button } from "@flow/components";
 import { DetailsBox } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 import { DeploymentEditDialog } from "../DeploymentEditDialog";
 
@@ -16,12 +16,14 @@ import useHooks from "./hooks";
 
 type Props = {
   selectedDeployment: Deployment;
+  readonly?: boolean;
   setDeploymentToBeDeleted: (deployment?: Deployment) => void;
   onDeploymentRun: (deployment?: Deployment | undefined) => void;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
   selectedDeployment,
+  readonly,
   setDeploymentToBeDeleted,
   onDeploymentRun,
 }) => {
@@ -45,6 +47,7 @@ const DeploymentDetails: React.FC<Props> = ({
             <Button
               variant="default"
               size="sm"
+              disabled={readonly}
               onClick={() => onDeploymentRun(selectedDeployment)}>
               <PlayIcon />
               {t("Run")}
@@ -52,7 +55,7 @@ const DeploymentDetails: React.FC<Props> = ({
             <Button
               variant="outline"
               size="sm"
-              disabled={!selectedDeployment}
+              disabled={readonly}
               onClick={() => setOpenDeploymentEditDialog(true)}>
               <PencilLineIcon />
               {t("Edit Deployment")}
@@ -60,6 +63,7 @@ const DeploymentDetails: React.FC<Props> = ({
             <Button
               variant="destructive"
               size="sm"
+              disabled={readonly}
               onClick={() => setDeploymentToBeDeleted(selectedDeployment)}>
               <TrashIcon />
               {t("Delete")}

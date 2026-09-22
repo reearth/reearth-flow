@@ -429,7 +429,9 @@ mod tests {
             &CoordinateFrame::Crs(EpsgCode::new(6677))
         );
         assert!((footprint.area() - 12.0).abs() < 1e-9);
-        assert!(signed_area_2d(footprint.exterior()) > 0.0);
+        // EPSG:6677 stores coordinates in reflected (N, E) axis order (handedness -1),
+        // so the canonically-oriented exterior has negative signed area.
+        assert!(signed_area_2d(footprint.exterior()) < 0.0);
     }
 
     #[test]

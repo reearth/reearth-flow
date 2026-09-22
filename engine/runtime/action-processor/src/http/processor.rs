@@ -15,10 +15,10 @@ use super::expression::{
     CompiledAuthentication, CompiledHeader, CompiledQueryParam, CompiledRequestBody,
     CompiledResponseHandling,
 };
-use super::metrics::{RequestMetrics, RequestTimer};
 use super::params::HttpCallerParam;
 use super::rate_limit::RateLimiter;
 use super::request::RequestBuilder;
+use super::response::ERROR_ATTRIBUTE;
 
 pub struct HttpCallerProcessor {
     /// Lazy-initialized HTTP client. All clones of this processor share the same client
@@ -148,6 +148,11 @@ impl HttpCallerProcessor {
             }
         };
 
+        if let Err(e) = super::egress::validate_url(&url) {
+            self.send_rejected_feature(ctx, fw, &e.to_string());
+            return Ok(());
+        }
+
         let method = self.params.method.clone().into();
         let builder = RequestBuilder::new(method, url);
 
@@ -171,12 +176,7 @@ impl HttpCallerProcessor {
         let builder = match builder
             .with_headers(&self.compiled_headers, feature, variables.clone())
             .and_then(|b| {
-                b.with_content_type(
-                    built_body
-                        .as_ref()
-                        .and_then(|b| b.content_type.as_deref())
-                        .or(self.params.content_type.as_deref()),
-                )
+                b.with_content_type(built_body.as_ref().and_then(|b| b.content_type.as_deref()))
             })
             .and_then(|b| {
                 b.with_query_params(&self.compiled_query_params, feature, variables.clone())
@@ -209,8 +209,6 @@ impl HttpCallerProcessor {
             rate_limiter.acquire();
         }
 
-        let timer = RequestTimer::new();
-
         let result = super::retry::execute_with_retry(
             client.as_ref(),
             method,
@@ -222,9 +220,8 @@ impl HttpCallerProcessor {
         );
 
         match result {
-            Ok((response, retry_ctx)) => {
-                let metrics = RequestMetrics::new(timer.elapsed(), &response, &retry_ctx);
-                self.handle_success_response(ctx, fw, response, metrics);
+            Ok(response) => {
+                self.handle_success_response(ctx, fw, response);
             }
             Err(e) => {
                 let error_msg = format!("HTTP request failed after retries: {e}");
@@ -242,7 +239,6 @@ impl HttpCallerProcessor {
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
         response: HttpResponse,
-        metrics: RequestMetrics,
     ) {
         let mut new_feature = ctx.feature.clone();
         let variables = ctx.variables.clone();
@@ -255,18 +251,12 @@ impl HttpCallerProcessor {
             auto_detect: response_config
                 .and_then(|r| r.auto_detect_encoding)
                 .unwrap_or(true),
-            max_size: response_config.and_then(|r| r.max_response_size),
             variables,
             storage_resolver: &ctx.storage_resolver,
+            sandbox_root: &ctx.sandbox_root,
             response_body_attr: response_config
                 .map(|r| r.response_body_attribute.as_str())
                 .unwrap_or("_response_body"),
-            status_code_attr: response_config
-                .map(|r| r.status_code_attribute.as_str())
-                .unwrap_or("_http_status_code"),
-            headers_attr: response_config
-                .map(|r| r.headers_attribute.as_str())
-                .unwrap_or("_headers"),
         };
 
         let result = super::response::process_response(
@@ -278,8 +268,6 @@ impl HttpCallerProcessor {
 
         match result {
             Ok(()) => {
-                metrics.add_to_attributes(new_feature.attributes_mut(), &self.params.observability);
-
                 fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             Err(e) => {
@@ -301,13 +289,10 @@ impl HttpCallerProcessor {
             .error_log(Some(ctx.error_span()), error_msg.to_string());
 
         let mut rejected_feature = ctx.feature.clone();
-        let error_attr = self
-            .params
-            .response
-            .as_ref()
-            .map(|r| r.error_attribute.as_str())
-            .unwrap_or("_http_error");
-        rejected_feature.insert(error_attr, AttributeValue::String(error_msg.to_string()));
+        rejected_feature.insert(
+            ERROR_ATTRIBUTE,
+            AttributeValue::String(error_msg.to_string()),
+        );
 
         fw.send(ctx.new_with_feature_and_port(rejected_feature, REJECTED_PORT.clone()));
     }
@@ -342,6 +327,25 @@ mod tests {
     use crate::http::params::HttpMethod;
     use reearth_flow_types::{Code, CodeType};
 
+    fn base_params(url: &str) -> HttpCallerParam {
+        HttpCallerParam {
+            url: Code {
+                ty: CodeType::FlowExpr,
+                value: format!(r#""{url}""#),
+            },
+            method: HttpMethod::Get,
+            authentication: None,
+            custom_headers: None,
+            query_parameters: None,
+            request_body: None,
+            response: None,
+            retry: None,
+            rate_limit: None,
+            timeouts: None,
+            http_options: None,
+        }
+    }
+
     #[test]
     fn test_processor_creation() {
         let mock_response = HttpResponse {
@@ -353,27 +357,7 @@ mod tests {
         let mock_client =
             MockHttpClient::new().with_response("https://example.com/test", Ok(mock_response));
 
-        let params = HttpCallerParam {
-            url: Code {
-                ty: CodeType::FlowExpr,
-                value: r#""https://example.com/test""#.to_string(),
-            },
-            method: HttpMethod::Get,
-            authentication: None,
-            custom_headers: None,
-            query_parameters: None,
-            request_body: None,
-            content_type: None,
-            timeouts: Some(crate::http::params::TimeoutConfig {
-                connection_timeout: Some(60),
-                transfer_timeout: Some(90),
-            }),
-            http_options: None,
-            response: None,
-            retry: None,
-            rate_limit: None,
-            observability: None,
-        };
+        let params = base_params("https://example.com/test");
 
         let url_ast: Code = Code {
             ty: CodeType::FlowExpr,
@@ -389,24 +373,7 @@ mod tests {
     #[test]
     fn test_processor_debug() {
         let mock_client = MockHttpClient::new();
-        let params = HttpCallerParam {
-            url: Code {
-                ty: CodeType::FlowExpr,
-                value: r#""https://example.com""#.to_string(),
-            },
-            method: HttpMethod::Get,
-            authentication: None,
-            custom_headers: None,
-            query_parameters: None,
-            request_body: None,
-            content_type: None,
-            timeouts: None,
-            http_options: None,
-            response: None,
-            retry: None,
-            rate_limit: None,
-            observability: None,
-        };
+        let params = base_params("https://example.com");
 
         let url_ast: Code = Code {
             ty: CodeType::FlowExpr,

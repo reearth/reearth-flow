@@ -4,17 +4,19 @@ import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 
 export default ({
   onDebugRunStart,
   onDebugRunStop,
+  onResetDebugRunWorkflowVariables,
   refetchWorkflowVariables,
   onUserFocusedElement,
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onResetDebugRunWorkflowVariables: () => void;
   onUserFocusedElement?: (isOpen: boolean) => void;
   refetchWorkflowVariables: () => void;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
@@ -129,6 +131,7 @@ export default ({
     );
     if (!jobState) return;
     await updateDebugRunState({ jobs: jobState });
+    onResetDebugRunWorkflowVariables();
   };
 
   useEffect(() => {

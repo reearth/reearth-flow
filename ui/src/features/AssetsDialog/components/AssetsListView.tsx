@@ -4,18 +4,19 @@ import {
   PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 
 import { Icon, IconButton, LoadingSkeleton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
 import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import type { Asset } from "@flow/types";
 
 import { getIconFileType } from "./utils";
 
 type Props = {
   assets?: Asset[];
+  readonly?: boolean;
   isFetching: boolean;
   isDebouncingSearch?: boolean;
   isDeleting: boolean;
@@ -34,6 +35,7 @@ type Props = {
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
+  readonly,
   currentPage,
   isFetching,
   isDebouncingSearch,
@@ -49,7 +51,7 @@ const AssetsListView: React.FC<Props> = ({
   const t = useT();
 
   const resultsPerPage = ASSET_FETCH_RATE;
-  const columns: ColumnDef<Asset>[] = [
+  const columns: AppColumnDef<Asset>[] = [
     {
       accessorKey: "name",
       header: t("Name"),
@@ -80,7 +82,7 @@ const AssetsListView: React.FC<Props> = ({
           <IconButton
             icon={<PencilLineIcon />}
             onClick={() => setAssetToBeEdited(row.row.original)}
-            disabled={isDeleting}
+            disabled={isDeleting || readonly}
           />
           <IconButton
             icon={<CopyIcon />}
@@ -97,7 +99,7 @@ const AssetsListView: React.FC<Props> = ({
           </a>
           <IconButton
             icon={<TrashIcon />}
-            disabled={isDeleting}
+            disabled={isDeleting || readonly}
             onClick={() => setAssetToBeDeleted(row.row.original.id)}
           />
         </div>
@@ -118,7 +120,7 @@ const AssetsListView: React.FC<Props> = ({
           setCurrentPage={setCurrentPage}
           totalPages={totalPages}
           resultsPerPage={resultsPerPage}
-          onRowDoubleClick={onAssetDoubleClick}
+          onRowDoubleClick={readonly ? undefined : onAssetDoubleClick}
         />
       )}
     </div>

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -146,4 +147,71 @@ func TestClient_SaveNamedSnapshot_FallsBackToThinMetadata_WhenNotInList(t *testi
 	assert.Equal(t, int64(9), got.ID)
 	assert.Equal(t, "missing", got.Label)
 	assert.True(t, got.Timestamp.IsZero())
+}
+
+func TestClient_GetSnapshotState_DecodesIntArrayUpdates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		// Addressed by snapshot number, never by the update-log clock.
+		assert.Equal(t, "/api/document/proj1/snapshots/7", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		// websocket-go's UpdateBytes marshals as a JSON int array, not base64.
+		_, _ = w.Write([]byte(`{"id":"proj1","snapshot_id":7,"updates":[1,2,255]}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{ServerURL: server.URL})
+	assert.NoError(t, err)
+
+	got, err := client.GetSnapshotState(context.Background(), "proj1", 7)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(7), got.SnapshotID)
+	// The exact bytes matter: this state is applied to a live Y.Doc, so a decode
+	// that silently produced empty updates would make restore a no-op.
+	assert.Equal(t, []int{1, 2, 255}, got.Updates)
+}
+
+func TestClient_GetSnapshotState_NotFoundIsItsOwnError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"snapshot not found"}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{ServerURL: server.URL})
+	assert.NoError(t, err)
+
+	// Retention (KeepSnapshots) evicts snapshots, so a listed row can be gone by
+	// the time it is clicked. That must be distinguishable from a server fault.
+	_, err = client.GetSnapshotState(context.Background(), "proj1", 7)
+	assert.ErrorIs(t, err, interfaces.ErrSnapshotNotFound)
+}
+
+func TestClient_GetSnapshotState_ServerErrorIsNotNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{ServerURL: server.URL})
+	assert.NoError(t, err)
+
+	_, err = client.GetSnapshotState(context.Background(), "proj1", 7)
+	assert.Error(t, err)
+	assert.NotErrorIs(t, err, interfaces.ErrSnapshotNotFound)
+}
+
+func TestClient_GetSnapshotState_SetsAPISecretHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "shh", r.Header.Get("X-API-Secret"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"proj1","snapshot_id":1,"updates":[]}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{ServerURL: server.URL, APISecret: "shh"})
+	assert.NoError(t, err)
+
+	_, err = client.GetSnapshotState(context.Background(), "proj1", 1)
+	assert.NoError(t, err)
 }

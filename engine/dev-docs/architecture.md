@@ -106,7 +106,7 @@ The engine implements an actor model where each node (source, processor, sink) r
 <working_directory>/
 ├── projects/<project_key>/
 │   ├── jobs/<job_id>/
-│   │   ├── feature-store/        # Feature data streams by edge ID
+│   │   ├── feature-store/        # Feature data streams by node output port
 │   │   ├── action-log/           # Action execution logs
 │   │   └── temp/                 # Job-specific temporary files
 │   └── temp/<temp_id>/           # Project-level temporary files
@@ -115,8 +115,8 @@ The engine implements an actor model where each node (source, processor, sink) r
 ### Feature Store - Intermediate Data Capture
 
 - **All intermediate feature data** is automatically captured as features flow between nodes
-- **File format**: JSON Lines (`.jsonl`) - one feature per line, organized by edge ID
-- **Location**: `<job_id>/feature-store/<edge_id>.jsonl`
+- **File format**: JSON Lines (`.jsonl`, or `.jsonl.zst` when compression is enabled) - one feature per line, one file per node output port
+- **Location**: `<job_id>/feature-store/<node_id>.<port>.jsonl`. Nodes inside a subgraph are prefixed with the dot-joined ids of the subgraph call-site nodes, and a subgraph's output router writes `<prefix>.<port>.jsonl`
 - **Critical for debugging**: Examine exact data transformations between workflow nodes
 
 Data handling variables are listed in [Environment Variables > Data Handling & Debugging](#data-handling--debugging).
@@ -126,8 +126,8 @@ Data handling variables are listed in [Environment Variables > Data Handling & D
 **View intermediate data**:
 
 ```bash
-# Examine feature data for specific workflow edge
-cat <working_dir>/projects/<project>/jobs/<job_id>/feature-store/<edge_id>.jsonl
+# Examine feature data emitted by a specific node output port
+cat <working_dir>/projects/<project>/jobs/<job_id>/feature-store/<node_id>.<port>.jsonl
 
 # Check action execution logs
 ls <working_dir>/projects/<project>/jobs/<job_id>/action-log/

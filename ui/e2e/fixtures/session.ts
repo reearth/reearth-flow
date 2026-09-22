@@ -1,11 +1,7 @@
 import path from "path";
 
-import {
-  test,
-  type Browser,
-  type BrowserContext,
-  type Page,
-} from "@playwright/test";
+import { test } from "@playwright/test";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 
 import { AssetsPage } from "../pages/assetsPage";
 import { DeploymentsPage } from "../pages/deploymentsPage";

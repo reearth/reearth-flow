@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Workspace } from "@flow/types";
+import type { Workspace } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { UpdateMeInput } from "../__gen__/graphql";
+import type { UpdateMeInput } from "../__gen__/graphql";
 import { toWorkspace } from "../convert";
 
 import { UserQueryKeys } from "./useApi";

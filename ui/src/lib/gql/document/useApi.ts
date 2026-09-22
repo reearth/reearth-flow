@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { RollbackProject, SaveSnapshot } from "@flow/types";
+import type { RollbackProject, SaveSnapshot } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
@@ -9,6 +9,9 @@ export const useDocument = () => {
     useLatestProjectSnapshotQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
+    useProjectSnapshotsQuery,
+    fetchProjectNamedSnapshot,
+    saveNamedSnapshotMutation,
     rollbackProjectMutation,
     snapshotSaveMutation,
     usePreviewSnapshot,
@@ -40,6 +43,24 @@ export const useDocument = () => {
       ...rest,
     };
   };
+
+  const useGetProjectNamedSnapshots = (projectId: string) => {
+    const { snapshots, ...rest } = useProjectSnapshotsQuery(projectId);
+    return {
+      snapshots,
+      ...rest,
+    };
+  };
+
+  // Snapshot state for preview and restore, addressed by snapshotNumber. Distinct
+  // from useGetPreviewProjectSnapshot, which is keyed on the update-log clock.
+  const useGetProjectNamedSnapshot = async (
+    projectId: string,
+    snapshotNumber: number,
+  ) => await fetchProjectNamedSnapshot(projectId, snapshotNumber);
+
+  const useSaveNamedSnapshot = async (projectId: string, label: string) =>
+    await saveNamedSnapshotMutation.mutateAsync({ projectId, label });
 
   const useGetPreviewProjectSnapshot = async (
     projectId: string,
@@ -118,6 +139,9 @@ export const useDocument = () => {
     useGetLatestProjectSnapshot,
     useGetProjectSnapshot,
     useGetProjectHistory,
+    useGetProjectNamedSnapshots,
+    useGetProjectNamedSnapshot,
+    useSaveNamedSnapshot,
     useGetPreviewProjectSnapshot,
     useRollbackProject,
     useSaveSnapshot,

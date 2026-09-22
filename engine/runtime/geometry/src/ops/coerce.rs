@@ -69,6 +69,46 @@ impl<T: Coerce + ?Sized> Coerce for Box<T> {
     }
 }
 
+/// The geometry with every closed chain replaced by the face it traces, and
+/// every other member left as it is. Collections recurse, keeping their
+/// per-member attributes.
+///
+/// The lenient sibling of [`Coerce`] with [`CoercionTarget::Polygon`]: a
+/// surface or a volume stays whole here, where the coercion decomposes a
+/// surface into the faces it is built from. Coordinates are carried over
+/// verbatim, and a chain that bounds no area is left a chain.
+pub fn rings_as_faces_2d(geometry: &Euclidean2DGeometry) -> Euclidean2DGeometry {
+    let mut faces = geometry.clone();
+    coerce_rings_2d(&mut faces);
+    faces
+}
+
+/// [`rings_as_faces_2d`], in place.
+fn coerce_rings_2d(geometry: &mut Euclidean2DGeometry) {
+    match geometry {
+        Euclidean2DGeometry::LineString(line) if line.is_closed_ring() => {
+            let ring = line.coords().iter().copied();
+            let no_holes = Vec::<Vec<[f64; 2]>>::new();
+            let face = match line.elevation() {
+                None => Polygon2D::from_rings(line.frame().clone(), ring, no_holes),
+                Some(elevation) => Polygon2D::from_rings_at_elevation(
+                    line.frame().clone(),
+                    ring,
+                    no_holes,
+                    elevation,
+                ),
+            };
+            *geometry = Euclidean2DGeometry::Polygon(Box::new(face));
+        }
+        Euclidean2DGeometry::Collection(collection) => {
+            for member in collection.members_mut() {
+                coerce_rings_2d(member);
+            }
+        }
+        _ => {}
+    }
+}
+
 pub(crate) fn unchanged<T: ?Sized>() -> UnsupportedOperation {
     UnsupportedOperation {
         geometry: core::any::type_name::<T>(),
@@ -146,12 +186,6 @@ pub(crate) fn push_face_lines_3d(face: &Polygon3D, out: &mut Vec<Euclidean3DGeom
     }
 }
 
-/// Whether a chain closes a ring. A chain of three or fewer encloses no area
-/// even when its ends meet.
-pub(crate) fn closes_a_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
-    coords.len() >= 4 && coords.first() == coords.last()
-}
-
 /// One triangle as a ring, closed by repeating its first vertex — the form the
 /// polygon constructors expect.
 pub(crate) fn triangle_ring<const N: usize>(
@@ -174,7 +208,7 @@ mod tests {
     use crate::csg::Csg;
     use crate::point::Point3D;
     use crate::point_cloud::PointCloud;
-    use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
+    use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
     use crate::solid::Solid;
     use crate::triangular_mesh::TriangularMesh3D;
     use crate::GeometryCollection;
@@ -536,5 +570,95 @@ mod tests {
         };
         assert_eq!(out.members().len(), 2);
         assert_eq!(out.member_attributes(), attrs.as_slice());
+    }
+
+    fn chain_2d(coords: impl IntoIterator<Item = [f64; 2]>) -> Euclidean2DGeometry {
+        Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            CoordinateFrame::Euclidean,
+            coords,
+        ))
+    }
+
+    #[test]
+    fn rings_as_faces_2d_replaces_a_closed_chain_with_the_face_it_traces() {
+        let Euclidean2DGeometry::Polygon(face) = rings_as_faces_2d(&chain_2d(SQUARE_2D)) else {
+            panic!("expected a face");
+        };
+        assert_eq!(face.exterior(), SQUARE_2D);
+        assert!(face.interiors().next().is_none());
+    }
+
+    #[test]
+    fn rings_as_faces_2d_leaves_a_chain_that_bounds_no_area() {
+        let open = chain_2d(SQUARE_2D.into_iter().take(4));
+        assert_eq!(rings_as_faces_2d(&open), open);
+        let triangle_ends_meeting = chain_2d([[0.0, 0.0], [4.0, 0.0], [0.0, 0.0]]);
+        assert_eq!(
+            rings_as_faces_2d(&triangle_ends_meeting),
+            triangle_ends_meeting
+        );
+    }
+
+    #[test]
+    fn rings_as_faces_2d_keeps_a_surface_whole() {
+        // Where `CoercionTarget::Polygon` would decompose it into its two faces.
+        let mesh = Euclidean2DGeometry::PolygonMesh(Box::new(
+            PolygonMesh2D::from_parts(
+                CoordinateFrame::Euclidean,
+                vec![
+                    [0.0, 0.0],
+                    [2.0, 0.0],
+                    [2.0, 2.0],
+                    [0.0, 2.0],
+                    [4.0, 0.0],
+                    [4.0, 2.0],
+                ],
+                vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
+            )
+            .unwrap(),
+        ));
+        assert_eq!(rings_as_faces_2d(&mesh), mesh);
+    }
+
+    #[test]
+    fn rings_as_faces_2d_recurses_and_keeps_per_member_attributes() {
+        let attrs = vec![
+            Attributes::from([(Attribute::new("lod"), AttributeValue::Number(0.into()))]),
+            Attributes::from([(Attribute::new("lod"), AttributeValue::Number(1.into()))]),
+        ];
+        let inner = Euclidean2DGeometry::Collection(Collection2D::new([chain_2d(SQUARE_2D)]));
+        let collection = Collection2D::with_attributes(
+            vec![inner, chain_2d(SQUARE_2D.into_iter().take(4))],
+            attrs.clone(),
+        )
+        .unwrap();
+
+        let Euclidean2DGeometry::Collection(out) =
+            rings_as_faces_2d(&Euclidean2DGeometry::Collection(collection))
+        else {
+            panic!("expected a collection");
+        };
+        assert_eq!(out.member_attributes(), attrs.as_slice());
+        let [Euclidean2DGeometry::Collection(nested), open] = out.members() else {
+            panic!("expected a nested collection beside the open chain");
+        };
+        assert!(matches!(
+            nested.members(),
+            [Euclidean2DGeometry::Polygon(_)]
+        ));
+        assert!(matches!(open, Euclidean2DGeometry::LineString(_)));
+    }
+
+    #[test]
+    fn rings_as_faces_2d_carries_an_elevation_across() {
+        let ring = Euclidean2DGeometry::LineString(LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            SQUARE_2D,
+            3.0,
+        ));
+        let Euclidean2DGeometry::Polygon(face) = rings_as_faces_2d(&ring) else {
+            panic!("expected a face");
+        };
+        assert_eq!(face.elevation(), Some(3.0));
     }
 }

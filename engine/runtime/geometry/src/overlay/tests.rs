@@ -880,3 +880,91 @@ fn the_tolerance_leaves_a_gap_with_no_facing_vertices_open() {
     .unwrap();
     assert_eq!(dissolved.len(), 2);
 }
+
+// --- snap_areal_operands_2d ------------------------------------------------
+
+/// The 2D geometry of one operand, for the multi-operand snapping entry point.
+fn operand(exterior: &[[f64; 2]]) -> Euclidean2DGeometry {
+    Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+        e(),
+        exterior.to_vec(),
+        Vec::<Vec<[f64; 2]>>::new(),
+    )))
+}
+
+#[test]
+fn snapping_closes_the_gap_between_boundaries_that_nearly_coincide() {
+    // Two squares meant to share the edge at x = 1, missing it by 0.001.
+    let left = operand(&rect(0.0, 0.0, 1.0, 1.0));
+    let right = operand(&rect(1.001, 0.0, 2.0, 1.0));
+    let snapped = snap_areal_operands_2d(&[&left, &right], 0.01).unwrap();
+
+    assert!(snapped[0].moved || snapped[1].moved);
+    // With the gap closed the two now touch, so their union is a single face
+    // rather than two with a sliver between them.
+    let a = to_geometry(snapped[0].polygons.clone());
+    let b = to_geometry(snapped[1].polygons.clone());
+    assert_eq!(union(&a, &b).unwrap().len(), 1);
+}
+
+#[test]
+fn an_operand_nothing_is_near_reports_that_it_did_not_move() {
+    let lonely = operand(&rect(0.0, 0.0, 1.0, 1.0));
+    let far = operand(&rect(100.0, 100.0, 101.0, 101.0));
+    let snapped = snap_areal_operands_2d(&[&lonely, &far], 0.01).unwrap();
+
+    assert!(!snapped[0].moved);
+    assert!(!snapped[1].moved);
+}
+
+#[test]
+fn a_non_positive_tolerance_snaps_nothing() {
+    let left = operand(&rect(0.0, 0.0, 1.0, 1.0));
+    let right = operand(&rect(1.001, 0.0, 2.0, 1.0));
+    let snapped = snap_areal_operands_2d(&[&left, &right], 0.0).unwrap();
+
+    assert!(!snapped[0].moved);
+    assert!(!snapped[1].moved);
+    // The gap survives, so the union is still two separate faces.
+    let a = to_geometry(snapped[0].polygons.clone());
+    let b = to_geometry(snapped[1].polygons.clone());
+    assert_eq!(union(&a, &b).unwrap().len(), 2);
+}
+
+#[test]
+fn snapping_refuses_operands_in_different_frames() {
+    let euclidean = operand(&rect(0.0, 0.0, 1.0, 1.0));
+    let crs = Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+        CoordinateFrame::Crs(EpsgCode::new(6677)),
+        rect(0.0, 0.0, 1.0, 1.0),
+        Vec::<Vec<[f64; 2]>>::new(),
+    )));
+    assert!(snap_areal_operands_2d(&[&euclidean, &crs], 0.01).is_err());
+}
+
+#[test]
+fn a_multi_shape_operand_does_not_shift_the_next_operand_s_result() {
+    // The first operand contributes two shapes, only the first of which is near
+    // anything. Reading its per-shape movement must consume both, or the second
+    // operand inherits the leftover flag and reports the wrong answer.
+    let pair = Euclidean2DGeometry::Collection(Collection2D::new([
+        Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+            e(),
+            rect(0.0, 0.0, 1.0, 1.0),
+            Vec::<Vec<[f64; 2]>>::new(),
+        ))),
+        Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+            e(),
+            rect(50.0, 50.0, 51.0, 51.0),
+            Vec::<Vec<[f64; 2]>>::new(),
+        ))),
+    ]));
+    let neighbour = operand(&rect(1.001, 0.0, 2.0, 1.0));
+    let far = operand(&rect(200.0, 200.0, 201.0, 201.0));
+
+    let snapped = snap_areal_operands_2d(&[&pair, &neighbour, &far], 0.01).unwrap();
+    assert_eq!(snapped.len(), 3);
+    assert!(snapped[0].moved || snapped[1].moved);
+    assert!(!snapped[2].moved, "the far operand has nothing to snap to");
+    assert_eq!(snapped[2].polygons.len(), 1);
+}

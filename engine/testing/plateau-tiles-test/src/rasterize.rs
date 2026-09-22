@@ -7,6 +7,17 @@ pub const RASTER_SIZE: usize = 1024;
 pub const RASTER3D_SIZE: usize = 256;
 pub const DEFAULT_STROKE: f64 = 4.0;
 
+/// Polygon rendering mode: `Fill` fills the interior (default), `Wireframe` only
+/// strokes ring edges. Wireframe is useful when the classical filled-silhouette
+/// comparison can't tell overlapping/dissolved polygons apart from their edges.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RasterMode {
+    #[default]
+    Fill,
+    Wireframe,
+}
+
 /// Canvas size config: either a single integer (square) or a `[width, height]` pair.
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(untagged)]

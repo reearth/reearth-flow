@@ -1,26 +1,27 @@
-import {
-  type DeploymentFragment,
-  type ProjectFragment,
-  type JobFragment,
-  type JobStatus as GraphqlJobStatus,
-  type ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
-  type TriggerFragment,
-  type ProjectDocumentFragment,
-  type ProjectSnapshotMetadataFragment,
-  type ParameterFragment,
-  type AssetFragment,
-  type WorkspaceFragment,
-  type CmsProjectFragment,
-  type CmsModelFragment,
-  type CmsItemFragment,
-  type CmsAssetFragment,
-  type UserFacingLogFragment,
-  type CmsVisibility as GraphqlCmsVisibility,
-  type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
-  type UserFacingLogLevel as GraphqlUserFacingLogLevel,
-  type WorkerConfigFragment,
-  type ParameterType,
-  type ProjectSnapshotFragment,
+import type {
+  DeploymentFragment,
+  ProjectFragment,
+  JobFragment,
+  JobStatus as GraphqlJobStatus,
+  ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
+  TriggerFragment,
+  ProjectDocumentFragment,
+  ProjectSnapshotMetadataFragment,
+  ParameterFragment,
+  AssetFragment,
+  WorkspaceFragment,
+  CmsProjectFragment,
+  CmsModelFragment,
+  CmsItemFragment,
+  CmsAssetFragment,
+  UserFacingLogFragment,
+  CmsVisibility as GraphqlCmsVisibility,
+  CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
+  UserFacingLogLevel as GraphqlUserFacingLogLevel,
+  WorkerConfigFragment,
+  ParameterType,
+  ProjectSnapshotFragment,
+  DiagnosticFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
@@ -47,6 +48,7 @@ import type {
   CmsAsset,
   UserFacingLog,
   WorkerConfig,
+  Diagnostic,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
@@ -67,19 +69,17 @@ export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
   id: workspace.id,
   name: workspace.name,
   personal: workspace.personal,
-  members: workspace.members.map(
-    (m): Member => ({
-      userId: m.userId,
-      role: m.role as Role,
-      user: m.user
-        ? {
-            id: m.user?.id,
-            name: m.user?.name,
-            email: m.user?.email,
-          }
-        : undefined,
-    }),
-  ),
+  members: workspace.members.map((m): Member => ({
+    userId: m.userId,
+    role: m.role as Role,
+    user: m.user
+      ? {
+          id: m.user?.id,
+          name: m.user?.name,
+          email: m.user?.email,
+        }
+      : undefined,
+  })),
 });
 
 export const toDeployment = (deployment: DeploymentFragment): Deployment => ({
@@ -111,6 +111,23 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
     ...v,
     type: toUserParamVarType(v.type),
   })),
+});
+
+// category/severity/effectiveDisposition stay as the strings the engine sent:
+// they are not enums, and an unrecognised value has to reach the screen rather
+// than be coerced into something we happen to know about.
+export const toDiagnostic = (diagnostic: DiagnosticFragment): Diagnostic => ({
+  code: diagnostic.code,
+  category: diagnostic.category,
+  severity: diagnostic.severity,
+  effectiveDisposition: diagnostic.effectiveDisposition ?? undefined,
+  nodeId: diagnostic.nodeId ?? undefined,
+  actionType: diagnostic.actionType ?? undefined,
+  featureId: diagnostic.featureId ?? undefined,
+  message: diagnostic.message,
+  help: diagnostic.help ?? undefined,
+  aggregatedCount: diagnostic.aggregatedCount ?? undefined,
+  sampleFeatureIds: diagnostic.sampleFeatureIds ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -154,7 +171,7 @@ export const toProjectSnapShot = (
   projectSnapshot: ProjectSnapshotFragment,
 ): ProjectSnapshot => ({
   timestamp: projectSnapshot.timestamp,
-  version: projectSnapshot.version,
+  version: projectSnapshot.version ?? undefined,
   updates: projectSnapshot.updates,
 });
 
@@ -200,15 +217,13 @@ export const toCmsModel = (cmsModel: CmsModelFragment): CmsModel => ({
   publicApiEp: cmsModel.publicApiEp,
   schema: {
     schemaId: cmsModel.schema.schemaId,
-    fields: cmsModel.schema.fields.map(
-      (field): CmsSchemaField => ({
-        fieldId: field.fieldId,
-        name: field.name,
-        type: field.type ? toCmsSchemaFieldType(field.type) : "text",
-        key: field.key,
-        description: field.description ?? undefined,
-      }),
-    ),
+    fields: cmsModel.schema.fields.map((field): CmsSchemaField => ({
+      fieldId: field.fieldId,
+      name: field.name,
+      type: field.type ? toCmsSchemaFieldType(field.type) : "text",
+      key: field.key,
+      description: field.description ?? undefined,
+    })),
   },
   createdAt: formatDate(cmsModel.createdAt),
   updatedAt: formatDate(cmsModel.updatedAt),

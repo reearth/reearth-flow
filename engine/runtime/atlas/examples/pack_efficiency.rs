@@ -57,7 +57,7 @@ fn run(
 
     for trial in 0..TOTAL {
         let dims = sample_fn(&mut state);
-        let mut cache = TextureCache::default();
+        let cache = TextureCache::default();
 
         let mut materials: Vec<TextureInput> = Vec::with_capacity(dims.len());
         let mut packed_pixels: u64 = 0;
@@ -74,7 +74,7 @@ fn run(
             });
         }
 
-        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, 1, &mut cache) {
+        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, 1, 0.0, &cache) {
             Ok(Some(built)) => {
                 let pages = built.pages.len();
                 let budget = (MAX_ATLAS_SIZE as f64).powi(2) * pages as f64;

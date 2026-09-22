@@ -1,17 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
-import {
-  type EditorSession,
-  newEditorSession,
-  teardownSession,
-} from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
-import {
-  DeploymentsPage,
-  uniqueDeploymentDescription,
-} from "../pages/deploymentsPage";
-import { EditorPage } from "../pages/editorPage";
-import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
+import { newEditorSession, teardownSession } from "../fixtures/session";
+import type { EditorSession } from "../fixtures/session";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
+import type { DeploymentsPage } from "../pages/deploymentsPage";
+import { uniqueDeploymentDescription } from "../pages/deploymentsPage";
+import type { EditorPage } from "../pages/editorPage";
+import type { ProjectsPage } from "../pages/projectsPage";
+import { uniqueProjectName } from "../pages/projectsPage";
 
 const STATIONS_CSV = [
   "name,line,daily_riders,lon,lat",
@@ -124,9 +121,7 @@ test.describe.serial(
     });
 
     test("produces stations.geojson listing all five stations", async () => {
-      const outputUrl = jobDetailsArtifact(page, "stations.geojson");
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, "stations.geojson");
       test.info().annotations.push({
         type: "output-url",
         description: artifactUrl,

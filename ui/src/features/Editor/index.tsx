@@ -1,13 +1,17 @@
 import { useMemo } from "react";
 import type { Awareness } from "y-protocols/awareness";
-import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
+import type { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
-import { YWorkflow } from "@flow/lib/yjs/types";
+import useDebugDiagnosticNodes from "@flow/hooks/useDebugDiagnosticNodes";
+import useWorkflowNodeIds from "@flow/hooks/useWorkflowNodeIds";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
-import { EditorContextType, EditorProvider } from "./editorContext";
+import type { EditorContextType } from "./editorContext";
+import { EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
+import useNodeNavigation from "./useNodeNavigation";
 import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";
 
 type Props = {
@@ -54,7 +58,7 @@ export default function Editor({
     refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
-    handleDebugRunVariableValueChange,
+    workflowVariableDefaults,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -82,6 +86,7 @@ export default function Editor({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    handleResetDebugRunWorkflowVariables,
     schemaProbes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
@@ -93,6 +98,7 @@ export default function Editor({
     handlePaste,
     handleProjectSnapshotSave,
     isLocked,
+    isReaderRestricted,
     handleProjectLockChange,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
@@ -119,9 +125,20 @@ export default function Editor({
     undoTrackerActionWrapper,
   });
 
+  const workflowNodeIds = useWorkflowNodeIds(yWorkflows);
+  const diagnosticSeverityByNodeId = useDebugDiagnosticNodes(workflowNodeIds);
+
+  const handleNodeNavigate = useNodeNavigation({
+    rawWorkflows,
+    currentWorkflowId,
+    onWorkflowOpen: handleWorkflowOpen,
+    onNodesChange: handleNodesChange,
+  });
+
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
+      isReaderRestricted,
       canViewIntermediateData: true,
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
@@ -136,9 +153,13 @@ export default function Editor({
         onEditStart: handleWorkflowVarEditStart,
       },
       staleNodeIds,
+      workflowNodeIds,
+      diagnosticSeverityByNodeId,
+      onNodeNavigate: handleNodeNavigate,
     }),
     [
       isLocked,
+      isReaderRestricted,
       handleNodesChange,
       handleNodeSettings,
       currentYWorkflow,
@@ -150,6 +171,9 @@ export default function Editor({
       handleWorkflowVarFieldFocus,
       handleWorkflowVarEditStart,
       staleNodeIds,
+      workflowNodeIds,
+      diagnosticSeverityByNodeId,
+      handleNodeNavigate,
     ],
   );
 
@@ -178,6 +202,7 @@ export default function Editor({
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+            workflowVariableDefaults={workflowVariableDefaults}
             openNodePickerViaShortcut={openNodePickerViaShortcut}
             refetchWorkflowVariables={refetchWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
@@ -201,7 +226,9 @@ export default function Editor({
               handleFromSelectedNodeDebugRunStart
             }
             onDebugRunStop={handleDebugRunStop}
-            onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
+            onResetDebugRunWorkflowVariables={
+              handleResetDebugRunWorkflowVariables
+            }
             onProjectSnapshotSave={handleProjectSnapshotSave}
             onProjectLockChange={handleProjectLockChange}
             onSpotlightUserSelect={handleSpotlightUserSelect}

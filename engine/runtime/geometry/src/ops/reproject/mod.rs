@@ -65,7 +65,7 @@ pub fn transform_coords_3d(
 }
 
 /// Reproject a 2D coordinate buffer in place from `from` to `target` (EPSG).
-pub(crate) fn transform_coords_2d(
+pub fn transform_coords_2d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,

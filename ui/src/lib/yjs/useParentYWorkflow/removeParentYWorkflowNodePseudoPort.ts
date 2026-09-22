@@ -1,7 +1,7 @@
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import { yNodeConstructor } from "../conversions";
-import { YNodesMap, YWorkflow } from "../types";
+import type { YNodesMap, YWorkflow } from "../types";
 
 import { removeEdgePort } from "./updateParentYWorkflowEdges";
 import { splitPorts } from "./utils";

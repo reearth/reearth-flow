@@ -29,11 +29,8 @@ graphs:
         type: action
         action: Area Calculator
         with:
-          areaType: planeArea
-          # Coordinates are EPSG:4326 degrees, so the raw planar area is in
-          # square degrees. Near Tokyo (35.7°N) one square degree is roughly
-          # 1.0029e10 m², so this multiplier converts to approximate m².
-          multiplier: 10029000000.0
+          # Coordinates are EPSG:4326 degrees, so areaSqm is actually in
+          # square degrees, not square metres.
           outputAttribute: areaSqm
 
       - id: a287e65d-e503-40cb-9188-5edf1d0e263b

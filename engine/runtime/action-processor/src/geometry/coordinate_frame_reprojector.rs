@@ -1,7 +1,9 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use once_cell::sync::Lazy;
+use reearth_flow_common::attribute::AttributeValue;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::{ConvertFrame, ReprojectionCache};
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -32,15 +34,18 @@ thread_local! {
     static REPROJECTION_CACHE: RefCell<ReprojectionCache> = RefCell::new(ReprojectionCache::new());
 }
 
-/// The destination coordinate frame kind.
+/// The destination coordinate frame, carrying the input each kind needs.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum DestinationFrame {
     /// # CRS
     /// Reproject to a coordinate reference system identified by an EPSG code.
-    Crs,
+    #[serde(rename_all = "camelCase")]
+    Crs(Code<{ CodeType::FlowExpr as u32 }>),
     /// # Euclidean
-    /// Convert to a non-georeferenced Euclidean frame.
+    /// Convert to a non-georeferenced Euclidean frame. This is the frame the
+    /// planar geometry operations work in, so it is the on-ramp for actions that
+    /// require flat 2D input.
     Euclidean,
 }
 
@@ -86,17 +91,50 @@ enum BasePoint {
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateFrameReprojectorParam {
     /// # Destination Frame
-    /// Coordinate frame to convert geometry into.
+    /// Coordinate frame to convert geometry into. Choosing a CRS also requires
+    /// its EPSG code.
     destination_frame: DestinationFrame,
-    /// # EPSG Code
-    /// EPSG code of the destination CRS. Required when the destination frame is
-    /// a CRS.
-    #[serde(default)]
-    epsg_code: Option<u16>,
     /// # Base Point
     /// How coordinates bridge the Euclidean/CRS boundary.
     #[serde(default)]
     base_point_source: BasePoint,
+}
+
+/// Resolves a `crs` expression against `variables`; the result must be a
+/// positive integer that fits an EPSG code.
+fn resolve_epsg_code(
+    code: &Code<{ CodeType::FlowExpr as u32 }>,
+    variables: Arc<serde_json::Map<String, Value>>,
+) -> Result<EpsgCode, GeometryProcessorError> {
+    let compiled = code.compile().map_err(|e| {
+        GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
+            "Failed to compile `crs` expression: {e}"
+        ))
+    })?;
+    let value = compiled.eval_variables_only(variables).map_err(|e| {
+        GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
+            "Failed to evaluate `crs` expression: {e}"
+        ))
+    })?;
+    let code = match value {
+        AttributeValue::Number(n) => n.as_i64(),
+        AttributeValue::String(s) => s.trim().parse::<i64>().ok(),
+        _ => None,
+    }
+    .ok_or_else(|| {
+        GeometryProcessorError::CoordinateFrameReprojectorFactory(
+            "`crs` expression must yield an integer EPSG code".to_string(),
+        )
+    })?;
+    u16::try_from(code)
+        .ok()
+        .filter(|code| *code > 0)
+        .map(EpsgCode::new)
+        .ok_or_else(|| {
+            GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
+                "`crs` expression yielded {code}, which is not a valid EPSG code"
+            ))
+        })
 }
 
 #[derive(Debug, Clone, Default)]
@@ -133,7 +171,7 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -157,13 +195,8 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
         };
 
         let target = match params.destination_frame {
-            DestinationFrame::Crs => {
-                let epsg = params.epsg_code.ok_or_else(|| {
-                    GeometryProcessorError::CoordinateFrameReprojectorFactory(
-                        "`epsgCode` is required when the destination frame is a CRS".to_string(),
-                    )
-                })?;
-                CoordinateFrame::Crs(EpsgCode::new(epsg))
+            DestinationFrame::Crs(ref epsg_code) => {
+                CoordinateFrame::Crs(resolve_epsg_code(epsg_code, ctx.variables.clone())?)
             }
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
         };
@@ -437,13 +470,15 @@ mod tests {
     #[test]
     fn value_mode_carries_its_base_point() {
         let params = parse(json!({
-            "destinationFrame": "crs",
-            "epsgCode": 6677,
+            "destinationFrame": {
+                "crs": { "type": "flowExpr", "value": "6677" },
+            },
             "basePointSource": {
                 "type": "value",
                 "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
             },
         }));
+        assert!(matches!(params.destination_frame, DestinationFrame::Crs(_)));
         assert!(matches!(params.base_point_source, BasePoint::Value { .. }));
     }
 
@@ -478,10 +513,35 @@ mod tests {
     }
 
     #[test]
+    fn bare_integer_epsg_code_is_rejected() {
+        let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
+            "destinationFrame": { "crs": 6677 },
+        }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn crs_destination_without_an_epsg_code_is_rejected() {
+        let result: Result<CoordinateFrameReprojectorParam, _> =
+            serde_json::from_value(json!({ "destinationFrame": { "crs": {} } }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn euclidean_destination_needs_no_epsg_code() {
+        let params = parse(json!({ "destinationFrame": "euclidean" }));
+        assert!(matches!(
+            params.destination_frame,
+            DestinationFrame::Euclidean
+        ));
+    }
+
+    #[test]
     fn value_mode_without_its_base_point_is_rejected() {
         let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
-            "destinationFrame": "crs",
-            "epsgCode": 6677,
+            "destinationFrame": {
+                "crs": { "type": "flowExpr", "value": "6677" },
+            },
             "basePointSource": { "type": "value" },
         }));
         assert!(result.is_err());

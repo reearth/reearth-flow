@@ -43,7 +43,7 @@ impl SourceFactory for GltfReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives"
+        "Reads 3D models from glTF 2.0 files, including meshes, nodes, scenes, and geometry primitives."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -51,7 +51,11 @@ impl SourceFactory for GltfReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File", "3D"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["gltf", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -85,7 +89,6 @@ impl SourceFactory for GltfReaderFactory {
             common: params.common.compile(&ctx).map_err(|e| {
                 SourceError::GltfReaderFactory(format!("Failed to compile params: {e:?}"))
             })?,
-            _triangulate: params.triangulate,
             merge_meshes: params.merge_meshes,
             include_nodes: params.include_nodes,
             feature_class_attribute: params.feature_class_attribute,
@@ -98,7 +101,6 @@ impl SourceFactory for GltfReaderFactory {
 #[derive(Debug, Clone)]
 struct GltfReaderCompiledParam {
     common: FileReaderCompiledParam,
-    _triangulate: bool,
     merge_meshes: bool,
     include_nodes: bool,
     // Only read by the new-geometry split path (`gltf_next::split_features`);
@@ -131,21 +133,18 @@ pub(super) enum FeatureGranularity {
     FeatureId,
 }
 
+/// # glTF Reader Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GltfReaderParam {
     #[serde(flatten)]
     pub(super) common: FileReaderCommonParam,
-    /// # Triangulate
-    /// If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)
-    #[serde(default = "default_true")]
-    pub(super) triangulate: bool,
     /// # Merge Meshes
-    /// If true, combines all meshes from the glTF file into a single output feature
+    /// Combines all meshes from the glTF file into a single output feature.
     #[serde(default)]
     pub(super) merge_meshes: bool,
     /// # Include Nodes
-    /// If true, includes node hierarchy information from the glTF scene graph in feature attributes
+    /// Includes node hierarchy information from the glTF scene graph in feature attributes.
     #[serde(default = "default_true")]
     pub(super) include_nodes: bool,
     /// # Feature Class Attribute

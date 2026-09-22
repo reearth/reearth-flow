@@ -26,18 +26,17 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@flow/components";
+import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { Asset } from "@flow/types";
+import type { Asset } from "@flow/types";
 
-import { FieldContext } from "../../utils/fieldUtils";
-import FlowExprCodeEditor, {
-  type FlowExprCodeEditorRef,
-} from "../ValueEditorDialog/components/FlowExprCodeEditor";
-import { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
+import FlowExprCodeEditor from "../ValueEditorDialog/components/FlowExprCodeEditor";
+import type { FlowExprCodeEditorRef } from "../ValueEditorDialog/components/FlowExprCodeEditor";
+import type { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
 import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 
 export type CodeValue = {
@@ -67,8 +66,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const initialCode = fieldContext.value as CodeValue | undefined;
 
   const allowedTypes = (fieldContext.schema as any)?.properties?.type?.enum as
-    | string[]
-    | undefined;
+    string[] | undefined;
   const flowExprAllowed = !allowedTypes || allowedTypes.includes("flowExpr");
   const stringAllowed = !allowedTypes || allowedTypes.includes("string");
 

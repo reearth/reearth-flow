@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { DialogOptions } from "./types";
+import type { DialogOptions } from "./types";
 
 export default ({
   onUserFocusedElement,

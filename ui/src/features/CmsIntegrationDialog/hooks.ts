@@ -6,7 +6,7 @@ import {
   CMS_ITEMS_FETCH_RATE,
   CMS_MODELS_FETCH_RATE,
 } from "@flow/lib/gql/cms/useQueries";
-import { CmsItem, CmsModel, CmsProject } from "@flow/types";
+import type { CmsItem, CmsModel, CmsProject } from "@flow/types";
 
 export type ViewMode = "projects" | "models" | "items" | "itemDetails";
 

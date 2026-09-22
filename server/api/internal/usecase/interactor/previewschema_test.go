@@ -10,6 +10,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -24,6 +25,7 @@ import (
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --- fakes ---------------------------------------------------------------
@@ -66,8 +68,11 @@ func (w *fakeWebsocket) CreateSnapshot(context.Context, string, int, string) (*w
 }
 func (w *fakeWebsocket) CopyDocument(context.Context, string, string) error   { return nil }
 func (w *fakeWebsocket) ImportDocument(context.Context, string, []byte) error { return nil }
-func (w *fakeWebsocket) DeleteDocument(context.Context, string) error         { return nil }
-func (w *fakeWebsocket) Close() error                                         { return nil }
+func (w *fakeWebsocket) GetSnapshotState(context.Context, string, int) (*websocket.SnapshotState, error) {
+	return nil, nil
+}
+func (w *fakeWebsocket) DeleteDocument(context.Context, string) error { return nil }
+func (w *fakeWebsocket) Close() error                                 { return nil }
 
 // previewFakeFile records calls so the test can assert metadata is NOT uploaded.
 type previewFakeFile struct {
@@ -340,8 +345,10 @@ func (s *stubCloudRunWorker) PreviewSchema(context.Context, gateway.ProbeSchemaP
 func (s *stubCloudRunWorker) CancelJob(context.Context, id.JobID) error { return nil }
 
 func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
-	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+	projectRepo := memory.NewProject()
+	prj := newPreviewProject(t, projectRepo)
 	uc := &Project{
+		projectRepo:       projectRepo,
 		permissionChecker: NewMockPermissionChecker(nil),
 	}
 
@@ -354,6 +361,85 @@ func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
 	// the non-null PreviewSchemaPayload.job at the GraphQL layer).
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, interfaces.ErrWorkflowFileRequired)
+}
+
+// TestProject_PreviewSchema_ChecksTargetProjectWorkspace pins the check to the
+// project's own workspace, not the caller's: a workspace-less check would let a
+// caller in one workspace run a schema preview against a project in another.
+func TestProject_PreviewSchema_ChecksTargetProjectWorkspace(t *testing.T) {
+	ctx := previewTestContext()
+	projectRepo := memory.NewProject()
+	jobRepo := memory.NewJob()
+	ws := &fakeWebsocket{}
+	ff := &previewFakeFile{}
+	fj := &previewFakeJob{}
+	rc := &recordingChecker{allow: true}
+
+	prj := newPreviewProject(t, projectRepo)
+
+	uc := &Project{
+		projectRepo:       projectRepo,
+		jobRepo:           jobRepo,
+		websocket:         ws,
+		file:              ff,
+		cloudRunWorker:    &stubCloudRunWorker{},
+		job:               fj,
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
+		permissionChecker: rc,
+	}
+
+	got, err := uc.PreviewSchema(ctx, interfaces.PreviewSchemaParam{
+		ProjectID: prj.ID(),
+		Workflow:  newWorkflowFile(),
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, got)
+
+	assert.Equal(t, rbac.ResourceProject, rc.gotResource)
+	assert.Equal(t, rbac.ActionEdit, rc.gotAction)
+	require.Len(t, rc.gotWorkspace, 1)
+	assert.Equal(t, prj.Workspace(), rc.gotWorkspace[0])
+}
+
+// TestProject_PreviewSchema_DeniedNeverFlushesOrDispatches ensures a denied
+// caller cannot trigger the Yjs flush or job creation: a check that runs but is
+// not enforced before the first side effect is not a real check.
+func TestProject_PreviewSchema_DeniedNeverFlushesOrDispatches(t *testing.T) {
+	ctx := previewTestContext()
+	projectRepo := memory.NewProject()
+	jobRepo := memory.NewJob()
+	ws := &fakeWebsocket{}
+	ff := &previewFakeFile{}
+	fj := &previewFakeJob{}
+	rc := &recordingChecker{allow: false}
+
+	prj := newPreviewProject(t, projectRepo)
+
+	uc := &Project{
+		projectRepo:       projectRepo,
+		jobRepo:           jobRepo,
+		websocket:         ws,
+		file:              ff,
+		cloudRunWorker:    &stubCloudRunWorker{},
+		job:               fj,
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
+		permissionChecker: rc,
+	}
+
+	got, err := uc.PreviewSchema(ctx, interfaces.PreviewSchemaParam{
+		ProjectID: prj.ID(),
+		Workflow:  newWorkflowFile(),
+	})
+
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	assert.Empty(t, ws.flushed, "denied caller must not flush the target project's document")
+	assert.Zero(t, ff.uploadWorkflowCalls)
+	assert.Zero(t, fj.monitored)
+
+	hist, err := jobRepo.FindByProject(ctx, prj.ID())
+	assert.NoError(t, err)
+	assert.Empty(t, hist, "denied caller must not create a job")
 }
 
 func TestParametersToVariables(t *testing.T) {

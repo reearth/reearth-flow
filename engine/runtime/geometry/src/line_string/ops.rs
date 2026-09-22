@@ -186,7 +186,8 @@ impl LineString2D {
     }
 }
 
-use crate::ops::coerce::{closes_a_ring, unchanged};
+use super::is_closed_ring;
+use crate::ops::coerce::unchanged;
 use crate::ops::triangulation::Cache;
 use crate::ops::{Coerce, CoercionTarget};
 use crate::polygon::{Polygon2D, Polygon3D};
@@ -201,7 +202,7 @@ impl Coerce for LineString2D {
             // A curve already is one, and bounds no area to tessellate.
             CoercionTarget::LineString | CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
             CoercionTarget::Polygon => {
-                if !closes_a_ring(&self.coords) {
+                if !is_closed_ring(&self.coords) {
                     return Err(unchanged::<Self>());
                 }
                 let ring = Vec::from(std::mem::take(&mut self.coords));
@@ -233,7 +234,7 @@ impl Coerce for LineString3D {
             // A curve already is one, and bounds no area to tessellate.
             CoercionTarget::LineString | CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
             CoercionTarget::Polygon => {
-                if !closes_a_ring(&self.coords) {
+                if !is_closed_ring(&self.coords) {
                     return Err(unchanged::<Self>());
                 }
                 let ring = Vec::from(std::mem::take(&mut self.coords));
@@ -265,6 +266,68 @@ impl Footprint for LineString3D {
         sink.enter(self.frame())?;
         sink.push_curve_3d(self.coords());
         Ok(())
+    }
+}
+
+// A chain has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString3D: DivideByGrid);
+
+use crate::collection::{Collection2D, Collection3D};
+use crate::ops::boundary::{endpoints, Boundary, ExtractBoundary};
+use crate::point::{Point2D, Point3D};
+
+// A chain is bounded by its two ends. One that closes on itself has no ends, so
+// its boundary is empty.
+//
+// The ends come back as bare points, which carry no elevation of their own, so a
+// 2.5D chain's elevation is not preserved onto them.
+impl ExtractBoundary for LineString2D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let Some((first, last)) = endpoints(self.coords()) else {
+            return Ok(Boundary::EMPTY);
+        };
+        let frame = self.frame();
+        Ok(Boundary::Bounded(Geometry::Euclidean2D(
+            Euclidean2DGeometry::Collection(Collection2D::new([
+                Euclidean2DGeometry::Point(Point2D::new(frame.clone(), first)),
+                Euclidean2DGeometry::Point(Point2D::new(frame.clone(), last)),
+            ])),
+        )))
+    }
+}
+
+impl ExtractBoundary for LineString3D {
+    fn extract_boundary(&self) -> Result<Boundary, UnsupportedOperation> {
+        let Some((first, last)) = endpoints(self.coords()) else {
+            return Ok(Boundary::EMPTY);
+        };
+        let frame = self.frame();
+        Ok(Boundary::Bounded(Geometry::Euclidean3D(
+            Euclidean3DGeometry::Collection(Collection3D::new([
+                Euclidean3DGeometry::Point(Point3D::new(frame.clone(), first)),
+                Euclidean3DGeometry::Point(Point3D::new(frame.clone(), last)),
+            ])),
+        )))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::Elevation;
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for LineString2D {
+    fn elevation(&self) -> Option<f64> {
+        self.z
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Elevation for LineString3D {
+    fn elevation(&self) -> Option<f64> {
+        self.coords.first().map(|c| c[2])
     }
 }
 

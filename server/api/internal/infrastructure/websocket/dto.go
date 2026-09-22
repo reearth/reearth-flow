@@ -48,3 +48,10 @@ type snapshotItemResponse struct {
 type saveSnapshotRequest struct {
 	Label string `json:"label"`
 }
+
+// snapshotStateResponse mirrors websocket-go's SnapshotStateResponse.
+type snapshotStateResponse struct {
+	ID         string `json:"id"`
+	Updates    []byte `json:"updates"`
+	SnapshotID int64  `json:"snapshot_id"`
+}

@@ -1,18 +1,21 @@
-import {
-  ReactFlow,
-  Background,
-  BackgroundVariant,
-  SelectionMode,
+import type {
   SnapGrid,
   XYPosition,
   NodeChange,
   EdgeChange,
   OnConnectStart,
 } from "@xyflow/react";
-import { MouseEvent, memo, useMemo } from "react";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  SelectionMode,
+} from "@xyflow/react";
+import type { MouseEvent } from "react";
+import { memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { DEFAULT_GRID_SIZE } from "@flow/global-constants";
 import {
   isValidConnection,
@@ -95,7 +98,7 @@ const Canvas: React.FC<Props> = ({
   onConnectEnd,
   onPointerDown,
 }) => {
-  const { isLocked: readonly } = useEditorContext();
+  const readonly = useIsReadOnly();
   const {
     handleNodesDeleteCleanup,
     handleNodeDragOver,

@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import {
+import type {
   CreateProject,
   DeleteProject,
   EngineReadyWorkflow,
@@ -13,7 +13,10 @@ import {
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
-import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
+import type {
+  CreateProjectInput,
+  UpdateProjectInput,
+} from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

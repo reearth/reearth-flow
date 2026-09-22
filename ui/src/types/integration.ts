@@ -1,5 +1,5 @@
-import { Role } from "./member";
-import { User } from "./user";
+import type { Role } from "./member";
+import type { User } from "./user";
 
 export type IntegrationMember = {
   id: string;

@@ -92,6 +92,25 @@ pub(super) struct NodeId(String);
 )]
 pub struct Port(String);
 
+/// Id of the intermediate-data file written for one output port of a node.
+///
+/// `subgraph_prefix` is the dot-joined chain of subgraph call-site node ids
+/// enclosing the node, or `None` for a node of the entry graph.
+/// `is_subgraph_output` marks the output router of a subgraph, whose ports
+/// are the ports of the subgraph itself.
+pub fn port_file_id(
+    subgraph_prefix: Option<&str>,
+    is_subgraph_output: bool,
+    node_id: &str,
+    port: &str,
+) -> String {
+    match (subgraph_prefix, is_subgraph_output) {
+        (Some(prefix), true) => format!("{prefix}.{port}"),
+        (Some(prefix), false) => format!("{prefix}.{node_id}.{port}"),
+        (None, _) => format!("{node_id}.{port}"),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NodeType {
     pub handle: NodeHandle,
@@ -142,6 +161,16 @@ pub struct NodeHandle {
 impl NodeHandle {
     pub fn new(id: NodeId) -> Self {
         Self { id }
+    }
+
+    /// `NodeId` is `pub(super)` here (crate-private), so an external crate cannot name it
+    /// directly. Its `Deserialize` impl is still public, so this builds one via inference
+    /// through that instead of naming the type. Primarily useful for downstream-crate tests that
+    /// need a `NodeHandle` without a real workflow graph.
+    pub fn for_test(id: &str) -> Self {
+        Self {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
     }
 }
 

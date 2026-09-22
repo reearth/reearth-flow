@@ -243,7 +243,7 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 					<uro:landUseType codeSpace="../../codelists/Common_landUseType.xml">231</uro:landUseType>
 
 					<!-- TEST: L-bldg-04 -->
-					<uro:majorUsage2 codeSpace="../../codelists/BuildingDetailAttribute_majorUsage.xml">01002</uro:majorUsage2>
+					<uro:majorUsage2 codeSpace="../../codelists/BuildingDetailAttribute_majorUsage.xml">401</uro:majorUsage2>
 
 					<uro:detailedUsage codeSpace="../../codelists/BuildingDetailAttribute_detailedUsage.xml">461</uro:detailedUsage>
 					<uro:buildingHeight uom="m">-9999</uro:buildingHeight>

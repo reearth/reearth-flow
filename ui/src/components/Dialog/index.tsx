@@ -2,7 +2,8 @@
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "@phosphor-icons/react";
-import { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import { forwardRef } from "react";
 
 import { cn } from "@flow/lib/utils";
 

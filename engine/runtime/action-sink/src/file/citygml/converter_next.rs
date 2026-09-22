@@ -26,11 +26,14 @@
 
 use std::ops::Range;
 
+use reearth_flow_citygml::pipeline::{MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY};
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::polygon_mesh::FaceVisit;
 use reearth_flow_geometry::solid::{Shell, Solid};
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
+use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
@@ -43,13 +46,6 @@ use super::model::{
     GmlSurface,
 };
 use crate::errors::SinkError;
-
-/// Spelled out rather than imported: `action-sink` depends on `action-processor`
-/// only as a dev-dependency. A unit test pins the two spellings together.
-const MEMBER_LOD_KEY: &str = "lod";
-
-/// The source geometry property's local name, as the reader records it.
-const MEMBER_PROPERTY_KEY: &str = "citygmlProperty";
 
 /// Matches the legacy `lod.unwrap_or(0)`. `lodFilter` applies to it like any other.
 const DEFAULT_LOD: u8 = 0;
@@ -128,6 +124,8 @@ const DEFAULT_EPSG: u32 = 4326;
 pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
+    // This world accepts any geometry, so it has no non-CityGML case to report.
+    diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<ConvertedCityObject, SinkError> {
     let mut conversion = Conversion {
         context: FeatureContext {
@@ -138,6 +136,16 @@ pub fn convert_city_object(
         ..Conversion::default()
     };
     conversion.convert_member(&feature.geometry, lod_mask, DEFAULT_LOD, None)?;
+
+    if conversion.geometries.is_empty() {
+        if let Some(diagnostics) = diagnostics {
+            diagnostics.report_drop(
+                ErrorCode::CitygmlEmptyGeometry,
+                Some(feature.id),
+                Some(feature.has_geometry()),
+            );
+        }
+    }
     Ok(conversion.finish())
 }
 
@@ -574,7 +582,7 @@ fn close_ring(ring: &mut Vec<[f64; 3]>) -> Option<usize> {
 
 /// The property name a member records, if it records one.
 fn member_property(attributes: &Attributes) -> Option<&str> {
-    match attributes.get(&Attribute::new(MEMBER_PROPERTY_KEY)) {
+    match attributes.get(&Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY)) {
         Some(AttributeValue::String(property)) if !property.is_empty() => Some(property),
         _ => None,
     }
@@ -606,7 +614,7 @@ mod tests {
         use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
         use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
-        use super::{MEMBER_LOD_KEY, MEMBER_PROPERTY_KEY};
+        use super::{MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY};
 
         pub fn crs(code: u16) -> CoordinateFrame {
             CoordinateFrame::Crs(EpsgCode::new(code))
@@ -830,7 +838,7 @@ mod tests {
             }
             if let Some(property) = property {
                 attributes.insert(
-                    Attribute::new(MEMBER_PROPERTY_KEY),
+                    Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY),
                     AttributeValue::String(property.to_string()),
                 );
             }
@@ -902,16 +910,6 @@ mod tests {
             .all(|ring| ring.first() == ring.last() && ring.len() >= 4)
     }
 
-    /// The keys are spelled out in both crates, so this keeps them one fact.
-    #[test]
-    fn the_member_attribute_keys_match_the_readers() {
-        use reearth_flow_action_processor::citygml_parser::pipeline::{
-            MEMBER_LOD_KEY as READER_LOD, MEMBER_PROPERTY_KEY as READER_PROPERTY,
-        };
-        assert_eq!(MEMBER_LOD_KEY, READER_LOD);
-        assert_eq!(MEMBER_PROPERTY_KEY, READER_PROPERTY);
-    }
-
     // Coordinates and axis order
 
     /// The identity formatter: ordinates reach the file in the order the leaf
@@ -931,7 +929,7 @@ mod tests {
             triangle(crs(6697), 0.0),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].lod, 2);
@@ -953,7 +951,7 @@ mod tests {
             line(crs(6697)),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(curves(&converted.geometries[0]).len(), 1);
@@ -969,7 +967,7 @@ mod tests {
             triangle(crs(6697), 0.0),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries[0].lod, 0);
         assert_eq!(converted.geometries[0].property.as_deref(), Some("tin"));
@@ -988,7 +986,7 @@ mod tests {
             })
             .collect();
 
-        let converted = convert_city_object(&feature(members), &all_lods()).unwrap();
+        let converted = convert_city_object(&feature(members), &all_lods(), None).unwrap();
 
         let lods: Vec<u8> = converted.geometries.iter().map(|e| e.lod).collect();
         assert_eq!(lods, vec![0, 1, 2, 3, 4]);
@@ -1003,7 +1001,7 @@ mod tests {
             (member_attrs(Some(2), None), triangle(crs(6697), 10.0)),
         ]);
 
-        let converted = convert_city_object(&feature, &only_lod(1)).unwrap();
+        let converted = convert_city_object(&feature, &only_lod(1), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].lod, 1);
@@ -1023,7 +1021,7 @@ mod tests {
             triangle(crs(6697), 0.0),
         )]);
 
-        let converted = convert_city_object(&feature, &only_lod(2)).unwrap();
+        let converted = convert_city_object(&feature, &only_lod(2), None).unwrap();
 
         assert!(converted.geometries.is_empty());
     }
@@ -1037,7 +1035,7 @@ mod tests {
         );
         let feature = feature(vec![(attributes, triangle(crs(6697), 0.0))]);
 
-        let error = convert_city_object(&feature, &all_lods()).unwrap_err();
+        let error = convert_city_object(&feature, &all_lods(), None).unwrap_err();
 
         let message = error.to_string();
         assert!(message.contains("member 0"), "{message}");
@@ -1053,7 +1051,7 @@ mod tests {
         );
         let feature = feature(vec![(attributes, triangle(crs(6697), 0.0))]);
 
-        assert!(convert_city_object(&feature, &all_lods()).is_err());
+        assert!(convert_city_object(&feature, &all_lods(), None).is_err());
     }
 
     // Meshes
@@ -1068,7 +1066,7 @@ mod tests {
             polygon_mesh(crs(6697)),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let surfaces = surfaces(&converted.geometries[0]);
         assert_eq!(surfaces.len(), 2);
@@ -1095,7 +1093,7 @@ mod tests {
             polygon_mesh_with_a_hole(crs(6697)),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let surfaces = surfaces(&converted.geometries[0]);
         assert_eq!(surfaces.len(), 1);
@@ -1113,7 +1111,7 @@ mod tests {
             triangular_mesh(crs(6697)),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries[0].property.as_deref(), Some("tin"));
         let surfaces = surfaces(&converted.geometries[0]);
@@ -1133,7 +1131,7 @@ mod tests {
             solid(crs(6697), 0),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].lod, 1);
@@ -1156,7 +1154,7 @@ mod tests {
             solid(crs(6697), 2),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let solid = solid_of(&converted.geometries[0]);
         assert_eq!(solid.exterior.len(), 2);
@@ -1175,7 +1173,7 @@ mod tests {
             collection3d(vec![solid(crs(6697), 0), solid(crs(6697), 1)]),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(
@@ -1197,7 +1195,7 @@ mod tests {
             collection3d(vec![triangle(crs(6697), 0.0), solid(crs(6697), 0)]),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 2);
         assert_eq!(solid_of(&converted.geometries[0]).exterior.len(), 2);
@@ -1210,7 +1208,7 @@ mod tests {
     fn a_solid_folds_its_coordinates_into_the_envelope_and_the_crs() {
         let feature = feature(vec![(member_attrs(Some(1), None), solid(crs(6697), 1))]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let envelope = converted.envelope.unwrap();
         assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
@@ -1272,7 +1270,7 @@ mod tests {
             ),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let surfaces = surfaces(&converted.geometries[0]);
         assert_eq!(surfaces[0].material_idx, Some(0));
@@ -1300,7 +1298,7 @@ mod tests {
             ),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(
             surfaces(&converted.geometries[0])[0].uv_exterior,
@@ -1326,7 +1324,7 @@ mod tests {
             textured_triangular_mesh(crs(6697), uv),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let surfaces = surfaces(&converted.geometries[0]);
         assert_eq!(surfaces.len(), 2);
@@ -1365,7 +1363,7 @@ mod tests {
             ),
         ]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.appearance.materials.len(), 2);
         assert_eq!(converted.appearance.textures.len(), 1);
@@ -1384,7 +1382,7 @@ mod tests {
             two_sided_triangle(crs(6697)),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.omissions.len(), 1);
         assert_eq!(
@@ -1401,7 +1399,8 @@ mod tests {
     /// no `app:appearanceMember` in the document.
     #[test]
     fn a_leaf_with_no_appearance_produces_no_palettes() {
-        let converted = convert_city_object(&bare(triangle(crs(6697), 0.0)), &all_lods()).unwrap();
+        let converted =
+            convert_city_object(&bare(triangle(crs(6697), 0.0)), &all_lods(), None).unwrap();
 
         assert!(!converted.appearance.has_content());
         assert!(converted.appearance.theme.is_none());
@@ -1415,11 +1414,11 @@ mod tests {
     fn a_bare_leaf_is_filtered_by_its_default_lod() {
         let feature = bare(triangle(crs(6697), 0.0));
 
-        let kept = convert_city_object(&feature, &only_lod(DEFAULT_LOD)).unwrap();
+        let kept = convert_city_object(&feature, &only_lod(DEFAULT_LOD), None).unwrap();
         assert_eq!(kept.geometries.len(), 1);
         assert_eq!(kept.geometries[0].lod, DEFAULT_LOD);
 
-        let dropped = convert_city_object(&feature, &only_lod(2)).unwrap();
+        let dropped = convert_city_object(&feature, &only_lod(2), None).unwrap();
         assert!(dropped.geometries.is_empty());
         assert!(
             dropped.envelope.is_none(),
@@ -1447,7 +1446,7 @@ mod tests {
             ]),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].lod, 2);
@@ -1467,7 +1466,7 @@ mod tests {
             collection3d(vec![triangle(crs(6697), 0.0), line(crs(6697))]),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 2);
         assert_eq!(surfaces(&converted.geometries[0]).len(), 1);
@@ -1482,7 +1481,8 @@ mod tests {
     /// it lands at the default LOD with the writer's family fallback naming it.
     #[test]
     fn a_bare_leaf_lands_at_the_default_lod_with_no_property() {
-        let converted = convert_city_object(&bare(triangle(crs(6697), 0.0)), &all_lods()).unwrap();
+        let converted =
+            convert_city_object(&bare(triangle(crs(6697), 0.0)), &all_lods(), None).unwrap();
 
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].lod, 0);
@@ -1502,7 +1502,7 @@ mod tests {
             ]),
         )]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         // The supported sibling still reaches the document.
         assert_eq!(surfaces(&converted.geometries[0]).len(), 1);
@@ -1517,7 +1517,7 @@ mod tests {
     fn an_omitted_leaf_contributes_no_envelope_and_no_crs() {
         let feature = feature(vec![(member_attrs(Some(0), None), point(crs(6697)))]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert!(converted.geometries.is_empty());
         assert!(converted.envelope.is_none());
@@ -1533,7 +1533,7 @@ mod tests {
             LineString2D::from_coords(crs(6668), vec![[35.0, 139.0], [35.1, 139.1]]),
         )));
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert!(converted.geometries.is_empty());
         assert_eq!(converted.omissions.len(), 1);
@@ -1551,7 +1551,7 @@ mod tests {
             (member_attrs(Some(1), None), triangle(crs(6697), 1.0)),
         ]);
 
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let envelope = converted.envelope.unwrap();
         assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
@@ -1566,7 +1566,7 @@ mod tests {
             member_attrs(Some(0), None),
             triangle(crs(6697), 0.0),
         )]);
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(
             srs_name(&[], None, converted.crs).unwrap(),
@@ -1598,7 +1598,7 @@ mod tests {
             (member_attrs(Some(0), None), triangle(crs(6697), 0.0)),
             (member_attrs(Some(1), None), triangle(crs(6668), 0.0)),
         ]);
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         let message = srs_name(&[], None, converted.crs).unwrap_err().to_string();
 
@@ -1614,7 +1614,7 @@ mod tests {
             member_attrs(Some(0), None),
             triangle(tangent(), 0.0),
         )]);
-        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+        let converted = convert_city_object(&feature, &all_lods(), None).unwrap();
 
         assert_eq!(converted.crs, CrsCoverage::OutsideAnyCrs);
         assert!(srs_name(&[], None, converted.crs).is_err());

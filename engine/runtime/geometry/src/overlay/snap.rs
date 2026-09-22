@@ -19,28 +19,38 @@ use super::shapes::Shape;
 /// Pull the vertices of `shapes` that lie closer together than `tolerance` onto
 /// one shared position, in place. A non-positive tolerance snaps nothing.
 ///
+/// Returns, per shape, whether any of its vertices moved, so a caller that only
+/// needs to act on the shapes that changed can tell without keeping a copy of
+/// what they were.
+///
 /// Vertex to vertex only: a gap between two edges that have no vertices facing
 /// each other is left open, however narrow.
-pub(super) fn snap_shapes(shapes: &mut [Shape], tolerance: f64) {
+pub(super) fn snap_shapes(shapes: &mut [Shape], tolerance: f64) -> Vec<bool> {
+    let unmoved = || vec![false; shapes.len()];
     if tolerance <= 0.0 {
-        return;
+        return unmoved();
     }
     let points: Vec<[f64; 2]> = shapes
         .iter()
         .flat_map(|shape| shape.iter().flat_map(|path| path.iter().copied()))
         .collect();
     let Some(snapped) = snapped_positions(&points, tolerance) else {
-        return;
+        return unmoved();
     };
+    let mut moved = Vec::with_capacity(shapes.len());
     let mut i = 0;
     for shape in shapes {
+        let mut shape_moved = false;
         for path in shape {
             for coord in path {
+                shape_moved |= *coord != snapped[i];
                 *coord = snapped[i];
                 i += 1;
             }
         }
+        moved.push(shape_moved);
     }
+    moved
 }
 
 /// The position each of `points` snaps to, or `None` when there is nothing to

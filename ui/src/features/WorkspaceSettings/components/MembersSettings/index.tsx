@@ -1,5 +1,4 @@
 import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 import {
@@ -12,8 +11,10 @@ import {
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentWorkspace } from "@flow/stores";
-import { Role, UserMember } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
+import type { UserMember } from "@flow/types";
+import { Role } from "@flow/types";
 
 import { MemberAddDialog } from "./components";
 
@@ -22,6 +23,8 @@ const roles: Role[] = Object.values(Role);
 const MembersSettings: React.FC = () => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
+  const [currentUserRole] = useCurrentUserRole();
+
   const {
     addMemberToWorkspace,
     removeMemberFromWorkspace,
@@ -119,7 +122,7 @@ const MembersSettings: React.FC = () => {
     }
   };
 
-  const columns: ColumnDef<UserMember>[] = [
+  const columns: AppColumnDef<UserMember>[] = [
     {
       accessorKey: "user.name",
       header: t("Name"),
@@ -154,11 +157,16 @@ const MembersSettings: React.FC = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
           <Button
             className="h-[25px]"
             size="sm"
             variant="outline"
-            disabled={row.row.original.userId === me?.id}
+            disabled={
+              (currentUserRole !== Role.Owner &&
+                currentUserRole !== Role.Maintainer) ||
+              row.row.original.userId === me?.id
+            }
             onClick={() => handleRemoveMembers(row.row.original.userId)}>
             {t("Remove")}
           </Button>

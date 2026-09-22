@@ -1,12 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
-import {
-  type EditorSession,
-  newEditorSession,
-  teardownSession,
-} from "../fixtures/session";
-import { EditorPage } from "../pages/editorPage";
-import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
+import { newEditorSession, teardownSession } from "../fixtures/session";
+import type { EditorSession } from "../fixtures/session";
+import type { EditorPage } from "../pages/editorPage";
+import type { ProjectsPage } from "../pages/projectsPage";
+import { uniqueProjectName } from "../pages/projectsPage";
 
 const PARKS = {
   type: "FeatureCollection",
@@ -131,8 +130,6 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(areaNode);
-      // EPSG:4326 degrees → ~m² near Tokyo (35.7°N): 1 deg² ≈ 1.0029e10 m².
-      await editor.setParamText("root_multiplier", "10029000000");
       await editor.setParamText("root_outputAttribute", "areaSqm");
       await editor.submitParams();
 

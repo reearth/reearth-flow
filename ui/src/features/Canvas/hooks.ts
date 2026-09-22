@@ -1,10 +1,11 @@
-import {
+import type {
   DefaultEdgeOptions,
   EdgeChange,
   NodeChange,
   XYPosition,
 } from "@xyflow/react";
-import { MouseEvent, useCallback, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";
@@ -121,12 +122,16 @@ export default ({
       if (!position) return;
       const { styles } = position;
 
+      const selectedNodes = nodes.filter((n) => n.selected);
+      const isPartOfSelection =
+        selectedNodes.length > 1 && selectedNodes.some((n) => n.id === node.id);
+
       setContextMenu({
-        data: node,
+        data: isPartOfSelection ? selectedNodes : node,
         styles,
       });
     },
-    [setContextMenu],
+    [nodes, setContextMenu],
   );
 
   const handleSelectionContextMenu = useCallback(

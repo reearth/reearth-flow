@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 
-use super::excel::{write_excel, ExcelWriterParam as OldExcelWriterParam};
+use super::excel::write_excel;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ExcelWriterFactory;
@@ -22,7 +22,9 @@ impl SinkFactory for ExcelWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to Microsoft Excel format (.xlsx files)."
+        "Writes each feature as a row of an .xlsx worksheet, one column per attribute. An \
+         attribute named after another with a `.formula` or `.hyperlink` suffix fills that \
+         column's cell with a formula or a link instead of a value."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -30,7 +32,11 @@ impl SinkFactory for ExcelWriterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File"]
+        &["Output"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["excel"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -78,20 +84,30 @@ impl SinkFactory for ExcelWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct ExcelWriter {
     output: CompiledCode,
-    sheet_name: Option<String>,
+    sheet_name: String,
     pub(super) buffer: HashMap<String, (crate::SinkOutput, Vec<Feature>)>,
 }
 
+/// The worksheet rows land in when the parameter is omitted.
+fn default_sheet_name() -> String {
+    "Sheet1".to_string()
+}
+
 /// # Excel Writer Parameters
-///
-/// Configuration for writing features to Microsoft Excel format.
+/// Sets where the workbook is written and what its worksheet is called.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
-    /// Output path or expression for the Excel file to create
+    /// # Output Path
+    /// Path the .xlsx file is written to. An expression is evaluated per
+    /// feature, so features that resolve to different paths are written to
+    /// separate workbooks.
     pub(super) output: Code,
-    /// Sheet name (defaults to "Sheet1")
-    pub(super) sheet_name: Option<String>,
+
+    /// # Sheet Name
+    /// Name of the worksheet the rows are written to. Defaults to `Sheet1`.
+    #[serde(default = "default_sheet_name")]
+    pub(super) sheet_name: String,
 }
 
 impl Sink for ExcelWriter {
@@ -126,10 +142,7 @@ impl Sink for ExcelWriter {
 
     fn finish(&self, _ctx: NodeContext) -> Result<(), BoxedError> {
         for (out, features) in self.buffer.values() {
-            let old_params = OldExcelWriterParam {
-                sheet_name: self.sheet_name.clone(),
-            };
-            write_excel(out, &old_params, features)?;
+            write_excel(out, &self.sheet_name, features)?;
         }
         Ok(())
     }

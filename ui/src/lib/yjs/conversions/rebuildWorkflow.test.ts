@@ -1,8 +1,8 @@
 import * as Y from "yjs";
 
-import { Edge, Node } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 
-import { YNode, YWorkflow } from "../types";
+import type { YNode, YWorkflow } from "../types";
 
 import { reassembleNode, rebuildWorkflow } from "./rebuildWorkflow";
 import { yWorkflowConstructor } from "./yWorkflowConstructor";

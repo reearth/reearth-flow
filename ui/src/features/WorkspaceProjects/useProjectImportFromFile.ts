@@ -1,9 +1,10 @@
 import JSZip from "jszip";
-import { ChangeEvent, useCallback, useRef } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useRef } from "react";
 
 import { useProjectImport } from "@flow/hooks";
 import { useCurrentWorkspace } from "@flow/stores";
-import { ProjectToImport } from "@flow/types";
+import type { ProjectToImport } from "@flow/types";
 
 export default () => {
   const [currentWorkspace] = useCurrentWorkspace();

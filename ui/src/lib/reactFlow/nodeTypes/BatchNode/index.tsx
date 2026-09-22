@@ -1,5 +1,6 @@
 import { RectangleDashedIcon } from "@phosphor-icons/react";
-import { NodeProps, NodeResizer } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
+import { NodeResizer } from "@xyflow/react";
 import { memo, useMemo } from "react";
 
 import { useAwarenessNodeSelections } from "@flow/features/Editor/editorContext";

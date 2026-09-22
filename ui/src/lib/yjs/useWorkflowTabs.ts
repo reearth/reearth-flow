@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { Workflow } from "@flow/types";
+import type { Workflow } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({

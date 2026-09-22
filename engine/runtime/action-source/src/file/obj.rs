@@ -20,7 +20,7 @@ use reearth_flow_runtime::{
     node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
-    Attribute, AttributeValue, Code, CompiledCode, Feature, Geometry, GeometryValue,
+    Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature, Geometry, GeometryValue,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -47,7 +47,7 @@ impl SourceFactory for ObjReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials"
+        "Reads 3D models from Wavefront OBJ files, including vertices, faces, normals, texture coordinates, and materials."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -55,7 +55,11 @@ impl SourceFactory for ObjReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File", "3D"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["obj", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -99,8 +103,7 @@ impl SourceFactory for ObjReaderFactory {
                 })?,
             triangulate: params.triangulate,
             merge_groups: params.merge_groups,
-            _include_normals: params.include_normals,
-            _include_texcoords: params.include_texcoords,
+            include_texcoords: params.include_texcoords,
         };
         Ok(Box::new(ObjReader { params: compiled }))
     }
@@ -113,8 +116,10 @@ pub(super) struct ObjReaderCompiledParam {
     pub(super) material_file: Option<CompiledCode>,
     pub(super) triangulate: bool,
     pub(super) merge_groups: bool,
-    pub(super) _include_normals: bool,
-    pub(super) _include_texcoords: bool,
+    // Only read by the new-geometry path (`obj_next::face_uv`); the
+    // not(new-geometry) world does not carry UVs onto the geometry.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    pub(super) include_texcoords: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -133,7 +138,7 @@ pub(super) struct ObjReaderParam {
     pub(super) common: FileReaderCommonParam,
 
     /// # Parse Materials
-    /// Enable parsing of material definitions from MTL files referenced in the OBJ file
+    /// Parses material definitions from MTL files referenced in the OBJ file.
     #[serde(default = "default_true")]
     pub(super) parse_materials: bool,
 
@@ -143,22 +148,17 @@ pub(super) struct ObjReaderParam {
     pub(super) material_file: Option<Code>,
 
     /// # Triangulate
-    /// Convert polygons with more than 3 vertices into triangles using fan triangulation
+    /// Converts polygons with more than 3 vertices into triangles using fan triangulation.
     #[serde(default)]
     pub(super) triangulate: bool,
 
     /// # Merge Groups
-    /// Merge all groups and objects into a single feature instead of creating separate features per group/object
+    /// Merges all groups and objects into a single feature instead of creating separate features per group or object.
     #[serde(default)]
     pub(super) merge_groups: bool,
 
-    /// # Include Normals
-    /// Include vertex normal data in the output geometry
-    #[serde(default = "default_true")]
-    pub(super) include_normals: bool,
-
     /// # Include Texture Coordinates
-    /// Include texture coordinate (UV) data in the output geometry
+    /// Includes texture coordinate (UV) data in the output geometry.
     #[serde(default = "default_true")]
     pub(super) include_texcoords: bool,
 }
@@ -272,14 +272,14 @@ fn extract_material_properties(
             .collect(),
     );
 
-    let mut material_details = HashMap::new();
+    let mut material_details = Attributes::new();
     for mat_name in used_materials {
         if let Some(mat) = materials.get(mat_name) {
-            let mut mat_props = HashMap::new();
+            let mut mat_props = Attributes::new();
 
             if let Some(ambient) = mat.ambient {
                 mat_props.insert(
-                    "ambient".to_string(),
+                    Attribute::new("ambient"),
                     AttributeValue::Array(vec![
                         AttributeValue::Number(safe_f64_to_number(ambient[0] as f64)),
                         AttributeValue::Number(safe_f64_to_number(ambient[1] as f64)),
@@ -290,7 +290,7 @@ fn extract_material_properties(
 
             if let Some(diffuse) = mat.diffuse {
                 mat_props.insert(
-                    "diffuse".to_string(),
+                    Attribute::new("diffuse"),
                     AttributeValue::Array(vec![
                         AttributeValue::Number(safe_f64_to_number(diffuse[0] as f64)),
                         AttributeValue::Number(safe_f64_to_number(diffuse[1] as f64)),
@@ -301,7 +301,7 @@ fn extract_material_properties(
 
             if let Some(specular) = mat.specular {
                 mat_props.insert(
-                    "specular".to_string(),
+                    Attribute::new("specular"),
                     AttributeValue::Array(vec![
                         AttributeValue::Number(safe_f64_to_number(specular[0] as f64)),
                         AttributeValue::Number(safe_f64_to_number(specular[1] as f64)),
@@ -312,40 +312,43 @@ fn extract_material_properties(
 
             if let Some(shininess) = mat.shininess {
                 mat_props.insert(
-                    "shininess".to_string(),
+                    Attribute::new("shininess"),
                     AttributeValue::Number(safe_f64_to_number(shininess as f64)),
                 );
             }
 
             if let Some(transparency) = mat.transparency {
                 mat_props.insert(
-                    "transparency".to_string(),
+                    Attribute::new("transparency"),
                     AttributeValue::Number(safe_f64_to_number(transparency as f64)),
                 );
             }
 
             if let Some(illumination) = mat.illumination {
                 mat_props.insert(
-                    "illumination".to_string(),
+                    Attribute::new("illumination"),
                     AttributeValue::Number(serde_json::Number::from(illumination)),
                 );
             }
 
             if let Some(texture_map) = &mat.texture_map {
                 mat_props.insert(
-                    "textureMap".to_string(),
+                    Attribute::new("textureMap"),
                     AttributeValue::String(texture_map.clone()),
                 );
             }
 
-            material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+            material_details.insert(
+                Attribute::new(mat_name.as_str()),
+                AttributeValue::Map(mat_props),
+            );
         }
     }
 
     let material_properties = if !material_details.is_empty() {
         AttributeValue::Map(material_details)
     } else {
-        AttributeValue::Map(HashMap::new())
+        AttributeValue::Map(Attributes::new())
     };
 
     (materials_array, material_properties)
@@ -1087,8 +1090,7 @@ f 1 2 3 4
             material_file: None,
             triangulate: true,
             merge_groups: false,
-            _include_normals: true,
-            _include_texcoords: true,
+            include_texcoords: true,
         };
 
         let geometry = create_geometry_from_faces(&obj_data, &obj_data.faces, &params).unwrap();
@@ -1129,8 +1131,7 @@ f -4 -3 -2 -1
             material_file: None,
             triangulate: false,
             merge_groups: false,
-            _include_normals: true,
-            _include_texcoords: true,
+            include_texcoords: true,
         };
 
         let geometry = create_geometry_from_faces(&obj_data, &obj_data.faces, &params).unwrap();

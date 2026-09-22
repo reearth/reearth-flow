@@ -2,7 +2,8 @@ import { useAuth0 } from "@auth0/auth0-react";
 
 import { e2eAccessToken, logOutFromTenant } from "@flow/config";
 
-import { errorKey, AuthHook } from ".";
+import type { AuthHook } from ".";
+import { errorKey } from ".";
 
 export const useAuth0Auth = (): AuthHook => {
   const {
@@ -19,7 +20,14 @@ export const useAuth0Auth = (): AuthHook => {
     isAuthenticated: !!e2eAccessToken() || (isAuthenticated && !error),
     isLoading,
     error: error?.message ?? null,
-    getAccessToken: () => getAccessTokenSilently(),
+    getAccessToken: async () => {
+      // auth0-spa-js types getTokenSilently as string | undefined. Returning
+      // undefined here would reach callers as a `Bearer undefined` header, so
+      // fail loudly instead.
+      const token = await getAccessTokenSilently();
+      if (!token) throw new Error("Auth0 returned no access token");
+      return token;
+    },
     login: () => {
       logOutFromTenant();
       return loginWithRedirect();

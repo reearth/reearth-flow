@@ -4,7 +4,6 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import {
@@ -23,9 +22,13 @@ import {
   Switch,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import {
+  useEditorContext,
+  useIsReadOnly,
+} from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";
@@ -97,7 +100,8 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   onBatchUpdate,
 }) => {
   const t = useT();
-  const { isLocked, workflowVarAwareness } = useEditorContext();
+  const { workflowVarAwareness } = useEditorContext();
+  const readonly = useIsReadOnly();
 
   const {
     workflowVariables,
@@ -160,7 +164,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     return map;
   }, [users]);
 
-  const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
+  const columns: AppColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
         accessorKey: "name",
@@ -170,7 +174,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           return (
             <NameInput
               variable={variable}
-              disabled={isLocked}
+              disabled={readonly}
               onUpdate={handleUpdate}
               onFocus={() =>
                 workflowVarAwareness?.onFieldFocus(variable.id, "name")
@@ -203,7 +207,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               onCheckedChange={() => {
                 handleUpdate({ ...row.original, required: !isChecked });
               }}
-              disabled={isLocked}
+              disabled={readonly}
             />
           );
         },
@@ -219,7 +223,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               onCheckedChange={() => {
                 handleUpdate({ ...variable, public: !variable.public });
               }}
-              disabled={isLocked}
+              disabled={readonly}
             />
           );
         },
@@ -241,7 +245,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                 }}
                 tooltipText={t("Edit default value and advanced options")}
                 className="hover:bg-accent"
-                disabled={isLocked}
+                disabled={readonly}
               />
               <IconButton
                 icon={<TrashIcon size={18} />}
@@ -253,7 +257,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                 }}
                 tooltipText={t("Delete variable")}
                 className="hover:bg-accent"
-                disabled={isLocked}
+                disabled={readonly}
               />
             </div>
           );
@@ -262,7 +266,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
       },
     ],
     [
-      isLocked,
+      readonly,
       handleUpdate,
       handleEditVariable,
       handleDeleteSingle,
@@ -321,7 +325,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                           variant="default"
                           size="sm"
                           className="gap-2"
-                          disabled={isLocked}>
+                          disabled={readonly}>
                           <PlusIcon size={16} />
                           {t("Add Variable")}
                         </Button>
@@ -352,6 +356,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                     workflowVariables={workflowVariables}
                     columns={columns}
                     onReorder={handleReorder}
+                    readonly={readonly}
                     variableFocusMap={variableFocusMap}
                     variableEditMap={variableEditMap}
                   />

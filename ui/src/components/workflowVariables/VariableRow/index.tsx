@@ -164,13 +164,15 @@ const VariableRow: React.FC<Props> = ({
                 }}
               />
             )}
-            <div className="flex items-center gap-0">
-              <IconButton
-                icon={<PencilLineIcon />}
-                onClick={() => onVariableDialogOpen?.(index, undefined)}
-                className="ml-2"
-              />
-            </div>
+            {onVariableDialogOpen && (
+              <div className="flex items-center gap-0">
+                <IconButton
+                  icon={<PencilLineIcon />}
+                  onClick={() => onVariableDialogOpen?.(index, undefined)}
+                  className="ml-2"
+                />
+              </div>
+            )}
           </div>
           {showVariableDialog && (
             <Dialog
@@ -192,10 +194,9 @@ const VariableRow: React.FC<Props> = ({
                   <DialogContentSection className="flex-1 overflow-y-auto p-4">
                     <AssetDefaultSelectionInput
                       variable={variable}
-                      onDefaultValueChange={(newValue) => {
-                        onDefaultValueChange(index, newValue);
-                        onVariableDialogClose?.();
-                      }}
+                      onDefaultValueChange={(newValue) =>
+                        onDefaultValueChange(index, newValue)
+                      }
                       onDialogOpen={onAssetDialogOpen}
                     />
                   </DialogContentSection>
