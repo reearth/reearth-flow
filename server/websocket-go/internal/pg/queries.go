@@ -20,10 +20,19 @@ type Querier interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults
+	// Begin is needed by Migrate, which must hold a transaction-scoped advisory
+	// lock across a multi-statement DDL. A batch cannot express that: pgx batches
+	// use the extended protocol, which forbids multiple statements per query.
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 // lockMigrationSQL serialises concurrent startups so two instances cannot race the
-// same CREATE TABLE. Xact-scoped, not session-scoped, so it releases on commit.
+// same CREATE TABLE (which IF NOT EXISTS does not make safe — concurrent creates can
+// still collide on pg_type's unique index).
+//
+// Xact-scoped, so it MUST share a transaction with the DDL it protects. Issued as a
+// standalone Exec on a pool it is worthless: that Exec's own implicit transaction
+// commits immediately, releasing the lock before the schema is sent.
 const lockMigrationSQL = `SELECT pg_advisory_xact_lock(hashtext('ws_migrate'))`
 
 // serializeInsertSQL is what makes the reader's `id > cursor` cursor correct, and

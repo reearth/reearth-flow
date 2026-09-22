@@ -92,8 +92,7 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) checkCoordination(ctx context.Context) string {
 	if s.health.pinger == nil {
-		// The memory backend has no store to probe, which is healthy for it —
-		// callers distinguish it from a failure by the "unconfigured" value.
+
 		return "unconfigured"
 	}
 	if err := s.health.pinger.Ping(ctx); err != nil {

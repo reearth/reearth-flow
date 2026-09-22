@@ -81,9 +81,18 @@ func NewLocker(cfg *config.Config, owner string) (*Locks, error) {
 		}, nil
 
 	case config.BackendMemory:
-		// Single-instance operation: nothing to coordinate through and nothing to
-		// probe, so /health carries no backend component at all.
-		return &Locks{Locker: gcs.NewNoLock(), Close: func() error { return nil }}, nil
+		// Single-instance operation: no external store, so no store to be down.
+		//
+		// The probe is a real always-healthy one rather than nil ON PURPOSE. A nil
+		// probe reports "unconfigured", which the handler treats as unhealthy — so
+		// leaving it nil made this backend serve 503 forever and never pass a Cloud
+		// Run health check. Keeping nil to mean "miswired" is what makes that
+		// distinction useful.
+		return &Locks{
+			Locker: gcs.NewNoLock(),
+			Probe:  func(context.Context) error { return nil },
+			Close:  func() error { return nil },
+		}, nil
 
 	case config.BackendPostgres:
 		return newPostgresLocks(cfg, owner)

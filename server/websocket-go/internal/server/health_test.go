@@ -118,3 +118,21 @@ func TestHealthNamesTheActualBackend(t *testing.T) {
 		t.Errorf("coordination = %v, want ok", comps["coordination"])
 	}
 }
+
+// TestHealthIsOKWithATriviallyHealthyProbe is the server-side half of
+// TestMemoryBackendIsHealthy: a backend with no external store supplies an
+// always-healthy probe, and /health must then report 200 rather than treating the
+// absence of a real store as a fault.
+func TestHealthIsOKWithATriviallyHealthyProbe(t *testing.T) {
+	srv := New(testConfig())
+	srv.SetHealthChecks(PingerFunc(func(context.Context) error { return nil }), fakeLister{}, "memory")
+
+	code, body := doHealth(t, srv)
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", code)
+	}
+	comps, _ := body["components"].(map[string]any)
+	if comps["coordination"] != "ok" {
+		t.Errorf("coordination = %v, want ok", comps["coordination"])
+	}
+}

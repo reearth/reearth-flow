@@ -13,6 +13,7 @@ package pg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -41,6 +42,12 @@ const (
 	syncBatch      = 100
 	awarenessBatch = 50
 )
+
+// forceEvictAttempts bounds ForceEvict's re-check loop. Each pass evicts whatever
+// roomState is current; a successor installed mid-pass costs one more. More than a
+// handful means the document is reconnecting faster than it can be torn down, which
+// is a caller problem, not something to spin on.
+const forceEvictAttempts = 8
 
 // evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
 // re-check, GCS flush, row delete).
@@ -374,38 +381,49 @@ func (r *Relay) Close() error {
 // a concurrent Publish or reconnect cannot revive rolled-back state. Idempotent;
 // safe even if the room is not resident.
 func (r *Relay) ForceEvict(ctx context.Context, room string) error {
-	r.mu.Lock()
-	if r.closed {
-		r.mu.Unlock()
-		return ErrRelayClosed
-	}
-	rs, ok := r.rooms[room]
-	if ok {
-		rs.evicting = true
-	}
-	r.mu.Unlock()
 
-	if ok {
-		rs.cancel()
-		rs.wg.Wait()
-	}
-
-	_, _ = r.q.Exec(ctx, removeHeartbeatSQL, room, r.clientID)
-	if _, err := r.q.Exec(ctx, forceDeleteSQL, room); err != nil {
-		r.log.Debug("relay force-evict delete failed", "room", room, "err", err)
-		return err
-	}
-
-	if ok {
+	for attempt := 0; attempt < forceEvictAttempts; attempt++ {
 		r.mu.Lock()
-		// Only delete if the map still holds the roomState we evicted: a concurrent
-		// re-activation may have installed a fresh one under the same key.
-		if r.rooms[room] == rs {
-			delete(r.rooms, room)
+		if r.closed {
+			r.mu.Unlock()
+			return ErrRelayClosed
+		}
+		rs, resident := r.rooms[room]
+		if resident {
+			rs.evicting = true
 		}
 		r.mu.Unlock()
+
+		if resident {
+			rs.cancel()
+			// Deliberately NOT under r.mu: readLoop can be inside sink.Inject, which
+			// re-enters ygo, and ygo calls RoomActivated under its own rooms lock.
+			rs.wg.Wait()
+		}
+
+		if _, err := r.q.Exec(ctx, removeHeartbeatSQL, room, r.clientID); err != nil {
+			r.log.Debug("relay force-evict heartbeat removal failed", "room", room, "err", err)
+		}
+		if _, err := r.q.Exec(ctx, forceDeleteSQL, room); err != nil {
+			r.log.Debug("relay force-evict delete failed", "room", room, "err", err)
+			return err
+		}
+
+		r.mu.Lock()
+		current, stillResident := r.rooms[room]
+		if !stillResident {
+			r.mu.Unlock()
+			return nil
+		}
+		if current == rs {
+			delete(r.rooms, room)
+			r.mu.Unlock()
+			return nil
+		}
+		// A successor was installed while this pass ran; evict it too.
+		r.mu.Unlock()
 	}
-	return nil
+	return fmt.Errorf("pg: force evict %s: room kept reactivating after %d attempts", room, forceEvictAttempts)
 }
 
 // evict removes this node's heartbeat; if no instance remains active it flushes to

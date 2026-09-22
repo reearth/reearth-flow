@@ -3,10 +3,12 @@ package pg
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/reearth/ygo/cluster"
 )
 
@@ -271,5 +273,129 @@ func TestElectionLockIsHeldBeforeDelete(t *testing.T) {
 
 	if n := rowCount(t, pool, room); n != 3 {
 		t.Errorf("rows = %d, want 3 left intact while the lock was held", n)
+	}
+}
+
+// reactivatingQuerier fires a hook the first time it sees the force-evict heartbeat
+// removal, which is exactly the window between rs.wg.Wait() and the row delete. It
+// is the only way to stage the reconnect deterministically: staging it BEFORE the
+// call proves nothing, because then the successor is simply the resident state and
+// any implementation evicts it correctly.
+type reactivatingQuerier struct {
+	Querier
+	once sync.Once
+	on   func()
+}
+
+func (q *reactivatingQuerier) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	if sql == removeHeartbeatSQL && q.on != nil {
+		q.once.Do(q.on)
+	}
+	return q.Querier.Exec(ctx, sql, args...)
+}
+
+// TestForceEvictConvergesWhenRoomReactivates covers a race the evicting flag alone
+// does not close: the flag belongs to one roomState, not to the room name.
+// RoomActivated treats an evicting state as absent and installs a FRESH one, so a
+// reconnect landing mid-eviction leaves a live successor whose heartbeat and rows an
+// unconditional delete then erases while its goroutines keep running.
+//
+// The reconnect is injected at the delete boundary, so the successor appears exactly
+// where the old code could not see it.
+func TestForceEvictConvergesWhenRoomReactivates(t *testing.T) {
+	pool := newPool(t)
+	q := &reactivatingQuerier{Querier: pool}
+
+	r, err := New(Options{Q: q, PollEvery: 5 * time.Millisecond, Logger: testLogger(t)})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(func() { cancel(); _ = r.Close() })
+	if err := r.Start(ctx, &fakeSink{}); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	r.RoomActivated(room)
+	r.mu.Lock()
+	first := r.rooms[room]
+	r.mu.Unlock()
+
+	// The reconnect, landing inside ForceEvict after the goroutines have stopped.
+	q.on = func() { r.RoomActivated(room) }
+
+	if err := r.ForceEvict(context.Background(), room); err != nil {
+		t.Fatalf("ForceEvict: %v", err)
+	}
+
+	r.mu.Lock()
+	leftover, stillResident := r.rooms[room]
+	r.mu.Unlock()
+	if stillResident {
+		t.Fatal("room still resident after ForceEvict: a successor was installed mid-eviction and left live with its rows deleted")
+	}
+	if leftover == first {
+		t.Fatal("unexpected: the original state is still mapped")
+	}
+	if n := rowCount(t, pool, room); n != 0 {
+		t.Errorf("rows = %d, want 0", n)
+	}
+}
+
+// TestBatchIsOneTransaction pins the property the eviction election depends on:
+// electionLockSQL and safeDeleteSQL are queued in one pgx.Batch, and the lock is
+// pg_advisory_xact_lock — transaction-scoped. If a batch were NOT one transaction,
+// the lock would be released before the delete and concurrent electors would not be
+// serialised at all.
+//
+// pgx pipelines a batch with a single Sync, and Postgres treats messages between
+// Syncs as one implicit transaction. That is documented, but it is subtle enough to
+// have been questioned twice in review, so it is asserted here rather than trusted.
+func TestBatchIsOneTransaction(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+
+	b := &pgx.Batch{}
+	b.Queue("SELECT pg_current_xact_id()")
+	b.Queue("SELECT pg_current_xact_id()")
+	br := pool.SendBatch(ctx, b)
+	var first, second uint64
+	if err := br.QueryRow().Scan(&first); err != nil {
+		t.Fatalf("first xid: %v", err)
+	}
+	if err := br.QueryRow().Scan(&second); err != nil {
+		t.Fatalf("second xid: %v", err)
+	}
+	if err := br.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if first != second {
+		t.Fatalf("batch statements ran in different transactions (%d, %d); the election lock is released before the delete", first, second)
+	}
+}
+
+// TestElectionLockSurvivesIntoTheDelete is the same property stated in the terms the
+// election actually cares about: the advisory lock taken by the batch's first
+// statement must still be held while its second runs.
+func TestElectionLockSurvivesIntoTheDelete(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+
+	b := &pgx.Batch{}
+	b.Queue(electionLockSQL, room)
+	b.Queue(`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()`)
+	br := pool.SendBatch(ctx, b)
+	if _, err := br.Exec(); err != nil {
+		t.Fatalf("take lock: %v", err)
+	}
+	var held int
+	if err := br.QueryRow().Scan(&held); err != nil {
+		t.Fatalf("count advisory locks: %v", err)
+	}
+	if err := br.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if held != 1 {
+		t.Fatalf("advisory locks held during the second statement = %d, want 1", held)
 	}
 }

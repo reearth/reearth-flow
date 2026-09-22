@@ -140,3 +140,77 @@ func TestNoUpdatesLostUnderConcurrentWriters(t *testing.T) {
 		t.Errorf("%d writes dropped on a full queue; the count above is not a clean result", d)
 	}
 }
+
+// TestRelayWritePathKeepsCommitOrder is the end-to-end version of
+// TestInsertLockMakesCommitOrderMatchIDOrder. That one drives explicit
+// transactions, which proves the SQL but not the path the relay actually uses:
+// Publish enqueues, writeLoop batches, and the whole batch goes through
+// pgxpool.SendBatch.
+//
+// That distinction matters, because serializeInsertSQL only orders anything if its
+// lock is still held when the INSERTs run — which depends on the batch being one
+// transaction. Several concurrent relays write the same document here, and the
+// invariant is checked against Postgres's own transaction ids: ascending id must
+// imply ascending xmin, or a reader's cursor can skip a row for good.
+func TestRelayWritePathKeepsCommitOrder(t *testing.T) {
+	pool := newPool(t)
+
+	const writers, each = 6, 25
+
+	relays := make([]*Relay, writers)
+	for i := range relays {
+		relays[i] = startRelay(t, pool, &fakeSink{}, nil)
+		relays[i].RoomActivated(room)
+	}
+
+	var wg sync.WaitGroup
+	for _, r := range relays {
+		wg.Go(func() {
+			for i := 0; i < each; i++ {
+				if err := r.Publish(context.Background(), cluster.Outbound{
+					Room: room, Kind: cluster.KindSync, Data: []byte("u"),
+				}); err != nil {
+					t.Errorf("Publish: %v", err)
+					return
+				}
+			}
+		})
+	}
+	wg.Wait()
+
+	want := writers * each
+	eventually(t, 20*time.Second, "every write to be persisted", func() bool {
+		return rowCount(t, pool, room) >= want
+	})
+
+	rows, err := pool.Query(context.Background(), `
+		SELECT id, xmin::text::bigint
+		  FROM ws_stream
+		 WHERE doc_id = $1
+		 ORDER BY id`, room)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+
+	var n int
+	var prevID, prevXmin int64
+	for rows.Next() {
+		var id, xmin int64
+		if err := rows.Scan(&id, &xmin); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		if n > 0 && xmin < prevXmin {
+			t.Fatalf("id %d (xmin %d) committed before id %d (xmin %d): the write batch is not holding the insert lock across its INSERTs, so a reader's cursor can skip rows",
+				id, xmin, prevID, prevXmin)
+		}
+		prevID, prevXmin = id, xmin
+		n++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+	if n != want {
+		t.Fatalf("persisted %d rows, want %d", n, want)
+	}
+}

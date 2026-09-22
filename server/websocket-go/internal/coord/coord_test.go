@@ -54,8 +54,11 @@ func TestMemoryBackendHasNoStore(t *testing.T) {
 	if locks.Locker == nil {
 		t.Fatal("Locker is nil; the GCS adapter requires one")
 	}
-	if locks.Probe != nil {
-		t.Error("Probe is non-nil; the memory backend has no store to probe")
+	// Probe must be non-nil even though there is no store: a nil one reports
+	// "unconfigured" on /health, which the handler treats as 503. See
+	// TestMemoryBackendIsHealthy.
+	if locks.Probe == nil {
+		t.Error("Probe is nil; the memory backend would serve 503 forever")
 	}
 
 	// A no-op locker must still run the critical section, or every flush and OID
@@ -167,5 +170,27 @@ func TestDescribeOmitsPollForNotify(t *testing.T) {
 				t.Errorf("Describe(%s) = %q, want the fanout named", tc.fanout, got)
 			}
 		})
+	}
+}
+
+// TestMemoryBackendIsHealthy guards a bug that made the memory backend
+// undeployable: it supplied no probe, /health reported the coordination component
+// "unconfigured", and the handler treats anything but "ok" as 503. The service
+// returned 503 forever with GCS perfectly healthy, so Cloud Run would never have
+// marked it ready — and the startup log carried a "probe unavailable" warning for a
+// backend that has nothing to probe by design.
+func TestMemoryBackendIsHealthy(t *testing.T) {
+	cfg := &config.Config{CoordBackend: config.BackendMemory}
+	locks, err := NewLocker(cfg, "instance-test")
+	if err != nil {
+		t.Fatalf("NewLocker: %v", err)
+	}
+	defer func() { _ = locks.Close() }()
+
+	if locks.Probe == nil {
+		t.Fatal("memory backend supplied a nil probe; /health reports it unconfigured and the service serves 503")
+	}
+	if err := locks.Probe(context.Background()); err != nil {
+		t.Errorf("memory probe = %v, want healthy", err)
 	}
 }
