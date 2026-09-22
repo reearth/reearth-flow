@@ -6,7 +6,8 @@ import (
 	"net/http"
 )
 
-// pinger probes a dependency for liveness (real impl: Redis PING).
+// pinger probes a dependency for liveness (real impl: Redis PING or Postgres
+// SELECT 1, depending on the configured coordination backend).
 type pinger interface {
 	Ping(ctx context.Context) error
 }
@@ -29,14 +30,21 @@ type ListerFunc func(ctx context.Context) error
 func (f ListerFunc) List(ctx context.Context) error { return f(ctx) }
 
 type healthDeps struct {
-	pinger pinger
-	lister lister
+	pinger  pinger
+	lister  lister
+	backend string
 }
 
-// SetHealthChecks attaches the Redis pinger and GCS lister used by /health.
-// Until set, /health fails closed (503). A func-typed nil is normalized to a
-// nil probe so the fail-closed checks behave correctly.
-func (s *Server) SetHealthChecks(p pinger, l lister) {
+// SetHealthChecks attaches the coordination-store pinger and GCS lister used by
+// /health, plus the name of the backend being probed. Until set, /health fails
+// closed (503). A func-typed nil is normalized to a nil probe so the fail-closed
+// checks behave correctly.
+//
+// backend is reported verbatim in the response so an operator can confirm which
+// store the service is actually coordinating through — during the Redis/Postgres
+// comparison that is the difference between a meaningful measurement and a wasted
+// run.
+func (s *Server) SetHealthChecks(p pinger, l lister, backend string) {
 	if pf, ok := p.(PingerFunc); ok && pf == nil {
 		p = nil
 	}
@@ -45,21 +53,26 @@ func (s *Server) SetHealthChecks(p pinger, l lister) {
 	}
 	s.health.pinger = p
 	s.health.lister = l
+	s.health.backend = backend
 }
 
 func (s *Server) registerHealth(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", s.healthHandler)
 }
 
-// healthHandler returns 200 when both the Redis PING and the GCS list succeed,
-// 503 otherwise, with per-component statuses in the JSON body.
+// healthHandler returns 200 when both the coordination-store probe and the GCS
+// list succeed, 503 otherwise, with per-component statuses in the JSON body.
+//
+// The coordination component is NOT named after a specific store: it was "redis"
+// when Redis was the only option, which then reported "redis":"ok" for a service
+// coordinating through Postgres.
 func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	components := map[string]string{
-		"redis": s.checkRedis(ctx),
-		"gcs":   s.checkGCS(ctx),
+		"coordination": s.checkCoordination(ctx),
+		"gcs":          s.checkGCS(ctx),
 	}
-	healthy := components["redis"] == "ok" && components["gcs"] == "ok"
+	healthy := components["coordination"] == "ok" && components["gcs"] == "ok"
 
 	status := "ok"
 	code := http.StatusOK
@@ -72,17 +85,20 @@ func (s *Server) healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"status":     status,
+		"backend":    s.health.backend,
 		"components": components,
 	})
 }
 
-func (s *Server) checkRedis(ctx context.Context) string {
+func (s *Server) checkCoordination(ctx context.Context) string {
 	if s.health.pinger == nil {
+		// The memory backend has no store to probe, which is healthy for it —
+		// callers distinguish it from a failure by the "unconfigured" value.
 		return "unconfigured"
 	}
 	if err := s.health.pinger.Ping(ctx); err != nil {
 		// Never leak the error detail to the response; log only.
-		s.log.Warn("health: redis probe failed", "err", err)
+		s.log.Warn("health: coordination probe failed", "backend", s.health.backend, "err", err)
 		return "error"
 	}
 	return "ok"

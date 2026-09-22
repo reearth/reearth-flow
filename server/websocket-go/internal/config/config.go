@@ -10,9 +10,52 @@ import (
 	"time"
 )
 
+// Coordination backends. CoordBackend selects which store carries cross-instance
+// document traffic (the cluster relay) and the adapter's locks.
+const (
+	// BackendRedis is the Redis Streams relay: the default, and the only backend
+	// wire-compatible with a coexisting Rust instance.
+	BackendRedis = "redis"
+	// BackendPostgres is the Postgres unlogged-table relay.
+	BackendPostgres = "postgres"
+	// BackendMemory is ygo's in-process MemRelay with no external store. Valid
+	// ONLY where a single instance serves every document: two instances on this
+	// backend cannot see each other's updates.
+	BackendMemory = "memory"
+)
+
+// Postgres fan-out strategies: how a postgres-backed instance learns that another
+// instance has written a row.
+const (
+	// FanoutPoll SELECTs on a timer. Simplest; adds up to one poll interval of
+	// latency.
+	FanoutPoll = "poll"
+	// FanoutNotify waits on LISTEN and SELECTs on wakeup. NOTIFY payloads cap at
+	// 8000 bytes, so the update blob cannot ride along and the SELECT is still
+	// needed. Requires a session-pooled or direct connection — LISTEN does not
+	// survive a transaction-pooling proxy.
+	FanoutNotify = "notify"
+	// FanoutHybrid runs both: LISTEN for latency, plus a slow poll that recovers
+	// notifications missed across a dropped connection.
+	FanoutHybrid = "hybrid"
+)
+
 // Config is the resolved service configuration.
 type Config struct {
-	// RedisURL is the Redis Streams fan-out / locks / heartbeat endpoint.
+	// CoordBackend selects the cluster coordination store. See the Backend*
+	// constants.
+	CoordBackend string
+	// PGURL is the postgres:// DSN for the postgres backend. Required when
+	// CoordBackend is postgres, ignored otherwise.
+	PGURL string
+	// PGFanout selects the postgres read strategy. See the Fanout* constants.
+	PGFanout string
+	// PGPollInterval is the poll period for the poll and hybrid fan-outs. Unused
+	// by notify.
+	PGPollInterval time.Duration
+
+	// RedisURL is the Redis Streams fan-out / locks / heartbeat endpoint. Unused
+	// unless CoordBackend is redis.
 	RedisURL string
 	// GCSBucketName is the GCS persistence bucket.
 	GCSBucketName string
@@ -72,6 +115,18 @@ type Config struct {
 
 // Defaults.
 const (
+	defaultCoordBackend = BackendRedis
+	defaultPGFanout     = FanoutHybrid
+	// defaultPGPollInterval is the poll and hybrid period. Hybrid overrides this
+	// with defaultPGHybridPoll, where LISTEN carries the latency and the poll is
+	// only a safety net for notifications missed across a dropped connection.
+	defaultPGPollInterval = 50 * time.Millisecond
+	defaultPGHybridPoll   = time.Second
+	// minPGPollInterval floors the poll period: below this the reader spends more
+	// time issuing queries than waiting, which is a misconfiguration rather than a
+	// tuning choice.
+	minPGPollInterval = 5 * time.Millisecond
+
 	defaultRedisURL      = "redis://127.0.0.1:6379"
 	defaultGCSBucketName = "yrs-dev"
 	defaultThriftAuthURL = "http://localhost:8080"
@@ -110,7 +165,13 @@ var defaultOrigins = []string{
 // unset (or empty) variable.
 func Load() *Config {
 	appEnv := envOr("REEARTH_FLOW_APP_ENV", defaultAppEnv)
+	fanout := normalize(envOr("REEARTH_FLOW_PG_FANOUT", defaultPGFanout))
 	return &Config{
+		CoordBackend:   normalize(envOr("REEARTH_FLOW_COORD_BACKEND", defaultCoordBackend)),
+		PGURL:          os.Getenv("REEARTH_FLOW_PG_URL"),
+		PGFanout:       fanout,
+		PGPollInterval: envDuration("REEARTH_FLOW_PG_POLL_INTERVAL", defaultPollFor(fanout)),
+
 		RedisURL:      envOr("REEARTH_FLOW_REDIS_URL", defaultRedisURL),
 		GCSBucketName: envOr("REEARTH_FLOW_GCS_BUCKET_NAME", defaultGCSBucketName),
 		GCSEndpoint:   os.Getenv("REEARTH_FLOW_GCS_ENDPOINT"),
@@ -168,8 +229,52 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is negative; use exactly 0 to disable auto-versioning, or a positive duration such as 15m", raw)
 		}
 	}
+	// The coordination backend decides which store carries cross-instance document
+	// traffic. A typo must not silently fall back to redis: an operator who meant
+	// postgres would get a service that still needs the Redis they were removing,
+	// and one who meant memory would get a second store they are paying for.
+	switch c.CoordBackend {
+	case BackendRedis, BackendMemory:
+	case BackendPostgres:
+		if strings.TrimSpace(c.PGURL) == "" {
+			return fmt.Errorf("REEARTH_FLOW_COORD_BACKEND=%s requires REEARTH_FLOW_PG_URL; refusing to start without a database to coordinate through", BackendPostgres)
+		}
+		switch c.PGFanout {
+		case FanoutPoll, FanoutNotify, FanoutHybrid:
+		default:
+			return fmt.Errorf("REEARTH_FLOW_PG_FANOUT=%q is not one of %s/%s/%s", c.PGFanout, FanoutPoll, FanoutNotify, FanoutHybrid)
+		}
+		// Only the polling fan-outs consult the interval, so a bad value is
+		// harmless under notify and rejecting it there would be noise.
+		if c.PGFanout != FanoutNotify {
+			if raw := os.Getenv("REEARTH_FLOW_PG_POLL_INTERVAL"); strings.TrimSpace(raw) != "" {
+				if _, err := time.ParseDuration(strings.TrimSpace(raw)); err != nil {
+					return fmt.Errorf("REEARTH_FLOW_PG_POLL_INTERVAL=%q is not a valid Go duration (e.g. 50ms, 1s)", raw)
+				}
+			}
+			if c.PGPollInterval < minPGPollInterval {
+				return fmt.Errorf("REEARTH_FLOW_PG_POLL_INTERVAL=%s is below the %s floor; a shorter period queries faster than it waits", c.PGPollInterval, minPGPollInterval)
+			}
+		}
+	default:
+		return fmt.Errorf("REEARTH_FLOW_COORD_BACKEND=%q is not one of %s/%s/%s", c.CoordBackend, BackendRedis, BackendPostgres, BackendMemory)
+	}
 	return nil
 }
+
+// defaultPollFor returns the default poll period for a fan-out. Hybrid polls
+// slowly because LISTEN carries the latency there and the poll only backstops
+// notifications lost with a dropped connection.
+func defaultPollFor(fanout string) time.Duration {
+	if fanout == FanoutHybrid {
+		return defaultPGHybridPoll
+	}
+	return defaultPGPollInterval
+}
+
+// normalize lowercases and trims an enum-valued setting so "Postgres " and
+// "postgres" select the same backend.
+func normalize(v string) string { return strings.ToLower(strings.TrimSpace(v)) }
 
 // defaultLogFormat chooses structured JSON for non-dev environments (so Cloud
 // Run ingests structured logs) and human-readable text for local development.

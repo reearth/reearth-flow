@@ -13,6 +13,17 @@ import (
 // connect path can never deadlock.
 type Locker interface {
 	WithLock(ctx context.Context, key string, fn func(context.Context) error) error
+
+	// TryWithLock runs fn while holding key if it is free, and runs fn ANYWAY if
+	// it is not — it is a fence, not a mutual-exclusion guarantee. The flusher
+	// relies on that: a read lock it cannot take must not stop the flush, because
+	// the relay re-checks active instances before deleting and AppendUpdate is
+	// idempotent. An implementation MUST NOT release a lock it did not acquire.
+	//
+	// ttl bounds a lock that a backend cannot release implicitly (Redis). Backends
+	// whose locks end with their transaction or session (Postgres advisory locks)
+	// ignore it.
+	TryWithLock(ctx context.Context, key string, ttl time.Duration, fn func(context.Context) error) error
 }
 
 // noLock is a single-process Locker that runs fn immediately.
@@ -22,6 +33,10 @@ type noLock struct{}
 func NewNoLock() Locker { return noLock{} }
 
 func (noLock) WithLock(ctx context.Context, _ string, fn func(context.Context) error) error {
+	return fn(ctx)
+}
+
+func (noLock) TryWithLock(ctx context.Context, _ string, _ time.Duration, fn func(context.Context) error) error {
 	return fn(ctx)
 }
 
@@ -87,6 +102,22 @@ func (l *RedisLocker) WithLock(ctx context.Context, key string, fn func(context.
 	defer func() {
 		// Best-effort release on a fresh context so a cancelled ctx does not leak
 		// the lock until TTL.
+		rctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = releaseScript.Run(rctx, l.client, []string{key}, l.value).Err()
+	}()
+	return fn(ctx)
+}
+
+// TryWithLock takes key with one non-blocking SET NX and runs fn either way. A
+// lock held by another owner, or an unreachable Redis, is not an error: fn still
+// runs and we release nothing we do not own.
+func (l *RedisLocker) TryWithLock(ctx context.Context, key string, ttl time.Duration, fn func(context.Context) error) error {
+	ok, err := l.client.SetNX(ctx, key, l.value, ttl).Result()
+	if err != nil || !ok {
+		return fn(ctx)
+	}
+	defer func() {
 		rctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		_ = releaseScript.Run(rctx, l.client, []string{key}, l.value).Err()
