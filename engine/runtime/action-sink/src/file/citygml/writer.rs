@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -52,10 +52,42 @@ const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
 ];
 
+/// Paired namespace and schema URLs, in the `http://` spelling PLATEAU's own
+/// documents use. Lets the `XML Validator` action resolve our output.
+const CITYGML_2_SCHEMA_LOCATION: &str = concat!(
+    "http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd ",
+    "http://www.opengis.net/citygml/2.0 ",
+    "http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd ",
+    "http://www.opengis.net/citygml/building/2.0 ",
+    "http://schemas.opengis.net/citygml/building/2.0/building.xsd ",
+    "http://www.opengis.net/citygml/transportation/2.0 ",
+    "http://schemas.opengis.net/citygml/transportation/2.0/transportation.xsd ",
+    "http://www.opengis.net/citygml/bridge/2.0 ",
+    "http://schemas.opengis.net/citygml/bridge/2.0/bridge.xsd ",
+    "http://www.opengis.net/citygml/tunnel/2.0 ",
+    "http://schemas.opengis.net/citygml/tunnel/2.0/tunnel.xsd ",
+    "http://www.opengis.net/citygml/waterbody/2.0 ",
+    "http://schemas.opengis.net/citygml/waterbody/2.0/waterBody.xsd ",
+    "http://www.opengis.net/citygml/landuse/2.0 ",
+    "http://schemas.opengis.net/citygml/landuse/2.0/landUse.xsd ",
+    "http://www.opengis.net/citygml/vegetation/2.0 ",
+    "http://schemas.opengis.net/citygml/vegetation/2.0/vegetation.xsd ",
+    "http://www.opengis.net/citygml/cityfurniture/2.0 ",
+    "http://schemas.opengis.net/citygml/cityfurniture/2.0/cityFurniture.xsd ",
+    "http://www.opengis.net/citygml/relief/2.0 ",
+    "http://schemas.opengis.net/citygml/relief/2.0/relief.xsd ",
+    "http://www.opengis.net/citygml/generics/2.0 ",
+    "http://schemas.opengis.net/citygml/generics/2.0/generics.xsd ",
+    "http://www.opengis.net/citygml/appearance/2.0 ",
+    "http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd",
+);
+
 pub struct CityGmlXmlWriter<W: Write> {
     writer: Writer<W>,
     srs_name: String,
     id_counter: u64,
+    /// `xs:ID` is unique per document, so every id the writer emits is claimed here.
+    used_ids: HashSet<String>,
     pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
     /// Maps original texture URI strings to relative output paths.
     uri_remap: HashMap<String, String>,
@@ -72,6 +104,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
             writer,
             srs_name,
             id_counter: 0,
+            used_ids: HashSet::new(),
             pending_appearances: Vec::new(),
             uri_remap: HashMap::new(),
         }
@@ -86,6 +119,23 @@ impl<W: Write> CityGmlXmlWriter<W> {
         format!("{}_{}", prefix, self.id_counter)
     }
 
+    /// Settle on a `gml:id` that is a legal `xs:ID` and unused in this document.
+    ///
+    /// `xs:ID` is an `NCName`, so it cannot start with a digit: a bare UUID is
+    /// rejected by a validator roughly five times in eight. A candidate that is
+    /// unusable, or already taken, falls back to a minted one.
+    fn claim_gml_id(&mut self, candidate: Option<&str>, prefix: &str) -> String {
+        let mut id = match candidate {
+            Some(c) if is_ncname(c) => c.to_string(),
+            Some(c) => format!("{prefix}_{}", sanitize_ncname(c)),
+            None => self.generate_gml_id(prefix),
+        };
+        while !self.used_ids.insert(id.clone()) {
+            id = self.generate_gml_id(prefix);
+        }
+        id
+    }
+
     pub fn write_header(&mut self, envelope: Option<&BoundingEnvelope>) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
@@ -95,6 +145,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         for (prefix, uri) in CITYGML_2_NAMESPACES {
             city_model.push_attribute((*prefix, *uri));
         }
+        city_model.push_attribute(("xsi:schemaLocation", CITYGML_2_SCHEMA_LOCATION));
         self.writer
             .write_event(Event::Start(city_model))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -147,9 +198,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
         let element_name = city_type.element_name();
         let mut city_obj_elem = BytesStart::new(element_name);
-        let obj_id = gml_id
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| self.generate_gml_id(city_type.id_prefix()));
+        let obj_id = self.claim_gml_id(gml_id, city_type.id_prefix());
         city_obj_elem.push_attribute(("gml:id", obj_id.as_str()));
         self.writer
             .write_event(Event::Start(city_obj_elem))
@@ -387,9 +436,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let poly_id = if need_appearance
             && (surface.material_idx.is_some() || surface.texture_idx.is_some())
         {
-            Some(self.generate_gml_id("poly"))
+            Some(self.claim_gml_id(None, "poly"))
         } else {
-            surface.id.clone()
+            surface
+                .id
+                .as_deref()
+                .map(|id| self.claim_gml_id(Some(id), "poly"))
         };
 
         let mut polygon = BytesStart::new("gml:Polygon");
@@ -585,14 +637,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(BytesStart::new("app:X3DMaterial")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        let c = &material.diffuse_color;
-        self.write_text_element("app:diffuseColor", &format!("{} {} {}", c.r, c.g, c.b))?;
-        let c = &material.specular_color;
-        self.write_text_element("app:specularColor", &format!("{} {} {}", c.r, c.g, c.b))?;
         self.write_text_element(
             "app:ambientIntensity",
             &material.ambient_intensity.to_string(),
         )?;
+        let c = &material.diffuse_color;
+        self.write_text_element("app:diffuseColor", &format!("{} {} {}", c.r, c.g, c.b))?;
+        let c = &material.specular_color;
+        self.write_text_element("app:specularColor", &format!("{} {} {}", c.r, c.g, c.b))?;
         for id in target_ids {
             self.write_text_element("app:target", &format!("#{id}"))?;
         }
@@ -725,6 +777,29 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         Ok(())
     }
+}
+
+/// Whether `s` is an XML `NCName`, which is what `xs:ID` requires.
+fn is_ncname(s: &str) -> bool {
+    let mut chars = s.chars();
+    match chars.next() {
+        Some(c) if c.is_alphabetic() || c == '_' => {}
+        _ => return false,
+    }
+    chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '.'))
+}
+
+/// Replace whatever an `NCName` cannot carry, so a prefixed id stays legal.
+fn sanitize_ncname(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if c.is_alphanumeric() || matches!(c, '_' | '-' | '.') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 fn format_uv_coords(uvs: &[[f64; 2]]) -> String {
@@ -885,9 +960,9 @@ mod tests {
             r#"<app:Appearance>"#,
             r#"<app:theme>rgbTexture</app:theme>"#,
             r#"<app:surfaceDataMember><app:X3DMaterial>"#,
+            r#"<app:ambientIntensity>0.9</app:ambientIntensity>"#,
             r#"<app:diffuseColor>0.7 0.7 0.7</app:diffuseColor>"#,
             r#"<app:specularColor>0.04 0.04 0.04</app:specularColor>"#,
-            r#"<app:ambientIntensity>0.9</app:ambientIntensity>"#,
             r#"<app:target>#poly_1</app:target>"#,
             r#"</app:X3DMaterial></app:surfaceDataMember>"#,
             r#"</app:Appearance>"#,

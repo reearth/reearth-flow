@@ -1644,11 +1644,17 @@ fn mask_generated_ids(value: &str) -> String {
     out
 }
 
-/// Mask a bare-UUID `gml:id`: a city object with no source id is written under
-/// the engine's per-run feature UUID.
+/// Mask a per-run feature UUID in a `gml:id`. A city object with no source id is
+/// written under the engine's feature UUID, which the writer prefixes so the
+/// result is a legal `xs:ID`.
 fn scrub_feature_uuid_gml_ids(element: &mut XmlElement) {
     rewrite_xml_values(element, &|name, value| {
-        (name == "gml:id" && uuid::Uuid::parse_str(value).is_ok())
+        if name != "gml:id" {
+            return None;
+        }
+        let bare = value.rsplit_once('_').map_or(value, |(_, tail)| tail);
+        uuid::Uuid::parse_str(bare)
+            .is_ok()
             .then(|| "<per-run-uuid>".to_string())
     });
 }
