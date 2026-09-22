@@ -8,6 +8,7 @@ use reearth_flow_types::material::X3DMaterial;
 // The seam is geometry-neutral and shared; only the `posList` formatter is
 // world-specific, and `converter` resolves to the compiled world's module, so
 // this file needs no `cfg` to pick the right one.
+use super::content_model::content_model;
 use super::converter::format_pos_list;
 use super::model::{
     AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSolid,
@@ -207,7 +208,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let need_appearance = appearance.is_some_and(|a| a.has_content());
         let mut surface_appearances: Vec<SurfaceAppearance> = Vec::new();
 
-        for entry in geometries {
+        // CityGML declares each class's properties as an `xs:sequence`, so arrival
+        // order is not good enough: the elements must be emitted in schema order.
+        let mut ordered: Vec<&GeometryEntry> = geometries.iter().collect();
+        ordered.sort_by_key(|entry| content_model_position(entry, city_type));
+
+        for entry in ordered {
             self.write_lod_geometry(city_type, entry, need_appearance, &mut surface_appearances)?;
         }
 
@@ -274,22 +280,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         entry: &GeometryEntry,
         city_type: CityObjectType,
     ) -> String {
-        if let Some(property) = &entry.property {
-            format!("{}:{}", ns, property)
-        } else {
-            // GenericCityObject uses lodXGeometry, not lodXMultiSurface/lodXSolid
-            if city_type == CityObjectType::GenericCityObject {
-                format!("{}:lod{}Geometry", ns, entry.lod)
-            } else {
-                let geom_type = match &entry.element {
-                    GmlElement::Solid(_) => "Solid",
-                    GmlElement::MultiSolid { .. } => "MultiSolid",
-                    GmlElement::MultiSurface { .. } => "MultiSurface",
-                    GmlElement::MultiCurve { .. } => "MultiCurve",
-                };
-                format!("{}:lod{}{}", ns, entry.lod, geom_type)
-            }
-        }
+        format!("{}:{}", ns, geometry_property_name(entry, city_type))
     }
 
     fn write_solid(
@@ -800,6 +791,38 @@ fn sanitize_ncname(s: &str) -> String {
             }
         })
         .collect()
+}
+
+/// The local name of the property this geometry fills.
+///
+/// A source document's own property name wins, because the LOD digit cannot
+/// recover it: `lod0FootPrint` and `lod0RoofEdge` share both LOD and GML family.
+/// Everything else is synthesised from the class, the LOD and the family.
+fn geometry_property_name(entry: &GeometryEntry, city_type: CityObjectType) -> String {
+    if let Some(property) = &entry.property {
+        return property.clone();
+    }
+    if city_type == CityObjectType::GenericCityObject {
+        return format!("lod{}Geometry", entry.lod);
+    }
+    let family = match &entry.element {
+        GmlElement::Solid(_) => "Solid",
+        GmlElement::MultiSolid { .. } => "MultiSolid",
+        GmlElement::MultiSurface { .. } => "MultiSurface",
+        GmlElement::MultiCurve { .. } => "MultiCurve",
+    };
+    format!("lod{}{}", entry.lod, family)
+}
+
+/// Where this geometry's property sits in the class's `xs:sequence`. A property
+/// the schema does not declare sorts last rather than being dropped, so invalid
+/// input stays visible to the schema gate instead of vanishing.
+fn content_model_position(entry: &GeometryEntry, city_type: CityObjectType) -> usize {
+    let name = geometry_property_name(entry, city_type);
+    content_model(city_type)
+        .iter()
+        .position(|declared| *declared == name)
+        .unwrap_or(usize::MAX)
 }
 
 fn format_uv_coords(uvs: &[[f64; 2]]) -> String {

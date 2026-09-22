@@ -8,33 +8,6 @@
   </gml:boundedBy>
   <core:cityObjectMember>
     <bldg:Building gml:id="test-building-001">
-      <bldg:lod2MultiSurface>
-        <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>35 135 0 35 135.001 0 35.001 135.001 0 35.001 135 0 35 135 0</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-              <gml:interior>
-                <gml:LinearRing>
-                  <gml:posList>35.0002 135.0002 0 35.0008 135.0002 0 35.0008 135.0008 0 35.0002 135.0008 0 35.0002 135.0002 0</gml:posList>
-                </gml:LinearRing>
-              </gml:interior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>35 135 10 35.001 135 10 35.001 135.001 10 35 135.001 10 35 135 10</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-        </gml:MultiSurface>
-      </bldg:lod2MultiSurface>
       <bldg:lod1Solid>
         <gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
           <gml:exterior>
@@ -79,6 +52,33 @@
           </gml:exterior>
         </gml:Solid>
       </bldg:lod1Solid>
+      <bldg:lod2MultiSurface>
+        <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>35 135 0 35 135.001 0 35.001 135.001 0 35.001 135 0 35 135 0</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+              <gml:interior>
+                <gml:LinearRing>
+                  <gml:posList>35.0002 135.0002 0 35.0008 135.0002 0 35.0008 135.0008 0 35.0002 135.0008 0 35.0002 135.0002 0</gml:posList>
+                </gml:LinearRing>
+              </gml:interior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>35 135 10 35.001 135 10 35.001 135.001 10 35 135.001 10 35 135 10</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod2MultiSurface>
     </bldg:Building>
   </core:cityObjectMember>
 </core:CityModel>

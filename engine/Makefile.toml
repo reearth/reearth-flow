@@ -149,6 +149,15 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'unimplemented!')
 git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 ''']
 
+[tasks.update-citygml-content-model]
+script = ['''
+#!/usr/bin/env bash -eu
+# Regenerate the per-class CityGML content model from the vendored schemas.
+# Run after changing the generator or the schemas; the result is committed.
+python3 tools/citygml-schema/generate_content_model.py
+cargo fmt -p reearth-flow-action-sink
+''']
+
 [tasks.check-citygml-schema]
 script = ['''
 #!/usr/bin/env bash -eu
