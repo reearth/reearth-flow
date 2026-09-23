@@ -91,6 +91,7 @@ fn test_citygml_writer_empty_input_writes_no_file() {
         None,
         true,
         &storage_resolver,
+        None,
     )
     .unwrap();
 
@@ -121,6 +122,7 @@ fn test_citygml_writer_unwritable_features_write_no_file() {
         None,
         true,
         &storage_resolver,
+        None,
     )
     .unwrap();
 
