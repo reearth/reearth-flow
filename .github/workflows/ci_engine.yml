@@ -60,6 +60,10 @@ jobs:
         run: cargo make proj-grids-notice -- --check
       - name: Check action tracing call sites
         run: cargo make check-action-tracing
+      # xmllint is not in the runner image; the vendored schemas are, so this is
+      # the only thing the CityGML schema check needs from the network.
+      - name: Install xmllint
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libxml2-utils
       - name: Check CityGML output validates against the OGC schemas
         run: cargo make check-citygml-schema
 
