@@ -91,6 +91,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
+            keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             base_attributes: HashMap::new(),
@@ -132,6 +133,12 @@ pub struct FeatureCityGml2ReaderParam {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     city_gml_attributes_key: Option<String>,
+    /// # Keep Code Space
+    /// When true, a resolved coded value keeps the codelist path in a sibling
+    /// `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other
+    /// consumer wants it in its output, so it defaults to false.
+    #[serde(default)]
+    keep_code_space: bool,
     /// # Inherit Input Attributes
     /// When true, the input feature's attributes are merged into every feature parsed from its
     /// file. Defaults to true.
@@ -154,6 +161,7 @@ pub struct FeatureCityGml2Reader {
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
     city_gml_attributes_key: Option<String>,
+    keep_code_space: bool,
     inherit_input_attributes: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
@@ -178,6 +186,7 @@ impl Clone for FeatureCityGml2Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
+            keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
@@ -248,6 +257,7 @@ impl Processor for FeatureCityGml2Reader {
             self.keep_attributes,
             self.flatten_single_child_objects,
             &flatten_leaf_attributes,
+            self.keep_code_space,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

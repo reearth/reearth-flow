@@ -965,6 +965,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },
@@ -999,6 +1003,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },
@@ -1405,6 +1413,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },
@@ -1443,6 +1455,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },

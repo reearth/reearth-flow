@@ -2613,6 +2613,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2721,6 +2727,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -3915,6 +3927,12 @@
               "null"
             ]
           },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "default": false,
+            "type": "boolean"
+          },
           "inheritInputAttributes": {
             "title": "继承输入属性",
             "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
@@ -4011,6 +4029,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "default": false,
+            "type": "boolean"
           },
           "inheritInputAttributes": {
             "title": "继承输入属性",

@@ -965,6 +965,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },
@@ -999,6 +1003,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },
@@ -1405,6 +1413,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },
@@ -1443,6 +1455,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
         }
       }
     },

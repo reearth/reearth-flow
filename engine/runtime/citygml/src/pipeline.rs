@@ -44,6 +44,7 @@ mod build_legacy {
     /// object, or — when `extract_tags` is non-empty — one feature per matching flattened node.
     /// `base_attributes` maps a source file URL to the input feature's attributes (e.g. `package`),
     /// merged into every feature parsed from that file.
+    #[allow(clippy::too_many_arguments)]
     pub fn build_features(
         parser: Parser,
         extract_tags: &HashSet<String>,
@@ -52,6 +53,7 @@ mod build_legacy {
         keep_attributes: bool,
         flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
+        keep_code_space: bool,
     ) -> Vec<Feature> {
         let (pending, raw_registry, ns_registry) = parser.finish();
         let mut codelist_resolver = codespace::CodelistResolver::new();
@@ -59,6 +61,7 @@ mod build_legacy {
         for feature_root in codespace::resolve(
             xlink::resolve(pending, &raw_registry),
             &mut codelist_resolver,
+            keep_code_space,
         ) {
             let base = base_attributes.get(feature_root.source_url.as_str());
             if extract_tags.is_empty() {
@@ -109,6 +112,7 @@ mod build_legacy {
     /// strictness (see `crate::malformation`) and is removed along with the
     /// `new-geometry` migration flag, so this always reports zero
     /// malformations rather than teaching the legacy parser to collect them.
+    #[allow(clippy::too_many_arguments)]
     pub fn build_features_reporting(
         parser: Parser,
         extract_tags: &HashSet<String>,
@@ -117,6 +121,7 @@ mod build_legacy {
         keep_attributes: bool,
         flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
+        keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
         let features = build_features(
             parser,
@@ -126,6 +131,7 @@ mod build_legacy {
             keep_attributes,
             flatten_single_child_objects,
             flatten_leaf_attributes,
+            keep_code_space,
         );
         (features, Vec::new())
     }
@@ -239,6 +245,7 @@ mod build_next {
     /// [`build_features_reporting`] that discards the malformations collected along the way, so
     /// this — and the processors that call it — stay lenient per Action Standard §4.3.
     // TODO: honor `keep_attributes` and `flatten_single_child_objects` in the new-geometry path.
+    #[allow(clippy::too_many_arguments)]
     pub fn build_features(
         parser: Parser,
         extract_tags: &HashSet<String>,
@@ -247,6 +254,7 @@ mod build_next {
         keep_attributes: bool,
         flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
+        keep_code_space: bool,
     ) -> Vec<Feature> {
         build_features_reporting(
             parser,
@@ -256,6 +264,7 @@ mod build_next {
             keep_attributes,
             flatten_single_child_objects,
             flatten_leaf_attributes,
+            keep_code_space,
         )
         .0
     }
@@ -263,6 +272,7 @@ mod build_next {
     /// Same as [`build_features`], but also returns every present-but-malformed
     /// input site collected while parsing and resolving (Action Standard §4.3),
     /// so a strict caller can fail the read naming the offending location.
+    #[allow(clippy::too_many_arguments)]
     pub fn build_features_reporting(
         parser: Parser,
         extract_tags: &HashSet<String>,
@@ -271,6 +281,7 @@ mod build_next {
         keep_attributes: bool,
         _flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
+        keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<Malformation>) {
         let ParserOutput {
             pending,
@@ -294,6 +305,7 @@ mod build_next {
             citygml_attribute_key,
             keep_attributes,
             flatten_leaf_attributes,
+            keep_code_space,
             &mut malformations,
         );
         (features, malformations)
@@ -316,6 +328,7 @@ mod build_next {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
+        keep_code_space: bool,
         malformations: &mut Vec<Malformation>,
     ) -> Vec<Feature> {
         let mut out = Vec::new();
@@ -327,7 +340,8 @@ mod build_next {
             else {
                 continue;
             };
-            let resolved = codespace::resolve(vec![resolved_root], &mut codelist_resolver);
+            let resolved =
+                codespace::resolve(vec![resolved_root], &mut codelist_resolver, keep_code_space);
             let Some(feature_root) = resolved.into_iter().next() else {
                 continue;
             };
@@ -503,6 +517,7 @@ mod build_next {
                 None,
                 true,
                 &[],
+                false,
                 &mut Vec::new(),
             )
         }
