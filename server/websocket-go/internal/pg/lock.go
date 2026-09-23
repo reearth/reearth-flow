@@ -8,15 +8,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Locker is the Postgres implementation of the lock store the GCS adapter and
-// flusher consume (it satisfies gcs.Locker structurally, so neither package needs
-// to import the other).
+// Locker is the Postgres lock store for the GCS adapter and flusher (satisfies
+// gcs.Locker structurally, so neither package imports the other).
 //
-// It uses the ws_lock table, not pg_advisory_lock, because both callers wrap
-// non-transactional work — the flusher's critical section is a GCS round trip. An
-// advisory lock would be either xact-scoped (holding a transaction open across that
-// I/O) or session-scoped (which no transaction-pooling proxy survives). A row with
-// an explicit expiry reproduces the SET NX PX semantics the callers expect.
+// Uses the ws_lock table, not pg_advisory_lock: both callers wrap non-transactional
+// work — the flusher's critical section is a GCS round trip — so an advisory lock
+// would hold a transaction open across that I/O, or be session-scoped and not
+// survive a pooling proxy.
 type Locker struct {
 	q       Querier
 	owner   string
@@ -69,10 +67,9 @@ func (l *Locker) WithLock(ctx context.Context, key string, fn func(context.Conte
 	return fn(ctx)
 }
 
-// TryWithLock takes key with one attempt and runs fn either way — it is a fence,
-// not mutual exclusion. A lock held elsewhere, or an unreachable database, must not
-// stop a flush: the relay re-checks active instances before deleting and
-// AppendUpdate is idempotent.
+// TryWithLock takes key in one attempt and runs fn either way: a fence, not mutual
+// exclusion. A held lock or an unreachable database must not stop a flush — the relay
+// re-checks active instances before deleting, and AppendUpdate is idempotent.
 func (l *Locker) TryWithLock(ctx context.Context, key string, ttl time.Duration, fn func(context.Context) error) error {
 	ok, err := l.tryAcquire(ctx, key, ttl)
 	if err != nil || !ok {

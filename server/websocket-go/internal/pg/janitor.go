@@ -62,8 +62,8 @@ func (j *Janitor) Run(ctx context.Context) {
 	}
 }
 
-// sweepOnce runs all three deletes, logging but not aborting on error: a failed
-// sweep is a growing table, not a correctness problem, and the next tick retries.
+// sweepOnce runs all three deletes. A failed sweep is a growing table, not a
+// correctness problem, so it logs and the next tick retries.
 func (j *Janitor) sweepOnce(ctx context.Context) {
 	for _, s := range []struct {
 		name string

@@ -1,9 +1,6 @@
-// Package latency records relay delivery latency and logs percentiles
-// periodically.
-//
-// The service has no metrics instruments and no /metrics endpoint, so logs are the
-// only channel every environment already collects. Both relays report through this
-// recorder so their arms are comparable; filter on the backend field.
+// Package latency records relay delivery latency and logs percentiles every 30s.
+// Logs, not metrics: the service has no /metrics endpoint. Both relays report here
+// so their arms are comparable — filter on the backend field.
 package latency
 
 import (
@@ -16,18 +13,15 @@ import (
 	"time"
 )
 
-// maxSamples bounds retained samples per window. Beyond it we reservoir-sample so
-// the distribution stays representative of the whole window instead of collapsing
-// to whichever updates arrived first — which on a busy document would be the
-// unrepresentative burst right after a flush.
+// maxSamples bounds retained samples; beyond it we reservoir-sample, so a busy
+// window stays representative rather than truncating to its first arrivals.
 const maxSamples = 8192
 
-// defaultEvery is how often percentiles are emitted. Long enough that a quiet
-// document does not spam the log, short enough to see a deploy's effect.
+// defaultEvery is the report interval.
 const defaultEvery = 30 * time.Second
 
-// Recorder accumulates observations and logs percentiles on an interval. The zero
-// value is not usable; call New.
+// Recorder accumulates observations and logs percentiles. Call New; the zero value
+// is not usable.
 type Recorder struct {
 	log     *slog.Logger
 	backend string
@@ -36,23 +30,19 @@ type Recorder struct {
 	mu      sync.Mutex
 	samples []time.Duration
 	seen    int64 // total observed this window, including samples not retained
-	// max is tracked separately from samples because it is an extreme order
-	// statistic: once the reservoir is full a high outlier can be evicted, and the
-	// maximum of the retained sample is not the maximum of the window. Percentiles
-	// survive sampling; the maximum does not, and it is the field most likely to be
-	// read as "the worst this backend did".
+	// max is tracked separately: percentiles survive reservoir sampling, an extreme
+	// does not — a sampled max under-reports the worst the backend actually did.
 	max time.Duration
 }
 
-// New builds a Recorder labelled with the backend it measures. A nil logger
-// disables reporting but keeps Observe safe to call, so callers need no nil checks.
+// New builds a Recorder for one backend. A nil logger disables reporting but keeps
+// Observe safe, so callers need no nil checks.
 func New(log *slog.Logger, backend string) *Recorder {
 	return &Recorder{log: log, backend: backend, every: defaultEvery}
 }
 
-// Observe records one delivery latency. Safe for concurrent use; negative values
-// are dropped, since they can only come from clock skew and would drag a percentile
-// below what any update actually experienced.
+// Observe records one delivery latency. Concurrency-safe. Negatives are dropped:
+// they can only be clock skew, and would pull a percentile below any real sample.
 func (r *Recorder) Observe(d time.Duration) {
 	if r == nil || d < 0 {
 		return
@@ -74,8 +64,7 @@ func (r *Recorder) Observe(d time.Duration) {
 	}
 }
 
-// Run emits a report every interval until ctx is cancelled, and one final report on
-// the way out so a short-lived process still reports what it saw.
+// Run reports every interval until ctx ends, plus a final one on the way out.
 func (r *Recorder) Run(ctx context.Context) {
 	if r == nil || r.log == nil {
 		return
@@ -93,8 +82,7 @@ func (r *Recorder) Run(ctx context.Context) {
 	}
 }
 
-// report logs the window's percentiles and resets. A window with no deliveries logs
-// nothing: an idle document should be silent, not a stream of zeroes.
+// report logs the window's percentiles and resets. An empty window logs nothing.
 func (r *Recorder) report() {
 	s, seen, max := r.drain()
 	if len(s) == 0 {
@@ -113,7 +101,7 @@ func (r *Recorder) report() {
 	)
 }
 
-// drain takes the window's samples, total and maximum, and resets the accumulator.
+// drain takes the window's samples, total and maximum, and resets.
 func (r *Recorder) drain() ([]time.Duration, int64, time.Duration) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -122,9 +110,8 @@ func (r *Recorder) drain() ([]time.Duration, int64, time.Duration) {
 	return s, seen, max
 }
 
-// percentile returns the p-th percentile of a sorted slice by nearest rank:
-// rank = ceil(n*p), taken as a 1-based position. It needs no interpolation and can
-// only ever report a value some observation actually achieved.
+// percentile by nearest rank: ceil(n*p) as a 1-based position. Scaling by n-1
+// instead rounds the tail down and hides it on small windows.
 func percentile(sorted []time.Duration, p float64) time.Duration {
 	if len(sorted) == 0 {
 		return 0
@@ -139,9 +126,8 @@ func percentile(sorted []time.Duration, p float64) time.Duration {
 	return sorted[rank-1]
 }
 
-// ms renders a duration in milliseconds with microsecond resolution. Whole
-// milliseconds would floor most of this service's latencies to 0, which is the
-// exact failure of the existing HTTP timing this package works around.
+// ms renders milliseconds at microsecond resolution; whole ms would floor most of
+// this service's latencies to 0.
 func ms(d time.Duration) float64 {
 	return float64(d.Microseconds()) / 1000
 }

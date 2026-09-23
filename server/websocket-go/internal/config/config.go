@@ -10,36 +10,6 @@ import (
 	"time"
 )
 
-// Coordination backends. CoordBackend selects which store carries cross-instance
-// document traffic (the cluster relay) and the adapter's locks.
-const (
-	// BackendRedis is the Redis Streams relay: the default, and the only backend
-	// wire-compatible with a coexisting Rust instance.
-	BackendRedis = "redis"
-	// BackendPostgres is the Postgres unlogged-table relay.
-	BackendPostgres = "postgres"
-	// BackendMemory is ygo's in-process MemRelay with no external store. Valid
-	// ONLY where a single instance serves every document: two instances on this
-	// backend cannot see each other's updates.
-	BackendMemory = "memory"
-)
-
-// Postgres fan-out strategies: how a postgres-backed instance learns that another
-// instance has written a row.
-const (
-	// FanoutPoll SELECTs on a timer. Simplest; adds up to one poll interval of
-	// latency.
-	FanoutPoll = "poll"
-	// FanoutNotify waits on LISTEN and SELECTs on wakeup. NOTIFY payloads cap at
-	// 8000 bytes, so the update blob cannot ride along and the SELECT is still
-	// needed. Requires a session-pooled or direct connection — LISTEN does not
-	// survive a transaction-pooling proxy.
-	FanoutNotify = "notify"
-	// FanoutHybrid runs both: LISTEN for latency, plus a slow poll that recovers
-	// notifications missed across a dropped connection.
-	FanoutHybrid = "hybrid"
-)
-
 // Config is the resolved service configuration.
 type Config struct {
 	// CoordBackend selects the cluster coordination store. See the Backend*
@@ -115,17 +85,21 @@ type Config struct {
 
 // Defaults.
 const (
-	defaultCoordBackend = BackendRedis
-	defaultPGFanout     = FanoutHybrid
-	// defaultPGPollInterval is the poll and hybrid period. Hybrid overrides this
-	// with defaultPGHybridPoll, where LISTEN carries the latency and the poll is
-	// only a safety net for notifications missed across a dropped connection.
+	// Coordination backends. Memory is single-instance only; Redis is the only one compatible with the Rust server.
+	BackendRedis    = "redis"
+	BackendPostgres = "postgres"
+	BackendMemory   = "memory"
+
+	// Postgres fan-out: how an instance learns another wrote a row. Notify needs a session-pooled or direct connection.
+	FanoutPoll   = "poll"
+	FanoutNotify = "notify"
+	FanoutHybrid = "hybrid"
+
+	defaultCoordBackend   = BackendRedis
+	defaultPGFanout       = FanoutHybrid
 	defaultPGPollInterval = 50 * time.Millisecond
 	defaultPGHybridPoll   = time.Second
-	// minPGPollInterval floors the poll period: below this the reader spends more
-	// time issuing queries than waiting, which is a misconfiguration rather than a
-	// tuning choice.
-	minPGPollInterval = 5 * time.Millisecond
+	minPGPollInterval     = 5 * time.Millisecond
 
 	defaultRedisURL      = "redis://127.0.0.1:6379"
 	defaultGCSBucketName = "yrs-dev"
@@ -161,13 +135,12 @@ var defaultOrigins = []string{
 	"http://localhost:8080",
 }
 
-// Load reads configuration from the environment, applying defaults for any
-// unset (or empty) variable.
+// Load reads configuration from the environment
 func Load() *Config {
 	appEnv := envOr("REEARTH_FLOW_APP_ENV", defaultAppEnv)
-	fanout := normalize(envOr("REEARTH_FLOW_PG_FANOUT", defaultPGFanout))
+	fanout := envEnum("REEARTH_FLOW_PG_FANOUT", defaultPGFanout)
 	return &Config{
-		CoordBackend:   normalize(envOr("REEARTH_FLOW_COORD_BACKEND", defaultCoordBackend)),
+		CoordBackend:   envEnum("REEARTH_FLOW_COORD_BACKEND", defaultCoordBackend),
 		PGURL:          os.Getenv("REEARTH_FLOW_PG_URL"),
 		PGFanout:       fanout,
 		PGPollInterval: envDuration("REEARTH_FLOW_PG_POLL_INTERVAL", defaultPollFor(fanout)),
@@ -262,9 +235,6 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// defaultPollFor returns the default poll period for a fan-out. Hybrid polls
-// slowly because LISTEN carries the latency there and the poll only backstops
-// notifications lost with a dropped connection.
 func defaultPollFor(fanout string) time.Duration {
 	if fanout == FanoutHybrid {
 		return defaultPGHybridPoll
@@ -272,12 +242,12 @@ func defaultPollFor(fanout string) time.Duration {
 	return defaultPGPollInterval
 }
 
-// normalize lowercases and trims an enum-valued setting so "Postgres " and
+// envEnum reads an enum-valued setting, lowercased and trimmed so "Postgres " and
 // "postgres" select the same backend.
-func normalize(v string) string { return strings.ToLower(strings.TrimSpace(v)) }
+func envEnum(key, def string) string {
+	return strings.ToLower(strings.TrimSpace(envOr(key, def)))
+}
 
-// defaultLogFormat chooses structured JSON for non-dev environments (so Cloud
-// Run ingests structured logs) and human-readable text for local development.
 func defaultLogFormat(appEnv string) string {
 	if isDevEnv(appEnv) {
 		return "text"
@@ -295,10 +265,6 @@ func isDevEnv(appEnv string) bool {
 	}
 }
 
-// parseBool recognizes the strconv.ParseBool set plus the common operator
-// spellings on/off, yes/no, y/n, and enabled/disabled. ok is false for a
-// non-empty value that matches none of these, so a security-gating toggle can
-// detect a typo instead of silently falling back to an insecure default.
 func parseBool(v string) (val bool, ok bool) {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case "1", "t", "true", "on", "yes", "y", "enabled":
@@ -356,8 +322,6 @@ func envOr(key, def string) string {
 	return def
 }
 
-// envPort parses a TCP port, falling back to def when unset, empty,
-// unparseable, or outside 1..65535 (rejecting 0 avoids a random-ephemeral bind).
 func envPort(key string, def int) int {
 	v := os.Getenv(key)
 	if v == "" {
@@ -384,8 +348,7 @@ func envPositive(key string, def int) int {
 	return n
 }
 
-// origins parses a comma-separated origin list (trim entries, drop empties);
-// an empty/unset value yields the default list.
+// origins parses a comma-separated origin list (trim entries, drop empties)
 func origins(raw string) []string {
 	if raw == "" {
 		out := make([]string, len(defaultOrigins))

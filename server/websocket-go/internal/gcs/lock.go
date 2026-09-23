@@ -14,15 +14,7 @@ import (
 type Locker interface {
 	WithLock(ctx context.Context, key string, fn func(context.Context) error) error
 
-	// TryWithLock runs fn while holding key if it is free, and runs fn ANYWAY if
-	// it is not — it is a fence, not a mutual-exclusion guarantee. The flusher
-	// relies on that: a read lock it cannot take must not stop the flush, because
-	// the relay re-checks active instances before deleting and AppendUpdate is
-	// idempotent. An implementation MUST NOT release a lock it did not acquire.
-	//
-	// ttl bounds a lock that a backend cannot release implicitly (Redis). Backends
-	// whose locks end with their transaction or session (Postgres advisory locks)
-	// ignore it.
+	// TryWithLock runs fn even when key is held: a fence, not mutual exclusion.
 	TryWithLock(ctx context.Context, key string, ttl time.Duration, fn func(context.Context) error) error
 }
 
