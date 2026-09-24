@@ -37,6 +37,35 @@ func (f *fileRepo) GetIntermediateDataURL(context.Context, string, string) strin
 	panic("unimplemented")
 }
 
+// Feature views are rendered by the engine worker straight into object
+// storage, which this repo is not. These return "not supported" rather than
+// panicking so a local filesystem deployment refuses a view request instead of
+// taking the process down with it.
+
+func (f *fileRepo) ResolveIntermediateDataURI(context.Context, string, string) (string, bool, error) {
+	return "", false, gateway.ErrUnsupportedOperation
+}
+
+func (f *fileRepo) GetFeatureViewUploadURI(string, string) string {
+	return ""
+}
+
+func (f *fileRepo) GetFeatureViewReportUploadURI(string, string, string) string {
+	return ""
+}
+
+func (f *fileRepo) GetFeatureViewURL(string, string, string) string {
+	return ""
+}
+
+func (f *fileRepo) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
+	return nil, gateway.ErrUnsupportedOperation
+}
+
+func (f *fileRepo) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
+	return false, gateway.ErrUnsupportedOperation
+}
+
 func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, error) {
 	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s.log", jobID))
 	exists, err := afero.Exists(f.fs, logPath)

@@ -41,6 +41,10 @@ type (
 
 		AccountsApiHost string `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
 		AssetBaseURL    string `default:"http://localhost:8080/assets"`
+		// ArtifactBaseURL is the public base a job's artifacts are served from,
+		// which is the /artifacts route on this API unless a CDN fronts it.
+		// Feature views are addressed through it.
+		ArtifactBaseURL string `default:"http://localhost:8080/artifacts"`
 		DB              string `default:"mongodb://localhost"`
 		DB_Account      string `pp:",omitempty"`
 		DB_Driver       string `default:"mongo" pp:",omitempty"`

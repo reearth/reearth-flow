@@ -321,6 +321,55 @@ type GetHeadInput struct {
 	ProjectID   *ID `json:"projectId,omitempty"`
 }
 
+// A viewable rendering of the intermediate data a finished run left on one output port.
+//
+// The shape is what the caller asks for; the format is what the engine produced.
+// They are separate because the engine chooses the format from the geometry it
+// finds — a TILES view becomes 3D Tiles if any 3D geometry is present and vector
+// tiles only for an all-2D selection — so neither the client nor the server can
+// know it before the render runs.
+type IntermediateDataView struct {
+	// Identifies the view by its content: the same request always yields the same id.
+	ID ID `json:"id"`
+	// The finished job whose feature-store held the input.
+	JobID ID `json:"jobId"`
+	// The engine's `[subgraphPrefix.]nodeId.port`.
+	FileID string                     `json:"fileId"`
+	Shape  IntermediateDataViewShape  `json:"shape"`
+	Status IntermediateDataViewStatus `json:"status"`
+	// Null until a render has finished.
+	Format *IntermediateDataViewFormat `json:"format,omitempty"`
+	// The URL a viewer opens. Null unless status is READY.
+	EntryPointURL *string `json:"entryPointUrl,omitempty"`
+	// Features the selection kept, before any were dropped.
+	SelectedFeatures *int `json:"selectedFeatures,omitempty"`
+	// Selected features that reached the output.
+	//
+	// Fewer than selectedFeatures is normal: geometry naming no CRS is dropped, and
+	// so is geometry the view cannot draw. Nothing is lost — the feature keeps its
+	// row in the table, only its geometry is absent from the view.
+	RenderedFeatures *int `json:"renderedFeatures,omitempty"`
+	// Why there is no view, for a status other than READY.
+	Error *string `json:"error,omitempty"`
+}
+
+// Render options.
+//
+// Both groups are accepted for either shape; the engine applies whichever half
+// matches the format it chose. The zoom range is narrower than the engine's own
+// 0-15 default on purpose: the renderer holds every level's sliced geometry in
+// memory at once.
+type IntermediateDataViewOptionsInput struct {
+	Draco          *bool                             `json:"draco,omitempty"`
+	TexelSize      *float64                          `json:"texelSize,omitempty"`
+	TextureCodec   *IntermediateDataViewTextureCodec `json:"textureCodec,omitempty"`
+	TargetTileSize *int                              `json:"targetTileSize,omitempty"`
+	MinZoom        *int                              `json:"minZoom,omitempty"`
+	MaxZoom        *int                              `json:"maxZoom,omitempty"`
+	Extent         *int                              `json:"extent,omitempty"`
+	MaxTileBytes   *int                              `json:"maxTileBytes,omitempty"`
+}
+
 type Job struct {
 	CompletedAt       *time.Time    `json:"completedAt,omitempty"`
 	Deployment        *Deployment   `json:"deployment,omitempty"`
@@ -538,6 +587,21 @@ type RemoveParameterInput struct {
 
 type RemoveParametersInput struct {
 	ParamIds []ID `json:"paramIds"`
+}
+
+type RenderIntermediateDataViewInput struct {
+	JobID  ID                        `json:"jobId"`
+	FileID string                    `json:"fileId"`
+	Shape  IntermediateDataViewShape `json:"shape"`
+	// Required for GLTF, and rejected for TILES.
+	Row *int `json:"row,omitempty"`
+	// A Flow expression evaluated against each feature. TILES only.
+	Filter  *string                           `json:"filter,omitempty"`
+	Options *IntermediateDataViewOptionsInput `json:"options,omitempty"`
+}
+
+type RenderIntermediateDataViewPayload struct {
+	View *IntermediateDataView `json:"view"`
 }
 
 type RunParameterInput struct {
@@ -1222,6 +1286,250 @@ func (e *EventSourceType) UnmarshalJSON(b []byte) error {
 }
 
 func (e EventSourceType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type IntermediateDataViewFormat string
+
+const (
+	// Entered at the .glb itself.
+	IntermediateDataViewFormatGlb IntermediateDataViewFormat = "GLB"
+	// Entered at tileset.json.
+	IntermediateDataViewFormatCesium3dTiles IntermediateDataViewFormat = "CESIUM_3D_TILES"
+	// Entered at tilejson.json.
+	IntermediateDataViewFormatVectorTiles IntermediateDataViewFormat = "VECTOR_TILES"
+)
+
+var AllIntermediateDataViewFormat = []IntermediateDataViewFormat{
+	IntermediateDataViewFormatGlb,
+	IntermediateDataViewFormatCesium3dTiles,
+	IntermediateDataViewFormatVectorTiles,
+}
+
+func (e IntermediateDataViewFormat) IsValid() bool {
+	switch e {
+	case IntermediateDataViewFormatGlb, IntermediateDataViewFormatCesium3dTiles, IntermediateDataViewFormatVectorTiles:
+		return true
+	}
+	return false
+}
+
+func (e IntermediateDataViewFormat) String() string {
+	return string(e)
+}
+
+func (e *IntermediateDataViewFormat) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = IntermediateDataViewFormat(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid IntermediateDataViewFormat", str)
+	}
+	return nil
+}
+
+func (e IntermediateDataViewFormat) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *IntermediateDataViewFormat) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e IntermediateDataViewFormat) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type IntermediateDataViewShape string
+
+const (
+	// One row rendered to a glb. Needs 3D geometry: a purely 2D row has no glb.
+	IntermediateDataViewShapeGltf IntermediateDataViewShape = "GLTF"
+	// A whole selection rendered to a tile pyramid.
+	IntermediateDataViewShapeTiles IntermediateDataViewShape = "TILES"
+)
+
+var AllIntermediateDataViewShape = []IntermediateDataViewShape{
+	IntermediateDataViewShapeGltf,
+	IntermediateDataViewShapeTiles,
+}
+
+func (e IntermediateDataViewShape) IsValid() bool {
+	switch e {
+	case IntermediateDataViewShapeGltf, IntermediateDataViewShapeTiles:
+		return true
+	}
+	return false
+}
+
+func (e IntermediateDataViewShape) String() string {
+	return string(e)
+}
+
+func (e *IntermediateDataViewShape) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = IntermediateDataViewShape(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid IntermediateDataViewShape", str)
+	}
+	return nil
+}
+
+func (e IntermediateDataViewShape) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *IntermediateDataViewShape) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e IntermediateDataViewShape) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Every value is terminal. A render is awaited in the request, so there is no
+// in-flight state to poll for.
+type IntermediateDataViewStatus string
+
+const (
+	// The entry point is loadable.
+	IntermediateDataViewStatusReady IntermediateDataViewStatus = "READY"
+	// Nothing was selected, or nothing selected carried geometry the view draws.
+	IntermediateDataViewStatusEmpty IntermediateDataViewStatus = "EMPTY"
+	// A GLTF view was asked of a purely 2D row.
+	IntermediateDataViewStatusUnsupportedGeometry IntermediateDataViewStatus = "UNSUPPORTED_GEOMETRY"
+	IntermediateDataViewStatusFailed              IntermediateDataViewStatus = "FAILED"
+)
+
+var AllIntermediateDataViewStatus = []IntermediateDataViewStatus{
+	IntermediateDataViewStatusReady,
+	IntermediateDataViewStatusEmpty,
+	IntermediateDataViewStatusUnsupportedGeometry,
+	IntermediateDataViewStatusFailed,
+}
+
+func (e IntermediateDataViewStatus) IsValid() bool {
+	switch e {
+	case IntermediateDataViewStatusReady, IntermediateDataViewStatusEmpty, IntermediateDataViewStatusUnsupportedGeometry, IntermediateDataViewStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e IntermediateDataViewStatus) String() string {
+	return string(e)
+}
+
+func (e *IntermediateDataViewStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = IntermediateDataViewStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid IntermediateDataViewStatus", str)
+	}
+	return nil
+}
+
+func (e IntermediateDataViewStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *IntermediateDataViewStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e IntermediateDataViewStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type IntermediateDataViewTextureCodec string
+
+const (
+	// The default: encodes far faster than the KTX2 forms at a comparable size.
+	IntermediateDataViewTextureCodecJpeg      IntermediateDataViewTextureCodec = "JPEG"
+	IntermediateDataViewTextureCodecPng       IntermediateDataViewTextureCodec = "PNG"
+	IntermediateDataViewTextureCodecKtx2Etc1s IntermediateDataViewTextureCodec = "KTX2_ETC1S"
+	IntermediateDataViewTextureCodecKtx2Uastc IntermediateDataViewTextureCodec = "KTX2_UASTC"
+	// Skips texturing and renders geometry in its neutral colour.
+	IntermediateDataViewTextureCodecUntextured IntermediateDataViewTextureCodec = "UNTEXTURED"
+)
+
+var AllIntermediateDataViewTextureCodec = []IntermediateDataViewTextureCodec{
+	IntermediateDataViewTextureCodecJpeg,
+	IntermediateDataViewTextureCodecPng,
+	IntermediateDataViewTextureCodecKtx2Etc1s,
+	IntermediateDataViewTextureCodecKtx2Uastc,
+	IntermediateDataViewTextureCodecUntextured,
+}
+
+func (e IntermediateDataViewTextureCodec) IsValid() bool {
+	switch e {
+	case IntermediateDataViewTextureCodecJpeg, IntermediateDataViewTextureCodecPng, IntermediateDataViewTextureCodecKtx2Etc1s, IntermediateDataViewTextureCodecKtx2Uastc, IntermediateDataViewTextureCodecUntextured:
+		return true
+	}
+	return false
+}
+
+func (e IntermediateDataViewTextureCodec) String() string {
+	return string(e)
+}
+
+func (e *IntermediateDataViewTextureCodec) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = IntermediateDataViewTextureCodec(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid IntermediateDataViewTextureCodec", str)
+	}
+	return nil
+}
+
+func (e IntermediateDataViewTextureCodec) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *IntermediateDataViewTextureCodec) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e IntermediateDataViewTextureCodec) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
