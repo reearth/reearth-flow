@@ -1,4 +1,3 @@
-import { TooltipProvider } from "@flow/components";
 import {
   createFileRoute,
   Outlet,
@@ -7,7 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { LoadingSplashscreen } from "@flow/components";
+import { TooltipProvider, LoadingSplashscreen } from "@flow/components";
 import ErrorPage from "@flow/components/errors/ErrorPage";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import NotFound from "@flow/features/NotFound";

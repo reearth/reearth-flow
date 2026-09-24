@@ -1,3 +1,4 @@
+pub(crate) mod draco;
 pub(crate) mod errors;
 pub(crate) mod geometry;
 pub(crate) mod metadata;
@@ -42,6 +43,7 @@ impl Default for BoundingVolume {
     }
 }
 
+pub use draco::DracoCompression;
 pub use geometry::*;
 pub use metadata::*;
 pub use reader::*;

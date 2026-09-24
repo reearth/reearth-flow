@@ -4,12 +4,12 @@ import { config } from "@flow/config";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import {
+import type {
   AvailableIntermediateData,
   SelectedIntermediateData,
-  useCurrentProject,
 } from "@flow/stores";
-import { NodeData } from "@flow/types";
+import { useCurrentProject } from "@flow/stores";
+import type { NodeData } from "@flow/types";
 
 export default ({
   nodeId,

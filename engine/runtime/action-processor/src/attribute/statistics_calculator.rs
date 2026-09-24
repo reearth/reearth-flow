@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -245,7 +246,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             let expr = if calculation.aggregation.requires_expr() {
                 match &calculation.expr {
                     Some(expr) => Some(expr.compile().map_err(|e| {
-                        AttributeProcessorError::StatisticsCalculatorFactory(format!("{e:?}"))
+                        AttributeProcessorError::StatisticsCalculatorFactory(format!("{e}"))
                     })?),
                     None => {
                         return Err(
@@ -399,23 +400,39 @@ impl Processor for StatisticsCalculator {
             .join("|");
 
         for calculation in &self.calculations {
-            let acc = self
-                .aggregate_buffer
-                .entry(aggregate_key.clone())
-                .or_default()
-                .entry(calculation.new_attribute.clone())
-                .or_default();
-
+            // The accumulator is created only once there is something to record. Creating it up
+            // front and then skipping a failed evaluation leaves a zero-valued accumulator behind,
+            // which `finish` finalizes as 0 rather than omitting — silently emitting a fabricated
+            // statistic for a calculation that never evaluated. `finish` maps an absent
+            // accumulator to Null, which is the honest result.
             match &calculation.expr {
                 // Count is the only method without a value expression.
-                None => acc.ingest_count(),
+                None => self
+                    .aggregate_buffer
+                    .entry(aggregate_key.clone())
+                    .or_default()
+                    .entry(calculation.new_attribute.clone())
+                    .or_default()
+                    .ingest_count(),
                 Some(expr) => {
-                    let attr_val = expr.eval(feature, Arc::clone(&variables)).map_err(|e| {
-                        AttributeProcessorError::StatisticsCalculator(format!(
-                            "Failed to evaluate expression for attribute '{}': {e}",
-                            calculation.new_attribute
-                        ))
-                    })?;
+                    let attr_val = match expr.eval(feature, Arc::clone(&variables)) {
+                        Ok(value) => value,
+                        Err(e) => {
+                            // Reported rather than returned so the failure carries a real code and
+                            // `errorPolicy` can resolve it; `?` propagates only a Fatal resolution.
+                            ctx.report(
+                                DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(
+                                    format!(
+                                        "Failed to evaluate expression for attribute '{}': {e}",
+                                        calculation.new_attribute
+                                    ),
+                                ),
+                            )?;
+                            // Resolved below Fatal: no accumulator is created, so this calculation
+                            // finalizes as Null instead of a made-up 0.
+                            continue;
+                        }
+                    };
 
                     let numeric_value = match attr_val {
                         AttributeValue::Number(n) => {
@@ -441,7 +458,12 @@ impl Processor for StatisticsCalculator {
                             )))
                         }
                     };
-                    acc.ingest_value(numeric_value);
+                    self.aggregate_buffer
+                        .entry(aggregate_key.clone())
+                        .or_default()
+                        .entry(calculation.new_attribute.clone())
+                        .or_default()
+                        .ingest_value(numeric_value);
                 }
             }
         }

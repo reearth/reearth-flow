@@ -1,16 +1,12 @@
-import { useReactFlow, type OnConnectStart } from "@xyflow/react";
-import {
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useReactFlow } from "@xyflow/react";
+import type { OnConnectStart } from "@xyflow/react";
+import type { MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import type { Awareness } from "y-protocols/awareness";
-import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
+import type { Doc, UndoManager as YUndoManager } from "yjs";
+import { Map as YMap } from "yjs";
 
 import {
   DEFAULT_ENTRY_GRAPH_ID,
@@ -31,13 +27,8 @@ import {
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject, useCurrentUserRole } from "@flow/stores";
-import {
-  Role,
-  type Algorithm,
-  type Direction,
-  type Edge,
-  type Node,
-} from "@flow/types";
+import { Role } from "@flow/types";
+import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";

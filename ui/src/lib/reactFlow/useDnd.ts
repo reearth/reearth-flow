@@ -1,12 +1,10 @@
-import { useReactFlow, XYPosition } from "@xyflow/react";
-import { DragEvent, useCallback } from "react";
+import type { XYPosition } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
+import type { DragEvent } from "react";
+import { useCallback } from "react";
 
-import {
-  nodeTypes,
-  type ActionNodeType,
-  type Node,
-  type NodeType,
-} from "@flow/types";
+import { nodeTypes } from "@flow/types";
+import type { ActionNodeType, Node, NodeType } from "@flow/types";
 
 import { useT } from "../i18n";
 

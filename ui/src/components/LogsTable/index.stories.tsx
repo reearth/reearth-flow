@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
+import type { UserFacingLog } from "@flow/types";
+import { UserFacingLogLevel } from "@flow/types";
 
 import { LogsTable } from ".";
 

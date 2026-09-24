@@ -10,10 +10,7 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use reearth_flow_diagnostics::{
-    Diagnostic, DiagnosticDraft, Disposition, DispositionPolicy, ErrorCode, OnFatalInput,
-    RunSummary,
-};
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
@@ -76,7 +73,6 @@ pub struct DagExecutorJoinHandle {
     executor_id: uuid::Uuid,
     subscriber: Option<tokio::task::JoinHandle<()>>,
     dropped_events: Arc<AtomicU64>,
-    disposition_policy: Arc<DispositionPolicy>,
 }
 
 impl DagExecutor {
@@ -334,7 +330,6 @@ impl DagExecutor {
             executor_id,
             subscriber: Some(subscriber),
             dropped_events,
-            disposition_policy,
         })
     }
 }
@@ -349,8 +344,9 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    /// Under `OnFatalInput::Continue`, this always returns `Ok(_)` even with
-    /// failures — check `failed_nodes`, don't rely on `is_ok()`.
+    /// Always returns `Ok(_)` even when nodes failed, under every policy — check
+    /// `failed_nodes`, don't rely on `is_ok()`. `Err` here means the run could not be
+    /// assembled at all, not that a node failed.
     pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
         let mut results: Vec<(NodeMeta, NodeThreadResult)> =
             Vec::with_capacity(self.join_handles.len());
@@ -374,13 +370,14 @@ impl DagExecutorJoinHandle {
 
         cleanup_executor_cache(self.executor_id);
 
-        if self.disposition_policy.on_fatal() == OnFatalInput::Terminate {
-            if let Some(pos) = results.iter().position(|(_, (_, result))| result.is_err()) {
-                let (_, (_, result)) = results.remove(pos);
-                return Err(result.expect_err("position() above guarantees Err"));
-            }
-        }
-
+        // Both policies fold every outcome into the summary. `on_fatal` used to make `Terminate`
+        // return the first `Err` here, which discarded every other node's result and every
+        // aggregated diagnostic in the run — including from nodes that succeeded. It never meant
+        // early cancellation: all node threads are joined above before this point is reached, so
+        // the work has already happened and only the reporting differed.
+        //
+        // A non-empty `failed_nodes` is the run-failed signal, and `summary_into_unit_result`
+        // still converts that back into `Err` for the unit-returning `Runner::run` wrappers.
         Ok(fold_outcomes(results))
     }
 
@@ -401,18 +398,36 @@ impl DagExecutorJoinHandle {
 
 /// Every `failed_nodes` entry is stamped `effective_disposition = Fatal`
 /// here, regardless of the diagnostic's original severity.
+///
+/// A node whose upstream died reports `UpstreamDisconnected`: it did not fail on its own account,
+/// it noticed another node's failure. Listing it beside the real error points the user at an
+/// innocent node, so those rows are dropped **only when some other node also failed** — a lone
+/// disconnect is kept, because then it is the run's only signal.
+///
+/// Matched on the variant, never on message text: `CannotReceiveFromChannel` also covers real
+/// faults reading a node's file-backed spill, which must keep being reported. The mirror case is
+/// already handled for sources, which swallow `CannotSendToChannel` when a listener quits (see
+/// `start_source`).
 fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
     let mut aggregated_diagnostics = Vec::new();
-    let mut failed_nodes = Vec::new();
+    let mut failed: Vec<(Diagnostic, bool)> = Vec::new();
 
     for (meta, (outcome, result)) in results {
         aggregated_diagnostics.extend(outcome.summaries);
         if let Err(e) = result {
+            let is_cascade = matches!(e, ExecutionError::UpstreamDisconnected(_));
             let mut diagnostic = diagnostic_from_execution_error(e, &meta);
             diagnostic.effective_disposition = Some(Disposition::Fatal);
-            failed_nodes.push(diagnostic);
+            failed.push((diagnostic, is_cascade));
         }
     }
+
+    let has_independent_failure = failed.iter().any(|(_, is_cascade)| !is_cascade);
+    let failed_nodes = failed
+        .into_iter()
+        .filter(|(_, is_cascade)| !(has_independent_failure && *is_cascade))
+        .map(|(diagnostic, _)| diagnostic)
+        .collect();
 
     RunSummary {
         failed_nodes,
@@ -423,23 +438,21 @@ fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
 
 /// `meta` is stamped only on synthesized fallbacks — a recovered diagnostic
 /// keeps its own `node_id`/`action_type`.
+///
+/// Shares `recover_diagnostic` with the worker's terminal-summary fallback; keeping one
+/// implementation is deliberate, since the two drifting apart is what let a carried
+/// `Diagnostic` reach the frontend as a `{:?}` dump.
 fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagnostic {
-    let rendered = e.to_string();
-    let boxed = match e {
-        ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
-            Some(b)
-        }
-        _ => None,
-    };
-    match boxed.map(|b| b.downcast::<Diagnostic>()) {
-        Some(Ok(diag)) => *diag,
-        _ => Diagnostic::from_draft(
-            DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(rendered),
-            Some(meta.composed_id.clone()),
-            Some(meta.action.clone()),
-            None,
-        ),
+    if let Some(diagnostic) = crate::errors::recover_diagnostic(&e) {
+        return diagnostic.clone();
     }
+    Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::InternalUnclassified)
+            .with_message(crate::errors::render_error_chain(&e)),
+        Some(meta.composed_id.clone()),
+        Some(meta.action.clone()),
+        None,
+    )
 }
 
 fn start_source<F: Send + 'static + Future + Unpin + Debug>(
@@ -902,9 +915,9 @@ mod fold_outcomes_tests {
                 meta("node-second", "Second Action"),
                 (
                     outcome(vec![]),
-                    Err(ExecutionError::CannotReceiveFromChannel(
-                        "second boom".into(),
-                    )),
+                    Err(ExecutionError::Sink(Box::new(std::io::Error::other(
+                        "second boom",
+                    )))),
                 ),
             ),
         ];
@@ -933,6 +946,130 @@ mod fold_outcomes_tests {
         for failed in &summary.failed_nodes {
             assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
         }
+    }
+
+    #[test]
+    fn upstream_cascade_is_dropped_when_a_real_failure_is_present() {
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-sink", "JSON Writer"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            1,
+            "the downstream node only failed because its upstream died"
+        );
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("node-source")
+        );
+    }
+
+    /// The regression Copilot's review caught: `CannotReceiveFromChannel` also covers real faults
+    /// reading a node's file-backed spill. Those are independent failures and must survive.
+    #[test]
+    fn a_file_backed_read_fault_is_not_treated_as_a_cascade() {
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-spill", "Attribute Manager"),
+                (
+                    outcome(vec![]),
+                    // Same variant the old string-matching filter would have swallowed.
+                    Err(ExecutionError::CannotReceiveFromChannel(
+                        "Failed to deserialize feature from file-backed op: eof".into(),
+                    )),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            2,
+            "a genuine file-backed read fault must not be filtered as an upstream cascade"
+        );
+    }
+
+    /// Never hide the only signal: a lone channel failure is still reported.
+    #[test]
+    fn a_sole_cascade_failure_is_still_reported() {
+        let results = vec![(
+            meta("node-sink", "JSON Writer"),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("node-sink")
+        );
+    }
+
+    #[test]
+    fn cascade_filtering_never_touches_aggregated_diagnostics() {
+        let warn = diagnostic(
+            ErrorCode::GltfZeroFaceSolid,
+            "a warning from a healthy node",
+        );
+        let results = vec![
+            (
+                meta("node-source", "Feature Creator"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Source(Box::new(std::io::Error::other(
+                        "the real failure",
+                    )))),
+                ),
+            ),
+            (
+                meta("node-sink", "JSON Writer"),
+                (
+                    outcome(vec![warn]),
+                    Err(ExecutionError::UpstreamDisconnected("RecvError".into())),
+                ),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.aggregated_diagnostics.len(),
+            1,
+            "a filtered node's aggregated diagnostics must survive"
+        );
     }
 
     #[test]

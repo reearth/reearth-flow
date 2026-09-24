@@ -103,6 +103,20 @@ crate::unsupported!(LineString3D: RemoveAppearance);
 crate::unsupported!(LineString2D: CountHoles);
 crate::unsupported!(LineString3D: CountHoles);
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for LineString2D {
+    fn count_vertices(&self) -> usize {
+        self.coords().len()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for LineString3D {
+    fn count_vertices(&self) -> usize {
+        self.coords().len()
+    }
+}
+
 // A curve bounds no area, so there is nothing to take apart.
 crate::unsupported!(LineString2D: ExtractHoles);
 crate::unsupported!(LineString3D: ExtractHoles);

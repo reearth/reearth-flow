@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import * as Y from "yjs";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectImport } from "@flow/hooks";

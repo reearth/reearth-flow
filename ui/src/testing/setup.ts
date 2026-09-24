@@ -1,16 +1,15 @@
-import { JSDOM } from "jsdom";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 
-const { window } = new JSDOM("<!doctype html><html><body></body></html>");
-
-// Assign the window object to global
-global.window = window as any;
-global.document = window.document;
-global.navigator = {
-  userAgent: "node.js",
-} as Navigator;
-
-// Optional: if you need other global properties, you can assign them here
-global.HTMLElement = window.HTMLElement;
-global.Node = window.Node;
-global.NodeList = window.NodeList;
+// This file used to build a second JSDOM here and assign its window, document,
+// navigator, HTMLElement, Node and NodeList over the globals. Vitest's `jsdom`
+// environment (see vite.config.ts) already provides all of them, so those
+// assignments only ever swapped in a *different* document than the one the
+// environment had created.
+//
+// That was harmless until @testing-library/jest-dom 7, whose entry point pulls
+// in @testing-library/dom. `screen` is bound to `document.body` when that module
+// is first evaluated, and ESM hoists the import above any statement here — so
+// `screen` bound to the environment's document while `render` wrote into the
+// replacement. Every `screen.getByRole`/`getByText` query then searched an empty
+// document: 109 tests across 14 files failed with "Unable to find an accessible
+// element" while the components under test rendered perfectly.

@@ -1,4 +1,5 @@
-import { Router, RouterProvider } from "@tanstack/react-router";
+import type { Router } from "@tanstack/react-router";
+import { RouterProvider } from "@tanstack/react-router";
 
 import { LoadingSplashscreen } from "@flow/components";
 import { useAuth } from "@flow/lib/auth";

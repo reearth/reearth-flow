@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import type { YNodesMap, YNodeValue } from "@flow/lib/yjs/types";
@@ -18,8 +18,14 @@ export default ({
   nodeId: string;
 }) => {
   const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
-  const { currentYWorkflow, undoTrackerActionWrapper, staleNodeIds } =
-    useEditorContext();
+  const {
+    currentYWorkflow,
+    undoTrackerActionWrapper,
+    staleNodeIds,
+    diagnosticSeverityByNodeId,
+  } = useEditorContext();
+
+  const diagnosticSeverity = diagnosticSeverityByNodeId?.get(nodeId);
 
   const isNodeStale = useMemo(
     () => !!staleNodeIds?.has(nodeId),
@@ -81,6 +87,7 @@ export default ({
     selectedColor,
     selectedBackgroundColor,
     isNodeStale,
+    diagnosticSeverity,
     handleCollapsedToggle,
   };
 };

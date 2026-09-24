@@ -68,7 +68,9 @@ use ops::{
 // be in scope here.
 use ops::Split;
 #[cfg(feature = "new-geometry")]
-use ops::{Area, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink};
+use ops::{
+    Area, CountVertices, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink,
+};
 #[cfg(feature = "new-geometry")]
 use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
 #[cfg(feature = "new-geometry")]
@@ -217,7 +219,8 @@ impl GeometryCollection {
         Footprint,
         DivideByGrid,
         Elevation,
-        Area
+        Area,
+        CountVertices
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -279,7 +282,8 @@ pub enum Euclidean2DGeometry {
         Footprint,
         DivideByGrid,
         Elevation,
-        Area
+        Area,
+        CountVertices
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -660,6 +664,26 @@ impl CountHoles for Geometry {
 impl CountHoles for GeometryCollection {
     fn count_holes(&self) -> usize {
         self.members.iter().map(Geometry::count_holes).sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl CountVertices for Geometry {
+    fn count_vertices(&self) -> usize {
+        match self {
+            // An absent geometry stores no coordinates.
+            Geometry::None => 0,
+            Geometry::Euclidean2D(g) => g.count_vertices(),
+            Geometry::Euclidean3D(g) => g.count_vertices(),
+            Geometry::GeometryCollection(c) => c.count_vertices(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl CountVertices for GeometryCollection {
+    fn count_vertices(&self) -> usize {
+        self.members.iter().map(Geometry::count_vertices).sum()
     }
 }
 

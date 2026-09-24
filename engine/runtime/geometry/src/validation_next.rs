@@ -863,9 +863,9 @@ pub(crate) fn check_unclosed_ring_3d(
 }
 
 /// The bit pattern of a coordinate component, normalizing `-0.0` to `+0.0` so the
-/// two hash and compare equal in the exact duplicate scan.
+/// two hash and compare equal as an exact map key.
 #[inline]
-pub(crate) fn norm_bits(x: f64) -> u64 {
+pub fn norm_bits(x: f64) -> u64 {
     (x + 0.0).to_bits()
 }
 
@@ -1234,6 +1234,33 @@ impl FaceTopology {
     /// boundary (watertight: no boundary edges, no non-manifold edges).
     pub(crate) fn is_closed_manifold(&self) -> bool {
         !self.edges.is_empty() && self.edges.values().all(|inc| inc.len() == 2)
+    }
+
+    /// Report every edge that breaks [`is_closed_manifold`](Self::is_closed_manifold)
+    /// as the segment between its two vertices: the boundary edges of a torn
+    /// surface and the edges where more than two faces meet. Reported in vertex-index
+    /// order so the output does not depend on the hash iteration order.
+    pub(crate) fn report_non_manifold_edges(
+        &self,
+        frame: &CoordinateFrame,
+        vertices: &[[f64; 3]],
+        report: &mut ValidationReport,
+    ) {
+        let mut offending: Vec<(u32, u32)> = self
+            .edges
+            .iter()
+            .filter(|(_, inc)| inc.len() != 2)
+            .map(|(&key, _)| key)
+            .collect();
+        offending.sort_unstable();
+        for (a, b) in offending {
+            report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+                LineString3D::from_coords(
+                    frame.clone(),
+                    [vertices[a as usize], vertices[b as usize]],
+                ),
+            )));
+        }
     }
 
     /// Whether the faces form a single connected component through shared edges.

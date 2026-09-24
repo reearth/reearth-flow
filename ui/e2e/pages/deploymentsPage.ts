@@ -1,4 +1,5 @@
-import { expect, Locator, Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { HomePage } from "./homePage";
 
@@ -100,7 +101,7 @@ export class DeploymentsPage {
 
   async goto() {
     const home = new HomePage(this.page);
-    await this.page.goto("/");
+    await this.page.goto("/", { waitUntil: "domcontentloaded" });
     await home.waitForLoaded();
     await home.navigateTo("Deployments");
     await this.waitForLoaded();

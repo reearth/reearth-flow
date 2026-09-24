@@ -1,13 +1,26 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::area2d::Area2D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::area3d::Area3D;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::centroid::Centroid;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::interior_point::InteriorPoint;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::point::Point;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{
+    ops::{Aabb, BoundingBox},
+    point::{Point2D, Point3D},
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
+};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -16,6 +29,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,15 +38,22 @@ use serde_json::Value;
 static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 
 /// Method used to compute the center point of a geometry.
+///
+/// Centre of gravity and pole of inaccessibility are only offered where the
+/// geometry layer can compute them, so that the choices a workflow is shown are
+/// exactly the choices it can make.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum CenterPointMode {
     /// Computes the centroid (center of gravity) of the geometry.
+    #[cfg(not(feature = "new-geometry"))]
     #[default]
     CenterOfGravity,
     /// Computes the center of the geometry's bounding box.
+    #[cfg_attr(feature = "new-geometry", default)]
     BoundingBoxCenter,
     /// Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).
+    #[cfg(not(feature = "new-geometry"))]
     AnyInsidePoint,
 }
 
@@ -53,7 +74,16 @@ impl ProcessorFactory for CenterPointReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Replace Feature Geometry with Center Point"
+        #[cfg(feature = "new-geometry")]
+        {
+            "Replaces a feature's geometry with a single point at the centre of the space it \
+             occupies. Geometry with no extent, or whose parts sit in different coordinate \
+             frames, cannot be reduced to one point and is reported instead."
+        }
+        #[cfg(not(feature = "new-geometry"))]
+        {
+            "Replace Feature Geometry with Center Point"
+        }
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -97,7 +127,64 @@ struct CenterPointReplacer {
     mode: CenterPointMode,
 }
 
+/// The midpoint of an interval, written so a box spanning the whole float range
+/// does not overflow on its way to the middle.
+#[cfg(feature = "new-geometry")]
+fn midpoint(min: f64, max: f64) -> f64 {
+    min + (max - min) / 2.0
+}
+
+/// Route a feature this action cannot reduce to a point to `rejected`.
+#[cfg(feature = "new-geometry")]
+fn reject(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, reason: &str) {
+    ctx.event_hub.debug_log(
+        Some(ctx.error_span()),
+        format!("center point rejected: {reason}"),
+    );
+    fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+}
+
 impl Processor for CenterPointReplacer {
+    /// Replaces the geometry with the centre of its bounding box, in the
+    /// geometry's own frame. Geometry with no extent, or whose leaves sit in
+    /// different frames — which would leave the point with no frame to be
+    /// expressed in — leaves via `rejected`.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let geometry = &ctx.feature.geometry;
+        let Ok(aabb) = geometry.bounding_box() else {
+            reject(&ctx, fw, "the geometry has no extent");
+            return Ok(());
+        };
+        let Some(frame) = geometry.frame().cloned() else {
+            reject(&ctx, fw, "the geometry's leaves do not share one frame");
+            return Ok(());
+        };
+        let centre = match aabb {
+            Aabb::D2 { min, max } => Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                Point2D::new(frame, [midpoint(min[0], max[0]), midpoint(min[1], max[1])]),
+            )),
+            Aabb::D3 { min, max } => {
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                    frame,
+                    [
+                        midpoint(min[0], max[0]),
+                        midpoint(min[1], max[1]),
+                        midpoint(min[2], max[2]),
+                    ],
+                )))
+            }
+        };
+        let mut feature = ctx.feature.clone();
+        feature.set_geometry(centre);
+        fw.send(ctx.new_with_feature_and_port(feature, POINT_PORT.clone()));
+        Ok(())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -141,6 +228,7 @@ impl Processor for CenterPointReplacer {
 }
 
 impl CenterPointReplacer {
+    #[cfg(not(feature = "new-geometry"))]
     fn send_rejected(
         &self,
         feature: &Feature,
@@ -155,6 +243,7 @@ impl CenterPointReplacer {
         fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn is_area_geometry_2d(geos: &Geometry2D) -> bool {
         matches!(
             geos,
@@ -165,6 +254,7 @@ impl CenterPointReplacer {
         )
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn is_area_geometry_3d(geos: &Geometry3D) -> bool {
         matches!(
             geos,
@@ -430,7 +520,7 @@ impl CenterPointReplacer {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use reearth_flow_geometry::types::coordinate::Coordinate;
     use reearth_flow_geometry::types::line_string::LineString3D;
@@ -844,5 +934,104 @@ mod tests {
             code,
             Some(&AttributeValue::String("INVALID_GEOMETRY_TYPE".into()))
         );
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod new_geometry_tests {
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::line_string::LineString3D;
+    use reearth_flow_geometry::polygon::Polygon3D;
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::Feature;
+
+    /// Run the processor over `geometry`, returning the port used and the
+    /// geometry it forwarded.
+    fn replace(geometry: Geometry) -> (Port, Geometry) {
+        let feature = Feature::from(geometry);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let ctx = create_default_execute_context(&feature);
+        CenterPointReplacer {
+            mode: CenterPointMode::BoundingBoxCenter,
+        }
+        .process(ctx, &fw)
+        .unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("the forwarder is the one built above");
+        };
+        let ports = noop.send_ports.lock().unwrap();
+        assert_eq!(ports.len(), 1);
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        (ports[0].clone(), (*features[0].geometry).clone())
+    }
+
+    /// A right triangle's bounding box is the square around it, so the centre
+    /// lands off the triangle itself — the box centre, not the centroid.
+    #[test]
+    fn a_face_is_replaced_by_the_centre_of_its_bounding_box() {
+        let triangle = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                vec![
+                    [0.0, 0.0, 2.0],
+                    [4.0, 0.0, 2.0],
+                    [0.0, 4.0, 2.0],
+                    [0.0, 0.0, 2.0],
+                ],
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )));
+        let (port, geometry) = replace(triangle);
+        assert_eq!(port, *POINT_PORT);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)) = geometry else {
+            panic!("expected a 3D point, got {geometry:?}");
+        };
+        assert_eq!(point.position(), [2.0, 2.0, 2.0]);
+    }
+
+    /// An open ring still has an extent, so it gets a centre: this is the case
+    /// the flood-zone check relies on, where a triangle that never closes
+    /// cannot be written as a face but must still be positioned.
+    #[test]
+    fn an_unclosed_ring_still_gets_a_centre() {
+        let open = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )));
+        let (port, geometry) = replace(open);
+        assert_eq!(port, *POINT_PORT);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)) = geometry else {
+            panic!("expected a 3D point, got {geometry:?}");
+        };
+        assert_eq!(point.position(), [1.0, 1.0, 0.0]);
+    }
+
+    #[test]
+    fn a_curve_is_reduced_to_the_centre_of_its_extent() {
+        let curve =
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]],
+            )));
+        let (port, geometry) = replace(curve);
+        assert_eq!(port, *POINT_PORT);
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)) = geometry else {
+            panic!("expected a 3D point, got {geometry:?}");
+        };
+        assert_eq!(point.position(), [5.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn a_feature_without_geometry_is_rejected() {
+        let (port, _) = replace(Geometry::None);
+        assert_eq!(port, *REJECTED_PORT);
     }
 }

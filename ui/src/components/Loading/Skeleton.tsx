@@ -29,14 +29,14 @@ const Loading: React.FC<{
             <p className="font-thin">{title || t("Loading")}</p>
             {hasProgress && (
               <div
-                className="bg-secondary h-1.5 w-56 overflow-hidden rounded-full"
+                className="h-1.5 w-56 overflow-hidden rounded-full bg-secondary"
                 role="progressbar"
                 aria-valuenow={clampedProgress}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={title || t("Loading")}>
                 <div
-                  className="bg-primary h-full rounded-full transition-[width] duration-200 ease-out"
+                  className="h-full rounded-full bg-primary transition-[width] duration-200 ease-out"
                   style={{ width: `${clampedProgress}%` }}
                 />
               </div>

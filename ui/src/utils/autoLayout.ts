@@ -7,7 +7,7 @@ import {
   DEFAULT_LAYOUT_Y_SPACING,
   DEFAULT_NODE_SIZE,
 } from "@flow/global-constants";
-import { Algorithm, Direction, Edge, Node } from "@flow/types";
+import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 export type DagreDirection = "TB" | "LR";
 

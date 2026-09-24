@@ -1,11 +1,12 @@
 import { XIcon } from "@phosphor-icons/react";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentUserRole } from "@flow/stores";
-import { Role, type Project } from "@flow/types";
+import { Role } from "@flow/types";
+import type { Project } from "@flow/types";
 
 import {
   RecoveryVersionHistoryList,

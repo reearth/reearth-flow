@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 
 import { inferWorkflowVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
-import { Variable } from "@flow/types";
-import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
+import type { Variable } from "@flow/types";
+import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 /**
  * Convert Variable array to Record for internal use

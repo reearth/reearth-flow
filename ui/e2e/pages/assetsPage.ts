@@ -1,4 +1,8 @@
-import { expect, Locator, Page } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
+
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 import { HomePage } from "./homePage";
 
@@ -21,7 +25,7 @@ export class AssetsPage {
 
   async goto() {
     const home = new HomePage(this.page);
-    await this.page.goto("/");
+    await this.page.goto("/", { waitUntil: "domcontentloaded" });
     await home.waitForLoaded();
     await home.navigateTo("Workspace Assets");
     await this.waitForLoaded();
@@ -46,7 +50,11 @@ export class AssetsPage {
         },
         { timeout: 180_000 },
       ),
-      this.fileInput.setInputFiles(filePath),
+      this.fileInput.setInputFiles({
+        name: `e2e-${Date.now()}-${Math.floor(Math.random() * 1000)}-${path.basename(filePath)}`,
+        mimeType: "application/octet-stream",
+        buffer: fs.readFileSync(filePath),
+      }),
     ]);
 
     const asset = (await response.json()).data.createAsset.asset;

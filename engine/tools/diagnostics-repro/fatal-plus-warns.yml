@@ -1,0 +1,80 @@
+# A run with BOTH a fatal node and a warn-emitting node.
+#
+# Under the old `Terminate` behaviour, join() returned the first Err and discarded every other
+# node's outcome — so `aggregatedDiagnostics` came back empty even though the Attribute Manager
+# had recorded diagnostics. It should now carry them alongside the fatal.
+id: 550e8400-e29b-41d4-a716-446655440a00
+name: "Repro: fatal node alongside a warn-emitting node"
+entryGraphId: 550e8400-e29b-41d4-a716-446655440a01
+
+graphs:
+  - id: 550e8400-e29b-41d4-a716-446655440a01
+    name: "Fatal plus warns"
+    nodes:
+      - id: 550e8400-e29b-41d4-a716-446655440a02
+        name: "FeatureCreator"
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"height": 10},
+                {"height": 20},
+                {"height": 30},
+              ]
+
+      # Emits expr.attribute_operation_failed per feature via ctx.warn, so it lands in the
+      # WarnContinue bucket (the feature is kept) — never fatal.
+      - id: 550e8400-e29b-41d4-a716-446655440a03
+        name: "AttributeManager"
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: derived
+              method: create
+              value:
+                type: flowExpr
+                value: "attributes[\"missing\"]"
+
+      # Fails fatally: expr.evaluation_failed
+      - id: 550e8400-e29b-41d4-a716-446655440a04
+        name: "StatisticsCalculator"
+        type: action
+        action: Statistics Calculator
+        with:
+          calculations:
+            - newAttribute: mean_height_m
+              aggregation: mean
+              expr:
+                type: flowExpr
+                value: "attributes[\"nope\"]"
+
+      - id: 550e8400-e29b-41d4-a716-446655440a05
+        name: "Output"
+        type: action
+        action: Feature Writer
+        with:
+          format:
+            type: json
+          output:
+            type: string
+            value: out.json
+    edges:
+      - id: 550e8400-e29b-41d4-a716-446655440a06
+        from: 550e8400-e29b-41d4-a716-446655440a02
+        to: 550e8400-e29b-41d4-a716-446655440a03
+        fromPort: features
+        toPort: features
+      - id: 550e8400-e29b-41d4-a716-446655440a07
+        from: 550e8400-e29b-41d4-a716-446655440a03
+        to: 550e8400-e29b-41d4-a716-446655440a04
+        fromPort: features
+        toPort: features
+      - id: 550e8400-e29b-41d4-a716-446655440a08
+        from: 550e8400-e29b-41d4-a716-446655440a04
+        to: 550e8400-e29b-41d4-a716-446655440a05
+        fromPort: features
+        toPort: features

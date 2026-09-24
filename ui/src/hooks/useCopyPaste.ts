@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { type GeneralState } from "@flow/stores";
+import type { GeneralState } from "@flow/stores";
 
 export const useCopyPaste = () => {
   const { value: generalState, updateValue: updateGeneralState } =

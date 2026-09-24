@@ -832,14 +832,8 @@
       },
       "enumI18n": {
         "CenterPointMode": {
-          "anyInsidePoint": {
-            "description": "ジオメトリ内部に確実に収まる点を計算する（到達不能極）。"
-          },
           "boundingBoxCenter": {
             "description": "ジオメトリのバウンディングボックスの中心を計算する。"
-          },
-          "centerOfGravity": {
-            "description": "ジオメトリの重心（セントロイド）を計算する。"
           }
         }
       }
@@ -870,7 +864,7 @@
         },
         "dracoCompression": {
           "title": "Draco 圧縮",
-          "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）"
+          "description": "メッシュジオメトリを Draco で圧縮するかと、その精度。デフォルトはエンコーダー既定の解像度で有効。"
         },
         "output": {
           "title": "出力パス",
@@ -886,7 +880,7 @@
         },
         "targetTileSize": {
           "title": "Target Tile Size",
-          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
+          "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "テクセルサイズ",
@@ -902,6 +896,22 @@
         }
       },
       "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "無効",
+            "description": "メッシュジオメトリを圧縮せずに書き出す。"
+          },
+          "enabled": {
+            "title": "有効",
+            "description": "メッシュジオメトリを Draco で圧縮する。",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
         "TextureCodec": {
           "JPEG": {
             "description": "JPEG。非可逆で不透明（アルファは破棄される）。"
@@ -3790,6 +3800,39 @@
       "description": "PLATEAUの未一致Xlinkを検出する"
     },
     {
+      "name": "PLATEAU6.UnsharedEdgeExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "Unshared Edge Extractor Parameters",
+          "description": "Which faces are matched against each other, and how exactly their endpoints have to agree."
+        },
+        "coordinatePrecision": {
+          "title": "Coordinate Precision",
+          "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other."
+        }
+      },
+      "definitionI18n": {
+        "CoordinatePrecision": {
+          "x": {
+            "title": "X",
+            "description": "Decimal places the first horizontal coordinate is rounded to."
+          },
+          "y": {
+            "title": "Y",
+            "description": "Decimal places the second horizontal coordinate is rounded to."
+          },
+          "z": {
+            "title": "Z",
+            "description": "Decimal places the vertical coordinate is rounded to."
+          }
+        }
+      }
+    },
+    {
       "name": "Planarity Filter",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
       "parameterI18n": {
@@ -4077,6 +4120,10 @@
         "": {
           "title": "Spatial Filter パラメータ",
           "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter."
         },
         "matchMode": {
           "title": "マッチモード",
@@ -4491,6 +4538,7 @@
           "description": "GLTF モデルにテクスチャ情報を添付するか"
         },
         "dracoCompression": {
+          "title": "Draco Compression",
           "description": "ジオメトリに Draco 圧縮を適用する"
         },
         "output": {
@@ -4498,6 +4546,24 @@
         },
         "schemaKey": {
           "description": "フィーチャーはこの属性でグループ化され、別々のファイルに書き出される。このキーは出力属性から除外される。"
+        }
+      },
+      "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "Disabled",
+            "description": "Write mesh geometry uncompressed."
+          },
+          "enabled": {
+            "title": "Enabled",
+            "description": "Compress mesh geometry with Draco.",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
         }
       }
     }

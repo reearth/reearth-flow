@@ -1,3 +1,4 @@
+import type { PrimitiveCollection } from "cesium";
 import {
   BoundingSphere,
   Cartesian3,
@@ -10,7 +11,6 @@ import {
   PolygonGeometry,
   PolygonHierarchy,
   Primitive,
-  PrimitiveCollection,
   ShowGeometryInstanceAttribute,
 } from "cesium";
 

@@ -5,12 +5,8 @@ import { usePagination } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import {
-  Trigger,
-  TimeInterval,
-  Deployment,
-  DeploymentOrderBy,
-} from "@flow/types";
+import type { Trigger, TimeInterval, Deployment } from "@flow/types";
+import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 

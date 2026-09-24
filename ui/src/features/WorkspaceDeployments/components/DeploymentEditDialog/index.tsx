@@ -11,7 +11,7 @@ import {
 } from "@flow/components";
 import { ALLOWED_WORKFLOW_FILE_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 import useHooks from "./hooks";
 

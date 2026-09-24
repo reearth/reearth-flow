@@ -1,0 +1,13 @@
+[[codes]]
+code = "table_extractor.non_string_value"
+category = "parse"
+default_disposition = "warn_drop"
+message = "kept a value as-is because it was not a string"
+help = "Attribute Table Extractor can only coerce string values to int or float. Check the source attribute's type."
+
+[[codes]]
+code = "table_extractor.coerce_failed"
+category = "parse"
+default_disposition = "warn_drop"
+message = "kept a value as-is because it could not be parsed as the target type"
+help = "Check that the source attribute's value matches the int or float format expected by the extract rule."

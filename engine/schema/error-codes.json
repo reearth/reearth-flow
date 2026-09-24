@@ -91,6 +91,13 @@
     "help": "Check the operation's expression for the attribute it reads or produces."
   },
   {
+    "code": "expr.evaluation_failed",
+    "category": "expression",
+    "defaultDisposition": "fatal",
+    "message": "expression evaluation failed",
+    "help": "Check the expression for this parameter. A common cause is referencing an attribute that does not exist on the incoming feature — verify the attribute name, and that an upstream action produces it."
+  },
+  {
     "code": "geometry.area_angular_crs",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -206,19 +213,22 @@
     "code": "internal.diagnostics_overflow",
     "category": "internal",
     "defaultDisposition": "warn_drop",
-    "message": "additional diagnostics collapsed into this overflow marker"
+    "message": "additional diagnostics collapsed into this overflow marker",
+    "help": "The run produced more warnings than the summary shows. Fix the highest-count warnings first to reduce the tail."
   },
   {
     "code": "internal.invariant_violation",
     "category": "internal",
     "defaultDisposition": "fatal",
-    "message": "internal invariant violated"
+    "message": "internal invariant violated",
+    "help": "This is an engine bug. Please report it with the workflow, the failing node, and the job id."
   },
   {
     "code": "internal.unclassified",
     "category": "internal",
     "defaultDisposition": "fatal",
-    "message": "node failed with an unclassified error"
+    "message": "node failed with an unclassified error",
+    "help": "See the message and the failing action's log for details. If it points at a workflow parameter or input, fix that and retry."
   },
   {
     "code": "raster.image_save_failed",
@@ -233,5 +243,19 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped assigning texture coordinates to a feature",
     "help": "Image Rasterizer only assigns texture coordinates to CityGML geometry with a non-degenerate boundary."
+  },
+  {
+    "code": "table_extractor.coerce_failed",
+    "category": "parse",
+    "defaultDisposition": "warn_drop",
+    "message": "kept a value as-is because it could not be parsed as the target type",
+    "help": "Check that the source attribute's value matches the int or float format expected by the extract rule."
+  },
+  {
+    "code": "table_extractor.non_string_value",
+    "category": "parse",
+    "defaultDisposition": "warn_drop",
+    "message": "kept a value as-is because it was not a string",
+    "help": "Attribute Table Extractor can only coerce string values to int or float. Check the source attribute's type."
   }
 ]

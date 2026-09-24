@@ -832,14 +832,8 @@
       },
       "enumI18n": {
         "CenterPointMode": {
-          "anyInsidePoint": {
-            "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility)."
-          },
           "boundingBoxCenter": {
             "description": "Computes the center of the geometry's bounding box."
-          },
-          "centerOfGravity": {
-            "description": "Computes the centroid (center of gravity) of the geometry."
           }
         }
       }
@@ -870,7 +864,7 @@
         },
         "dracoCompression": {
           "title": "Compression Draco",
-          "description": "Utiliser la compression Draco. Vrai par défaut."
+          "description": "Indique si la géométrie du maillage est compressée avec Draco, et avec quelle précision. Activée par défaut avec la résolution par défaut de l'encodeur."
         },
         "output": {
           "title": "Chemin de Sortie",
@@ -886,7 +880,7 @@
         },
         "targetTileSize": {
           "title": "Target Tile Size",
-          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
+          "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "Taille de Texel",
@@ -902,6 +896,22 @@
         }
       },
       "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "Désactivée",
+            "description": "Écrit la géométrie du maillage sans compression."
+          },
+          "enabled": {
+            "title": "Activée",
+            "description": "Compresse la géométrie du maillage avec Draco.",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
+        },
         "TextureCodec": {
           "JPEG": {
             "description": "JPEG, avec perte et opaque (le canal alpha est supprimé)."
@@ -3786,6 +3796,39 @@
       "name": "PLATEAU6.UnmatchedXlinkDetector"
     },
     {
+      "name": "PLATEAU6.UnsharedEdgeExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "Unshared Edge Extractor Parameters",
+          "description": "Which faces are matched against each other, and how exactly their endpoints have to agree."
+        },
+        "coordinatePrecision": {
+          "title": "Coordinate Precision",
+          "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other."
+        }
+      },
+      "definitionI18n": {
+        "CoordinatePrecision": {
+          "x": {
+            "title": "X",
+            "description": "Decimal places the first horizontal coordinate is rounded to."
+          },
+          "y": {
+            "title": "Y",
+            "description": "Decimal places the second horizontal coordinate is rounded to."
+          },
+          "z": {
+            "title": "Z",
+            "description": "Decimal places the vertical coordinate is rounded to."
+          }
+        }
+      }
+    },
+    {
       "name": "Planarity Filter",
       "description": "Filter Features by Geometry Planarity",
       "parameterI18n": {
@@ -4073,6 +4116,10 @@
         "": {
           "title": "Spatial Filter Parameters",
           "description": "Configures which spatial relationship is tested between the filter and candidate geometries, and what a passing candidate carries away from the filter."
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter."
         },
         "matchMode": {
           "title": "Match Mode",
@@ -4487,6 +4534,7 @@
           "description": "Whether to attach texture information to the GLTF model"
         },
         "dracoCompression": {
+          "title": "Draco Compression",
           "description": "Apply Draco compression to the geometry"
         },
         "output": {
@@ -4494,6 +4542,24 @@
         },
         "schemaKey": {
           "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
+        }
+      },
+      "enumI18n": {
+        "DracoCompression": {
+          "disabled": {
+            "title": "Disabled",
+            "description": "Write mesh geometry uncompressed."
+          },
+          "enabled": {
+            "title": "Enabled",
+            "description": "Compress mesh geometry with Draco.",
+            "properties": {
+              "quantizationError": {
+                "title": "Quantization Error",
+                "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used."
+              }
+            }
+          }
         }
       }
     }

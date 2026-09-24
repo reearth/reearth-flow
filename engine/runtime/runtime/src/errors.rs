@@ -2,6 +2,8 @@ use serde_json::Number;
 use std::num::ParseIntError;
 use thiserror::Error;
 
+use reearth_flow_diagnostics::Diagnostic;
+
 use crate::node::{NodeHandle, Port};
 
 #[derive(Error, Debug)]
@@ -78,6 +80,12 @@ pub enum ExecutionError {
     CannotSendToChannel(String),
     #[error("Cannot receive from channel: {0}")]
     CannotReceiveFromChannel(String),
+    /// Every upstream sender dropped without sending `Terminate` — this node did not fail on its
+    /// own account, it noticed another node's failure. Distinct from `CannotReceiveFromChannel`,
+    /// which also covers real faults reading a node's file-backed spill (open/read/deserialize)
+    /// and must never be treated as a cascade.
+    #[error("Upstream node terminated unexpectedly: {0}")]
+    UpstreamDisconnected(String),
     #[error("Cannot spawn worker thread: {0}")]
     CannotSpawnWorkerThread(#[source] std::io::Error),
     #[error("Invalid source name {0}")]
@@ -139,6 +147,42 @@ pub(crate) enum NodeErrorKind {
     Processor,
     Sink,
     Source,
+}
+
+/// Recovers the `Diagnostic` a node-kind `ExecutionError` is carrying, if it is carrying one.
+///
+/// `Factory` is deliberately excluded: a factory's `build()` returns its own error type, not a
+/// boxed `Diagnostic`. Add it here only once some factory actually boxes one.
+///
+/// Every reporting surface must go through this rather than stringifying the error — rendering
+/// a carried `Diagnostic` with `{:?}` (or even `{}`) discards its code, severity, help and
+/// `feature_id`, and the caller then has to invent replacements.
+pub fn recover_diagnostic(e: &ExecutionError) -> Option<&Diagnostic> {
+    match e {
+        ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
+            b.downcast_ref::<Diagnostic>()
+        }
+        _ => None,
+    }
+}
+
+/// Renders an error and its `source()` chain as a single readable line.
+///
+/// Several `ExecutionError` variants already interpolate their source into their own `Display`
+/// (`Factory` uses `{error}`; `Source`/`Processor`/`Sink` use `{0}`), so a naive walk would print
+/// the inner message twice. A child whose rendering the parent already contains is skipped.
+pub fn render_error_chain(e: &dyn std::error::Error) -> String {
+    let mut rendered = e.to_string();
+    let mut current = e.source();
+    while let Some(source) = current {
+        let segment = source.to_string();
+        if !rendered.contains(&segment) {
+            rendered.push_str(": ");
+            rendered.push_str(&segment);
+        }
+        current = source.source();
+    }
+    rendered
 }
 
 // Must preserve the box exactly as received — a Diagnostic carrier must not be collapsed via format!(), since the join fold later downcasts it back out.
