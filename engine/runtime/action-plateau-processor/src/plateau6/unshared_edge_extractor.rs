@@ -19,6 +19,8 @@ use once_cell::sync::Lazy;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
+use reearth_flow_geometry::predicates::view::{polygon2d_rings, polygon3d_rings};
+use reearth_flow_geometry::validation_next::norm_bits;
 use reearth_flow_geometry::{
     Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
 };
@@ -287,12 +289,12 @@ impl Processor for UnsharedEdgeExtractor {
                 let edge = EdgeKey {
                     three_dimensional: ring.three_dimensional,
                     bits: [
-                        coord_bits(endpoints[0][0]),
-                        coord_bits(endpoints[0][1]),
-                        coord_bits(endpoints[0][2]),
-                        coord_bits(endpoints[1][0]),
-                        coord_bits(endpoints[1][1]),
-                        coord_bits(endpoints[1][2]),
+                        norm_bits(endpoints[0][0]),
+                        norm_bits(endpoints[0][1]),
+                        norm_bits(endpoints[0][2]),
+                        norm_bits(endpoints[1][0]),
+                        norm_bits(endpoints[1][1]),
+                        norm_bits(endpoints[1][2]),
                     ],
                 };
                 if group.remove(&edge).is_none() {
@@ -415,7 +417,7 @@ fn collect_rings_3d(geometry: &Euclidean3DGeometry, rings: &mut Vec<Ring>) -> bo
 
 fn push_polygon_2d(polygon: &Polygon2D, rings: &mut Vec<Ring>) {
     let z = polygon.elevation().unwrap_or(0.0);
-    for ring in std::iter::once(polygon.exterior()).chain(polygon.interiors()) {
+    for ring in polygon2d_rings(polygon) {
         rings.push(Ring {
             coords: ring.iter().map(|c| [c[0], c[1], z]).collect(),
             three_dimensional: false,
@@ -425,7 +427,7 @@ fn push_polygon_2d(polygon: &Polygon2D, rings: &mut Vec<Ring>) {
 }
 
 fn push_polygon_3d(polygon: &Polygon3D, rings: &mut Vec<Ring>) {
-    for ring in std::iter::once(polygon.exterior()).chain(polygon.interiors()) {
+    for ring in polygon3d_rings(polygon) {
         rings.push(Ring {
             coords: ring.to_vec(),
             three_dimensional: true,
@@ -450,12 +452,6 @@ fn order_endpoints(a: Endpoint, b: Endpoint) -> [Endpoint; 2] {
     } else {
         [b, a]
     }
-}
-
-/// A coordinate's bit pattern, with `-0.0` folded onto `+0.0` so the two hash
-/// and compare as the one position they are.
-fn coord_bits(value: f64) -> u64 {
-    (value + 0.0).to_bits()
 }
 
 #[cfg(test)]
