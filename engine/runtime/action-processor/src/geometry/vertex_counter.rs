@@ -28,8 +28,15 @@ impl ProcessorFactory for VertexCounterFactory {
         "Vertex Counter"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn description(&self) -> &str {
         "Count Geometry Vertices to Attribute"
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn description(&self) -> &str {
+        "Writes the number of vertices a geometry has into an attribute. A ring's closing \
+         vertex repeats its first one and is not counted, so a triangle counts three."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -93,10 +100,10 @@ pub struct VertexCounter {
 }
 
 impl Processor for VertexCounter {
-    /// Counts the coordinates the geometry stores, as stored: a ring keeps its
-    /// closing vertex and a mesh counts its shared vertex pool once. A feature
-    /// with no geometry passes through without the attribute, the way an empty
-    /// geometry does, rather than claiming a count of zero.
+    /// Counts the geometry's vertices: a ring's closing vertex is not counted
+    /// and a mesh counts its shared vertex pool once. A feature with no
+    /// geometry passes through without the attribute, the way an empty geometry
+    /// does, rather than claiming a count of zero.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -431,10 +438,9 @@ mod new_geometry_tests {
         feature.attributes.get(&Attribute::new("vertexCount"))
     }
 
-    /// The closing vertex counts, matching the legacy path where a closed
-    /// square reports five.
+    /// The closing vertex repeats the first one, so a closed square counts four.
     #[test]
-    fn a_closed_square_counts_its_repeated_first_vertex() {
+    fn a_closed_square_does_not_count_its_closing_vertex() {
         let feature = count(Feature::from(face(vec![
             [0.0, 0.0, 0.0],
             [1.0, 0.0, 0.0],
@@ -444,14 +450,13 @@ mod new_geometry_tests {
         ])));
         assert_eq!(
             vertex_count(&feature),
-            Some(&AttributeValue::Number(5.into()))
+            Some(&AttributeValue::Number(4.into()))
         );
     }
 
-    /// A triangle written without its closing vertex reports three, so a
-    /// downstream check can tell it apart from the well-formed four.
+    /// Stored open or closed, a triangle has three vertices.
     #[test]
-    fn an_open_triangle_counts_three() {
+    fn an_open_triangle_counts_the_same_as_a_closed_one() {
         let feature = count(Feature::from(face(vec![
             [0.0, 0.0, 0.0],
             [1.0, 0.0, 0.0],

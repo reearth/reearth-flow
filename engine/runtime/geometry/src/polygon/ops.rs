@@ -373,20 +373,27 @@ impl CountHoles for Polygon3D {
     }
 }
 
-// Exterior and interior rings share one coordinate array, so its length is
-// already the face's total — closing vertices included, since the rings are
-// stored verbatim.
+#[cfg(feature = "new-geometry")]
+use crate::predicates::view::{polygon2d_rings, polygon3d_rings};
+#[cfg(feature = "new-geometry")]
+use crate::validation_next::open_ring;
+
+// A ring's closing vertex repeats its first one, so it is not counted.
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Polygon2D {
     fn count_vertices(&self) -> usize {
-        self.coords.len()
+        polygon2d_rings(self)
+            .map(|ring| open_ring(ring).len())
+            .sum()
     }
 }
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::CountVertices for Polygon3D {
     fn count_vertices(&self) -> usize {
-        self.coords.len()
+        polygon3d_rings(self)
+            .map(|ring| open_ring(ring).len())
+            .sum()
     }
 }
 
@@ -482,10 +489,7 @@ use crate::ops::{Footprint, FootprintError, FootprintSink};
 impl Footprint for Polygon2D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
-        sink.push_face_2d(
-            std::iter::once(self.exterior()).chain(self.interiors()),
-            self.elevation(),
-        );
+        sink.push_face_2d(polygon2d_rings(self), self.elevation());
         Ok(())
     }
 }
@@ -494,7 +498,7 @@ impl Footprint for Polygon2D {
 impl Footprint for Polygon3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
-        sink.push_face_3d(std::iter::once(self.exterior()).chain(self.interiors()));
+        sink.push_face_3d(polygon3d_rings(self));
         Ok(())
     }
 }

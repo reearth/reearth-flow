@@ -1,23 +1,18 @@
-//! Vertex counting: how many coordinates a geometry stores.
+//! Vertex counting: how many vertices a geometry has.
 //!
-//! The count is of *stored* coordinates, not of distinct positions: a ring
-//! written with its first vertex repeated at the end counts that repeat, and a
-//! mesh counts its shared vertex pool once rather than once per face corner.
-//! Callers ask this to inspect how the geometry was written — whether a
-//! triangle really carries four coordinates, say — so normalizing the answer
-//! would destroy the very thing being measured.
+//! A ring's closing vertex repeats its first one, so it is not counted: a
+//! triangle counts three whether or not it is stored closed. Whether a ring is
+//! closed is a validation question, not a counting one.
 
-/// The number of coordinates a geometry stores.
+/// The number of vertices a geometry has.
 ///
 /// Total over the hierarchy: a container sums its members. The default body
 /// returns `0`, so a leaf that stores no coordinates of its own needs only an
 /// (empty) `impl`, stamped by [`unsupported!`](crate::unsupported). Counting
 /// never fails; a geometry with nothing to count answers `0`.
 ///
-/// Coordinates are counted **verbatim**, as stored:
-///
-/// * A ring keeps its closing vertex if it has one, so a closed triangle counts
-///   `4` and the same triangle stored open counts `3`.
+/// * A ring drops its closing vertex if it has one, so a triangle counts `3`
+///   stored closed or open.
 /// * A face sums its exterior and every interior ring.
 /// * A mesh counts its vertex pool, so a vertex shared by several faces counts
 ///   once.
@@ -25,7 +20,7 @@
 ///   interior shells.
 #[enum_dispatch::enum_dispatch]
 pub trait CountVertices {
-    /// The number of coordinates this geometry stores, recursing into
+    /// The number of vertices this geometry has, recursing into
     /// collections.
     fn count_vertices(&self) -> usize {
         0
@@ -57,12 +52,8 @@ mod tests {
         )
     }
 
-    /// The distinction the CityGML quality checks rely on: a triangle written
-    /// with its closing vertex counts four, the same triangle written open
-    /// counts three. Normalizing either way would hide the defect being looked
-    /// for.
     #[test]
-    fn a_ring_is_counted_as_stored_closing_vertex_included() {
+    fn a_closing_vertex_is_not_counted() {
         let closed = triangle(vec![
             [0.0, 0.0, 0.0],
             [1.0, 0.0, 0.0],
@@ -70,7 +61,7 @@ mod tests {
             [0.0, 0.0, 0.0],
         ]);
         let open = triangle(vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]);
-        assert_eq!(closed.count_vertices(), 4);
+        assert_eq!(closed.count_vertices(), 3);
         assert_eq!(open.count_vertices(), 3);
     }
 
@@ -93,7 +84,7 @@ mod tests {
                 [1.0, 1.0, 0.0],
             ]],
         );
-        assert_eq!(with_hole.count_vertices(), 10);
+        assert_eq!(with_hole.count_vertices(), 8);
     }
 
     #[test]
@@ -124,6 +115,6 @@ mod tests {
             ))),
             Geometry::None,
         ]);
-        assert_eq!(Geometry::GeometryCollection(collection).count_vertices(), 5);
+        assert_eq!(Geometry::GeometryCollection(collection).count_vertices(), 4);
     }
 }

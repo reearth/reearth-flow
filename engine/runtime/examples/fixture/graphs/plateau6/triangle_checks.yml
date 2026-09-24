@@ -103,9 +103,7 @@ nodes:
       routingPort: degenerate
 
   # --- Corner count ---
-  # Four is the only correct number: three corners with the first repeated to
-  # close the ring. Three means the ring was never closed, five or more means a
-  # patch that is not a triangle at all.
+  # Three is the only correct number, since the closing vertex is not counted.
   - id: c5000000-0000-4000-8000-00000000000b
     name: VertexCounter
     type: action
@@ -121,7 +119,7 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes.get("_vertexCount", 0) != 4
+            value: attributes.get("_vertexCount", 0) != 3
           outputPort: incorrectVertexCount
 
   - id: c5000000-0000-4000-8000-00000000000d
@@ -245,10 +243,17 @@ edges:
     toPort: features
 
   ## Corner count
+  # An unclosed ring has no closing vertex to leave out, so it is counted only
+  # as not closed.
   - id: c5000000-0000-4000-8000-00000000010a
-    from: c5000000-0000-4000-8000-000000000004
+    from: c5000000-0000-4000-8000-000000000006
     to: c5000000-0000-4000-8000-00000000000b
-    fromPort: features
+    fromPort: success
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000117
+    from: c5000000-0000-4000-8000-000000000007
+    to: c5000000-0000-4000-8000-00000000000b
+    fromPort: unfiltered
     toPort: features
   - id: c5000000-0000-4000-8000-00000000010b
     from: c5000000-0000-4000-8000-00000000000b
