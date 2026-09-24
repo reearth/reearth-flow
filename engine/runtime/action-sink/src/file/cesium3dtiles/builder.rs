@@ -9,8 +9,8 @@ use rayon::prelude::*;
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
 use reearth_flow_gltf::tiles::glb::{self, Granularity};
 use reearth_flow_gltf::tiles::metadata;
-use reearth_flow_gltf::DracoCompression;
 pub use reearth_flow_gltf::tiles::metadata::MetadataOptions;
+use reearth_flow_gltf::DracoCompression;
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::Feature;
 
