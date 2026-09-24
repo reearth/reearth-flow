@@ -141,9 +141,6 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("__value")["package"] + "_lod" + env.get("__value")["lod"])
           compressOutput: |

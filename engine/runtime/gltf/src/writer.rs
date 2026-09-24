@@ -425,7 +425,7 @@ pub fn write_gltf_glb<W: Write>(
 /// The texture coordinate bound is resolved against each primitive's own coordinate
 /// range, so a primitive whose coordinates tile the texture keeps the same accuracy
 /// in texels.
-fn draco_config(
+pub(crate) fn draco_config(
     draco: DracoCompression,
     texture_size: Option<u32>,
     position_min: [f64; 3],

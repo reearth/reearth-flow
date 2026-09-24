@@ -485,9 +485,7 @@
                 "quantizationError": 0.01
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": false,
+            "textureCodec": "Untextured",
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod1.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod1.zip\")\n}\n"
           }
@@ -503,9 +501,6 @@
                 "quantizationError": 0.01
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": true,
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod2.zip\")\n}\n"
           }
@@ -521,9 +516,7 @@
                 "quantizationError": 0.01
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": false,
+            "textureCodec": "Untextured",
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod2_no_texture.zip\")\n}\n"
           }
@@ -539,9 +532,6 @@
                 "quantizationError": 0.003
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": true,
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod3.zip\")\n}\n"
           }
@@ -557,9 +547,7 @@
                 "quantizationError": 0.003
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": false,
+            "textureCodec": "Untextured",
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod3_no_texture.zip\")\n}\n"
           }
@@ -575,9 +563,6 @@
                 "quantizationError": 0.003
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": true,
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod4.zip\")\n}\n"
           }
@@ -593,9 +578,7 @@
                 "quantizationError": 0.003
               }
             },
-            "minZoom": 15,
-            "maxZoom": 18,
-            "attachTexture": false,
+            "textureCodec": "Untextured",
             "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
             "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod4_no_texture.zip\")\n}\n"
           }
