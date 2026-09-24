@@ -2537,7 +2537,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
       "type": "boolean"
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -2648,7 +2648,7 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
       }
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -3731,12 +3731,13 @@ Extrudes a polygon geometry vertically by a given distance to produce a solid ge
 ### Type
 * processor
 ### Description
-Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files.
+Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature CityGML 2 Reader Parameters",
+  "description": "Which file to read, and how its elements become feature attributes.",
   "type": "object",
   "required": [
     "dataset"
@@ -3792,7 +3793,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
       "type": "boolean"
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -3891,7 +3892,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       }
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [

@@ -3846,10 +3846,11 @@
     {
       "name": "Feature CityGML 2 Reader",
       "type": "processor",
-      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 2.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 2 Reader パラメータ",
+        "description": "Which file to read, and how its elements become feature attributes.",
         "type": "object",
         "required": [
           "dataset"
