@@ -60,9 +60,10 @@ impl ProcessorFactory for UnsharedEdgeExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Collects the edges of the incoming faces that are used exactly once, emitting each as a \
-         two-point line carrying the attributes of the face it came from. Endpoints must match \
-         exactly, so faces should already share a projected coordinate frame."
+        "Finds the edges of a triangulated surface that no neighboring triangle shares, such as \
+         the surface's outline and the rim of any gap in the mesh, and emits each as a line \
+         carrying the attributes of its triangle. Edges are shared only when their endpoints \
+         match exactly."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -209,9 +210,7 @@ struct PendingEdge {
 pub(crate) struct UnsharedEdgeExtractor {
     group_by: Vec<Attribute>,
     precision: Option<CoordinatePrecision>,
-    /// Per group, the edges still seen an odd number of times. An edge met a
-    /// second time is removed, so what remains at the end is exactly the edges
-    /// used once.
+    /// Per group, the edges no other triangle has shared yet.
     groups: HashMap<Vec<AttributeValue>, HashMap<EdgeKey, PendingEdge>>,
     received: usize,
 }
