@@ -9393,7 +9393,7 @@ Shifts every geometry coordinate by a fixed amount along each axis.
 ### Type
 * processor
 ### Description
-Writes which way a 2D face's rings wind into an attribute: `clockwise`, `counter_clockwise`, or `no_orientation` when some ring encloses nothing. Winding is read in canonical orientation, so the answer describes the ring on the ground rather than the axis order its coordinates are stored in. A 3D face has no absolute winding and must be flattened first.
+Extract Polygon Orientation to Attribute
 ### Parameters
 ```json
 {
@@ -9426,7 +9426,6 @@ Writes which way a 2D face's rings wind into an attribute: `clockwise`, `counter
 * features
 ### Output Ports
 * features
-* rejected
 ### Category
 * Geometry
 
@@ -13241,7 +13240,7 @@ Removes Z-coordinates from 3D geometries to produce 2D output.
 ### Type
 * processor
 ### Description
-Count Geometry Vertices to Attribute
+Writes the number of vertices a geometry has into an attribute. A ring's closing vertex repeats its first one and is not counted, so a triangle counts three.
 ### Parameters
 ```json
 {

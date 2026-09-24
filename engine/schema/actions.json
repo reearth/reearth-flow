@@ -9659,7 +9659,7 @@
     {
       "name": "Orientation Extractor",
       "type": "processor",
-      "description": "Writes which way a 2D face's rings wind into an attribute: `clockwise`, `counter_clockwise`, or `no_orientation` when some ring encloses nothing. Winding is read in canonical orientation, so the answer describes the ring on the ground rather than the axis order its coordinates are stored in. A 3D face has no absolute winding and must be flattened first.",
+      "description": "Extract Polygon Orientation to Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Orientation Extractor Parameters",
@@ -9690,8 +9690,7 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Geometry"
@@ -13621,7 +13620,7 @@
     {
       "name": "Vertex Counter",
       "type": "processor",
-      "description": "Count Geometry Vertices to Attribute",
+      "description": "Writes the number of vertices a geometry has into an attribute. A ring's closing vertex repeats its first one and is not counted, so a triangle counts three.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Vertex Counter Parameters",
