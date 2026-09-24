@@ -235,13 +235,18 @@ nodes:
     action: Two Dimension Forcer
 
   # An edge inside the band lies on the outline and is not a finding. Everything
-  # else is an edge the surface should have shared and did not.
+  # else is an edge the surface should have shared and did not. Only the outline
+  # of the edge's own group counts: the outline of another scale or folder can
+  # run across this surface's interior.
   - id: d8000000-0000-4000-8000-000000000012
     name: SpatialFilterOutline
     type: action
     action: Spatial Filter
     with:
       predicate: within
+      groupBy:
+        - fldScale
+        - udxDirs
 
   # --- Per file counts ---
   # One row per GML file per finding, counted on the folder and file name the
