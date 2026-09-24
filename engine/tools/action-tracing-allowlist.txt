@@ -22,7 +22,7 @@ runtime/action-sink/src/file/cesium3dtiles/next/mod.rs:2
 runtime/action-sink/src/file/cesium3dtiles/pipeline.rs:1
 runtime/action-sink/src/file/cesium3dtiles/sink.rs:6
 runtime/action-sink/src/file/cesium3dtiles/slice.rs:2
-runtime/action-sink/src/file/citygml.rs:6
+runtime/action-sink/src/file/citygml.rs:2
 runtime/action-sink/src/file/csv.rs:2
 runtime/action-sink/src/file/geojson.rs:3
 runtime/action-sink/src/file/gltf.rs:1

@@ -1174,9 +1174,12 @@ fn csr_boundary_edges(
     interior_offsets: &IndexBuffer<1>,
 ) -> BoundaryEdges {
     let mut edges = BoundaryEdges::new();
-    super::faces::for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
-        edges.add_ring(ring)
-    });
+    super::faces::for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, _, _| edges.add_ring(ring),
+    );
     edges
 }
 

@@ -1,8 +1,15 @@
-//! What writing a `Feature` as GeoJSON returns, in the form both geometry worlds
-//! share, so a caller writes one code path whatever `Feature::geometry` is.
+//! What writing a `Feature` returns, in the form both geometry worlds share, so
+//! a caller writes one code path whatever `Feature::geometry` is.
 //!
-//! Re-exported from `conversion::geojson` in both worlds; the module exists only
-//! while there are two of them, and folds into the surviving one afterwards.
+//! [`WrittenFeature`] is GeoJSON's own. It is re-exported from
+//! `conversion::geojson` in both worlds, and the module exists for it only while
+//! there are two GeoJSON conversions, folding into the surviving one afterwards.
+//!
+//! [`CrsCoverage`] outgrew that scope: it describes what *any* write's
+//! coordinates are expressed in, and the CityGML writer folds it to decide its
+//! `srsName`. It is therefore also re-exported as `conversion::CrsCoverage`,
+//! which is the path a non-GeoJSON caller should use, and it outlives the
+//! GeoJSON split.
 
 use std::fmt;
 

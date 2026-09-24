@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_action_sink::file::citygml::write_citygml_to_storage;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
@@ -22,7 +21,6 @@ pub(super) fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
     }
 }
 
-#[cfg(not(feature = "new-geometry"))]
 #[allow(clippy::too_many_arguments)]
 pub(super) fn write_citygml(
     output: &Uri,

@@ -1,0 +1,14 @@
+{
+  "description": "A textured .glb read and written as CityGML 2.0 under new-geometry: the glTF Reader emits a Raster::InMemory (the image is packed in the GLB's own buffer, so it has no URI), and the writer names it from a hash of its bytes, stages it into expected_output_appearance/ beside the .gml, and rewrites app:imageURI to that relative path. This is the in-memory raster path end to end; citygml_writer/textured covers the URI-backed one. New-world only: the legacy glTF Reader extracts geometry alone and attaches no material, so the legacy build has no appearance to write and cannot share this expectation.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/gltf_textured.yml",
+  "workflowVariables": [
+    {
+      "name": "gltfPath",
+      "value": "input.glb"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}
