@@ -18,3 +18,4 @@ export { default as useAssets } from "./useAssets";
 export { default as useProjectLock } from "./useProjectLock";
 export { default as useProjectShare } from "./useProjectShare";
 export { default as useGraphStaleness } from "./useGraphStaleness";
+export { default as useArtifactZipDownload } from "./useArtifactZipDownload";

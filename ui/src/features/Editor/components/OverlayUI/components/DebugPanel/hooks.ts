@@ -5,22 +5,18 @@ import {
   Math as CesiumMath,
   Rectangle,
 } from "cesium";
-import {
-  MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/utils/cesiumFunctions";
 import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
+import { toArtifactFiles } from "@flow/utils";
 
 export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
@@ -56,6 +52,20 @@ export default () => {
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
 
+  // Reads the same cache the debug action bar's subscription populates, so this
+  // costs no extra socket. Only used to decide whether the diagnostics console
+  // should poll — the status enum itself carries no diagnostics.
+  const { data: realTimeJobStatus } = useSubscription(
+    "GetSubscribedJobStatus",
+    debugJobId,
+    !debugJobId,
+  );
+
+  const isDebugJobActive = useMemo(() => {
+    const status = realTimeJobStatus ?? debugJob?.status;
+    return status === "running" || status === "queued";
+  }, [realTimeJobStatus, debugJob?.status]);
+
   // Separate intermediate data URLs (for dropdown) from output data URLs (for download)
   const dataURLs = useMemo(() => {
     const urls: { key: string; name: string }[] = [];
@@ -74,14 +84,13 @@ export default () => {
     return urls.length ? urls : undefined;
   }, [debugJobState?.selectedIntermediateData]);
 
-  // Separate output data for download functionality
-  const outputDataForDownload = useMemo(() => {
-    if (!outputURLs) return undefined;
-    return outputURLs.map((url) => ({
-      url,
-      name: decodeURIComponent(url.split("/").pop() || url),
-    }));
-  }, [outputURLs]);
+  // Separate output data for download functionality. The server hands the job's
+  // artifacts over as a flat list of URLs, so the folder a writer with `groupBy`
+  // set created is read back out of the URLs.
+  const outputDataForDownload = useMemo(
+    () => (outputURLs ? toArtifactFiles(outputURLs) : undefined),
+    [outputURLs],
+  );
 
   const selectedDataURL = useMemo(() => {
     if (!debugJobState?.focusedIntermediateData) return undefined;
@@ -136,6 +145,8 @@ export default () => {
   const handleFullscreenExpand = () => {
     setFullscreenDebug((prev) => !prev);
   };
+
+  const handleFullscreenExit = useCallback(() => setFullscreenDebug(false), []);
 
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
@@ -375,6 +386,7 @@ export default () => {
   return {
     debugJobId,
     debugJobState,
+    isDebugJobActive,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -391,6 +403,7 @@ export default () => {
     handleFeatureSelect,
     // setEnableClustering,
     handleFullscreenExpand,
+    handleFullscreenExit,
     handleExpand,
     handleMinimize,
     handleTabChange,

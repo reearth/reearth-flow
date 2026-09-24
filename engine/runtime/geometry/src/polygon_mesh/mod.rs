@@ -23,6 +23,8 @@ mod faces;
 mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 pub(crate) use ops::build_open_rings;

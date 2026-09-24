@@ -1,8 +1,6 @@
 import { Button } from "./BaseButton";
-import {
-  ButtonWithTooltip,
-  type ButtonWithTooltipProps,
-} from "./ButtonWithTooltip";
+import { ButtonWithTooltip } from "./ButtonWithTooltip";
+import type { ButtonWithTooltipProps } from "./ButtonWithTooltip";
 
 type Props = Omit<ButtonWithTooltipProps, "tooltipText"> & {
   icon: React.ReactNode;

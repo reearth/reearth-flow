@@ -114,11 +114,7 @@ fn collect_implicit(
         "subtreeLevels should not exceed 10, got {subtree_levels}"
     );
 
-    let content_template = root
-        .get("content")
-        .and_then(|c| c.get("uri"))
-        .and_then(|u| u.as_str())
-        .ok_or_else(|| "implicit root tile missing content.uri template".to_string())?;
+    let content_templates = implicit_content_templates(root)?;
 
     let subtree_template = implicit
         .get("subtrees")
@@ -134,7 +130,7 @@ fn collect_implicit(
     let mut out = Vec::new();
     collect_subtree_chain(
         tileset_dir,
-        content_template,
+        &content_templates,
         subtree_template,
         (0, 0, 0),
         subtree_levels,
@@ -144,12 +140,36 @@ fn collect_implicit(
     Ok(out)
 }
 
+/// URI templates from `content.uri` or `contents[].uri`, in `contentAvailability[]` order.
+fn implicit_content_templates(root: &Value) -> Result<Vec<String>, String> {
+    if let Some(uri) = root
+        .get("content")
+        .and_then(|c| c.get("uri"))
+        .and_then(|u| u.as_str())
+    {
+        return Ok(vec![uri.to_string()]);
+    }
+
+    if let Some(contents) = root.get("contents").and_then(|c| c.as_array()) {
+        let templates: Vec<String> = contents
+            .iter()
+            .filter_map(|item| item.get("uri").and_then(|u| u.as_str()))
+            .map(|s| s.to_string())
+            .collect();
+        if templates.len() == contents.len() && !templates.is_empty() {
+            return Ok(templates);
+        }
+    }
+
+    Err("implicit root tile missing content.uri/contents[].uri template".to_string())
+}
+
 /// Reads the `.subtree` file rooted at `(level, x, y)` (all absolute,
 /// dataset-wide coordinates), collects its in-window content, then recurses
 /// into every subtree it chains to via `childSubtreeAvailability`.
 fn collect_subtree_chain(
     tileset_dir: &Path,
-    content_template: &str,
+    content_templates: &[String],
     subtree_template: &str,
     (root_level, root_x, root_y): (u32, u32, u32),
     subtree_levels: u32,
@@ -162,24 +182,28 @@ fn collect_subtree_chain(
     )?;
     let subtree_bytes = fs::read(&subtree_path)
         .map_err(|e| format!("Failed to read subtree file {:?}: {}", subtree_path, e))?;
-    let subtree = parse_subtree(&subtree_bytes)?;
+    let subtree = parse_subtree(&subtree_bytes, content_templates.len())?;
 
     for rel_level in 0..subtree_levels {
         let n = 1u32 << rel_level;
         for ry in 0..n {
             for rx in 0..n {
                 let bit = level_offset(rel_level) + morton2d(rx, ry);
-                if !subtree.content_availability.get(bit) {
-                    continue;
-                }
                 let level = root_level + rel_level;
                 let x = (root_x << rel_level) | rx;
                 let y = (root_y << rel_level) | ry;
-                let uri = expand_template(content_template, level, x, y);
-                out.push(TileContent {
-                    path: resolve_existing(tileset_dir, &uri)?,
-                    geometric_error: root_geometric_error / (1u64 << level) as f64,
-                });
+                for (content_availability, content_template) in
+                    subtree.content_availability.iter().zip(content_templates)
+                {
+                    if !content_availability.get(bit) {
+                        continue;
+                    }
+                    let uri = expand_template(content_template, level, x, y);
+                    out.push(TileContent {
+                        path: resolve_existing(tileset_dir, &uri)?,
+                        geometric_error: root_geometric_error / (1u64 << level) as f64,
+                    });
+                }
             }
         }
     }
@@ -195,7 +219,7 @@ fn collect_subtree_chain(
             }
             collect_subtree_chain(
                 tileset_dir,
-                content_template,
+                content_templates,
                 subtree_template,
                 (
                     root_level + subtree_levels,
@@ -237,19 +261,14 @@ impl Availability {
     }
 }
 
-/// The two availability bitstreams `collect_subtree_chain` needs:
-/// `contentAvailability[0]` for this file's own window, and
-/// `childSubtreeAvailability` to find chained `.subtree` files.
-/// `tileAvailability` is unused — nothing here queries tile existence
-/// independent of content.
+/// Per-content availability, plus childSubtreeAvailability for chaining.
 struct ParsedSubtree {
-    content_availability: Availability,
+    content_availability: Vec<Availability>,
     child_subtree_availability: Availability,
 }
 
-/// Parses a `.subtree` file: a 24-byte header (magic `subt`, version, JSON
-/// length, binary length) followed by the two chunks.
-fn parse_subtree(bytes: &[u8]) -> Result<ParsedSubtree, String> {
+/// Parses a `.subtree` file's header and its two availability chunks.
+fn parse_subtree(bytes: &[u8], content_count: usize) -> Result<ParsedSubtree, String> {
     if bytes.len() < 24 || &bytes[0..4] != b"subt" {
         return Err("Invalid .subtree file: bad magic".to_string());
     }
@@ -276,13 +295,20 @@ fn parse_subtree(bytes: &[u8]) -> Result<ParsedSubtree, String> {
         .cloned()
         .unwrap_or_default();
 
-    let content_availability_def = json
+    let content_availability_defs = json
         .get("contentAvailability")
         .and_then(|c| c.as_array())
-        .and_then(|arr| arr.first())
         .ok_or_else(|| "subtree JSON missing contentAvailability".to_string())?;
-    let content_availability =
-        parse_availability(content_availability_def, &buffer_views, bin_bytes)?;
+    if content_availability_defs.len() != content_count {
+        return Err(format!(
+            "subtree JSON contentAvailability has {} entries, expected {content_count}",
+            content_availability_defs.len()
+        ));
+    }
+    let content_availability = content_availability_defs
+        .iter()
+        .map(|def| parse_availability(def, &buffer_views, bin_bytes))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let child_subtree_availability_def = json
         .get("childSubtreeAvailability")

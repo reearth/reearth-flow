@@ -6,11 +6,9 @@ import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useWorkflowVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import {
-  computeSessionChanges,
-  WorkflowVarSession,
-} from "@flow/lib/yjs/workflowVarSession";
-import { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
+import type { WorkflowVarSession } from "@flow/lib/yjs/workflowVarSession";
+import { computeSessionChanges } from "@flow/lib/yjs/workflowVarSession";
+import type { AwarenessUser, WorkflowVariable, VarType } from "@flow/types";
 import {
   generateUUID,
   getDefaultConfigForWorkflowVar,

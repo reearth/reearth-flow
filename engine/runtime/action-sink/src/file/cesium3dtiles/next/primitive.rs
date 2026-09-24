@@ -22,10 +22,6 @@ pub(super) const DEFAULT_MATERIAL: MaterialFactors = MaterialFactors {
     roughness_factor: 0.9,
 };
 
-/// UVs this far outside `[0, 1]` (the old writer's tolerance) mean a wrapping
-/// texture, which can't be atlased; such a face falls back to colour-only.
-const WRAP_TOLERANCE: f64 = 0.1;
-
 /// The PBR factors that key a colour-only primitive; textures multiply these.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct MaterialFactors {
@@ -143,10 +139,9 @@ impl GeomBuilder {
     }
 }
 
-/// Partition every polygon of the cell's members into a textured bucket
-/// (textured material with non-wrapping UVs) and colour-only buckets keyed by
-/// PBR factors. Cross-member vertices never share, so welding is keyed by
-/// `(member, source vertex)`.
+/// Partition every polygon of the cell's members into a textured bucket and
+/// colour-only buckets keyed by PBR factors. Cross-member vertices never share,
+/// so welding is keyed by `(member, source vertex)`.
 pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimitives {
     let mut color: HashMap<[u32; 6], (MaterialFactors, GeomBuilder)> = HashMap::new();
     let mut textured = GeomBuilder::default();
@@ -164,9 +159,7 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
 
             let material =
                 m.triangle_material[tris.start].and_then(|mi| m.materials.get(mi as usize));
-            let texture = material
-                .and_then(|mm| mm.base_texture.as_ref())
-                .filter(|_| !polygon_wraps(&m.corner_uv[tris.start * 3..tris.end * 3]));
+            let texture = material.and_then(|mm| mm.base_texture.as_ref());
 
             match texture {
                 Some(source) => {
@@ -198,13 +191,6 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
         .collect();
 
     CellPrimitives { color, textured }
-}
-
-/// Whether any of a polygon's corner UVs falls outside `[0, 1]` (with tolerance).
-fn polygon_wraps(uvs: &[[f64; 2]]) -> bool {
-    let unit = -WRAP_TOLERANCE..=1.0 + WRAP_TOLERANCE;
-    uvs.iter()
-        .any(|&[u, v]| !unit.contains(&u) || !unit.contains(&v))
 }
 
 #[cfg(test)]

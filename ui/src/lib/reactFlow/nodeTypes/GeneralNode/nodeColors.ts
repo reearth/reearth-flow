@@ -1,4 +1,4 @@
-import { JobStatus } from "@flow/types";
+import type { JobStatus } from "@flow/types";
 
 export const getNodeColors = (type?: string, status?: JobStatus) => {
   const baseColors = nodeColors[type as keyof typeof nodeColors];

@@ -1,21 +1,23 @@
-import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import type { UserFacingLog } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/jsonl";
 
 type LogsConsoleProps = {
   jobId: string;
+  leadingActions?: ReactNode;
 };
 
-const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
+const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
   const t = useT();
-  const columns: ColumnDef<UserFacingLog>[] = [
+  const columns: AppColumnDef<UserFacingLog>[] = [
     {
       accessorKey: "timestamp",
       header: t("Timestamp"),
@@ -105,6 +107,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       columns={columns}
       data={logs}
       isFetching={!logs.length || isFetchingLogsUrl}
+      leadingActions={leadingActions}
       selectColumns
       showFiltering
     />

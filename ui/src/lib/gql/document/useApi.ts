@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { RollbackProject, SaveSnapshot } from "@flow/types";
+import type { RollbackProject, SaveSnapshot } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 

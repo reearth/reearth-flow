@@ -64,7 +64,7 @@ impl Builder {
     /// admits only via an extension (e.g. `"image/ktx2"`) embeds fine; the
     /// caller references it through [`push_texture`](Self::push_texture).
     pub fn push_image(&mut self, image_bytes: &[u8], mime_type: &str) -> ImageRef {
-        let buffer_view = self.push_buffer_view_targeted(image_bytes, None);
+        let buffer_view = self.push_buffer_view_targeted(image_bytes, None, 4);
         ImageRef(self.root.push(json::Image {
             name: None,
             buffer_view: Some(buffer_view),

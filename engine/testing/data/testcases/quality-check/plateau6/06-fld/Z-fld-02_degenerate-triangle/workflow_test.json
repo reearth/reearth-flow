@@ -1,0 +1,61 @@
+{
+  "description": "A triangle whose two corners are 4.5 mm apart, below the 1 cm at which they count as one point, so it collapses to a line.",
+  "workflowPath": "quality-check/plateau6/06-fld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "fld_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/fld",
+      "name": "fld_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "error_geometry/fld/natl/1_1_shogawa/線状・点状の三角形.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_natl_1_1_shogawa.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "06_浸水想定区域_fld/natl/1_1_shogawa.csv",
+        "keyColumns": ["Filename"]
+      },
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": ["サイズ[KB]"]
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}

@@ -7,6 +7,8 @@ use super::coordinate::CoordinateFrame;
 mod constructor;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A single position in 2D space.
@@ -75,6 +77,21 @@ crate::unsupported!(Point3D: RemoveAppearance);
 crate::unsupported!(Point2D: CountHoles);
 crate::unsupported!(Point3D: CountHoles);
 
+// A point is exactly one coordinate.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Point2D {
+    fn count_vertices(&self) -> usize {
+        1
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Point3D {
+    fn count_vertices(&self) -> usize {
+        1
+    }
+}
+
 // A point bounds no area, so there is nothing to take apart.
 crate::unsupported!(Point2D: ExtractHoles);
 crate::unsupported!(Point3D: ExtractHoles);
@@ -87,6 +104,12 @@ crate::unsupported!(Point3D: Coerce);
 // A point is a location, not an extent.
 #[cfg(feature = "new-geometry")]
 crate::no_area!(Point2D, Point3D);
+
+// A point has no area to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point2D: DivideByGrid);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point3D: DivideByGrid);
 
 // A position has no extent, so it reports the empty boundary rather than
 // refusing the operation.

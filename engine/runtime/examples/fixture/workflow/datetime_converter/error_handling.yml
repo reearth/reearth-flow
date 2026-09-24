@@ -33,7 +33,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: json
+          format:
+            type: json
           output:
             type: string
             value: expected_output.json
@@ -42,7 +43,8 @@ graphs:
         type: action
         action: Feature Writer
         with:
-          format: json
+          format:
+            type: json
           output:
             type: string
             value: expected_failed.json

@@ -20,6 +20,8 @@ mod constructor;
 mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A triangle mesh in 2D space, lying at a single optional elevation.
@@ -221,6 +223,21 @@ crate::unsupported!(TriangularMesh3D: Triangulate);
 // Triangles carry no interior rings, so the hole count is always zero.
 crate::unsupported!(TriangularMesh2D: CountHoles);
 crate::unsupported!(TriangularMesh3D: CountHoles);
+
+// The shared vertex pool, so a corner used by several triangles counts once.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for TriangularMesh2D {
+    fn count_vertices(&self) -> usize {
+        self.vertices().len()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for TriangularMesh3D {
+    fn count_vertices(&self) -> usize {
+        self.vertices().len()
+    }
+}
 
 #[cfg(test)]
 mod tests {

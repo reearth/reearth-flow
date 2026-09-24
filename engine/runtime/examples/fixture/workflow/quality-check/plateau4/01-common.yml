@@ -170,8 +170,8 @@ graphs:
         outputPort: codeValidation
       - expr:
           type: flowExpr
-          value: attributes["flag"] == "inCorrectCodeSpace"
-        outputPort: inCorrectCodeSpace
+          value: attributes["flag"] == "incorrectCodeSpace"
+        outputPort: incorrectCodeSpace
       - expr:
           type: flowExpr
           value: attributes["flag"] == "ExtentsValidation"
@@ -209,11 +209,11 @@ graphs:
     with:
       routingPort: codeValidation
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
-    name: InCorrectCodeSpaceRouter
+    name: IncorrectCodeSpaceRouter
     type: action
     action: Output Router
     with:
-      routingPort: inCorrectCodeSpace
+      routingPort: incorrectCodeSpace
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: ExtentsValidationRouter
     type: action
@@ -310,7 +310,7 @@ graphs:
   - id: 41141e61-6815-4556-b247-05c4e5de8bb8
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
-    fromPort: inCorrectCodeSpace
+    fromPort: incorrectCodeSpace
     toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb9
     from: 747d2fa3-2527-4324-b630-92fba84a548c
@@ -432,7 +432,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L01エラー.csv
@@ -465,7 +466,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L02エラー.csv
@@ -541,11 +543,11 @@ graphs:
       - attribute: L04エラー
         expr:
           type: flowExpr
-          value: attributes.get("inCorrectCodeValue", 0)
+          value: attributes.get("incorrectCodeValue", 0)
       - attribute: 不正なcodeSpace数
         expr:
           type: flowExpr
-          value: attributes.get("inCorrectCodeSpace", 0)
+          value: attributes.get("incorrectCodeSpace", 0)
       - attribute: L05CRS識別子
         expr:
           type: flowExpr
@@ -567,7 +569,7 @@ graphs:
       - attribute: L06エラー
         expr:
           type: flowExpr
-          value: attributes.get("inCorrectExtents", 0)
+          value: attributes.get("incorrectExtents", 0)
       - attribute: T03エラー
         expr:
           type: flowExpr
@@ -595,7 +597,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通.csv
@@ -659,20 +662,21 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            []
-          } else {
-            result = [];
-            feature = attributes["__features"][0];
-            for key in feature.keys() {
-              result.append({"name": key, "count": feature[key]});
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              result = [];
+              feature = attributes["__features"][0];
+              for key in feature.keys() {
+                result.append({"name": key, "count": feature[key]});
+              }
+              result
             }
-            result
-          }
       output:
         type: string
         value: summary_common.json
@@ -697,7 +701,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_GML_ID書式不正.csv
@@ -722,7 +727,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_GML_ID重複.csv
@@ -769,7 +775,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L06エラー.csv
@@ -800,12 +807,13 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L04エラー.csv
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
-    name: AttributeMapperInCorrectCodeSpace
+    name: AttributeMapperIncorrectCodeSpace
     type: action
     action: Attribute Mapper
     with:
@@ -827,11 +835,12 @@ graphs:
       - attribute: CodeSpace
         valueAttribute: codeSpace
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
-    name: FeatureWriterInCorrectCodeSpace
+    name: FeatureWriterIncorrectCodeSpace
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_不正なcodeSpace.csv
@@ -880,7 +889,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_xlink参照先なし.csv
@@ -913,7 +923,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_T03エラー.csv
@@ -942,7 +953,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 01_共通_L-frn-01エラー.csv
@@ -1183,7 +1195,7 @@ graphs:
   - id: 0071182a-930e-44b2-ff3a-a4bb5cc6dd77
     from: 05c85d95-c45c-406c-95b5-4a8a154f704f
     to: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
-    fromPort: inCorrectCodeSpace
+    fromPort: incorrectCodeSpace
     toPort: features
   - id: 1182a930-e44b-2ff3-aa4b-b5cc6dd77ee8
     from: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
@@ -1346,16 +1358,17 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: json
-      converter:
-        type: flowExpr
-        value: |
-          if len(attributes["__features"]) == 0 {
-            {}
-          } else {
-            feature = attributes["__features"][0];
-            feature["dataFileData"]
-          }
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              {}
+            } else {
+              feature = attributes["__features"][0];
+              feature["dataFileData"]
+            }
       output:
         type: flowExpr
         value: |
@@ -1387,7 +1400,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -1409,7 +1423,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -1441,7 +1456,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |
@@ -1473,7 +1489,8 @@ graphs:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: flowExpr
         value: |

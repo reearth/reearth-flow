@@ -14,12 +14,14 @@ version.workspace = true
 # Temporary migration flag for the new-geometry migration.
 # TODO: Remove after migration.
 new-geometry = [
+  "reearth-flow-citygml/new-geometry",
   "reearth-flow-geometry/new-geometry",
   "reearth-flow-types/new-geometry",
 ]
 
 [dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-citygml.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-diagnostics.workspace = true
 reearth-flow-geometry.workspace = true

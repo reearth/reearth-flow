@@ -143,6 +143,10 @@ impl ConvertFrame for Solid {
 // result, so it has no 2D counterpart.
 crate::unsupported!(Solid: ForceTwoDimension);
 
+// A solid is a volume, not the areal geometry this op divides.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: DivideByGrid);
+
 use crate::ops::{
     emit_face_3d, emit_triangles_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
 };
@@ -159,6 +163,18 @@ impl CountHoles for Solid {
                 Shell::PolygonMesh(data) => data.num_holes(),
                 Shell::TriangularMesh(_) => 0,
             })
+            .sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Solid {
+    /// The vertex pools of the exterior and every interior shell, summed. Each
+    /// shell keeps its own pool, so a coordinate on two shells counts twice.
+    fn count_vertices(&self) -> usize {
+        std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| shell.vertices().len())
             .sum()
     }
 }

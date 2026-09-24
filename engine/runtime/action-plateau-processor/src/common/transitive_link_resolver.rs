@@ -7,6 +7,7 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
 
+use reearth_flow_common::union_find::UnionFind;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -154,51 +155,6 @@ impl ConnectivityStatus {
     }
 }
 
-/// Union-find over the distinct part IDs of one group, indexed by node number.
-#[derive(Debug)]
-struct UnionFind {
-    parent: Vec<usize>,
-    rank: Vec<u32>,
-}
-
-impl UnionFind {
-    fn new(nodes: usize) -> Self {
-        Self {
-            parent: (0..nodes).collect(),
-            rank: vec![0; nodes],
-        }
-    }
-
-    fn find(&mut self, node: usize) -> usize {
-        let mut root = node;
-        while self.parent[root] != root {
-            root = self.parent[root];
-        }
-        let mut current = node;
-        while self.parent[current] != root {
-            let next = self.parent[current];
-            self.parent[current] = root;
-            current = next;
-        }
-        root
-    }
-
-    fn union(&mut self, a: usize, b: usize) {
-        let (root_a, root_b) = (self.find(a), self.find(b));
-        if root_a == root_b {
-            return;
-        }
-        match self.rank[root_a].cmp(&self.rank[root_b]) {
-            std::cmp::Ordering::Less => self.parent[root_a] = root_b,
-            std::cmp::Ordering::Greater => self.parent[root_b] = root_a,
-            std::cmp::Ordering::Equal => {
-                self.parent[root_b] = root_a;
-                self.rank[root_a] += 1;
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct TransitiveLinkResolver {
     params: TransitiveLinkResolverParam,
@@ -336,7 +292,7 @@ impl TransitiveLinkResolver {
             }
 
             let node_count = node_of_id.len();
-            let mut union_find = UnionFind::new(node_count);
+            let mut union_find: UnionFind = UnionFind::new(node_count);
             for &index in indices {
                 let part = &self.parts[index];
                 let node = node_of_id[part.id.as_str()];
@@ -344,14 +300,14 @@ impl TransitiveLinkResolver {
                     // A link leaving this scope says nothing about the scope's
                     // own connectivity.
                     if let Some(&linked_node) = node_of_id.get(linked_id.as_str()) {
-                        union_find.union(node, linked_node);
+                        union_find.merge(node, linked_node);
                     }
                 }
             }
 
             let mut members: Vec<Vec<usize>> = vec![Vec::new(); node_count];
             for node in 0..node_count {
-                let root = union_find.find(node);
+                let root = union_find.root(node);
                 members[root].push(node);
             }
             let mut components: Vec<Vec<usize>> = members

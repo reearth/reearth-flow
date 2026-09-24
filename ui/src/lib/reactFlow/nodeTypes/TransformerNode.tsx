@@ -1,6 +1,7 @@
 import { memo } from "react";
 
-import GeneralNode, { type GeneralNodeProps } from "./GeneralNode";
+import GeneralNode from "./GeneralNode";
+import type { GeneralNodeProps } from "./GeneralNode";
 
 const TransformerNode: React.FC<GeneralNodeProps> = (props) => {
   return <GeneralNode {...props} />;

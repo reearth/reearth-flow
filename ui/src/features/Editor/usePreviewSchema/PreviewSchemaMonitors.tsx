@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@flow/lib/auth";
-import { OnJobStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
+import type { OnJobStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
 import { toJobStatus } from "@flow/lib/gql/convert";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";

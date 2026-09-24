@@ -88,7 +88,7 @@ impl SinkFactory for GltfWriterSinkFactory {
             attach_texture: params.attach_texture.unwrap_or(true),
             #[cfg(not(feature = "new-geometry"))]
             classified_features: Default::default(),
-            draco_compression: params.draco_compression.unwrap_or(false),
+            draco_compression: params.draco_compression,
             schema_key: params.schema_key,
         };
         Ok(Box::new(sink))
@@ -152,7 +152,7 @@ pub struct GltfWriter {
     #[cfg(not(feature = "new-geometry"))]
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
-    draco_compression: bool,
+    draco_compression: reearth_flow_gltf::DracoCompression,
     schema_key: Option<String>,
 }
 
@@ -168,11 +168,20 @@ pub struct GltfWriterParam {
     output: Code,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
-    /// Apply Draco compression to the geometry
-    draco_compression: Option<bool>,
+    /// # Draco Compression
+    /// Whether to compress mesh geometry with Draco, and how precisely. Defaults to
+    /// enabled at the encoder's default resolution.
+    #[serde(default = "default_draco_compression")]
+    draco_compression: reearth_flow_gltf::DracoCompression,
     /// Features are grouped by this attribute and written to separate files.
     /// The key is excluded from output attributes.
     schema_key: Option<String>,
+}
+
+/// Serde default for the draco parameter: compression at the encoder's default
+/// resolution.
+fn default_draco_compression() -> reearth_flow_gltf::DracoCompression {
+    reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
 }
 
 impl Sink for GltfWriter {
@@ -260,7 +269,7 @@ impl Sink for GltfWriter {
                 let mut primitives: reearth_flow_gltf::Primitives = Default::default();
                 let mut vertices: IndexSet<[u32; 9], ahash::RandomState> = IndexSet::default();
 
-                build_atlas_geometry(
+                let texture_size = build_atlas_geometry(
                     &filtered_features,
                     &atlas_dir,
                     image::ImageFormat::Jpeg,
@@ -295,6 +304,7 @@ impl Sink for GltfWriter {
                     filtered_features.len(),
                     metadata_encoder,
                     self.draco_compression,
+                    texture_size,
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(
@@ -756,7 +766,7 @@ mod diagnostics_tests {
             output: String::new(),
             classified_features: Default::default(),
             attach_texture: true,
-            draco_compression: false,
+            draco_compression: reearth_flow_gltf::DracoCompression::Disabled,
             schema_key: None,
         }
     }

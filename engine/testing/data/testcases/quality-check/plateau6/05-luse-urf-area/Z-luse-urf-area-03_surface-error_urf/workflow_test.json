@@ -1,0 +1,63 @@
+{
+  "description": "Surface errors for the urf package of plateau6 05-luse-urf-area: a self-intersecting face on a urf:UrbanPlanningArea.",
+  "workflowPath": "quality-check/plateau6/05-luse-urf-area/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "urf_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/urf",
+      "name": "urf_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "05-2_都市計画決定情報_面のエラー.csv",
+      "error_geometry/05-2_都市計画決定情報_面のエラー.geojson",
+      "error_geometry/05-2_都市計画決定情報_面のエラー位置.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_urf.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "05-2_都市計画決定情報_検査結果一覧.csv",
+        "keyColumns": ["Filename"]
+      },
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": ["サイズ[KB]"]
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}

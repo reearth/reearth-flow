@@ -1,7 +1,11 @@
 import { Input, Label, NumberDefaultValueInput } from "@flow/components";
 import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser, WorkflowVariable, NumberConfig } from "@flow/types";
+import type {
+  AwarenessUser,
+  WorkflowVariable,
+  NumberConfig,
+} from "@flow/types";
 
 type Props = {
   variable: WorkflowVariable;

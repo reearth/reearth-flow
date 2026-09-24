@@ -239,8 +239,11 @@ graphs:
       - name: "Write JSON"
         action: "Feature Writer"
         with:
-          output: "variables.get(\"outputFilePath\")"
-          format: "json"
+          format:
+            type: json
+          output:
+            type: flowExpr
+            value: variables["outputFilePath"]
     edges:
       - from: "Read CZML"
         to: "Write JSON"

@@ -506,6 +506,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.01
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
@@ -533,6 +536,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.01
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
@@ -560,6 +566,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.01
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
@@ -587,6 +596,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
@@ -614,6 +626,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
@@ -641,6 +656,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18
@@ -668,6 +686,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
           schemaKey: __citygml_feature_type
           minZoom: 15
           maxZoom: 18

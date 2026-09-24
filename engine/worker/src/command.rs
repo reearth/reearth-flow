@@ -46,7 +46,7 @@ pub fn build_worker_command() -> Command {
     // `probe-schema` and `schema-events` are registered as optional
     // subcommands; when present one takes over, otherwise we fall through to
     // the run behavior.
-    Command::new("Re:Earth Flow Worker")
+    let command = Command::new("Re:Earth Flow Worker")
         .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
         .version(env!("CARGO_PKG_VERSION"))
@@ -58,12 +58,16 @@ pub fn build_worker_command() -> Command {
         .arg(previous_job_id_arg())
         .arg(start_node_id_arg())
         .subcommand(crate::probe_schema::build_probe_schema_command())
-        .subcommand(crate::schema_events::build_schema_events_command())
-        // When `probe-schema` or `schema-events` is used, the top-level
-        // required run args (`--workflow`, `--metadata-path`) are not
-        // required. The default (subcommand-less) run invocation keeps
-        // requiring them exactly as before.
-        .subcommand_negates_reqs(true)
+        .subcommand(crate::schema_events::build_schema_events_command());
+
+    #[cfg(feature = "new-geometry")]
+    let command = command.subcommand(reearth_flow_worker::render_view::build_render_view_command());
+
+    // When `probe-schema`, `schema-events` or `render-view` is used, the
+    // top-level required run args (`--workflow`, `--metadata-path`) are not
+    // required. The default (subcommand-less) run invocation keeps requiring
+    // them exactly as before.
+    command.subcommand_negates_reqs(true)
 }
 
 fn workflow_arg() -> Arg {
@@ -263,7 +267,7 @@ impl RunWorkerCommand {
         // rebuild the terminal view from the failure handler instead.
         let run_summary: RunSummary = match &result {
             Ok(summary) => summary.clone(),
-            Err(e) => failure_summary(format!("{e:?}"), &node_failure_handler),
+            Err(e) => failure_summary(e, &node_failure_handler),
         };
         let job_result = match &result {
             Ok(summary) => {
@@ -584,27 +588,69 @@ fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -
     }
 }
 
-/// Rebuilds the terminal failed-nodes view for a run whose runner errored out
-/// before producing a RunSummary: one fatal row per failed node the handler
-/// captured, or a single workflow-level row when it captured none.
-fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSummary {
+/// A `Diagnostic`'s `node_id` is a *composed* id (`"{subgraph_prefix}.{handle_id}"` for a node
+/// inside a subgraph), while `NodeFailureHandler` only ever sees the raw handle id — the
+/// `ProcessorFailed` event carries a `NodeHandle`, which has no prefix to recover.
+/// Comparing them directly would emit a duplicate row for every subgraph node.
+fn is_same_node(composed_id: &str, handle_id: &str) -> bool {
+    composed_id == handle_id || composed_id.ends_with(&format!(".{handle_id}"))
+}
+
+/// Rebuilds the terminal failed-nodes view for a run whose runner errored out before producing
+/// a RunSummary.
+///
+/// When the error is carrying a real `Diagnostic` (any action fatal is), that diagnostic is
+/// recovered intact and used as its own node's row — preserving the code, severity, help and
+/// `feature_id` that stringifying the error would destroy. Remaining nodes the handler saw get
+/// a synthesized row. Only when nothing can be recovered does the whole-run error text become
+/// a message, rendered through its `source()` chain rather than `{:?}`.
+fn failure_summary(
+    error: &reearth_flow_runner::errors::Error,
+    handler: &NodeFailureHandler,
+) -> RunSummary {
+    let recovered = match error {
+        reearth_flow_runner::errors::Error::ExecutionError(execution_error) => {
+            reearth_flow_runtime::errors::recover_diagnostic(execution_error).cloned()
+        }
+        _ => None,
+    };
+
+    // Without a recovered diagnostic the whole-run error is all we know, so it is the message
+    // for every row. With one, it describes only the recovered node's failure — repeating it on
+    // another node's row would attribute the wrong cause, so those fall back to the registry
+    // default ("node failed with an unclassified error").
+    let synthesized_message = match &recovered {
+        Some(_) => None,
+        None => Some(reearth_flow_runtime::errors::render_error_chain(error)),
+    };
     let fatal = |node_id: Option<String>, name: Option<String>| {
-        let mut d = Diagnostic::from_draft(
-            DiagnosticDraft::new(ErrorCode::InternalUnclassified)
-                .with_message(error_detail.clone()),
-            node_id,
-            name,
-            None,
-        );
+        let mut draft = DiagnosticDraft::new(ErrorCode::InternalUnclassified);
+        if let Some(message) = &synthesized_message {
+            draft = draft.with_message(message.clone());
+        }
+        let mut d = Diagnostic::from_draft(draft, node_id, name, None);
         d.effective_disposition = Some(Disposition::Fatal);
         d
     };
 
-    let mut failed_nodes: Vec<Diagnostic> = handler
-        .failure_details()
-        .into_iter()
-        .map(|node| fatal(Some(node.id), node.name))
-        .collect();
+    let mut failed_nodes: Vec<Diagnostic> = Vec::new();
+    if let Some(mut diagnostic) = recovered {
+        // fold_outcomes stamps Fatal on every failed_nodes entry regardless of the diagnostic's
+        // own severity; match that so both paths agree.
+        diagnostic.effective_disposition = Some(Disposition::Fatal);
+        failed_nodes.push(diagnostic);
+    }
+    let recovered_node_id = failed_nodes.first().and_then(|d| d.node_id.clone());
+    failed_nodes.extend(
+        handler
+            .failure_details()
+            .into_iter()
+            .filter(|node| match &recovered_node_id {
+                Some(composed_id) => !is_same_node(composed_id, &node.id),
+                None => true,
+            })
+            .map(|node| fatal(Some(node.id), node.name)),
+    );
     // A run that died before any node event (e.g. a graph-build error) still
     // gets a workflow-level row carrying the execution error.
     if failed_nodes.is_empty() {
@@ -621,6 +667,149 @@ fn failure_summary(error_detail: String, handler: &NodeFailureHandler) -> RunSum
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_runtime::errors::ExecutionError;
+
+    /// A runner error carrying no `Diagnostic`.
+    fn plain_error(message: &str) -> reearth_flow_runner::errors::Error {
+        reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::CannotSendToChannel(
+            message.to_string(),
+        ))
+    }
+
+    fn carried_diagnostic(node_id: &str, feature_id: uuid::Uuid) -> Diagnostic {
+        let mut d = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry)
+                .with_message("real action failure"),
+            Some(node_id.to_string()),
+            Some("Statistics Calculator".to_string()),
+            Some(feature_id),
+        );
+        d.effective_disposition = Some(Disposition::Fatal);
+        d
+    }
+
+    /// The reported bug: a `Diagnostic` boxed inside the error must survive, not be stringified.
+    #[test]
+    fn failure_summary_recovers_a_carried_diagnostic_intact() {
+        for wrap in [
+            ExecutionError::Processor as fn(_) -> ExecutionError,
+            ExecutionError::Sink,
+            ExecutionError::Source,
+        ] {
+            let feature_id = uuid::Uuid::new_v4();
+            let error = reearth_flow_runner::errors::Error::ExecutionError(wrap(Box::new(
+                carried_diagnostic("node-a", feature_id),
+            )));
+
+            let summary = failure_summary(&error, &NodeFailureHandler::new());
+
+            assert_eq!(summary.failed_nodes.len(), 1);
+            let row = &summary.failed_nodes[0];
+            assert_eq!(row.code, ErrorCode::Cesium3dtilesEmptyGeometry);
+            assert_eq!(row.message, "real action failure");
+            assert_eq!(row.feature_id, Some(feature_id));
+            assert_eq!(row.action_type.as_deref(), Some("Statistics Calculator"));
+            assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
+            assert!(
+                !row.message.contains("Diagnostic {"),
+                "Debug dump leaked into message: {}",
+                row.message
+            );
+        }
+    }
+
+    /// The recovered node must not also get a synthesized row.
+    #[test]
+    fn failure_summary_does_not_duplicate_the_recovered_node() {
+        use crate::event_handler::FailedNode;
+
+        let handler = NodeFailureHandler::new();
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: Some("Statistics Calculator".to_string()),
+        });
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-b".to_string(),
+            name: None,
+        });
+        let error = reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::Processor(
+            Box::new(carried_diagnostic("node-a", uuid::Uuid::new_v4())),
+        ));
+
+        let summary = failure_summary(&error, &handler);
+
+        assert_eq!(summary.failed_nodes.len(), 2);
+        assert_eq!(summary.failed_nodes[0].node_id.as_deref(), Some("node-a"));
+        assert_eq!(summary.failed_nodes[0].message, "real action failure");
+        // node-b's failure is unrelated to node-a's error; it must not claim node-a's cause.
+        assert_eq!(summary.failed_nodes[1].node_id.as_deref(), Some("node-b"));
+        assert_eq!(
+            summary.failed_nodes[1].message,
+            ErrorCode::InternalUnclassified.default_message()
+        );
+    }
+
+    /// A subgraph node's composed id must still match the handler's raw handle id.
+    #[test]
+    fn failure_summary_matches_a_subgraph_composed_node_id() {
+        use crate::event_handler::FailedNode;
+
+        let handler = NodeFailureHandler::new();
+        handler.failed_details.lock().push(FailedNode {
+            id: "node-a".to_string(),
+            name: None,
+        });
+        let error = reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::Processor(
+            Box::new(carried_diagnostic("sub-1.node-a", uuid::Uuid::new_v4())),
+        ));
+
+        let summary = failure_summary(&error, &handler);
+
+        assert_eq!(
+            summary.failed_nodes.len(),
+            1,
+            "duplicate row for subgraph node"
+        );
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("sub-1.node-a")
+        );
+    }
+
+    #[test]
+    fn is_same_node_matches_plain_and_subgraph_ids_without_false_positives() {
+        assert!(is_same_node("node-a", "node-a"));
+        assert!(is_same_node("sub-1.node-a", "node-a"));
+        assert!(is_same_node("a.b.node-a", "node-a"));
+        assert!(!is_same_node("node-ab", "node-a"));
+        assert!(!is_same_node("sub-1.node-ab", "node-a"));
+        assert!(!is_same_node("node-a", "node-b"));
+    }
+
+    /// Factory carries a factory error, never a Diagnostic — it must render, not attempt recovery.
+    #[test]
+    fn failure_summary_renders_a_factory_error_without_debug_shape() {
+        let error = reearth_flow_runner::errors::Error::ExecutionError(ExecutionError::Factory {
+            node_id: "node-a".to_string(),
+            node_name: "StatisticsCalculator".to_string(),
+            error: Box::new(std::io::Error::other("bad parameter")),
+        });
+
+        let summary = failure_summary(&error, &NodeFailureHandler::new());
+
+        let message = &summary.failed_nodes[0].message;
+        assert!(message.contains("bad parameter"), "got: {message}");
+        assert!(
+            !message.starts_with("ExecutionError("),
+            "Debug shape: {message}"
+        );
+        // Factory's Display already interpolates its source; it must not be appended twice.
+        assert_eq!(
+            message.matches("bad parameter").count(),
+            1,
+            "doubled: {message}"
+        );
+    }
 
     #[test]
     fn failure_summary_builds_a_fatal_row_per_failed_node_deduped() {
@@ -642,12 +831,18 @@ mod tests {
             name: None,
         });
 
-        let summary = failure_summary("ExecutionError(Source(..))".to_string(), &handler);
+        let summary = failure_summary(&plain_error("boom"), &handler);
 
         assert_eq!(summary.failed_nodes.len(), 2);
         for row in &summary.failed_nodes {
             assert_eq!(row.effective_disposition, Some(Disposition::Fatal));
-            assert_eq!(row.message, "ExecutionError(Source(..))");
+            // Nothing to recover, so the whole-run error is the message for every row.
+            assert!(row.message.contains("boom"), "got: {}", row.message);
+            assert!(
+                !row.message.contains('{'),
+                "Debug shape leaked: {}",
+                row.message
+            );
         }
         assert_eq!(summary.failed_nodes[0].node_id.as_deref(), Some("node-a"));
         assert_eq!(
@@ -664,7 +859,7 @@ mod tests {
     fn failure_summary_falls_back_to_a_workflow_level_row() {
         let handler = NodeFailureHandler::new();
 
-        let summary = failure_summary("boom".to_string(), &handler);
+        let summary = failure_summary(&plain_error("boom"), &handler);
 
         assert_eq!(summary.failed_nodes.len(), 1);
         assert_eq!(summary.failed_nodes[0].node_id, None);

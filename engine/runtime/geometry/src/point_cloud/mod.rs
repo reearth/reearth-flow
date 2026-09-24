@@ -178,6 +178,10 @@ impl fmt::Debug for PointCloud {
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PointCloud: Footprint);
 
+// A cloud of samples has no surface to divide.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: DivideByGrid);
+
 // A cloud of samples has no surface between its points.
 #[cfg(feature = "new-geometry")]
 crate::no_area!(PointCloud);
@@ -192,6 +196,14 @@ crate::unsupported!(
     ExtractHoles,
     Coerce
 );
+
+// Every segment's positions, summed: a cloud is nothing but coordinates.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for PointCloud {
+    fn count_vertices(&self) -> usize {
+        self.segments.iter().map(|s| s.count).sum()
+    }
+}
 
 // Positions have no extent, so nothing bounds them.
 impl crate::ops::ExtractBoundary for PointCloud {

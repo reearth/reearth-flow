@@ -13,6 +13,8 @@ use crate::coordinate::CoordinateFrame;
 mod constructor;
 mod ops;
 #[cfg(feature = "new-geometry")]
+mod predicates;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A polyline in 2D space, lying at a single optional elevation (2.5D).
@@ -60,6 +62,12 @@ impl LineString2D {
     pub fn elevation(&self) -> Option<f64> {
         self.z
     }
+
+    /// Whether the chain traces a ring: closed, and enclosing something.
+    #[inline]
+    pub fn is_closed_ring(&self) -> bool {
+        is_closed_ring(&self.coords)
+    }
 }
 
 impl LineString3D {
@@ -76,6 +84,13 @@ impl LineString3D {
     }
 }
 
+/// Whether a chain is a closed ring. A chain of three or fewer encloses no
+/// area even when its ends meet.
+#[inline]
+pub(crate) fn is_closed_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
+    coords.len() >= 4 && coords.first() == coords.last()
+}
+
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
 
@@ -87,6 +102,20 @@ crate::unsupported!(LineString3D: RemoveAppearance);
 
 crate::unsupported!(LineString2D: CountHoles);
 crate::unsupported!(LineString3D: CountHoles);
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for LineString2D {
+    fn count_vertices(&self) -> usize {
+        self.coords().len()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for LineString3D {
+    fn count_vertices(&self) -> usize {
+        self.coords().len()
+    }
+}
 
 // A curve bounds no area, so there is nothing to take apart.
 crate::unsupported!(LineString2D: ExtractHoles);

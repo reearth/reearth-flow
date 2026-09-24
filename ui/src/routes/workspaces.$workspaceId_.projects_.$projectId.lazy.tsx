@@ -130,7 +130,7 @@ const ErrorComponent = ({
   error,
   onErrorReset,
 }: {
-  error: Error;
+  error: unknown;
   onErrorReset: () => void;
 }) => {
   const [openVersionDialog, setOpenVersionDialog] = useState(false);

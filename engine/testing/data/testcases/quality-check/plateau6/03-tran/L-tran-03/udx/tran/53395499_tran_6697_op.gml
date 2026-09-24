@@ -13,6 +13,8 @@
       references only one polygon per boundary. The two surfaceMember lines for the remaining polygons are
       intentionally commented out, so poly_5b1d7e36... and poly_9f5b1c70... become the two expected errors.
 
+  Every ring is wound counter-clockwise so that only the xlink check reports errors.
+
   The objectlist referenced by the test is a provisional plateau4-derived Excel; a CityGML 3.0 /
   i-UR 4.0 objectlist is not yet standardized.
 -->
@@ -75,7 +77,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 												<gml:Polygon gml:id="poly_4a0c6d25-7e9f-4b81-8d43-5f8b0e1a3c67">
 													<gml:exterior>
 														<gml:LinearRing>
-															<gml:posList>35.83100 139.61770 0 35.83110 139.61770 0 35.83110 139.61780 0 35.83100 139.61780 0 35.83100 139.61770 0</gml:posList>
+															<gml:posList>35.83100 139.61770 0 35.83100 139.61780 0 35.83110 139.61780 0 35.83110 139.61770 0 35.83100 139.61770 0</gml:posList>
 														</gml:LinearRing>
 													</gml:exterior>
 												</gml:Polygon>
@@ -84,7 +86,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 												<gml:Polygon gml:id="poly_5b1d7e36-8f0a-4c92-9e54-6a9c1f2b4d78">
 													<gml:exterior>
 														<gml:LinearRing>
-															<gml:posList>35.83100 139.61780 0 35.83110 139.61780 0 35.83110 139.61790 0 35.83100 139.61790 0 35.83100 139.61780 0</gml:posList>
+															<gml:posList>35.83100 139.61780 0 35.83100 139.61790 0 35.83110 139.61790 0 35.83110 139.61780 0 35.83100 139.61780 0</gml:posList>
 														</gml:LinearRing>
 													</gml:exterior>
 												</gml:Polygon>
@@ -108,7 +110,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 												<gml:Polygon gml:id="poly_8e4a0b69-1c3d-4f25-8b87-9d2f4c5e7a01">
 													<gml:exterior>
 														<gml:LinearRing>
-															<gml:posList>35.83100 139.61790 0 35.83110 139.61790 0 35.83110 139.61800 0 35.83100 139.61800 0 35.83100 139.61790 0</gml:posList>
+															<gml:posList>35.83100 139.61790 0 35.83100 139.61800 0 35.83110 139.61800 0 35.83110 139.61790 0 35.83100 139.61790 0</gml:posList>
 														</gml:LinearRing>
 													</gml:exterior>
 												</gml:Polygon>
@@ -117,7 +119,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 												<gml:Polygon gml:id="poly_9f5b1c70-2d4e-4a36-9c98-0e3a5d6f8b12">
 													<gml:exterior>
 														<gml:LinearRing>
-															<gml:posList>35.83100 139.61800 0 35.83110 139.61800 0 35.83110 139.61810 0 35.83100 139.61810 0 35.83100 139.61800 0</gml:posList>
+															<gml:posList>35.83100 139.61800 0 35.83100 139.61810 0 35.83110 139.61810 0 35.83110 139.61800 0 35.83100 139.61800 0</gml:posList>
 														</gml:LinearRing>
 													</gml:exterior>
 												</gml:Polygon>

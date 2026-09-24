@@ -1,6 +1,5 @@
 {
   "description": "Test quality check for C08",
-  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {

@@ -1,4 +1,4 @@
-import { CmsExportType } from "../__gen__/graphql";
+import type { CmsExportType } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

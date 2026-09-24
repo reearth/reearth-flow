@@ -1,4 +1,5 @@
-import { ChangeEvent, useCallback, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useState } from "react";
 
 import {
   Button,
@@ -12,7 +13,7 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Asset } from "@flow/types";
+import type { Asset } from "@flow/types";
 
 type Props = {
   assetToBeEdited: Asset;

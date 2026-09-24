@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 
-import {
-  AppState,
-  InitialStateKeys,
-  openDatabase,
-  STORE_NAME,
-} from "@flow/stores";
+import type { AppState, InitialStateKeys } from "@flow/stores";
+import { openDatabase, STORE_NAME } from "@flow/stores";
 
 // Simple type for subscribers
 type Subscriber<T> = (value: T) => void;
@@ -86,8 +82,7 @@ export function useIndexedDB<T extends InitialStateKeys>(
   error: Error | null;
   updateValue: (
     newValueOrUpdater:
-      | Partial<AppState[T]>
-      | ((prevState: AppState[T]) => AppState[T]),
+      Partial<AppState[T]> | ((prevState: AppState[T]) => AppState[T]),
   ) => Promise<void>;
 } {
   const [value, setValue] = useState<Partial<AppState[T]> | null>(null);
@@ -134,8 +129,7 @@ export function useIndexedDB<T extends InitialStateKeys>(
   // Function to update value with queuing
   const updateValue = async (
     newValueOrUpdater:
-      | Partial<AppState[T]>
-      | ((prevState: AppState[T]) => AppState[T]),
+      Partial<AppState[T]> | ((prevState: AppState[T]) => AppState[T]),
   ): Promise<void> => {
     // Queue per store key so concurrent writes to the same key are serialized.
     const queueKey = `${STORE_NAME}-${key}`;

@@ -524,7 +524,9 @@ fn encode_value(value: &AttributeValue, prop: &mut Property, enum_set: &mut Inde
                 AttributeValue::DateTime(d) => d.to_string(),
                 AttributeValue::Number(n) => n.to_string(),
                 AttributeValue::Bool(b) => b.to_string(),
-                _ => return,
+                // A string property needs one offset per feature, so a value with no
+                // string form is stored as no-data instead of being skipped.
+                _ => STRING_NO_DATA.to_string(),
             };
             prop.value_buffer.extend_from_slice(s.as_bytes());
             let Some(offset) = u32::try_from(prop.value_buffer.len()).ok() else {

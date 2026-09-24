@@ -2,9 +2,9 @@ import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { useCallback, useState } from "react";
 import * as Y from "yjs";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 export default () => {

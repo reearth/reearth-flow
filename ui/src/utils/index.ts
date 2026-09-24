@@ -13,3 +13,4 @@ export * from "./workflowVariables";
 export * from "./removeWhiteSpace";
 export * from "./typeColorClass";
 export * from "./getNodeIcon";
+export * from "./artifacts";

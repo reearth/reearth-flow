@@ -29,6 +29,7 @@ jobs:
     name: lint (clippy / fmt / taplo)
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
+      # --- setup ---
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
@@ -40,6 +41,28 @@ jobs:
         with:
           rust-components: clippy, rustfmt
           tools: cargo-make,taplo-cli
+
+      # --- format ---
+      - name: rustfmt
+        run: cargo make format -- --check
+      - name: taplo
+        run: cargo make format-taplo -- --check
+
+      # --- lint ---
+      # `cargo make clippy` builds `new-geometry`, whose `ktx2-rw` dep compiles
+      # KTX-Software from source.
+      - uses: ./.github/actions/install-ktx-toolchain
+      - name: cargo check and clippy
+        run: cargo make clippy
+
+      # --- repo-specific checks ---
+      - name: Check geodetic grid NOTICE.md is up to date
+        run: cargo make proj-grids-notice -- --check
+      - name: Check action tracing call sites
+        run: cargo make check-action-tracing
+
+      # --- version check ---
+      # Keep this last; add new steps above it.
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
@@ -76,22 +99,6 @@ jobs:
             echo "       - 'cargo set-version --bump patch'  # For bug fixes"
             exit 1
           fi
-      # `cargo make clippy` builds `new-geometry`, whose `ktx2-rw` dep compiles
-      # KTX-Software from source.
-      - uses: ./.github/actions/install-ktx-toolchain
-      # NOTE: `cargo make check` was previously a separate step. It is a
-      # strict subset of `cargo make clippy` (clippy implies check), so it is
-      # not run here.
-      - name: clippy
-        run: cargo make clippy
-      - name: Check action tracing call sites
-        run: cargo make check-action-tracing
-      - name: rustfmt
-        run: cargo make format -- --check
-      - name: taplo
-        run: cargo make format-taplo -- --check
-      - name: proj-grids attribution notice
-        run: cargo make proj-grids-notice -- --check
 
   validate-generated:
     name: validate generated files (schema + cms workflows)
