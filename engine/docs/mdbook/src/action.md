@@ -2175,7 +2175,7 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 ### Type
 * processor
 ### Description
-Replace Feature Geometry with Center Point
+Replaces a feature's geometry with a single point at the centre of the space it occupies. Geometry with no extent, or whose parts sit in different coordinate frames, cannot be reduced to one point and is reported instead.
 ### Parameters
 ```json
 {
@@ -2185,7 +2185,7 @@ Replace Feature Geometry with Center Point
   "properties": {
     "mode": {
       "description": "The method used to compute the replacement center point.",
-      "default": "centerOfGravity",
+      "default": "boundingBoxCenter",
       "allOf": [
         {
           "$ref": "#/definitions/CenterPointMode"
@@ -2195,27 +2195,13 @@ Replace Feature Geometry with Center Point
   },
   "definitions": {
     "CenterPointMode": {
-      "description": "Method used to compute the center point of a geometry.",
+      "description": "Method used to compute the center point of a geometry.\n\nCentre of gravity and pole of inaccessibility are only offered where the geometry layer can compute them, so that the choices a workflow is shown are exactly the choices it can make.",
       "oneOf": [
-        {
-          "description": "Computes the centroid (center of gravity) of the geometry.",
-          "type": "string",
-          "enum": [
-            "centerOfGravity"
-          ]
-        },
         {
           "description": "Computes the center of the geometry's bounding box.",
           "type": "string",
           "enum": [
             "boundingBoxCenter"
-          ]
-        },
-        {
-          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
-          "type": "string",
-          "enum": [
-            "anyInsidePoint"
           ]
         }
       ]
@@ -3822,7 +3808,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
 ### Type
 * processor
 ### Description
-Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
+Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it. Coordinate content the file writes but that cannot be read as geometry leaves the city object without that geometry, and each such site is reported on the rejected port.
 ### Parameters
 ```json
 {
@@ -3908,6 +3894,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Feature
 
@@ -9406,7 +9393,7 @@ Shifts every geometry coordinate by a fixed amount along each axis.
 ### Type
 * processor
 ### Description
-Extract Polygon Orientation to Attribute
+Writes which way a 2D face's rings wind into an attribute: `clockwise`, `counter_clockwise`, or `no_orientation` when some ring encloses nothing. Winding is read in canonical orientation, so the answer describes the ring on the ground rather than the axis order its coordinates are stored in. A 3D face has no absolute winding and must be flattened first.
 ### Parameters
 ```json
 {
@@ -9439,6 +9426,7 @@ Extract Polygon Orientation to Attribute
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -11465,6 +11453,96 @@ Detect unmatched Xlinks for PLATEAU
 ### Category
 * PLATEAU
 
+## PLATEAU6.UnsharedEdgeExtractor
+### Type
+* processor
+### Description
+Finds the edges of a triangulated surface that no neighboring triangle shares, such as the surface's outline and the rim of any gap in the mesh, and emits each as a line carrying the attributes of its triangle. Edges are shared only when their endpoints match exactly.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unshared Edge Extractor Parameters",
+  "description": "Which faces are matched against each other, and how exactly their endpoints have to agree.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "coordinatePrecision": {
+      "title": "Coordinate Precision",
+      "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CoordinatePrecision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "CoordinatePrecision": {
+      "description": "Decimal places per axis. An axis left out is not rounded.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "title": "X",
+          "description": "Decimal places the first horizontal coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "y": {
+          "title": "Y",
+          "description": "Decimal places the second horizontal coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "z": {
+          "title": "Z",
+          "description": "Decimal places the vertical coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* unshared
+* rejected
+### Category
+* PLATEAU
+
 ## Planarity Filter
 ### Type
 * processor
@@ -12518,6 +12596,18 @@ Filters candidate features by their spatial relationship to filter geometries, t
           "type": "null"
         }
       ]
+    },
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
     }
   },
   "definitions": {
