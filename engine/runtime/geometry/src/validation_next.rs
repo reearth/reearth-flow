@@ -863,9 +863,9 @@ pub(crate) fn check_unclosed_ring_3d(
 }
 
 /// The bit pattern of a coordinate component, normalizing `-0.0` to `+0.0` so the
-/// two hash and compare equal in the exact duplicate scan.
+/// two hash and compare equal as an exact map key.
 #[inline]
-pub(crate) fn norm_bits(x: f64) -> u64 {
+pub fn norm_bits(x: f64) -> u64 {
     (x + 0.0).to_bits()
 }
 

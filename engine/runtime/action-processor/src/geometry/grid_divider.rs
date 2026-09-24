@@ -31,8 +31,6 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-#[cfg(feature = "new-geometry")]
-use reearth_flow_types::Attributes;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::Geometry;
 use reearth_flow_types::{
@@ -43,6 +41,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
+#[cfg(feature = "new-geometry")]
+use super::utils::group_key;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
 /// The most cells one grid may span before the run stops.
@@ -56,24 +56,6 @@ use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 /// with the number in hand beats grinding to a halt with no explanation.
 #[cfg(feature = "new-geometry")]
 pub(super) const MAX_CELLS_PER_GRID: u128 = 50_000_000;
-
-/// The group a feature belongs to.
-///
-/// Every attribute in `group_by` contributes a slot, with `Null` where the
-/// feature does not carry it, so a feature missing an attribute cannot collapse
-/// into a group it does not belong to.
-#[cfg(feature = "new-geometry")]
-fn group_key(attributes: &Attributes, group_by: &Option<Vec<Attribute>>) -> AttributeValue {
-    match group_by {
-        None => AttributeValue::Null,
-        Some(attrs) => AttributeValue::Array(
-            attrs
-                .iter()
-                .map(|a| attributes.get(a).cloned().unwrap_or(AttributeValue::Null))
-                .collect(),
-        ),
-    }
-}
 
 /// Widen a group's running extent to include one more feature's.
 #[cfg(feature = "new-geometry")]
@@ -1964,33 +1946,6 @@ mod new_geometry_tests {
         let grid = GridSpec::new([0.0, 0.0], 1.0).expect("valid spec");
         let count = grid.cell_count([0.0, 0.0], [4000.0, 3000.0]);
         assert!(count <= MAX_CELLS_PER_GRID);
-    }
-
-    #[test]
-    fn group_key_distinguishes_a_missing_attribute_from_a_present_one() {
-        // B7: with filter_map, {region: "north"} and {zone: "north"} both keyed
-        // to ["north"] and shared a grid origin.
-        let group_by = vec![
-            Attribute::new("region".to_string()),
-            Attribute::new("zone".to_string()),
-        ];
-
-        let mut only_region = Attributes::default();
-        only_region.insert(
-            Attribute::new("region".to_string()),
-            AttributeValue::String("north".to_string()),
-        );
-
-        let mut only_zone = Attributes::default();
-        only_zone.insert(
-            Attribute::new("zone".to_string()),
-            AttributeValue::String("north".to_string()),
-        );
-
-        assert_ne!(
-            group_key(&only_region, &Some(group_by.clone())),
-            group_key(&only_zone, &Some(group_by)),
-        );
     }
 
     #[test]

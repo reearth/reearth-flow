@@ -1,0 +1,342 @@
+id: c5000000-0000-4000-8000-000000000000
+name: PLATEAU6.TriangleChecks
+# Checks every triangle of a triangulated surface the way the flood-zone and
+# relief quality requirements define it, and emits one feature per finding.
+#
+# A well-formed triangle is written as four coordinates (three corners plus the
+# repeated first one), winds counter-clockwise on the ground, and encloses a real
+# area. Each of those is reported on its own port, and a triangle can fail
+# several at once: the checks are independent, and the result sheet counts a
+# triangle once per column it offends.
+#
+# `triangles` carries every face that reached the checks, whether or not it
+# failed any, because matching edges between triangles is scoped differently per
+# feature type and so belongs to the workflow that reads this graph rather than
+# to this graph.
+#
+# The incoming geometry must already be in a projected coordinate frame: winding
+# and area are only defined once coordinates are in a linear unit.
+nodes:
+  - id: c5000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: c5000000-0000-4000-8000-000000000002
+    name: GeometryCoercerFaces
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: c5000000-0000-4000-8000-000000000003
+    name: GeometrySplitterMembers
+    type: action
+    action: Geometry Splitter
+
+  # A welded surface coerces into a collection nested inside its MultiSurface, so
+  # reaching the faces takes a second split. A face that is already alone passes
+  # through unchanged.
+  - id: c5000000-0000-4000-8000-000000000004
+    name: GeometrySplitterFaces
+    type: action
+    action: Geometry Splitter
+
+  - id: c5000000-0000-4000-8000-000000000005
+    name: TrianglesRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: triangles
+
+  # --- Closure and collapse ---
+  # Read on the 3D face: two corners that share their horizontal position but not
+  # their height are two corners, and flattening first would merge them.
+  # `duplicateTolerance` is the distance below which two corners count as one,
+  # which is what turns a triangle into a line or a point.
+  - id: c5000000-0000-4000-8000-000000000006
+    name: GeometryValidatorTriangle
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+
+  - id: c5000000-0000-4000-8000-000000000007
+    name: FeatureFilterNotClosed
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("UnclosedRing", 0) > 0
+          outputPort: notClosed
+
+  # A triangle with two corners closer together than the tolerance collapses to a
+  # line or a point once they are treated as one, which is what the requirement
+  # calls a linear or point-like triangle.
+  - id: c5000000-0000-4000-8000-000000000008
+    name: FeatureFilterDegenerate
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("DuplicatePoints", 0) > 0
+          outputPort: degenerate
+
+  - id: c5000000-0000-4000-8000-000000000009
+    name: NotClosedRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: notClosed
+
+  - id: c5000000-0000-4000-8000-00000000000a
+    name: DegenerateRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: degenerate
+
+  # --- Corner count ---
+  # Three is the only correct number, since the closing vertex is not counted.
+  - id: c5000000-0000-4000-8000-00000000000b
+    name: VertexCounter
+    type: action
+    action: Vertex Counter
+    with:
+      outputAttribute: _vertexCount
+
+  - id: c5000000-0000-4000-8000-00000000000c
+    name: FeatureFilterVertexCount
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("_vertexCount", 0) != 3
+          outputPort: incorrectVertexCount
+
+  - id: c5000000-0000-4000-8000-00000000000d
+    name: IncorrectVertexCountRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: incorrectVertexCount
+
+  # --- Winding ---
+  # Keep the 3D face aside before it is flattened: the port is contracted to emit
+  # the triangle as modelled, not the outline the check reads.
+  - id: c5000000-0000-4000-8000-00000000000e
+    name: GeometryExtractorFace
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: _originalTriangle
+
+  # A 3D face has no absolute winding, so the triangle is flattened before the
+  # winding is read.
+  - id: c5000000-0000-4000-8000-00000000000f
+    name: TwoDimensionForcer
+    type: action
+    action: Two Dimension Forcer
+
+  - id: c5000000-0000-4000-8000-000000000010
+    name: GeometryValidatorFlattened
+    type: action
+    action: Geometry Validator
+
+  # Counter-clockwise on the ground is the only correct winding. A triangle that
+  # encloses nothing has no winding at all, and the requirement counts that as
+  # incorrect too rather than passing it over.
+  - id: c5000000-0000-4000-8000-000000000011
+    name: FeatureFilterOrientation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0 or attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+          outputPort: incorrectOrientation
+
+  - id: c5000000-0000-4000-8000-000000000012
+    name: GeometryReplacerFace
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: _originalTriangle
+
+  - id: c5000000-0000-4000-8000-000000000013
+    name: IncorrectOrientationRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: incorrectOrientation
+
+  # Geometry no step could handle is reported rather than dropped. The workflow
+  # reading this graph decides what to call it; what matters here is that it
+  # leaves by a port.
+  - id: c5000000-0000-4000-8000-000000000014
+    name: RejectedRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: rejected
+
+edges:
+  - id: c5000000-0000-4000-8000-000000000101
+    from: c5000000-0000-4000-8000-000000000001
+    to: c5000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000102
+    from: c5000000-0000-4000-8000-000000000002
+    to: c5000000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000103
+    from: c5000000-0000-4000-8000-000000000003
+    to: c5000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+
+  ## Every face, for the edge matching the reading workflow scopes itself
+  - id: c5000000-0000-4000-8000-000000000104
+    from: c5000000-0000-4000-8000-000000000004
+    to: c5000000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+
+  ## Closure and collapse
+  - id: c5000000-0000-4000-8000-000000000105
+    from: c5000000-0000-4000-8000-000000000004
+    to: c5000000-0000-4000-8000-000000000006
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000106
+    from: c5000000-0000-4000-8000-000000000006
+    to: c5000000-0000-4000-8000-000000000007
+    fromPort: failed
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000107
+    from: c5000000-0000-4000-8000-000000000006
+    to: c5000000-0000-4000-8000-000000000008
+    fromPort: failed
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000108
+    from: c5000000-0000-4000-8000-000000000007
+    to: c5000000-0000-4000-8000-000000000009
+    fromPort: notClosed
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000109
+    from: c5000000-0000-4000-8000-000000000008
+    to: c5000000-0000-4000-8000-00000000000a
+    fromPort: degenerate
+    toPort: features
+
+  ## Corner count
+  # An unclosed ring has no closing vertex to leave out, so it is counted only
+  # as not closed.
+  - id: c5000000-0000-4000-8000-00000000010a
+    from: c5000000-0000-4000-8000-000000000006
+    to: c5000000-0000-4000-8000-00000000000b
+    fromPort: success
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000117
+    from: c5000000-0000-4000-8000-000000000007
+    to: c5000000-0000-4000-8000-00000000000b
+    fromPort: unfiltered
+    toPort: features
+  - id: c5000000-0000-4000-8000-00000000010b
+    from: c5000000-0000-4000-8000-00000000000b
+    to: c5000000-0000-4000-8000-00000000000c
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-00000000010c
+    from: c5000000-0000-4000-8000-00000000000c
+    to: c5000000-0000-4000-8000-00000000000d
+    fromPort: incorrectVertexCount
+    toPort: features
+
+  ## Winding
+  - id: c5000000-0000-4000-8000-00000000010d
+    from: c5000000-0000-4000-8000-000000000004
+    to: c5000000-0000-4000-8000-00000000000e
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-00000000010e
+    from: c5000000-0000-4000-8000-00000000000e
+    to: c5000000-0000-4000-8000-00000000000f
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-00000000010f
+    from: c5000000-0000-4000-8000-00000000000f
+    to: c5000000-0000-4000-8000-000000000010
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000110
+    from: c5000000-0000-4000-8000-000000000010
+    to: c5000000-0000-4000-8000-000000000011
+    fromPort: failed
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000111
+    from: c5000000-0000-4000-8000-000000000011
+    to: c5000000-0000-4000-8000-000000000012
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000112
+    from: c5000000-0000-4000-8000-000000000012
+    to: c5000000-0000-4000-8000-000000000013
+    fromPort: features
+    toPort: features
+  # A triangle whose stored 3D geometry will not decode is still wound the wrong
+  # way, so it is reported with its flattened outline rather than dropped.
+  - id: c5000000-0000-4000-8000-000000000113
+    from: c5000000-0000-4000-8000-000000000012
+    to: c5000000-0000-4000-8000-000000000013
+    fromPort: rejected
+    toPort: features
+
+  ## Geometry no step could handle
+  - id: c5000000-0000-4000-8000-000000000114
+    from: c5000000-0000-4000-8000-000000000006
+    to: c5000000-0000-4000-8000-000000000014
+    fromPort: rejected
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000115
+    from: c5000000-0000-4000-8000-00000000000f
+    to: c5000000-0000-4000-8000-000000000014
+    fromPort: rejected
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000116
+    from: c5000000-0000-4000-8000-000000000010
+    to: c5000000-0000-4000-8000-000000000014
+    fromPort: rejected
+    toPort: features
+
+ports:
+  outputs:
+    - id: triangles
+      nodeId: c5000000-0000-4000-8000-000000000005
+      port: features
+    - id: notClosed
+      nodeId: c5000000-0000-4000-8000-000000000009
+      port: features
+    - id: degenerate
+      nodeId: c5000000-0000-4000-8000-00000000000a
+      port: features
+    - id: incorrectVertexCount
+      nodeId: c5000000-0000-4000-8000-00000000000d
+      port: features
+    - id: incorrectOrientation
+      nodeId: c5000000-0000-4000-8000-000000000013
+      port: features
+    - id: rejected
+      nodeId: c5000000-0000-4000-8000-000000000014
+      port: features
