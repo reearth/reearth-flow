@@ -65,7 +65,7 @@ func TestConcurrentMigrateSucceeds(t *testing.T) {
 
 // recordingTx captures the statements Migrate runs inside its transaction. Only the
 // methods Migrate touches are implemented; the embedded nil interface satisfies the
-// rest and would panic loudly if anything else were called.
+// rest and panics loudly if anything else is called.
 type recordingTx struct {
 	pgx.Tx
 	execs *[]string
@@ -76,8 +76,33 @@ func (t recordingTx) Exec(_ context.Context, sql string, _ ...any) (pgconn.Comma
 	*t.execs = append(*t.execs, sql)
 	return pgconn.CommandTag{}, nil
 }
-func (t recordingTx) Commit(context.Context) error   { *t.done = "commit"; return nil }
-func (t recordingTx) Rollback(context.Context) error { return nil }
+
+// Query answers the applied-versions lookup with an empty result, so every embedded
+// migration looks unapplied.
+func (t recordingTx) Query(context.Context, string, ...any) (pgx.Rows, error) {
+	return emptyRows{}, nil
+}
+
+// QueryRow answers the baseline probe with "schema absent", so the fake exercises the
+// fresh-database path rather than baselining.
+func (t recordingTx) QueryRow(context.Context, string, ...any) pgx.Row { return falseRow{} }
+func (t recordingTx) Commit(context.Context) error                     { *t.done = "commit"; return nil }
+func (t recordingTx) Rollback(context.Context) error                   { return nil }
+
+type falseRow struct{}
+
+func (falseRow) Scan(dest ...any) error {
+	if b, ok := dest[0].(*bool); ok {
+		*b = false
+	}
+	return nil
+}
+
+type emptyRows struct{ pgx.Rows }
+
+func (emptyRows) Next() bool { return false }
+func (emptyRows) Close()     {}
+func (emptyRows) Err() error { return nil }
 
 type recordingQuerier struct {
 	Querier
@@ -92,14 +117,13 @@ func (q *recordingQuerier) Begin(context.Context) (pgx.Tx, error) {
 }
 
 // TestMigrateHoldsLockAndDDLInOneTransaction is the regression test for the bug the
-// two-Exec form had: pg_advisory_xact_lock is released at commit, so issuing it as
-// its own Exec on a pool released it before the schema was applied — and the two
-// calls could even land on different pooled connections. Concurrent startups were
-// not serialised at all, despite the comment claiming they were.
+// two-Exec form had: pg_advisory_xact_lock releases at commit, so issuing it as its
+// own Exec on a pool released it before the schema was applied, and on a pool the
+// two calls could land on different connections.
 //
-// That interleaving is impractical to reproduce deterministically, so this pins the
-// structure instead: exactly one transaction, the lock first, the DDL second, and
-// both on the SAME transaction handle rather than the pool.
+// The interleaving is impractical to reproduce deterministically, so this pins the
+// structure: one transaction, the lock FIRST, every embedded migration applied and
+// recorded within it, and a commit.
 func TestMigrateHoldsLockAndDDLInOneTransaction(t *testing.T) {
 	q := &recordingQuerier{}
 	if err := Migrate(context.Background(), q); err != nil {
@@ -109,16 +133,61 @@ func TestMigrateHoldsLockAndDDLInOneTransaction(t *testing.T) {
 	if q.begun != 1 {
 		t.Errorf("Begin called %d times, want exactly 1", q.begun)
 	}
-	if len(q.execs) != 2 {
-		t.Fatalf("statements in transaction = %d (%v), want 2", len(q.execs), q.execs)
+	if len(q.execs) == 0 {
+		t.Fatal("no statements ran inside the transaction")
 	}
 	if q.execs[0] != lockMigrationSQL {
-		t.Errorf("first statement = %q, want the migration lock; a lock taken after the DDL protects nothing", q.execs[0])
+		t.Errorf("first statement = %q, want the migration lock; a lock taken later protects nothing", q.execs[0])
 	}
-	if !strings.Contains(q.execs[1], "CREATE UNLOGGED TABLE") {
-		t.Errorf("second statement does not look like the schema: %q", q.execs[1])
+	if !strings.Contains(q.execs[1], "ws_schema_migrations") {
+		t.Errorf("second statement = %q, want the revision table", q.execs[1])
+	}
+
+	names, err := migrationNames()
+	if err != nil {
+		t.Fatalf("migrationNames: %v", err)
+	}
+	joined := strings.Join(q.execs, "\n")
+	if !strings.Contains(joined, "CREATE UNLOGGED TABLE") {
+		t.Error("no UNLOGGED table was created; the vendored Atlas migration did not run")
+	}
+	// Each migration contributes its body plus a row in ws_schema_migrations.
+	if want := 2 + 2*len(names); len(q.execs) != want {
+		t.Errorf("statements = %d, want %d (lock + revision table + %d migrations, each applied and recorded)",
+			len(q.execs), want, len(names))
 	}
 	if q.done != "commit" {
 		t.Error("transaction was not committed")
+	}
+}
+
+// TestMigrateBaselinesAPreAtlasDatabase covers the upgrade path: a database created
+// by the previous hand-written schema already has the tables but no revision rows.
+// The Atlas migration is bare CREATE TABLE, so re-running it fails with "relation
+// already exists" — Migrate must record it as applied instead.
+func TestMigrateBaselinesAPreAtlasDatabase(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+
+	// Simulate the old world: tables present, revision tracking absent.
+	if _, err := pool.Exec(ctx, `DROP TABLE IF EXISTS ws_schema_migrations`); err != nil {
+		t.Fatalf("drop revision table: %v", err)
+	}
+
+	if err := Migrate(ctx, pool); err != nil {
+		t.Fatalf("Migrate on a pre-Atlas database: %v", err)
+	}
+
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM ws_schema_migrations`).Scan(&n); err != nil {
+		t.Fatalf("count revisions: %v", err)
+	}
+	if n == 0 {
+		t.Error("nothing was recorded; the next startup would try to create the tables again")
+	}
+
+	// And it stays idempotent afterwards.
+	if err := Migrate(ctx, pool); err != nil {
+		t.Fatalf("second Migrate: %v", err)
 	}
 }
