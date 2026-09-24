@@ -1786,3 +1786,132 @@ Geometry Filter
 ```
 
 **Trigger:** that revision. Until it lands, the ports stay as declared.
+
+---
+
+## Addendum — the CityGML readers, audited
+
+Requested in review after `CityGML 2 Reader`, `CityGML 3 Reader` and `Feature CityGML 2 Reader`
+were found exposed in `base_actions.go` without ever having been audited. `Feature CityGML 3
+Reader` is included although Batch 7 covered it: that review predates §9 entirely (added
+2026-09-18), and per the Changelog rule a review that predates a section supplies no coverage
+of it. Batch 7 also missed the title misspelling below, so its other lines are re-read too.
+
+```
+All four readers
+  params:  §3.3 — FIXED. `cityGmlAttributesKey` was titled "City GML Attributes Key". The
+             format is CityGML, one word, as every translation already had it; only the
+             English was wrong, and on all four. No other action carries the misspelling.
+  diag:    §8 — FIXED. Six user-facing errors printed Rust's Debug format (`{e:?}`): the
+             `build()` parameter compile in all four, and the `dataset` evaluation in both
+             Feature readers. §9 notes `build()` failures cannot be classified, but their
+             text is still the action's to get right. All three error types implement
+             `Display` with a real cause, so each now says what failed and why.
+  diag:    §9 — FIXED. The parse failure was a plain `Err` in all four, so it reached the
+             user as `internal.unclassified`, with no code to search for and nothing to
+             write a policy against. Adds `citygml.parse_failed` and raises it at each.
+
+CityGML 2 Reader · CityGML 3 Reader
+  diag:    §9 — FIXED. Adds `citygml.malformed_input` for the second failure path: the XML
+             parsed, but resolving it found content that cannot be read. Kept distinct from
+             `parse_failed` because the two need different user actions, and a test asserts
+             a readable document with bad geometry is not reported as unparseable.
+  diag:    PLATFORM GAP, flagged not worked around. A source's `NodeContext` sets
+             `diagnostics: None` (`executor_operation.rs:85`), so `report_drop` publishes
+             one raw event with no disposition resolution. The code therefore arrives as its
+             own event beside the read's failure, which still reaches the runtime as a plain
+             error; it makes the failure identifiable, not relaxable. Hence both codes are
+             `fatal`: `warn_drop` would advertise a skip a source cannot perform. `CSV
+             Reader` is in the same position (`reader/csv.rs:235`).
+             TRIGGER: sources gaining a diagnostics handle.
+  runs:    `citygml.malformed_input` cannot fire in the shipped build. The legacy path
+             always reports zero malformations (`pipeline.rs:111`), so it is live only under
+             `new-geometry`. A migration artifact per §"How to use", not a finding.
+  params:  §3.2 — `required` is empty, so neither `dataset` nor `inline` is required though
+             exactly one must be present; `inline`'s description also lacks its period. NOT
+             fixed here: both come from `FileReaderCommonParam`, flattened by 13 actions.
+             TRIGGER: whoever fixes `FileReaderCommonParam`.
+  name/desc/ports/cat/tags: OK. Both were written to this standard in #2464.
+
+Feature CityGML 2 Reader · Feature CityGML 3 Reader
+  diag:    §9 state cleanup — FIXED, and the fix is narrower than it first looked.
+             `Parser::parse` streams: each city object is committed as it is read
+             (`parser_next.rs:190`, and the legacy parser the same way), so a file whose XML
+             breaks partway has already added its first objects. Two consequences:
+             1. A policy relaxing `citygml.parse_failed` would have turned a broken file into
+                silently partial output on a run reported as successful. The first draft of
+                this audit did exactly that. A relaxed policy is now refused, with the reason
+                in the error.
+             2. Independently of policy, the runtime still calls `finish()` after a fatal in
+                `process()` (`processor_node.rs:332`, the fatal slot is read afterwards), so
+                even at the default the half-read file went downstream inside a failing run.
+                This predates the audit. `finish()` now emits nothing after a parse failure,
+                matching the source readers, which send zero features from a document they
+                could not read.
+             A test pins the premise at the parser level. TRIGGER: if that test fails because
+             the parser gained rollback, a relaxed policy can become a genuine skip of just
+             the broken file.
+  diag:    DELIBERATELY NOT DONE. The remaining fallible paths (storage resolve, file read,
+             URI parse) are ordinary I/O with no CityGML-specific cause. §9.1 says reuse
+             before adding, there is no generic `io.*` code, and a private
+             `citygml.file_read_failed` is the antipattern it names.
+             TRIGGER: a generic `io.read_failed` in the registry.
+  diag:    DELIBERATELY NOT DONE. The `dataset` expression failure should reuse
+             `expr.evaluation_failed`, §9.1's own example. One line per reader; belongs with a
+             sweep across every expression-taking action.
+  i18n:    The parameter block description is untranslated in all four languages on both,
+             so the English shows through. Not a regression; recorded so it is not mistaken
+             for translated.
+
+Feature CityGML 2 Reader
+  desc:    §2 — FIXED. It said neither that the path comes from the incoming feature, nor
+             that the naming feature's attributes are carried onto the parsed features. Now
+             matches its sibling's first two sentences.
+  i18n:    FIXED, and worth generalising. All four translations had been written against
+             the old English, so correcting it left them asserting what the source no longer
+             said. `scaffold-i18n` leaves an existing string in place when the source changes,
+             so the drift is silent. **Any description edit anywhere has this property.**
+  params:  §3.3 — FIXED. The parameter block had no top-level description.
+  cat:     §5 — `Input` while it is a processor; its sibling is `Feature`. NOT settled here:
+             cross-cutting finding 3 defers this for the whole family.
+  ports:   REFERRED. Since #2499 its sibling reports each malformed site on a `rejected`
+             port, while this reader still discards malformations silently. A sibling gap by
+             §6's test; adding the port is not a data-loss change (it reroutes nothing), but
+             whether the 2.0 reader should follow is a design call.
+  params:  REFERRED. `flattenMeasureTypes` (bool) here and on `CityGML 2 Reader`, against
+             `flattenLeafAttributes` (list) on both 3 readers. Same capability, two shapes;
+             the source pair mirrored the Feature pair deliberately.
+
+Feature CityGML 3 Reader — changed by #2499 while this audit was open
+  desc:    §2 — REFERRED rather than fixed, since #2499 wrote it deliberately a day ago. It
+             is now three sentences against §2's one or two, and it names the `rejected`
+             port, which §2 says a description should not do.
+  ports:   REFERRED. `rejected` carries a synthesised report per malformed site
+             (`malformationFile`, `malformationLocation`, `malformationReason`), not the
+             input features §4.2 describes, and those keys are documented nowhere a user
+             sees. A custom port name, or a line in the description, would say what arrives.
+
+keepCodeSpace (all four readers, from #2498) — FIXED in #2498
+  desc:    It said the path was "needed to write codeSpace back out". No writer reads it
+             yet, so that described an intent. Now describes the behaviour only.
+  params:  §3.5 — it sat before `inheritInputAttributes` on the Feature readers; now last.
+  i18n:    Its translations still carried the original English; now translated.
+
+citygml.toml
+  §2 —     FIXED. `citygml.non_citygml_geometry`'s help named "City GML Writer"; the action
+             is `CityGML Writer`. The two new codes' help was also corrected before review:
+             `parse_failed` had named only the source readers though the Feature readers
+             raise it too, and `malformed_input` had pointed users to "a Feature CityGML
+             Reader", which is the exact name of the retiring nusamai action.
+
+flattenSingleChildObjects (Feature CityGML 2/3 Reader) — DEFERRED, with trigger
+  Live today: the shipped build is the legacy world, which honours it. Dead in the
+  new-geometry build, where `pipeline.rs` takes it as `_flatten_single_child_objects`.
+  TRIGGER: when `new-geometry` becomes the default, this becomes a declared-but-never-applied
+  parameter unless `pipeline.rs`'s TODO is honoured first. That TODO is half stale: it also
+  names `keep_attributes`, which does reach `parser::to_feature`.
+```
+
+**Bucket move.** None. All four stay exposed; three had been exposed without the review that
+should have preceded it, and this supplies it. `Feature CityGML 3 Reader` keeps its Batch 7
+status with §9 now covered and its #2499 changes referred.

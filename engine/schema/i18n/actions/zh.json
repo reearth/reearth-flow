@@ -1375,10 +1375,11 @@
     },
     {
       "name": "Feature CityGML 2 Reader",
-      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取每个输入地物所指向的 CityGML 2.0 文件，并解析所有已读取文件之间的 gml:id 引用和 xlink:href 链接。指定文件的地物的属性会被带到由该文件生成的地物上。",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 2 Reader Parameters"
+          "title": "Feature CityGML 2 Reader Parameters",
+          "description": "Which file to read, and how its elements become feature attributes."
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性键",

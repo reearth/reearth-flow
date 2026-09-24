@@ -3,7 +3,7 @@ code = "citygml.non_citygml_geometry"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature with non-CityGML geometry"
-help = "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
+help = "CityGML Writer only writes CityGML geometry; route other geometry types to a different writer."
 
 [[codes]]
 code = "citygml.empty_geometry"
@@ -11,3 +11,17 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature with no geometry for the configured LOD mask"
 help = "Check the feature's LODs against the writer's LOD configuration."
+
+[[codes]]
+code = "citygml.parse_failed"
+category = "parse"
+default_disposition = "fatal"
+message = "the document could not be parsed as the reader's CityGML version"
+help = "Check that the file is well-formed UTF-8 XML and that its CityGML version matches the reader; a 3.0 document needs the CityGML 3 version of the reader, a 2.0 document the CityGML 2 version."
+
+[[codes]]
+code = "citygml.malformed_input"
+category = "parse"
+default_disposition = "fatal"
+message = "the document is well-formed XML but contains content that cannot be read"
+help = "The read's error message names the file and what could not be read, such as a coordinate list or an xlink:href, with the element's gml:id where one is available; correct that content in the source file."
