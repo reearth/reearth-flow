@@ -1,5 +1,5 @@
 //! Multi-page atlas packing: each texture at its own scale, overflow spilling onto
-//! further pages rather than downsampling the whole set as [`crate::build_atlas`] does.
+//! further pages rather than downsampling the whole set would.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

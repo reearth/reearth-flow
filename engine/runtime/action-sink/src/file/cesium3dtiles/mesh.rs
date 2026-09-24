@@ -119,7 +119,8 @@ fn extract_polygon(
             .zip(uv_ring.iter_closed())
             .for_each(|(c, uv)| {
                 let (x, y, z) = geodetic_to_geocentric(ellipsoid, c[0], c[1], c[2]);
-                ring_buf.push([x, y, z, uv[0], uv[1]]);
+                // CityGML texture coordinates are bottom-left.
+                ring_buf.push([x, y, z, uv[0], 1.0 - uv[1]]);
                 // `c` is lon/lat/height, the order `geodetic_to_geocentric` takes;
                 // `GeoBox::of` reads lat/lon/height (EPSG:4979's own axis order).
                 geo_points.push([c[1], c[0], c[2]]);

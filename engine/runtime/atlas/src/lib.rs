@@ -47,6 +47,8 @@ impl Rect {
 #[derive(Debug, Clone)]
 pub struct TextureInput {
     pub path: PathBuf,
+    /// Per-polygon UVs, top-left origin (`v` down). Atlas-space UVs come back
+    /// in the same origin.
     pub uvs: TextureUVs,
     /// Fraction of native resolution to keep when packing (`(0, 1]`; `1.0` =
     /// full resolution).
@@ -68,10 +70,10 @@ fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
     let sx = ctx.frame.w as f64 / ctx.damage.w as f64;
     let sy = ctx.frame.h as f64 / ctx.damage.h as f64;
     let px = u * ctx.texture_size.0 as f64 - ctx.damage.x as f64;
-    let py = (1.0 - v) * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
+    let py = v * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
     let out_u = (ctx.frame.x as f64 + px * sx) / ctx.atlas_size.0;
     let row = (ctx.frame.y as f64 + py * sy) / ctx.atlas_size.1;
-    [out_u, 1.0 - row]
+    [out_u, row]
 }
 
 pub(crate) fn remap_polygon_uvs(

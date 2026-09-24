@@ -129,9 +129,9 @@ pub fn collect_damage<'a>(
             let max_v = max_v.clamp(0.0, 1.0);
 
             let x = ((min_u * tw as f64).floor() as u32).min(tw);
-            let y = (((1.0 - max_v) * th as f64).floor() as u32).min(th);
+            let y = ((min_v * th as f64).floor() as u32).min(th);
             let right = ((max_u * tw as f64).ceil() as u32).min(tw);
-            let bottom = (((1.0 - min_v) * th as f64).ceil() as u32).min(th);
+            let bottom = ((max_v * th as f64).ceil() as u32).min(th);
 
             // Every polygon must be represented — guarantee a minimum 1×1 damage rect
             // so that polygon_regions is dense and no index is ever left unmapped.

@@ -137,7 +137,7 @@ fn collect_feature_poly_index(
             let raw_uvs: PolygonUVs = poly
                 .raw_coords()
                 .iter()
-                .map(|&[_, _, _, u, v]| [u, v])
+                .map(|&[_, _, _, u, v]| [u, 1.0 - v])
                 .collect();
             let Some(uvs) = normalize_uvs(raw_uvs) else {
                 pending.wrapping = true;
@@ -298,7 +298,9 @@ fn emit_polygon(
 
         primitive.indices.extend(index_buf.iter().map(|&idx| {
             let [x, y, z, orig_u, orig_v] = poly.raw_coords()[idx as usize];
-            let [u, v] = remapped_uvs.map_or([orig_u, orig_v], |r| r[idx as usize]);
+            // CityGML texture coordinates are bottom-left; remapped UVs already
+            // come back from the atlas top-left.
+            let [u, v] = remapped_uvs.map_or([orig_u, 1.0 - orig_v], |r| r[idx as usize]);
             let vbits = [
                 (x as f32).to_bits(),
                 (y as f32).to_bits(),
@@ -307,7 +309,7 @@ fn emit_polygon(
                 (ny as f32).to_bits(),
                 (nz as f32).to_bits(),
                 (u as f32).to_bits(),
-                ((1.0 - v) as f32).to_bits(),
+                (v as f32).to_bits(),
                 (feature_id as f32).to_bits(),
             ];
             let (index, _) = vertices.insert_full(vbits);
