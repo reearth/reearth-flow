@@ -120,7 +120,9 @@ fn extract_polygon(
             .for_each(|(c, uv)| {
                 let (x, y, z) = geodetic_to_geocentric(ellipsoid, c[0], c[1], c[2]);
                 ring_buf.push([x, y, z, uv[0], uv[1]]);
-                geo_points.push([c[0], c[1], c[2]]);
+                // `c` is lon/lat/height, the order `geodetic_to_geocentric` takes;
+                // `GeoBox::of` reads lat/lon/height (EPSG:4979's own axis order).
+                geo_points.push([c[1], c[0], c[2]]);
             });
         if ri == 0 {
             local.add_exterior(ring_buf.drain(..));
@@ -258,6 +260,15 @@ mod tests {
         assert_eq!(mesh.ecef_vertices.len(), 6, "no cross-triangle dedup");
         assert_eq!(mesh.geographic_vertices.len(), 6);
         assert_eq!(mesh.corner_uv.len(), 6);
+
+        // lat/lon/height, the order `GeoBox::of` reads (EPSG:4979's own axis
+        // order) — not the lon-first order `geodetic_to_geocentric` takes.
+        for v in &mesh.geographic_vertices {
+            assert!(
+                (35.68..35.69).contains(&v[0]) && (139.76..139.77).contains(&v[1]),
+                "geographic vertex {v:?} is not lat-first"
+            );
+        }
         assert_eq!(mesh.triangle_material, vec![Some(0), Some(0)]);
 
         for v in &mesh.ecef_vertices {
