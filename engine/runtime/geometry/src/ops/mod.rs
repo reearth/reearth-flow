@@ -26,8 +26,6 @@ pub mod split;
 pub mod triangulation;
 #[cfg(feature = "new-geometry")]
 pub mod vertex;
-#[cfg(feature = "new-geometry")]
-pub mod winding;
 
 #[cfg(feature = "new-geometry")]
 pub use area::{area_report, Area, AreaFrame, AreaReport};
@@ -55,8 +53,6 @@ pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 #[cfg(feature = "new-geometry")]
 pub use vertex::CountVertices;
-#[cfg(feature = "new-geometry")]
-pub use winding::{ring_winding_2d, RingWinding};
 
 use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
 use crate::error::Error;

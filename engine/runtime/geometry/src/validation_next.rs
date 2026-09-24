@@ -982,7 +982,7 @@ fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
 /// to the first. Positive = counter-clockwise, negative = clockwise, zero =
 /// degenerate / collinear.
-pub fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
+pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
     let n = ring.len();
     let mut acc = 0.0;
     for i in 0..n {

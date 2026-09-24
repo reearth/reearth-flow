@@ -147,11 +147,9 @@ nodes:
     action: Two Dimension Forcer
 
   - id: c5000000-0000-4000-8000-000000000010
-    name: OrientationExtractor
+    name: GeometryValidatorFlattened
     type: action
-    action: Orientation Extractor
-    with:
-      outputAttribute: _orientation
+    action: Geometry Validator
 
   # Counter-clockwise on the ground is the only correct winding. A triangle that
   # encloses nothing has no winding at all, and the requirement counts that as
@@ -164,7 +162,7 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes.get("_orientation") != "counter_clockwise"
+            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0 or attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
           outputPort: incorrectOrientation
 
   - id: c5000000-0000-4000-8000-000000000012
@@ -285,7 +283,7 @@ edges:
   - id: c5000000-0000-4000-8000-000000000110
     from: c5000000-0000-4000-8000-000000000010
     to: c5000000-0000-4000-8000-000000000011
-    fromPort: features
+    fromPort: failed
     toPort: features
   - id: c5000000-0000-4000-8000-000000000111
     from: c5000000-0000-4000-8000-000000000011
