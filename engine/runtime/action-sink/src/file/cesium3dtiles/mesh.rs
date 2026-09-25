@@ -48,6 +48,10 @@ pub(super) fn extract(city_gml: &CityGmlGeometry) -> Option<ExtractedMesh> {
             entry.ty,
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
         ) {
+            tracing::warn!(
+                "Cesium3DTilesWriter: {:?} geometry is not supported; skipping",
+                entry.ty
+            );
             continue;
         }
         let base = entry.pos as usize;
