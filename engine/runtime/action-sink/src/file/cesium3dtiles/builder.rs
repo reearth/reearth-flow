@@ -500,7 +500,7 @@ fn build_cell_glb(
                 for page in pages {
                     let material = glb::MaterialDesc {
                         base_color_texture: Some(page.texture),
-                        ..color_material(DEFAULT_MATERIAL)
+                        ..color_material(page.factors)
                     };
                     let handle = push_geom(
                         &mut builder,
@@ -593,13 +593,11 @@ fn color_material(factors: primitive::MaterialFactors) -> glb::MaterialDesc {
     }
 }
 
-/// One atlas page realized as a glTF primitive: its embedded texture, the
-/// subset of textured geometry whose UVs landed on that page, and those faces'
-/// atlas-space per-corner UVs (parallel to the sub-geometry's corners).
 struct TexturedPage {
     texture: glb::TextureRef,
     /// Larger page dimension in pixels.
     extent: u32,
+    factors: primitive::MaterialFactors,
     geom: Geom,
     corner_uv: Vec<[f32; 2]>,
 }
@@ -615,31 +613,32 @@ fn build_textured_pages(
     render: RenderOptions,
     textures: &TextureCache,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
-    let polygon_paths: Vec<PathBuf> = textured
-        .polygon_texture
-        .iter()
-        .map(|TextureSource::File(path)| path.clone())
-        .collect();
-
     // Group polygons by source texture, one atlas polygon per source polygon;
     // `slots[p] = (input, polygon-within-input)` locates polygon `p`'s entry in
     // the atlas result.
     let mut inputs: Vec<TextureInput> = Vec::new();
-    let mut path_index: HashMap<PathBuf, usize> = HashMap::new();
+    let mut path_index: HashMap<&PathBuf, usize> = HashMap::new();
+    let material_input: Vec<usize> = textured
+        .materials
+        .iter()
+        .map(|material| {
+            let TextureSource::File(path) = &material.texture;
+            *path_index.entry(path).or_insert_with(|| {
+                inputs.push(TextureInput {
+                    path: path.clone(),
+                    uvs: Vec::new(),
+                    scale: 1.0,
+                });
+                inputs.len() - 1
+            })
+        })
+        .collect();
     let mut slots: Vec<(usize, usize)> = Vec::new();
     let mut tri_off = 0usize;
     for (polygon, &tris) in textured.geom.polygon_tris.iter().enumerate() {
         let corners = tris as usize * 3;
         let corner_off = tri_off * 3;
-        let path = &polygon_paths[polygon];
-        let pi = *path_index.entry(path.clone()).or_insert_with(|| {
-            inputs.push(TextureInput {
-                path: path.clone(),
-                uvs: Vec::new(),
-                scale: 1.0,
-            });
-            inputs.len() - 1
-        });
+        let pi = material_input[textured.polygon_material[polygon] as usize];
         let poly = inputs[pi].uvs.len();
         inputs[pi]
             .uvs
@@ -648,7 +647,7 @@ fn build_textured_pages(
         tri_off += tris as usize;
     }
 
-    let scales = texture_target_scales(textured, &polygon_paths, &inputs, render.texel_size);
+    let scales = texture_target_scales(textured, &slots, &inputs, render.texel_size);
     for (input, scale) in inputs.iter_mut().zip(scales) {
         input.scale = scale;
     }
@@ -710,7 +709,7 @@ fn codec_for(codec: TextureCodec) -> Box<dyn glb::Codec> {
 /// (scale `1.0`).
 fn texture_target_scales(
     textured: &TexturedPrimitive,
-    polygon_paths: &[PathBuf],
+    slots: &[(usize, usize)],
     inputs: &[TextureInput],
     texel_size: f64,
 ) -> Vec<f64> {
@@ -722,11 +721,6 @@ fn texture_target_scales(
         .iter()
         .map(|input| image::image_dimensions(&input.path).ok())
         .collect();
-    let path_input: HashMap<&PathBuf, usize> = inputs
-        .iter()
-        .enumerate()
-        .map(|(i, input)| (&input.path, i))
-        .collect();
 
     // Finest metres-per-pixel over every face using each input.
     let mut min_mpp = vec![f64::INFINITY; inputs.len()];
@@ -735,7 +729,7 @@ fn texture_target_scales(
         let tris = tris as usize;
         let range = tri_off..tri_off + tris;
         tri_off += tris;
-        let pi = path_input[&polygon_paths[polygon]];
+        let (pi, _) = slots[polygon];
         let Some(size) = dims[pi] else { continue };
         if let Some(mpp) = polygon_metres_per_pixel(&textured.geom, range, size) {
             min_mpp[pi] = min_mpp[pi].min(mpp);
@@ -787,21 +781,17 @@ fn polygon_metres_per_pixel(
     (n > 0).then(|| sum / n as f64)
 }
 
-/// Split the single textured [`Geom`] into one [`Geom`] per atlas page, each
-/// holding only the polygons whose UVs landed on that page and carrying those
-/// polygons' atlas-space per-corner UVs. Vertices are re-welded per page (each
-/// page's vertex buffer is compacted independently).
 fn split_textured_by_page(
     textured: &TexturedPrimitive,
     remapped: &[Vec<reearth_flow_atlas::PolygonPlacement>],
     slots: &[(usize, usize)],
     textures: Vec<(glb::TextureRef, u32)>,
 ) -> Vec<TexturedPage> {
-    let pages = textures.len();
-    let mut geoms: Vec<Geom> = (0..pages).map(|_| Geom::default()).collect();
-    let mut corner_uvs: Vec<Vec<[f32; 2]>> = vec![Vec::new(); pages];
-    // Per page, weld source vertex index -> that page's local vertex index.
-    let mut remap: Vec<HashMap<u32, u32>> = vec![HashMap::new(); pages];
+    let mut outputs: Vec<(usize, primitive::MaterialFactors)> = Vec::new();
+    let mut output_index: HashMap<(usize, [u32; 6]), usize> = HashMap::new();
+    let mut geoms: Vec<Geom> = Vec::new();
+    let mut corner_uvs: Vec<Vec<[f32; 2]>> = Vec::new();
+    let mut remap: Vec<HashMap<u32, u32>> = Vec::new();
 
     let geom = &textured.geom;
     let mut tri_off = 0usize;
@@ -813,8 +803,18 @@ fn split_textured_by_page(
         let (pi, poly) = slots[polygon];
         let placement = &remapped[pi][poly];
         let page = placement.page;
-        let out = &mut geoms[page];
-        let page_remap = &mut remap[page];
+        let factors = textured.materials[textured.polygon_material[polygon] as usize].factors;
+        let output = *output_index
+            .entry((page, factors.key()))
+            .or_insert_with(|| {
+                outputs.push((page, factors));
+                geoms.push(Geom::default());
+                corner_uvs.push(Vec::new());
+                remap.push(HashMap::new());
+                outputs.len() - 1
+            });
+        let out = &mut geoms[output];
+        let page_remap = &mut remap[output];
 
         // `placement.uvs` is parallel to this polygon's source corners, in the
         // same triangle-corner order we emit below.
@@ -830,7 +830,7 @@ fn split_textured_by_page(
                 });
                 out_tri[c] = local;
                 let [u, v] = placement.uvs[local_corner];
-                corner_uvs[page].push([u as f32, v as f32]);
+                corner_uvs[output].push([u as f32, v as f32]);
                 local_corner += 1;
             }
             out.indices.push(out_tri);
@@ -839,15 +839,19 @@ fn split_textured_by_page(
         out.polygon_tris.push(tris as u32);
     }
 
-    textures
+    outputs
         .into_iter()
         .zip(geoms)
         .zip(corner_uvs)
-        .map(|(((texture, extent), geom), corner_uv)| TexturedPage {
-            texture,
-            extent,
-            geom,
-            corner_uv,
+        .map(|(((page, factors), geom), corner_uv)| {
+            let (texture, extent) = textures[page];
+            TexturedPage {
+                texture,
+                extent,
+                factors,
+                geom,
+                corner_uv,
+            }
         })
         .collect()
 }

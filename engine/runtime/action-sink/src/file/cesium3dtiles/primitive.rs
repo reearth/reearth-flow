@@ -43,7 +43,7 @@ impl MaterialFactors {
     }
 
     /// A hashable identity for grouping (f32 has no `Eq`/`Hash`).
-    fn key(&self) -> [u32; 6] {
+    pub(super) fn key(&self) -> [u32; 6] {
         let [r, g, b, a] = self.base_color_factor;
         [
             r.to_bits(),
@@ -83,11 +83,18 @@ pub(super) struct ColorPrimitive {
 
 /// The single primitive aggregating every textured face in the cell; its
 /// `geom.corner_uv` holds source UVs until the atlas remaps them, and
-/// `polygon_texture` names each polygon's source image (parallel to
+/// `polygon_material` indexes each polygon's entry in `materials` (parallel to
 /// `geom.polygon_tris`) for the atlas pass.
 pub(super) struct TexturedPrimitive {
     pub(super) geom: Geom,
-    pub(super) polygon_texture: Vec<TextureSource>,
+    pub(super) materials: Vec<TexturedMaterial>,
+    pub(super) polygon_material: Vec<u32>,
+}
+
+/// A textured polygon's source image and the PBR factors it multiplies.
+pub(super) struct TexturedMaterial {
+    pub(super) texture: TextureSource,
+    pub(super) factors: MaterialFactors,
 }
 
 /// A cell's polygons partitioned into one primitive per colour-only material
@@ -145,7 +152,9 @@ impl GeomBuilder {
 pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimitives {
     let mut color: HashMap<[u32; 6], (MaterialFactors, GeomBuilder)> = HashMap::new();
     let mut textured = GeomBuilder::default();
-    let mut polygon_texture: Vec<TextureSource> = Vec::new();
+    let mut materials: Vec<TexturedMaterial> = Vec::new();
+    let mut material_index: HashMap<(usize, u32), u32> = HashMap::new();
+    let mut polygon_material: Vec<u32> = Vec::new();
 
     for (member, (_, m)) in cell_members.iter().enumerate() {
         let mut tri_off = 0usize;
@@ -157,16 +166,23 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
             let tris = tri_off..tri_off + count;
             tri_off += count;
 
-            let material =
-                m.triangle_material[tris.start].and_then(|mi| m.materials.get(mi as usize));
+            let mi = m.triangle_material[tris.start];
+            let material = mi.and_then(|mi| m.materials.get(mi as usize));
             let texture = material.and_then(|mm| mm.base_texture.as_ref());
 
-            match texture {
-                Some(source) => {
+            match (mi, texture) {
+                (Some(mi), Some(source)) => {
                     textured.add_polygon(member, m, p, tris, true);
-                    polygon_texture.push(source.clone());
+                    let index = *material_index.entry((member, mi)).or_insert_with(|| {
+                        materials.push(TexturedMaterial {
+                            texture: source.clone(),
+                            factors: MaterialFactors::of(material),
+                        });
+                        materials.len() as u32 - 1
+                    });
+                    polygon_material.push(index);
                 }
-                None => {
+                _ => {
                     let factors = MaterialFactors::of(material);
                     color
                         .entry(factors.key())
@@ -180,7 +196,8 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
 
     let textured = (!textured.geom.indices.is_empty()).then_some(TexturedPrimitive {
         geom: textured.geom,
-        polygon_texture,
+        materials,
+        polygon_material,
     });
     let color = color
         .into_values()
@@ -248,8 +265,9 @@ mod tests {
             textured.geom.corner_uv,
             vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
         );
+        assert_eq!(textured.polygon_material, vec![0]);
         assert!(
-            matches!(&textured.polygon_texture[..], [TextureSource::File(p)] if p == std::path::Path::new("texture.png"))
+            matches!(&textured.materials[..], [TexturedMaterial { texture: TextureSource::File(p), .. }] if p == std::path::Path::new("texture.png"))
         );
 
         let color = primitives
