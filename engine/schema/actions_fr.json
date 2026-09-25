@@ -3846,10 +3846,11 @@
     {
       "name": "Feature CityGML 2 Reader",
       "type": "processor",
-      "description": "Lit des fichiers CityGML 2.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "description": "Lit le fichier CityGML 2.0 désigné par chaque entité entrante, en résolvant les références gml:id et les liens xlink:href entre tous les fichiers lus. Les attributs de l'entité désignant un fichier sont reportés sur les entités qui en sont issues.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 2 Reader Parameters",
+        "description": "Which file to read, and how its elements become feature attributes.",
         "type": "object",
         "required": [
           "dataset"
