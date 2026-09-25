@@ -41,10 +41,6 @@ pub struct GltfFeature {
     pub attributes: HashMap<String, AttributeValue>,
 }
 
-/// Packs the textures of `features` into one atlas image under `atlas_dir` and emits
-/// the features' geometry into `primitives` and `vertices` with texture coordinates
-/// remapped onto it. Returns the larger atlas dimension in pixels, or `None` when
-/// the features reference no texture.
 pub fn build_atlas_geometry(
     features: &[&GltfFeature],
     atlas_dir: &Path,
