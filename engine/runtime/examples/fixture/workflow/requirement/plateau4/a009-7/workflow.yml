@@ -26,9 +26,6 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
           output: |
             file::join_path(env.get("currentPath"), "bldg")
 

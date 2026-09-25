@@ -177,9 +177,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.01
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
+          textureCodec: Untextured
           chunkByAttribute: udxDirs
           output: |
             let udx_dirs = env.get("__value")["udxDirs"];

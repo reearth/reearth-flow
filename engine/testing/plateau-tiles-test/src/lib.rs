@@ -9,3 +9,4 @@ pub mod profile_config;
 pub mod rasterize;
 pub mod runner;
 pub mod tester;
+pub mod tileset;
