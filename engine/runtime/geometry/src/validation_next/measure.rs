@@ -4,10 +4,11 @@
 //! [`Planarity`](super::ValidationType::Planarity). Measures are plain f64;
 //! only their comparisons against caller thresholds decide anything.
 
-use super::{open_ring, signed_area_2d, PlanarityThreshold, ValidationReport};
+use super::{open_ring, PlanarityThreshold, ValidationReport};
 use crate::algorithm::convex_hull::quick_hull_3d;
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
+use crate::polygon::signed_area_2d;
 use crate::types::coordinate::Coordinate3D;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 

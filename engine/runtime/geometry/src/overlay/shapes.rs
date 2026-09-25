@@ -22,6 +22,7 @@ use i_overlay::float::single::SingleFloatOverlay;
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
+use crate::polygon::signed_area_2d;
 use crate::polygon::Polygon2D;
 use crate::predicates::relate::boundary::union_boundary_rings;
 use crate::predicates::view::{polygon2d_rings, Leaf2D, RingView};
@@ -144,9 +145,9 @@ pub(super) fn shapes_to_polygons(
         .filter_map(|shape| {
             let mut rings = shape.into_iter();
             let exterior = rings.next()?;
-            let exterior_area = ring_area(&exterior);
+            let exterior_area = signed_area_2d(&exterior);
             let rings = rings.map(|mut hole| {
-                if ring_area(&hole) * exterior_area > 0.0 {
+                if signed_area_2d(&hole) * exterior_area > 0.0 {
                     hole.reverse();
                 }
                 close_path(hole)
@@ -169,20 +170,6 @@ pub(super) fn paths_to_line_strings(
         .into_iter()
         .map(|path| LineString2D::from_coords(frame.clone(), path))
         .collect()
-}
-
-/// Twice the signed area of a ring (shoelace), wrapping the last vertex back to
-/// the first. Positive = counter-clockwise, negative = clockwise, zero =
-/// degenerate.
-pub(super) fn ring_area(ring: &[[f64; 2]]) -> f64 {
-    let n = ring.len();
-    (0..n)
-        .map(|i| {
-            let a = ring[i];
-            let b = ring[(i + 1) % n];
-            a[0] * b[1] - b[0] * a[1]
-        })
-        .sum()
 }
 
 /// Close an implicitly closed path by appending its first vertex.

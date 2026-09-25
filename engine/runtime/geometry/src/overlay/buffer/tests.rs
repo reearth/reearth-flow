@@ -50,7 +50,7 @@ fn geometry(polygons: Vec<Polygon2D>) -> Geometry {
 }
 
 fn signed_area(ring: &[[f64; 2]]) -> f64 {
-    ring_area(ring) / 2.0
+    signed_area_2d(ring) / 2.0
 }
 
 fn area(polygons: &[Polygon2D]) -> f64 {
