@@ -829,14 +829,8 @@
       },
       "enumI18n": {
         "CenterPointMode": {
-          "anyInsidePoint": {
-            "description": "ジオメトリ内部に確実に収まる点を計算する（到達不能極）。"
-          },
           "boundingBoxCenter": {
             "description": "ジオメトリのバウンディングボックスの中心を計算する。"
-          },
-          "centerOfGravity": {
-            "description": "ジオメトリの重心（セントロイド）を計算する。"
           }
         }
       }
@@ -3819,6 +3813,39 @@
       "description": "PLATEAUの未一致Xlinkを検出する"
     },
     {
+      "name": "PLATEAU6.UnsharedEdgeExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "Unshared Edge Extractor Parameters",
+          "description": "Which faces are matched against each other, and how exactly their endpoints have to agree."
+        },
+        "coordinatePrecision": {
+          "title": "Coordinate Precision",
+          "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other."
+        }
+      },
+      "definitionI18n": {
+        "CoordinatePrecision": {
+          "x": {
+            "title": "X",
+            "description": "Decimal places the first horizontal coordinate is rounded to."
+          },
+          "y": {
+            "title": "Y",
+            "description": "Decimal places the second horizontal coordinate is rounded to."
+          },
+          "z": {
+            "title": "Z",
+            "description": "Decimal places the vertical coordinate is rounded to."
+          }
+        }
+      }
+    },
+    {
       "name": "Planarity Filter",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
       "parameterI18n": {
@@ -4106,6 +4133,10 @@
         "": {
           "title": "Spatial Filter パラメータ",
           "description": "フィルタージオメトリと候補ジオメトリの間でテストする空間関係と、通過した候補がフィルターから引き継ぐ内容を設定する"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter."
         },
         "matchMode": {
           "title": "マッチモード",
