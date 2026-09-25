@@ -14,8 +14,22 @@ name: PLATEAU6.TriangleChecks
 # feature type and so belongs to the workflow that reads this graph rather than
 # to this graph.
 #
-# The incoming geometry must already be in a projected coordinate frame: winding
-# and area are only defined once coordinates are in a linear unit.
+# Two rules differ between the requirements, and are chosen by workflow variables
+# (both default to the flood-zone rules):
+#
+#   - `triangleDegenerateRule`: `closeCorners` (default) calls a triangle linear
+#     or point-like when two of its corners lie within 0.01 of each other, and
+#     counts a triangle with no area on the ground as wound incorrectly.
+#     `flatFootprint` calls a triangle linear or point-like when it has no area
+#     on the ground, and never counts it as wound incorrectly as well.
+#   - `triangleCountOpenRingCorners`: when true, a ring that never closes is
+#     also checked for its corner count, with four written positions as the only
+#     correct number since none of them repeats the first. Otherwise it is
+#     counted only as not closed.
+#
+# `closeCorners` measures in the coordinate unit, so it needs a projected frame.
+# The other checks hold in any frame: the winding is read on the ground, taking
+# the axis order of the frame into account, and a zero area is zero in any unit.
 nodes:
   - id: c5000000-0000-4000-8000-000000000001
     name: InputRouter
@@ -85,7 +99,8 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("DuplicatePoints", 0) > 0
+            value: |
+              variables.get("triangleDegenerateRule") != "flatFootprint" and attributes["validationResult"]["checks"].get("DuplicatePoints", 0) > 0
           outputPort: degenerate
 
   - id: c5000000-0000-4000-8000-000000000009
@@ -122,6 +137,27 @@ nodes:
             value: attributes.get("_vertexCount", 0) != 3
           outputPort: incorrectVertexCount
 
+  # An open ring has no closing vertex for the counter to leave out, so four is
+  # the only correct number here.
+  - id: c5000000-0000-4000-8000-000000000015
+    name: VertexCounterOpenRing
+    type: action
+    action: Vertex Counter
+    with:
+      outputAttribute: _vertexCount
+
+  - id: c5000000-0000-4000-8000-000000000016
+    name: FeatureFilterOpenRingVertexCount
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              variables.get("triangleCountOpenRingCorners") == true and attributes.get("_vertexCount", 0) != 4
+          outputPort: incorrectVertexCount
+
   - id: c5000000-0000-4000-8000-00000000000d
     name: IncorrectVertexCountRouter
     type: action
@@ -151,9 +187,17 @@ nodes:
     type: action
     action: Geometry Validator
 
+  - id: c5000000-0000-4000-8000-000000000012
+    name: GeometryReplacerFace
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: _originalTriangle
+
   # Counter-clockwise on the ground is the only correct winding. A triangle that
-  # encloses nothing has no winding at all, and the requirement counts that as
-  # incorrect too rather than passing it over.
+  # encloses nothing has no winding at all: under `closeCorners` it is counted as
+  # wound incorrectly rather than passed over, and under `flatFootprint` it is
+  # the linear or point-like triangle instead.
   - id: c5000000-0000-4000-8000-000000000011
     name: FeatureFilterOrientation
     type: action
@@ -162,15 +206,20 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0 or attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              flat = checks.get("Degenerate", 0) > 0;
+              wrongWinding = checks.get("Orientation", 0) > 0;
+              if variables.get("triangleDegenerateRule") == "flatFootprint" {
+                return wrongWinding and not flat
+              };
+              wrongWinding or flat
           outputPort: incorrectOrientation
-
-  - id: c5000000-0000-4000-8000-000000000012
-    name: GeometryReplacerFace
-    type: action
-    action: Geometry Replacer
-    with:
-      sourceAttribute: _originalTriangle
+        - expr:
+            type: flowExpr
+            value: |
+              variables.get("triangleDegenerateRule") == "flatFootprint" and attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+          outputPort: degenerate
 
   - id: c5000000-0000-4000-8000-000000000013
     name: IncorrectOrientationRouter
@@ -241,8 +290,8 @@ edges:
     toPort: features
 
   ## Corner count
-  # An unclosed ring has no closing vertex to leave out, so it is counted only
-  # as not closed.
+  # An unclosed ring has no closing vertex to leave out, so it is counted on its
+  # own, and only under `triangleCountOpenRingCorners`.
   - id: c5000000-0000-4000-8000-00000000010a
     from: c5000000-0000-4000-8000-000000000006
     to: c5000000-0000-4000-8000-00000000000b
@@ -260,6 +309,21 @@ edges:
     toPort: features
   - id: c5000000-0000-4000-8000-00000000010c
     from: c5000000-0000-4000-8000-00000000000c
+    to: c5000000-0000-4000-8000-00000000000d
+    fromPort: incorrectVertexCount
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000119
+    from: c5000000-0000-4000-8000-000000000007
+    to: c5000000-0000-4000-8000-000000000015
+    fromPort: notClosed
+    toPort: features
+  - id: c5000000-0000-4000-8000-00000000011a
+    from: c5000000-0000-4000-8000-000000000015
+    to: c5000000-0000-4000-8000-000000000016
+    fromPort: features
+    toPort: features
+  - id: c5000000-0000-4000-8000-00000000011b
+    from: c5000000-0000-4000-8000-000000000016
     to: c5000000-0000-4000-8000-00000000000d
     fromPort: incorrectVertexCount
     toPort: features
@@ -282,25 +346,30 @@ edges:
     toPort: features
   - id: c5000000-0000-4000-8000-000000000110
     from: c5000000-0000-4000-8000-000000000010
-    to: c5000000-0000-4000-8000-000000000011
+    to: c5000000-0000-4000-8000-000000000012
     fromPort: failed
     toPort: features
   - id: c5000000-0000-4000-8000-000000000111
-    from: c5000000-0000-4000-8000-000000000011
-    to: c5000000-0000-4000-8000-000000000012
-    fromPort: incorrectOrientation
-    toPort: features
-  - id: c5000000-0000-4000-8000-000000000112
     from: c5000000-0000-4000-8000-000000000012
-    to: c5000000-0000-4000-8000-000000000013
+    to: c5000000-0000-4000-8000-000000000011
     fromPort: features
     toPort: features
-  # A triangle whose stored 3D geometry will not decode is still wound the wrong
-  # way, so it is reported with its flattened outline rather than dropped.
+  - id: c5000000-0000-4000-8000-000000000112
+    from: c5000000-0000-4000-8000-000000000011
+    to: c5000000-0000-4000-8000-000000000013
+    fromPort: incorrectOrientation
+    toPort: features
+  # A triangle whose stored 3D geometry will not decode is still judged, and
+  # reported with its flattened outline rather than dropped.
   - id: c5000000-0000-4000-8000-000000000113
     from: c5000000-0000-4000-8000-000000000012
-    to: c5000000-0000-4000-8000-000000000013
+    to: c5000000-0000-4000-8000-000000000011
     fromPort: rejected
+    toPort: features
+  - id: c5000000-0000-4000-8000-000000000118
+    from: c5000000-0000-4000-8000-000000000011
+    to: c5000000-0000-4000-8000-00000000000a
+    fromPort: degenerate
     toPort: features
 
   ## Geometry no step could handle

@@ -26,7 +26,9 @@ use i_overlay::mesh::outline::offset::OutlineOffset;
 use i_overlay::mesh::stroke::offset::StrokeOffset;
 use i_overlay::mesh::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
 
-use super::shapes::{self, close_path, dissolve, frame_sign, reverse_shape, Path, Shape};
+use super::shapes::{
+    self, close_path, dissolve, frame_sign, reverse_shape, ring_area, Path, Shape,
+};
 use super::{common_frame, is_areal, is_line};
 use crate::collection::{Collection2D, Collection3D};
 use crate::coordinate::{BaseFrame, TangentPlane};
@@ -400,20 +402,6 @@ fn normalize_shape(shape: Shape) -> Shape {
 /// Twice the total signed area of a shape's rings.
 fn shape_area(shape: &Shape) -> f64 {
     shape.iter().map(|ring| ring_area(ring)).sum()
-}
-
-/// Twice the signed area of a ring (shoelace), wrapping the last vertex back to
-/// the first. Positive = counter-clockwise, negative = clockwise, zero =
-/// degenerate.
-fn ring_area(ring: &[[f64; 2]]) -> f64 {
-    let n = ring.len();
-    (0..n)
-        .map(|i| {
-            let a = ring[i];
-            let b = ring[(i + 1) % n];
-            a[0] * b[1] - b[0] * a[1]
-        })
-        .sum()
 }
 
 /// `-1.0` when the shapes' total signed area is negative, else `1.0`.

@@ -131,8 +131,9 @@ pub(super) fn dissolve(shapes: Vec<Shape>) -> Vec<Shape> {
 
 /// Convert `i_overlay` result shapes back into polygons in `frame`, closing
 /// each ring and placing them at `elevation` when one is given. The backend
-/// emits the outer contour first (CCW) and holes after (CW), Flow's winding
-/// convention, so rings pass through verbatim.
+/// emits the outer contour first in the requested direction, so the exterior
+/// passes through verbatim. A hole is reversed when it winds the same way as
+/// the exterior: OGC extraction returns holes that way.
 pub(super) fn shapes_to_polygons(
     shapes: Vec<Shape>,
     frame: &CoordinateFrame,
@@ -141,8 +142,16 @@ pub(super) fn shapes_to_polygons(
     shapes
         .into_iter()
         .filter_map(|shape| {
-            let mut rings = shape.into_iter().map(close_path);
+            let mut rings = shape.into_iter();
             let exterior = rings.next()?;
+            let exterior_area = ring_area(&exterior);
+            let rings = rings.map(|mut hole| {
+                if ring_area(&hole) * exterior_area > 0.0 {
+                    hole.reverse();
+                }
+                close_path(hole)
+            });
+            let exterior = close_path(exterior);
             Some(match elevation {
                 Some(z) => Polygon2D::from_rings_at_elevation(frame.clone(), exterior, rings, z),
                 None => Polygon2D::from_rings(frame.clone(), exterior, rings),
@@ -160,6 +169,20 @@ pub(super) fn paths_to_line_strings(
         .into_iter()
         .map(|path| LineString2D::from_coords(frame.clone(), path))
         .collect()
+}
+
+/// Twice the signed area of a ring (shoelace), wrapping the last vertex back to
+/// the first. Positive = counter-clockwise, negative = clockwise, zero =
+/// degenerate.
+pub(super) fn ring_area(ring: &[[f64; 2]]) -> f64 {
+    let n = ring.len();
+    (0..n)
+        .map(|i| {
+            let a = ring[i];
+            let b = ring[(i + 1) % n];
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum()
 }
 
 /// Close an implicitly closed path by appending its first vertex.

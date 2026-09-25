@@ -289,6 +289,7 @@ fn resolve_ref(
             file: key.0.clone(),
             location: key.1.clone(),
             reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
+            ..Default::default()
         });
         return None;
     }
@@ -431,6 +432,7 @@ fn ring(
                     file: String::new(),
                     location: String::new(),
                     reason: "citygml geometry: non-curve ring member, skipped".to_string(),
+                    ..Default::default()
                 });
             }
         }
@@ -479,6 +481,7 @@ fn surface_mesh(
                     file: String::new(),
                     location: String::new(),
                     reason: "citygml geometry: expected a surface member, skipped".to_string(),
+                    ..Default::default()
                 });
             }
         }
@@ -510,6 +513,7 @@ fn solid(
                     location: String::new(),
                     reason: "citygml geometry: solid with multiple exteriors, extra skipped"
                         .to_string(),
+                    ..Default::default()
                 });
             }
             Role::Interior => interiors.extend(into_shell(geometry, frame, malformations)),
@@ -519,6 +523,7 @@ fn solid(
                     file: String::new(),
                     location: String::new(),
                     reason: "citygml geometry: unexpected solid member role, skipped".to_string(),
+                    ..Default::default()
                 });
             }
         }
@@ -545,6 +550,7 @@ fn build_mesh(
                 file: String::new(),
                 location: String::new(),
                 reason: format!("citygml geometry: failed to weld mesh: {e}"),
+                ..Default::default()
             });
             None
         }
@@ -564,6 +570,7 @@ fn into_line_string(
                 file: String::new(),
                 location: String::new(),
                 reason: "citygml geometry: expected a curve, skipped".to_string(),
+                ..Default::default()
             });
             None
         }
@@ -590,6 +597,7 @@ fn into_shell(
                 file: String::new(),
                 location: String::new(),
                 reason: "citygml geometry: cannot use as a solid boundary, skipped".to_string(),
+                ..Default::default()
             });
             None
         }
@@ -867,6 +875,7 @@ mod tests {
                 file: "file:///test.gml".to_string(),
                 location: "a".to_string(),
                 reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
+                ..Default::default()
             }]
         );
     }

@@ -7,7 +7,7 @@ use std::fmt;
 /// A place where present input was malformed. Collected rather than only warned
 /// about, so a strict caller can fail the read naming the offending location,
 /// per Action Standard §4.3.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Malformation {
     /// The source file it was found in, when known.
     pub file: String,
@@ -16,6 +16,13 @@ pub struct Malformation {
     pub location: String,
     /// What was wrong, in the same words as the site's existing warning.
     pub reason: String,
+    /// The `gml:id` of the top-level city object it was found in, when known.
+    /// Empty for sites outside a city object and for sites found while resolving
+    /// references.
+    pub city_object_id: String,
+    /// The qualified element name of that city object (e.g. `dem:ReliefFeature`),
+    /// when known; empty under the same conditions as `city_object_id`.
+    pub city_object_type: String,
 }
 
 impl fmt::Display for Malformation {

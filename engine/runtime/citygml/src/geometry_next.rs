@@ -11,6 +11,7 @@
 
 use std::sync::Arc;
 
+use reearth_flow_geometry::collection::Collection3D;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::point::Point3D;
@@ -154,7 +155,13 @@ impl Parser {
             // before the `?` below so it still applies when the malformed
             // content leaves the leaf with no coordinates at all (`None`).
             let before = self.malformations.len();
-            let result = build_leaf(node, &ty, &frame, &mut self.malformations);
+            let result = build_leaf(
+                node,
+                &ty,
+                &frame,
+                self.keep_triangle_rings,
+                &mut self.malformations,
+            );
             for m in &mut self.malformations[before..] {
                 if m.file.is_empty() {
                     m.file = file.clone();
@@ -248,6 +255,7 @@ fn build_leaf(
     node: &RawNode,
     ty: &GmlGeometryType,
     frame: &CoordinateFrame,
+    keep_triangle_rings: bool,
     malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     match ty {
@@ -262,7 +270,11 @@ fn build_leaf(
         GmlGeometryType::LinearRing => build_ring_polygon(node, frame, malformations),
         GmlGeometryType::Polygon => build_polygon(node, frame, malformations),
         GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => {
-            build_triangulated(node, frame, malformations)
+            if keep_triangle_rings {
+                build_triangle_polygons(node, frame, malformations)
+            } else {
+                build_triangulated(node, frame, malformations)
+            }
         }
         _ => None,
     }
@@ -363,6 +375,44 @@ fn build_triangulated(
         soup,
     )));
     Some((mesh, face_ids))
+}
+
+/// Build a `Collection` of one `Polygon` per triangle patch of a
+/// `TriangulatedSurface`/`Tin`, each keeping its exterior ring exactly as
+/// written, so a wrong vertex count or an open ring stays visible to a later
+/// check; `None` if no patch has coordinates. A patch with none (its coordinate
+/// content was malformed and already reported) is dropped. `FaceIds` follow the
+/// same per-triangle layout as [`build_triangulated`].
+fn build_triangle_polygons(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+    malformations: &mut Vec<Malformation>,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+    let surface = raw_gml_id(node);
+    let mut polygons: Vec<Euclidean3DGeometry> = Vec::new();
+    let mut face_ids: Vec<FaceIds> = Vec::new();
+    for prop in element_children(node) {
+        if matches!(local_name(&prop.name.0), "trianglePatches" | "patches") {
+            for triangle in element_children(prop) {
+                let ring = gather_coords(triangle, malformations);
+                if ring.is_empty() {
+                    continue;
+                }
+                let polygon =
+                    Polygon3D::from_rings(frame.clone(), ring, Vec::<Vec<[f64; 3]>>::new());
+                polygons.push(Euclidean3DGeometry::Polygon(Box::new(polygon)));
+                face_ids.push(FaceIds {
+                    surface: surface.clone(),
+                    rings: vec![triangle_ring_id(triangle)],
+                });
+            }
+        }
+    }
+    if polygons.is_empty() {
+        return None;
+    }
+    let collection = Euclidean3DGeometry::Collection(Collection3D::new(polygons));
+    Some((collection, face_ids))
 }
 
 /// The gml:id of a triangle patch's exterior `LinearRing`, if any.
@@ -482,6 +532,7 @@ fn parse_pos_list(text: &str, malformations: &mut Vec<Malformation>) -> Vec<[f64
             file: String::new(),
             location: String::new(),
             reason: "citygml geometry: invalid gml:posList content, skipped".to_string(),
+            ..Default::default()
         });
         return Vec::new();
     };
@@ -491,6 +542,7 @@ fn parse_pos_list(text: &str, malformations: &mut Vec<Malformation>) -> Vec<[f64
             file: String::new(),
             location: String::new(),
             reason: "citygml geometry: gml:posList length not a multiple of 3, skipped".to_string(),
+            ..Default::default()
         });
         return Vec::new();
     }
@@ -506,6 +558,7 @@ fn parse_pos(text: &str, malformations: &mut Vec<Malformation>) -> Option<[f64; 
             file: String::new(),
             location: String::new(),
             reason: "citygml geometry: invalid gml:pos content, skipped".to_string(),
+            ..Default::default()
         });
         return None;
     };
@@ -517,6 +570,7 @@ fn parse_pos(text: &str, malformations: &mut Vec<Malformation>) -> Option<[f64; 
             file: String::new(),
             location: String::new(),
             reason: "citygml geometry: gml:pos ordinate count is not 3, skipped".to_string(),
+            ..Default::default()
         });
         return None;
     }
@@ -629,6 +683,14 @@ mod tests {
     /// Parse one CityGML feature wrapping `inner`, returning its stripped attribute
     /// tree, the geometries embedded in it, and the geometry registry.
     fn parse_one_feature(inner: &str) -> (Arc<RawNode>, Vec<FoundGeom>, GeomRegistry) {
+        parse_one_feature_with(Parser::new(CityGmlVersion::V3), inner)
+    }
+
+    /// [`parse_one_feature`] with a caller-configured `parser`.
+    fn parse_one_feature_with(
+        mut parser: Parser,
+        inner: &str,
+    ) -> (Arc<RawNode>, Vec<FoundGeom>, GeomRegistry) {
         let xml = format!(
             r#"<core:CityModel
                  xmlns:core="http://www.opengis.net/citygml/3.0"
@@ -642,7 +704,6 @@ mod tests {
              </core:CityModel>"#
         );
         let url = Url::parse("file:///test.gml").unwrap();
-        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml.as_bytes(), &url).unwrap();
         let ParserOutput {
             pending,
@@ -767,6 +828,123 @@ mod tests {
         );
         let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::TriangularMesh(_)));
+    }
+
+    /// The exterior ring of every triangle, read with `keep_triangle_rings` on.
+    fn kept_triangle_rings(patches: &str) -> Vec<Vec<[f64; 3]>> {
+        let (_root, geoms, registry) = parse_one_feature_with(
+            Parser::new(CityGmlVersion::V3).keep_triangle_rings(true),
+            &format!(
+                "<dem:tin><gml:TriangulatedSurface><gml:patches>{patches}</gml:patches></gml:TriangulatedSurface></dem:tin>"
+            ),
+        );
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
+        let Euclidean3DGeometry::Collection(collection) = geometry else {
+            panic!("expected a collection, got {geometry:?}");
+        };
+        collection
+            .members()
+            .iter()
+            .map(|member| match member {
+                Euclidean3DGeometry::Polygon(polygon) => polygon.exterior().to_vec(),
+                other => panic!("expected a polygon, got {other:?}"),
+            })
+            .collect()
+    }
+
+    fn triangle(pos_list: &str) -> String {
+        format!(
+            "<gml:Triangle><gml:exterior><gml:LinearRing><gml:posList>{pos_list}</gml:posList></gml:LinearRing></gml:exterior></gml:Triangle>"
+        )
+    }
+
+    #[test]
+    fn kept_triangle_rings_keep_every_position_as_written() {
+        let rings = kept_triangle_rings(&format!(
+            "{}{}",
+            triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
+            triangle("0 0 0 1 0 0 1 1 0 0 1 0 0 0 0"),
+        ));
+        assert_eq!(
+            rings,
+            vec![
+                vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 0.]],
+                vec![
+                    [0., 0., 0.],
+                    [1., 0., 0.],
+                    [1., 1., 0.],
+                    [0., 1., 0.],
+                    [0., 0., 0.]
+                ],
+            ]
+        );
+    }
+
+    #[test]
+    fn kept_triangle_rings_leave_an_open_ring_open() {
+        let rings = kept_triangle_rings(&triangle("0 0 0 1 0 0 0 1 0 0 0 1"));
+        assert_eq!(
+            rings,
+            vec![vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]]
+        );
+    }
+
+    #[test]
+    fn kept_triangle_rings_keep_a_triangle_of_fewer_than_three_positions() {
+        let rings = kept_triangle_rings(&format!(
+            "{}{}",
+            triangle("0 0 0 1 0 0"),
+            triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
+        ));
+        assert_eq!(rings.len(), 2);
+        assert_eq!(rings[0], vec![[0., 0., 0.], [1., 0., 0.]]);
+    }
+
+    /// A triangle whose coordinates could not be read has nothing to keep; it is
+    /// dropped here and reported as a malformation instead.
+    #[test]
+    fn kept_triangle_rings_drop_a_triangle_with_unreadable_coordinates() {
+        let rings = kept_triangle_rings(&format!(
+            "{}{}",
+            triangle("0 0 0 1 0 0 0 1"),
+            triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
+        ));
+        assert_eq!(rings.len(), 1);
+    }
+
+    /// A malformation found inside a city object names that city object, so a
+    /// check can put it on the city object's result row.
+    #[test]
+    fn a_malformation_names_the_top_level_city_object() {
+        let xml = r#"<core:CityModel
+                 xmlns:core="http://www.opengis.net/citygml/3.0"
+                 xmlns:dem="http://www.opengis.net/citygml/relief/3.0"
+                 xmlns:gml="http://www.opengis.net/gml/3.2">
+               <core:cityObjectMember><dem:ReliefFeature gml:id="relief1">
+                 <dem:reliefComponent><dem:TINRelief gml:id="tin1"><dem:tin>
+                   <gml:TriangulatedSurface gml:id="surface1"><gml:patches>
+                     <gml:Triangle><gml:exterior><gml:LinearRing>
+                       <gml:posList>0 0 0 1 0 0 0 1</gml:posList>
+                     </gml:LinearRing></gml:exterior></gml:Triangle>
+                   </gml:patches></gml:TriangulatedSurface>
+                 </dem:tin></dem:TINRelief></dem:reliefComponent>
+               </dem:ReliefFeature></core:cityObjectMember>
+             </core:CityModel>"#;
+        let url = Url::parse("file:///test.gml").unwrap();
+        let mut parser = Parser::new(CityGmlVersion::V3).keep_triangle_rings(true);
+        parser.parse(xml.as_bytes(), &url).unwrap();
+        let ParserOutput { malformations, .. } = parser.finish();
+        assert_eq!(
+            malformations,
+            vec![Malformation {
+                file: "file:///test.gml".to_string(),
+                location: "surface1".to_string(),
+                reason: "citygml geometry: gml:posList length not a multiple of 3, skipped"
+                    .to_string(),
+                city_object_id: "relief1".to_string(),
+                city_object_type: "dem:ReliefFeature".to_string(),
+            }]
+        );
     }
 
     #[test]
@@ -1041,6 +1219,8 @@ mod tests {
                 file: "file:///test.gml".to_string(),
                 location: "poly_bad".to_string(),
                 reason: "citygml geometry: invalid gml:posList content, skipped".to_string(),
+                city_object_id: "b1".to_string(),
+                city_object_type: "bldg:Building".to_string(),
             }]
         );
     }

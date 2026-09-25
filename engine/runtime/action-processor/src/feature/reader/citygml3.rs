@@ -32,7 +32,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
          xlink:href references across every file read. The attributes of the feature naming a \
          file are carried onto the features parsed from it. Coordinate content the file writes \
          but that cannot be read as geometry leaves the city object without that geometry, and \
-         each such site is reported on the rejected port."
+         each such site is reported on the rejected port along with the top-level city \
+         object it was found in."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -86,7 +87,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
-        let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone());
+        let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
+            .keep_triangle_rings(params.keep_triangle_rings);
 
         Ok(Box::new(FeatureCityGml3Reader {
             dataset,
@@ -96,6 +98,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             inherit_input_attributes: params.inherit_input_attributes,
+            keep_triangle_rings: params.keep_triangle_rings,
             parser,
             file_attributes: HashMap::new(),
         }))
@@ -145,6 +148,13 @@ pub struct FeatureCityGml3ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
+    /// # Keep Triangle Rings
+    /// When true, each triangle of a `gml:TriangulatedSurface` or `gml:Tin` is read as a polygon
+    /// whose ring keeps its positions exactly as written, so a triangle with other than four
+    /// positions or an unclosed ring is kept for checking. Defaults to false, which reads the
+    /// surface as one triangle mesh.
+    #[serde(default)]
+    keep_triangle_rings: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -163,6 +173,7 @@ pub struct FeatureCityGml3Reader {
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     inherit_input_attributes: bool,
+    keep_triangle_rings: bool,
     parser: Parser,
     /// The attributes of the input feature that named each source file, keyed by its resolved
     /// URL. Merged into the features parsed from that file when `inherit_input_attributes` is
@@ -188,7 +199,9 @@ impl Clone for FeatureCityGml3Reader {
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             inherit_input_attributes: self.inherit_input_attributes,
-            parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone()),
+            keep_triangle_rings: self.keep_triangle_rings,
+            parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone())
+                .keep_triangle_rings(self.keep_triangle_rings),
             file_attributes: HashMap::new(),
         }
     }
@@ -238,7 +251,8 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let next_parser = Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone());
+        let next_parser = Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone())
+            .keep_triangle_rings(self.keep_triangle_rings);
         let inherited = if self.inherit_input_attributes {
             self.file_attributes.clone()
         } else {
@@ -285,6 +299,14 @@ impl Processor for FeatureCityGml3Reader {
             feature.insert(
                 "malformationReason",
                 AttributeValue::String(malformation.reason),
+            );
+            feature.insert(
+                "malformationCityObjectId",
+                AttributeValue::String(malformation.city_object_id),
+            );
+            feature.insert(
+                "malformationCityObjectType",
+                AttributeValue::String(malformation.city_object_type),
             );
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -345,6 +367,7 @@ mod tests {
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
             inherit_input_attributes: true,
+            keep_triangle_rings: false,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
             file_attributes: HashMap::from([(SOURCE_URL.to_string(), input_attributes)]),
         };
@@ -385,6 +408,18 @@ mod tests {
                 .attributes
                 .get(&Attribute::new("malformationLocation")),
             Some(&AttributeValue::String("p1".to_string()))
+        );
+        assert_eq!(
+            reported
+                .attributes
+                .get(&Attribute::new("malformationCityObjectId")),
+            Some(&AttributeValue::String("b1".to_string()))
+        );
+        assert_eq!(
+            reported
+                .attributes
+                .get(&Attribute::new("malformationCityObjectType")),
+            Some(&AttributeValue::String("bldg:Building".to_string()))
         );
         let AttributeValue::String(reason) = reported
             .attributes

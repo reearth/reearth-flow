@@ -88,6 +88,12 @@ impl Parser {
         Self::new(version)
     }
 
+    /// Same shape as the new-geometry `Parser`'s option, not implemented by this
+    /// legacy parser and ignored.
+    pub fn keep_triangle_rings(self, _keep: bool) -> Self {
+        self
+    }
+
     pub fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
         let src = std::str::from_utf8(source)
             .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;

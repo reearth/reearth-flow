@@ -103,6 +103,9 @@ pub struct Parser {
     /// Present-but-malformed input sites collected during parsing; see
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
+    /// When set, each triangle of a `TriangulatedSurface` / `Tin` is kept as a
+    /// polygon with its ring as written, instead of welded into a mesh.
+    pub(super) keep_triangle_rings: bool,
 }
 
 impl std::fmt::Debug for Parser {
@@ -136,7 +139,16 @@ impl Parser {
             synthetic_gml_id_seq: 0,
             extract_tags,
             malformations: Vec::new(),
+            keep_triangle_rings: false,
         }
+    }
+
+    /// Keep each triangle of a `TriangulatedSurface` / `Tin` as a polygon whose
+    /// ring is exactly as written (vertex count and closure untouched), the
+    /// surface becoming a collection of them, instead of one triangle mesh.
+    pub fn keep_triangle_rings(mut self, keep: bool) -> Self {
+        self.keep_triangle_rings = keep;
+        self
     }
 
     pub fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
@@ -186,7 +198,13 @@ impl Parser {
                                 _ => None,
                             })
                         {
+                            let before = self.malformations.len();
                             let stripped = self.split_geometry(&feature_node);
+                            let city_object_id = raw_gml_id(&feature_node).unwrap_or_default();
+                            for m in &mut self.malformations[before..] {
+                                m.city_object_id = city_object_id.clone();
+                                m.city_object_type = feature_node.name.0.clone();
+                            }
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(stripped);
@@ -479,6 +497,7 @@ fn href_to_key(
             file: base.as_str().to_string(),
             location: String::new(),
             reason: "citygml: unsupported xlink:href format, skipped".to_string(),
+            ..Default::default()
         });
         None
     }
