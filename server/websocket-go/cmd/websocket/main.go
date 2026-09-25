@@ -17,18 +17,17 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	goredis "github.com/redis/go-redis/v9"
 	"github.com/reearth/ygo/crdt"
 	"google.golang.org/api/option"
 
 	"github.com/reearth/reearth-flow/websocket-go/internal/auth"
 	"github.com/reearth/reearth-flow/websocket-go/internal/config"
+	"github.com/reearth/reearth-flow/websocket-go/internal/coord"
 	"github.com/reearth/reearth-flow/websocket-go/internal/gcs"
 	"github.com/reearth/reearth-flow/websocket-go/internal/health"
 	flowhttp "github.com/reearth/reearth-flow/websocket-go/internal/http"
 	"github.com/reearth/reearth-flow/websocket-go/internal/logging"
 	flowotel "github.com/reearth/reearth-flow/websocket-go/internal/otel"
-	redisrelay "github.com/reearth/reearth-flow/websocket-go/internal/redis"
 	"github.com/reearth/reearth-flow/websocket-go/internal/server"
 )
 
@@ -56,13 +55,16 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Build GCS persistence and the shared Redis client. Fatal on failure:
+	log.Info("coordination backend selected", "backend", coord.Describe(cfg))
+
+	// Build GCS persistence and the coordination lock store. Fatal on failure:
 	// persistence is load-bearing for durability across restarts.
-	srv, adapter, flusher, closePersistence, err := buildPersistence(ctx, cfg, log)
+	p, err := buildPersistence(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("build persistence: %w", err)
 	}
-	defer closePersistence()
+	defer p.close()
+	srv, adapter, flusher := p.srv, p.adapter, p.flusher
 
 	// OTLP tracing; disabled by default (noop provider).
 	tp, err := flowotel.InitTracer(ctx, otelConfig(cfg))
@@ -108,20 +110,23 @@ func run() error {
 
 	// Wire the real /health probes. A client-construction failure is non-fatal:
 	// /health reports that component unconfigured (503) instead.
-	wireHealth(ctx, srv, cfg, log)
+	wireHealth(ctx, srv, cfg, p.locks, log)
 
-	// Attach the Redis-Streams cluster relay so instances share rooms. The GCS
-	// Flusher is the relay's last-instance persistence seam. Fatal on failure.
-	relay, err := redisrelay.New(redisrelay.Options{URL: cfg.RedisURL, Logger: log, Flusher: flusher})
+	// Attach the cluster relay so instances share rooms. The GCS Flusher is the
+	// relay's last-instance persistence seam. Fatal on failure.
+	relay, err := coord.NewRelay(cfg, p.locks, flusher, log)
 	if err != nil {
-		return fmt.Errorf("build redis relay: %w", err)
+		return fmt.Errorf("build cluster relay: %w", err)
 	}
 	defer func() { _ = relay.Close() }()
 	if err := srv.AttachRedisRelay(ctx, relay); err != nil {
-		return fmt.Errorf("attach redis relay: %w", err)
+		return fmt.Errorf("attach cluster relay: %w", err)
 	}
 
 	go srv.StartPeriodicSync(ctx, 0) // 0 => default 30s
+
+	// Retention sweep for backends without key TTLs; a no-op for the others.
+	coord.StartJanitor(ctx, cfg, p.locks, log)
 
 	// Compose WS + /health + /api/*, then wrap for request spans. Span attributes
 	// must never carry tokens, secrets, or payloads.
@@ -165,8 +170,6 @@ func run() error {
 	return httpSrv.Shutdown(shutdownCtx)
 }
 
-// buildPersistence constructs the GCS adapter, the persistence-wired Server, and
-// the last-instance Flusher, returning a cleanup that closes the GCS + Redis
 // newInstanceOwner returns a per-process lock-owner token unique across
 // instances even when they share a PID (e.g. PID 1 in separate containers).
 // The crypto/rand suffix guarantees uniqueness; the hostname prefix is only for
@@ -180,8 +183,22 @@ func newInstanceOwner() (string, error) {
 	return fmt.Sprintf("instance-%s-%x", host, b[:]), nil
 }
 
-// clients. Phase-2 is opt-in via REEARTH_FLOW_GCS_PHASE2 (default OFF).
-func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger) (*server.Server, *gcs.Adapter, *gcs.Flusher, func(), error) {
+// persistence groups what buildPersistence returns. A struct rather than a tuple
+// because the lock store joined the list and six unnamed returns stop being
+// readable at the call site.
+type persistence struct {
+	srv     *server.Server
+	adapter *gcs.Adapter
+	flusher *gcs.Flusher
+	locks   *coord.Locks
+	close   func()
+}
+
+// buildPersistence constructs the coordination lock store, the GCS adapter, the
+// persistence-wired Server and the last-instance Flusher, plus a close that
+// releases the GCS and lock-store clients. Phase-2 is opt-in via
+// REEARTH_FLOW_GCS_PHASE2 (default OFF).
+func buildPersistence(ctx context.Context, cfg *config.Config) (*persistence, error) {
 	// GCS client (anonymous against fake-gcs when REEARTH_FLOW_GCS_ENDPOINT is set).
 	var gcsOpts []option.ClientOption
 	if cfg.GCSEndpoint != "" {
@@ -189,34 +206,34 @@ func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger)
 	}
 	stClient, err := storage.NewClient(ctx, gcsOpts...)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("gcs client: %w", err)
+		return nil, fmt.Errorf("gcs client: %w", err)
 	}
-
-	// Shared Redis client for OID allocation + the flusher's read:lock.
-	ropt, err := goredis.ParseURL(cfg.RedisURL)
-	if err != nil {
-		_ = stClient.Close()
-		return nil, nil, nil, nil, fmt.Errorf("parse redis url: %w", err)
-	}
-	rc := goredis.NewClient(ropt)
 
 	owner, err := newInstanceOwner()
 	if err != nil {
 		_ = stClient.Close()
-		_ = rc.Close()
-		return nil, nil, nil, nil, fmt.Errorf("instance owner: %w", err)
+		return nil, fmt.Errorf("instance owner: %w", err)
 	}
+
+	// The configured backend's lock store, shared by OID allocation and the
+	// flusher's read:lock.
+	locks, err := coord.NewLocker(cfg, owner)
+	if err != nil {
+		_ = stClient.Close()
+		return nil, fmt.Errorf("coordination locks: %w", err)
+	}
+
 	adapter, err := gcs.New(gcs.Options{
 		Client:           stClient,
 		Bucket:           cfg.GCSBucketName,
-		Locker:           gcs.NewRedisLocker(rc, owner),
+		Locker:           locks.Locker,
 		Phase2:           os.Getenv("REEARTH_FLOW_GCS_PHASE2") == "true",
 		TransientMapKeys: server.TransientMapKeys(),
 	})
 	if err != nil {
 		_ = stClient.Close()
-		_ = rc.Close()
-		return nil, nil, nil, nil, fmt.Errorf("gcs adapter: %w", err)
+		_ = locks.Close()
+		return nil, fmt.Errorf("gcs adapter: %w", err)
 	}
 
 	srv := server.NewWithPersistence(ctx, cfg, adapter)
@@ -224,8 +241,7 @@ func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger)
 	// The flusher persists the room's live doc state on last-instance eviction.
 	flusher := gcs.NewFlusher(gcs.FlusherOptions{
 		Adapter: adapter,
-		Redis:   rc,
-		Owner:   owner,
+		Locker:  locks.Locker,
 		StateOf: func(room string) []byte {
 			doc := srv.WSProvider().GetDoc(room)
 			if doc == nil {
@@ -235,18 +251,25 @@ func buildPersistence(ctx context.Context, cfg *config.Config, log *slog.Logger)
 		},
 	})
 
-	cleanup := func() { _ = stClient.Close(); _ = rc.Close() }
-	return srv, adapter, flusher, cleanup, nil
+	return &persistence{
+		srv:     srv,
+		adapter: adapter,
+		flusher: flusher,
+		locks:   locks,
+		close:   func() { _ = stClient.Close(); _ = locks.Close() },
+	}, nil
 }
 
-// wireHealth attaches the Redis + GCS probes; construction errors leave the
-// component as a nil probe (reported unconfigured, 503).
-func wireHealth(ctx context.Context, srv *server.Server, cfg *config.Config, log *slog.Logger) {
+// wireHealth attaches the coordination-backend + GCS probes; a nil probe is
+// reported unconfigured (503). The backend probe comes from the lock store rather
+// than being rebuilt here, so /health cannot end up probing a different store
+// than the service coordinates through.
+func wireHealth(ctx context.Context, srv *server.Server, cfg *config.Config, locks *coord.Locks, log *slog.Logger) {
 	var p server.PingerFunc
-	if pinger, err := health.NewRedisPinger(cfg.RedisURL); err != nil {
-		log.Warn("redis health probe unavailable", "err", err)
+	if locks.Probe != nil {
+		p = server.PingerFunc(locks.Probe)
 	} else {
-		p = pinger.Ping
+		log.Warn("coordination health probe unavailable", "backend", coord.Describe(cfg))
 	}
 
 	var l server.ListerFunc
@@ -256,7 +279,7 @@ func wireHealth(ctx context.Context, srv *server.Server, cfg *config.Config, log
 		l = lister.List
 	}
 
-	srv.SetHealthChecks(p, l)
+	srv.SetHealthChecks(p, l, coord.Describe(cfg))
 }
 
 // otelConfig maps the service config onto the otel package's Config.

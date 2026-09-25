@@ -3,8 +3,6 @@ package gcs
 import (
 	"context"
 	"time"
-
-	goredis "github.com/redis/go-redis/v9"
 )
 
 // Flusher implements the redis.Flusher seam (FlushRoom): when this node is the
@@ -15,22 +13,21 @@ import (
 // subsequent stream-delete cannot race a reader catching up.
 type Flusher struct {
 	adapter *Adapter
-	redis   *goredis.Client
+	locker  Locker
 	stateOf func(room string) []byte
-	owner   string
 	lockTTL time.Duration
 }
 
 // FlusherOptions configure a Flusher.
 type FlusherOptions struct {
 	Adapter *Adapter
-	Redis   *goredis.Client
+	// Locker fences the read lock. Nil means no fencing — the flush still runs.
+	// The Locker carries its own owner token, so the flusher does not need one.
+	Locker Locker
 	// StateOf returns the room's current in-memory doc state as a single V1
 	// update (e.g. server.WSProvider().GetDoc(room) → EncodeStateAsUpdateV1), or
 	// nil when no doc is resident.
 	StateOf func(room string) []byte
-	// Owner is a per-process unique token for the read-lock value.
-	Owner string
 }
 
 const defaultReadLockTTL = 30 * time.Second
@@ -39,9 +36,8 @@ const defaultReadLockTTL = 30 * time.Second
 func NewFlusher(opts FlusherOptions) *Flusher {
 	return &Flusher{
 		adapter: opts.Adapter,
-		redis:   opts.Redis,
+		locker:  opts.Locker,
 		stateOf: opts.StateOf,
-		owner:   opts.Owner,
 		lockTTL: defaultReadLockTTL,
 	}
 }
@@ -76,25 +72,12 @@ func (f *Flusher) stateFor(room string) []byte {
 }
 
 // withReadLock runs fn while holding read:lock:{room}. The lock is best-effort:
-// if Redis is unreachable or already held, fn still proceeds (the relay re-checks
-// active instances before deleting, and AppendUpdate is idempotent). We never
-// release a lock we do not own.
+// if the lock store is unreachable or the key is already held, fn still proceeds
+// (the relay re-checks active instances before deleting, and AppendUpdate is
+// idempotent). TryWithLock never releases a lock it did not acquire.
 func (f *Flusher) withReadLock(ctx context.Context, room string, fn func(context.Context) error) error {
-	if f.redis == nil {
+	if f.locker == nil {
 		return fn(ctx)
 	}
-	key := readLockName(room)
-	ok, err := f.redis.SetNX(ctx, key, f.owner, f.lockTTL).Result()
-	if err != nil {
-		return fn(ctx) // lock store unreachable: proceed best-effort
-	}
-	if !ok {
-		return fn(ctx) // held by another reader: proceed without releasing it
-	}
-	defer func() {
-		rctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		_ = releaseScript.Run(rctx, f.redis, []string{key}, f.owner).Err()
-	}()
-	return fn(ctx)
+	return f.locker.TryWithLock(ctx, readLockName(room), f.lockTTL, fn)
 }

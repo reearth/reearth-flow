@@ -21,6 +21,24 @@ jobs:
     # in go.work or their selected dependencies".
     env:
       GOWORK: "off"
+    # internal/pg and the postgres arm of internal/coord run against a real
+    # database and SKIP when REEARTH_FLOW_WS_TEST_PG is unset. Without this service
+    # the whole Postgres backend would appear green while never being exercised.
+    # Version pinned to match server/db's Atlas dev target (postgres 18).
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ws
+          POSTGRES_PASSWORD: ws
+          POSTGRES_DB: ws
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ws -d ws"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -35,6 +53,10 @@ jobs:
         with:
           go-version: "1.25"
           cache-dependency-path: server/websocket-go/go.sum
+
+      - name: Check migrations match server/db
+        working-directory: server/websocket-go
+        run: make check-migrations
 
       - name: gofmt
         run: |
@@ -57,6 +79,20 @@ jobs:
 
       - name: Test (race)
         run: go test ./... -race
+        env:
+          REEARTH_FLOW_WS_TEST_PG: postgres://ws:ws@localhost:5432/ws?sslmode=disable
+
+      # Guards the skip path above: if the DSN is ever dropped or the service
+      # renamed, these tests would silently stop running and the Postgres backend
+      # would be untested while CI stayed green.
+      - name: Verify the Postgres tests actually ran
+        env:
+          REEARTH_FLOW_WS_TEST_PG: postgres://ws:ws@localhost:5432/ws?sslmode=disable
+        run: |
+          out=$(go test ./internal/pg/ -run TestTablesAreUnlogged -v -count=1)
+          echo "$out"
+          echo "$out" | grep -q -- "--- PASS: TestTablesAreUnlogged" \
+            || { echo "::error::Postgres-backed tests were skipped; check the postgres service and REEARTH_FLOW_WS_TEST_PG"; exit 1; }
 
       # govulncheck policy (consistent with docs/build-hygiene.md §2):
       #   - HARD FAIL on any CALLED vuln in a THIRD-PARTY dependency (module !=
