@@ -276,7 +276,7 @@ impl Sink for Cesium3DTilesWriter {
 
 impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
-        let Some(feature_type) = &ctx.feature.feature_type() else {
+        let Some(feature_type) = &crate::schema::schema_key(&ctx.feature) else {
             return Err(SinkError::Cesium3DTilesWriter(
                 "Failed to get feature type".to_string(),
             ));
@@ -342,6 +342,7 @@ impl Cesium3DTilesWriter {
             }
             let mut feature = ctx.feature.clone();
             feature.attributes = Arc::new(attrs);
+            feature.update_feature_type(feature_type.clone());
             feature
         };
 
