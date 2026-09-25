@@ -19,10 +19,9 @@ const METADATA_SCHEMA_ID: &str = "Schema";
 const METADATA_CLASS_NAME: &str = "Feature";
 
 /// No per-feature-type classing yet (single inlined `Feature` class), but
-/// these two exclusions still apply, reusing the parent writer's params.
+/// this exclusion still applies, reusing the parent writer's param.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct MetadataOptions<'a> {
-    pub schema_key: Option<&'a str>,
+pub struct MetadataOptions {
     pub skip_unexposed_attributes: bool,
 }
 
@@ -415,7 +414,7 @@ fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, A
 }
 
 fn is_excluded(key: &str, options: MetadataOptions) -> bool {
-    (options.skip_unexposed_attributes && key.starts_with("__")) || options.schema_key == Some(key)
+    options.skip_unexposed_attributes && key.starts_with("__")
 }
 
 #[cfg(test)]

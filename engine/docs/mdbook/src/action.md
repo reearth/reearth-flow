@@ -1401,14 +1401,6 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
-    "schemaKey": {
-      "title": "Schema Key",
-      "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",

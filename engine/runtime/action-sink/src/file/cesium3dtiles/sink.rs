@@ -140,7 +140,6 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 atlas_extrusion: params.atlas_extrusion,
                 wrap_tolerance: params.wrap_tolerance,
                 texture_codec: params.texture_codec,
-                schema_key: params.schema_key,
             },
         };
         Ok(Box::new(sink))
@@ -227,11 +226,6 @@ pub struct Cesium3DTilesWriterParam {
     /// `Untextured` to attach no textures.
     #[serde(default)]
     pub(super) texture_codec: TextureCodec,
-    /// # Schema Key
-    /// Attribute key whose value identifies the schema type and determines the
-    /// output filename: all features sharing the same value are written to the
-    /// same file. This attribute is excluded from output.
-    pub(super) schema_key: Option<String>,
 }
 
 /// Serde default for the draco parameter: compression at the encoder's default
@@ -254,7 +248,6 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) atlas_extrusion: Option<u32>,
     pub(super) wrap_tolerance: Option<f64>,
     pub(super) texture_codec: TextureCodec,
-    pub(super) schema_key: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -479,7 +472,6 @@ impl Cesium3DTilesWriter {
         }
 
         let options = super::builder::MetadataOptions {
-            schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
         };
         let render = super::builder::RenderOptions {

@@ -1028,9 +1028,8 @@ mod tests {
         }
     }
 
-    fn plain_metadata_options() -> MetadataOptions<'static> {
+    fn plain_metadata_options() -> MetadataOptions {
         MetadataOptions {
-            schema_key: None,
             skip_unexposed_attributes: false,
         }
     }
