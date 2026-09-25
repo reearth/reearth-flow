@@ -110,6 +110,7 @@ pub fn build_atlas_multipage(
         )));
     }
     let block_align = block_align.max(1);
+    let max_atlas_size = (max_atlas_size / block_align * block_align).max(block_align);
     // Snap the gap too, so every reserved footprint stays on the block grid.
     let extrusion = extrusion.div_ceil(block_align) * block_align;
 
@@ -234,7 +235,7 @@ pub fn build_atlas_multipage(
         }
         let scale = scale_by_path.get(&mat.path).copied().unwrap_or(1.0);
         let source = cache.get(&mat.path)?;
-        let page = whole_page(&source, scale, max_atlas_size);
+        let page = whole_page(&source, scale, max_atlas_size, block_align);
         tiling_page.insert(&mat.path, pages.len());
         pages.push(page);
         wrap.push(PageWrap::Repeat);
@@ -307,12 +308,20 @@ fn tiles(mat: &TextureInput, wrap_tolerance: f64) -> bool {
 }
 
 /// The whole texture as its own page: `scale` first (never an upscale), then a hard clamp to one page.
-fn whole_page(source: &DynamicImage, scale: f64, max_atlas_size: u32) -> RgbaImage {
+fn whole_page(
+    source: &DynamicImage,
+    scale: f64,
+    max_atlas_size: u32,
+    block_align: u32,
+) -> RgbaImage {
     let (w, h) = (source.width(), source.height());
     let scale = (scale.clamp(f64::MIN_POSITIVE, 1.0))
         .min(max_atlas_size as f64 / w.max(h) as f64)
         .min(1.0);
-    let target = |v: u32| ((v as f64 * scale).round() as u32).clamp(1, max_atlas_size);
+    let target = |v: u32| {
+        let v = (v as f64 * scale / block_align as f64).round() as u32 * block_align;
+        v.clamp(block_align, max_atlas_size)
+    };
     let (tw, th) = (target(w), target(h));
     if (tw, th) == (w, h) {
         source.to_rgba8()
