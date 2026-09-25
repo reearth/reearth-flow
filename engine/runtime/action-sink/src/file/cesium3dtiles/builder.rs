@@ -499,10 +499,8 @@ fn build_cell_glb(
                 texture_size = pages.iter().map(|page| page.extent).max();
                 for page in pages {
                     let material = glb::MaterialDesc {
-                        base_color_factor: [1.0, 1.0, 1.0, 1.0],
-                        metallic_factor: 0.0,
-                        roughness_factor: 1.0,
                         base_color_texture: Some(page.texture),
+                        ..color_material(DEFAULT_MATERIAL)
                     };
                     let handle = push_geom(
                         &mut builder,
