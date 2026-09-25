@@ -27,7 +27,7 @@ pub(super) fn resolve(materials: &indexmap::IndexSet<Material>) -> Vec<ResolvedM
                 match texture.uri.to_file_path() {
                     Ok(path) => Some(TextureSource::File(path)),
                     Err(_) => {
-                        tracing::warn!(
+                        tracing::error!(
                             uri = %texture.uri,
                             "Cesium3DTilesWriter: base_texture URI is not a local file; \
                              rendering colour-only"
