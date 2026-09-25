@@ -2599,6 +2599,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2707,6 +2713,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -3906,6 +3918,12 @@
             "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
             "default": true,
             "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4002,6 +4020,12 @@
             "title": "继承输入属性",
             "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "default": false,
             "type": "boolean"
           }
         }

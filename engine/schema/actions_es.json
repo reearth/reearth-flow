@@ -2599,6 +2599,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2707,6 +2713,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -3906,6 +3918,12 @@
             "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
             "default": true,
             "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4002,6 +4020,12 @@
             "title": "Heredar Atributos de Entrada",
             "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
             "type": "boolean"
           }
         }

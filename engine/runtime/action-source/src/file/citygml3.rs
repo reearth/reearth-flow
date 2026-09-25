@@ -127,6 +127,11 @@ pub(super) struct CityGml3Property {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
+    /// # Keep Code Space
+    /// When true, a coded value resolved against its codelist also keeps the codelist path, as
+    /// the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.
+    #[serde(default)]
+    pub(super) keep_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -185,6 +190,7 @@ impl Source for CityGml3Reader {
             self.property.keep_attributes,
             false,
             &self.property.flatten_leaf_attributes,
+            self.property.keep_code_space,
         );
         // Per Action Standard §4.3, present-but-malformed input fails the read
         // naming the offending location, rather than emitting a feature with
@@ -265,6 +271,7 @@ mod tests {
             true,
             false,
             &[],
+            false,
         );
         assert_eq!(features.len(), 1);
     }
@@ -325,6 +332,7 @@ mod tests {
             keep_attributes: true,
             flatten_leaf_attributes: vec![],
             city_gml_attributes_key: None,
+            keep_code_space: false,
         }
     }
 
@@ -536,6 +544,7 @@ mod tests {
             true,
             false,
             &[],
+            false,
         );
         assert_eq!(
             features.len(),

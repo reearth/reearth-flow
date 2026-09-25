@@ -2599,6 +2599,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2707,6 +2713,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -3906,6 +3918,12 @@
             "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
             "default": true,
             "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4002,6 +4020,12 @@
             "title": "入力属性の継承",
             "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
             "type": "boolean"
           }
         }

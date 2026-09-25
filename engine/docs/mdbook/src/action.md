@@ -2544,6 +2544,12 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
         "string",
         "null"
       ]
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -2649,6 +2655,12 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         "string",
         "null"
       ]
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -3793,6 +3805,12 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
       "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
       "default": true,
       "type": "boolean"
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -3885,6 +3903,12 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "title": "Inherit Input Attributes",
       "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
       "default": true,
+      "type": "boolean"
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
       "type": "boolean"
     }
   }

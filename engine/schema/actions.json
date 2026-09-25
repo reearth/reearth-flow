@@ -2599,6 +2599,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2707,6 +2713,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -3906,6 +3918,12 @@
             "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
             "default": true,
             "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4002,6 +4020,12 @@
             "title": "Inherit Input Attributes",
             "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "default": false,
             "type": "boolean"
           }
         }

@@ -2599,6 +2599,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2707,6 +2713,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -3906,6 +3918,12 @@
             "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
             "default": true,
             "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4002,6 +4020,12 @@
             "title": "Hériter des Attributs d'Entrée",
             "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
             "type": "boolean"
           }
         }

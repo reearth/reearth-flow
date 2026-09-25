@@ -959,6 +959,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -993,6 +997,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1399,6 +1407,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1437,6 +1449,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },

@@ -95,6 +95,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
+            keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             file_attributes: HashMap::new(),
@@ -145,6 +146,11 @@ pub struct FeatureCityGml3ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
+    /// # Keep Code Space
+    /// When true, a coded value resolved against its codelist also keeps the codelist path, as
+    /// the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.
+    #[serde(default)]
+    keep_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -162,6 +168,7 @@ pub struct FeatureCityGml3Reader {
     flatten_single_child_objects: bool,
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
+    keep_code_space: bool,
     inherit_input_attributes: bool,
     parser: Parser,
     /// The attributes of the input feature that named each source file, keyed by its resolved
@@ -187,6 +194,7 @@ impl Clone for FeatureCityGml3Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
+            keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone()),
             file_attributes: HashMap::new(),
@@ -252,6 +260,7 @@ impl Processor for FeatureCityGml3Reader {
             self.keep_attributes,
             self.flatten_single_child_objects,
             &self.flatten_leaf_attributes,
+            self.keep_code_space,
         );
         for feature in features {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -344,6 +353,7 @@ mod tests {
             flatten_single_child_objects: false,
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
+            keep_code_space: false,
             inherit_input_attributes: true,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
             file_attributes: HashMap::from([(SOURCE_URL.to_string(), input_attributes)]),
