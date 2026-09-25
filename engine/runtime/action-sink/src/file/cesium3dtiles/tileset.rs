@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use serde_json::{json, Value};
 
 use super::quadtree::{geometric_error, root_ground_diagonal_m, GeoBox};
-use super::stats::PropertyStats;
+use reearth_flow_gltf::tiles::metadata::ColumnStats;
 
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
 const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
@@ -20,7 +20,7 @@ pub(super) fn build(
     root: &GeoBox,
     available_levels: u32,
     max_contents: usize,
-    property_stats: &IndexMap<String, PropertyStats>,
+    property_stats: &IndexMap<String, ColumnStats>,
 ) -> Value {
     let region = [
         root.west.to_radians(),
@@ -64,14 +64,12 @@ pub(super) fn build(
     let properties: serde_json::Map<String, Value> = property_stats
         .iter()
         .map(|(key, stats)| {
-            let mut entry = serde_json::Map::new();
-            if let Some(min) = &stats.minimum {
-                entry.insert("minimum".into(), json!(min));
-            }
-            if let Some(max) = &stats.maximum {
-                entry.insert("maximum".into(), json!(max));
-            }
-            (key.clone(), Value::Object(entry))
+            let entry = match *stats {
+                ColumnStats::Int(Some((min, max))) => json!({"minimum": min, "maximum": max}),
+                ColumnStats::Float64(Some((min, max))) => json!({"minimum": min, "maximum": max}),
+                _ => json!({}),
+            };
+            (key.clone(), entry)
         })
         .collect();
 

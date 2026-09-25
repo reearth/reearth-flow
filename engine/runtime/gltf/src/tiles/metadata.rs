@@ -46,6 +46,52 @@ impl From<&TypeRef> for ColumnKind {
     }
 }
 
+/// A column's kind and the `(min, max)` of the numbers encoded into it
+/// (`None` if none were).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ColumnStats {
+    Int(Option<(i64, i64)>),
+    Float64(Option<(f64, f64)>),
+    String,
+}
+
+impl ColumnStats {
+    pub fn empty(kind: ColumnKind) -> Self {
+        match kind {
+            ColumnKind::Int => ColumnStats::Int(None),
+            ColumnKind::Float64 => ColumnStats::Float64(None),
+            ColumnKind::String => ColumnStats::String,
+        }
+    }
+
+    /// Widen to the more general kind of the two, with the union of their ranges.
+    pub fn merge(self, other: ColumnStats) -> ColumnStats {
+        match (self, other) {
+            (ColumnStats::String, _) | (_, ColumnStats::String) => ColumnStats::String,
+            (ColumnStats::Int(a), ColumnStats::Int(b)) => ColumnStats::Int(union(a, b)),
+            (a, b) => ColumnStats::Float64(union(a.float_range(), b.float_range())),
+        }
+    }
+
+    fn float_range(self) -> Option<(f64, f64)> {
+        match self {
+            ColumnStats::Int(range) => range.map(|(min, max)| (min as f64, max as f64)),
+            ColumnStats::Float64(range) => range,
+            ColumnStats::String => None,
+        }
+    }
+}
+
+fn union<T: PartialOrd + Copy>(a: Option<(T, T)>, b: Option<(T, T)>) -> Option<(T, T)> {
+    match (a, b) {
+        (Some((a_min, a_max)), Some((b_min, b_max))) => Some((
+            if b_min < a_min { b_min } else { a_min },
+            if b_max > a_max { b_max } else { a_max },
+        )),
+        (range, None) | (None, range) => range,
+    }
+}
+
 /// The narrowest kind that can hold `value` on its own. `Bool` rides along as
 /// 0/1; anything nonnumeric only fits as a string.
 fn value_kind(value: &AttributeValue) -> ColumnKind {
@@ -57,11 +103,10 @@ fn value_kind(value: &AttributeValue) -> ColumnKind {
     }
 }
 
-/// Features and their declared schemas (parallel) -> column name to column kind.
-pub fn column_kinds(
-    features: &[&Feature],
+/// Flattened features and their declared schemas (parallel) -> column name to column kind.
+fn column_kinds(
+    flattened: &[BTreeMap<String, AttributeValue>],
     schemas: &[Option<&SchemaMap>],
-    options: MetadataOptions,
 ) -> IndexMap<String, ColumnKind> {
     let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
     let mut widen = |name: String, kind: ColumnKind| {
@@ -71,8 +116,7 @@ pub fn column_kinds(
             .or_insert(kind);
     };
 
-    for (feature, schema_attrs) in features.iter().zip(schemas) {
-        let flattened = flatten_attributes(feature, options);
+    for (flattened, schema_attrs) in flattened.iter().zip(schemas) {
         match schema_attrs {
             Some(schema_attrs) => {
                 for (name, attr) in schema_attrs.iter() {
@@ -85,7 +129,7 @@ pub fn column_kinds(
             }
             None => {
                 for (path, value) in flattened {
-                    widen(path, value_kind(&value));
+                    widen(path.clone(), value_kind(value));
                 }
             }
         }
@@ -113,7 +157,7 @@ pub fn build_table(
         .collect();
 
     // Property table keys are the attribute name, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = column_kinds(features, schemas, options)
+    let properties: Vec<(String, String, ColumnKind)> = column_kinds(&flattened, schemas)
         .into_iter()
         .map(|(name, kind)| (name.clone(), name, kind))
         .collect();
@@ -132,36 +176,52 @@ pub fn build_table(
 }
 
 fn as_int(value: &AttributeValue) -> Option<i64> {
-    value.as_i64().or_else(|| value.as_bool().map(i64::from))
+    match value {
+        AttributeValue::String(s) => s.parse().ok(),
+        _ => value.as_i64().or_else(|| value.as_bool().map(i64::from)),
+    }
 }
 
 fn as_float(value: &AttributeValue) -> Option<f64> {
-    value
-        .as_f64()
-        .or_else(|| value.as_bool().map(|b| if b { 1.0 } else { 0.0 }))
+    match value {
+        AttributeValue::String(s) => s.parse().ok(),
+        _ => value
+            .as_f64()
+            .or_else(|| value.as_bool().map(|b| if b { 1.0 } else { 0.0 })),
+    }
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
 /// (built once) plus, on each primitive, an `EXT_mesh_features` declaration
 /// reading the `FEATURE_ID_0` attribute the caller pushed with it. All
 /// primitives share the one property table (reference `propertyTable` 0).
-/// No-op if `table` has no properties.
-pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[PrimitiveHandle]) {
+/// No-op if `table` has no properties. Returns each column's [`ColumnStats`].
+pub fn encode(
+    table: &PropertyTable,
+    builder: &mut Builder,
+    primitives: &[PrimitiveHandle],
+) -> IndexMap<String, ColumnStats> {
+    let mut stats = IndexMap::new();
     if table.properties.is_empty() {
-        return;
+        return stats;
     }
 
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
     for (col, (raw_name, id, kind)) in table.properties.iter().enumerate() {
         let values = table.rows.iter().map(|row| row[col].as_ref());
-        let (class_property, table_property) = match kind {
-            ColumnKind::String => encode_string_column(raw_name, values, builder),
+        let (class_property, table_property, column_stats) = match kind {
+            ColumnKind::String => {
+                let (class_property, table_property) =
+                    encode_string_column(raw_name, values, builder);
+                (class_property, table_property, ColumnStats::String)
+            }
             ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
             ColumnKind::Int => encode_int_column(raw_name, values, builder),
         };
         class_properties.insert(id.clone(), class_property);
         table_properties.insert(id.clone(), table_property);
+        stats.insert(raw_name.clone(), column_stats);
     }
 
     let mut classes = IndexMap::new();
@@ -203,6 +263,7 @@ pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[Primit
             .expect("EXT_mesh_features is always serializable"),
         );
     }
+    stats
 }
 
 fn encode_string_column<'a>(
@@ -242,12 +303,18 @@ fn encode_float_column<'a>(
     raw_name: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
+) -> (ClassProperty, MetadataPropertyTableProperty, ColumnStats) {
     let mut value_bytes = Vec::new();
+    let mut range = None;
     for value in values {
         let v = match value {
             Some(value) => match as_float(value) {
-                Some(v) => v,
+                Some(v) => {
+                    if !matches!(value, AttributeValue::Bool(_)) && v.is_finite() {
+                        range = union(range, Some((v, v)));
+                    }
+                    v
+                }
                 None => {
                     tracing::error!(
                         "Cesium3DTilesWriter: {raw_name:?} is a FLOAT64 column but {value:?} is \
@@ -274,6 +341,7 @@ fn encode_float_column<'a>(
             string_offset_type: None,
             string_offsets: None,
         },
+        ColumnStats::Float64(range),
     )
 }
 
@@ -281,11 +349,17 @@ fn encode_int_column<'a>(
     raw_name: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
+) -> (ClassProperty, MetadataPropertyTableProperty, ColumnStats) {
     let mut collector = SignedIntCollector::new();
+    let mut range = None;
     for value in values {
         match value.and_then(as_int) {
-            Some(n) => collector.push(n),
+            Some(n) => {
+                if !matches!(value, Some(AttributeValue::Bool(_))) {
+                    range = union(range, Some((n, n)));
+                }
+                collector.push(n)
+            }
             None => {
                 if let Some(value) = value {
                     tracing::error!(
@@ -314,6 +388,7 @@ fn encode_int_column<'a>(
             string_offset_type: None,
             string_offsets: None,
         },
+        ColumnStats::Int(range),
     )
 }
 
@@ -529,6 +604,57 @@ mod tests {
             Some(&serde_json::Value::String("3".to_string()))
         );
         assert_eq!(features[1].get("j"), Some(&serde_json::json!(3)));
+    }
+
+    #[test]
+    fn numeric_string_under_declared_number_decodes_as_number() {
+        let feature = Feature::from(IndexMap::from([
+            ("i".to_string(), AttributeValue::String("7".to_string())),
+            ("f".to_string(), AttributeValue::String("7.5".to_string())),
+        ]));
+        let schema = schema_map(&[("i", TypeRef::Integer), ("f", TypeRef::Double)]);
+
+        let table = build_table(&[&feature], &[Some(&schema)], MetadataOptions::default());
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let features = crate::extract_feature_properties(&gltf).unwrap();
+
+        assert_eq!(features[0].get("i"), Some(&serde_json::json!(7)));
+        assert_eq!(features[0].get("f"), Some(&serde_json::json!(7.5)));
+    }
+
+    #[test]
+    fn stats_cover_only_encoded_numbers() {
+        let features: Vec<Feature> = [
+            int_number(3),
+            AttributeValue::String("7".to_string()),
+            number(9.5),
+            AttributeValue::Bool(true),
+        ]
+        .into_iter()
+        .map(|v| Feature::from(IndexMap::from([("k".to_string(), v)])))
+        .collect();
+        let schema = schema_map(&[("k", TypeRef::Integer)]);
+
+        let table = build_table(
+            &features.iter().collect::<Vec<_>>(),
+            &vec![Some(&schema); features.len()],
+            MetadataOptions::default(),
+        );
+        let stats = encode(&table, &mut Builder::new(), &[]);
+
+        assert_eq!(stats["k"], ColumnStats::Int(Some((3, 7))));
+    }
+
+    #[test]
+    fn merged_stats_widen_and_a_string_column_has_no_range() {
+        let int = ColumnStats::Int(Some((1, 4)));
+        let float = ColumnStats::Float64(Some((2.5, 3.0)));
+        assert_eq!(int.merge(float), ColumnStats::Float64(Some((1.0, 4.0))));
+        assert_eq!(int.merge(ColumnStats::String), ColumnStats::String);
     }
 
     #[test]
