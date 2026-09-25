@@ -2187,6 +2187,7 @@ graphs:
     action: Cesium3DTilesWriter
     with:
       dracoCompression: disabled
+      wrapTolerance: 0.1
       output: |
         file::join_path(env.get("workerArtifactPath"), "textured_roof_3dtiles")
       compressOutput: |

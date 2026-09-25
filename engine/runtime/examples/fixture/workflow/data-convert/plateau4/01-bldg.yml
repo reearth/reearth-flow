@@ -775,6 +775,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.01
+      wrapTolerance: 0.1
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -836,6 +837,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
+      wrapTolerance: 0.1
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");
@@ -897,6 +899,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
+      wrapTolerance: 0.1
       output: |
         let city_code = env.get("__value").city_code;
         let artifact = env.get("workerArtifactPath");

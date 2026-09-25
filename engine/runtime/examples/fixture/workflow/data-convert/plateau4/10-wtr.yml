@@ -411,6 +411,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.01
+      wrapTolerance: 0.1
       skipUnexposedAttributes: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1")

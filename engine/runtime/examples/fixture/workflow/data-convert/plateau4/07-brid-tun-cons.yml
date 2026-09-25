@@ -630,6 +630,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.01
+      wrapTolerance: 0.1
       output: |
         let artifact = env.get("workerArtifactPath");
         let pkg = env.get("__value")["__package"];
@@ -650,6 +651,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
+      wrapTolerance: 0.1
       output: |
         let artifact = env.get("workerArtifactPath");
         let pkg = env.get("__value")["__package"];
@@ -670,6 +672,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
+      wrapTolerance: 0.1
       output: |
         let artifact = env.get("workerArtifactPath");
         let pkg = env.get("__value")["package"];

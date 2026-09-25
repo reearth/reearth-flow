@@ -279,6 +279,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.01
+          wrapTolerance: 0.1
           output: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
               file::join_path(env.get("workerArtifactPath"), "bldg_lod2")
@@ -322,6 +323,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
+          wrapTolerance: 0.1
           output: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
               file::join_path(env.get("workerArtifactPath"), "bldg_lod3")
@@ -365,6 +367,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
+          wrapTolerance: 0.1
           output: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
               file::join_path(env.get("workerArtifactPath"), "bldg_lod4")

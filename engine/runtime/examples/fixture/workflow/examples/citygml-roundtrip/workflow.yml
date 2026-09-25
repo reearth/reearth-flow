@@ -100,6 +100,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          wrapTolerance: 0.1
           output: |
             file::join_path(env.get("workerArtifactPath"), "citygml-roundtrip-3dtiles")
 
@@ -115,6 +116,7 @@ graphs:
         type: action
         action: Cesium3DTilesWriter
         with:
+          wrapTolerance: 0.1
           output: |
             file::join_path(env.get("workerArtifactPath"), "citygml-original-3dtiles")
 
