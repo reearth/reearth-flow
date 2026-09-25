@@ -1935,7 +1935,7 @@
     {
       "name": "CZML Reader",
       "type": "source",
-      "description": "Lee características geográficas de archivos CZML (Lenguaje Cesium) para visualización 3D, con soporte para propiedades dinámicas en el tiempo y datos de series temporales",
+      "description": "Lee geometría y atributos de documentos CZML (Cesium Language). Las posiciones con marca de tiempo se convierten en un atributo de serie temporal o en una entidad por muestra, según la estrategia de muestreo.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Reader Parameters",
@@ -1944,19 +1944,19 @@
         "properties": {
           "force2d": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "description": "Descarta las elevaciones y lee toda la geometría en dos dimensiones. Los paquetes situados en coordenadas cartesianas geocéntricas se omiten, porque ese sistema no tiene forma bidimensional.",
             "default": false,
             "type": "boolean"
           },
           "skipDocumentPacket": {
             "title": "Skip Document Packet",
-            "description": "If true, skips the document packet (first packet with version/clock info)",
+            "description": "Omite el paquete de documento, que contiene la versión y la configuración del reloj en lugar de geometría. Cualquier paquete que declare un `version` de tipo cadena cuenta como paquete de documento, aparezca donde aparezca.",
             "default": true,
             "type": "boolean"
           },
           "timeSampling": {
             "title": "Time Sampling Strategy",
-            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
+            "description": "Controla cómo las posiciones con marca de tiempo de un paquete se convierten en entidades. De forma predeterminada conserva las muestras sin procesar, lo que permite el viaje de ida y vuelta con CZML Writer.",
             "default": "preserveRaw",
             "allOf": [
               {
@@ -2020,21 +2020,24 @@
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
               {
-                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+                "title": "Todas las muestras",
+                "description": "Emite una entidad por cada muestra con marca de tiempo, cada una con los atributos `czml.timestamp` y `czml.timeOffset`. Las demás propiedades del paquete no se conservan, por lo que estas entidades no permiten el viaje de ida y vuelta.",
                 "type": "string",
                 "enum": [
                   "allSamples"
                 ]
               },
               {
-                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+                "title": "Solo la primera muestra",
+                "description": "Emite una única entidad estática situada en la primera muestra y descarta el resto de la serie temporal.",
                 "type": "string",
                 "enum": [
                   "firstSampleOnly"
                 ]
               },
               {
-                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
+                "title": "Conservar sin procesar",
+                "description": "Emite una entidad por cada objeto, situada en la primera muestra, con todas las muestras en `czml.timeseries` y el resto de propiedades del paquete como atributos `czml.<key>`.",
                 "type": "string",
                 "enum": [
                   "preserveRaw"
@@ -2050,9 +2053,12 @@
         "features"
       ],
       "categories": [
-        "File"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "czml",
+        "3d"
+      ]
     },
     {
       "name": "CZML Writer",
