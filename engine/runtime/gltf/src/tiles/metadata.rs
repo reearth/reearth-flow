@@ -57,15 +57,7 @@ fn value_kind(value: &AttributeValue) -> ColumnKind {
     }
 }
 
-/// Every column the glb will carry, with the one kind each is encoded as.
-///
-/// `schemas` runs parallel to `features`: `Some` is that feature's declared
-/// attribute map, `None` a feature type the schema port never declared. A
-/// declared type is authoritative — its columns are exactly the ones declared,
-/// carried even where no feature holds a value, at the declared kind. An
-/// undeclared type derives instead: every path its features carry, widened to
-/// the most general kind over the values actually present. A path reached both
-/// ways widens to the more general of the two.
+/// Features and their declared schemas (parallel) -> column name to column kind.
 pub fn column_kinds(
     features: &[&Feature],
     schemas: &[Option<&SchemaMap>],
@@ -80,14 +72,19 @@ pub fn column_kinds(
     };
 
     for (feature, schema_attrs) in features.iter().zip(schemas) {
+        let flattened = flatten_attributes(feature, options);
         match schema_attrs {
             Some(schema_attrs) => {
                 for (name, attr) in schema_attrs.iter() {
+                    // Skip unused properties
+                    if !flattened.contains_key(name) {
+                        continue;
+                    }
                     widen(name.clone(), ColumnKind::from(&attr.type_ref));
                 }
             }
             None => {
-                for (path, value) in flatten_attributes(feature, options) {
+                for (path, value) in flattened {
                     widen(path, value_kind(&value));
                 }
             }
@@ -507,6 +504,31 @@ mod tests {
             ColumnKind::Float64
         );
         assert_eq!(kind_of(&[Some(&string), Some(&double)]), ColumnKind::String);
+    }
+
+    #[test]
+    fn declared_type_overrides_inferred_type() {
+        let declared = Feature::from(IndexMap::from([("k".to_string(), int_number(3))]));
+        let undeclared = Feature::from(IndexMap::from([("j".to_string(), int_number(3))]));
+        let schema = schema_map(&[("k", TypeRef::String)]);
+
+        let table = build_table(
+            &[&declared, &undeclared],
+            &[Some(&schema), None],
+            MetadataOptions::default(),
+        );
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let features = crate::extract_feature_properties(&gltf).unwrap();
+
+        assert_eq!(
+            features[0].get("k"),
+            Some(&serde_json::Value::String("3".to_string()))
+        );
+        assert_eq!(features[1].get("j"), Some(&serde_json::json!(3)));
     }
 
     #[test]
