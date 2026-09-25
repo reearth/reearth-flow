@@ -961,8 +961,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -999,8 +999,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1409,8 +1409,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1451,8 +1451,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、文書に記述されたとおりのコードリストのパスも兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },

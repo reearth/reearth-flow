@@ -141,17 +141,16 @@ pub struct FeatureCityGml3ReaderParam {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     city_gml_attributes_key: Option<String>,
-    /// # Keep Code Space
-    /// When true, a resolved coded value keeps the codelist path in a sibling
-    /// `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other
-    /// consumer wants it in its output, so it defaults to false.
-    #[serde(default)]
-    keep_code_space: bool,
     /// # Inherit Input Attributes
     /// When true, the input feature's attributes are merged into every feature parsed from its
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
+    /// # Keep Code Space
+    /// When true, a coded value resolved against its codelist also keeps the codelist path, as
+    /// the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.
+    #[serde(default)]
+    keep_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {

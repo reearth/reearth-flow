@@ -2601,8 +2601,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
             "default": false,
             "type": "boolean"
           }
@@ -2715,8 +2715,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
             "default": false,
             "type": "boolean"
           }
@@ -3913,16 +3913,16 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
-            "default": false,
-            "type": "boolean"
-          },
           "inheritInputAttributes": {
             "title": "Hériter des Attributs d'Entrée",
             "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
             "type": "boolean"
           }
         }
@@ -4016,16 +4016,16 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
-            "default": false,
-            "type": "boolean"
-          },
           "inheritInputAttributes": {
             "title": "Hériter des Attributs d'Entrée",
             "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
             "type": "boolean"
           }
         }

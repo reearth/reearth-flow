@@ -2601,8 +2601,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -2715,8 +2715,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -3913,16 +3913,16 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
-            "default": false,
-            "type": "boolean"
-          },
           "inheritInputAttributes": {
             "title": "继承输入属性",
             "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "default": false,
             "type": "boolean"
           }
         }
@@ -4016,16 +4016,16 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false.",
-            "default": false,
-            "type": "boolean"
-          },
           "inheritInputAttributes": {
             "title": "继承输入属性",
             "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "保留代码空间",
+            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "default": false,
             "type": "boolean"
           }
         }

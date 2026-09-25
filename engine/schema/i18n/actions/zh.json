@@ -961,8 +961,8 @@
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -999,8 +999,8 @@
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -1409,8 +1409,8 @@
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -1451,8 +1451,8 @@
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         },
         "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a resolved coded value keeps the codelist path in a sibling `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other consumer wants it in its output, so it defaults to false."
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },

@@ -128,9 +128,8 @@ pub(super) struct CityGml3Property {
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
     /// # Keep Code Space
-    /// When true, a resolved coded value keeps the codelist path in a sibling
-    /// `{name}_codeSpace` key. Needed to write `codeSpace` back out; no other
-    /// consumer wants it in its output, so it defaults to false.
+    /// When true, a coded value resolved against its codelist also keeps the codelist path, as
+    /// the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     pub(super) keep_code_space: bool,
 }
