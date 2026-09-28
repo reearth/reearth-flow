@@ -419,6 +419,28 @@ graphs:
         valueAttribute: uro:geometrySrcDescLod1
       - attribute: uro:lodType
         valueAttribute: uro:lodType
+  - id: 52afa375-976d-4b18-b1a2-e7517cb15cdf
+    name: AttributeMapperFor3dTilesFlat
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: city_code
+      - attribute: city_name
+        valueAttribute: city_name
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: core:creationDate
+        valueAttribute: core:creationDate
+      - attribute: uro:geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro:lodType
+        valueAttribute: uro:lodType
   - id: 3713b42c-a3af-489f-91a5-d101c26fcaee
     name: AttributeManagerByLod
     type: action
@@ -468,6 +490,33 @@ graphs:
           city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
         }
         file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + ".zip")
+  - id: 1fd62eb9-dc41-4f3c-afe9-2a55fcc49090
+    name: Cesium3DTilesWriterFullAttributes
+    type: action
+    action: Cesium3DTilesWriter
+    with:
+      dracoCompression:
+        enabled:
+          quantizationError: 0.003
+      minZoom: 15
+      maxZoom: 18
+      attachTexture: true
+      output: |
+        let artifact = env.get("workerArtifactPath");
+        let pkg = env.get("__value")["package"];
+        let ft = env.get("__value")["feature_type"].split(":").pop();
+        let lod = env.get("__value").lod;
+        file::join_path(artifact, pkg + "_" + ft + "_lod" + lod + "_full_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let pkg = env.get("__value")["package"];
+        let ft = env.get("__value")["feature_type"].split(":").pop();
+        let lod = env.get("__value").lod;
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        if city_gml.ends_with("_" + pkg) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_" + ft + "_3dtiles_lod" + lod + "_full_attributes.zip")
   - id: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     name: FeatureSorterDmGeometricAttribute
     type: action
@@ -651,7 +700,7 @@ graphs:
     fromPort: schema
     toPort: default
   - id: f0b4c1d5-6a7e-8f9b-2c3d-e456789d9000
-    from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+    from: 52afa375-976d-4b18-b1a2-e7517cb15cdf
     to: 782c6a8d-a772-4238-a32e-32caadbbb91f
     fromPort: default
     toPort: schema
@@ -680,3 +729,18 @@ graphs:
     to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
     fromPort: default
     toPort: default
+  - id: abdd3f83-804b-41b8-af4c-888f2bee9473
+    from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
+    to: 52afa375-976d-4b18-b1a2-e7517cb15cdf
+    fromPort: schema
+    toPort: default
+  - id: 7b98c625-1c61-43e3-9c79-c8d4db490e16
+    from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+    to: 1fd62eb9-dc41-4f3c-afe9-2a55fcc49090
+    fromPort: default
+    toPort: default
+  - id: 429f3c1a-5628-4ce7-9627-98941d0aa68d
+    from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
+    to: 1fd62eb9-dc41-4f3c-afe9-2a55fcc49090
+    fromPort: default
+    toPort: schema

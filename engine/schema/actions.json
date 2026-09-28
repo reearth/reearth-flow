@@ -7805,7 +7805,8 @@
       ],
       "outputPorts": [
         "default",
-        "schema"
+        "schema",
+        "flatSchema"
       ],
       "categories": [
         "PLATEAU"

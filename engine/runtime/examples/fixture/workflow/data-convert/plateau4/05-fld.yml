@@ -242,6 +242,14 @@ graphs:
           schema["uro:scale"] = "";
         }
         schema
+  - id: 49a91818-c76a-4508-8db5-668fde8739ee
+    name: HardcodedFldFlatSchema
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: attributes
+        method: remove
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojector
     type: action
@@ -279,6 +287,35 @@ graphs:
           scale = "_" + scale;
         }
         file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture.zip")
+  - id: 9afb5367-8ced-4cae-b868-74ce295dffc3
+    name: Cesium3DTilesWriterNoTextureFullAttributes
+    type: action
+    action: Cesium3DTilesWriter
+    with:
+      dracoCompression:
+        enabled:
+          quantizationError: 0.01
+      minZoom: 15
+      maxZoom: 18
+      attachTexture: false
+      chunkByAttribute: udxDirs
+      output: |
+        let udx_dirs = env.get("__value")["udxDirs"];
+        udx_dirs.replace("/", "_");
+        file::join_path(env.get("workerArtifactPath"), udx_dirs + "_no_texture_full_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let citygml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        let parts = citygml.split("_op_");
+        let pkg = env.get("__value")["package"];
+        citygml = parts[0];
+        let udx_dirs = env.get("__value")["udxDirs"];
+        udx_dirs.replace("/", "_");
+        let scale = env.get("__value")["__scale"];
+        if scale != "" {
+          scale = "_" + scale;
+        }
+        file::join_path(artifact, citygml + "_op_" + udx_dirs + "_3dtiles" + scale + "_no_texture_full_attributes.zip")
   - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
     name: CreateDictionaryNameDict
     type: action
@@ -390,7 +427,7 @@ graphs:
     fromPort: default
     toPort: default
   - id: f1e2d3c4-b5a6-9788-0fed-cba987654321
-    from: 8dc084cb-14f1-488c-8abe-015a54397d56
+    from: 49a91818-c76a-4508-8db5-668fde8739ee
     to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     fromPort: default
     toPort: schema
@@ -407,5 +444,20 @@ graphs:
   - id: db2b57d8-b2e2-4094-aa82-c76b555fdb60
     from: c24dbf9e-1741-4c61-99bc-618582b1e03b
     to: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
+    fromPort: default
+    toPort: default
+  - id: 300b969f-7553-4ce6-aa35-d3ea5d20ef17
+    from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+    to: 9afb5367-8ced-4cae-b868-74ce295dffc3
+    fromPort: default
+    toPort: default
+  - id: 96a06736-b895-4ca4-b2c1-66e1333c6226
+    from: 8dc084cb-14f1-488c-8abe-015a54397d56
+    to: 9afb5367-8ced-4cae-b868-74ce295dffc3
+    fromPort: default
+    toPort: schema
+  - id: 522378bb-4e38-48e5-84ca-d1ac3860adc3
+    from: 8dc084cb-14f1-488c-8abe-015a54397d56
+    to: 49a91818-c76a-4508-8db5-668fde8739ee
     fromPort: default
     toPort: default

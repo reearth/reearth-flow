@@ -7789,6 +7789,7 @@ Flatten attributes for building feature
 ### Output Ports
 * default
 * schema
+* flatSchema
 ### Category
 * PLATEAU
 

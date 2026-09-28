@@ -185,6 +185,30 @@ graphs:
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
 
+      - id: af9b20b3-3589-4ab8-af68-64e46d821d48
+        name: Cesium3DTilesWriterLod1FullAttributes
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.01
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          skipUnexposedAttributes: true
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value")["package"];
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1_full_attributes.zip")
+
     edges:
       - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9
         from: 6935ea45-2f34-4047-a33d-e8c34416e328
@@ -264,10 +288,20 @@ graphs:
       - id: 12345678-90ab-cdef-1234-567890abcdef
         from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
         to: 674b22f7-ffb7-4594-b569-4c4f780326ce
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
       - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
         to: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
+        fromPort: schema
+        toPort: schema
+      - id: f4b176cd-dfd1-4278-a2ef-3a173ba547bd
+        from: 123e1a65-7cad-4412-9336-91f37694aa08
+        to: af9b20b3-3589-4ab8-af68-64e46d821d48
+        fromPort: default
+        toPort: default
+      - id: 08c10172-2ff1-4eac-b17b-862184433542
+        from: 14468caf-5633-4f5f-82a3-7e55c4a4c80e
+        to: af9b20b3-3589-4ab8-af68-64e46d821d48
         fromPort: schema
         toPort: schema

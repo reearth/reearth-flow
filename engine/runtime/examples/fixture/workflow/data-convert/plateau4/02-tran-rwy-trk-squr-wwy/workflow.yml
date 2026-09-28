@@ -202,6 +202,29 @@ graphs:
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
 
+      - id: d207eb0c-369b-4857-bb27-a9fecd710aab
+        name: Cesium3DTilesWriterLod3FullAttributes
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: true
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod3_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value").__package;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3_full_attributes.zip")
+
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
         type: action
@@ -269,8 +292,68 @@ graphs:
             - feature_type
           order: ascending
 
+      - id: fe348a50-7831-4fb6-ad68-791c42e995ea
+        name: FeatureFilterMVTLod0
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").__lod == "0"
+              outputPort: lod0
+
       - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
         name: MVTWriter
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value").__package;
+            let lod = env.get("__value").__lod;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_mvt_lod" + lod + ".zip")
+          skipUnexposedAttributes: true
+          colonToUnderscore: true
+
+      - id: 7c2b9cf2-c194-4c83-b801-f5103ebe2e02
+        name: MVTWriterFullAttributes
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod + "_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            let pkg = env.get("__value").__package;
+            let lod = env.get("__value").__lod;
+            let suffix = "_" + pkg;
+            if city_gml.ends_with(suffix) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_mvt_lod" + lod + "_full_attributes.zip")
+          skipUnexposedAttributes: true
+          colonToUnderscore: true
+
+      - id: 54044764-a5c7-4211-aa49-b91498a91c03
+        name: MVTWriterLod0
         type: action
         action: MVTWriter
         with:
@@ -490,10 +573,10 @@ graphs:
         to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         fromPort: curve
         toPort: default
-      # FeatureSorterPreMVT -> MVTWriter
+      # FeatureSorterPreMVT -> FeatureFilterMVTLod0
       - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
         from: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
-        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        to: fe348a50-7831-4fb6-ad68-791c42e995ea
         fromPort: default
         toPort: default
       # DmGeometricAttribute flow: LodSplitterWithDM -> AttributeManagerByDmGeometricAttribute
@@ -524,13 +607,13 @@ graphs:
       - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
       # AttributeFlattener -> MVTWriter (schema)
       - id: 5c8ab813-5380-4c74-b1e4-bc60dab21020
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 7a17c4f9-dd4d-44b0-936c-50c394272016
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
       # AttributeFlattener -> AttributeManagerDmGeometricAttributeDefault (schema)
       - id: c1080814-9c4f-4583-b2d4-b4c6a06577a5
@@ -543,4 +626,39 @@ graphs:
         from: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
         to: d4e5f6a7-b8c9-0123-def1-234567890123
         fromPort: default
+        toPort: schema
+      - id: ca5b20be-ec29-48ee-ae6f-aeaddd8b56c5
+        from: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+        to: d207eb0c-369b-4857-bb27-a9fecd710aab
+        fromPort: default
+        toPort: default
+      - id: 63190e67-116b-471f-a96d-87259f806b9e
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: d207eb0c-369b-4857-bb27-a9fecd710aab
+        fromPort: schema
+        toPort: schema
+      - id: 9ca6d165-93bd-42c8-9d9b-1fdf188ccf33
+        from: fe348a50-7831-4fb6-ad68-791c42e995ea
+        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        fromPort: unfiltered
+        toPort: default
+      - id: 1e73b58b-d2a3-4135-bfba-f4bf76b90d07
+        from: fe348a50-7831-4fb6-ad68-791c42e995ea
+        to: 54044764-a5c7-4211-aa49-b91498a91c03
+        fromPort: lod0
+        toPort: default
+      - id: 6d4ce433-a3ef-492e-8669-af1e369c8dfa
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 54044764-a5c7-4211-aa49-b91498a91c03
+        fromPort: schema
+        toPort: schema
+      - id: a5b51840-fd84-4566-b29c-15ea225ddf50
+        from: fe348a50-7831-4fb6-ad68-791c42e995ea
+        to: 7c2b9cf2-c194-4c83-b801-f5103ebe2e02
+        fromPort: unfiltered
+        toPort: default
+      - id: ce0bdafb-c46a-413a-a031-d26a0c8282e7
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 7c2b9cf2-c194-4c83-b801-f5103ebe2e02
+        fromPort: schema
         toPort: schema

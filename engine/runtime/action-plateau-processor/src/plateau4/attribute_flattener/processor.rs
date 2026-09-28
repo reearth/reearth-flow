@@ -39,6 +39,7 @@ static DM_GEOMETRIC_ATTRS: &[&str] = &[
 ];
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
+static FLAT_SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("flatSchema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
         ("meshcode".to_string(), AttributeValue::default_string()),
@@ -104,7 +105,11 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![
+            DEFAULT_PORT.clone(),
+            SCHEMA_PORT.clone(),
+            FLAT_SCHEMA_PORT.clone(),
+        ]
     }
 
     fn build(
@@ -794,6 +799,33 @@ impl AttributeFlattener {
         feature
     }
 
+    /// Schema without the nested `attributes` column, reduced further by `FLAT_SCHEMA_ATTRIBUTES`.
+    fn generate_flat_schema_feature(&self, feature_type_key: &str) -> Feature {
+        let mut feature = self.generate_schema_feature(feature_type_key);
+        let attributes = feature.attributes_mut();
+        attributes.shift_remove(&Attribute::new("attributes".to_string()));
+        if let Some(flat) = super::constants::FLAT_SCHEMA_ATTRIBUTES.get(feature_type_key) {
+            let definitions = &self.flattener.risk_to_attribute_definitions;
+            let kept_risk_keys: HashSet<&str> = flat
+                .risk_attributes
+                .iter()
+                .filter_map(|(package, suffixes)| {
+                    definitions.get(*package).map(|defs| (defs, *suffixes))
+                })
+                .flat_map(|(defs, suffixes)| {
+                    defs.keys().map(String::as_str).filter(move |name| {
+                        suffixes.is_empty() || suffixes.iter().any(|s| name.ends_with(s))
+                    })
+                })
+                .collect();
+            attributes.retain(|key, _| {
+                let key = key.as_ref();
+                flat.attributes.contains(&key) || kept_risk_keys.contains(key)
+            });
+        }
+        feature
+    }
+
     fn flatten_feature(&mut self, mut feature: Feature) -> Result<Feature, BoxedError> {
         let Some(AttributeValue::Map(citygml_attributes)) = feature.remove("cityGmlAttributes")
         else {
@@ -989,6 +1021,12 @@ impl Processor for AttributeFlattener {
                 &ctx,
                 feature,
                 SCHEMA_PORT.clone(),
+            ));
+            let flat_feature = self.generate_flat_schema_feature(feature_type_key);
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                flat_feature,
+                FLAT_SCHEMA_PORT.clone(),
             ));
         }
         Ok(())
@@ -1618,5 +1656,97 @@ mod tests {
         assert!(schema
             .attributes
             .contains_key(&Attribute::new("bldg:usage".to_string())));
+    }
+
+    fn schema_keys(feature: &Feature) -> Vec<String> {
+        feature
+            .attributes
+            .keys()
+            .map(|k| k.as_ref().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn test_flat_schema_reduces_bldg_attributes() {
+        let attrs = citygml_attrs_from_json(
+            r#"{
+            "bldg:usage": "住宅",
+            "bldg:measuredHeight": 7.8,
+            "uro:BuildingIDAttribute": [{"uro:buildingID": "13363-bldg-5013"}],
+            "uro:BuildingDetailAttribute": [{"uro:landUseType": "住宅用地", "uro:surveyYear": "2022"}],
+            "uro:RiverFloodingRiskAttribute": [{
+                "uro:description": "荒川水系荒川",
+                "uro:adminType": "国",
+                "uro:scale": "L2（想定最大規模）",
+                "uro:rank": "0.5m以上3m未満",
+                "uro:rank_code": "2",
+                "uro:depth": 1.2,
+                "uro:duration": 3.0
+            }],
+            "uro:ReservoirFloodingRiskAttribute": [{"uro:description": "ため池", "uro:rank": "0.5m未満"}],
+            "uro:LandSlideRiskAttribute": [{
+                "uro:description": "急傾斜地の崩落",
+                "uro:areaType": "警戒区域",
+                "uro:areaType_code": "1"
+            }],
+            "gen:genericAttribute": [{"type": "string", "name": "大字・町コード", "value": "2"}]
+        }"#,
+        );
+        let feature = create_test_feature("b1", "bldg:Building", "bldg", attrs, "m.gml");
+        let mut flattener = AttributeFlattener {
+            filter_existing_flatten_attributes: true,
+            ..Default::default()
+        };
+        let _ = flattener.flatten_feature(feature).unwrap();
+
+        let full = schema_keys(&flattener.generate_schema_feature("bldg/bldg:Building"));
+        let flat = schema_keys(&flattener.generate_flat_schema_feature("bldg/bldg:Building"));
+
+        let expected_kept = [
+            "gml_id",
+            "_lod",
+            "bldg:usage",
+            "bldg:measuredHeight",
+            "uro:BuildingDetailAttribute_uro:landUseType",
+            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水ランク",
+            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水ランクコード",
+            "土砂災害リスク_急傾斜地の崩落_区域区分",
+            "土砂災害リスク_急傾斜地の崩落_区域区分コード",
+        ];
+        for key in expected_kept {
+            assert!(flat.iter().any(|k| k == key), "{key} should be kept");
+        }
+        let expected_dropped = [
+            "attributes",
+            "uro:BuildingIDAttribute_uro:buildingID",
+            "uro:BuildingDetailAttribute_uro:surveyYear",
+            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水深",
+            "荒川水系荒川（国管理区間）_L2（想定最大規模）_浸水継続時間",
+            "ため池浸水想定_ため池_浸水ランク",
+            "大字・町コード",
+        ];
+        for key in expected_dropped {
+            assert!(
+                full.iter().any(|k| k == key),
+                "{key} should be in full schema"
+            );
+            assert!(!flat.iter().any(|k| k == key), "{key} should be dropped");
+        }
+
+        let full_order: Vec<&String> = full.iter().filter(|k| flat.contains(k)).collect();
+        assert_eq!(full_order, flat.iter().collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_flat_schema_drops_only_nested_attributes_for_other_types() {
+        let attrs = citygml_attrs_from_json(r#"{"tran:function": "道路"}"#);
+        let feature = create_test_feature("t1", "tran:Road", "tran", attrs, "m.gml");
+        let mut flattener = AttributeFlattener::default();
+        let _ = flattener.flatten_feature(feature).unwrap();
+
+        let mut full = schema_keys(&flattener.generate_schema_feature("tran/tran:Road"));
+        let flat = schema_keys(&flattener.generate_flat_schema_feature("tran/tran:Road"));
+        full.retain(|k| k != "attributes");
+        assert_eq!(full, flat);
     }
 }

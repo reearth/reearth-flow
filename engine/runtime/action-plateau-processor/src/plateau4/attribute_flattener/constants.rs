@@ -15,6 +15,64 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
     serde_json::from_str(data).unwrap()
 });
 
+/// Attributes kept on the `flatSchema` port for feature types with a reduced flat attribute set.
+pub(super) struct FlatSchemaAttributes {
+    pub(super) attributes: &'static [&'static str],
+    /// Risk package and the attribute name suffixes kept for it (empty keeps all).
+    pub(super) risk_attributes: &'static [(&'static str, &'static [&'static str])],
+}
+
+const FLOOD_RANK_SUFFIXES: &[&str] = &["_浸水ランク", "_浸水ランクコード"];
+
+pub(super) static FLAT_SCHEMA_ATTRIBUTES: Lazy<HashMap<&'static str, FlatSchemaAttributes>> =
+    Lazy::new(|| {
+        HashMap::from([(
+            "bldg/bldg:Building",
+            FlatSchemaAttributes {
+                attributes: &[
+                    "meshcode",
+                    "feature_type",
+                    "city_code",
+                    "city_name",
+                    "gml_id",
+                    "_lod",
+                    "_lod_type",
+                    "_x",
+                    "_y",
+                    "_xmin",
+                    "_xmax",
+                    "_ymin",
+                    "_ymax",
+                    "_zmin",
+                    "_zmax",
+                    "gml:name",
+                    "bldg:class",
+                    "bldg:usage",
+                    "bldg:yearOfConstruction",
+                    "bldg:measuredHeight",
+                    "bldg:storeysAboveGround",
+                    "bldg:storeysBelowGround",
+                    "bldg:address",
+                    "uro:BuildingDetailAttribute_uro:buildingStructureType",
+                    "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+                    "uro:BuildingDetailAttribute_uro:urbanPlanType",
+                    "uro:BuildingDetailAttribute_uro:areaClassificationType",
+                    "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
+                    "uro:BuildingDetailAttribute_uro:landUseType",
+                    "uro:LargeCustomerFacilityAttribute_uro:name",
+                    "uro:lod1HeightType",
+                ],
+                risk_attributes: &[
+                    ("fld", FLOOD_RANK_SUFFIXES),
+                    ("tnm", FLOOD_RANK_SUFFIXES),
+                    ("htd", FLOOD_RANK_SUFFIXES),
+                    ("ifld", FLOOD_RANK_SUFFIXES),
+                    ("lsld", &[]),
+                ],
+            },
+        )])
+    });
+
 #[cfg(test)]
 mod tests {
     use super::*;
