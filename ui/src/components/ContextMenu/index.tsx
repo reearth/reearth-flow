@@ -1,4 +1,4 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 
 import type { KeyBinding, Node } from "@flow/types";
 
@@ -48,8 +48,7 @@ type ContextMenuItemProps = {
 };
 
 export type ContextMenuItemType =
-  | { type: "action"; props: ContextMenuItemProps }
-  | { type: "separator" };
+  { type: "action"; props: ContextMenuItemProps } | { type: "separator" };
 
 const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   label,

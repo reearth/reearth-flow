@@ -1,8 +1,7 @@
 import * as Y from "yjs";
 
 import { ProjectCorruptionError } from "@flow/errors";
-import { Workflow } from "@flow/types";
-import type { Edge, Node, NodeData, NodeType } from "@flow/types";
+import type { Workflow, Edge, Node, NodeData, NodeType } from "@flow/types";
 import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 import type { YWorkflow, YEdge, YNode, YNodesMap, YEdgesMap } from "../types";

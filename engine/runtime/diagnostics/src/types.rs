@@ -78,7 +78,8 @@ pub struct Diagnostic {
     pub message: String,
     pub help: Option<String>,
     pub source_span: Option<SourceSpan>,
-    /// `Some` for finish()-time summaries; `None` for per-feature/fatal diagnostics.
+    /// `Some` for finish()-time summaries and for a node's terminal fatal, which counts the
+    /// occurrences of its own code; `None` for a per-feature diagnostic reported on its own.
     pub aggregated: Option<AggregateInfo>,
 }
 

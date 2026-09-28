@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import { Asset, WorkflowVariable } from "@flow/types";
+import type { Asset, WorkflowVariable } from "@flow/types";
 
 export type DialogOptions = "assets" | "cms" | undefined;
 

@@ -14,9 +14,8 @@ import {
   DropdownMenuTrigger,
   IconButton,
 } from "@flow/components";
-import ThreeJSViewer, {
-  type ThreeJSViewerRef,
-} from "@flow/components/visualizations/ThreeJS";
+import ThreeJSViewer from "@flow/components/visualizations/ThreeJS";
+import type { ThreeJSViewerRef } from "@flow/components/visualizations/ThreeJS";
 import { useT } from "@flow/lib/i18n";
 import type { JobState } from "@flow/stores";
 

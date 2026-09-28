@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
-import { Doc, Map as YMap } from "yjs";
+import type { Doc } from "yjs";
+import { Map as YMap } from "yjs";
 
 import {
   Button,

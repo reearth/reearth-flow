@@ -18,6 +18,8 @@ use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 use super::building_usage_attribute_strategy::Plateau6BuildingUsageStrategy;
 use super::transportation_xlink_strategy::Plateau6TransportationXlinkStrategy;
 use super::unmatched_xlink_strategy::Plateau6XlinkStrategy;
+#[cfg(feature = "new-geometry")]
+use super::unshared_edge_extractor::UnsharedEdgeExtractorFactory;
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
@@ -40,6 +42,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
             &PLATEAU6,
             &Plateau6TransportationXlinkStrategy,
         )),
+        // Reads geometry the legacy world does not carry, so it only exists in the
+        // new-geometry build, which is the only one PLATEAU 6 workflows run under.
+        #[cfg(feature = "new-geometry")]
+        Box::new(UnsharedEdgeExtractorFactory::new(&PLATEAU6)),
     ];
     factories
         .into_iter()

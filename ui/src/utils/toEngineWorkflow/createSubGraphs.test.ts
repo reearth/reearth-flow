@@ -121,13 +121,11 @@ describe("createSubGraphs", () => {
     ];
 
     (convertNodes as any).mockImplementation((nodes: Node[]) =>
-      nodes.map(
-        (node): EngineReadyNode => ({
-          id: node.id,
-          name: node.data.officialName ?? "undefined",
-          type: node.type ?? "undefined",
-        }),
-      ),
+      nodes.map((node): EngineReadyNode => ({
+        id: node.id,
+        name: node.data.officialName ?? "undefined",
+        type: node.type ?? "undefined",
+      })),
     );
     (convertEdges as any).mockImplementation(
       (_enabledNodeIds: Set<string>, edges: Edge[]) =>

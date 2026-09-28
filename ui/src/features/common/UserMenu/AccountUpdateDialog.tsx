@@ -26,15 +26,14 @@ import {
   SelectValue,
 } from "@flow/components";
 import { useUser } from "@flow/lib/gql";
-import { AvailableLanguage, localesWithLabel, useT } from "@flow/lib/i18n";
+import type { AvailableLanguage } from "@flow/lib/i18n";
+import { localesWithLabel, useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import { Theme, useTheme } from "@flow/lib/theme";
+import type { Theme } from "@flow/lib/theme";
+import { useTheme } from "@flow/lib/theme";
 
 type Errors =
-  | "failed"
-  | "passwordNotSame"
-  | "passwordFailed"
-  | "langUpdateFailed";
+  "failed" | "passwordNotSame" | "passwordFailed" | "langUpdateFailed";
 
 type Props = {
   isOpen: boolean;

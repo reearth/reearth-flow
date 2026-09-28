@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { LoadingSplashscreen } from "@flow/components";
 import ErrorPage from "@flow/components/errors/ErrorPage";

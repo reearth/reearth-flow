@@ -2,12 +2,12 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useCurrentProject } from "@flow/stores";
-import {
+import type {
   WorkflowVariable as WorkflowVariableType,
   AnyWorkflowVariable,
 } from "@flow/types";
 
-import { DialogOptions } from "../../types";
+import type { DialogOptions } from "../../types";
 
 export default ({
   onUserFocusedElement,

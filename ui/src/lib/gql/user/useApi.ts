@@ -1,11 +1,11 @@
-import {
+import type {
   GetMe,
   GetMeAndWorkspaces,
   SearchUser,
   UpdateMe,
 } from "@flow/types/user";
 
-import { UpdateMeInput } from "../__gen__/graphql";
+import type { UpdateMeInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

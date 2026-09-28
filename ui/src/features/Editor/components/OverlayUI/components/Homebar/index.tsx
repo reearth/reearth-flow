@@ -4,7 +4,7 @@ import { memo } from "react";
 import { ButtonWithTooltip } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser } from "@flow/types";
+import type { AwarenessUser } from "@flow/types";
 
 import {
   Breadcrumb,

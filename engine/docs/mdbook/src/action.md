@@ -2175,7 +2175,7 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 ### Type
 * processor
 ### Description
-Replace Feature Geometry with Center Point
+Replaces a feature's geometry with a single point at the centre of the space it occupies. Geometry with no extent, or whose parts sit in different coordinate frames, cannot be reduced to one point and is reported instead.
 ### Parameters
 ```json
 {
@@ -2185,7 +2185,7 @@ Replace Feature Geometry with Center Point
   "properties": {
     "mode": {
       "description": "The method used to compute the replacement center point.",
-      "default": "centerOfGravity",
+      "default": "boundingBoxCenter",
       "allOf": [
         {
           "$ref": "#/definitions/CenterPointMode"
@@ -2195,27 +2195,13 @@ Replace Feature Geometry with Center Point
   },
   "definitions": {
     "CenterPointMode": {
-      "description": "Method used to compute the center point of a geometry.",
+      "description": "Method used to compute the center point of a geometry.\n\nCentre of gravity and pole of inaccessibility are only offered where the geometry layer can compute them, so that the choices a workflow is shown are exactly the choices it can make.",
       "oneOf": [
-        {
-          "description": "Computes the centroid (center of gravity) of the geometry.",
-          "type": "string",
-          "enum": [
-            "centerOfGravity"
-          ]
-        },
         {
           "description": "Computes the center of the geometry's bounding box.",
           "type": "string",
           "enum": [
             "boundingBoxCenter"
-          ]
-        },
-        {
-          "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
-          "type": "string",
-          "enum": [
-            "anyInsidePoint"
           ]
         }
       ]
@@ -2271,7 +2257,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     },
     "targetTileSize": {
       "title": "Target Tile Size",
-      "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
+      "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB).",
       "type": [
         "integer",
         "null"
@@ -2281,9 +2267,15 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     },
     "dracoCompression": {
       "title": "Draco Compression",
-      "description": "Whether to compress mesh geometry with Draco. Defaults to true.",
-      "default": true,
-      "type": "boolean"
+      "description": "Whether to compress mesh geometry with Draco, and how precisely. Defaults to enabled at the encoder's default resolution.",
+      "default": {
+        "enabled": {}
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/DracoCompression"
+        }
+      ]
     },
     "computeFlatNormal": {
       "title": "Compute Flat Normals",
@@ -2369,6 +2361,46 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     }
   },
   "definitions": {
+    "DracoCompression": {
+      "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+      "oneOf": [
+        {
+          "title": "Disabled",
+          "description": "Write mesh geometry uncompressed.",
+          "type": "string",
+          "enum": [
+            "disabled"
+          ]
+        },
+        {
+          "title": "Enabled",
+          "description": "Compress mesh geometry with Draco.",
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "object",
+              "properties": {
+                "quantizationError": {
+                  "title": "Quantization Error",
+                  "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used.",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "format": "double",
+                  "exclusiveMinimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "TextureCodec": {
       "title": "Texture Codec",
       "description": "Texture image codec for the new-geometry writer's atlas pages.",
@@ -2419,6 +2451,213 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
 ### Output Ports
 ### Category
 * Output
+
+## CityGML 2 Reader
+### Type
+* source
+### Description
+Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within each document.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGML 2 Reader Parameters",
+  "description": "Configuration for reading a CityGML 2.0 document as 3D city models.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "extractTags": {
+      "title": "Extract Tags",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "flattenMeasureTypes": {
+      "title": "Flatten Measure Types",
+      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* features
+### Category
+* Input
+
+## CityGML 3 Reader
+### Type
+* source
+### Description
+Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within each document.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGML 3 Reader Parameters",
+  "description": "Configuration for reading a CityGML 3.0 document as 3D city models.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "extractTags": {
+      "title": "Extract Tags",
+      "description": "Feature type names to flatten as individual features. Accepts qualified (`bldg:Building`), local (`Building`), or Clark notation (`{http://…}Building`). Empty means emit all top-level city objects unchanged.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "keepAttributes": {
+      "title": "Keep Attributes",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cityGmlAttributesKey": {
+      "title": "City GML Attributes Key",
+      "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* features
+### Category
+* Input
 
 ## CityGML Reader
 ### Type
@@ -3569,7 +3808,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
 ### Type
 * processor
 ### Description
-Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
+Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it. Coordinate content the file writes but that cannot be read as geometry leaves the city object without that geometry, and each such site is reported on the rejected port.
 ### Parameters
 ```json
 {
@@ -3655,6 +3894,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Feature
 
@@ -4814,216 +5054,132 @@ Filters CityGML features by their feature type.
 ### Type
 * processor
 ### Description
-Writes features from various formats
+Writes the features it receives to files, grouping them by the evaluated output path. Emits one feature per file written, carrying that file's path and row count, in place of the features it consumed.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature Writer Parameters",
-  "description": "Configuration for writing features to different file formats.",
-  "oneOf": [
-    {
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "csv"
-          ]
-        },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
+  "description": "Configures the file format written and where each file goes.",
+  "type": "object",
+  "required": [
+    "format",
+    "output"
+  ],
+  "properties": {
+    "format": {
+      "title": "Format",
+      "description": "The file format to write, with the settings that format takes. Every format writes attribute values only; geometry is not included in the output.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureWriterFormat"
         }
-      }
+      ]
     },
-    {
+    "output": {
+      "title": "Output Path",
+      "description": "Where to write, relative to the job's output directory. Evaluated once per feature, so an expression over the feature's attributes splits the stream into one file per distinct result.",
       "type": "object",
+      "format": "code",
       "required": [
-        "format",
-        "output"
+        "type",
+        "value"
       ],
       "properties": {
-        "format": {
+        "type": {
           "type": "string",
           "enum": [
-            "tsv"
+            "flowExpr",
+            "string"
           ]
         },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    {
-      "title": "JsonWriter Parameters",
-      "description": "Configuration for writing features in JSON format with optional custom conversion.",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "json"
-          ]
-        },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        },
-        "converter": {
-          "type": [
-            "object",
-            "null"
-          ],
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    {
-      "title": "CityGmlWriter Parameters",
-      "description": "Configuration for writing features in CityGML 2.0 format.",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        },
-        "output": {
-          "title": "Output path",
-          "type": "object",
-          "format": "code",
-          "required": [
-            "type",
-            "value"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flowExpr",
-                "string"
-              ]
-            },
-            "value": {
-              "type": "string"
-            }
-          }
-        },
-        "lodFilter": {
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
-          "default": null,
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          }
-        },
-        "epsgCode": {
-          "description": "EPSG code for coordinate reference system",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "prettyPrint": {
-          "description": "Whether to format output with indentation (default: true)",
-          "default": true,
-          "type": [
-            "boolean",
-            "null"
-          ]
+        "value": {
+          "type": "string"
         }
       }
     }
-  ]
+  },
+  "definitions": {
+    "FeatureWriterFormat": {
+      "title": "Format",
+      "description": "The file format written, and the settings belonging to it.",
+      "oneOf": [
+        {
+          "title": "CSV",
+          "description": "Comma-separated values. The column list comes from the first feature written to a file, so every later feature must carry those same attributes.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "csv"
+              ]
+            }
+          }
+        },
+        {
+          "title": "TSV",
+          "description": "Tab-separated values, with the same column rules as CSV.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "tsv"
+              ]
+            }
+          }
+        },
+        {
+          "title": "JSON",
+          "description": "An array of objects, one per feature, holding its attribute values.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "json"
+              ]
+            },
+            "converter": {
+              "title": "Converter",
+              "description": "Builds the JSON document from all the features destined for one file, replacing the default array of attribute objects.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
 }
 ```
 ### Input Ports
@@ -5785,70 +5941,67 @@ Serializes a feature's geometry to a compressed representation and stores it in 
 ### Type
 * processor
 ### Description
-Filter Features by Geometry Type
+Routes each feature to the output port matching its geometry, selected by presence, by geometry family, or by exact type.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Filter Parameters",
-  "description": "Configure how to filter features based on their geometry type",
-  "oneOf": [
-    {
-      "title": "No Geometry",
-      "description": "Separates the features that carry no geometry at all from the ones that do.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
+  "description": "Selects which aspect of a feature's geometry decides the port it leaves by.",
+  "type": "object",
+  "required": [
+    "filterType"
+  ],
+  "properties": {
+    "filterType": {
+      "title": "Filter Type",
+      "description": "The aspect of the geometry that selects the output port. A feature no port claims leaves by `unfiltered`.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FilterType"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "FilterType": {
+      "title": "Filter Type",
+      "description": "The aspect of the geometry that selects the output port.",
+      "oneOf": [
+        {
+          "title": "No Geometry",
+          "description": "Separates the features that carry no geometry at all from the ones that do.",
           "type": "string",
           "enum": [
             "none"
           ]
-        }
-      }
-    },
-    {
-      "title": "Geometry Type",
-      "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
+        },
+        {
+          "title": "Geometry Type",
+          "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
           "type": "string",
           "enum": [
             "geometryType"
           ]
-        }
-      }
-    },
-    {
-      "title": "Detailed Geometry Type",
-      "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
+        },
+        {
+          "title": "Detailed Geometry Type",
+          "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
           "type": "string",
           "enum": [
             "detailedGeometryType"
           ]
         }
-      }
+      ]
     }
-  ]
+  }
 }
 ```
 ### Input Ports
 * features
 ### Output Ports
 * unfiltered
-* none
+* no-geometry
 * point
 * curve
 * surface
@@ -5868,7 +6021,7 @@ Filter Features by Geometry Type
 * multi-solid
 * aggregate
 ### Category
-* Geometry
+* Filter
 
 ## Geometry Identifier
 ### Type
@@ -11299,6 +11452,96 @@ Detect unmatched Xlinks for PLATEAU
 ### Category
 * PLATEAU
 
+## PLATEAU6.UnsharedEdgeExtractor
+### Type
+* processor
+### Description
+Finds the edges of a triangulated surface that no neighboring triangle shares, such as the surface's outline and the rim of any gap in the mesh, and emits each as a line carrying the attributes of its triangle. Edges are shared only when their endpoints match exactly.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Unshared Edge Extractor Parameters",
+  "description": "Which faces are matched against each other, and how exactly their endpoints have to agree.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "coordinatePrecision": {
+      "title": "Coordinate Precision",
+      "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CoordinatePrecision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "CoordinatePrecision": {
+      "description": "Decimal places per axis. An axis left out is not rounded.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "title": "X",
+          "description": "Decimal places the first horizontal coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "y": {
+          "title": "Y",
+          "description": "Decimal places the second horizontal coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "z": {
+          "title": "Z",
+          "description": "Decimal places the vertical coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* unshared
+* rejected
+### Category
+* PLATEAU
+
 ## Planarity Filter
 ### Type
 * processor
@@ -12352,6 +12595,18 @@ Filters candidate features by their spatial relationship to filter geometries, t
           "type": "null"
         }
       ]
+    },
+    "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
     }
   },
   "definitions": {
@@ -12985,7 +13240,7 @@ Removes Z-coordinates from 3D geometries to produce 2D output.
 ### Type
 * processor
 ### Description
-Count Geometry Vertices to Attribute
+Writes the number of vertices a geometry has into an attribute. A ring's closing vertex repeats its first one and is not counted, so a triangle counts three.
 ### Parameters
 ```json
 {
@@ -13624,10 +13879,15 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "dracoCompression": {
-      "description": "Apply Draco compression to the geometry",
-      "type": [
-        "boolean",
-        "null"
+      "title": "Draco Compression",
+      "description": "Whether to compress mesh geometry with Draco, and how precisely. Defaults to enabled at the encoder's default resolution.",
+      "default": {
+        "enabled": {}
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/DracoCompression"
+        }
       ]
     },
     "schemaKey": {
@@ -13635,6 +13895,48 @@ Writes 3D features to GLTF format with optional texture attachment
       "type": [
         "string",
         "null"
+      ]
+    }
+  },
+  "definitions": {
+    "DracoCompression": {
+      "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+      "oneOf": [
+        {
+          "title": "Disabled",
+          "description": "Write mesh geometry uncompressed.",
+          "type": "string",
+          "enum": [
+            "disabled"
+          ]
+        },
+        {
+          "title": "Enabled",
+          "description": "Compress mesh geometry with Draco.",
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "object",
+              "properties": {
+                "quantizationError": {
+                  "title": "Quantization Error",
+                  "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used.",
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "format": "double",
+                  "exclusiveMinimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }

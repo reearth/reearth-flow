@@ -1,6 +1,6 @@
 import { Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { WorkflowVariable } from "@flow/types";
+import type { WorkflowVariable } from "@flow/types";
 
 type Props = {
   variable: WorkflowVariable;

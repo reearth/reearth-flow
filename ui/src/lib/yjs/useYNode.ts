@@ -1,4 +1,5 @@
-import { Dispatch, SetStateAction, useCallback, useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useRef } from "react";
 import * as Y from "yjs";
 
 import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";

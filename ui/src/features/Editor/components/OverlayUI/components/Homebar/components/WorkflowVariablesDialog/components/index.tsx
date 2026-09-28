@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, VarType } from "@flow/types";
+import type { AnyWorkflowVariable, VarType } from "@flow/types";
 import { removeWhiteSpace } from "@flow/utils";
 
 export const NameInput: React.FC<{

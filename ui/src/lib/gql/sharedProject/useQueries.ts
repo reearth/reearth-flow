@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 
-import { ShareProjectInput, UnshareProjectInput } from "../__gen__/graphql";
+import type {
+  ShareProjectInput,
+  UnshareProjectInput,
+} from "../__gen__/graphql";
 import { toProject } from "../convert";
 import { ProjectQueryKeys } from "../project/useQueries";
 

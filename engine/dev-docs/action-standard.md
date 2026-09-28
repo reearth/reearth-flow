@@ -144,9 +144,11 @@ A plain `enum` with no doc comments produces no per-variant descriptions and sho
 
 **Keep mode enums inside a property — never make the parameter block itself a `oneOf`.** A Rust enum used *as the whole parameter type* (`#[serde(tag = "...")] enum FooParam`) generates a schema whose root is a `oneOf` rather than an object with `properties`. Translation cannot reach the variants: `apply_parameter_i18n` (`cli/src/utils.rs`) patches the root's own title/description, root `properties[*]`, `definitions[*].properties[*]`, and `definitions[*].oneOf|anyOf` variants — and that last traversal is scoped *inside* the `definitions` object, so a `oneOf` sitting at the schema root is never visited.
 
-The failure is quiet, which is what makes it dangerous: the block's own title and description still translate via the root, so the action looks localised while the mode labels the user actually chooses between stay in English permanently. `Geometry Filter` is in this state today — its Japanese entry has a translated block header and no variant entries at all.
+The failure is quiet, which is what makes it dangerous: the block's own title and description still translate via the root, so the action looks localised while the mode labels the user actually chooses between stay in English permanently.
 
-Give the action a normal parameter object with the enum as one property instead. When a mode needs its own sub-parameters, use a `#[serde(tag = "type")]` enum *as a property value* — the variants carry their own fields, the user only sees the fields belonging to the mode they chose, and the whole thing still translates.
+Give the action a normal parameter object with the enum as one property instead. When a mode needs its own sub-parameters, use a `#[serde(tag = "type")]` enum *as a property value* — the variants carry their own fields, and the user only sees the fields belonging to the mode they chose.
+
+**Moving the enum into `definitions` is necessary but was not, on its own, sufficient — read this before trusting a past review on it.** Until 2026-09-11 the i18n pass identified a variant by a **top-level `enum` key** on the variant object, and `schemars` emits that only for a variant carrying no fields. Every variant that carried sub-parameters — the entire reason to reach for the idiom — was invisible to both the scaffold and the applier, so the recommended fix silently delivered nothing for exactly the case it was recommended for. `Coordinate Frame Reprojector` shipped in that state: its `crs` variant and all three `BasePoint` variants were untranslatable, and `BasePoint` had no i18n entry at all. Both halves are fixed (`enum_variant_key` in `cli/src/utils.rs` now recognises internally- and externally-tagged variants, and `PropertyI18n` gained a nested `properties` map so a variant's own fields translate too), so the idiom now does what this section says. The lesson generalises: a translation path is not working because the schema has the recommended shape — check that the key actually appears in `schema/i18n/actions/ja.json`.
 
 **Single-variant enums** are a design smell — they present the user with a parameter that has no real choice. If only one variant exists and no others are planned, remove the parameter and hard-code the behavior. If additional variants are planned but not yet implemented, keep the `oneOf` and note the intent in a code comment (`// TODO: add X, Y variants`).
 
@@ -318,6 +320,9 @@ ActionName
   impl:    [parameters declared but never applied; enum variants with no branch;
               defaults or "when omitted" text the code contradicts; declared
               ports never emitted]
+  diag:    [fallible paths with no registry code and no stated reason to stay
+              `internal.*` (§9); a reported-and-skipped failure that leaves
+              partial state behind; user-facing text built with `{:?}`]
   name:    [proposed space-case name if different]
   desc:    [issue if any]
   params:  [list issues by param name; flag if count exceeds 8 without justification (§3.5)]
@@ -326,7 +331,7 @@ ActionName
   tags:    [missing cross-cutting tag | tag that restates the category (§6)]
 ```
 
-**Every line except `impl:` can be answered from the generated `actions.json`. `impl:` cannot.** It is the only one that requires opening the code, and it is therefore the only one that catches a description which is well-written and false, or a parameter the UI offers and the code ignores. An action marked clean without `impl:` having been worked through has been *read*, not checked.
+**Every line except `impl:` and `diag:` can be answered from the generated `actions.json`. Those two cannot.** They are the ones that require opening the code, and therefore the only ones that catch a description which is well-written and false, a parameter the UI offers and the code ignores, or a failure the user is given no way to handle. An action marked clean without `impl:` and `diag:` having been worked through has been *read*, not checked.
 
 If an action is clean on all dimensions, write: `ActionName — OK`
 
@@ -334,9 +339,127 @@ If an action is clean on all dimensions, write: `ActionName — OK`
 
 ---
 
+## 9. Diagnostics
+
+How an action reports failure is part of its user-facing surface: it decides whether a user can
+see what went wrong, and whether they have any way to carry on. None of the four points below
+can be discovered by reading an action in isolation — each is a property of the runtime around
+it, and the call site looks unremarkable in every case.
+
+**A plain `Err` returned to the runtime is unclassifiable.** The runtime blanket-wraps any such
+error as `internal.unclassified` and stamps it Fatal. Nothing at the call site says so — the code
+reads like ordinary error handling — so this has to be checked deliberately. Ask of every fallible
+path: *is this failure the user's to recover from?* If it is, it needs a registry code raised
+through `ctx.report`, not a plain `Err`.
+
+This covers **every entry point the runtime calls**, not just `process()`:
+
+| Entry point | Classifiable? |
+|---|---|
+| Processor / Sink `process()`, `finish()` | Yes — `ctx.report`, `ctx.warn`, `report_drop` |
+| Source `start()` | Yes — same handle; `CSV Reader` raises `csv.no_data_rows` this way |
+| Factory `build()` | **No — see below** |
+
+**A factory's `build()` cannot classify its failures today.** It becomes `ExecutionError::Factory`
+and reaches the user as `internal.unclassified`/Fatal like any other, but the `NodeContext` handed
+to `build()` carries no diagnostics handle: per-node handles are created in `processor_node` and
+`sink_node` *after* the DAG is built, so `ctx.diagnostics` is `None` for every factory. A
+parameter or expression that fails to compile is exactly the kind of failure a user could fix,
+so this is a platform gap rather than a licence to skip the question — but there is nothing an
+auditor can do about it in the action. Flag it against the gap, do not write a finding asking the
+action to classify a `build()` error. What *is* in the action's control is the message text:
+`build()` errors are user-facing (§2), so give them a real cause, not a Debug dump.
+
+**An unclassified failure is close to impossible for a user to tolerate.** Relaxing one means
+naming `internal.unclassified` in an override *and* setting `allowRelaxInternal` on the policy;
+without that flag the policy fails to compile and `resolve` clamps every `internal` code to at
+least its registry default. The flag is run-wide, so a user cannot relax this action's failure
+without also relaxing a genuine engine invariant violation. "The user can set an `errorPolicy`"
+is therefore not an answer for an unclassified failure — there is nothing specific to name.
+
+**Reporting and continuing carries a state-cleanup obligation.** When `ctx.report` resolves below
+Fatal the action keeps going, so per-feature or per-group state created *before* the failing
+operation is now partial, and downstream finalization cannot tell partial state from real state.
+Statistics Calculator created its accumulator before evaluating the expression; a demoted failure
+left a zero-valued accumulator that finalized as `0` — a fabricated statistic, on a run reported
+as successful. Create such state only once the value exists, and check what `finish()` does with
+an absent entry versus an empty one.
+
+**A fatal does not stop the node.** `process()` returns `()` on a thread pool and the fatal slot
+is not read until terminate, so every remaining feature is still processed and only the *first*
+fatal per node is kept as the reported diagnostic. A per-feature failure therefore repeats across
+the whole input while the node runs to completion, and the user sees one diagnostic — carrying an
+occurrence count for its code — rather than one per feature. Weigh that when deciding whether a
+failure deserves Fatal at all.
+
+For the wording of the `message` and `help` strings themselves, see §2.
+
+### 9.1 Adding a code to the registry
+
+Codes live in `schema/error-codes/*.toml` and are compiled into the `ErrorCode` enum by
+`diagnostics/build.rs`. The build enforces the mechanical rules and **fails the build** on a
+breach, so they are not repeated as review items: the code must be `<domain>.<reason>` with both
+parts in `[a-z0-9_]`, it must be unique across every file, `category` must be one of the ten
+below, and `default_disposition` one of `warn_drop` / `reject` / `fatal`. Unknown keys in an entry
+are rejected too.
+
+What the build cannot check is everything that follows.
+
+**Codes are append-only identifiers — deprecate, never rename.** A code is not just a label: a
+saved workflow's `errorPolicy` selects on it by string, and an override naming a code that no
+longer exists **fails to compile, taking the workflow with it**. A code is also the stable token
+a user pastes into an issue or searches for, and it is the same token in every language — codes
+are never translated, for the same reason action names are not. Renaming one to read better
+trades a permanent compatibility break for a cosmetic gain.
+
+**Reuse before adding. A code only one action emits is not a classification.** Before adding
+`myaction.thing_failed`, check whether an existing code already names the *cause*
+— `expr.evaluation_failed` covers any action whose expression fails to evaluate, whatever the
+action. A registry where every action has its own private codes gives a user nothing to learn
+and nothing to write a policy against.
+
+**Pick the category by cause, not by symptom.** The ten are `io`, `parse`, `validation`,
+`geometry`, `schema`, `expression`, `config`, `network`, `resource`, `internal`. A geometry
+operation that fails because its expression parameter is wrong is `expression`, not `geometry`.
+`internal` is for faults the user cannot act on, and choosing it has a policy consequence: an
+`internal` code cannot be relaxed without the run-wide `allowRelaxInternal`, as above.
+
+**`default_disposition` is what happens when the user has set no policy at all**, so it is the
+answer for the majority of runs. Choose the least destructive disposition that is still honest:
+`fatal` only when continuing would produce wrong output or the run cannot mean anything —
+remembering that a fatal does not stop the node, and that a user can always *promote* a warning
+but can barely relax a fatal. A
+failure a user could reasonably want to skip should default below `fatal`, or they have no way
+to skip it.
+
+### 9.2 Choosing how to report
+
+| Call | Feature is | Use for |
+|---|---|---|
+| `ctx.warn(draft)` | **kept** | an advisory that does not change the output |
+| `ctx.warn_once(draft)` | **kept** | the same, when repeating it per feature would be noise — fires once per run per code, across *all* nodes |
+| `ctx.report(draft)` | the action's choice | a real failure: returns `Err(Diagnostic)` when the resolved disposition is `fatal`, otherwise `Ok(disposition)` for the action to act on |
+| `report_drop(code, …)` | dropped | `finish()`-time and other fire-and-forget sites with no `Err` to return |
+
+`warn_drop` and `reject` both drop the feature and both aggregate. `reject` additionally records
+the feature in a reject side-file — but **only at a sink, and only when the policy enables it**,
+so at a processor the two differ in label rather than in effect. Prefer `warn_drop` unless the
+run genuinely needs an auditable list of what was refused.
+
+
+---
+
 ## Changelog
 
 Material rule changes, newest first. **A rule added here does not retroactively apply to actions already reviewed** — when a change would alter a past verdict, say so in the entry, and treat previously-reviewed actions as owing a re-check against the new rule.
+
+### 2026-09-18
+
+- **§9 added — Diagnostics**, with a matching `diag:` line in the §8 checklist. Covers what an auditor cannot see from the call site: a plain `Err` is blanket-wrapped as `internal.unclassified` and stamped Fatal; an unclassified failure can only be relaxed with the run-wide `allowRelaxInternal`, so `errorPolicy` is no escape hatch for it; reporting-and-continuing leaves partial state that finalization cannot distinguish from real state; and a fatal does not stop the node. It covers every entry point the runtime calls — processor/sink `process()`/`finish()` and source `start()` — and records that a factory's `build()` cannot classify at all, because the `NodeContext` it is handed carries no diagnostics handle. §9.1 covers registry authoring — codes are append-only identifiers because `errorPolicy` selects on them, reuse before adding, category by cause, and what `default_disposition` means — and §9.2 covers choosing between `warn`, `warn_once`, `report` and `report_drop`. **Placed after §8 so that §8 keeps meaning "the review checklist"** in the audit log and in past entries here. **No past verdict changes automatically, but no previously-audited action has been checked against this section** — 11 of 113 fallible action files classify their failures at all, so most actions reviewed to date owe a `diag:` re-check. Written from the diagnostics fidelity work in #2487, #2488 and #2491.
+
+### 2026-09-11
+
+- **§3.4 corrected — this reverses the practical effect of previous guidance without changing the rule.** The prescribed fix for a root-level `oneOf` (a tagged enum as a property value) did not restore translation for any variant carrying sub-parameters, because the i18n scaffold and applier both keyed a variant off a top-level `enum` that `schemars` emits only for field-less variants. The tooling is fixed and variant sub-properties are now translatable as well. **No past verdict changes, but any action previously marked clean on §3.4 grounds had its mode labels shipping in English regardless** — 13 actions were in this state, including the audited-and-exposed `HTTP Caller` (34 strings), `Coordinate Frame Reprojector`, `Date Time Converter` and `CSV Reader`. Their keys now exist and are seeded with English; translating them is separate work.
 
 ### 2026-08-28
 

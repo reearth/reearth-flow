@@ -5,7 +5,7 @@ import {
   DEFAULT_BATCH_MIN_SIZE,
   DEFAULT_BATCH_PADDING,
 } from "@flow/global-constants";
-import { Node, NodeData } from "@flow/types";
+import type { Node, NodeData } from "@flow/types";
 
 import useBatch from "../../useBatch";
 import { convertHextoRgba } from "../utils";

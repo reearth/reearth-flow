@@ -1,16 +1,19 @@
-import {
+import type {
   EdgeChange,
   NodeChange,
   OnNodeDrag,
   OnNodesChange,
   XYPosition,
+} from "@xyflow/react";
+import {
   getBezierPath,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
   useReactFlow,
 } from "@xyflow/react";
-import { MouseEvent, useCallback } from "react";
+import type { MouseEvent } from "react";
+import { useCallback } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
@@ -231,8 +234,8 @@ export default ({
             },
           ];
 
-          let droppedNodeTargetHandle: string | null = null;
-          let droppedNodeSourceHandle: string | null = null;
+          let droppedNodeTargetHandle: string | null;
+          let droppedNodeSourceHandle: string | null;
 
           if (droppedNode.type === "subworkflow") {
             droppedNodeTargetHandle =

@@ -1,5 +1,5 @@
-import { ApiResponse } from "./api";
-import { Job } from "./job";
+import type { ApiResponse } from "./api";
+import type { Job } from "./job";
 
 export enum DeploymentOrderBy {
   Version = "version",

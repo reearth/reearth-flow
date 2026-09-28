@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
 
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
 export default () => {
   const { getInternalNode, getIntersectingNodes } = useReactFlow();

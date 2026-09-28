@@ -121,7 +121,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_地物インスタンス数.csv  # === End of C02 ===
@@ -169,7 +170,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-04,05エラー.csv
@@ -195,7 +197,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_市区町村コードエラー.csv
@@ -308,7 +311,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_建物ID書式不正.csv
@@ -413,7 +417,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_C-bldg-01エラー.csv

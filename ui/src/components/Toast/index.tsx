@@ -2,7 +2,8 @@
 
 import { Toast as ToastPrimitives } from "@base-ui/react/toast";
 import { XIcon } from "@phosphor-icons/react";
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { cn } from "@flow/lib/utils";

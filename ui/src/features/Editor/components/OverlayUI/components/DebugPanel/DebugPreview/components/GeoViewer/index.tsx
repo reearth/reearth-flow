@@ -1,4 +1,4 @@
-import { BoundingSphere } from "cesium";
+import type { BoundingSphere } from "cesium";
 import { memo } from "react";
 
 import { CesiumViewer, RenderFallback } from "@flow/components";

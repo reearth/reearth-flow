@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/core";
 import {
   DndContext,
   closestCenter,
@@ -5,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -39,7 +39,11 @@ import {
 } from "@flow/components";
 import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, ArrayConfig, AwarenessUser } from "@flow/types";
+import type {
+  AnyWorkflowVariable,
+  ArrayConfig,
+  AwarenessUser,
+} from "@flow/types";
 
 type Props = {
   variable: AnyWorkflowVariable;

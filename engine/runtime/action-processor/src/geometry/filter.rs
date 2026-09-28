@@ -33,7 +33,7 @@ impl ProcessorFactory for GeometryFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter Features by Geometry Type"
+        "Routes each feature to the output port matching its geometry, selected by presence, by geometry family, or by exact type."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -41,7 +41,11 @@ impl ProcessorFactory for GeometryFilterFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["Geometry"]
+        &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["geometry"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -50,7 +54,7 @@ impl ProcessorFactory for GeometryFilterFactory {
 
     fn get_output_ports(&self) -> Vec<Port> {
         let mut result = vec![UNFILTERED_PORT.clone()];
-        result.extend(GeometryFilterParam::all_ports());
+        result.extend(FilterType::all_ports());
         result
     }
 
@@ -90,10 +94,24 @@ pub struct GeometryFilter {
 }
 
 /// # Geometry Filter Parameters
-/// Configure how to filter features based on their geometry type
+///
+/// Selects which aspect of a feature's geometry decides the port it leaves by.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(tag = "filterType", rename_all = "camelCase")]
-pub enum GeometryFilterParam {
+#[serde(rename_all = "camelCase")]
+pub struct GeometryFilterParam {
+    /// # Filter Type
+    ///
+    /// The aspect of the geometry that selects the output port. A feature no port
+    /// claims leaves by `unfiltered`.
+    pub filter_type: FilterType,
+}
+
+/// # Filter Type
+///
+/// The aspect of the geometry that selects the output port.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum FilterType {
     /// # No Geometry
     /// Separates the features that carry no geometry at all from the ones that do.
     None,
@@ -113,17 +131,17 @@ pub enum GeometryFilterParam {
     DetailedGeometryType,
 }
 
-impl GeometryFilterParam {
-    fn none_port() -> Port {
-        Port::new("none")
+impl FilterType {
+    fn no_geometry_port() -> Port {
+        Port::new("no-geometry")
     }
 
     #[cfg(not(feature = "new-geometry"))]
     fn output_port(&self) -> Port {
         match self {
-            GeometryFilterParam::None => Self::none_port(),
-            GeometryFilterParam::Multiple => Port::new("contains"),
-            GeometryFilterParam::GeometryType => unreachable!(),
+            FilterType::None => Self::no_geometry_port(),
+            FilterType::Multiple => Port::new("contains"),
+            FilterType::GeometryType => unreachable!(),
         }
     }
 
@@ -138,10 +156,10 @@ impl GeometryFilterParam {
     #[cfg(not(feature = "new-geometry"))]
     fn all_ports() -> Vec<Port> {
         let mut result = vec![
-            GeometryFilterParam::None.output_port(),
-            GeometryFilterParam::Multiple.output_port(),
+            FilterType::None.output_port(),
+            FilterType::Multiple.output_port(),
         ];
-        result.extend(GeometryFilterParam::all_feature_type_ports());
+        result.extend(FilterType::all_feature_type_ports());
         result
     }
 
@@ -152,7 +170,7 @@ impl GeometryFilterParam {
     /// to declare each port once.
     #[cfg(feature = "new-geometry")]
     fn all_ports() -> Vec<Port> {
-        let mut result = vec![Self::none_port()];
+        let mut result = vec![Self::no_geometry_port()];
         for port in CoarseType::ALL
             .iter()
             .map(|ty| ty.port())
@@ -177,20 +195,20 @@ impl Processor for GeometryFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let geometry = &ctx.feature.geometry;
-        let port = match self.params {
+        let port = match self.params.filter_type {
             // An absent geometry only, never an empty collection: this mode is
             // wired as a "has a geometry at all" gate.
-            GeometryFilterParam::None => {
+            FilterType::None => {
                 if matches!(**geometry, Geometry::None) {
-                    GeometryFilterParam::none_port()
+                    FilterType::no_geometry_port()
                 } else {
                     UNFILTERED_PORT.clone()
                 }
             }
-            GeometryFilterParam::GeometryType => {
+            FilterType::GeometryType => {
                 port_or_unfiltered(coarse_type(geometry).map(CoarseType::port))
             }
-            GeometryFilterParam::DetailedGeometryType => {
+            FilterType::DetailedGeometryType => {
                 port_or_unfiltered(detailed_type(geometry).map(DetailedType::port))
             }
         };
@@ -205,24 +223,23 @@ impl Processor for GeometryFilter {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        match self.params {
-            GeometryFilterParam::None => match &feature.geometry.value {
-                GeometryValue::None => fw.send(ctx.new_with_feature_and_port(
-                    feature.clone(),
-                    GeometryFilterParam::None.output_port(),
-                )),
+        match self.params.filter_type {
+            FilterType::None => match &feature.geometry.value {
+                GeometryValue::None => fw.send(
+                    ctx.new_with_feature_and_port(feature.clone(), FilterType::None.output_port()),
+                ),
                 _ => {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
                 }
             },
-            GeometryFilterParam::Multiple => {
+            FilterType::Multiple => {
                 if feature.geometry.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
                 } else {
                     filter_multiple_geometry(&ctx, fw, feature, &feature.geometry)
                 }
             }
-            GeometryFilterParam::GeometryType => {
+            FilterType::GeometryType => {
                 if feature.geometry.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
                 } else {
@@ -258,33 +275,31 @@ fn filter_multiple_geometry(
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
         }
         GeometryValue::FlowGeometry3D(geometry) => match geometry {
-            Geometry3D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
-                feature.clone(),
-                GeometryFilterParam::Multiple.output_port(),
-            )),
-            Geometry3D::GeometryCollection(_) => fw.send(ctx.new_with_feature_and_port(
-                feature.clone(),
-                GeometryFilterParam::Multiple.output_port(),
-            )),
+            Geometry3D::MultiPolygon(_) => fw.send(
+                ctx.new_with_feature_and_port(feature.clone(), FilterType::Multiple.output_port()),
+            ),
+            Geometry3D::GeometryCollection(_) => fw.send(
+                ctx.new_with_feature_and_port(feature.clone(), FilterType::Multiple.output_port()),
+            ),
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone())),
         },
         GeometryValue::FlowGeometry2D(geometry) => match geometry {
-            Geometry2D::MultiPolygon(_) => fw.send(ctx.new_with_feature_and_port(
-                feature.clone(),
-                GeometryFilterParam::Multiple.output_port(),
-            )),
-            Geometry2D::GeometryCollection(_) => fw.send(ctx.new_with_feature_and_port(
-                feature.clone(),
-                GeometryFilterParam::Multiple.output_port(),
-            )),
+            Geometry2D::MultiPolygon(_) => fw.send(
+                ctx.new_with_feature_and_port(feature.clone(), FilterType::Multiple.output_port()),
+            ),
+            Geometry2D::GeometryCollection(_) => fw.send(
+                ctx.new_with_feature_and_port(feature.clone(), FilterType::Multiple.output_port()),
+            ),
             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone())),
         },
         GeometryValue::CityGmlGeometry(geometry) => {
             if geometry.gml_geometries.len() > 1 {
-                fw.send(ctx.new_with_feature_and_port(
-                    feature.clone(),
-                    GeometryFilterParam::Multiple.output_port(),
-                ))
+                fw.send(
+                    ctx.new_with_feature_and_port(
+                        feature.clone(),
+                        FilterType::Multiple.output_port(),
+                    ),
+                )
             } else {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()))
             }
@@ -377,7 +392,7 @@ impl CoarseType {
 /// bucket per type the geometry model distinguishes.
 ///
 /// A planar `Polygon` and a `Face` in space are separate buckets, as are a
-/// collection and the leaf it holds — the granularity the FME reference
+/// collection and the leaf it holds — the granularity the reference quality-check
 /// workflows filter at, which the legacy world flattened away.
 #[cfg(feature = "new-geometry")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -521,9 +536,9 @@ fn detailed_type(geometry: &Geometry) -> Option<DetailedType> {
         Geometry::GeometryCollection(collection) => match collection.members() {
             [] => None,
             [member] => detailed_type(member),
-            // Several members of possibly unrelated types: the case FME calls an
-            // aggregate, and what a reader produces for a feature carrying more
-            // than one geometry property.
+            // Several members of possibly unrelated types: the aggregate case,
+            // and what a reader produces for a feature carrying more than one
+            // geometry property.
             _ => Some(DetailedType::Aggregate),
         },
     }
@@ -646,7 +661,7 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().cloned(),
-                Some(GeometryFilterParam::Multiple.output_port())
+                Some(FilterType::Multiple.output_port())
             );
         }
     }
@@ -669,7 +684,7 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().cloned(),
-                Some(GeometryFilterParam::Multiple.output_port())
+                Some(FilterType::Multiple.output_port())
             );
         }
     }
@@ -726,12 +741,16 @@ mod new_geometry_tests {
     }
 
     /// The port a feature carrying `geometry` leaves the filter by.
-    fn route(params: GeometryFilterParam, geometry: Geometry) -> Port {
+    fn route(filter_type: FilterType, geometry: Geometry) -> Port {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature::from(geometry);
         let ctx = create_default_execute_context(&feature);
-        GeometryFilter { params }.process(ctx, &fw).unwrap();
+        GeometryFilter {
+            params: GeometryFilterParam { filter_type },
+        }
+        .process(ctx, &fw)
+        .unwrap();
         let ProcessorChannelForwarder::Noop(noop) = fw else {
             unreachable!()
         };
@@ -740,15 +759,15 @@ mod new_geometry_tests {
     }
 
     fn null_gate(geometry: Geometry) -> Port {
-        route(GeometryFilterParam::None, geometry)
+        route(FilterType::None, geometry)
     }
 
     fn coarse(geometry: Geometry) -> Port {
-        route(GeometryFilterParam::GeometryType, geometry)
+        route(FilterType::GeometryType, geometry)
     }
 
     fn detailed(geometry: Geometry) -> Port {
-        route(GeometryFilterParam::DetailedGeometryType, geometry)
+        route(FilterType::DetailedGeometryType, geometry)
     }
 
     fn port(name: &str) -> Port {
@@ -895,7 +914,7 @@ mod new_geometry_tests {
 
     #[test]
     fn null_gate_admits_only_an_absent_geometry() {
-        assert_eq!(null_gate(Geometry::None), port("none"));
+        assert_eq!(null_gate(Geometry::None), port("no-geometry"));
         assert_eq!(null_gate(three_d(point_3d())), UNFILTERED_PORT.clone());
     }
 
@@ -997,8 +1016,8 @@ mod new_geometry_tests {
         assert_eq!(detailed(three_d(point_cloud())), port("point-cloud"));
         assert_eq!(detailed(two_d(line_string_2d())), port("line-string"));
         assert_eq!(detailed(three_d(line_string_3d())), port("line-string"));
-        // The distinction the coarse mode cannot express: a footprint in the plane
-        // and a face in space are separate types, as they are in FME.
+        // The distinction the coarse mode cannot express: a footprint in the
+        // plane and a face in space are separate types.
         assert_eq!(detailed(two_d(polygon_2d())), port("polygon"));
         assert_eq!(detailed(three_d(polygon_3d())), port("face"));
         assert_eq!(detailed(two_d(polygon_mesh_2d())), port("polygon-mesh"));
@@ -1071,7 +1090,7 @@ mod new_geometry_tests {
             assert!(unique.insert(port.clone()), "port {port} is declared twice");
         }
         let routable: std::collections::HashSet<Port> =
-            [UNFILTERED_PORT.clone(), GeometryFilterParam::none_port()]
+            [UNFILTERED_PORT.clone(), FilterType::no_geometry_port()]
                 .into_iter()
                 .chain(CoarseType::ALL.iter().map(|ty| ty.port()))
                 .chain(DetailedType::ALL.iter().map(|ty| ty.port()))

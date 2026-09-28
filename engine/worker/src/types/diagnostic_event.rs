@@ -152,7 +152,7 @@ mod tests {
         Uuid::from_bytes([byte; 16])
     }
 
-    /// `feature_id` is None: aggregated node-level diagnostics and per-feature ones are mutually exclusive in practice.
+    /// A node-level roll-up, so `feature_id` is None. A terminal fatal carries both — it names the first failing feature *and* counts them.
     fn full_diagnostic() -> Diagnostic {
         Diagnostic {
             code: ErrorCode::Cesium3dtilesEmptyGeometry,

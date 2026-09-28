@@ -42,6 +42,16 @@ impl Shell {
             Shell::TriangularMesh(data) => data.is_closed_manifold(),
         }
     }
+
+    /// Report each edge that keeps this shell from being watertight: an edge with
+    /// only one face beside it (a tear) or with more than two (a non-manifold seam).
+    fn report_non_manifold_edges(&self, frame: &CoordinateFrame, report: &mut ValidationReport) {
+        match self {
+            Shell::PolygonMesh(data) => data.report_non_manifold_edges(frame, report),
+            Shell::TriangularMesh(data) => data.report_non_manifold_edges(frame, report),
+        }
+    }
+
     /// Whether this shell is a single connected component through shared edges.
     fn is_connected(&self) -> bool {
         match self {
@@ -176,10 +186,18 @@ impl Validate for Solid {
     }
 
     fn check_shell_manifold(&self, _params: &ValidationParams) -> ValidationReport {
-        // Each shell must be a watertight closed 2-manifold.
+        // Each shell must be a watertight closed 2-manifold. The positions are the
+        // offending edges, which is what a repair has to act on.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
-                if !shell.is_closed_manifold() {
+                if shell.is_closed_manifold() {
+                    continue;
+                }
+                let before = r.0.len();
+                shell.report_non_manifold_edges(&self.frame, r);
+                if r.0.len() == before {
+                    // A shell with no edges at all has none to point at, so the
+                    // shell itself is the only position available.
                     r.push(shell.to_geometry(&self.frame));
                 }
             }
@@ -319,11 +337,15 @@ mod tests {
         validate_one(s, check, &ValidationParams::default()) == ValidationResult::Success
     }
 
-    fn failure_count(s: &Solid, check: ValidationType) -> usize {
+    fn failure_positions(s: &Solid, check: ValidationType) -> Vec<Geometry> {
         match validate_one(s, check, &ValidationParams::default()) {
-            ValidationResult::Failed(positions) => positions.len(),
+            ValidationResult::Failed(positions) => positions,
             other => panic!("expected {check} to fail, got {other:?}"),
         }
+    }
+
+    fn failure_count(s: &Solid, check: ValidationType) -> usize {
+        failure_positions(s, check).len()
     }
 
     #[test]
@@ -334,10 +356,41 @@ mod tests {
 
     #[test]
     fn open_shell_is_not_a_manifold() {
-        // A single triangle has boundary edges, so it is not watertight.
+        // A single triangle has boundary edges, so it is not watertight. Its three
+        // edges are the reported positions.
         let open = TriangularMesh3DData::from_parts(tetra_verts(), [0u32, 1, 2]).unwrap();
         let s = Solid::from_exterior(CoordinateFrame::Euclidean, open);
-        assert_eq!(failure_count(&s, ValidationType::ShellManifold), 1);
+        assert_eq!(failure_count(&s, ValidationType::ShellManifold), 3);
+    }
+
+    #[test]
+    fn non_manifold_positions_are_the_unshared_edges() {
+        // Drop one face of the tetrahedron: the hole's three edges are left with a
+        // single face each, and they are what the check points at.
+        let torn = TriangularMesh3DData::from_parts(tetra_verts(), [1u32, 2, 3, 0, 3, 2, 0, 1, 3])
+            .unwrap();
+        let s = Solid::from_exterior(CoordinateFrame::Euclidean, torn);
+        let positions = failure_positions(&s, ValidationType::ShellManifold);
+        let edges: Vec<[[f64; 3]; 2]> = positions
+            .iter()
+            .map(|position| match position {
+                Geometry::Euclidean3D(Euclidean3DGeometry::LineString(line)) => {
+                    let coords = line.coords();
+                    assert_eq!(coords.len(), 2, "an edge is a two-point segment");
+                    [coords[0], coords[1]]
+                }
+                other => panic!("expected a 3D line-string position, got {other:?}"),
+            })
+            .collect();
+        let verts = tetra_verts();
+        assert_eq!(
+            edges,
+            vec![
+                [verts[0], verts[1]],
+                [verts[0], verts[2]],
+                [verts[1], verts[2]],
+            ]
+        );
     }
 
     #[test]

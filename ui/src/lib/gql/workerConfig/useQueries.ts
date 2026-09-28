@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 
-import { UpdateWorkerConfigInput } from "../__gen__/graphql";
+import type { UpdateWorkerConfigInput } from "../__gen__/graphql";
 import { toWorkerConfig } from "../convert";
 
 import { WorkerConfigQueryKeys } from "./useApi";

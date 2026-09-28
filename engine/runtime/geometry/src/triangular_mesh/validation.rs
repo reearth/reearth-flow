@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
+use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
 use crate::point::Point2D;
 use crate::predicates::surface_intersection::{
@@ -32,6 +33,17 @@ impl TriangularMesh3DData {
     /// 2-manifold.
     pub(crate) fn is_closed_manifold(&self) -> bool {
         self.topology().is_closed_manifold()
+    }
+
+    /// Report the edges that keep this mesh from being a watertight closed
+    /// 2-manifold (see [`ValidationType::ShellManifold`]).
+    pub(crate) fn report_non_manifold_edges(
+        &self,
+        frame: &CoordinateFrame,
+        report: &mut ValidationReport,
+    ) {
+        self.topology()
+            .report_non_manifold_edges(frame, self.vertices(), report);
     }
 
     /// Whether the triangles form a single connected component through shared edges.

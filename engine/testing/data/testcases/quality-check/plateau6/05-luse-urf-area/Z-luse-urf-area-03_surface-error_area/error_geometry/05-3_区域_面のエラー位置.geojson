@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-10171.162523, 71816.612773, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "area",
+        "filename": "54377074_area_6697_op.gml",
+        "featureType": "Zone",
+        "gmlId": "area_a5754443-f071-4430-88bb-822f47052dd3",
+        "issue": "SelfIntersection"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

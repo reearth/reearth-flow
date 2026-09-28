@@ -1,4 +1,5 @@
-import { chromium, FullConfig } from "@playwright/test";
+import type { FullConfig } from "@playwright/test";
+import { chromium } from "@playwright/test";
 
 import { HomePage } from "./pages/homePage";
 import { LoginPage } from "./pages/loginPage";

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
+import type { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
 import { isDefined } from "@flow/utils";
 
-import { CmsExportType } from "../__gen__/graphql";
+import type { CmsExportType } from "../__gen__/graphql";
 import { toCmsAsset, toCmsItem, toCmsModel, toCmsProject } from "../convert";
 import { useGraphQLContext } from "../provider";
 

@@ -1,4 +1,5 @@
-import { ConnectionLineComponent, getStraightPath } from "@xyflow/react";
+import type { ConnectionLineComponent } from "@xyflow/react";
+import { getStraightPath } from "@xyflow/react";
 import { memo } from "react";
 
 export const connectionLineStyle = {

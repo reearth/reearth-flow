@@ -1,21 +1,18 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
-import {
-  type EditorSession,
-  newEditorSession,
-  teardownSession,
-} from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
-import { AssetsPage } from "../pages/assetsPage";
-import {
-  DeploymentsPage,
-  uniqueDeploymentDescription,
-} from "../pages/deploymentsPage";
-import { EditorPage } from "../pages/editorPage";
-import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
+import { newEditorSession, teardownSession } from "../fixtures/session";
+import type { EditorSession } from "../fixtures/session";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
+import type { AssetsPage } from "../pages/assetsPage";
+import type { DeploymentsPage } from "../pages/deploymentsPage";
+import { uniqueDeploymentDescription } from "../pages/deploymentsPage";
+import type { EditorPage } from "../pages/editorPage";
+import type { ProjectsPage } from "../pages/projectsPage";
+import { uniqueProjectName } from "../pages/projectsPage";
 
 const SCHOOLS_ZIP = path.resolve(
   __dirname,
@@ -218,9 +215,7 @@ test.describe.serial(
     });
 
     test("filters parks down to those within a school buffer, with valid NZ geometry", async () => {
-      const outputUrl = jobDetailsArtifact(page, OUTPUT_FILE);
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, OUTPUT_FILE);
       test.info().annotations.push({
         type: "output-url",
         description: artifactUrl,

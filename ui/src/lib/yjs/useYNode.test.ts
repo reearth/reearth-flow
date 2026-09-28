@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import * as Y from "yjs";
 
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import { yWorkflowConstructor } from "./conversions";
 import type { YNodesMap, YWorkflow } from "./types";

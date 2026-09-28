@@ -15,7 +15,7 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { TimeInterval, Trigger } from "@flow/types";
+import type { TimeInterval, Trigger } from "@flow/types";
 
 import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
 

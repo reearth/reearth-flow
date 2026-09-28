@@ -438,14 +438,7 @@ impl CSGBuilder {
         let attr_name = self.list_attribute.as_ref()?;
         let attribute_objects = [left, right]
             .into_iter()
-            .map(|feature| {
-                let attrs: HashMap<String, AttributeValue> = feature
-                    .attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect();
-                AttributeValue::Map(attrs)
-            })
+            .map(|feature| AttributeValue::Map((*feature.attributes).clone()))
             .collect();
         Some((
             Attribute::new(attr_name.clone()),

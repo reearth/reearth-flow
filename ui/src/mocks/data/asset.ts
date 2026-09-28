@@ -1,4 +1,4 @@
-import { AssetFragment } from "@flow/lib/gql/__gen__/graphql";
+import type { AssetFragment } from "@flow/lib/gql/__gen__/graphql";
 
 export const mockAssets: AssetFragment[] = [
   {

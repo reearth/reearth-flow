@@ -1,11 +1,13 @@
-import { ChangeEvent, useCallback, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { usePagination } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
-import { Asset, AssetOrderBy } from "@flow/types";
+import type { Asset } from "@flow/types";
+import { AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { formatFileSize } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";

@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10172.139365, 71815.403456, 0.0],
+            [-10172.137392, 71817.067856, 0.0],
+            [-10168.562871, 71815.399218, 0.0],
+            [-10168.557613, 71819.837618, 0.0],
+            [-10172.139365, 71815.403456, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "urf",
+        "filename": "54377074_urf_6697_op.gml",
+        "featureType": "UrbanPlanningArea",
+        "gmlId": "urf_fb7f1886-e859-4c9f-a5f2-9d7e02e4580b",
+        "issue": "SelfIntersection",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

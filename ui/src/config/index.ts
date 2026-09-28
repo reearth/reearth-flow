@@ -1,4 +1,4 @@
-import { AuthInfo } from "./authInfo";
+import type { AuthInfo } from "./authInfo";
 
 declare global {
   let __APP_VERSION__: string;

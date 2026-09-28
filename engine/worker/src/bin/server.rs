@@ -12,6 +12,8 @@ use reearth_flow_worker::wrapper::{
     build_probe_args, build_worker_args, cancel_requested, cleanup_work_root, make_work_root,
     validate_job_id, ProbeRequest, RunRequest,
 };
+#[cfg(feature = "new-geometry")]
+use reearth_flow_worker::wrapper::{build_render_view_args, RenderViewRequest};
 use serde_json::json;
 
 #[derive(Clone)]
@@ -162,10 +164,80 @@ async fn probe_schema(
     if output.status.success() {
         (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
     } else {
-        // `output()` buffers all of stderr in memory; embedding it verbatim
-        // could allocate unboundedly on a chatty failure. Keep only the tail
-        // (where the actionable error usually is) for the JSON response; the
-        // full logs remain in the container's stdout/stderr.
+        // `output()` buffers all of stderr in memory, so `MAX_STDERR` bounds
+        // the JSON response, not what the child can allocate here. Keep only
+        // the tail, where the actionable error usually is.
+        //
+        // Note stderr is piped rather than inherited, so unlike stdout it does
+        // NOT also reach the container log: this tail is the only copy that
+        // survives. Bounding the child's own output would mean teeing it.
+        const MAX_STDERR: usize = 8 * 1024;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let trimmed = stderr.trim();
+        let detail = if trimmed.len() > MAX_STDERR {
+            // Move the cut point up to the next UTF-8 char boundary so the
+            // byte slice never lands mid-character.
+            let mut cut = trimmed.len() - MAX_STDERR;
+            while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
+                cut += 1;
+            }
+            format!("...(truncated) {}", &trimmed[cut..])
+        } else {
+            trimmed.to_string()
+        };
+        let detail = detail.as_str();
+        let error = if detail.is_empty() {
+            format!("worker exit: {}", output.status)
+        } else {
+            format!("worker exit: {} - {detail}", output.status)
+        };
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"status": "FAILED", "error": error})),
+        )
+    }
+}
+
+/// Handle a `/render-view` POST request.
+///
+/// Like probe, this needs no work-root and no cancel flag: the render reads and
+/// writes through the storage resolver rather than local scratch, and the
+/// request carries no job id to key either on.
+///
+/// A render that drew nothing exits zero with its reason in the report, so it
+/// comes back COMPLETED here. Only a fault is FAILED.
+#[cfg(feature = "new-geometry")]
+async fn render_view(
+    State(st): State<AppState>,
+    Json(req): Json<RenderViewRequest>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let args = build_render_view_args(&req);
+    let output = match tokio::process::Command::new(&st.worker_bin)
+        .args(&args)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+    {
+        Ok(o) => o,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "FAILED", "error": e.to_string()})),
+            );
+        }
+    };
+
+    if output.status.success() {
+        (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
+    } else {
+        // `output()` buffers all of stderr in memory, so `MAX_STDERR` bounds
+        // the JSON response, not what the child can allocate here. Keep only
+        // the tail, where the actionable error usually is.
+        //
+        // Note stderr is piped rather than inherited, so unlike stdout it does
+        // NOT also reach the container log: this tail is the only copy that
+        // survives. Bounding the child's own output would mean teeing it.
         const MAX_STDERR: usize = 8 * 1024;
         let stderr = String::from_utf8_lossy(&output.stderr);
         let trimmed = stderr.trim();
@@ -216,8 +288,12 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/run", post(run))
-        .route("/probe-schema", post(probe_schema))
-        .with_state(state);
+        .route("/probe-schema", post(probe_schema));
+
+    #[cfg(feature = "new-geometry")]
+    let app = app.route("/render-view", post(render_view));
+
+    let app = app.with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

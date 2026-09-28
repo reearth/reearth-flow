@@ -1,6 +1,6 @@
-import { RJSFSchema } from "@rjsf/utils";
+import type { FlowSchema } from "@flow/lib/schemaForm";
 
-import { ApiResponse } from "./api";
+import type { ApiResponse } from "./api";
 
 export type Action = {
   name: string;
@@ -10,8 +10,8 @@ export type Action = {
   tags: string[];
   inputPorts: string[];
   outputPorts: string[];
-  parameter?: RJSFSchema;
-  customizations?: RJSFSchema;
+  parameter?: FlowSchema;
+  customizations?: FlowSchema;
   builtin: boolean;
 };
 

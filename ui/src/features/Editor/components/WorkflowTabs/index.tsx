@@ -3,7 +3,7 @@ import { memo } from "react";
 import { ScrollArea } from "@flow/components";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
-import { Workflow } from "@flow/types";
+import type { Workflow } from "@flow/types";
 
 import WorkflowTab from "./WorkflowTab";
 

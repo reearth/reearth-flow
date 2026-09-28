@@ -1,6 +1,5 @@
-import { RJSFSchema } from "@rjsf/utils";
-
 import { useT } from "@flow/lib/i18n";
+import type { FlowSchema } from "@flow/lib/schemaForm";
 import type { Action, NodeData } from "@flow/types";
 
 export default (
@@ -10,7 +9,7 @@ export default (
 ): { action?: Action } => {
   const t = useT();
 
-  const baseCustomizationSchema: RJSFSchema = {
+  const baseCustomizationSchema: FlowSchema = {
     type: "object",
     properties: {
       customName: {
@@ -25,7 +24,7 @@ export default (
     },
   };
 
-  const noteCustomizationSchema: RJSFSchema = {
+  const noteCustomizationSchema: FlowSchema = {
     ...baseCustomizationSchema,
     properties: {
       ...baseCustomizationSchema.properties,
@@ -53,7 +52,7 @@ export default (
     },
   };
 
-  const batchCustomizationSchema: RJSFSchema = {
+  const batchCustomizationSchema: FlowSchema = {
     ...baseCustomizationSchema,
     properties: {
       ...baseCustomizationSchema.properties,

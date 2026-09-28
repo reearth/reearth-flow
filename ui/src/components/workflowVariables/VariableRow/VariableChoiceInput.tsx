@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 
 type ChoiceConfig = {
   allowMultiple?: boolean;

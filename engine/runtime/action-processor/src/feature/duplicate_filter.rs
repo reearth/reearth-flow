@@ -129,11 +129,10 @@ impl FeatureDuplicateFilter {
 /// The same value with every object's keys in a fixed order, so that equal content always
 /// serializes to an equal string.
 ///
-/// Two containers make this necessary. `Attributes` is an `IndexMap`, so its order is the order
-/// the attributes were added, and `AttributeValue::Map` is a `std::collections::HashMap`, whose
-/// iteration order differs between instances holding identical entries. Without this, two
-/// features with the same content can produce different keys and escape comparison. Sorting is
-/// applied to objects only — array order is part of the value, not an artifact of the container.
+/// `Attributes`, at the top level and nested inside an `AttributeValue::Map` alike, is an
+/// `IndexMap`, so its order is the order the attributes were added. Without this, two features
+/// with the same content can produce different keys and escape comparison. Sorting is applied to
+/// objects only: array order is part of the value, not an artifact of the container.
 fn canonical(value: Value) -> Value {
     match value {
         Value::Object(object) => {
@@ -193,7 +192,7 @@ mod tests {
     use crate::tests::utils::create_default_execute_context;
     use pretty_assertions::assert_eq;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::AttributeValue;
+    use reearth_flow_types::{AttributeValue, Attributes};
 
     /// A feature carrying `attributes`, with an id of its own.
     fn feature(attributes: &[(&str, &str)]) -> Feature {
@@ -306,17 +305,16 @@ mod tests {
         assert_eq!(sent, ["features", "duplicate"]);
     }
 
-    /// `AttributeValue::Map` is a `std::collections::HashMap`, whose iteration order differs
-    /// between instances holding identical entries. Enough keys are used here that an
-    /// uncanonicalized key would be very unlikely to match.
+    /// A nested `AttributeValue::Map` keeps the order its entries were added, so two maps
+    /// holding the same pairs in different orders must still compare equal.
     #[test]
     fn a_nested_map_compares_by_content_not_by_iteration_order() {
         let nested = |pairs: &[(&str, &str)]| {
             let mut feature = Feature::new_with_attributes(Default::default());
             let map = pairs
                 .iter()
-                .map(|(k, v)| ((*k).to_string(), AttributeValue::String((*v).to_string())))
-                .collect::<std::collections::HashMap<_, _>>();
+                .map(|(k, v)| (Attribute::new(*k), AttributeValue::String((*v).to_string())))
+                .collect::<Attributes>();
             feature.insert("nested", AttributeValue::Map(map));
             feature
         };

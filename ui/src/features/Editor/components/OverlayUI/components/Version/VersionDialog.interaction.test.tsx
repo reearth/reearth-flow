@@ -2,10 +2,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import * as Y from "yjs";
 
-import {
-  EditorProvider,
-  type EditorContextType,
-} from "@flow/features/Editor/editorContext";
+import { EditorProvider } from "@flow/features/Editor/editorContext";
+import type { EditorContextType } from "@flow/features/Editor/editorContext";
 
 // vi.mock calls below are hoisted by vitest, so this import still gets the mocks.
 import VersionDialog from "./index";

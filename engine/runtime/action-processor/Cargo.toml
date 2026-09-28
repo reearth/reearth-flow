@@ -17,6 +17,7 @@ memory-stats = ["reearth-flow-common/memory-stats"]
 # TODO: Remove after migration.
 new-geometry = [
   "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-citygml/new-geometry",
   "reearth-flow-geometry/new-geometry",
   "reearth-flow-types/new-geometry",
 ]
@@ -24,6 +25,7 @@ new-geometry = [
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-action-sink.workspace = true
+reearth-flow-citygml.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-diagnostics.workspace = true
 reearth-flow-geometry.workspace = true

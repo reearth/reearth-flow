@@ -1,8 +1,9 @@
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
-import { CaretRightIcon, Icon } from "@phosphor-icons/react";
-import { XYPosition } from "@xyflow/react";
+import type { Icon } from "@phosphor-icons/react";
+import { CaretRightIcon } from "@phosphor-icons/react";
+import type { XYPosition } from "@xyflow/react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
-import useResizeObserver from "use-resize-observer";
+import { useResizeObserver } from "use-resize-observer";
 
 import { cn } from "@flow/lib/utils";
 

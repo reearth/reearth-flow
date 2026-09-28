@@ -3,7 +3,8 @@ import {
   PencilLineIcon,
   CodeBlockIcon,
 } from "@phosphor-icons/react";
-import { RefObject, useCallback } from "react";
+import type { RefObject } from "react";
+import { useCallback } from "react";
 
 import { IconButton } from "@flow/components/buttons";
 import { useT } from "@flow/lib/i18n";

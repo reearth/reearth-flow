@@ -1110,11 +1110,7 @@ fn from_midpolygons_disk<W: Write>(
                     let list_items: Vec<AttributeValue> = parents
                         .iter()
                         .map(|&parent_index| {
-                            let mut map = HashMap::new();
-                            for (attr, value) in &*attributes_cache[&parent_index] {
-                                map.insert(attr.as_ref().to_string(), value.clone());
-                            }
-                            AttributeValue::Map(map)
+                            AttributeValue::Map((*attributes_cache[&parent_index]).clone())
                         })
                         .collect();
 
@@ -1147,11 +1143,8 @@ fn from_midpolygons_disk<W: Write>(
                 );
 
                 if let Some(list_name) = list_attribute {
-                    let mut map = HashMap::new();
-                    for (attr, value) in &*attributes_cache[&parent] {
-                        map.insert(attr.as_ref().to_string(), value.clone());
-                    }
-                    let list_items = vec![AttributeValue::Map(map)];
+                    let list_items =
+                        vec![AttributeValue::Map((*attributes_cache[&parent]).clone())];
 
                     feature.attributes_mut().insert(
                         Attribute::new(list_name.clone()),

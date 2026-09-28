@@ -1,7 +1,7 @@
 import { ColorDefaultValueInput, Input, Label } from "@flow/components";
 import { paramsAwarenessStyles } from "@flow/components/SchemaForm/utils/awarenessTemplateStyles";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser, WorkflowVariable } from "@flow/types";
+import type { AwarenessUser, WorkflowVariable } from "@flow/types";
 
 type Props = {
   variable: WorkflowVariable;

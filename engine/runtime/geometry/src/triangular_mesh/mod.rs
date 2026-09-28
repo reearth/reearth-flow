@@ -224,6 +224,21 @@ crate::unsupported!(TriangularMesh3D: Triangulate);
 crate::unsupported!(TriangularMesh2D: CountHoles);
 crate::unsupported!(TriangularMesh3D: CountHoles);
 
+// The shared vertex pool, so a corner used by several triangles counts once.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for TriangularMesh2D {
+    fn count_vertices(&self) -> usize {
+        self.vertices().len()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for TriangularMesh3D {
+    fn count_vertices(&self) -> usize {
+        self.vertices().len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

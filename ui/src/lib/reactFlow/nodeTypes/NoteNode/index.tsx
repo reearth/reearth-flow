@@ -1,5 +1,6 @@
 import { NoteIcon } from "@phosphor-icons/react";
-import { NodeProps, NodeResizer } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
+import { NodeResizer } from "@xyflow/react";
 import DOMPurify from "dompurify";
 import { memo, useMemo } from "react";
 

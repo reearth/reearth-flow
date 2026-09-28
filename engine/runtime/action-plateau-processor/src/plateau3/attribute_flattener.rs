@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use serde_json::Value;
 
 use super::errors::PlateauProcessorError;
@@ -104,7 +104,7 @@ impl Flattener {
 
     fn extract_fld_risk_attribute(
         &mut self,
-        city_gml_attribute: &HashMap<String, AttributeValue>,
+        city_gml_attribute: &Attributes,
     ) -> HashMap<Attribute, AttributeValue> {
         let disaster_risks = match city_gml_attribute.get("uro:buildingDisasterRiskAttribute") {
             Some(AttributeValue::Array(disaster_risks)) => disaster_risks,
@@ -159,7 +159,7 @@ impl Flattener {
 
     pub fn extract_tnm_htd_ifld_risk_attribute(
         &mut self,
-        city_gml_attribute: &HashMap<String, AttributeValue>,
+        city_gml_attribute: &Attributes,
     ) -> HashMap<Attribute, AttributeValue> {
         let mut result = HashMap::new();
         let src = vec![
@@ -224,7 +224,7 @@ impl Flattener {
 
     pub fn extract_lsld_risk_attribute(
         &mut self,
-        city_gml_attribute: &HashMap<String, AttributeValue>,
+        city_gml_attribute: &Attributes,
     ) -> HashMap<Attribute, AttributeValue> {
         let mut result = HashMap::new();
         let disaster_risks = match city_gml_attribute.get("uro:buildingLandSlideRiskAttribute") {
@@ -281,13 +281,13 @@ struct CommonAttributeProcessor {
 }
 
 impl CommonAttributeProcessor {
-    fn flatten_attribute(key: &str, attribute: &AttributeValue) -> HashMap<String, AttributeValue> {
+    fn flatten_attribute(key: &str, attribute: &AttributeValue) -> Attributes {
         if !FLATTEN_PREFIXES.contains(key) {
-            return HashMap::from([(key.to_string(), attribute.clone())]);
+            return Attributes::from([(Attribute::new(key), attribute.clone())]);
         }
         match attribute {
             AttributeValue::Array(value) => {
-                let mut result = HashMap::new();
+                let mut result = Attributes::new();
                 for (i, v) in value.iter().enumerate() {
                     let new_key = if value.len() == 1 {
                         key.to_string()
@@ -300,7 +300,7 @@ impl CommonAttributeProcessor {
                 result
             }
             AttributeValue::Map(value) => {
-                let mut result = HashMap::new();
+                let mut result = Attributes::new();
                 for (k, v) in value {
                     let new_key = format!("{key}{DELIM}{k}");
                     let new_value = Self::flatten_attribute(new_key.as_str(), v);
@@ -308,13 +308,13 @@ impl CommonAttributeProcessor {
                 }
                 result
             }
-            v => HashMap::from([(key.to_string(), v.clone())]),
+            v => Attributes::from([(Attribute::new(key), v.clone())]),
         }
     }
 
     fn flatten_generic_attributes(
         &mut self,
-        attrib: &HashMap<String, AttributeValue>,
+        attrib: &Attributes,
     ) -> HashMap<Attribute, AttributeValue> {
         if let Some(AttributeValue::Map(obj_map)) = attrib.get("gen:genericAttribute") {
             obj_map
@@ -355,7 +355,7 @@ impl CommonAttributeProcessor {
 
     fn extract_lod_types(
         &self,
-        attrib: &HashMap<String, AttributeValue>,
+        attrib: &Attributes,
         parent_tag: &str,
     ) -> HashMap<Attribute, AttributeValue> {
         let mut result = HashMap::new();
@@ -494,11 +494,11 @@ impl Processor for AttributeFlattener {
                 _ =>
                 // default to empty
                 {
-                    HashMap::new()
+                    Attributes::new()
                 }
             };
             for (name, vroot) in &root_city_gml_attribute {
-                let v = flattened.get(&Attribute::new(name));
+                let v = flattened.get(name);
 
                 let value = if v.is_none() || v == Some(vroot) {
                     vroot.clone()
@@ -509,7 +509,7 @@ impl Processor for AttributeFlattener {
                         v.and_then(|v| v.as_string()).unwrap_or_default()
                     ))
                 };
-                flattened.insert(Attribute::new(name), value.clone());
+                flattened.insert(name.clone(), value.clone());
             }
 
             if ftype == "bldg:BuildingPart" {
@@ -542,18 +542,13 @@ impl Processor for AttributeFlattener {
             self.common_processor.update_max_lod(&feature.attributes);
         }
         // フラットにする属性の設定
-        let mut new_city_gml_attribute = IndexMap::new();
+        let mut new_city_gml_attribute = Attributes::new();
         for (k, v) in city_gml_attribute.iter() {
-            let new_value = CommonAttributeProcessor::flatten_attribute(k, v);
+            let new_value = CommonAttributeProcessor::flatten_attribute(k.as_str(), v);
             new_city_gml_attribute.extend(new_value);
         }
         let mut feature = feature.clone();
-        feature.attributes_mut().extend(
-            new_city_gml_attribute
-                .iter()
-                .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                .collect::<IndexMap<Attribute, AttributeValue>>(),
-        );
+        feature.attributes_mut().extend(new_city_gml_attribute);
         feature.remove("cityGmlAttributes");
         feature.extend(flattened);
         let keys = feature.attributes.keys().cloned().collect_vec();

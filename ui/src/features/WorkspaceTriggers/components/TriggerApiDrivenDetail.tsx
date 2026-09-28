@@ -11,7 +11,7 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import { useT } from "@flow/lib/i18n";
-import { Trigger } from "@flow/types";
+import type { Trigger } from "@flow/types";
 
 type Props = {
   createdTrigger: Trigger;

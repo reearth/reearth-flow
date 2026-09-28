@@ -38,6 +38,7 @@ const DebugPanel: React.FC = () => {
   const {
     debugJobId,
     debugJobState,
+    isDebugJobActive,
     cesiumViewerRef,
     fullscreenDebug,
     expanded,
@@ -52,6 +53,7 @@ const DebugPanel: React.FC = () => {
     formattedData,
     handleFeatureSelect,
     handleFullscreenExpand,
+    handleFullscreenExit,
     handleExpand,
     handleMinimize,
     handleTabChange,
@@ -123,7 +125,10 @@ const DebugPanel: React.FC = () => {
                 </TabsTrigger>
               </TabsList>
               <div className="ml-2 h-full w-1 border-l" />
-              <OutputDataDownload outputData={outputDataForDownload} />
+              <OutputDataDownload
+                outputData={outputDataForDownload}
+                archiveName={`job_${debugJobId}`}
+              />
             </div>
             {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
@@ -178,7 +183,11 @@ const DebugPanel: React.FC = () => {
               debugJobIdRef.current !== debugJobId ? undefined : true
             }
             hidden={tabValue !== "debug-logs"}>
-            <DebugLogs debugJobId={debugJobId} />
+            <DebugLogs
+              debugJobId={debugJobId}
+              isJobActive={isDebugJobActive}
+              onExitFullscreen={handleFullscreenExit}
+            />
           </TabsContent>
           {dataURLs && (
             <TabsContent

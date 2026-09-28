@@ -77,6 +77,21 @@ crate::unsupported!(Point3D: RemoveAppearance);
 crate::unsupported!(Point2D: CountHoles);
 crate::unsupported!(Point3D: CountHoles);
 
+// A point is exactly one coordinate.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Point2D {
+    fn count_vertices(&self) -> usize {
+        1
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Point3D {
+    fn count_vertices(&self) -> usize {
+        1
+    }
+}
+
 // A point bounds no area, so there is nothing to take apart.
 crate::unsupported!(Point2D: ExtractHoles);
 crate::unsupported!(Point3D: ExtractHoles);

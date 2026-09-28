@@ -1,7 +1,9 @@
 id: b1000000-0000-4000-8000-000000000000
 name: LodSplitter
 # Splits each feature's geometry collection into one feature per LOD member and
-# routes the members by their `lod` attribute. Features without geometry are dropped.
+# routes the members by their `lod` attribute. Features without geometry are dropped,
+# and so is geometry that belongs to an ADE property container rather than to the
+# city object itself.
 nodes:
   - id: b1000000-0000-4000-8000-000000000001
     name: InputRouter
@@ -21,6 +23,22 @@ nodes:
     name: GeometrySplitter
     type: action
     action: Geometry Splitter
+
+  # An ADE container such as `uro:DmGeometricAttribute` holds survey geometry
+  # hanging off the feature, not the feature's own shape, and a `uro:lod0Geometry`
+  # inside one is indistinguishable by LOD or property name from a city object's
+  # own LOD 0. Only the owner type separates them, so it is read here, before the
+  # LOD routing hands members to the checks.
+  - id: b1000000-0000-4000-8000-000000000005
+    name: FeatureFilterCityObjectGeometry
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not attributes.get("__citygml_geometry_feature_type", "").ends_with(":DmGeometricAttribute")
+          outputPort: cityObject
 
   - id: b1000000-0000-4000-8000-000000000004
     name: FeatureFilterByLod
@@ -97,8 +115,13 @@ edges:
     toPort: features
   - id: b1000000-0000-4000-8000-000000000103
     from: b1000000-0000-4000-8000-000000000003
-    to: b1000000-0000-4000-8000-000000000004
+    to: b1000000-0000-4000-8000-000000000005
     fromPort: features
+    toPort: features
+  - id: b1000000-0000-4000-8000-000000000104
+    from: b1000000-0000-4000-8000-000000000005
+    to: b1000000-0000-4000-8000-000000000004
+    fromPort: cityObject
     toPort: features
   - id: b1000000-0000-4000-8000-000000000110
     from: b1000000-0000-4000-8000-000000000004

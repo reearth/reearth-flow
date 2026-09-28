@@ -24,8 +24,14 @@ import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { JobState, useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable, AwarenessUser, Edge, Node } from "@flow/types";
+import type { JobState } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
+import type {
+  AnyWorkflowVariable,
+  AwarenessUser,
+  Edge,
+  Node,
+} from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
@@ -373,8 +379,7 @@ const DebugRunDropDownMenu: React.FC<{
   const selectedNode =
     selectedNodeIds.length > 0
       ? (getNodes().find((node) => node.id === selectedNodeIds[0]) as
-          | Node
-          | undefined)
+          Node | undefined)
       : undefined;
 
   return (

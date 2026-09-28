@@ -1,4 +1,4 @@
-import { WorkflowVariable, VarType } from "@flow/types";
+import type { WorkflowVariable, VarType } from "@flow/types";
 
 export type WorkflowVarSession = {
   variables: WorkflowVariable[];

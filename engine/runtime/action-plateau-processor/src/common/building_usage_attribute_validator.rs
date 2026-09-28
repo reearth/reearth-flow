@@ -34,7 +34,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -293,7 +293,7 @@ impl BuildingUsageAttributeValidator {
 /// Builds the L-bldg-04,05 violation messages for a `uro:BuildingDetailAttribute`
 /// map: one message per derived attribute present without its parent.
 pub(crate) fn usage_violation_messages(
-    building_detail_attr: &HashMap<String, AttributeValue>,
+    building_detail_attr: &Attributes,
     survey_year: &str,
 ) -> Vec<String> {
     USAGE_ATTRIBUTES

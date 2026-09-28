@@ -1,13 +1,14 @@
 import { useReactFlow } from "@xyflow/react";
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Map as YMap } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
-import { YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
-import { Edge, Node } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {

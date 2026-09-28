@@ -308,6 +308,17 @@ impl PolygonMesh3DData {
         self.topology().is_closed_manifold()
     }
 
+    /// Report the edges that keep this mesh from being a watertight closed
+    /// 2-manifold (see [`ValidationType::ShellManifold`]).
+    pub(crate) fn report_non_manifold_edges(
+        &self,
+        frame: &CoordinateFrame,
+        report: &mut ValidationReport,
+    ) {
+        self.topology()
+            .report_non_manifold_edges(frame, &self.vertices, report);
+    }
+
     /// Whether the faces form a single connected component through shared edges.
     pub(crate) fn is_connected(&self) -> bool {
         self.topology().is_connected()

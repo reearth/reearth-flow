@@ -1,4 +1,5 @@
-import { EdgeChange, useReactFlow, XYPosition } from "@xyflow/react";
+import type { EdgeChange, XYPosition } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
@@ -6,7 +7,7 @@ import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
-import { ActionNodeType, Edge, Node } from "@flow/types";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
@@ -68,6 +69,7 @@ export default ({
     { value: "Merge", label: t("Merge") },
     { value: "Output", label: t("Output") },
     { value: "Transform", label: t("Transform") },
+    { value: "PLATEAU", label: t("PLATEAU") },
   ];
 
   const actionTags: { value: TagFiltering; label: string }[] = [

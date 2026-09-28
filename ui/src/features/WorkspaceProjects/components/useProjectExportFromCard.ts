@@ -7,9 +7,8 @@ import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
-import { YWorkflow } from "@flow/lib/yjs/types";
-import { Project } from "@flow/types";
-import type { YDocMetadataValue } from "@flow/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
+import type { Project, YDocMetadataValue } from "@flow/types";
 
 export default (project: Project) => {
   const { getAccessToken } = useAuth();

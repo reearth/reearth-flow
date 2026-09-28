@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Client, createClient } from "graphql-ws";
+import type { Client } from "graphql-ws";
+import { createClient } from "graphql-ws";
 import { useEffect, useRef } from "react";
 
 import { config } from "@flow/config";

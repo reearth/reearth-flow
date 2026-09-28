@@ -1,0 +1,59 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10172.152515465368, 71804.30745532956],
+          [-10172.139364720266, 71815.40345610527]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/1_1_shogawa",
+        "filename": "54377074_fld_6697_l1_op.gml"
+      },
+      "id": "d93d6b18-3757-45d0-8892-ee79f4b07843"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10172.152515465368, 71804.30745532956],
+          [-10172.1459400967, 71809.85545569444]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/1_1_shogawa",
+        "filename": "54377074_fld_6697_l1_op.gml"
+      },
+      "id": "d93d6b18-3757-45d0-8892-ee79f4b07843"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10172.1459400967, 71809.85545569444],
+          [-10172.139364720266, 71815.40345610527]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/1_1_shogawa",
+        "filename": "54377074_fld_6697_l1_op.gml"
+      },
+      "id": "d93d6b18-3757-45d0-8892-ee79f4b07843"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

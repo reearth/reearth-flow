@@ -1,10 +1,10 @@
 import { ReactFlowProvider } from "@xyflow/react";
-import * as Y from "yjs";
+import type * as Y from "yjs";
 
 import { RenderFallback } from "@flow/components";
 import VersionCanvas from "@flow/features/VersionCanvas";
 import { useT } from "@flow/lib/i18n";
-import { YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 
 const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;

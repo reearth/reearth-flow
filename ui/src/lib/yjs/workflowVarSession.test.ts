@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { WorkflowVariable } from "@flow/types";
+import type { WorkflowVariable } from "@flow/types";
 
 import { computeSessionChanges } from "./workflowVarSession";
 

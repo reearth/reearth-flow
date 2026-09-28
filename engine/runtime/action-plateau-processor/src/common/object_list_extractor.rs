@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -139,7 +139,7 @@ impl Processor for ObjectListExtractor {
                     .into_iter()
                     .map(|(prefix, feature_types)| {
                         (
-                            prefix.clone(),
+                            Attribute::new(prefix.as_str()),
                             AttributeValue::Array(
                                 feature_types
                                     .iter()
@@ -149,7 +149,7 @@ impl Processor for ObjectListExtractor {
                             ),
                         )
                     })
-                    .collect::<HashMap<String, AttributeValue>>(),
+                    .collect::<Attributes>(),
             ),
         );
         feature.insert(
@@ -157,8 +157,10 @@ impl Processor for ObjectListExtractor {
             AttributeValue::Map(
                 object_list
                     .into_iter()
-                    .map(|(prefix, object_list)| (prefix.clone(), object_list.into()))
-                    .collect::<HashMap<String, AttributeValue>>(),
+                    .map(|(prefix, object_list)| {
+                        (Attribute::new(prefix.as_str()), object_list.into())
+                    })
+                    .collect::<Attributes>(),
             ),
         );
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));

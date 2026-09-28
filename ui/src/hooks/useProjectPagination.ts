@@ -2,7 +2,8 @@ import { useMemo } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { ProjectOrderBy, Workspace } from "@flow/types";
+import type { Workspace } from "@flow/types";
+import { ProjectOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 import usePagination from "./usePagination";

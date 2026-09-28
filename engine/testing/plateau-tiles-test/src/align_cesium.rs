@@ -5,7 +5,8 @@ use crate::tileset::collect_tile_contents;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
     extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, read_vertex_colors, traverse_scene, Transform,
+    read_positions_with_transform, read_vertex_colors, resolve_texture_source, traverse_scene,
+    Transform,
 };
 use reearth_flow_types::material::Material;
 use serde_json::Value;
@@ -210,6 +211,7 @@ impl GeometryCollector {
                 if let Some(mesh) = node.mesh() {
                     for primitive in mesh.primitives() {
                         self.process_primitive_collect(
+                            &gltf,
                             &primitive,
                             &buffer_data,
                             glb_path,
@@ -249,6 +251,7 @@ impl GeometryCollector {
     /// Process a primitive and collect feature data without creating DetailLevels yet
     fn process_primitive_collect(
         &mut self,
+        document: &::gltf::Document,
         primitive: &::gltf::Primitive,
         buffer_data: &[Vec<u8>],
         glb_path: &Path,
@@ -310,22 +313,23 @@ impl GeometryCollector {
 
         // Extract and store material information
         let gltf_material = primitive.material();
-        let flow_material = material_from_gltf(&gltf_material)
+        let flow_material = material_from_gltf(document, &gltf_material)
             .map_err(|e| format!("Failed to extract material from {:?}: {}", glb_path, e))?;
         self.materials.push(flow_material);
 
         let texture_info = gltf_material
             .pbr_metallic_roughness()
             .base_color_texture()
-            .map(|tex_info| {
+            .map(|tex_info| -> Result<Option<String>, String> {
                 let texture = tex_info.texture();
-                let texture_name = texture
-                    .source()
+                let source = resolve_texture_source(document, &texture)
+                    .map_err(|e| format!("Failed to resolve texture source: {}", e))?;
+                Ok(source
                     .name()
                     .map(|s| s.to_string())
-                    .or_else(|| Some(format!("texture_{}", texture.source().index())));
-                texture_name
-            });
+                    .or_else(|| Some(format!("texture_{}", source.index()))))
+            })
+            .transpose()?;
 
         let has_texture = texture_info.is_some();
         let texture_name = texture_info.flatten();

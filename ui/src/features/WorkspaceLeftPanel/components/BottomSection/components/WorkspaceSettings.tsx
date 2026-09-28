@@ -1,7 +1,7 @@
 import { ToolboxIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { RouteOption } from "@flow/features/WorkspaceLeftPanel";
+import type { RouteOption } from "@flow/features/WorkspaceLeftPanel";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 

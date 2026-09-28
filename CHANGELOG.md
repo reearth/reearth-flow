@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.32 - 2026-09-15
+
+### Misc
+
+#### 🚀 Features
+
+- More migration of plateau4 qc ([#2460](https://github.com/reearth/reearth-flow/pull/2460)) [`4f776b`](https://github.com/reearth/reearth-flow/commit/4f776b)
+- Geometry identifier and PLATEAU bldg part connectivity ([#2449](https://github.com/reearth/reearth-flow/pull/2449)) [`ba5dee`](https://github.com/reearth/reearth-flow/commit/ba5dee)
+
+#### 
+
+-  test(ui): use Feature CityGML 2 Reader in plateau e2e and bump allure to 3.17.0 ([#2476](https://github.com/reearth/reearth-flow/pull/2476)) [`fe20f7`](https://github.com/reearth/reearth-flow/commit/fe20f7)
+
+### api
+
+#### 🚀 Features
+
+- Expose the CityGML source readers and the PLATEAU 4&#x2F;6 actions ([#2470](https://github.com/reearth/reearth-flow/pull/2470)) [`178c73`](https://github.com/reearth/reearth-flow/commit/178c73)
+
+### engine
+
+#### 🚀 Features
+
+- Add the plateau6 04-frn-veg quality check ([#2474](https://github.com/reearth/reearth-flow/pull/2474)) [`e5c0d8`](https://github.com/reearth/reearth-flow/commit/e5c0d8)
+- Citygml source readers in new geometry ([#2464](https://github.com/reearth/reearth-flow/pull/2464)) [`f5a464`](https://github.com/reearth/reearth-flow/commit/f5a464)
+- 2D view for intermediate data ([#2455](https://github.com/reearth/reearth-flow/pull/2455)) [`dbbdc1`](https://github.com/reearth/reearth-flow/commit/dbbdc1)
+- Wire L-bldg-02 BuildingPart connectivity into plateau6 QC ([#2461](https://github.com/reearth/reearth-flow/pull/2461)) [`bfd84c`](https://github.com/reearth/reearth-flow/commit/bfd84c)
+- PLATEAU6 data-convert 02-tran workflow ([#2417](https://github.com/reearth/reearth-flow/pull/2417)) [`fecbd4`](https://github.com/reearth/reearth-flow/commit/fecbd4)
+- Run destination mesh code check on new geometry ([#2456](https://github.com/reearth/reearth-flow/pull/2456)) [`89922e`](https://github.com/reearth/reearth-flow/commit/89922e)
+- Grid divider in new geometry ([#2433](https://github.com/reearth/reearth-flow/pull/2433)) [`09ca11`](https://github.com/reearth/reearth-flow/commit/09ca11)
+
+#### 🔧 Bug Fixes
+
+- Populate help field for internal.* error codes ([#2475](https://github.com/reearth/reearth-flow/pull/2475)) [`0fc2eb`](https://github.com/reearth/reearth-flow/commit/0fc2eb)
+- Align plateau6 03-tran QC outputs with original workspace ([#2469](https://github.com/reearth/reearth-flow/pull/2469)) [`2b04f4`](https://github.com/reearth/reearth-flow/commit/2b04f4)
+- Nested attribute type should align attribute type ([#2463](https://github.com/reearth/reearth-flow/pull/2463)) [`f0ba89`](https://github.com/reearth/reearth-flow/commit/f0ba89)
+
+#### ✨ Refactor
+
+- Audit Feature Writer and Geometry Filter ([#2471](https://github.com/reearth/reearth-flow/pull/2471)) [`4d1f59`](https://github.com/reearth/reearth-flow/commit/4d1f59)
+
+### ui
+
+#### 🚀 Features
+
+- Implement artifact download functionality with ZIP support [FLOW-DEV-258] ([#2467](https://github.com/reearth/reearth-flow/pull/2467)) [`387bb9`](https://github.com/reearth/reearth-flow/commit/387bb9)
+
+#### 🔧 Bug Fixes
+
+- Enhance workspace selection dropdown with scrollable content ([#2457](https://github.com/reearth/reearth-flow/pull/2457)) [`5edde8`](https://github.com/reearth/reearth-flow/commit/5edde8)
+- Add default batch node constants and integrate into layout logic to ensure parents and children are kept [FLOW-DEV-255] ([#2452](https://github.com/reearth/reearth-flow/pull/2452)) [`58a248`](https://github.com/reearth/reearth-flow/commit/58a248)
+
+### 
+
+#### 🚀 Features
+
+- More migration of plateau4 qc ([#2460](https://github.com/reearth/reearth-flow/pull/2460)) [`4f776b`](https://github.com/reearth/reearth-flow/commit/4f776b)
+- Geometry identifier and PLATEAU bldg part connectivity ([#2449](https://github.com/reearth/reearth-flow/pull/2449)) [`ba5dee`](https://github.com/reearth/reearth-flow/commit/ba5dee)
+
+#### 
+
+-  test(ui): use Feature CityGML 2 Reader in plateau e2e and bump allure to 3.17.0 ([#2476](https://github.com/reearth/reearth-flow/pull/2476)) [`fe20f7`](https://github.com/reearth/reearth-flow/commit/fe20f7)
+
 ## 0.1.0-alpha.31 - 2026-09-08
 
 ### Server

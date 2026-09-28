@@ -1,0 +1,53 @@
+{
+  "description": "Test L-tran-02 for plateau6 on a track (trk) input, so the result files carry the 03-3_徒歩道 prefix.",
+  "workflowPath": "quality-check/plateau6/03-tran/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "trk_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z11100_saitama-shi_city_2025_citygml_1_op/11100_city_2025_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/trk",
+      "name": "trk_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z11100_saitama-shi_city_2025_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z11100_saitama-shi_city_2025_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "03-3_徒歩道_隣接面重複.csv",
+      "error_geometry/03-3_徒歩道_隣接面重複.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "fileErrorSummary": {
+      "expectedFile": "03-3_徒歩道_検査結果一覧.csv",
+      "keyColumns": ["Filename", "フィーチャータイプ", "LOD"]
+    }
+  },
+  "expectResultOkFile": true
+}

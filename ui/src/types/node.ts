@@ -1,8 +1,9 @@
-import type { RJSFSchema } from "@rjsf/utils";
 import type {
   Node as ReactFlowNode,
   NodeChange as ReactFlowNodeChange,
 } from "@xyflow/react";
+
+import type { FlowSchema } from "@flow/lib/schemaForm";
 
 import type { NodeSchemaMeta } from "./schemaPreview";
 
@@ -32,7 +33,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   params?: NodeParams;
-  paramsSchema?: RJSFSchema;
+  paramsSchema?: FlowSchema;
   customizations?: NodeCustomizations;
   nodeMetadata?: NodeMetadata;
   workflowPath?: string;

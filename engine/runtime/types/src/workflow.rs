@@ -193,11 +193,27 @@ impl ErrorPolicy {
     }
 }
 
+/// # On Fatal
+///
+/// **Currently has no effect.** Both values behave identically: a run that hits a fatal
+/// diagnostic reports every node's outcome and every aggregated diagnostic, and fails.
+///
+/// This option previously selected how a fatal run was *reported* — `terminate` returned only the
+/// first failing node and discarded every other node's outcome, including the aggregated
+/// diagnostics of nodes that succeeded. That was a reporting difference, never early
+/// cancellation: every node thread runs to completion before the outcome is assembled either way.
+/// Since losing that data had no upside, both values now report in full.
+///
+/// Accepted and validated so existing workflows keep parsing. If `terminate` is ever given real
+/// meaning it should be actual early cancellation — stopping work once a run is known to be
+/// doomed — which is a behaviour change, not a reporting one.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum OnFatal {
+    /// No effect; retained for compatibility. See the note on [`OnFatal`].
     #[default]
     Terminate,
+    /// No effect; retained for compatibility. See the note on [`OnFatal`].
     Continue,
 }
 
@@ -216,7 +232,8 @@ pub struct PolicyOverride {
 pub enum PolicyDisposition {
     WarnDrop,
     Reject,
-    /// Still runs through `on_fatal` — it doesn't always terminate the run.
+    /// Fails the run. The node's diagnostic lands in `failedNodes`; every other node's
+    /// outcome and aggregated diagnostics are still reported alongside it.
     Fatal,
 }
 

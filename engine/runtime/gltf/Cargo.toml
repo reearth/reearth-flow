@@ -47,3 +47,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
+
+[dev-dependencies]
+draco-oxide = { workspace = true, features = ["decoder"] }
+pretty_assertions.workspace = true

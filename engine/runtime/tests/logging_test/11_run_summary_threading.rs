@@ -118,10 +118,26 @@ fn passing_workflow_yields_ok_summary_with_no_diagnostics() {
 }
 
 #[test]
-fn failing_source_workflow_yields_err() {
-    let err = run_with_event_handler("05_source_error")
-        .expect_err("scenario-05 workflow is expected to fail");
-    let rendered = err.to_string();
+fn failing_source_workflow_reports_the_failure_in_the_summary() {
+    // The run still fails; it reports through `failed_nodes` rather than `Err`, so the rest of
+    // the run's outcomes survive. The unit-returning wrapper still yields `Err` — see the
+    // wrapper test below.
+    let summary = run_with_event_handler("05_source_error")
+        .expect("join now folds every outcome into a summary instead of returning the first Err");
+    // One row, not two: the JSON Writer downstream also fails once the source dies, but that is an
+    // `UpstreamDisconnected` cascade and is filtered out so the user is not pointed at an
+    // innocent node.
+    assert_eq!(
+        summary.failed_nodes.len(),
+        1,
+        "only the real failure belongs in failed_nodes, got: {:?}",
+        summary
+            .failed_nodes
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect::<Vec<_>>()
+    );
+    let rendered = &summary.failed_nodes[0].message;
     assert!(
         rendered.contains("Source error"),
         "unexpected error text: {rendered}"
@@ -142,7 +158,8 @@ fn run_with_sandbox_root_wrapper_still_returns_err_for_failing_source() {
 const SCENARIO_05_SOURCE_NODE_ID: &str = "a1f90a3e-61d3-48e2-a328-e7226c2ad1ae";
 const SCENARIO_05_SINK_NODE_ID: &str = "c1f90a3e-61d3-48e2-a328-e7226c2ad1ae";
 
-// Two failed_nodes, not one: the orphaned sink also fails when its upstream source dies (disconnected channel on recv()), not just the source itself.
+// One failed_node, not two: the orphaned sink also fails when its upstream source dies, but that
+// is an `UpstreamDisconnected` cascade and `fold_outcomes` drops it when a real failure exists.
 #[test]
 fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
     use reearth_flow_diagnostics::Disposition;
@@ -167,7 +184,18 @@ fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
     )
     .expect("onFatal: continue must turn the failing source's Err into Ok(summary)");
 
-    assert_eq!(summary.failed_nodes.len(), 2);
+    // One row, not two. The sink's `UpstreamDisconnected` is a consequence of the source dying,
+    // not an independent failure, and reporting it points the user at an innocent node.
+    assert_eq!(
+        summary.failed_nodes.len(),
+        1,
+        "the sink's cascaded channel failure must be filtered out: {:?}",
+        summary
+            .failed_nodes
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect::<Vec<_>>()
+    );
     assert!(
         summary
             .failed_nodes
@@ -177,11 +205,11 @@ fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
         summary.failed_nodes
     );
     assert!(
-        summary
+        !summary
             .failed_nodes
             .iter()
             .any(|d| d.node_id.as_deref() == Some(SCENARIO_05_SINK_NODE_ID)),
-        "the orphaned sink's cascaded failure must be present in failed_nodes: {:?}",
+        "the orphaned sink's cascaded failure must NOT be present in failed_nodes: {:?}",
         summary.failed_nodes
     );
     assert!(
@@ -220,7 +248,7 @@ fn run_with_sandbox_root_wrapper_still_returns_err_under_continue_policy() {
     );
     let rendered = err.to_string();
     assert!(
-        rendered.contains("2 node(s) failed"),
+        rendered.contains("1 node(s) failed"),
         "unexpected error text (expected the failed-node count): {rendered}"
     );
 }
@@ -229,41 +257,32 @@ const SCENARIO_06_PROCESSOR_NODE_ID: &str = "b1fa0a3e-61d3-48e2-a328-e7226c2ad1a
 
 #[test]
 fn processor_failure_event_converges_with_thread_result() {
-    use reearth_flow_diagnostics::{Diagnostic, Disposition, ErrorCode};
-    use reearth_flow_runtime::errors::ExecutionError;
+    use reearth_flow_diagnostics::{Disposition, ErrorCode};
 
-    let err = run_with_event_handler("06_processor_error").expect_err(
-        "scenario-06's per-feature processor error now records a synthesized fatal into the \
-         node's fatal slot, so reconcile_terminate_result's (Ok(()), Some(diag)) arm fails the \
-         node thread with a real ExecutionError — under the default onFatal: Terminate policy \
-         that now aborts the whole run, exactly like a ctx.report()-originated Fatal already did",
+    // scenario-06's per-feature processor error records a synthesized fatal into the node's fatal
+    // slot, so reconcile_terminate_result's (Ok(()), Some(diag)) arm fails the node thread with a
+    // real ExecutionError. `fold_outcomes` downcasts that back into the carried Diagnostic, so the
+    // structured diagnostic reaches the summary intact rather than being stringified.
+    let summary = run_with_event_handler("06_processor_error")
+        .expect("a failing node is reported through failed_nodes, not a discarded Err");
+
+    assert_eq!(summary.failed_nodes.len(), 1);
+    let diagnostic = &summary.failed_nodes[0];
+    assert_eq!(diagnostic.code, ErrorCode::InternalUnclassified);
+    assert_eq!(
+        diagnostic.node_id.as_deref(),
+        Some(SCENARIO_06_PROCESSOR_NODE_ID)
     );
-
-    match err {
-        Error::ExecutionError(ExecutionError::Processor(boxed)) => {
-            let diagnostic = boxed.downcast::<Diagnostic>().unwrap_or_else(|e| {
-                panic!("expected the fatal backstop's structured Diagnostic, got a plain error: {e}")
-            });
-            assert_eq!(diagnostic.code, ErrorCode::InternalUnclassified);
-            assert_eq!(
-                diagnostic.node_id.as_deref(),
-                Some(SCENARIO_06_PROCESSOR_NODE_ID)
-            );
-            assert_eq!(
-                diagnostic.action_type.as_deref(),
-                Some("Attribute Aggregator")
-            );
-            assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
-            assert!(
-                diagnostic.message.contains("nonexistentAttribute"),
-                "expected the rendered process() error text in the message, got: {}",
-                diagnostic.message
-            );
-        }
-        other => panic!(
-            "expected ExecutionError::Processor wrapping the synthesized fatal Diagnostic, got: {other}"
-        ),
-    }
+    assert_eq!(
+        diagnostic.action_type.as_deref(),
+        Some("Attribute Aggregator")
+    );
+    assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
+    assert!(
+        diagnostic.message.contains("nonexistentAttribute"),
+        "expected the rendered process() error text in the message, got: {}",
+        diagnostic.message
+    );
 }
 
 #[test]
@@ -868,10 +887,12 @@ fn branch_completion_continue_completes_independent_branch_and_records_one_faile
 }
 
 #[test]
-fn branch_completion_terminate_default_still_errors_for_same_workflow() {
+fn branch_completion_terminate_default_reports_the_same_summary_as_continue() {
+    use reearth_flow_diagnostics::Disposition;
+
     let p = prepare_run_from_yaml(BRANCH_COMPLETION_WORKFLOW_YAML);
 
-    let err = Runner::run_with_event_handler(
+    let summary = Runner::run_with_event_handler(
         p.job_id,
         p.workflow,
         BUILTIN_ACTION_FACTORIES.clone(),
@@ -882,11 +903,18 @@ fn branch_completion_terminate_default_still_errors_for_same_workflow() {
         vec![],
         p.sandbox_root,
     )
-    .expect_err("default onFatal: terminate must still fail the run");
-    let rendered = err.to_string();
-    assert!(
-        !rendered.is_empty(),
-        "expected a non-empty rendered error, got: {rendered}"
+    .expect("the default policy folds outcomes into a summary like every other policy");
+
+    // The run still fails — `failed_nodes` is the signal — and the default policy now reports the
+    // same failing node the Continue test above asserts, rather than discarding the summary.
+    assert_eq!(summary.failed_nodes.len(), 1);
+    assert_eq!(
+        summary.failed_nodes[0].node_id.as_deref(),
+        Some(BRANCH_COMPLETION_FAILING_WRITER_NODE_ID)
+    );
+    assert_eq!(
+        summary.failed_nodes[0].effective_disposition,
+        Some(Disposition::Fatal)
     );
 }
 

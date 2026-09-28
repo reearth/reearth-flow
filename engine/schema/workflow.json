@@ -179,7 +179,7 @@
       }
     },
     "ErrorPolicy": {
-      "description": "Workflow-level configuration for how diagnostics of severity `Fatal` are handled at run time, and per-selector overrides of the default disposition. Absent (`None`) behaves byte-identically to a workflow with no error-handling configuration at all — this type is additive.\n\nRegistry-aware rules (unknown diagnostic codes, codeless demotion of an authored-`Fatal` override, node-id existence in the graph) are enforced later, by the resolver that consumes this configuration — `validate` here only checks the structural rules that don't need the registry or graph.",
+      "description": "`None` is byte-identical to no error-handling config (additive); `validate` here checks structural rules only — registry rules are enforced by the resolver.",
       "type": "object",
       "properties": {
         "onFatal": {
@@ -199,7 +199,6 @@
           "type": "boolean"
         },
         "sideFile": {
-          "description": "D7: switch that enables writing rejected features to a side file instead of only counting/logging them. Consumed by a later task.",
           "default": false,
           "type": "boolean"
         },
@@ -213,17 +212,18 @@
       }
     },
     "OnFatal": {
-      "description": "What to do when a `Fatal`-severity diagnostic is raised (after override resolution) and is not otherwise handled.",
+      "title": "On Fatal",
+      "description": "**Currently has no effect.** Both values behave identically: a run that hits a fatal diagnostic reports every node's outcome and every aggregated diagnostic, and fails.\n\nThis option previously selected how a fatal run was *reported* — `terminate` returned only the first failing node and discarded every other node's outcome, including the aggregated diagnostics of nodes that succeeded. That was a reporting difference, never early cancellation: every node thread runs to completion before the outcome is assembled either way. Since losing that data had no upside, both values now report in full.\n\nAccepted and validated so existing workflows keep parsing. If `terminate` is ever given real meaning it should be actual early cancellation — stopping work once a run is known to be doomed — which is a behaviour change, not a reporting one.",
       "oneOf": [
         {
-          "description": "Stop the run. This is the safe default.",
+          "description": "No effect; retained for compatibility. See the note on [`OnFatal`].",
           "type": "string",
           "enum": [
             "terminate"
           ]
         },
         {
-          "description": "Keep running, treating the diagnostic as non-terminating.",
+          "description": "No effect; retained for compatibility. See the note on [`OnFatal`].",
           "type": "string",
           "enum": [
             "continue"
@@ -232,7 +232,7 @@
       ]
     },
     "PolicyOverride": {
-      "description": "Overrides the disposition of diagnostics matching the given selectors. At least one of `node`, `code`, `category` must be set, and `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).",
+      "description": "At least one of `node`/`code`/`category` must be set; `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).",
       "type": "object",
       "required": [
         "disposition"
@@ -262,24 +262,16 @@
       }
     },
     "PolicyDisposition": {
-      "description": "How a matched diagnostic should be handled.",
       "oneOf": [
         {
-          "description": "Warn and drop the affected feature; the run continues.",
           "type": "string",
           "enum": [
-            "warn_drop"
-          ]
-        },
-        {
-          "description": "Reject the affected feature (optionally to the D7 side file); the run continues.",
-          "type": "string",
-          "enum": [
+            "warn_drop",
             "reject"
           ]
         },
         {
-          "description": "Treat as fatal, subject to `on_fatal`.",
+          "description": "Fails the run. The node's diagnostic lands in `failedNodes`; every other node's outcome and aggregated diagnostics are still reported alongside it.",
           "type": "string",
           "enum": [
             "fatal"

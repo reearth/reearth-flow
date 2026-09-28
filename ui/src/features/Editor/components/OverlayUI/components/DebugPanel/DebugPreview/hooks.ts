@@ -1,7 +1,8 @@
-import { BoundingSphere } from "cesium";
-import { RefObject, useCallback, useEffect, useState } from "react";
+import type { BoundingSphere } from "cesium";
+import type { RefObject } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { ThreeJSViewerRef } from "@flow/components/visualizations/ThreeJS";
+import type { ThreeJSViewerRef } from "@flow/components/visualizations/ThreeJS";
 
 export default ({
   cesiumViewerRef,

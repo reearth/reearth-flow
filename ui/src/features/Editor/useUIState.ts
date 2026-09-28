@@ -1,4 +1,4 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 import { useCallback, useState } from "react";
 
 import type { ActionNodeType } from "@flow/types";

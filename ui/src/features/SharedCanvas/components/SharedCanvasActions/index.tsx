@@ -1,6 +1,6 @@
 import { DotsThreeVerticalIcon, ExportIcon } from "@phosphor-icons/react";
 import { memo } from "react";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 
 import {
   Button,

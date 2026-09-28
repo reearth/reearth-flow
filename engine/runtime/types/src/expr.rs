@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -13,7 +12,7 @@ use reearth_flow_expr::{
     Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
 };
 
-use crate::attribute::{Attribute, AttributeValue};
+use crate::attribute::{Attribute, AttributeValue, Attributes};
 use crate::error::{Error as TypesError, Result as TypesResult};
 use crate::feature::Feature;
 
@@ -59,8 +58,8 @@ impl FromValue for FlowValue {
     fn from_dict(map: IndexMap<String, Self>) -> TypesResult<Self> {
         Ok(FlowValue(AttributeValue::Map(
             map.into_iter()
-                .map(|(k, FlowValue(v))| (k, v))
-                .collect::<HashMap<_, _>>(),
+                .map(|(k, FlowValue(v))| (Attribute::new(k), v))
+                .collect::<Attributes>(),
         )))
     }
     fn on_cycle() -> TypesResult<Self> {

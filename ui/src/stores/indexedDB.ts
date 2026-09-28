@@ -1,5 +1,5 @@
 import { CLIPBOARD_EXPIRATION_TIME } from "@flow/global-constants";
-import { AnyWorkflowVariable, JobStatus } from "@flow/types";
+import type { AnyWorkflowVariable, JobStatus } from "@flow/types";
 
 export type GeneralState = {
   clipboard: any | undefined;

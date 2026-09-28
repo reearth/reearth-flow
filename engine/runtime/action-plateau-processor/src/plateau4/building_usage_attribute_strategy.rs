@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 
 use reearth_flow_runtime::errors::BoxedError;
-use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use crate::common::building_usage_attribute_validator::{
     classify_city_code, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
@@ -26,7 +26,7 @@ pub(crate) struct Plateau4BuildingUsageStrategy;
 
 /// The map content of a value that is either a map or an array whose first
 /// element is a map.
-fn first_map(value: &AttributeValue) -> Option<&HashMap<String, AttributeValue>> {
+fn first_map(value: &AttributeValue) -> Option<&Attributes> {
     match value {
         AttributeValue::Map(map) => Some(map),
         AttributeValue::Array(array) => match array.first() {
@@ -40,10 +40,10 @@ fn first_map(value: &AttributeValue) -> Option<&HashMap<String, AttributeValue>>
 /// Steps from the property wrapper `attrs[wrapper]` into its type element
 /// `type_name`, tolerating a repeated wrapper or type element.
 fn type_element<'a>(
-    attrs: &'a HashMap<String, AttributeValue>,
+    attrs: &'a Attributes,
     wrapper: &str,
     type_name: &str,
-) -> Option<&'a HashMap<String, AttributeValue>> {
+) -> Option<&'a Attributes> {
     first_map(attrs.get(wrapper)?)
         .and_then(|wrapper_map| wrapper_map.get(type_name))
         .and_then(first_map)

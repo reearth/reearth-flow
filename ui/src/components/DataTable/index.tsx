@@ -1,15 +1,10 @@
-import {
-  ColumnDef,
+import type {
+  ColumnVisibilityState,
   PaginationState,
+  RowData,
   SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
 } from "@tanstack/react-table";
+import { flexRender, useTable } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
 import {
@@ -29,6 +24,8 @@ import {
   FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { appTableFeatures } from "@flow/lib/table/features";
+import type { AppColumnDef } from "@flow/lib/table/features";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 import BasicBoiler from "../BasicBoiler";
@@ -41,8 +38,8 @@ import {
   TableRow,
 } from "../Table";
 
-type DataTableProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[];
+type DataTableProps<TData extends RowData, TValue> = {
+  columns: AppColumnDef<TData, TValue>[];
   data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
@@ -63,9 +60,12 @@ type DataTableProps<TData, TValue> = {
   setCurrentPage?: (page: number) => void;
   setCurrentOrderDir?: (order: OrderDirection) => void;
   setSearchTerm?: (term: string) => void;
+  /** Controls rendered beside the search input, e.g. a view switch. */
+  leadingActions?: React.ReactNode;
+  flush?: boolean;
 };
 
-function DataTable<TData, TValue>({
+function DataTable<TData extends RowData, TValue>({
   columns,
   data,
   selectColumns = false,
@@ -87,10 +87,13 @@ function DataTable<TData, TValue>({
   setCurrentOrderDir,
   onSortChange,
   setSearchTerm,
+  leadingActions,
+  flush = false,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    useState<ColumnVisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
@@ -107,24 +110,21 @@ function DataTable<TData, TValue>({
     pageSize: resultsPerPage ?? 10,
   });
 
-  const table = useReactTable({
+  const table = useTable({
+    features: appTableFeatures,
     data: data ?? [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
+    // The table erases the per-column value type, so its `columns` option is
+    // always `TValue = unknown`. v8 spelled this `ColumnDef<TData, any>[]`
+    // internally; the prop keeps `TValue` so call sites stay unchanged.
+    columns: columns as AppColumnDef<TData>[],
     // Sorting
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     // Visibility
     onColumnVisibilityChange: setColumnVisibility,
-    columnResizeMode: "onChange",
     // Row selection
     onRowSelectionChange: setRowSelection,
     // Filtering
     onGlobalFilterChange: setGlobalFilter,
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: enablePagination
-      ? getPaginationRowModel()
-      : undefined,
     onPaginationChange: setPagination,
     state: {
       sorting,
@@ -155,7 +155,9 @@ function DataTable<TData, TValue>({
     <div className="flex h-full flex-col justify-between">
       {(showOrdering || showFiltering || selectColumns) && (
         <div
-          className={`flex items-center gap-2 ${condensed ? "py-1" : "py-3"}`}>
+          className={`flex items-center gap-2 ${
+            flush ? "px-2 pb-2" : condensed ? "py-1" : "py-3"
+          }`}>
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
@@ -164,9 +166,10 @@ function DataTable<TData, TValue>({
                 const value = String(e.target.value);
                 handleSearch(value);
               }}
-              className="h-[36px] max-w-[220px]"
+              className={flush ? "h-[36px] w-[25vw]" : "h-[36px] max-w-[220px]"}
             />
           )}
+          {leadingActions}
           {showOrdering && sortOptions && onSortChange ? (
             <Select
               value={currentSortValue}
@@ -232,12 +235,15 @@ function DataTable<TData, TValue>({
           )}
         </div>
       )}
+      {flush && <div className="border-b" />}
       {isFetching ? (
         <LoadingSkeleton />
       ) : rows.length ? (
         <div className="flex-1 overflow-auto">
           <div
-            className="overflow-auto rounded-md border"
+            className={
+              flush ? "overflow-auto" : "overflow-auto rounded-md border"
+            }
             style={{ contain: "paint", willChange: "transform" }}>
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-card/50 backdrop-blur-2xl dark:bg-background/50">
@@ -268,7 +274,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableRow
                         key={row.id}
-                        className="bg-secondary"
+                        className={flush ? undefined : "bg-secondary"}
                         data-state={
                           row.getIsSelected() ? "selected" : undefined
                         }
@@ -282,7 +288,16 @@ function DataTable<TData, TValue>({
                         {row.getVisibleCells().map((cell: any) => (
                           <TableCell
                             key={cell.id}
-                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                            // flush matches LogsTable's default cell padding;
+                            // condensed alone is 2px tighter and would make
+                            // rows shorter than the log rows beside them.
+                            className={
+                              flush
+                                ? "px-2 py-1"
+                                : condensed
+                                  ? "px-2 py-[2px]"
+                                  : "p-2"
+                            }>
                             {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext(),

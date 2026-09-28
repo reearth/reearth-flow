@@ -1,4 +1,4 @@
-import { IconName } from "@flow/components";
+import type { IconName } from "@flow/components";
 
 export const getIconFileType = (
   ext: string | undefined,

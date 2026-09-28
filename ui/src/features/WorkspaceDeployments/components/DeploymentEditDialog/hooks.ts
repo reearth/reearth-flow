@@ -1,7 +1,8 @@
-import { ChangeEvent, useCallback, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useState } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
 import { validateWorkflowYaml } from "@flow/utils/engineWorkflowValidation";
 import { validateWorkflowJson } from "@flow/utils/engineWorkflowValidation/jsonValidation";
 

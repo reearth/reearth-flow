@@ -167,6 +167,18 @@ impl CountHoles for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Solid {
+    /// The vertex pools of the exterior and every interior shell, summed. Each
+    /// shell keeps its own pool, so a coordinate on two shells counts twice.
+    fn count_vertices(&self) -> usize {
+        std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| shell.vertices().len())
+            .sum()
+    }
+}
+
 impl ExtractHoles for Solid {
     /// Take apart the boundary faces of every shell. Matching [`CountHoles`], a
     /// void shell is not itself a hole — it is a hollow volume — so it is not

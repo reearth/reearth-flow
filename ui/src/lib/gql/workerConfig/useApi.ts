@@ -1,11 +1,11 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import {
+import type {
   DeleteWorkerConfig,
   GetWorkerConfig,
   WorkerConfigMutation,
 } from "@flow/types";
 
-import { UpdateWorkerConfigInput } from "../__gen__/graphql";
+import type { UpdateWorkerConfigInput } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 

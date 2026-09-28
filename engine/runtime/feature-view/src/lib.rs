@@ -22,6 +22,7 @@ use reearth_flow_action_sink::file::mvt::next::{build as build_tiles, TileFeatur
 use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::Geometry;
+use reearth_flow_gltf::DracoCompression;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -147,7 +148,11 @@ impl Default for ViewOptions {
 impl ViewOptions {
     fn render_options(&self) -> RenderOptions {
         RenderOptions {
-            draco: self.draco,
+            draco: if self.draco {
+                DracoCompression::DEFAULT_ENABLED
+            } else {
+                DracoCompression::Disabled
+            },
             compute_flat_normal: self.compute_flat_normal,
             texel_size: self.texel_size,
             atlas_size: self.atlas_size,
@@ -1139,7 +1144,15 @@ mod tests {
         let contains = |n: &str| glb.windows(n.len()).any(|w| w == n.as_bytes());
         assert_eq!(&glb[..4], b"glTF");
         assert!(contains(ROW_INDEX_PROPERTY), "the row index is carried");
-        assert!(contains("4242"), "the row is the one it came from");
+        // The row is numeric, so it is carried as a typed column rather than
+        // as text: read it back rather than grepping the bytes for it.
+        let parsed = reearth_flow_gltf::parse_gltf(&Bytes::from(glb.clone())).expect("a glb");
+        let properties = reearth_flow_gltf::extract_feature_properties(&parsed).expect("metadata");
+        assert_eq!(
+            properties[0].get(ROW_INDEX_PROPERTY),
+            Some(&serde_json::json!(4242)),
+            "the row is the one it came from"
+        );
         assert!(!contains("kind"), "no source attribute name");
         assert!(!contains("keep"), "no source attribute value");
 

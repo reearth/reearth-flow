@@ -1,4 +1,4 @@
-import { CSSProperties } from "react";
+import type { CSSProperties } from "react";
 
 const CmsLogo: React.FC<{
   className?: string;

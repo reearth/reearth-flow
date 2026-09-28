@@ -28,7 +28,7 @@ import {
 } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 
-import { DialogOptions } from "../../types";
+import type { DialogOptions } from "../../types";
 
 import { DeployPopover, SharePopover } from "./components";
 

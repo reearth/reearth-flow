@@ -5,7 +5,8 @@ import { usePagination } from "@flow/hooks";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { JobOrderBy, type Job } from "@flow/types";
+import { JobOrderBy } from "@flow/types";
+import type { Job } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default () => {

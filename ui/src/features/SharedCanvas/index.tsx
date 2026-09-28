@@ -1,6 +1,6 @@
 import { PaperPlaneTiltIcon, QuestionIcon } from "@phosphor-icons/react";
 import { useMemo } from "react";
-import { Doc, Map as YMap } from "yjs";
+import type { Doc, Map as YMap } from "yjs";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
@@ -10,7 +10,8 @@ import type { YWorkflow } from "@flow/lib/yjs/types";
 import type { Project } from "@flow/types";
 
 import { ParamsDialog } from "../Editor/components";
-import { EditorContextType, EditorProvider } from "../Editor/editorContext";
+import type { EditorContextType } from "../Editor/editorContext";
+import { EditorProvider } from "../Editor/editorContext";
 
 import { SharedCanvasActions, SharedCanvasHomeMenu } from "./components";
 import useHooks from "./hooks";

@@ -1,4 +1,4 @@
-import {
+import type {
   EdgeChange,
   OnConnect,
   OnEdgesChange,
@@ -6,7 +6,7 @@ import {
 } from "@xyflow/react";
 import { useCallback } from "react";
 
-import { Edge } from "@flow/types";
+import type { Edge } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 type Props = {

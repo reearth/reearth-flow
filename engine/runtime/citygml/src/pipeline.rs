@@ -1,0 +1,674 @@
+/// Per-member attribute keys describing the GML a `GeometryCollection` member was
+/// read from. Its LOD, the local name of the property it filled, and of the GML type
+/// that property held.
+pub const MEMBER_LOD_KEY: &str = "lod";
+pub const MEMBER_GML_PROPERTY_NAME_KEY: &str = "gmlPropertyName";
+pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
+
+/// Per-member attribute keys naming the element the geometry property hung from,
+/// the object the geometry belongs to: one feature can hold the geometry of
+/// several nested objects, so the feature's own `gml:id` and type do not identify
+/// a member's owner. The type is always known, the id only when that element
+/// carries a `gml:id`.
+pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
+pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
+
+#[cfg(not(feature = "new-geometry"))]
+pub use build_legacy::{build_features, build_features_reporting};
+
+/// Legacy feature building: resolves the parsed document (xlink + codespace) and returns one
+/// feature per top-level city object, or — when `extract_tags` is non-empty — one feature per
+/// matching flattened node. Kept in its own module (mirroring `build_next`) so its imports are
+/// scoped to the code that uses them instead of going unused under the new-geometry flag.
+#[cfg(not(feature = "new-geometry"))]
+mod build_legacy {
+    use std::collections::{HashMap, HashSet};
+    use std::sync::Arc;
+
+    use reearth_flow_geometry::types::line_string::LineString2D;
+    use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+    use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+    use reearth_flow_types::{
+        AttributeValue, Attributes, CityGmlGeometry, Feature, Geometry, GeometryType,
+        GeometryValue, GmlGeometry, CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+    };
+
+    use crate::{
+        codespace, flatten, geometry,
+        parser::{self, Parser},
+        utils::{gml_id_attr, XmlNode},
+        xlink,
+    };
+
+    /// Resolves the parsed document (xlink + codespace) and returns one feature per top-level city
+    /// object, or — when `extract_tags` is non-empty — one feature per matching flattened node.
+    /// `base_attributes` maps a source file URL to the input feature's attributes (e.g. `package`),
+    /// merged into every feature parsed from that file.
+    pub fn build_features(
+        parser: Parser,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> Vec<Feature> {
+        let (pending, raw_registry, ns_registry) = parser.finish();
+        let mut codelist_resolver = codespace::CodelistResolver::new();
+        let mut out = Vec::new();
+        for feature_root in codespace::resolve(
+            xlink::resolve(pending, &raw_registry),
+            &mut codelist_resolver,
+        ) {
+            let base = base_attributes.get(feature_root.source_url.as_str());
+            if extract_tags.is_empty() {
+                let mut feature = build_feature(
+                    &feature_root,
+                    citygml_attribute_key,
+                    keep_attributes,
+                    flatten_single_child_objects,
+                    flatten_leaf_attributes,
+                );
+                if let Some(base) = base {
+                    feature.extend(base.clone());
+                }
+                out.push(feature);
+            } else {
+                let root_gml_id = gml_id_attr(&feature_root.attrs);
+
+                for flatten::Extracted {
+                    node,
+                    parent_gml_id,
+                    ..
+                } in flatten::extract(&feature_root, extract_tags, &ns_registry)
+                {
+                    let mut feature = build_feature(
+                        &node,
+                        citygml_attribute_key,
+                        keep_attributes,
+                        flatten_single_child_objects,
+                        flatten_leaf_attributes,
+                    );
+                    if let Some(id) = parent_gml_id {
+                        feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
+                    }
+                    if let Some(ref id) = root_gml_id {
+                        feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
+                    }
+                    if let Some(base) = base {
+                        feature.extend(base.clone());
+                    }
+                    out.push(feature);
+                }
+            }
+        }
+        out
+    }
+
+    /// The legacy geometry path is not instrumented for Action Standard §4.3
+    /// strictness (see `crate::malformation`) and is removed along with the
+    /// `new-geometry` migration flag, so this always reports zero
+    /// malformations rather than teaching the legacy parser to collect them.
+    pub fn build_features_reporting(
+        parser: Parser,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
+        let features = build_features(
+            parser,
+            extract_tags,
+            base_attributes,
+            citygml_attribute_key,
+            keep_attributes,
+            flatten_single_child_objects,
+            flatten_leaf_attributes,
+        );
+        (features, Vec::new())
+    }
+
+    fn build_feature(
+        node: &Arc<XmlNode>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> Feature {
+        let (stripped, raw_geoms) = geometry::extract_geometries(node);
+        let mut feature = parser::to_feature(
+            &stripped,
+            citygml_attribute_key,
+            keep_attributes,
+            flatten_single_child_objects,
+            flatten_leaf_attributes,
+        );
+        if !raw_geoms.is_empty() {
+            *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
+                build_citygml_geometry(raw_geoms),
+            ));
+        }
+        feature
+    }
+
+    // pos is assigned here; neutral appearance arrays prevent out-of-bounds access in downstream consumers.
+    fn build_citygml_geometry(raw: Vec<GmlGeometry>) -> CityGmlGeometry {
+        let mut polygon_materials: Vec<Option<u32>> = Vec::new();
+        let mut polygon_textures: Vec<Option<u32>> = Vec::new();
+        let mut polygon_uvs: Vec<Polygon2D<f64>> = Vec::new();
+        let mut current_pos: u32 = 0;
+        let mut gml_geometries: Vec<GmlGeometry> = Vec::with_capacity(raw.len());
+
+        for mut g in raw {
+            if matches!(
+                g.ty,
+                GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
+            ) {
+                g.pos = current_pos;
+                current_pos += g.len;
+                for poly in &g.polygons {
+                    polygon_materials.push(None);
+                    polygon_textures.push(None);
+                    polygon_uvs.push(neutral_uv_polygon(poly));
+                }
+            }
+            gml_geometries.push(g);
+        }
+
+        CityGmlGeometry {
+            gml_geometries,
+            materials: Vec::new(),
+            textures: Vec::new(),
+            polygon_materials,
+            polygon_textures,
+            polygon_uvs: MultiPolygon2D::new(polygon_uvs),
+        }
+    }
+
+    fn neutral_uv_polygon(poly: &Polygon3D<f64>) -> Polygon2D<f64> {
+        let ext = LineString2D::new(vec![[0.0f64, 0.0f64].into(); poly.exterior().0.len()]);
+        let ints = poly
+            .interiors()
+            .iter()
+            .map(|ring| LineString2D::new(vec![[0.0f64, 0.0f64].into(); ring.0.len()]))
+            .collect();
+        Polygon2D::new(ext, ints)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+pub use build_next::{build_features, build_features_reporting};
+
+/// New-geometry feature building: resolves each parsed city object's references
+/// and attaches its geometry as a [`GeometryCollection`], one member per `lodN`
+/// property. Kept in its own module so its geometry imports do not collide with
+/// the legacy path's.
+#[cfg(feature = "new-geometry")]
+mod build_next {
+    use std::collections::{HashMap, HashSet};
+    use std::sync::Arc;
+
+    use reearth_flow_geometry::coordinate::EpsgCode;
+    use reearth_flow_geometry::{Geometry, GeometryCollection};
+    use reearth_flow_types::{
+        Attribute, AttributeValue, Attributes, Feature, CITYGML_PARENT_GML_ID_KEY,
+        CITYGML_ROOT_GML_ID_KEY,
+    };
+
+    use super::{
+        MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GEOMETRY_NAME_KEY,
+        MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+    };
+
+    use crate::{
+        appearance::{self, AppearanceIndex},
+        codespace, flatten,
+        malformation::Malformation,
+        parser::{self, Parser, ParserOutput, RawRegistry},
+        resolver::{self, GeomRegistry},
+        utils::{gml_id_attr, NamespaceRegistry},
+        xlink,
+    };
+
+    /// Resolves the parsed document and returns one feature per top-level city object, or — when
+    /// `extract_tags` is non-empty — one feature per matching flattened node, each with its
+    /// geometry attached. Signature mirrors the legacy `build_features` so the readers share one
+    /// `finish` across geometry worlds. A thin wrapper over
+    /// [`build_features_reporting`] that discards the malformations collected along the way, so
+    /// this — and the processors that call it — stay lenient per Action Standard §4.3.
+    // TODO: honor `keep_attributes` and `flatten_single_child_objects` in the new-geometry path.
+    pub fn build_features(
+        parser: Parser,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> Vec<Feature> {
+        build_features_reporting(
+            parser,
+            extract_tags,
+            base_attributes,
+            citygml_attribute_key,
+            keep_attributes,
+            flatten_single_child_objects,
+            flatten_leaf_attributes,
+        )
+        .0
+    }
+
+    /// Same as [`build_features`], but also returns every present-but-malformed
+    /// input site collected while parsing and resolving (Action Standard §4.3),
+    /// so a strict caller can fail the read naming the offending location.
+    pub fn build_features_reporting(
+        parser: Parser,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        _flatten_single_child_objects: bool,
+        flatten_leaf_attributes: &[String],
+    ) -> (Vec<Feature>, Vec<Malformation>) {
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file,
+            ns_registry,
+            mut malformations,
+        } = parser.finish();
+        let appearance = appearance::build_index(&appearance_members, &raw_registry);
+        let features = assemble_features(
+            pending,
+            &raw_registry,
+            &geom_registry,
+            &appearance,
+            &srs_by_file,
+            &ns_registry,
+            extract_tags,
+            base_attributes,
+            citygml_attribute_key,
+            keep_attributes,
+            flatten_leaf_attributes,
+            &mut malformations,
+        );
+        (features, malformations)
+    }
+
+    /// Resolve every pending feature into emitted `Feature`s: one per top-level city object when
+    /// `extract_tags` is empty, or the hoisted sub-features otherwise, each with its geometry
+    /// attached. `base_attributes` maps a source file URL to the input feature's attributes,
+    /// merged into every feature parsed from that file.
+    #[allow(clippy::too_many_arguments)]
+    fn assemble_features(
+        pending: Vec<Arc<parser::RawNode>>,
+        raw_registry: &RawRegistry,
+        geom_registry: &GeomRegistry,
+        appearance: &AppearanceIndex,
+        srs_by_file: &HashMap<String, EpsgCode>,
+        ns_registry: &NamespaceRegistry,
+        extract_tags: &HashSet<String>,
+        base_attributes: &HashMap<String, Attributes>,
+        citygml_attribute_key: Option<&str>,
+        keep_attributes: bool,
+        flatten_leaf_attributes: &[String],
+        malformations: &mut Vec<Malformation>,
+    ) -> Vec<Feature> {
+        let mut out = Vec::new();
+        let mut codelist_resolver = codespace::CodelistResolver::new();
+        let mut xlink_cache = xlink::ResolveCache::new();
+
+        for root in pending {
+            let Some(resolved_root) = xlink::resolve_one(&root, raw_registry, &mut xlink_cache)
+            else {
+                continue;
+            };
+            let resolved = codespace::resolve(vec![resolved_root], &mut codelist_resolver);
+            let Some(feature_root) = resolved.into_iter().next() else {
+                continue;
+            };
+            let base = base_attributes.get(feature_root.source_url.as_str());
+
+            if extract_tags.is_empty() {
+                let mut feature = parser::to_feature(
+                    &feature_root,
+                    citygml_attribute_key,
+                    keep_attributes,
+                    flatten_leaf_attributes,
+                );
+                attach_geometry(
+                    &mut feature,
+                    &flatten::collect_all_geometry(&feature_root),
+                    geom_registry,
+                    appearance,
+                    srs_by_file,
+                    malformations,
+                );
+                if let Some(base) = base {
+                    feature.extend(base.clone());
+                }
+                out.push(feature);
+            } else {
+                let root_gml_id = gml_id_attr(&feature_root.attrs);
+                for flatten::Extracted {
+                    node,
+                    parent_gml_id,
+                    geometry,
+                } in flatten::extract(&feature_root, extract_tags, ns_registry)
+                {
+                    let mut feature = parser::to_feature(
+                        &node,
+                        citygml_attribute_key,
+                        keep_attributes,
+                        flatten_leaf_attributes,
+                    );
+                    if let Some(id) = parent_gml_id {
+                        feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
+                    }
+                    if let Some(ref id) = root_gml_id {
+                        feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
+                    }
+                    attach_geometry(
+                        &mut feature,
+                        &geometry,
+                        geom_registry,
+                        appearance,
+                        srs_by_file,
+                        malformations,
+                    );
+                    if let Some(base) = base {
+                        feature.extend(base.clone());
+                    }
+                    out.push(feature);
+                }
+            }
+        }
+        out
+    }
+
+    /// Resolve each found geometry and set the feature's geometry to a collection of the results,
+    /// one member per geometry. Leaves the geometry unset when none resolve.
+    fn attach_geometry<'a>(
+        feature: &mut Feature,
+        geoms: impl IntoIterator<Item = &'a flatten::FoundGeometry>,
+        registry: &GeomRegistry,
+        appearance: &AppearanceIndex,
+        srs_by_file: &HashMap<String, EpsgCode>,
+        malformations: &mut Vec<Malformation>,
+    ) {
+        // Each member records its source LOD (a `tin` has none) so downstream
+        // sinks can select a single LOD, and the object it belongs to so a
+        // per-surface report can name it.
+        let mut members: Vec<Geometry> = Vec::new();
+        let mut attrs: Vec<Attributes> = Vec::new();
+        for pending in geoms {
+            let Some(member) = resolver::resolve_root(
+                &pending.node,
+                registry,
+                appearance,
+                srs_by_file,
+                malformations,
+            )
+            .map(Geometry::Euclidean3D) else {
+                continue;
+            };
+            let mut member_attrs = Attributes::new();
+            if let Some(lod) = pending.lod {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_LOD_KEY),
+                    AttributeValue::Number(lod.into()),
+                );
+            }
+            member_attrs.insert(
+                Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY),
+                AttributeValue::String(pending.property.clone()),
+            );
+            if let Some(ref gml_type) = pending.gml_type {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_NAME_KEY),
+                    AttributeValue::String(gml_type.clone()),
+                );
+            }
+            member_attrs.insert(
+                Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY),
+                AttributeValue::String(pending.owner_feature_type.clone()),
+            );
+            if let Some(owner_gml_id) = &pending.owner_gml_id {
+                member_attrs.insert(
+                    Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY),
+                    AttributeValue::String(owner_gml_id.clone()),
+                );
+            }
+            members.push(member);
+            attrs.push(member_attrs);
+        }
+        if !members.is_empty() {
+            let collection = GeometryCollection::with_attributes(members, attrs)
+                .expect("attrs is built one-per-resolved-member");
+            *feature.geometry_mut() = Geometry::GeometryCollection(collection);
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::parser::CityGmlVersion;
+        use reearth_flow_geometry::Euclidean3DGeometry;
+        use reearth_flow_types::CitygmlFeatureExt;
+        use url::Url;
+
+        const TA: &str = "<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.6000 139.8000 10.0 35.6001 139.8000 10.0 35.6000 139.8001 12.0 35.6000 139.8000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>";
+        const TB: &str = "<gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.6001 139.8000 10.0 35.6001 139.8001 12.0 35.6000 139.8001 12.0 35.6001 139.8000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon>";
+
+        /// Parse one CityModel wrapping `members`, then assemble features under
+        /// `extract_tags` (the full pass-2 pipeline, minus forwarding).
+        fn run(members: &str, extract_tags: &[&str]) -> Vec<Feature> {
+            let xml = format!(
+                r#"<core:CityModel
+                     xmlns:core="http://www.opengis.net/citygml/3.0"
+                     xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+                     xmlns:con="http://www.opengis.net/citygml/construction/3.0"
+                     xmlns:tran="http://www.opengis.net/citygml/transportation/3.0"
+                     xmlns:gml="http://www.opengis.net/gml/3.2"
+                     xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
+            );
+            let mut parser = Parser::new(CityGmlVersion::V3);
+            parser
+                .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
+                .unwrap();
+            let ParserOutput {
+                pending,
+                raw_registry,
+                geom_registry,
+                appearance_members,
+                srs_by_file,
+                ns_registry,
+                ..
+            } = parser.finish();
+            let appearance = appearance::build_index(&appearance_members, &raw_registry);
+            let tags: HashSet<String> = extract_tags.iter().map(|s| s.to_string()).collect();
+            assemble_features(
+                pending,
+                &raw_registry,
+                &geom_registry,
+                &appearance,
+                &srs_by_file,
+                &ns_registry,
+                &tags,
+                &HashMap::new(),
+                None,
+                true,
+                &[],
+                &mut Vec::new(),
+            )
+        }
+
+        /// The single `Euclidean3D` geometry of a feature whose `GeometryCollection`
+        /// has exactly one member.
+        fn only_e3d(feature: &Feature) -> &Euclidean3DGeometry {
+            match &*feature.geometry {
+                Geometry::GeometryCollection(gc) => {
+                    assert_eq!(gc.len(), 1, "expected exactly one geometry");
+                    match &gc.members()[0] {
+                        Geometry::Euclidean3D(e) => e,
+                        other => panic!("expected a Euclidean3D member, got {other:?}"),
+                    }
+                }
+                other => panic!("expected GeometryCollection, got {other:?}"),
+            }
+        }
+
+        fn by_type<'a>(features: &'a [Feature], ty: &str) -> &'a Feature {
+            features
+                .iter()
+                .find(|f| f.feature_type().as_deref() == Some(ty))
+                .unwrap_or_else(|| panic!("no feature of type {ty}"))
+        }
+
+        fn assert_single_polygon_surface(feature: &Feature) {
+            match only_e3d(feature) {
+                Euclidean3DGeometry::Collection(c) => {
+                    assert_eq!(c.len(), 1);
+                    assert!(matches!(c.members()[0], Euclidean3DGeometry::Polygon(_)));
+                }
+                other => panic!("expected Collection[Polygon], got {other:?}"),
+            }
+        }
+
+        #[test]
+        fn case10_feature_with_multiple_geometries() {
+            let solid = format!("<gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{TA}</gml:surfaceMember><gml:surfaceMember>{TB}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid>");
+            let features = run(
+                &format!(
+                    "<core:cityObjectMember><bldg:Building gml:id=\"b_multi\">\
+                       <core:lod0MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod0MultiSurface>\
+                       <core:lod1Solid>{solid}</core:lod1Solid>\
+                       <core:lod2Solid>{solid}</core:lod2Solid>\
+                     </bldg:Building></core:cityObjectMember>"
+                ),
+                &[],
+            );
+            assert_eq!(features.len(), 1);
+            assert_eq!(
+                features[0].feature_type(),
+                Some("bldg:Building".to_string())
+            );
+            // One member per lodN property, in document order: MultiSurface, Solid, Solid.
+            match &*features[0].geometry {
+                Geometry::GeometryCollection(gc) => {
+                    let m = gc.members();
+                    assert_eq!(m.len(), 3);
+                    assert!(matches!(
+                        m[0],
+                        Geometry::Euclidean3D(Euclidean3DGeometry::Collection(_))
+                    ));
+                    assert!(matches!(
+                        m[1],
+                        Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_))
+                    ));
+                    assert!(matches!(
+                        m[2],
+                        Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_))
+                    ));
+                }
+                other => panic!("expected GeometryCollection, got {other:?}"),
+            }
+        }
+
+        #[test]
+        fn case11_flatten_hoists_children() {
+            let members = format!(
+                "<core:cityObjectMember><bldg:Building gml:id=\"b_par\">\
+                   <core:boundary><con:WallSurface gml:id=\"wall1\"><core:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface></con:WallSurface></core:boundary>\
+                   <core:boundary><con:RoofSurface gml:id=\"roof1\"><core:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface></con:RoofSurface></core:boundary>\
+                 </bldg:Building></core:cityObjectMember>"
+            );
+            let features = run(&members, &["WallSurface", "RoofSurface"]);
+            // Two children hoisted; the Building itself is dropped (not in the tag set).
+            assert_eq!(features.len(), 2);
+            assert_single_polygon_surface(by_type(&features, "con:WallSurface"));
+            assert_single_polygon_surface(by_type(&features, "con:RoofSurface"));
+            assert_eq!(
+                by_type(&features, "con:WallSurface").feature_id(),
+                Some("wall1".to_string())
+            );
+        }
+
+        #[test]
+        fn case12_flatten_parent_and_child() {
+            let members = format!(
+                "<core:cityObjectMember><bldg:Building gml:id=\"b_par\">\
+                   <core:lod1Solid><gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{TA}</gml:surfaceMember><gml:surfaceMember>{TB}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid></core:lod1Solid>\
+                   <core:boundary><con:WallSurface gml:id=\"wall1\"><core:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface></con:WallSurface></core:boundary>\
+                   <core:boundary><con:RoofSurface gml:id=\"roof1\"><core:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface></con:RoofSurface></core:boundary>\
+                 </bldg:Building></core:cityObjectMember>"
+            );
+            let features = run(&members, &["Building", "WallSurface", "RoofSurface"]);
+            assert_eq!(features.len(), 3);
+            // The Building keeps only its own lod1Solid (its boundary surfaces are hoisted out).
+            match only_e3d(by_type(&features, "bldg:Building")) {
+                Euclidean3DGeometry::Solid(s) => assert_eq!(s.exterior().num_faces(), 2),
+                other => panic!("expected Solid, got {other:?}"),
+            }
+            assert_single_polygon_surface(by_type(&features, "con:WallSurface"));
+            assert_single_polygon_surface(by_type(&features, "con:RoofSurface"));
+        }
+
+        #[test]
+        fn case13_each_member_names_the_object_it_belongs_to() {
+            // Without `extract_tags` the nested TrafficArea stays inside the Road
+            // feature, so only the per-member attributes tell the two apart.
+            let members = format!(
+                "<core:cityObjectMember><tran:Road gml:id=\"road1\">\
+                   <core:lod1MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod1MultiSurface>\
+                   <tran:trafficArea><tran:TrafficArea gml:id=\"ta1\">\
+                     <core:lod3MultiSurface><gml:MultiSurface><gml:surfaceMember>{TB}</gml:surfaceMember></gml:MultiSurface></core:lod3MultiSurface>\
+                   </tran:TrafficArea></tran:trafficArea>\
+                 </tran:Road></core:cityObjectMember>"
+            );
+            let features = run(&members, &[]);
+            assert_eq!(features.len(), 1);
+            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
+                panic!(
+                    "expected GeometryCollection, got {:?}",
+                    features[0].geometry
+                );
+            };
+            let owners: Vec<(
+                Option<&AttributeValue>,
+                Option<&AttributeValue>,
+                Option<&AttributeValue>,
+            )> = gc
+                .member_attributes()
+                .iter()
+                .map(|a| {
+                    (
+                        a.get(&Attribute::new(MEMBER_LOD_KEY)),
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_GML_ID_KEY)),
+                        a.get(&Attribute::new(MEMBER_GEOMETRY_FEATURE_TYPE_KEY)),
+                    )
+                })
+                .collect();
+            let expected = |lod: u64, id: &str, ty: &str| {
+                (
+                    AttributeValue::Number(lod.into()),
+                    AttributeValue::String(id.to_string()),
+                    AttributeValue::String(ty.to_string()),
+                )
+            };
+            let lod1 = expected(1, "road1", "tran:Road");
+            let lod3 = expected(3, "ta1", "tran:TrafficArea");
+            assert_eq!(
+                owners,
+                vec![
+                    (Some(&lod1.0), Some(&lod1.1), Some(&lod1.2)),
+                    (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
+                ]
+            );
+        }
+    }
+}

@@ -1,16 +1,19 @@
 import * as Y from "yjs";
 
-import {
-  type AssetFragment,
-  type CmsItemFragment,
-  type CmsModelFragment,
-  type CmsProjectFragment,
-  type DeploymentFragment,
-  type JobFragment,
-  type ProjectFragment,
-  type WorkspaceFragment,
-  type UserFacingLogFragment,
+import type {
+  AssetFragment,
+  CmsItemFragment,
+  CmsModelFragment,
+  CmsProjectFragment,
+  DeploymentFragment,
+  ProjectFragment,
+  WorkspaceFragment,
+  UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
+// The mock schema models the wire shape, so it needs the unmasked fragment
+// types: `Job.failedNodes` spreads `...Diagnostic`, which the client preset
+// masks behind a fragment ref that no fixture can satisfy.
+import type { JobFragment } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 
 import { mockAssets } from "../data/asset";
 import {
@@ -19,16 +22,20 @@ import {
   mockCmsItems,
 } from "../data/cmsIntegration";
 import { mockDeployments } from "../data/deployments";
-import { mockJobs, mockLogs } from "../data/jobs";
+import {
+  mockFailedNodes,
+  mockJobDiagnostics,
+  mockJobs,
+  mockLogs,
+} from "../data/jobs";
 import { mockProjects } from "../data/projects";
 import {
   mockUsers,
   getCurrentUser,
   getCurrentMe,
-  type MockMe,
-  type MockUser,
   Theme as ThemeValues,
 } from "../data/users";
+import type { MockMe, MockUser } from "../data/users";
 import { mockWorkspaces } from "../data/workspaces";
 
 // In-memory storage for mutations
@@ -39,6 +46,8 @@ let projects = [...mockProjects];
 const jobs = [...mockJobs];
 let deployments = [...mockDeployments];
 const logs = [...mockLogs];
+const jobDiagnostics = { ...mockJobDiagnostics };
+const failedNodes = { ...mockFailedNodes };
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
 const cmsItems = [...mockCmsItems];
@@ -264,6 +273,17 @@ export const resolvers = {
     completedAt: (job: JobFragment) => job.completedAt,
     userFacingLogsURL: (job: JobFragment) => job.userFacingLogsURL,
     outputURLs: (job: JobFragment) => job.outputURLs,
+    // Both have their own per-job resolver on the server, which is why they
+    // are not on the shared Job fragment.
+    droppedEventCount: () => null,
+    // Persisted at job completion, so it stays null while a job is running.
+    failedNodes: (job: JobFragment) => failedNodes[job.id] ?? null,
+    // Exact nodeId match, as the server does it: an empty id is the job-level
+    // bucket (rows with no nodeId), not "every node".
+    nodeDiagnostics: (job: JobFragment, args: { nodeId: string }) =>
+      (jobDiagnostics[job.id] ?? []).filter(
+        (diagnostic) => (diagnostic.nodeId ?? "") === args.nodeId,
+      ),
     deployment: (job: JobFragment) =>
       deployments.find((d) => d.id === job.deployment?.id),
     workspace: (job: JobFragment) =>

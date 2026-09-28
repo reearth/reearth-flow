@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10159.608503, 71826.48463, 0.0],
+          [-10163.179736, 71830.927265, 0.0]
+        ]
+      },
+      "properties": {
+        "folder": "frn",
+        "filename": "54377074_frn_6697_op.gml",
+        "featureType": "CityFurniture",
+        "gmlId": "frn_7e2a4c15-3b60-4d89-9a17-8c0f5e2d6b34",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10159.608503, 71826.48463, 0.0],
+          [-10163.184992, 71826.488865, 0.0]
+        ]
+      },
+      "properties": {
+        "folder": "frn",
+        "filename": "54377074_frn_6697_op.gml",
+        "featureType": "CityFurniture",
+        "gmlId": "frn_7e2a4c15-3b60-4d89-9a17-8c0f5e2d6b34",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-10163.179736, 71830.927265, 0.0],
+          [-10163.184992, 71826.488865, 0.0]
+        ]
+      },
+      "properties": {
+        "folder": "frn",
+        "filename": "54377074_frn_6697_op.gml",
+        "featureType": "CityFurniture",
+        "gmlId": "frn_7e2a4c15-3b60-4d89-9a17-8c0f5e2d6b34",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

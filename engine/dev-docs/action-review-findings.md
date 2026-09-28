@@ -545,25 +545,24 @@ rather than in Bufferer's — the audit it then owed is the addendum at the bott
 audited and exposed; `HTTP Caller` left it on its own PR track. See their addenda below. This
 sub-list is now empty — the next action to join it will be whichever geometry port merges next.
 
-#### Group E — Root-level `oneOf` restructuring (4, plus 1 already-audited)
+#### Group E — Root-level `oneOf` restructuring (2 remaining, plus 1 already-audited)
+
+`Feature Writer` and `Geometry Filter` have been audited and exposed — outcome in the addendum
+at the bottom of this file. That PR also fixed the i18n tooling, which changes what the
+remaining two owe: see cross-cutting finding 9.
 
 ```
-Feature Reader · Feature Writer · JSON Fragmenter · Geometry Filter
+Feature Reader · JSON Fragmenter
   params:  The whole parameter block is a root-level `oneOf`, which §3.4 prohibits because
              apply_parameter_i18n cannot reach the variants — its definitions traversal is
              scoped inside `definitions`, so a root `oneOf` is never visited. The block's own
              title/description DO translate via the "" key, so the action looks localised
              while the mode labels the user picks between stay English permanently.
-             Geometry Filter's Japanese entry is in exactly this state today.
   fix:     Restructuring, not re-wording (§3.4 names the idiom: a #[serde(tag = "type")] enum
-             as a property VALUE, not as the whole block).
-
-Geometry Filter
-  ports:   20 output ports. Wants per-variant port declaration, which would also retire the
-             action-name-keyed special cases in builder_dag.rs:258-300 and
-             schema_infer.rs::effective_output_ports that the engine authors themselves
-             flagged as needing "an architectural revision of port handling".
-  desc:    "Filter Features by Geometry Type" — Title Case imperative, no period.
+             as a property VALUE, not as the whole block). As of 2026-09-11 that idiom
+             genuinely translates; before then it did not (cross-cutting finding 9).
+  note:    JSON Fragmenter also carries the §4.3 missing-attribute defect — cross-cutting
+             finding 1, asserted as intended by test_missing_attribute_rejected.
 
 XML Fragmenter  — ALREADY AUDITED, still non-compliant
   params:  Same root-level `oneOf`. It was audited and its oneOf was deliberately extended
@@ -661,6 +660,62 @@ not after.
 emits an output attribute named `fme_rejection_code`, referenced by 3 tests — that one is a
 schema-visible rename. Both actions are currently hidden (neither runs), so this is not live
 user-facing text today, but it must be fixed before either is re-exposed.
+
+**9. The prescribed fix for a root-level `oneOf` did not work, and 13 actions were affected.**
+FIXED 2026-09-11, in the Feature Writer / Geometry Filter PR. §3.4 told authors to move a mode
+enum into `definitions` as a tagged enum used as a property value, and said the variants would
+then translate. They did not. Both halves of the i18n pass — `collect_enum_definitions` when
+scaffolding and `apply_parameter_i18n` when applying — identified a variant by a **top-level
+`enum` key** on the variant object, which `schemars` emits only for a variant carrying no
+fields. So a variant with sub-parameters, which is the only reason to use the idiom at all, was
+invisible to both.
+
+The tell that this went unnoticed for so long: the *fix* and the *defect* look identical from
+the schema. `Coordinate Frame Reprojector` was restructured into this shape during its own audit
+and recorded as resolved, while its `crs` variant and all three `BasePoint` variants shipped
+untranslated — `BasePoint` had no entry in `ja.json` at all. Nothing failed; the keys simply
+never existed.
+
+`enum_variant_key` now recognises all three shapes `schemars` produces (field-less, internally
+tagged, externally tagged), and `PropertyI18n` gained a nested `properties` map so a variant's
+own fields translate rather than only its label. Re-scaffolding surfaced **88 previously
+unreachable strings across 13 actions**:
+
+| Action | New keys | Exposed today |
+|---|---|---|
+| HTTP Caller | 34 | yes |
+| Rotator 3D | 12 | no |
+| Coordinate Frame Reprojector | 6 | yes |
+| Null Attribute Mapper | 7 | yes |
+| Coordinate Extractor | 7 | no |
+| Footprint Replacer | 5 | yes |
+| Feature Writer | 4 | yes (this PR) |
+| Geometry Filter | 3 | yes (this PR) |
+| CSV Reader · CSV Writer · Date Time Converter · Geometry Validator · Image Rasterizer | 2 each | mostly yes |
+
+The keys are seeded with English, which is what they effectively were before. **Only Feature
+Writer's and Geometry Filter's were translated in that PR.** The other 86 strings are owed a
+Japanese pass — `HTTP Caller` first, since it is exposed and has by far the most.
+
+**Trigger:** none pending; this is ready for whoever takes the next i18n pass.
+
+**10. No action denies unknown parameter keys, so a mistyped or leftover key is silently
+ignored.** `deny_unknown_fields` appears nowhere in the workspace. A `with:` block naming a
+parameter the struct does not have parses cleanly and the value is dropped, so a typo and a
+stale key from a schema change both look like working configuration. Found while migrating
+`Feature Writer`, where a `converter` left at its old top-level position after the parameter
+block was restructured is accepted and ignored rather than reported — the one failure mode a
+shape change most needs to be loud about. Pinned by a test
+(`a_converter_left_at_the_old_position_is_silently_ignored`) so the behaviour is at least
+recorded.
+
+Deliberately NOT fixed for `Feature Writer` alone: turning it on for one action out of ~100 is
+the lone-correct-reader problem from finding 7, and it is a behaviour change that could fail
+workflows nobody in this repo can see. It wants a workspace-wide decision, and it pairs
+naturally with the CI ratchets below.
+
+**Trigger:** a decision on whether unknown parameter keys should be an error, a warning, or
+stay silent.
 
 **6. Proposed CI ratchets, none implemented.** All are cheap and deterministic:
 - Fail when a parameter leaf in `actions.json` declares neither `type` nor `enum` nor `const`.
@@ -1607,3 +1662,127 @@ it a defect** — and note `cargo test … | tail` exited 0 on the failing run, 
 - `dataset` and `inline` are both schema-optional while omitting both fails at runtime, against
   §3.2. Shared by all nine readers. **Trigger:** the same flatten fix above, which has to touch
   every reader's param struct anyway.
+
+---
+
+## Addendum — Feature Writer and Geometry Filter (audited and exposed)
+
+Group E, the two of its four that are migrated. Both were restructured out of their root-level
+`oneOf`, which is what the group exists for — and doing it turned up that the restructuring on
+its own fixes nothing, recorded as cross-cutting finding 9 and corrected in the standard.
+
+```
+Geometry Filter — kept, restructured
+  impl:    All three modes trace to a branch and every one of the 20 declared ports is
+             reachable from some mode; a test already asserts declared == routable. The
+             `none` mode gates on an absent geometry only, never an empty collection, which
+             matches its text. No dead surface.
+  desc:    Was "Filter Features by Geometry Type" — Title Case imperative, no period, and
+             wrong for one of its three modes: `none` filters on presence, not type.
+             Rewritten to cover all three.
+  params:  §3.4 — the block was a root-level `oneOf`. `filterType` is now a plain property
+             holding a field-less enum. The YAML is unchanged (`filterType: none` still), so
+             no workflow migrated; the schema shape and the i18n reach are what changed. All
+             three mode labels now translate, and the Japanese is in this PR.
+  ports:   `none` renamed to `no-geometry`. The old name read as "nothing" rather than "the
+             features with no geometry", and no fixture wired it, so the sweep cost nothing.
+  cat:     `Geometry` -> `Filter`. §5 gives Filter "conditional routing, spatial and type
+             filtering", which is this action exactly. Matches the audited siblings
+             (`Spatial Filter`, `Dimension Filter`, `Feature Type Filter`); the three still
+             sitting in `Geometry` — Closed Curve Filter, Planarity Filter, Geometry Value
+             Filter — are all unaudited and owe the same move.
+  tags:    Was empty, now `geometry` — which earns its place only because the action left the
+             Geometry category (§6). `3d` was considered and rejected as padding: the action
+             distinguishes 2D from 3D types but does not filter *on* dimension, which is
+             `Dimension Filter`'s job.
+  note:    Two vendor-name leaks removed from comments (§2), one in a `///` on DetailedType
+             and one inline in `detailed_type`. Neither compiled into actions.json, so this
+             was not shipping text — but it is the same class as the open leaks recorded for
+             neighbor_finder.rs and center_point_replacer.rs.
+
+Feature Writer — kept, restructured, one format withdrawn
+  runs:    §7.3 — `format: citygml` shipped in the schema and could never run. The arm returns
+             Err at build time under new-geometry, so a workflow naming it failed before
+             touching a feature, while the palette advertised it along with three parameters
+             (lodFilter, epsgCode, prettyPrint) that were dead in the shipped build. The
+             variant is now behind cfg(not(new-geometry)): gone from actions.json, still
+             working in the legacy build, where test-conv's citygml-roundtrip case covers it.
+             TRIGGER to restore: the CityGML Writer sink's port landing (#2355), which is what
+             the arm delegates to.
+  desc:    Was "Writes features from various formats" — writes *to*, not from; no period; and
+             silent on the two things that actually surprise a user. The output path is a Code
+             expression evaluated PER FEATURE, so it is the grouping key: one file per distinct
+             result, with no groupBy parameter. And the features are consumed — what leaves on
+             `features` is one freshly-built summary per file carrying filePath and rowCount,
+             not the input. Both are now in the description.
+  params:  §3.4 — the block was a root-level `oneOf` over `format`. `format` is now a property
+             holding a #[serde(tag = "type")] enum, so the JSON-only `converter` rides inside
+             the json variant and cannot be set against csv. A flat `format` enum with
+             `converter` beside it was considered and rejected: it renders a control the code
+             ignores, and it does not scale when citygml returns with three more fields.
+             `output`'s title was "Output path" (not title case) with no description; the
+             variant blocks were titled "JsonWriter Parameters" / "CityGmlWriter Parameters".
+  params:  Internal tagging was chosen over external. External would have left csv/tsv as bare
+             strings — 43 nodes to migrate instead of 461 — but a plain JSON write with no
+             converter has to be spelled `format: {json: {}}`, and a string-or-object union is
+             the hardest thing for a form renderer to handle. One uniform object shape was
+             judged worth the larger migration.
+  bug:     Caught by the tests added here: dropping the variant's explicit
+             #[serde(rename = "citygml")] during the restructure let rename_all produce
+             `cityGml`, which would have rejected every existing legacy CityGML workflow —
+             including the citygml-roundtrip case test-conv runs. The rename is back.
+  tags:    Was empty, now `csv` and `json`, matching every other audited writer (`CSV Writer`
+             csv, `JSON Writer` json, `Feature GeoJSON Writer` geojson). No vocabulary term
+             exists for TSV and none was invented.
+  cat:     Left `Feature`. It is a processor, not a sink, and cross-cutting finding 3 defers
+             the Feature-vs-Output question for this whole family rather than settling it one
+             action at a time.
+  impl:    NOT a delegation to the writer sinks, which the surface nowhere says. The csv and
+             json arms are private implementations under feature/writer/, and they have
+             already diverged from the sinks of the same name: the CSV Writer sink emits
+             geometry columns and accounts for failed rows, while this one drops geometry and
+             returns Err on the first missing field. Only SinkOutput (the sandbox gate) and,
+             in the legacy build, write_citygml_to_storage are shared.
+```
+
+### Deferred: Feature Writer's CSV column handling
+
+```
+Feature Writer
+  impl:    The header is taken from the FIRST feature written to a file. A later feature
+             missing any of those keys fails the whole run with "Field not found"; a later
+             feature carrying extra attributes has them silently dropped. Heterogeneous
+             attribute sets are the normal output of a Feature Filter, so this is reachable
+             without doing anything unusual.
+  scope:   Predates new-geometry and is not a port regression. Documented on the `csv` variant
+             in this PR so the surface stops being silent about it, but not fixed — the fix is
+             a behaviour change (union the keys across the file, or a header parameter) that
+             would rewrite committed CSV truth fixtures.
+  prior art: A union-of-keys header is what GDAL/OGR's CSV driver does, and it is what a user
+             arriving from any spreadsheet tool expects. Failing the run is ours alone.
+```
+
+**Trigger:** none pending — ready whenever it is picked up.
+
+### Deferred: Geometry Filter's mode-dependent ports
+
+```
+Geometry Filter
+  ports:   20 declared, of which any one node uses at most 15 and typically two or three. The
+             other modes' ports sit unwired on every node. Per-variant declaration would fix
+             it, and this is where the earlier note in Group E was wrong: it claimed the work
+             "would also retire the action-name-keyed special cases in builder_dag.rs:258-300
+             and schema_infer.rs::effective_output_ports". Those special cases belong to
+             Output Router and Feature Filter. Geometry Filter is not among them, so
+             per-variant ports would ADD a third, not retire two.
+  also:    In `none` mode the useful branch is `unfiltered` (= has geometry) and `no-geometry`
+             is the one nobody wires — all 17 fixture nodes take `unfiltered`. Per-variant
+             naming (`no-geometry` / `has-geometry`) would read correctly, but port names
+             cannot vary by parameter today either.
+  fix:     ProcessorFactory::build_output_ports(with), or whatever replaces it. The engine
+             authors have already written the case against the ad-hoc approach in a comment at
+             builder_dag.rs:270-284 and called for "an architectural revision of port
+             handling".
+```
+
+**Trigger:** that revision. Until it lands, the ports stay as declared.

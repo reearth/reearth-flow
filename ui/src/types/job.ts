@@ -7,11 +7,7 @@ export enum JobOrderBy {
 }
 
 export type JobStatus =
-  | "queued"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "queued" | "running" | "completed" | "failed" | "cancelled";
 
 export type Job = {
   id: string;

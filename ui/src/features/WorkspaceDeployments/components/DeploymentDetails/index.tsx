@@ -8,7 +8,7 @@ import {
 import { Button } from "@flow/components";
 import { DetailsBox } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 import { DeploymentEditDialog } from "../DeploymentEditDialog";
 

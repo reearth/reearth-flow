@@ -18,6 +18,14 @@ with:
     - trk
     - squr
     - wwy
+  # Prefix of every result file the 03-tran sub-graph writes, chosen per package.
+  # A package outside this table aborts the run rather than sharing a file.
+  packagePrefixes:
+    tran: 03-1_道路
+    rwy: 03-2_鉄道
+    trk: 03-3_徒歩道
+    squr: 03-4_広場
+    wwy: 03-5_航路
 graphs:
   - !include ../../../../graphs/plateau6/xml_validator.yml
   - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml

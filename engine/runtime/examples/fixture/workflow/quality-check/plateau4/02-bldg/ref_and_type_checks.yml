@@ -108,7 +108,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_L-bldg-06エラー.csv
@@ -173,7 +174,8 @@ nodes:
     type: action
     action: Feature Writer
     with:
-      format: csv
+      format:
+        type: csv
       output:
         type: string
         value: 02_建築物_T-bldg-02エラー.csv

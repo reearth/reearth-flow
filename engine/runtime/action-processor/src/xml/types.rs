@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -38,23 +36,23 @@ impl ValidationResult {
     }
 }
 
-impl From<ValidationResult> for HashMap<String, AttributeValue> {
+impl From<ValidationResult> for Attributes {
     fn from(result: ValidationResult) -> Self {
-        let mut map = HashMap::new();
+        let mut map = Attributes::new();
         map.insert(
-            "errorType".to_string(),
+            Attribute::new("errorType"),
             AttributeValue::String(result.error_type),
         );
         map.insert(
-            "message".to_string(),
+            Attribute::new("message"),
             AttributeValue::String(result.message),
         );
         map.insert(
-            "line".to_string(),
+            Attribute::new("line"),
             AttributeValue::String(result.line.unwrap_or_default().to_string()),
         );
         map.insert(
-            "col".to_string(),
+            Attribute::new("col"),
             AttributeValue::String(result.col.unwrap_or_default().to_string()),
         );
         map
