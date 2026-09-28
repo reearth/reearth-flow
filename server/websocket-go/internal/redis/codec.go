@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -75,6 +76,33 @@ type parsedEntry struct {
 	kind   streamKind
 	data   []byte
 	isSelf bool // clientId == our own id → echo, drop
+	// age is how long the entry had been in the stream when this reader fetched it.
+	// Recorded only for entries actually delivered.
+	age time.Duration
+}
+
+// entryAge derives an entry's age from its stream id, whose millisecond component
+// is REDIS's clock at XADD.
+//
+// The id is used rather than the "timestamp" field because the field is stamped by
+// the WRITING instance, putting two application clocks in the comparison; the id
+// puts only one (Redis's writer-side vs this reader's). The remaining skew is the
+// difference between the Redis server's clock and this instance's, which NTP keeps
+// small but does not eliminate — unlike the Postgres backend, where both sides of
+// the subtraction come from the database. Keep that asymmetry in mind when
+// comparing the two backends' reported percentiles.
+//
+// A malformed or future-dated id yields 0, which Observe drops.
+func entryAge(id string, now time.Time) time.Duration {
+	dash := strings.IndexByte(id, '-')
+	if dash <= 0 {
+		return 0
+	}
+	msec, err := strconv.ParseInt(id[:dash], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return now.Sub(time.UnixMilli(msec))
 }
 
 // parseEntry classifies an XMessage and flags self-originated entries (clientId
@@ -96,6 +124,7 @@ func parseEntry(m goredis.XMessage, ownID uint64) parsedEntry {
 	}
 
 	e.isSelf = fieldString(m.Values, "clientId") == strconv.FormatUint(ownID, 10)
+	e.age = entryAge(m.ID, time.Now())
 	return e
 }
 
