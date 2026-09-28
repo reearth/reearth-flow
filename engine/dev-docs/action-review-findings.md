@@ -1834,20 +1834,26 @@ CityGML 2 Reader · CityGML 3 Reader
   name/desc/ports/cat/tags: OK. Both were written to this standard in #2464.
 
 Feature CityGML 2 Reader · Feature CityGML 3 Reader
-  diag:    §9 state cleanup — FIXED, and the fix is narrower than it first looked.
+  diag:    §9 state cleanup — the relaxed-policy half FIXED; the runtime half referred.
              `Parser::parse` streams: each city object is committed as it is read
              (`parser_next.rs:190`, and the legacy parser the same way), so a file whose XML
              breaks partway has already added its first objects. Two consequences:
-             1. A policy relaxing `citygml.parse_failed` would have turned a broken file into
-                silently partial output on a run reported as successful. The first draft of
-                this audit did exactly that. A relaxed policy is now refused, with the reason
-                in the error.
-             2. Independently of policy, the runtime still calls `finish()` after a fatal in
-                `process()` (`processor_node.rs:332`, the fatal slot is read afterwards), so
-                even at the default the half-read file went downstream inside a failing run.
-                This predates the audit. `finish()` now emits nothing after a parse failure,
-                matching the source readers, which send zero features from a document they
-                could not read.
+             1. FIXED. A policy relaxing `citygml.parse_failed` would have turned a broken
+                file into silently partial output on a run reported as successful. The first
+                draft of this audit did exactly that. A relaxed policy is now refused, with the
+                reason in the error. This stays in the action because it is about what the
+                action's own code promises, not about the runtime.
+             2. NOT FIXED HERE, by review. The runtime still calls `finish()` after a fatal in
+                `process()` (`processor_node.rs:332`, the fatal slot is read afterwards), so the
+                half-read file goes downstream inside a run already reported as failed. This
+                predates the audit. A per-action guard (`finish()` emitting nothing after a
+                parse failure) was added and then removed in review: every processor that
+                buffers until `finish()` has the same exposure, so the guard would have to be
+                repeated in each of them and would drift. The run is still reported failed, so
+                the user is told the output cannot be trusted.
+                TRIGGER: a runtime mechanism that halts the workflow on an unrecoverable
+                error. It should keep the intermediate data of actions that did finish, or
+                the diagnostics trail gets shorter.
              A test pins the premise at the parser level. TRIGGER: if that test fails because
              the parser gained rollback, a relaxed policy can become a genuine skip of just
              the broken file.

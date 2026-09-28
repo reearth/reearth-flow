@@ -99,7 +99,6 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             base_attributes: HashMap::new(),
-            parse_failed: false,
         }))
     }
 }
@@ -173,10 +172,6 @@ pub struct FeatureCityGml2Reader {
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
     /// when `inherit_input_attributes` is set.
     base_attributes: HashMap<String, Attributes>,
-    /// Set when a file fails to parse. `Parser::parse` streams, so by then the
-    /// parser already holds the part of that file read before the break, and
-    /// `finish` must not emit it.
-    parse_failed: bool,
 }
 
 impl std::fmt::Debug for FeatureCityGml2Reader {
@@ -200,7 +195,6 @@ impl Clone for FeatureCityGml2Reader {
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
-            parse_failed: false,
         }
     }
 }
@@ -255,7 +249,6 @@ impl Processor for FeatureCityGml2Reader {
             // Honouring a relaxed disposition would turn a broken file into
             // silently partial output (§4.3, §9 on state left behind), so a
             // relaxed policy is refused with the reason instead.
-            self.parse_failed = true;
             let relaxed = ctx
                 .report(DiagnosticDraft::new(ErrorCode::CitygmlParseFailed))
                 .is_ok();
@@ -279,15 +272,6 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        if self.parse_failed {
-            // The runtime still calls `finish` after a fatal in `process`, so
-            // without this the part of the broken file read before the break
-            // would go downstream inside a run already reported as failed.
-            // Emitting nothing matches the source readers, which send zero
-            // features from a document they could not read.
-            self.parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone());
-            return Ok(());
-        }
         // This reader's own param stays a simple bool; the shared pipeline
         // function takes a caller-declared attribute-name list, so translate
         // at the boundary rather than changing this reader's exposed shape.
@@ -389,7 +373,6 @@ mod parse_failure_tests {
             inherit_input_attributes: true,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
             base_attributes: HashMap::new(),
-            parse_failed: false,
         }
     }
 
@@ -459,36 +442,10 @@ mod parse_failure_tests {
         );
     }
 
-    /// The fix for the premise pinned below: after a parse failure, nothing
-    /// from the half-read parser reaches the output.
-    #[test]
-    fn after_a_parse_failure_finish_emits_nothing_from_the_half_read_file() {
-        let (mut reader, result, _) = process_with("premise", DispositionPolicy::default());
-        assert!(result.is_err());
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-        reader
-            .finish(NodeContext::default(), &fw)
-            .expect("finish itself should succeed");
-        let ProcessorChannelForwarder::Noop(noop) = fw else {
-            unreachable!("built as a noop forwarder");
-        };
-        let emitted = noop
-            .send_ports
-            .lock()
-            .unwrap()
-            .iter()
-            .filter(|port| **port == *FEATURES_PORT)
-            .count();
-        assert_eq!(
-            emitted, 0,
-            "b1 was committed before the XML broke at b2 and must not be emitted"
-        );
-    }
-
-    /// The premise behind both the refusal and `finish` emitting nothing:
-    /// `Parser::parse` commits each city object as it reads it. If this ever
-    /// fails because the parser gained rollback, a relaxed policy could safely
-    /// become a skip of just the broken file.
+    /// The premise behind the refusal: `Parser::parse` commits each city
+    /// object as it reads it. If this ever fails because the parser gained
+    /// rollback, a relaxed policy could safely become a skip of just the
+    /// broken file.
     #[test]
     fn the_parser_commits_objects_read_before_the_xml_breaks() {
         let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new());
