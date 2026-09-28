@@ -628,6 +628,28 @@ impl Elevation for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Polygon2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), UnsupportedOperation> {
+        crate::ops::round::round_2d(&mut self.coords, &mut self.z, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Polygon3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), UnsupportedOperation> {
+        crate::ops::round::round_3d(&mut self.coords, precision);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

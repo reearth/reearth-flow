@@ -186,6 +186,11 @@ crate::unsupported!(PointCloud: DivideByGrid);
 #[cfg(feature = "new-geometry")]
 crate::no_area!(PointCloud);
 
+// Positions may be stored packed at a fixed precision, which rounding would not
+// preserve.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: RoundCoordinates);
+
 crate::unsupported!(
     PointCloud: Triangulate,
     Reproject,

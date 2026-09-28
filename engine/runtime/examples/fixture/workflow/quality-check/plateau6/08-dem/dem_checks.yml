@@ -166,6 +166,19 @@ nodes:
                 type(component) == dict and component.get("dem:TINRelief") != null
               }))
 
+  # Every check, and every error location, reads the positions at the precision
+  # the original compares them at: 12 decimal places for latitude and longitude
+  # and 4 for height.
+  - id: d9000000-0000-4000-8000-000000000038
+    name: CoordinateRounder
+    type: action
+    action: Coordinate Rounder
+    with:
+      precision:
+        x: 12
+        y: 12
+        z: 4
+
   - id: d9000000-0000-4000-8000-00000000000c
     name: TriangleChecks
     type: subGraph
@@ -203,17 +216,11 @@ nodes:
 
   # --- Unshared edges ---
   # Matched across the whole dataset: files tile one terrain and are expected to
-  # share edges across the tile boundary. Positions are rounded before they are
-  # compared, so an edge written from the same vertex twice still matches.
+  # share edges across the tile boundary.
   - id: d9000000-0000-4000-8000-00000000000e
     name: PLATEAU6.UnsharedEdgeExtractor
     type: action
     action: PLATEAU6.UnsharedEdgeExtractor
-    with:
-      coordinatePrecision:
-        x: 12
-        y: 12
-        z: 4
 
   # The edges around the outside of the terrain are unshared by definition, so
   # they are separated from the real findings by rebuilding that outline and
@@ -766,6 +773,11 @@ edges:
     toPort: features
   - id: d9000000-0000-4000-8000-00010000000b
     from: d9000000-0000-4000-8000-00000000000b
+    to: d9000000-0000-4000-8000-000000000038
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000048
+    from: d9000000-0000-4000-8000-000000000038
     to: d9000000-0000-4000-8000-00000000000c
     fromPort: features
     toPort: features
