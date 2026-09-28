@@ -9,10 +9,10 @@
 #   - a triangle whose ring never closes
 #   - an edge no second triangle shares
 #
-# The first four come from the shared PLATEAU6.TriangleChecks graph. The fifth is
-# scoped here, because which triangles may share an edge is a property of this
-# feature type: a folder's worth of files at one flood scale, the way the
-# original workspace groups them.
+# The first four come from the PLATEAU6.FloodingAreaTriangleChecks graph. The
+# fifth is scoped here, because which triangles may share an edge is a property
+# of this feature type: a folder's worth of files at one flood scale, the way
+# the original workspace groups them.
 #
 # Only the first four suppress qc_result_ok. An unshared edge is reported and
 # counted but does not fail the archive, matching the original.
@@ -160,7 +160,7 @@ nodes:
   - id: d8000000-0000-4000-8000-00000000000b
     name: TriangleChecks
     type: subGraph
-    subGraphId: c5000000-0000-4000-8000-000000000000
+    subGraphId: d8100000-0000-4000-8000-000000000000
 
   # --- Unshared edges ---
   # Scoped to one flood scale within one folder, the way the original workspace

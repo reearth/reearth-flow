@@ -8,9 +8,9 @@
 #   - a triangle whose ring never closes
 #   - an edge no second triangle shares
 #
-# The first four come from the shared PLATEAU6.TriangleChecks graph, set to the
-# relief rules. The fifth is scoped to the whole dataset, because neighbouring
-# files tile one continuous terrain.
+# The first four come from the PLATEAU6.ReliefTriangleChecks graph. The fifth is
+# scoped to the whole dataset, because neighbouring files tile one continuous
+# terrain.
 #
 # One result row is written per ReliefFeature. Every check reads the geometry in
 # the geographic frame it was written in; only the error locations are
@@ -169,7 +169,7 @@ nodes:
   - id: d9000000-0000-4000-8000-00000000000c
     name: TriangleChecks
     type: subGraph
-    subGraphId: c5000000-0000-4000-8000-000000000000
+    subGraphId: d9100000-0000-4000-8000-000000000000
 
   # Only sites inside a TIN are triangles. The original checks nothing else, so
   # the rest (breaklines, mass points, other geometry) is not counted and the

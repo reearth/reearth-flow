@@ -17,15 +17,12 @@ with:
   # Prefix of every result file the 08-dem sub-graph writes.
   packagePrefixes:
     dem: 08_地形
-  # The relief rules of the shared PLATEAU6.TriangleChecks graph.
-  triangleDegenerateRule: flatFootprint
-  triangleCountOpenRingCorners: true
 graphs:
   - !include ../../../../graphs/plateau6/xml_validator.yml
   - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
-  - !include ../../../../graphs/plateau6/triangle_checks.yml
+  - !include triangle_checks.yml
   - !include dem_checks.yml
   - id: a670e3b2-01e7-4a0b-9cb6-69e4f3495557
     name: entry_point
@@ -69,7 +66,7 @@ graphs:
         subGraphId: 0c1ed91a-7e69-4196-b6b7-d628060c2590
 
       - id: a670e3b2-01e7-4a0b-9cb6-69e4f3495a05
-        name: PLATEAU6.FloodingAreaQualityCheck-08-dem
+        name: PLATEAU6.ReliefQualityCheck-08-dem
         type: subGraph
         subGraphId: d9000000-0000-4000-8000-000000000000
 
