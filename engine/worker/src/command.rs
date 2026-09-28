@@ -46,7 +46,7 @@ pub fn build_worker_command() -> Command {
     // `probe-schema` and `schema-events` are registered as optional
     // subcommands; when present one takes over, otherwise we fall through to
     // the run behavior.
-    Command::new("Re:Earth Flow Worker")
+    let command = Command::new("Re:Earth Flow Worker")
         .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
         .version(env!("CARGO_PKG_VERSION"))
@@ -58,12 +58,16 @@ pub fn build_worker_command() -> Command {
         .arg(previous_job_id_arg())
         .arg(start_node_id_arg())
         .subcommand(crate::probe_schema::build_probe_schema_command())
-        .subcommand(crate::schema_events::build_schema_events_command())
-        // When `probe-schema` or `schema-events` is used, the top-level
-        // required run args (`--workflow`, `--metadata-path`) are not
-        // required. The default (subcommand-less) run invocation keeps
-        // requiring them exactly as before.
-        .subcommand_negates_reqs(true)
+        .subcommand(crate::schema_events::build_schema_events_command());
+
+    #[cfg(feature = "new-geometry")]
+    let command = command.subcommand(reearth_flow_worker::render_view::build_render_view_command());
+
+    // When `probe-schema`, `schema-events` or `render-view` is used, the
+    // top-level required run args (`--workflow`, `--metadata-path`) are not
+    // required. The default (subcommand-less) run invocation keeps requiring
+    // them exactly as before.
+    command.subcommand_negates_reqs(true)
 }
 
 fn workflow_arg() -> Arg {

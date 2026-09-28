@@ -69,6 +69,22 @@ fn main() {
                 0
             }
         }
+        #[cfg(feature = "new-geometry")]
+        Some((name, sub)) if name == "render-view" => {
+            let args = match reearth_flow_worker::render_view::args::parse(sub) {
+                Ok(args) => args,
+                Err(err) => {
+                    eprintln!("Failed to parse cli args: {err}\n");
+                    shutdown_and_exit(&otel_guard, 1);
+                }
+            };
+            if let Err(err) = reearth_flow_worker::render_view::execute::execute(args) {
+                eprintln!("render-view failed: {err}\n");
+                1
+            } else {
+                0
+            }
+        }
         _ => {
             let command = match RunWorkerCommand::parse_cli_args(matches) {
                 Ok(command) => command,

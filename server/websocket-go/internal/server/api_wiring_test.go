@@ -14,7 +14,7 @@ import (
 // /health stays unguarded, and that /api/* routes reach the API router not WS.
 func TestHandlerWithAPIGuardsOnlyAPI(t *testing.T) {
 	s := New(&config.Config{Origins: []string{"*"}, MaxConnections: 10, MaxPeersPerRoom: 10, MaxRooms: 10})
-	s.SetHealthChecks(nil, nil) // 503 unconfigured but reachable
+	s.SetHealthChecks(nil, nil, "test") // 503 unconfigured but reachable
 
 	mw, err := flowhttp.RequireAPISecret(flowhttp.APISecretConfig{Secret: "sekret", AppEnv: "development"})
 	if err != nil {

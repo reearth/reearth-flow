@@ -571,6 +571,21 @@ impl CountHoles for PolygonMesh3D {
     }
 }
 
+// The shared vertex pool, so a corner used by several faces counts once.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for PolygonMesh2D {
+    fn count_vertices(&self) -> usize {
+        self.vertices().len()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for PolygonMesh3D {
+    fn count_vertices(&self) -> usize {
+        self.vertices().len()
+    }
+}
+
 // A mesh is an aggregate of faces, so it deaggregates: every face contributes its
 // own outer shell, and its holes come out alongside.
 impl ExtractHoles for PolygonMesh2D {

@@ -24,6 +24,8 @@ pub mod hole;
 pub mod reproject;
 pub mod split;
 pub mod triangulation;
+#[cfg(feature = "new-geometry")]
+pub mod vertex;
 
 #[cfg(feature = "new-geometry")]
 pub use area::{area_report, Area, AreaFrame, AreaReport};
@@ -49,6 +51,8 @@ pub(crate) use reproject::{
 pub use reproject::{esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
+#[cfg(feature = "new-geometry")]
+pub use vertex::CountVertices;
 
 use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
 use crate::error::Error;

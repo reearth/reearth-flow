@@ -197,6 +197,14 @@ crate::unsupported!(
     Coerce
 );
 
+// Every segment's positions, summed: a cloud is nothing but coordinates.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for PointCloud {
+    fn count_vertices(&self) -> usize {
+        self.segments.iter().map(|s| s.count).sum()
+    }
+}
+
 // Positions have no extent, so nothing bounds them.
 impl crate::ops::ExtractBoundary for PointCloud {
     fn extract_boundary(&self) -> Result<crate::ops::Boundary, crate::ops::UnsupportedOperation> {

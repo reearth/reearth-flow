@@ -1,0 +1,56 @@
+{
+  "description": "No-error case for plateau6 06-fld, htd package: the same two correctly wound triangles as the fld case, checking that htd writes its result sheet under its own prefix.",
+  "workflowPath": "quality-check/plateau6/06-fld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "fld_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6675
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/htd",
+      "name": "fld_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_htd_16_1.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "06_浸水想定区域_htd/16_1.csv",
+        "keyColumns": ["Filename"]
+      },
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": ["サイズ[KB]"]
+      }
+    ]
+  },
+  "expectResultOkFile": true
+}

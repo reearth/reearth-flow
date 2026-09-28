@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_3fbe14ed-9652-4509-be73-a933c6821ddd">
+<gml:name>RiverFloodingRiskAttribute_description</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="HighTideRiskAttribute_description_1">
+<gml:description>熊本県沿岸高潮浸水想定区域</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

@@ -59,6 +59,9 @@ struct Extension {
     value: serde_json::Value,
 }
 
+/// Tool name recorded in the `asset.generator` field of every GLB built here.
+const GENERATOR: &str = "Re:Earth Flow";
+
 /// Accumulates the GLB binary payload alongside the glTF document it
 /// describes. `push_buffer_view` is public so a caller can place its own
 /// domain-specific bytes (e.g. a property table's string values) in the same
@@ -321,6 +324,7 @@ impl Builder {
             nodes: vec![node_index],
         });
         self.root.scene = Some(scene_index);
+        self.root.asset.generator = Some(GENERATOR.to_string());
 
         let mut json_value =
             serde_json::to_value(&self.root).expect("glTF JSON is always serializable");
