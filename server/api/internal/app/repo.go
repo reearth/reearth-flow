@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	apiotel "github.com/reearth/reearth-flow/api/internal/app/otel"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/cloudrunworker"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/cms"
@@ -250,6 +251,7 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 	if err := redisotel.InstrumentTracing(client); err != nil {
 		log.Warnf("failed to instrument redis tracing: %s\n", err.Error())
 	}
+	client.AddHook(redisCommandCounterHook{})
 	RedisRepo, err := redisrepo.NewRedisLog(client)
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
@@ -297,4 +299,28 @@ func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
 
 	log.Infofc(ctx, "CMS enabled: endpoint=%s", conf.CMS_Endpoint)
 	return cmsClient
+}
+
+// redisCommandCounterHook counts commands issued against the request
+// carried in each command's context, feeding InstrumentRedisCommands.
+type redisCommandCounterHook struct{}
+
+func (redisCommandCounterHook) DialHook(next redis.DialHook) redis.DialHook {
+	return next
+}
+
+func (redisCommandCounterHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		apiotel.IncRedisCommand(ctx)
+		return next(ctx, cmd)
+	}
+}
+
+func (redisCommandCounterHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []redis.Cmder) error {
+		for range cmds {
+			apiotel.IncRedisCommand(ctx)
+		}
+		return next(ctx, cmds)
+	}
 }
