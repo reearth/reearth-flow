@@ -2,6 +2,7 @@ package featureview
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -53,6 +54,27 @@ type Report struct {
 	Scanned int `json:"scanned"`
 }
 
+// allowsFormat reports whether a shape can have produced a format. The engine
+// chooses the format from the geometry it finds, but only within the shape it
+// was asked for: a tiles render never yields a glb, and a gltf render never
+// yields a tile pyramid. A report claiming otherwise did not come from a render
+// the server asked for, and would hand the caller a tilejson URL for a glb.
+func (s Shape) allowsFormat(f Format) error {
+	switch s {
+	case ShapeGLTF:
+		if f == FormatGLB {
+			return nil
+		}
+	case ShapeTiles:
+		if f == FormatCesium3DTiles || f == FormatVectorTiles {
+			return nil
+		}
+	default:
+		return fmt.Errorf("%w: unknown shape %q", ErrInvalidReport, s)
+	}
+	return fmt.Errorf("%w: a %s report cannot have format %q", ErrInvalidReport, s, f)
+}
+
 // ParseReport reads a report and rejects one that contradicts itself, so a
 // malformed or truncated object cannot be served to a client as a usable view.
 func ParseReport(r io.Reader) (*Report, error) {
@@ -60,6 +82,13 @@ func ParseReport(r io.Reader) (*Report, error) {
 	dec := json.NewDecoder(r)
 	if err := dec.Decode(&report); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidReport, err)
+	}
+	// Decode stops at the end of the first value, so trailing bytes would go
+	// unseen. This parser is the validation boundary for the renderer's only
+	// record of an outcome, and a report with anything after the object is not
+	// one the renderer wrote.
+	if err := dec.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("%w: unexpected data after the report object", ErrInvalidReport)
 	}
 
 	if report.Version != ReportVersion {
@@ -74,6 +103,9 @@ func ParseReport(r io.Reader) (*Report, error) {
 		}
 		if strings.TrimSpace(report.EntryPoint) == "" {
 			return nil, fmt.Errorf("%w: a %s report must name its entry point", ErrInvalidReport, StatusReady)
+		}
+		if err := report.Shape.allowsFormat(*report.Format); err != nil {
+			return nil, err
 		}
 	case StatusEmpty, StatusUnsupportedGeometry, StatusFailed:
 		// These wrote no view, so there is nothing to point at.

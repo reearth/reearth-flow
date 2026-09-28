@@ -583,3 +583,35 @@ func TestIntermediateDataView_Render_PropagatesAStorageFault(t *testing.T) {
 	assert.Contains(t, err.Error(), "gcs unavailable")
 	assert.Zero(t, h.worker.calls)
 }
+
+// The view key reaches storage as a path segment, and on this path it comes
+// straight from the query. A key that could climb out of the view's directory
+// has to be refused before anything is read, not cleaned up afterwards.
+func TestIntermediateDataView_Get_RefusesATraversingKey(t *testing.T) {
+	for _, key := range []string{"../../secret", "..", "a/b", "tiles-all-dead.beef"} {
+		h := newViewHarness(t, job.StatusCompleted, true)
+		h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
+		  "renderedFeatures":1,"scanned":1,"entryPoint":"x/tilejson.json"}`
+
+		_, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+
+		assert.ErrorIs(t, err, rerror.ErrNotFound, "key %q must be refused", key)
+		assert.Zero(t, h.file.reportReads, "key %q must be refused before any storage read", key)
+	}
+}
+
+// A report outlives the view it describes, so retention can leave a ready
+// report pointing at an entry point that is gone. Render re-renders in that
+// case; Get cannot, so it must not answer READY with a URL that 404s.
+func TestIntermediateDataView_Get_NotFoundWhenTheViewWasSwept(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := tilesReq().Key()
+	h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
+	  "renderedFeatures":812,"scanned":900,"entryPoint":"` + key + `/tilejson.json"}`
+	h.file.viewMissing = true
+
+	_, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	assert.Zero(t, h.worker.calls, "Get never renders, even when the view is gone")
+}

@@ -163,7 +163,9 @@ func (i *IntermediateDataView) Get(
 	if err := featureview.ValidateFileID(fileID); err != nil {
 		return nil, err
 	}
-	if key == "" {
+	// The key is client-supplied here and becomes a storage path segment, so it
+	// is checked before any read rather than only for emptiness.
+	if err := featureview.ValidateViewKey(key); err != nil {
 		return nil, rerror.ErrNotFound
 	}
 
@@ -174,6 +176,17 @@ func (i *IntermediateDataView) Get(
 	if report == nil {
 		// No report means no render has finished. Whether one is in flight is
 		// the render job's business, and the client already holds its id.
+		return nil, rerror.ErrNotFound
+	}
+
+	// A report outlives the view it describes, so a ready one whose entry point
+	// has been swept would otherwise be answered READY with a URL that 404s.
+	// Get does not render, so the honest answer is that there is no view.
+	present, err := i.viewStillPresent(ctx, jobID, fileID, key, report)
+	if err != nil {
+		return nil, err
+	}
+	if !present {
 		return nil, rerror.ErrNotFound
 	}
 

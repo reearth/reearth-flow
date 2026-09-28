@@ -60,9 +60,16 @@ func serveFiles(
 
 	group := ec.Group("")
 
-	group.Match([]string{"GET", "HEAD"}, "/artifacts/:filename",
+	// A feature view's entry point is nested
+	// (`<job>/feature-view/<file>/<key>/tileset.json`), so this route has to
+	// match more than one segment. A path parameter happens to do that too —
+	// Echo lets `:filename` run past a `/` when nothing else competes for the
+	// path — but that is a quirk of the current route set, not something to
+	// hang the feature's only public URL on. The wildcard says it outright.
+	// ReadArtifact cleans the name before it reaches storage.
+	group.Match([]string{"GET", "HEAD"}, "/artifacts/*",
 		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
-			filename := ctx.Param("filename")
+			filename := ctx.Param("*")
 			r, err := repo.ReadArtifact(ctx.Request().Context(), filename)
 			return r, filename, err
 		}),

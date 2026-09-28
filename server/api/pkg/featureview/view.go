@@ -267,8 +267,12 @@ func (r Request) Key() string {
 			o.TargetTileSize, o.MinZoom, o.MaxZoom, o.Extent, o.MaxTileBytes)
 	}
 
+	// 128 bits of the digest. The selector in front is a human-readable hint,
+	// not identity — every filtered request shares the same "f" — so the hash
+	// alone has to carry the cache contract above. A 32-bit prefix would start
+	// colliding, and reusing another request's render, in the tens of thousands.
 	sum := sha256.Sum256([]byte(b.String()))
-	return fmt.Sprintf("%s-%s-%s", r.Shape, r.selector(), hex.EncodeToString(sum[:4]))
+	return fmt.Sprintf("%s-%s-%s", r.Shape, r.selector(), hex.EncodeToString(sum[:16]))
 }
 
 // selector is the human-readable middle of a key: enough to tell two views of
@@ -298,6 +302,40 @@ func EntryPointName(key string, format Format) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown view format %q", format)
 	}
+}
+
+// MaxViewKeyLength bounds a view key so a hostile one cannot be used to build
+// an unreasonable object name.
+const MaxViewKeyLength = 128
+
+// ValidateViewKey checks a view key before it is used to build a storage path.
+//
+// Key() only ever produces `shape-selector-digest`, so letters, digits and the
+// separating hyphen are the whole accepted set. The check exists because a key
+// also arrives from the client on the read path, where it reaches path.Join as
+// a segment: refusing dots and separators outright is what stops `../..` from
+// addressing a file outside the view's own directory.
+func ValidateViewKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("%w: must not be empty", ErrInvalidViewKey)
+	}
+	if len(key) > MaxViewKeyLength {
+		return fmt.Errorf("%w: longer than the %d character maximum", ErrInvalidViewKey, MaxViewKeyLength)
+	}
+
+	for i := 0; i < len(key); i++ {
+		c := key[i]
+		switch {
+		case c >= 'a' && c <= 'z',
+			c >= 'A' && c <= 'Z',
+			c >= '0' && c <= '9',
+			c == '-':
+		default:
+			return fmt.Errorf("%w: unexpected character %q", ErrInvalidViewKey, string(c))
+		}
+	}
+
+	return nil
 }
 
 // ReportName is the report for a key, relative to the view's own directory. It
