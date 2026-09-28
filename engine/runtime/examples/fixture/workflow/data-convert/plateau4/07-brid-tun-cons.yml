@@ -358,6 +358,39 @@ graphs:
       - attribute: dm_shapeType_code
         method: create
         value: '""'
+  - id: 6d28ff81-68ef-46e5-aa8e-23d4e2a45ef6
+    name: AttributeManagerDmGeometricAttributeDefaultFlat
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: dm_feature_type
+        method: create
+        value: '""'
+      - attribute: dm_dmCode
+        method: create
+        value: '""'
+      - attribute: dm_dmCode_code
+        method: create
+        value: '""'
+      - attribute: dm_geometryType
+        method: create
+        value: '""'
+      - attribute: dm_geometryType_code
+        method: create
+        value: '""'
+      - attribute: dm_mapLevel
+        method: create
+        value: '""'
+      - attribute: dm_mapLevel_code
+        method: create
+        value: '""'
+      - attribute: dm_shapeType
+        method: create
+        value: '""'
+      - attribute: dm_shapeType_code
+        method: create
+        value: '""'
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
     name: AttributeManagerForMerger
     type: action
@@ -565,6 +598,37 @@ graphs:
           city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
         }
         file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes.zip")
+      skipUnexposedAttributes: true
+      colonToUnderscore: true
+  - id: 82260fca-8fd0-4d0b-815b-12abb5250ea5
+    name: MVTWriterDmGeometricAttributeFullAttributes
+    type: action
+    action: MVTWriter
+    with:
+      layerName: |
+        let pkg = env.get("__value")["__package"];
+        if pkg == "brid" {
+          "Bridge"
+        } else if pkg == "tun" {
+          "Tunnel"
+        } else if pkg == "cons" {
+          "OtherConstruction"
+        } else {
+          pkg
+        }
+      minZoom: 8
+      maxZoom: 18
+      extent: 65536
+      output: |
+        file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes_full_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let pkg = env.get("__value")["__package"];
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        if city_gml.ends_with("_" + pkg) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+        }
+        file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes_full_attributes.zip")
       skipUnexposedAttributes: true
       colonToUnderscore: true
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
@@ -944,7 +1008,7 @@ graphs:
     fromPort: schema
     toPort: default
   - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    from: 6d28ff81-68ef-46e5-aa8e-23d4e2a45ef6
     to: d4e5f6a7-b8c9-0123-def1-234567890124
     fromPort: default
     toPort: schema
@@ -987,4 +1051,19 @@ graphs:
     from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
     to: 3ae4a9e4-dca1-4976-81fe-f8e17e09638b
     fromPort: schema
+    toPort: schema
+  - id: b994eb83-b55f-4591-83b8-89493187ed69
+    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    to: 6d28ff81-68ef-46e5-aa8e-23d4e2a45ef6
+    fromPort: flatSchema
+    toPort: default
+  - id: 02c69206-5680-4203-9e65-11bafadbe906
+    from: c3d4e5f6-a7b8-9012-cdef-123456789013
+    to: 82260fca-8fd0-4d0b-815b-12abb5250ea5
+    fromPort: default
+    toPort: default
+  - id: 028f6bc3-4110-4fa2-a4a6-3d43e7b94f91
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: 82260fca-8fd0-4d0b-815b-12abb5250ea5
+    fromPort: default
     toPort: schema

@@ -641,6 +641,16 @@ graphs:
     name: TwoDimensionForcerDmGeometricAttributeFrn
     type: action
     action: TwoDimensionForcer
+  - id: 2c8c4c38-74d2-4a8e-8351-7959c1caee80
+    name: AttributeManagerRemoveNestedAttributesDmGeometricAttributeFrn
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: attributes
+        method: remove
+      - attribute: dm_attributes
+        method: remove
   - id: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
     name: MVTWriterDmGeometricAttributeFrn
     type: action
@@ -661,6 +671,27 @@ graphs:
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
         file::join_path(artifact, city_gml + "_frn_dm_geometric_attributes.zip")
+      colonToUnderscore: true
+  - id: d8c83332-675b-4016-ba14-7069f48b695b
+    name: MVTWriterDmGeometricAttributeFrnFullAttributes
+    type: action
+    action: MVTWriter
+    with:
+      layerName: |
+        env.get("__value").feature_type.split(":")[1]
+      minZoom: 8
+      maxZoom: 18
+      extent: 65536
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "frn_dm_geometric_attributes_full_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        let suffix = "_frn";
+        if city_gml.ends_with(suffix) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+        }
+        file::join_path(artifact, city_gml + "_frn_dm_geometric_attributes_full_attributes.zip")
       colonToUnderscore: true
   - id: bd4ff879-8448-434d-9c47-ef85722b40cb
     name: LodSplitterWithDMVeg1
@@ -944,6 +975,16 @@ graphs:
     name: TwoDimensionForcerDmGeometricAttributeVeg1
     type: action
     action: TwoDimensionForcer
+  - id: b2a8d657-8f75-4627-9a4b-394b79dfffb6
+    name: AttributeManagerRemoveNestedAttributesDmGeometricAttributeVeg1
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: attributes
+        method: remove
+      - attribute: dm_attributes
+        method: remove
   - id: 751b9bca-ee1a-48ef-a2f8-bfc6ae879c37
     name: MVTWriterDmGeometricAttributeVeg1
     type: action
@@ -964,6 +1005,27 @@ graphs:
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
         file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_dm_geometric_attributes.zip")
+      colonToUnderscore: true
+  - id: d5255598-974d-4a9b-81df-0310336763f0
+    name: MVTWriterDmGeometricAttributeVeg1FullAttributes
+    type: action
+    action: MVTWriter
+    with:
+      layerName: |
+        env.get("__value").feature_type.split(":")[1]
+      minZoom: 8
+      maxZoom: 18
+      extent: 65536
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_dm_geometric_attributes_full_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        let suffix = "_veg";
+        if city_gml.ends_with(suffix) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+        }
+        file::join_path(artifact, city_gml + "_veg_SolitaryVegetationObject_dm_geometric_attributes_full_attributes.zip")
       colonToUnderscore: true
   - id: 2233fddd-fdc3-44a1-93e2-86805de13a3a
     name: LodSplitterWithDMVeg2
@@ -1205,6 +1267,16 @@ graphs:
     name: TwoDimensionForcerDmGeometricAttributeVeg2
     type: action
     action: TwoDimensionForcer
+  - id: 05d289c4-dbdb-484f-bb0d-f1605a077162
+    name: AttributeManagerRemoveNestedAttributesDmGeometricAttributeVeg2
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: attributes
+        method: remove
+      - attribute: dm_attributes
+        method: remove
   - id: 7da667d4-032f-49f6-b398-18944866a327
     name: MVTWriterDmGeometricAttributeVeg2
     type: action
@@ -1225,6 +1297,27 @@ graphs:
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
         file::join_path(artifact, city_gml + "_veg_PlantCover_dm_geometric_attributes.zip")
+      colonToUnderscore: true
+  - id: 68342608-0f80-443c-a6cd-da7fea4c8954
+    name: MVTWriterDmGeometricAttributeVeg2FullAttributes
+    type: action
+    action: MVTWriter
+    with:
+      layerName: |
+        env.get("__value").feature_type.split(":")[1]
+      minZoom: 8
+      maxZoom: 18
+      extent: 65536
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_dm_geometric_attributes_full_attributes")
+      compressOutput: |
+        let artifact = env.get("workerArtifactPath");
+        let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+        let suffix = "_veg";
+        if city_gml.ends_with(suffix) {
+          city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
+        }
+        file::join_path(artifact, city_gml + "_veg_PlantCover_dm_geometric_attributes_full_attributes.zip")
       colonToUnderscore: true
   edges:
   - id: 315405f0-0c40-41c7-989b-85ab55935795
@@ -1364,7 +1457,7 @@ graphs:
     toPort: default
   - id: a9683146-31ad-4dca-9903-947088c6731b
     from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
-    to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
+    to: 2c8c4c38-74d2-4a8e-8351-7959c1caee80
     fromPort: default
     toPort: default
   - id: 27eee1ea-6df6-49ba-ab40-bd34d88ec68f
@@ -1439,7 +1532,7 @@ graphs:
     toPort: default
   - id: 9097dd87-8ee7-4fdd-b256-b46f1c1e39d2
     from: 9e01874c-4171-449a-af5c-7e0663fbbf1f
-    to: 751b9bca-ee1a-48ef-a2f8-bfc6ae879c37
+    to: b2a8d657-8f75-4627-9a4b-394b79dfffb6
     fromPort: default
     toPort: default
   - id: 828b5ea4-5634-49ce-89c5-9e6c8f4744a3
@@ -1509,7 +1602,7 @@ graphs:
     toPort: default
   - id: 7cf5ba37-6704-4644-8680-e86d6adfbb7b
     from: b69e66da-7b24-4a8c-8c08-5fa53b92c134
-    to: 7da667d4-032f-49f6-b398-18944866a327
+    to: 05d289c4-dbdb-484f-bb0d-f1605a077162
     fromPort: default
     toPort: default
   - id: 0b06303a-6aca-44d1-a271-c1e2413d676f
@@ -1557,3 +1650,33 @@ graphs:
     to: 70eceaef-b79e-4eb9-9b8f-09e2d1761076
     fromPort: default
     toPort: schema
+  - id: 1bffc50c-4f7e-49e1-bcd6-a2d5b74810a4
+    from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    to: d8c83332-675b-4016-ba14-7069f48b695b
+    fromPort: default
+    toPort: default
+  - id: 53a38597-9626-48e9-89be-35ac9e2c2df4
+    from: 2c8c4c38-74d2-4a8e-8351-7959c1caee80
+    to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
+    fromPort: default
+    toPort: default
+  - id: 86f15334-6125-4b2f-9b9a-a93d9b4db76c
+    from: 9e01874c-4171-449a-af5c-7e0663fbbf1f
+    to: d5255598-974d-4a9b-81df-0310336763f0
+    fromPort: default
+    toPort: default
+  - id: ca671556-18c3-43e9-85e4-6c6cf5548a88
+    from: b2a8d657-8f75-4627-9a4b-394b79dfffb6
+    to: 751b9bca-ee1a-48ef-a2f8-bfc6ae879c37
+    fromPort: default
+    toPort: default
+  - id: d1e508ba-3320-49b4-b7cc-56c178e791ef
+    from: b69e66da-7b24-4a8c-8c08-5fa53b92c134
+    to: 68342608-0f80-443c-a6cd-da7fea4c8954
+    fromPort: default
+    toPort: default
+  - id: 5c8e1ca7-82d0-47f9-933c-2bfaa6209db0
+    from: 05d289c4-dbdb-484f-bb0d-f1605a077162
+    to: 7da667d4-032f-49f6-b398-18944866a327
+    fromPort: default
+    toPort: default
