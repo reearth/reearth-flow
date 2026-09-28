@@ -26,9 +26,22 @@ pub enum GeometryTest {
 pub struct CesiumConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
     #[serde(default)]
-    pub skip_geometry_tests: Vec<GeometryTest>,
-    #[serde(default)]
-    pub skip_all_geometry_tests: bool,
+    pub geometry_tests: HashMap<GeometryTest, bool>,
+}
+
+impl GeometryTest {
+    fn enabled_by_default(self) -> bool {
+        !matches!(self, GeometryTest::AverageWinding)
+    }
+}
+
+impl CesiumConfig {
+    fn enabled(&self, test: GeometryTest) -> bool {
+        self.geometry_tests
+            .get(&test)
+            .copied()
+            .unwrap_or(test.enabled_by_default())
+    }
 }
 
 pub fn test_cesium(
@@ -68,9 +81,7 @@ pub fn test_cesium(
         compare_attributes(&truth_collector, &flow_collector, &casts)?;
 
         // Compare statistics
-        if !config.skip_all_geometry_tests {
-            compare_geometry(&truth_collector, &flow_collector, config)?;
-        }
+        compare_geometry(&truth_collector, &flow_collector, config)?;
     }
 
     Ok(())
@@ -148,7 +159,6 @@ fn compare_geometry(
     flow_geometries: &GeometryCollector,
     config: &CesiumConfig,
 ) -> Result<(), String> {
-    let skip: HashSet<GeometryTest> = config.skip_geometry_tests.iter().copied().collect();
     let truth_detail_levels = &truth_geometries.detail_levels;
     let flow_detail_levels = &flow_geometries.detail_levels;
     let truth_keys: std::collections::HashSet<_> = truth_detail_levels.keys().collect();
@@ -171,12 +181,12 @@ fn compare_geometry(
     for ident in truth_keys {
         let truth_detail_levels = &truth_detail_levels[ident];
         let flow_detail_levels = &flow_detail_levels[ident];
-        if !skip.contains(&GeometryTest::TexturePresence) {
+        if config.enabled(GeometryTest::TexturePresence) {
             test_texture_presence(ident, truth_detail_levels, flow_detail_levels)?;
         }
 
         // Assert geometric error decreases monotonically
-        if !skip.contains(&GeometryTest::MonotonicGeometricError) {
+        if config.enabled(GeometryTest::MonotonicGeometricError) {
             verify_monotonic_geometric_error(ident, truth_detail_levels, "Truth")?;
             verify_monotonic_geometric_error(ident, flow_detail_levels, "Flow")?;
         }
@@ -192,7 +202,7 @@ fn compare_geometry(
                 truth_geometries,
                 level,
                 flow_geometries,
-                &skip,
+                config,
             )?;
             tracing::debug!(
                 "{}: level {}, bbox:{:.6}, center:{:.6}, color:{:.6}, winding:{:.6}",
@@ -276,7 +286,7 @@ fn compare_detail_level(
     truth_geometries: &GeometryCollector,
     flow_level: &DetailLevel,
     flow_geometries: &GeometryCollector,
-    skip: &HashSet<GeometryTest>,
+    config: &CesiumConfig,
 ) -> Result<DetailLevelComparisonResult, String> {
     let mut result = DetailLevelComparisonResult::new(ident.to_string());
     let truth_error = truth_level.geometric_error;
@@ -310,7 +320,7 @@ fn compare_detail_level(
         ));
     }
 
-    if !skip.contains(&GeometryTest::BoundingBox) {
+    if config.enabled(GeometryTest::BoundingBox) {
         // Compute bounding boxes directly from vertex positions
         let truth_bbox = compute_bbox(&truth_level.triangles, &truth_geometries.vertex_positions)?;
         let flow_bbox = compute_bbox(&flow_level.triangles, &flow_geometries.vertex_positions)?;
@@ -343,7 +353,7 @@ fn compare_detail_level(
         }
     }
 
-    if !skip.contains(&GeometryTest::MassCenter) {
+    if config.enabled(GeometryTest::MassCenter) {
         // Compute centroids directly from vertex positions
         let truth_centroid =
             compute_centroid(&truth_level.triangles, &truth_geometries.vertex_positions).map_err(
@@ -372,7 +382,7 @@ fn compare_detail_level(
     // Skip color comparison if textures are present
     // NOTE: (probably) diffuseColor in X3D material is used as base color, overriden by texture if present.
     // Therefore, we ignore color comparison when textures exist.
-    if !skip.contains(&GeometryTest::AverageColor) {
+    if config.enabled(GeometryTest::AverageColor) {
         let has_texture = truth_level.source_idx.is_some() || flow_level.source_idx.is_some();
         if !has_texture {
             // Test face-weighted average color (material base color × vertex color)
@@ -386,7 +396,7 @@ fn compare_detail_level(
         }
     }
 
-    if !skip.contains(&GeometryTest::AverageWinding) {
+    if config.enabled(GeometryTest::AverageWinding) {
         result.average_winding_error = test_area_weighted_average_winding(
             ident,
             truth_level,

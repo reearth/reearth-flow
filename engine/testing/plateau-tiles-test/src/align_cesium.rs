@@ -1,10 +1,12 @@
 use crate::compare_attributes::{
     analyze_attributes, make_feature_key, structural_casts, CastConfig,
 };
+use crate::tileset::collect_tile_contents;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
     extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, read_vertex_colors, traverse_scene, Transform,
+    read_positions_with_transform, read_vertex_colors, resolve_texture_source, traverse_scene,
+    Transform,
 };
 use reearth_flow_types::material::Material;
 use serde_json::Value;
@@ -144,62 +146,10 @@ impl GeometryCollector {
     }
 
     fn process_tile(&mut self, tile: &Value) -> Result<(), String> {
-        let geometric_error = tile
-            .get("geometricError")
-            .and_then(|v| v.as_f64())
-            .ok_or_else(|| "Missing or invalid geometricError in tile".to_string())?;
-
-        let glb_paths = self.extract_glb_paths(tile)?;
-
-        for glb_path in glb_paths {
-            self.process_glb(&glb_path, geometric_error)?;
+        for content in collect_tile_contents(&self.tileset_dir, tile)? {
+            self.process_glb(&content.path, content.geometric_error)?;
         }
-
-        if let Some(children) = tile.get("children").and_then(|c| c.as_array()) {
-            for child in children {
-                self.process_tile(child)?;
-            }
-        }
-
         Ok(())
-    }
-
-    fn extract_glb_paths(&self, tile: &Value) -> Result<Vec<PathBuf>, String> {
-        let mut glb_paths = Vec::new();
-
-        if let Some(content) = tile.get("content") {
-            if let Some(uri) = content.get("uri").and_then(|u| u.as_str()) {
-                if uri.ends_with(".glb") {
-                    let glb_path = self.tileset_dir.join(uri);
-                    if !glb_path.exists() {
-                        return Err(format!(
-                            "GLB file referenced in tileset does not exist: {:?}",
-                            glb_path
-                        ));
-                    }
-                    glb_paths.push(glb_path);
-                }
-            }
-        }
-
-        if let Some(contents) = tile.get("contents").and_then(|c| c.as_array()) {
-            for content_item in contents {
-                if let Some(uri) = content_item.get("uri").and_then(|u| u.as_str()) {
-                    if uri.ends_with(".glb") {
-                        let glb_path = self.tileset_dir.join(uri);
-                        if !glb_path.exists() {
-                            return Err(format!(
-                                "GLB file referenced in tileset does not exist: {:?}",
-                                glb_path
-                            ));
-                        }
-                        glb_paths.push(glb_path);
-                    }
-                }
-            }
-        }
-
-        Ok(glb_paths)
     }
 
     fn process_glb(&mut self, glb_path: &Path, geometric_error: f64) -> Result<(), String> {
@@ -261,6 +211,7 @@ impl GeometryCollector {
                 if let Some(mesh) = node.mesh() {
                     for primitive in mesh.primitives() {
                         self.process_primitive_collect(
+                            &gltf,
                             &primitive,
                             &buffer_data,
                             glb_path,
@@ -300,6 +251,7 @@ impl GeometryCollector {
     /// Process a primitive and collect feature data without creating DetailLevels yet
     fn process_primitive_collect(
         &mut self,
+        document: &::gltf::Document,
         primitive: &::gltf::Primitive,
         buffer_data: &[Vec<u8>],
         glb_path: &Path,
@@ -361,22 +313,23 @@ impl GeometryCollector {
 
         // Extract and store material information
         let gltf_material = primitive.material();
-        let flow_material = material_from_gltf(&gltf_material)
+        let flow_material = material_from_gltf(document, &gltf_material)
             .map_err(|e| format!("Failed to extract material from {:?}: {}", glb_path, e))?;
         self.materials.push(flow_material);
 
         let texture_info = gltf_material
             .pbr_metallic_roughness()
             .base_color_texture()
-            .map(|tex_info| {
+            .map(|tex_info| -> Result<Option<String>, String> {
                 let texture = tex_info.texture();
-                let texture_name = texture
-                    .source()
+                let source = resolve_texture_source(document, &texture)
+                    .map_err(|e| format!("Failed to resolve texture source: {}", e))?;
+                Ok(source
                     .name()
                     .map(|s| s.to_string())
-                    .or_else(|| Some(format!("texture_{}", texture.source().index())));
-                texture_name
-            });
+                    .or_else(|| Some(format!("texture_{}", source.index()))))
+            })
+            .transpose()?;
 
         let has_texture = texture_info.is_some();
         let texture_name = texture_info.flatten();

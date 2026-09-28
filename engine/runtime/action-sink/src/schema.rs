@@ -51,18 +51,8 @@ pub fn cast_attribute_value(value: &AttributeValue, type_ref: &TypeRef) -> Attri
         },
         TypeRef::Boolean => match value {
             AttributeValue::Bool(_) => value.clone(),
-            AttributeValue::String(s) => match s.to_lowercase().as_str() {
-                "true" | "1" => AttributeValue::Bool(true),
-                "false" | "0" => AttributeValue::Bool(false),
-                _ => value.clone(),
-            },
-            AttributeValue::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    AttributeValue::Bool(i != 0)
-                } else {
-                    value.clone()
-                }
-            }
+            AttributeValue::String(s) => AttributeValue::Bool(!s.is_empty()),
+            AttributeValue::Number(n) => AttributeValue::Bool(n.as_f64() != Some(0.0)),
             _ => value.clone(),
         },
         TypeRef::String | TypeRef::Code | TypeRef::URI | TypeRef::Date | TypeRef::DateTime => {
@@ -79,14 +69,19 @@ pub fn cast_attribute_value(value: &AttributeValue, type_ref: &TypeRef) -> Attri
     }
 }
 
+/// Feature -> the schema type its attributes are declared under
+/// (`__schema_definition`, else its feature type).
+pub fn schema_key(feature: &Feature) -> Option<String> {
+    feature
+        .get("__schema_definition")
+        .and_then(|v| v.as_string())
+        .or_else(|| feature.feature_type())
+}
+
 /// Filter feature attributes by schema and cast values to match schema types.
 /// If no schema is found for the feature type, returns attributes unchanged.
 pub fn filter_and_cast_attributes(feature: &Feature, schema: &Schema) -> Attributes {
-    let schema_key = feature
-        .get("__schema_definition")
-        .and_then(|v| v.as_string())
-        .or_else(|| feature.feature_type());
-    let Some(schema_attrs) = schema_key
+    let Some(schema_attrs) = schema_key(feature)
         .as_ref()
         .and_then(|ft| schema_attributes(ft, schema))
     else {

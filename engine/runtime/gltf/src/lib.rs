@@ -3,6 +3,7 @@ pub(crate) mod geometry;
 pub(crate) mod metadata;
 pub(crate) mod reader;
 pub(crate) mod scene;
+pub mod tiles;
 pub(crate) mod utils;
 pub(crate) mod writer;
 

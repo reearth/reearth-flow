@@ -387,9 +387,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.01
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
+          textureCodec: Untextured
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
@@ -411,9 +409,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.01
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          wrapTolerance: 0.1
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
@@ -435,9 +431,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          wrapTolerance: 0.1
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["__package"];
@@ -459,9 +453,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          wrapTolerance: 0.1
           output: |
             let artifact = env.get("workerArtifactPath");
             let pkg = env.get("__value")["package"];
