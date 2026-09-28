@@ -11,6 +11,8 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/reearth/ygo/cluster"
+
+	"github.com/reearth/reearth-flow/websocket-go/internal/latency"
 )
 
 // ErrRelayClosed is returned by Publish after Close.
@@ -67,6 +69,14 @@ type Relay struct {
 
 	// droppedWrites counts outbound updates dropped on a full write queue.
 	droppedWrites atomic.Uint64
+
+	latency *latency.Recorder
+
+	// bgWG tracks the relay-scoped latency reporter and bgCancel stops it. Close
+	// must be able to stop it ITSELF: waiting on a goroutine that only exits with
+	// the Start context deadlocks any caller that closes before cancelling.
+	bgWG     sync.WaitGroup
+	bgCancel context.CancelFunc
 
 	mu     sync.Mutex
 	sink   cluster.Sink
@@ -126,6 +136,7 @@ func New(opts Options) (*Relay, error) {
 		clientID: id,
 		log:      log,
 		flusher:  fl,
+		latency:  latency.New(log, "redis"),
 		rooms:    make(map[string]*roomState),
 	}, nil
 }
@@ -145,6 +156,11 @@ func (r *Relay) Start(ctx context.Context, sink cluster.Sink) error {
 	}
 	r.sink = sink
 	r.ctx = ctx
+
+	// Derived so either cancelling ctx or calling Close stops the reporter.
+	bgCtx, cancel := context.WithCancel(ctx)
+	r.bgCancel = cancel
+	r.bgWG.Go(func() { r.latency.Run(bgCtx) })
 	return nil
 }
 
@@ -321,6 +337,10 @@ func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e pa
 	if len(e.data) == 0 {
 		return
 	}
+	// Measure only entries we actually deliver, matching the Postgres backend: a
+	// self-originated entry is never injected, so counting it would dilute the
+	// number that describes what a remote editor experiences.
+	r.latency.Observe(e.age)
 	if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data}); err != nil {
 		r.log.Debug("relay inject failed", "room", room, "kind", kind.String(), "err", err)
 	}
@@ -564,10 +584,17 @@ func (r *Relay) Close() error {
 		rooms = append(rooms, rs)
 	}
 	r.rooms = make(map[string]*roomState)
+	bgCancel := r.bgCancel
 	r.mu.Unlock()
 
 	for _, rs := range rooms {
 		rs.wg.Wait()
 	}
+	// Stop the reporter rather than waiting for the caller to cancel the Start
+	// context; nil when Start was never called.
+	if bgCancel != nil {
+		bgCancel()
+	}
+	r.bgWG.Wait()
 	return r.client.Close()
 }
