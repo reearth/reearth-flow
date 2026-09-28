@@ -16,7 +16,7 @@ use reearth_flow_geometry::solid::{Shell, Solid};
 use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::appearance::AppearanceIndex;
-use super::malformation::Malformation;
+use super::malformation::{Malformation, MalformationKind};
 use super::parser::RawNodeKey;
 use super::utils::frame_for;
 
@@ -166,6 +166,35 @@ impl GmlGeometryType {
                 | GmlGeometryType::Tin
         )
     }
+
+    /// The GML local name of this type (e.g. `TriangulatedSurface`).
+    pub(super) fn local_name(&self) -> &'static str {
+        match self {
+            GmlGeometryType::Point => "Point",
+            GmlGeometryType::LineString => "LineString",
+            GmlGeometryType::Curve => "Curve",
+            GmlGeometryType::LinearRing => "LinearRing",
+            GmlGeometryType::Polygon => "Polygon",
+            GmlGeometryType::Surface => "Surface",
+            GmlGeometryType::PolyhedralSurface => "PolyhedralSurface",
+            GmlGeometryType::TriangulatedSurface => "TriangulatedSurface",
+            GmlGeometryType::Tin => "Tin",
+            GmlGeometryType::MultiPoint => "MultiPoint",
+            GmlGeometryType::OrientableCurve => "OrientableCurve",
+            GmlGeometryType::CompositeCurve => "CompositeCurve",
+            GmlGeometryType::MultiCurve => "MultiCurve",
+            GmlGeometryType::Ring => "Ring",
+            GmlGeometryType::OrientableSurface => "OrientableSurface",
+            GmlGeometryType::CompositeSurface => "CompositeSurface",
+            GmlGeometryType::MultiSurface => "MultiSurface",
+            GmlGeometryType::Shell => "Shell",
+            GmlGeometryType::Solid => "Solid",
+            GmlGeometryType::CompositeSolid => "CompositeSolid",
+            GmlGeometryType::MultiSolid => "MultiSolid",
+            GmlGeometryType::MultiGeometry => "MultiGeometry",
+            GmlGeometryType::GeometricComplex => "GeometricComplex",
+        }
+    }
 }
 
 /// The read-only lookup tables threaded through pass-2 resolution (registry,
@@ -288,8 +317,8 @@ fn resolve_ref(
         ctx.malformations.push(Malformation {
             file: key.0.clone(),
             location: key.1.clone(),
-            reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
-            ..Default::default()
+            kind: MalformationKind::CyclicXlinkHref,
+            detail: Default::default(),
         });
         return None;
     }
@@ -395,6 +424,9 @@ fn construct(
                 m.location = id.clone();
             }
         }
+        if m.detail.geometry_type.is_empty() {
+            m.detail.geometry_type = node.ty.local_name().to_string();
+        }
     }
     built
 }
@@ -428,12 +460,7 @@ fn ring(
             Some(line) => exterior.extend_from_slice(line.coords()),
             None => {
                 tracing::warn!("citygml geometry: non-curve ring member, skipped");
-                malformations.push(Malformation {
-                    file: String::new(),
-                    location: String::new(),
-                    reason: "citygml geometry: non-curve ring member, skipped".to_string(),
-                    ..Default::default()
-                });
+                malformations.push(Malformation::new(MalformationKind::NonCurveRingMember));
             }
         }
     }
@@ -477,12 +504,7 @@ fn surface_mesh(
             }
             _ => {
                 tracing::warn!("citygml geometry: expected a surface member, skipped");
-                malformations.push(Malformation {
-                    file: String::new(),
-                    location: String::new(),
-                    reason: "citygml geometry: expected a surface member, skipped".to_string(),
-                    ..Default::default()
-                });
+                malformations.push(Malformation::new(MalformationKind::ExpectedSurfaceMember));
             }
         }
     }
@@ -508,23 +530,16 @@ fn solid(
             }
             Role::Exterior => {
                 tracing::warn!("citygml geometry: solid with multiple exteriors, extra skipped");
-                malformations.push(Malformation {
-                    file: String::new(),
-                    location: String::new(),
-                    reason: "citygml geometry: solid with multiple exteriors, extra skipped"
-                        .to_string(),
-                    ..Default::default()
-                });
+                malformations.push(Malformation::new(
+                    MalformationKind::SolidWithMultipleExteriors,
+                ));
             }
             Role::Interior => interiors.extend(into_shell(geometry, frame, malformations)),
             Role::Member => {
                 tracing::warn!("citygml geometry: unexpected solid member role, skipped");
-                malformations.push(Malformation {
-                    file: String::new(),
-                    location: String::new(),
-                    reason: "citygml geometry: unexpected solid member role, skipped".to_string(),
-                    ..Default::default()
-                });
+                malformations.push(Malformation::new(
+                    MalformationKind::UnexpectedSolidMemberRole,
+                ));
             }
         }
     }
@@ -546,12 +561,9 @@ fn build_mesh(
         Ok(mesh) => Some(mesh),
         Err(e) => {
             tracing::error!("citygml geometry: failed to weld mesh: {e}");
-            malformations.push(Malformation {
-                file: String::new(),
-                location: String::new(),
-                reason: format!("citygml geometry: failed to weld mesh: {e}"),
-                ..Default::default()
-            });
+            malformations.push(Malformation::new(MalformationKind::MeshWeldFailed(
+                e.to_string(),
+            )));
             None
         }
     }
@@ -566,12 +578,7 @@ fn into_line_string(
         Euclidean3DGeometry::LineString(line) => Some(line),
         _ => {
             tracing::warn!("citygml geometry: expected a curve, skipped");
-            malformations.push(Malformation {
-                file: String::new(),
-                location: String::new(),
-                reason: "citygml geometry: expected a curve, skipped".to_string(),
-                ..Default::default()
-            });
+            malformations.push(Malformation::new(MalformationKind::ExpectedCurve));
             None
         }
     }
@@ -593,12 +600,7 @@ fn into_shell(
             .map(|mesh| Shell::PolygonMesh(mesh.into_data())),
         _ => {
             tracing::warn!("citygml geometry: cannot use as a solid boundary, skipped");
-            malformations.push(Malformation {
-                file: String::new(),
-                location: String::new(),
-                reason: "citygml geometry: cannot use as a solid boundary, skipped".to_string(),
-                ..Default::default()
-            });
+            malformations.push(Malformation::new(MalformationKind::InvalidSolidBoundary));
             None
         }
     }
@@ -874,9 +876,40 @@ mod tests {
             vec![Malformation {
                 file: "file:///test.gml".to_string(),
                 location: "a".to_string(),
-                reason: "citygml geometry: cyclic xlink:href, skipped".to_string(),
-                ..Default::default()
+                kind: MalformationKind::CyclicXlinkHref,
+                detail: Default::default(),
             }]
+        );
+    }
+
+    /// A malformation found while constructing a container names its type.
+    #[test]
+    fn construct_malformation_names_the_container_type() {
+        let n = node(
+            GmlGeometryType::Ring,
+            vec![
+                (Role::Member, resolved(line())),
+                (Role::Member, resolved(point())),
+            ],
+        );
+        let mut malformations = Vec::new();
+        resolve_root(
+            &n,
+            &GeomRegistry::new(),
+            &AppearanceIndex::default(),
+            &HashMap::new(),
+            &mut malformations,
+        );
+        let kinds: Vec<_> = malformations
+            .iter()
+            .map(|m| (m.kind.clone(), m.detail.geometry_type.as_str()))
+            .collect();
+        assert_eq!(
+            kinds,
+            vec![
+                (MalformationKind::ExpectedCurve, "Ring"),
+                (MalformationKind::NonCurveRingMember, "Ring"),
+            ]
         );
     }
 

@@ -19,7 +19,7 @@ use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
-use super::malformation::Malformation;
+use super::malformation::{Malformation, MalformationKind};
 use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
 use super::utils::{frame_for, local_name, GeomMeta, GML_NS_311_ID, GML_NS_ID};
@@ -170,6 +170,9 @@ impl Parser {
                     if let Some(rid) = &id {
                         m.location = rid.clone();
                     }
+                }
+                if m.detail.geometry_type.is_empty() {
+                    m.detail.geometry_type = ty.local_name().to_string();
                 }
             }
             let (geometry, faces) = result?;
@@ -528,22 +531,14 @@ fn parse_ordinates(text: &str) -> Option<Vec<f64>> {
 fn parse_pos_list(text: &str, malformations: &mut Vec<Malformation>) -> Vec<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:posList content, skipped");
-        malformations.push(Malformation {
-            file: String::new(),
-            location: String::new(),
-            reason: "citygml geometry: invalid gml:posList content, skipped".to_string(),
-            ..Default::default()
-        });
+        malformations.push(Malformation::new(MalformationKind::InvalidPosList));
         return Vec::new();
     };
     if !values.len().is_multiple_of(3) {
         tracing::warn!("citygml geometry: gml:posList length not a multiple of 3, skipped");
-        malformations.push(Malformation {
-            file: String::new(),
-            location: String::new(),
-            reason: "citygml geometry: gml:posList length not a multiple of 3, skipped".to_string(),
-            ..Default::default()
-        });
+        malformations.push(Malformation::new(
+            MalformationKind::PosListLengthNotMultipleOfThree,
+        ));
         return Vec::new();
     }
     values.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
@@ -554,24 +549,16 @@ fn parse_pos_list(text: &str, malformations: &mut Vec<Malformation>) -> Vec<[f64
 fn parse_pos(text: &str, malformations: &mut Vec<Malformation>) -> Option<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:pos content, skipped");
-        malformations.push(Malformation {
-            file: String::new(),
-            location: String::new(),
-            reason: "citygml geometry: invalid gml:pos content, skipped".to_string(),
-            ..Default::default()
-        });
+        malformations.push(Malformation::new(MalformationKind::InvalidPos));
         return None;
     };
     if values.len() != 3 {
         // Deliberately no new tracing warning macro call here: the allowlist
         // pins this file's per-site count, and this branch was previously
         // silent. Collect only.
-        malformations.push(Malformation {
-            file: String::new(),
-            location: String::new(),
-            reason: "citygml geometry: gml:pos ordinate count is not 3, skipped".to_string(),
-            ..Default::default()
-        });
+        malformations.push(Malformation::new(
+            MalformationKind::PosOrdinateCountNotThree,
+        ));
         return None;
     }
     Some([values[0], values[1], values[2]])
@@ -652,6 +639,7 @@ fn text_content(node: &RawNode) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::malformation::MalformationDetail;
     use crate::parser::{CityGmlVersion, Parser, ParserOutput};
     use crate::resolver::{resolve_root_bare, GeomRegistry};
     use url::Url;
@@ -939,10 +927,46 @@ mod tests {
             vec![Malformation {
                 file: "file:///test.gml".to_string(),
                 location: "surface1".to_string(),
-                reason: "citygml geometry: gml:posList length not a multiple of 3, skipped"
-                    .to_string(),
-                city_object_id: "relief1".to_string(),
-                city_object_type: "dem:ReliefFeature".to_string(),
+                kind: MalformationKind::PosListLengthNotMultipleOfThree,
+                detail: MalformationDetail {
+                    city_object_id: "relief1".to_string(),
+                    city_object_type: "dem:ReliefFeature".to_string(),
+                    geometry_type: "TriangulatedSurface".to_string(),
+                },
+            }]
+        );
+    }
+
+    /// A malformation names the innermost geometry element enclosing it.
+    #[test]
+    fn a_malformation_names_the_enclosing_geometry_type() {
+        let xml = r#"<core:CityModel
+                 xmlns:core="http://www.opengis.net/citygml/3.0"
+                 xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+                 xmlns:gml="http://www.opengis.net/gml/3.2">
+               <core:cityObjectMember><bldg:Building gml:id="b1">
+                 <core:lod2MultiCurve><gml:MultiCurve><gml:curveMember>
+                     <gml:LineString gml:id="line1">
+                       <gml:posList>0 0 0 1 0 bad</gml:posList>
+                     </gml:LineString>
+                 </gml:curveMember></gml:MultiCurve></core:lod2MultiCurve>
+               </bldg:Building></core:cityObjectMember>
+             </core:CityModel>"#;
+        let url = Url::parse("file:///test.gml").unwrap();
+        let mut parser = Parser::new(CityGmlVersion::V3);
+        parser.parse(xml.as_bytes(), &url).unwrap();
+        let ParserOutput { malformations, .. } = parser.finish();
+        assert_eq!(
+            malformations,
+            vec![Malformation {
+                file: "file:///test.gml".to_string(),
+                location: "line1".to_string(),
+                kind: MalformationKind::InvalidPosList,
+                detail: MalformationDetail {
+                    city_object_id: "b1".to_string(),
+                    city_object_type: "bldg:Building".to_string(),
+                    geometry_type: "LineString".to_string(),
+                },
             }]
         );
     }
@@ -1218,9 +1242,12 @@ mod tests {
             vec![Malformation {
                 file: "file:///test.gml".to_string(),
                 location: "poly_bad".to_string(),
-                reason: "citygml geometry: invalid gml:posList content, skipped".to_string(),
-                city_object_id: "b1".to_string(),
-                city_object_type: "bldg:Building".to_string(),
+                kind: MalformationKind::InvalidPosList,
+                detail: MalformationDetail {
+                    city_object_id: "b1".to_string(),
+                    city_object_type: "bldg:Building".to_string(),
+                    geometry_type: "Polygon".to_string(),
+                },
             }]
         );
     }

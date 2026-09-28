@@ -10,7 +10,7 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-use super::malformation::Malformation;
+use super::malformation::{name_city_object, Malformation, MalformationKind};
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
@@ -183,6 +183,7 @@ impl Parser {
                 OwnedEvent::Start { name, attrs } => {
                     let ln = local_name(&name.0);
                     if ln == "cityObjectMember" || ln == "featureMember" {
+                        let before = self.malformations.len();
                         let member = parse_element(
                             &mut reader,
                             &mut buf,
@@ -198,13 +199,12 @@ impl Parser {
                                 _ => None,
                             })
                         {
-                            let before = self.malformations.len();
                             let stripped = self.split_geometry(&feature_node);
-                            let city_object_id = raw_gml_id(&feature_node).unwrap_or_default();
-                            for m in &mut self.malformations[before..] {
-                                m.city_object_id = city_object_id.clone();
-                                m.city_object_type = feature_node.name.0.clone();
-                            }
+                            name_city_object(
+                                &mut self.malformations[before..],
+                                raw_gml_id(&feature_node),
+                                &feature_node.name.0,
+                            );
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(stripped);
@@ -495,9 +495,7 @@ fn href_to_key(
         tracing::warn!(href, "citygml: unsupported xlink:href format, skipped");
         malformations.push(Malformation {
             file: base.as_str().to_string(),
-            location: String::new(),
-            reason: "citygml: unsupported xlink:href format, skipped".to_string(),
-            ..Default::default()
+            ..Malformation::new(MalformationKind::UnsupportedXlinkHref)
         });
         None
     }

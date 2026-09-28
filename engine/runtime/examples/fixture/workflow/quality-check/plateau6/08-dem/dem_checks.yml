@@ -101,9 +101,9 @@ nodes:
   # geometry member per TIN. Each triangle is kept as written, so its position
   # count and closure can be checked.
   #
-  # A posList the geometry layer cannot read arrives on `rejected` naming the
-  # ReliefFeature it was found in, which is what makes it countable on that
-  # ReliefFeature's row.
+  # Coordinates the geometry layer cannot read arrive on `rejected`. The details
+  # name the ReliefFeature they were found in, which is what makes them
+  # countable on that ReliefFeature's row.
   - id: d9000000-0000-4000-8000-000000000008
     name: FeatureCityGml3Reader
     type: action
@@ -113,6 +113,7 @@ nodes:
         type: flowExpr
         value: attributes["path"]
       keepTriangleRings: true
+      includeRejectedDetails: true
 
   - id: d9000000-0000-4000-8000-000000000009
     name: FeatureFilterRelief
@@ -170,6 +171,22 @@ nodes:
     type: subGraph
     subGraphId: c5000000-0000-4000-8000-000000000000
 
+  # Only sites inside a TIN are triangles. The original checks nothing else, so
+  # the rest (breaklines, mass points, other geometry) is not counted and the
+  # `unfiltered` port is left unconnected.
+  - id: d9000000-0000-4000-8000-000000000037
+    name: FeatureFilterRejectedTriangle
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              geometry_type = attributes["rejectedResult"]["geometryType"];
+              geometry_type == "TriangulatedSurface" or geometry_type == "Tin"
+          outputPort: triangle
+
   # A site the reader could not read is put on the row of the ReliefFeature it
   # was found in.
   - id: d9000000-0000-4000-8000-00000000000d
@@ -182,7 +199,7 @@ nodes:
           method: create
           value:
             type: flowExpr
-            value: attributes["malformationCityObjectId"]
+            value: attributes["rejectedResult"]["cityObjectId"]
 
   # --- Unshared edges ---
   # Matched across the whole dataset: files tile one terrain and are expected to
@@ -754,8 +771,13 @@ edges:
     toPort: features
   - id: d9000000-0000-4000-8000-00010000000c
     from: d9000000-0000-4000-8000-000000000008
-    to: d9000000-0000-4000-8000-00000000000d
+    to: d9000000-0000-4000-8000-000000000037
     fromPort: rejected
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000047
+    from: d9000000-0000-4000-8000-000000000037
+    to: d9000000-0000-4000-8000-00000000000d
+    fromPort: triangle
     toPort: features
 
   # The ReliefFeatures also feed the result sheet, so one with no finding at all
@@ -855,7 +877,7 @@ edges:
     toPort: features
   # Geometry no check could read is a triangle whose positions could not be
   # counted, so it is reported in the same column rather than dropped. The
-  # reader's own unreadable coordinate lists join it here.
+  # triangles whose coordinates the reader could not read join it here.
   - id: d9000000-0000-4000-8000-00010000001e
     from: d9000000-0000-4000-8000-00000000000c
     to: d9000000-0000-4000-8000-00000000001a
