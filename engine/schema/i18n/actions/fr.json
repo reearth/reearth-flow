@@ -962,7 +962,7 @@
         },
         "keepCodeSpace": {
           "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       }
     },
@@ -1000,7 +1000,7 @@
         },
         "keepCodeSpace": {
           "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       }
     },
@@ -1410,7 +1410,7 @@
         },
         "keepCodeSpace": {
           "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       }
     },
@@ -1452,7 +1452,7 @@
         },
         "keepCodeSpace": {
           "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi le chemin de la liste de codes, tel que le document l'a écrit, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       }
     },

@@ -2602,7 +2602,7 @@
           },
           "keepCodeSpace": {
             "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -2716,7 +2716,7 @@
           },
           "keepCodeSpace": {
             "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -3921,7 +3921,7 @@
           },
           "keepCodeSpace": {
             "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -4024,7 +4024,7 @@
           },
           "keepCodeSpace": {
             "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将文档中所写的代码表路径保存在兄弟键`{name}_codeSpace`中。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }

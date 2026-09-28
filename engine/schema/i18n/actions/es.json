@@ -962,7 +962,7 @@
         },
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1000,7 +1000,7 @@
         },
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1410,7 +1410,7 @@
         },
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1452,7 +1452,7 @@
         },
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
-          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ruta de la lista de códigos, tal como la escribió el documento, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },

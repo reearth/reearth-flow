@@ -139,8 +139,8 @@ pub struct FeatureCityGml2ReaderParam {
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
     /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps the codelist path, as
-    /// the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// When true, a coded value resolved against its codelist also keeps that codelist's
+    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     keep_code_space: bool,
 }

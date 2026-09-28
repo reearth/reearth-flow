@@ -2547,7 +2547,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "keepCodeSpace": {
       "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -2658,7 +2658,7 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
     },
     "keepCodeSpace": {
       "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -3808,7 +3808,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
     },
     "keepCodeSpace": {
       "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -3907,7 +3907,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
     },
     "keepCodeSpace": {
       "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps the codelist path, as the document wrote it, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
     }

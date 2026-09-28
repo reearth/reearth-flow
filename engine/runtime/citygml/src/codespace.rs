@@ -19,7 +19,9 @@ impl CodelistResolver {
         }
     }
 
-    fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<String> {
+    /// Returns the label and the URL of the codelist it came from, so a caller
+    /// keeping the codelist gets the one that was actually opened.
+    fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<(String, Url)> {
         // codeSpace is joined without restricting absolute URLs or path traversal.
         // This is intentional: the engine assumes trusted input GML running in a controlled environment,
         // consistent with how xlink resolution and zip extraction are handled elsewhere. See PR #2066.
@@ -47,15 +49,16 @@ impl CodelistResolver {
                 "code not found in codelist"
             );
         }
-        dict.get(code).cloned()
+        dict.get(code).cloned().map(|label| (label, dict_url))
     }
 }
 
 /// Walks the fully xlink-resolved `XmlNode` tree and resolves `codeSpace` attributes.
 /// Because nodes carry their own `source_url`, no external URL tracking is needed.
-/// `keep_code_space` adds a `{name}_codeSpace` sibling carrying the codelist path.
-/// Off by default: the path is what a CityGML writer needs to re-emit `codeSpace`,
-/// and no other consumer wants it in its output.
+/// `keep_code_space` adds a `{name}_codeSpace` sibling carrying the codelist's
+/// resolved URL. The document's own `codeSpace` is relative to that document, and
+/// the feature does not carry the document's URL, so the relative form could not
+/// be resolved by anything downstream.
 pub fn resolve(
     nodes: Vec<Arc<XmlNode>>,
     resolver: &mut CodelistResolver,
@@ -107,7 +110,9 @@ fn resolve_children(
                     let trimmed = text.trim();
 
                     if !trimmed.is_empty() {
-                        if let Some(label) = resolver.lookup(&e.source_url, &cs, trimmed) {
+                        if let Some((label, dict_url)) =
+                            resolver.lookup(&e.source_url, &cs, trimmed)
+                        {
                             if out.is_none() {
                                 out = Some(children[..i].to_vec());
                             }
@@ -133,7 +138,7 @@ fn resolve_children(
                                 nc.push(XmlChild::Element(Arc::new(XmlNode {
                                     name: (format!("{}_codeSpace", e.name.0), EMPTY_NS_ID),
                                     attrs: vec![],
-                                    children: vec![XmlChild::Text(cs.clone())],
+                                    children: vec![XmlChild::Text(dict_url.to_string())],
                                     source_url: e.source_url.clone(),
                                 })));
                             }
@@ -380,7 +385,7 @@ mod tests {
     // The codelist path is what a writer needs to re-emit `codeSpace`, and the
     // label/code pair alone cannot reconstruct it.
     #[test]
-    fn resolve_keeps_the_codelist_path_as_a_sibling() {
+    fn resolve_keeps_the_resolved_codelist_location_as_a_sibling() {
         let dict_file = write_dict(&[("201", "Residential")]);
         let dict_filename = dict_file
             .path()
@@ -390,9 +395,14 @@ mod tests {
             .unwrap()
             .to_string();
         let parent = dict_file.path().parent().unwrap();
-        let source_url = Arc::new(Url::from_file_path(parent.join("source.gml")).unwrap());
+        // Laid out the way a PLATEAU dataset is: the document two levels below
+        // the codelist, which it names relative to itself.
+        let source_url = Arc::new(
+            Url::from_file_path(parent.join("udx").join("bldg").join("source.gml")).unwrap(),
+        );
+        let relative = format!("../../{dict_filename}");
 
-        let code_elem = make_code_element("bldg:usage", &dict_filename, "201", source_url.clone());
+        let code_elem = make_code_element("bldg:usage", &relative, "201", source_url.clone());
         let root = Arc::new(XmlNode {
             name: ("bldg:Building".to_string(), EMPTY_NS_ID),
             attrs: vec![],
@@ -410,9 +420,14 @@ mod tests {
             panic!("third child must be an element");
         };
         assert_eq!(code_space_node.name.0, "bldg:usage_codeSpace");
+        // The relative path only means something beside the source document,
+        // and the feature does not carry that document's URL, so what is kept
+        // is the codelist the lookup actually opened.
+        let expected = Url::from_file_path(dict_file.path()).unwrap().to_string();
         assert!(
-            matches!(code_space_node.children.as_slice(), [XmlChild::Text(t)] if t == &dict_filename),
-            "the codeSpace is kept verbatim, as the document wrote it"
+            matches!(code_space_node.children.as_slice(), [XmlChild::Text(t)] if t == &expected),
+            "the codelist location must be resolved against the source document, got: {:?}",
+            code_space_node.children
         );
     }
 
