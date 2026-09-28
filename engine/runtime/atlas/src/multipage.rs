@@ -90,8 +90,7 @@ struct RegionJob {
 pub const MAX_ATLAS_DIMENSION: u32 = 65_536;
 
 /// Pack `materials` into atlas pages, giving any tiling texture a page of its own.
-/// `Ok(None)` when there is nothing to pack; `Err` when `max_atlas_size` is 0 or it
-/// or `extrusion` exceeds [`MAX_ATLAS_DIMENSION`].
+/// `Ok(None)` when there is nothing to pack; `Err` on invalid size parameters.
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
@@ -111,7 +110,13 @@ pub fn build_atlas_multipage(
         )));
     }
     let block_align = block_align.max(1);
-    let max_atlas_size = (max_atlas_size / block_align * block_align).max(block_align);
+    if max_atlas_size < block_align {
+        return Err(AtlasError::builder(format!(
+            "atlas size ({max_atlas_size}) must be at least the codec block alignment \
+             ({block_align})"
+        )));
+    }
+    let max_atlas_size = max_atlas_size / block_align * block_align;
     // Snap the gap too, so every reserved footprint stays on the block grid.
     let extrusion = extrusion.div_ceil(block_align) * block_align;
 
