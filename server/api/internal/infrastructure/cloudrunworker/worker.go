@@ -69,23 +69,21 @@ type probeSchemaRequest struct {
 //
 // Both option groups are always sent; see featureview.Options for why.
 type renderViewRequest struct {
-	InputURI  string  `json:"input_uri"`
-	OutputURI string  `json:"output_uri"`
-	ReportURL string  `json:"report_url"`
-	Name      string  `json:"name"`
-	Shape     string  `json:"shape"`
-	Row       *int    `json:"row,omitempty"`
-	Filter    *string `json:"filter,omitempty"`
-
-	Draco          bool    `json:"draco"`
-	TexelSize      float64 `json:"texel_size"`
-	TextureCodec   string  `json:"texture_codec"`
-	TargetTileSize uint64  `json:"target_tile_size"`
-
-	MinZoom      uint8  `json:"min_zoom"`
-	MaxZoom      uint8  `json:"max_zoom"`
-	Extent       int32  `json:"extent"`
-	MaxTileBytes uint64 `json:"max_tile_bytes"`
+	Row            *int    `json:"row,omitempty"`
+	Filter         *string `json:"filter,omitempty"`
+	Name           string  `json:"name"`
+	InputURI       string  `json:"input_uri"`
+	Shape          string  `json:"shape"`
+	ReportURL      string  `json:"report_url"`
+	OutputURI      string  `json:"output_uri"`
+	TextureCodec   string  `json:"texture_codec"`    // 3D
+	TexelSize      float64 `json:"texel_size"`       // 3D
+	TargetTileSize uint64  `json:"target_tile_size"` // 3D
+	MaxTileBytes   uint64  `json:"max_tile_bytes"`   // 2D
+	Extent         int32   `json:"extent"`           // 2D
+	Draco          bool    `json:"draco"`            // 3D
+	MinZoom        uint8   `json:"min_zoom"`         // 2D
+	MaxZoom        uint8   `json:"max_zoom"`         // 2D
 }
 
 // RunJob POSTs to the Cloud Run Service /run endpoint and blocks until the

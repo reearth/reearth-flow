@@ -26,13 +26,15 @@ var (
 
 // RenderIntermediateDataViewParam identifies the intermediate data to render
 // and how.
+// Fields are ordered for struct packing (govet fieldalignment), not by
+// meaning.
 type RenderIntermediateDataViewParam struct {
-	// JobID is the finished job whose feature-store holds the input.
-	JobID id.JobID
 	// FileID is the engine's `[subgraphPrefix.]nodeID.port`, the same id the
 	// editor builds to fetch the table.
 	FileID  string
 	Request featureview.Request
+	// JobID is the finished job whose feature-store holds the input.
+	JobID id.JobID
 }
 
 // IntermediateDataViewResult is a view's current state.
@@ -41,23 +43,24 @@ type RenderIntermediateDataViewParam struct {
 // engine chooses the output format from the geometry it finds: a tiles view
 // becomes 3D Tiles or vector tiles, and the server cannot know which before the
 // render runs.
+// Fields are ordered for struct packing (govet fieldalignment), not by
+// meaning.
 type IntermediateDataViewResult struct {
-	// Key identifies the view by its content: the same request always yields
-	// the same key, so a repeat request reuses a rendered view.
-	Key    string
-	JobID  id.JobID
-	FileID string
-	Shape  featureview.Shape
-	Status featureview.Status
-
-	Format        *featureview.Format
-	EntryPointURL string
+	Format *featureview.Format
 	// SelectedFeatures and RenderedFeatures are set for any terminal status,
 	// including EMPTY: "0 of 900 selected" is the explanation, so withholding
 	// the counts exactly when the view is empty would withhold the reason.
 	SelectedFeatures *int
 	RenderedFeatures *int
 	Error            *string
+	// Key identifies the view by its content: the same request always yields
+	// the same key, so a repeat request reuses a rendered view.
+	Key           string
+	FileID        string
+	Shape         featureview.Shape
+	Status        featureview.Status
+	EntryPointURL string
+	JobID         id.JobID
 }
 
 type IntermediateDataView interface {

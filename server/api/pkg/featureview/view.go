@@ -106,18 +106,17 @@ const (
 // Options are the render knobs. Both groups are carried regardless of shape:
 // for ShapeTiles the output format is not known until the render runs, so the
 // engine is handed both and ignores whichever half does not apply.
+// Fields are ordered for struct packing (govet fieldalignment) rather than by
+// group, so each carries its group as a trailing comment instead.
 type Options struct {
-	// 3D.
-	Draco          bool
-	TexelSize      float64
-	TextureCodec   TextureCodec
-	TargetTileSize uint64
-
-	// 2D.
-	MinZoom      uint8
-	MaxZoom      uint8
-	Extent       int32
-	MaxTileBytes uint64
+	TextureCodec   TextureCodec // 3D
+	TexelSize      float64      // 3D
+	TargetTileSize uint64       // 3D
+	MaxTileBytes   uint64       // 2D
+	Extent         int32        // 2D
+	Draco          bool         // 3D
+	MinZoom        uint8        // 2D
+	MaxZoom        uint8        // 2D
 }
 
 // DefaultOptions matches the engine's ViewOptions::default() except for the

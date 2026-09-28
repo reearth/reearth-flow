@@ -20,14 +20,23 @@ const ReportVersion = 1
 // (`feature-view/{fileID}/`), not absolute URIs: the renderer does not know
 // the public URL its output will be served from, and the server does not want
 // to reverse a gs:// URI into one.
+// Fields are ordered for struct packing (govet fieldalignment), not by
+// meaning.
 type Report struct {
-	Version int    `json:"version"`
-	Status  Status `json:"status"`
-	Shape   Shape  `json:"shape"`
 	// Format is set only when Status is StatusReady.
 	Format *Format `json:"format,omitempty"`
 	Row    *int    `json:"row,omitempty"`
 	Filter *string `json:"filter,omitempty"`
+	// Error carries the renderer's message for a non-Ready outcome.
+	Error  *string `json:"error,omitempty"`
+	Status Status  `json:"status"`
+	Shape  Shape   `json:"shape"`
+	// EntryPoint is the file a viewer opens, relative to the view directory.
+	// Empty unless Status is StatusReady.
+	EntryPoint string `json:"entryPoint,omitempty"`
+	// Written lists every file the render produced, the entry point included.
+	Written []string `json:"written,omitempty"`
+	Version int      `json:"version"`
 	// SelectedFeatures counts features the selection kept, before the writer
 	// dropped any.
 	SelectedFeatures int `json:"selectedFeatures"`
@@ -42,13 +51,6 @@ type Report struct {
 	// Scanned counts non-empty lines the read examined. Short of the file's
 	// total for a row selection, which stops at its row.
 	Scanned int `json:"scanned"`
-	// EntryPoint is the file a viewer opens, relative to the view directory.
-	// Empty unless Status is StatusReady.
-	EntryPoint string `json:"entryPoint,omitempty"`
-	// Written lists every file the render produced, the entry point included.
-	Written []string `json:"written,omitempty"`
-	// Error carries the renderer's message for a non-Ready outcome.
-	Error *string `json:"error,omitempty"`
 }
 
 // ParseReport reads a report and rejects one that contradicts itself, so a

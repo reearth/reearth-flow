@@ -28,19 +28,17 @@ import (
 // viewFakeFile serves one report and records what was asked of it.
 type viewFakeFile struct {
 	mockCheckStatusFile
-
-	report       string
-	reportErr    error
-	inputMissing bool
+	reportErr      error
+	report         string
+	lastReportKey  string
+	lastExistsName string
+	reportReads    int
+	resolveCalls   int
+	existsChecks   int
+	inputMissing   bool
 	// viewMissing makes the view absent while its report stays in place, which
 	// is what a retention rule sweeping the rendered files looks like.
 	viewMissing bool
-
-	reportReads    int
-	resolveCalls   int
-	lastReportKey  string
-	existsChecks   int
-	lastExistsName string
 }
 
 func (f *viewFakeFile) CheckFeatureViewFileExists(_ context.Context, _, _, name string) (bool, error) {
@@ -84,16 +82,14 @@ func (f *viewFakeFile) ReadFeatureViewReport(_ context.Context, _, _, key string
 // viewFakeWorker stands in for the engine worker: it records the call and
 // writes whatever report the test wants the render to have produced.
 type viewFakeWorker struct {
-	calls     int
-	lastParam gateway.RenderViewParam
-
+	err  error
+	file *viewFakeFile
 	// writes is the report the render leaves behind, or "" for a render that
 	// recorded nothing.
-	writes string
-	status gateway.JobStatus
-	err    error
-
-	file *viewFakeFile
+	writes    string
+	status    gateway.JobStatus
+	lastParam gateway.RenderViewParam
+	calls     int
 }
 
 func (w *viewFakeWorker) RenderView(_ context.Context, p gateway.RenderViewParam) (gateway.JobStatus, error) {
