@@ -503,9 +503,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.01
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: false
+          textureCodec: Untextured
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -569,9 +567,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.01
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          wrapTolerance: 0.1
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -667,9 +663,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          wrapTolerance: 0.1
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");
@@ -765,9 +759,7 @@ graphs:
           dracoCompression:
             enabled:
               quantizationError: 0.003
-          minZoom: 15
-          maxZoom: 18
-          attachTexture: true
+          wrapTolerance: 0.1
           output: |
             let city_code = env.get("__value").city_code;
             let artifact = env.get("workerArtifactPath");

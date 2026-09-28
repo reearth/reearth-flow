@@ -524,9 +524,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
-      minZoom: 15
-      maxZoom: 18
-      attachTexture: true
+      wrapTolerance: 0.1
       output: |
         file::join_path(env.get("workerArtifactPath"), "frn_lod" + env.get("__value").lod + "_full_attributes")
       compressOutput: |
@@ -840,9 +838,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
-      minZoom: 15
-      maxZoom: 18
-      attachTexture: true
+      wrapTolerance: 0.1
       output: |
         file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_lod" + env.get("__value").lod + "_full_attributes")
       compressOutput: |
@@ -1140,9 +1136,7 @@ graphs:
       dracoCompression:
         enabled:
           quantizationError: 0.003
-      minZoom: 15
-      maxZoom: 18
-      attachTexture: true
+      wrapTolerance: 0.1
       output: |
         file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_lod" + env.get("__value").lod + "_full_attributes")
       compressOutput: |
