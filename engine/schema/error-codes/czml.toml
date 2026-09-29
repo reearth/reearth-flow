@@ -16,5 +16,19 @@ help = "CZML Writer only converts CityGML geometry to polygons; route other geom
 code = "czml.empty_geometry"
 category = "geometry"
 default_disposition = "warn_drop"
-message = "skipped feature whose geometry contains no polygons"
-help = "Check the feature's LOD geometries; only LOD > 0 geometries with polygons are converted."
+message = "skipped feature with no drawable geometry"
+help = "CZML draws points, lines and faces. A feature with no geometry, or one carrying only point-cloud or unevaluated CSG data, has nothing the writer can draw."
+
+[[codes]]
+code = "czml.unplaceable_frame"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose coordinates cannot be placed on the globe"
+help = "CZML positions are longitude, latitude and height on the WGS84 globe, so the writer needs to know what coordinate system the feature is in. Reproject it, or set its CRS, before the CZML Writer."
+
+[[codes]]
+code = "czml.too_many_faces"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with more faces than the writer will emit"
+help = "Each face becomes its own CZML entity, so a finely tessellated surface such as a terrain mesh produces an unusably large file. Simplify or split the geometry before the CZML Writer."
