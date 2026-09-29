@@ -278,8 +278,7 @@ fn encode_string_column<'a>(
 
     // Leaves out the `STRING` JSON an `ENUM` would drop, so `ENUM` only wins clearly.
     let string_cost = byte_len + offset_size * offset_count;
-    let enum_cost =
-        index_size * strings.len() + enum_json_len + 2 * enum_id.len() + ENUM_OVERHEAD;
+    let enum_cost = index_size * strings.len() + enum_json_len + 2 * enum_id.len() + ENUM_OVERHEAD;
     if enum_cost < string_cost {
         let value_bytes: Vec<u8> = strings
             .iter()
