@@ -11,6 +11,7 @@ import type {
   Algorithm,
   AnyWorkflowVariable,
   AwarenessUser,
+  Deployment,
   Direction,
   Node,
   Project,
@@ -84,7 +85,7 @@ type OverlayUIProps = {
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
-  ) => Promise<void>;
+  ) => Promise<Deployment | undefined>;
   onProjectExport: () => void;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
