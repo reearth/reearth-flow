@@ -14,7 +14,6 @@ mod appearance;
 mod mesh;
 mod primitive;
 mod quadtree;
-mod stats;
 mod subtree;
 mod tileset;
 
@@ -35,7 +34,7 @@ use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
 use reearth_flow_common::image::MimeType;
 use reearth_flow_geometry::appearance::RasterData;
 use reearth_flow_gltf::next::glb::{self, Granularity};
-use reearth_flow_gltf::next::metadata;
+use reearth_flow_gltf::next::metadata::{self, ColumnStats};
 use reearth_flow_gltf::DracoCompression;
 
 use appearance::TextureSource;
@@ -232,7 +231,7 @@ pub fn build(
         .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
         .collect();
 
-    let property_stats = stats::collect(extracted.iter().map(|(feature, _)| *feature), options);
+    let property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
 
     if extracted.is_empty() {
         tracing::warn!(
@@ -241,6 +240,7 @@ pub fn build(
         );
         return empty_tileset(&property_stats);
     }
+    let property_stats = Mutex::new(property_stats);
 
     let root = extracted
         .iter()
@@ -264,7 +264,9 @@ pub fn build(
     let build_chunk = |chunk: &[usize], textures: &TextureCache, embedded: &EmbeddedTextures| {
         let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
             chunk.iter().map(|&i| &extracted[i]).collect();
-        build_cell_glb(&members, options, render, textures, embedded)
+        let (glb, stats) = build_cell_glb(&members, options, render, textures, embedded)?;
+        merge_stats(&mut property_stats.lock().unwrap(), stats);
+        Ok(glb)
     };
 
     let mut units: HashMap<Cell, Vec<Unit>> = by_cell
@@ -301,6 +303,7 @@ pub fn build(
             },
         )
         .collect::<crate::errors::Result<_>>()?;
+    let property_stats = property_stats.into_inner().unwrap();
 
     let content_counts: HashMap<Cell, usize> = cell_results
         .iter()
@@ -332,6 +335,18 @@ pub fn build(
         tile_count,
         rendered_features: extracted.len(),
     })
+}
+
+/// Column stats and more column stats -> the stats merged per column name.
+fn merge_stats(
+    into: &mut IndexMap<String, ColumnStats>,
+    from: impl IntoIterator<Item = (String, ColumnStats)>,
+) {
+    for (name, column) in from {
+        into.entry(name)
+            .and_modify(|held| *held = held.merge(column))
+            .or_insert(column);
+    }
 }
 
 /// A group of features whose glb, built on its own, takes `bytes` in transfer.
@@ -554,11 +569,11 @@ pub fn build_glb(
         &textures,
         &embedded,
     )
-    .map(Some)
+    .map(|(glb, _)| Some(glb))
 }
 
 fn empty_tileset(
-    property_stats: &IndexMap<String, stats::PropertyStats>,
+    property_stats: &IndexMap<String, ColumnStats>,
 ) -> crate::errors::Result<BuiltTileset> {
     let root = GeoBox {
         west: 0.0,
@@ -585,7 +600,7 @@ fn render_tileset_json(
     root: &GeoBox,
     available_levels: u32,
     max_contents: usize,
-    property_stats: &IndexMap<String, stats::PropertyStats>,
+    property_stats: &IndexMap<String, ColumnStats>,
 ) -> crate::errors::Result<String> {
     let tileset_json = tileset::build(root, available_levels, max_contents, property_stats);
     serde_json::to_string_pretty(&tileset_json)
@@ -699,7 +714,7 @@ fn build_cell_glb(
     render: RenderOptions,
     textures: &TextureCache,
     embedded: &EmbeddedTextures,
-) -> crate::errors::Result<Vec<u8>> {
+) -> crate::errors::Result<(Vec<u8>, IndexMap<String, ColumnStats>)> {
     let cells = primitive::collect(cell_members);
 
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
@@ -728,10 +743,8 @@ fn build_cell_glb(
                 texture_size = pages.iter().map(|page| page.extent).max();
                 for page in pages {
                     let material = glb::MaterialDesc {
-                        base_color_factor: [1.0, 1.0, 1.0, 1.0],
-                        metallic_factor: 0.0,
-                        roughness_factor: 1.0,
                         base_color_texture: Some(page.texture),
+                        ..color_material(DEFAULT_MATERIAL)
                     };
                     let handle = push_geom(
                         &mut builder,
@@ -773,12 +786,12 @@ fn build_cell_glb(
         primitives.push(handle);
     }
 
-    metadata::encode(&table, &mut builder, &primitives);
+    let stats = metadata::encode(&table, &mut builder, &primitives);
 
     let gltf_origin = [origin[0], origin[2], -origin[1]];
     let glb = builder.build(gltf_origin);
 
-    if render.draco.is_enabled() {
+    let glb = if render.draco.is_enabled() {
         reearth_flow_gltf::next::draco::compress(
             &glb,
             render.draco,
@@ -786,10 +799,11 @@ fn build_cell_glb(
             position_min,
             position_max,
         )
-        .map_err(|e| SinkError::Cesium3DTilesWriter(format!("draco compression failed: {e:?}")))
+        .map_err(|e| SinkError::Cesium3DTilesWriter(format!("draco compression failed: {e:?}")))?
     } else {
-        Ok(glb)
-    }
+        glb
+    };
+    Ok((glb, stats))
 }
 
 /// Bounding box of every primitive's vertices relative to `origin`, as the
