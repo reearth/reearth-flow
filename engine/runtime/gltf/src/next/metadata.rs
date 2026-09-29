@@ -4,7 +4,7 @@
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
 use reearth_flow_types::{AttributeValue, Feature};
@@ -36,6 +36,44 @@ enum ColumnKind {
     String,
 }
 
+/// A column's kind and the `(min, max)` of the numbers encoded into it
+/// (`None` if none were).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ColumnStats {
+    Int(Option<(i64, i64)>),
+    Float64(Option<(f64, f64)>),
+    String,
+}
+
+impl ColumnStats {
+    /// Widen to the more general kind of the two, with the union of their ranges.
+    pub fn merge(self, other: ColumnStats) -> ColumnStats {
+        match (self, other) {
+            (ColumnStats::String, _) | (_, ColumnStats::String) => ColumnStats::String,
+            (ColumnStats::Int(a), ColumnStats::Int(b)) => ColumnStats::Int(union(a, b)),
+            (a, b) => ColumnStats::Float64(union(a.float_range(), b.float_range())),
+        }
+    }
+
+    fn float_range(self) -> Option<(f64, f64)> {
+        match self {
+            ColumnStats::Int(range) => range.map(|(min, max)| (min as f64, max as f64)),
+            ColumnStats::Float64(range) => range,
+            ColumnStats::String => None,
+        }
+    }
+}
+
+fn union<T: PartialOrd + Copy>(a: Option<(T, T)>, b: Option<(T, T)>) -> Option<(T, T)> {
+    match (a, b) {
+        (Some((a_min, a_max)), Some((b_min, b_max))) => Some((
+            if b_min < a_min { b_min } else { a_min },
+            if b_max > a_max { b_max } else { a_max },
+        )),
+        (range, None) | (None, range) => range,
+    }
+}
+
 /// `properties[i] = (raw attribute path, raw attribute path, column type)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`None` if the
 /// feature doesn't carry that path — encoded as the column's no-data
@@ -51,18 +89,10 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
-    let mut raw_paths = BTreeSet::new();
-    for f in &flattened {
-        raw_paths.extend(f.keys().cloned());
-    }
-
     // Property table keys are the raw attribute path, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = raw_paths
+    let properties: Vec<(String, String, ColumnKind)> = column_kinds(&flattened)
         .into_iter()
-        .map(|raw| {
-            let kind = column_kind(&flattened, &raw);
-            (raw.clone(), raw, kind)
-        })
+        .map(|(raw, kind)| (raw.clone(), raw, kind))
         .collect();
 
     let rows = flattened
@@ -99,39 +129,55 @@ fn value_kind(value: &AttributeValue) -> ColumnKind {
     }
 }
 
-/// Widen across every value in the column, so a single nonnumeric value forces
-/// `String` no matter where it sits and a single float forces `Float64` over
-/// its integer neighbours. A column with no values at all encodes as `String`.
-fn column_kind(flattened: &[BTreeMap<String, AttributeValue>], path: &str) -> ColumnKind {
-    flattened
-        .iter()
-        .filter_map(|f| f.get(path))
-        .map(value_kind)
-        .max()
-        .unwrap_or(ColumnKind::String)
+/// Flattened features -> column name to column kind.
+fn column_kinds(flattened: &[BTreeMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
+    let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
+    let mut widen = |name: String, kind: ColumnKind| {
+        kinds
+            .entry(name)
+            .and_modify(|held| *held = (*held).max(kind))
+            .or_insert(kind);
+    };
+
+    for flattened in flattened {
+        for (path, value) in flattened {
+            widen(path.clone(), value_kind(value));
+        }
+    }
+    kinds
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
 /// (built once) plus, on each primitive, an `EXT_mesh_features` declaration
 /// reading the `FEATURE_ID_0` attribute the caller pushed with it. All
 /// primitives share the one property table (reference `propertyTable` 0).
-/// No-op if `table` has no properties.
-pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[PrimitiveHandle]) {
+/// No-op if `table` has no properties. Returns each column's [`ColumnStats`].
+pub fn encode(
+    table: &PropertyTable,
+    builder: &mut Builder,
+    primitives: &[PrimitiveHandle],
+) -> IndexMap<String, ColumnStats> {
+    let mut stats = IndexMap::new();
     if table.properties.is_empty() {
-        return;
+        return stats;
     }
 
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
     for (col, (raw_name, id, kind)) in table.properties.iter().enumerate() {
         let values = table.rows.iter().map(|row| row[col].as_ref());
-        let (class_property, table_property) = match kind {
-            ColumnKind::String => encode_string_column(raw_name, values, builder),
+        let (class_property, table_property, column_stats) = match kind {
+            ColumnKind::String => {
+                let (class_property, table_property) =
+                    encode_string_column(raw_name, values, builder);
+                (class_property, table_property, ColumnStats::String)
+            }
             ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
             ColumnKind::Int => encode_int_column(raw_name, values, builder),
         };
         class_properties.insert(id.clone(), class_property);
         table_properties.insert(id.clone(), table_property);
+        stats.insert(raw_name.clone(), column_stats);
     }
 
     let mut classes = IndexMap::new();
@@ -173,6 +219,7 @@ pub fn encode(table: &PropertyTable, builder: &mut Builder, primitives: &[Primit
             .expect("EXT_mesh_features is always serializable"),
         );
     }
+    stats
 }
 
 fn encode_string_column<'a>(
@@ -212,10 +259,19 @@ fn encode_float_column<'a>(
     raw_name: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
+) -> (ClassProperty, MetadataPropertyTableProperty, ColumnStats) {
     let mut value_bytes = Vec::new();
+    let mut range = None;
     for value in values {
-        let v = value.and_then(as_float).unwrap_or(FLOAT_NO_DATA);
+        let v = match value.and_then(as_float) {
+            Some(v) => {
+                if !matches!(value, Some(AttributeValue::Bool(_))) && v.is_finite() {
+                    range = union(range, Some((v, v)));
+                }
+                v
+            }
+            None => FLOAT_NO_DATA,
+        };
         value_bytes.extend_from_slice(&v.to_le_bytes());
     }
     let values_bufferview = builder.push_buffer_view(&value_bytes, 8);
@@ -232,6 +288,7 @@ fn encode_float_column<'a>(
             string_offset_type: None,
             string_offsets: None,
         },
+        ColumnStats::Float64(range),
     )
 }
 
@@ -239,11 +296,17 @@ fn encode_int_column<'a>(
     raw_name: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
+) -> (ClassProperty, MetadataPropertyTableProperty, ColumnStats) {
     let mut collector = SignedIntCollector::new();
+    let mut range = None;
     for value in values {
         match value.and_then(as_int) {
-            Some(n) => collector.push(n),
+            Some(n) => {
+                if !matches!(value, Some(AttributeValue::Bool(_))) {
+                    range = union(range, Some((n, n)));
+                }
+                collector.push(n)
+            }
             None => collector.push_no_data(),
         }
     }
@@ -264,6 +327,7 @@ fn encode_int_column<'a>(
             string_offset_type: None,
             string_offsets: None,
         },
+        ColumnStats::Int(range),
     )
 }
 
@@ -463,31 +527,39 @@ mod tests {
     #[test]
     fn column_kind_picks_narrowest_matching_type() {
         let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
-        assert_eq!(column_kind(&all_nonneg_ints, "k"), ColumnKind::Int);
+        assert_eq!(column_kinds(&all_nonneg_ints)["k"], ColumnKind::Int);
 
         let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
-        assert_eq!(column_kind(&has_negative, "k"), ColumnKind::Int);
+        assert_eq!(column_kinds(&has_negative)["k"], ColumnKind::Int);
 
         let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
         assert_eq!(
-            column_kind(&is_f64_typed_even_though_whole, "k"),
+            column_kinds(&is_f64_typed_even_though_whole)["k"],
             ColumnKind::Float64
         );
 
         let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
-        assert_eq!(column_kind(&has_fraction, "k"), ColumnKind::Float64);
+        assert_eq!(column_kinds(&has_fraction)["k"], ColumnKind::Float64);
 
         let bool_only = [BTreeMap::from([(
             "k".to_string(),
             AttributeValue::Bool(true),
         )])];
-        assert_eq!(column_kind(&bool_only, "k"), ColumnKind::Int);
+        assert_eq!(column_kinds(&bool_only)["k"], ColumnKind::Int);
 
         let has_string = [BTreeMap::from([
             ("k".to_string(), int_number(1)),
             ("k2".to_string(), AttributeValue::String("s".to_string())),
         ])];
-        assert_eq!(column_kind(&has_string, "k2"), ColumnKind::String);
+        assert_eq!(column_kinds(&has_string)["k2"], ColumnKind::String);
+    }
+
+    #[test]
+    fn merged_stats_widen_and_a_string_column_has_no_range() {
+        let int = ColumnStats::Int(Some((1, 4)));
+        let float = ColumnStats::Float64(Some((2.5, 3.0)));
+        assert_eq!(int.merge(float), ColumnStats::Float64(Some((1.0, 4.0))));
+        assert_eq!(int.merge(ColumnStats::String), ColumnStats::String);
     }
 
     #[test]
