@@ -28,6 +28,15 @@ nodes:
     with:
       routingPort: features
 
+  # A feature with no geometry has no triangle to check, and is left out rather
+  # than reported.
+  - id: d9100000-0000-4000-8000-000000000017
+    name: GeometryFilterNoGeometry
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: none
+
   - id: d9100000-0000-4000-8000-000000000002
     name: GeometryCoercerFaces
     type: action
@@ -202,8 +211,13 @@ nodes:
 edges:
   - id: d9100000-0000-4000-8000-000000000101
     from: d9100000-0000-4000-8000-000000000001
-    to: d9100000-0000-4000-8000-000000000002
+    to: d9100000-0000-4000-8000-000000000017
     fromPort: features
+    toPort: features
+  - id: d9100000-0000-4000-8000-00000000011c
+    from: d9100000-0000-4000-8000-000000000017
+    to: d9100000-0000-4000-8000-000000000002
+    fromPort: unfiltered
     toPort: features
   - id: d9100000-0000-4000-8000-000000000102
     from: d9100000-0000-4000-8000-000000000002
