@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14371.312867, 14268.765201, 15.9],
+            [14416.317015, 14268.839261, 15.9],
+            [14393.814959, 14268.791107, 15.9],
+            [14371.312867, 14268.765201, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}
