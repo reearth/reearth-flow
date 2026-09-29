@@ -30,6 +30,9 @@ func TestDeliveryLatencyIsReported(t *testing.T) {
 
 	writer.RoomActivated(room)
 	reader.RoomActivated(room)
+	// Let the reader finish catch-up before publishing. Rows replayed during catch-up
+	// are deliberately not measured, so publishing into that window would under-count.
+	time.Sleep(300 * time.Millisecond)
 
 	const updates = 20
 	for i := 0; i < updates; i++ {
@@ -85,4 +88,46 @@ func lastLatencyLine(t *testing.T, logged string) map[string]any {
 		t.Fatalf("no \"relay latency\" record was logged; the measurement never ran:\n%s", logged)
 	}
 	return found
+}
+
+// TestCatchUpIsNotMeasured guards a flaw found in the first deployed benchmark run:
+// catch-up replays rows that may be hours old, and recording their age as delivery
+// latency put p50 values of 5s, 188s and 296s into the reported percentiles. That age
+// is replay depth, not what any editor experienced.
+//
+// Rows are aged well beyond any plausible delivery time, then a relay activates the
+// room and replays them. Nothing may be recorded.
+func TestCatchUpIsNotMeasured(t *testing.T) {
+	pool := newPool(t)
+	ctx := context.Background()
+
+	for i := 0; i < 5; i++ {
+		if _, err := pool.Exec(ctx, appendSQL, room, kindSync, []byte("old"), int64(4242)); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	// Backdate them: catch-up would otherwise record a near-zero age and pass
+	// regardless of whether the guard works.
+	if _, err := pool.Exec(ctx, `UPDATE ws_stream SET created_at = now() - interval '2 hours' WHERE doc_id = $1`, room); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	var buf bytes.Buffer
+	sink := &fakeSink{}
+	r := startRelayWith(t, pool, sink, nil, Options{
+		PollEvery: 5 * time.Millisecond,
+		Logger:    slog.New(slog.NewJSONHandler(&buf, nil)),
+	})
+	r.RoomActivated(room)
+
+	eventually(t, 10*time.Second, "catch-up to replay the backdated rows", func() bool {
+		return sink.count() == 5
+	})
+
+	if err := r.Close(); err != nil { // flushes a final report
+		t.Fatalf("Close: %v", err)
+	}
+	if strings.Contains(buf.String(), "relay latency") {
+		t.Errorf("catch-up was recorded as delivery latency; a 2h-old row would report a 7200000ms sample:\n%s", buf.String())
+	}
 }

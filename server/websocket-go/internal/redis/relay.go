@@ -256,7 +256,7 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) str
 		if e.isSelf {
 			continue
 		}
-		r.inject(ctx, room, sink, e)
+		r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
 	}
 	return lastID
 }
@@ -314,7 +314,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 				if e.isSelf {
 					continue
 				}
-				r.inject(ctx, room, sink, e)
+				r.inject(ctx, room, sink, e, true)
 			}
 		}
 		r.mu.Lock()
@@ -324,7 +324,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 }
 
 // inject routes a parsed sync/awareness entry to the sink.
-func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry) {
+func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry, measure bool) {
 	var kind cluster.Kind
 	switch e.kind {
 	case kindSync:
@@ -337,10 +337,11 @@ func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e pa
 	if len(e.data) == 0 {
 		return
 	}
-	// Measure only entries we actually deliver, matching the Postgres backend: a
-	// self-originated entry is never injected, so counting it would dilute the
-	// number that describes what a remote editor experiences.
-	r.latency.Observe(e.age)
+	// Measure only live deliveries. Catch-up replays entries that may be hours old,
+	// and their age is replay depth, not the latency a remote editor experienced.
+	if measure {
+		r.latency.Observe(e.age)
+	}
 	if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data}); err != nil {
 		r.log.Debug("relay inject failed", "room", room, "kind", kind.String(), "err", err)
 	}
