@@ -46,6 +46,7 @@ export default function Editor({
     canUndo,
     canRedo,
     allowedToDeploy,
+    deploymentChangeStatus,
     isMainWorkflow,
     deferredDeleteRef,
     showBeforeDeleteDialog,
@@ -195,6 +196,7 @@ export default function Editor({
             spotlightUserClientId={spotlightUserClientId}
             isSaving={isSaving}
             allowedToDeploy={allowedToDeploy}
+            deploymentChangeStatus={deploymentChangeStatus}
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}

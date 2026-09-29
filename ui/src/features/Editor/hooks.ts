@@ -13,6 +13,7 @@ import {
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import {
+  useDeploymentChanges,
   useGraphStaleness,
   useProjectExport,
   useProjectLock,
@@ -207,9 +208,22 @@ export default ({
     handleEdgesChange: handleYEdgesChange,
   });
 
+  const {
+    deploymentChangeStatus,
+    captureDeploymentFingerprint,
+    recordDeployment,
+  } = useDeploymentChanges({
+    yDoc,
+    yWorkflows,
+    undoManager,
+    deploymentVersion: currentProject?.deployment?.version,
+  });
+
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
     yWorkflows,
+    captureDeploymentFingerprint,
+    recordDeployment,
   });
 
   const isReaderRestricted = currentUserRole === Role.Reader;
@@ -476,6 +490,7 @@ export default ({
     openNode,
     nodePickerOpen,
     allowedToDeploy,
+    deploymentChangeStatus,
     canUndo,
     canRedo,
     isMainWorkflow,
