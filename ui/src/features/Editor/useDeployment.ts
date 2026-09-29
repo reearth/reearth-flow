@@ -16,9 +16,13 @@ import { useToast } from "../NotificationSystem/useToast";
 export default ({
   currentNodes,
   yWorkflows,
+  captureDeploymentFingerprint,
+  recordDeployment,
 }: {
   currentNodes: Node[];
   yWorkflows: YMap<YWorkflow>;
+  captureDeploymentFingerprint: () => string;
+  recordDeployment: (version: string, fingerprint: string) => void;
 }) => {
   const { toast } = useToast();
   const t = useT();
@@ -49,6 +53,7 @@ export default ({
 
       if (!workspaceId || !projectId) return;
 
+      const fingerprint = captureDeploymentFingerprint();
       const engineReadyWorkflow = createEngineReadyWorkflow(
         projectName,
         workflowVariables,
@@ -82,6 +87,7 @@ export default ({
             engineReadyWorkflow,
             description,
           );
+      if (deployment) recordDeployment(deployment.version, fingerprint);
       return deployment;
     },
     [
@@ -92,6 +98,8 @@ export default ({
       createDeployment,
       useUpdateDeployment,
       toast,
+      captureDeploymentFingerprint,
+      recordDeployment,
     ],
   );
 

@@ -3,17 +3,20 @@ import {
   ArrowSquareOutIcon,
   CheckCircleIcon,
   RocketIcon,
+  WarningCircleIcon,
 } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
+import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 import type { Deployment } from "@flow/types";
 
 type Props = {
   allowedToDeploy: boolean;
+  deploymentChangeStatus?: DeploymentChangeStatus;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -23,6 +26,7 @@ type Props = {
 
 const DeployPopover: React.FC<Props> = ({
   allowedToDeploy,
+  deploymentChangeStatus,
   onWorkflowDeployment,
   onDialogClose,
 }) => {
@@ -126,6 +130,29 @@ const DeployPopover: React.FC<Props> = ({
               </span>
             </div>
           </div>
+          {deployment && deploymentChangeStatus && (
+            <div className="-mt-2 flex items-center gap-1.5 text-xs">
+              {deploymentChangeStatus === "changed" ? (
+                <>
+                  <WarningCircleIcon className="shrink-0 text-warning" />
+                  <span>
+                    {t("Changes since {{version}}", {
+                      version: deployment.version,
+                    })}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CheckCircleIcon className="shrink-0 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    {t("No changes since {{version}}", {
+                      version: deployment.version,
+                    })}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <Label>{t("Description")}</Label>
             <Input

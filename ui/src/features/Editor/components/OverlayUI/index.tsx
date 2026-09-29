@@ -6,6 +6,7 @@ import {
   useEditorContext,
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
+import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
 import type {
   ActionNodeType,
   Algorithm,
@@ -78,6 +79,7 @@ type OverlayUIProps = {
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
   allowedToDeploy: boolean;
+  deploymentChangeStatus?: DeploymentChangeStatus;
   isSaving: boolean;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowOpen: (workflowId: string) => void;
@@ -120,6 +122,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   yDoc,
   project,
   allowedToDeploy,
+  deploymentChangeStatus,
   isSaving,
   self,
   users,
@@ -260,6 +263,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             <div className="h-4/5 border-r" />
             <ActionBar
               allowedToDeploy={allowedToDeploy}
+              deploymentChangeStatus={deploymentChangeStatus}
               isSaving={isSaving}
               showDialog={showDialog}
               onDialogOpen={handleDialogOpen}
