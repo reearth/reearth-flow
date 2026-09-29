@@ -1,16 +1,22 @@
-import { CaretRightIcon, RocketIcon } from "@phosphor-icons/react";
+import {
+  CaretRightIcon,
+  CheckCircleIcon,
+  RocketIcon,
+} from "@phosphor-icons/react";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
+import type { Deployment } from "@flow/types";
 
 type Props = {
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
-  ) => Promise<void>;
+  ) => Promise<Deployment | undefined>;
   onDialogClose: () => void;
 };
 
@@ -20,6 +26,7 @@ const DeployPopover: React.FC<Props> = ({
   onDialogClose,
 }) => {
   const t = useT();
+  const navigate = useNavigate();
   const [currentProject] = useCurrentProject();
 
   const deployment = useMemo(
@@ -37,19 +44,32 @@ const DeployPopover: React.FC<Props> = ({
   const [description, setDescription] = useState<string>(
     deployment?.description ?? "",
   );
+  const [isDeploying, setIsDeploying] = useState(false);
+  // Set once a (re)deployment succeeds. The popover then stays open and
+  // offers a way through to the deployment's details page.
+  const [result, setResult] = useState<
+    { deployment: Deployment; isUpdate: boolean } | undefined
+  >(undefined);
 
   const handleWorkflowDeployment = useCallback(async () => {
-    await onWorkflowDeployment(description, deployment?.id);
-    if (allowedToDeploy) {
-      onDialogClose();
+    setIsDeploying(true);
+    try {
+      const deployed = await onWorkflowDeployment(description, deployment?.id);
+      if (deployed) {
+        setResult({ deployment: deployed, isUpdate: !!deployment });
+      }
+    } finally {
+      setIsDeploying(false);
     }
-  }, [
-    description,
-    deployment?.id,
-    allowedToDeploy,
-    onWorkflowDeployment,
-    onDialogClose,
-  ]);
+  }, [description, deployment, onWorkflowDeployment]);
+
+  const handleViewDetails = useCallback(() => {
+    if (!result) return;
+    onDialogClose();
+    navigate({
+      to: `/workspaces/${result.deployment.workspaceId}/deployments/${result.deployment.id}`,
+    });
+  }, [result, navigate, onDialogClose]);
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -59,43 +79,67 @@ const DeployPopover: React.FC<Props> = ({
           {t("Deploy Project")}
         </h4>
       </div>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
+      {result ? (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon className="shrink-0 text-success" size={18} />
+            <p className="text-sm dark:font-light">
+              {result.isUpdate
+                ? t("Deployment has been successfully updated.")
+                : t("Deployment has been successfully created.")}
+            </p>
+          </div>
           <div className="flex flex-row items-center">
             <Label>{t("Deployment Version: ")}</Label>
-            <div className="flex items-center gap-2">
-              <p className="pl-1 dark:font-thin">{currentVersion}</p>
-              <CaretRightIcon />
-              <p className="font-semibold">
-                {currentVersion ? currentVersion + 1 : 1}
-              </p>
-            </div>
+            <p className="pl-1 font-semibold">{result.deployment.version}</p>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label>{t("Description")}</Label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t(
-                "Give your deployment a meaningful description...",
-              )}
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-4">
-          <p className="text-sm dark:font-light">
-            {t("Are you sure you want to proceed?")}
-          </p>
           <div className="flex items-center justify-end">
-            <Button
-              variant="outline"
-              disabled={!description.trim()}
-              onClick={handleWorkflowDeployment}>
-              {deployment ? t("Update") : t("Deploy")}
+            <Button variant="outline" onClick={handleViewDetails}>
+              {t("View Details")}
             </Button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-row items-center">
+              <Label>{t("Deployment Version: ")}</Label>
+              <div className="flex items-center gap-2">
+                <p className="pl-1 dark:font-thin">{currentVersion}</p>
+                <CaretRightIcon />
+                <p className="font-semibold">
+                  {currentVersion ? currentVersion + 1 : 1}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>{t("Description")}</Label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t(
+                  "Give your deployment a meaningful description...",
+                )}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm dark:font-light">
+              {t("Are you sure you want to proceed?")}
+            </p>
+            <div className="flex items-center justify-end">
+              <Button
+                variant="outline"
+                disabled={
+                  !allowedToDeploy || isDeploying || !description.trim()
+                }
+                onClick={handleWorkflowDeployment}>
+                {deployment ? t("Update") : t("Deploy")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

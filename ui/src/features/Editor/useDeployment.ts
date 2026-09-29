@@ -6,7 +6,7 @@ import { useT } from "@flow/lib/i18n";
 import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import { useCurrentProject } from "@flow/stores";
-import type { Node } from "@flow/types";
+import type { Deployment, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
@@ -37,7 +37,10 @@ export default ({
   );
 
   const handleWorkflowDeployment = useCallback(
-    async (description: string, deploymentId?: string) => {
+    async (
+      description: string,
+      deploymentId?: string,
+    ): Promise<Deployment | undefined> => {
       const {
         name: projectName,
         workspaceId,
@@ -67,20 +70,19 @@ export default ({
         engineReadyWorkflow.id,
       );
 
-      if (deploymentId) {
-        await useUpdateDeployment(
-          deploymentId,
-          formData.get("file") ?? undefined,
-          description,
-        );
-      } else {
-        await createDeployment(
-          workspaceId,
-          projectId,
-          engineReadyWorkflow,
-          description,
-        );
-      }
+      const { deployment } = deploymentId
+        ? await useUpdateDeployment(
+            deploymentId,
+            formData.get("file") ?? undefined,
+            description,
+          )
+        : await createDeployment(
+            workspaceId,
+            projectId,
+            engineReadyWorkflow,
+            description,
+          );
+      return deployment;
     },
     [
       yWorkflows,

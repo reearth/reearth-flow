@@ -27,6 +27,7 @@ import {
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
+import type { Deployment } from "@flow/types";
 
 import type { DialogOptions } from "../../types";
 
@@ -43,7 +44,7 @@ type Props = {
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
-  ) => Promise<void>;
+  ) => Promise<Deployment | undefined>;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
