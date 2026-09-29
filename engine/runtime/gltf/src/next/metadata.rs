@@ -228,7 +228,15 @@ pub fn encode(
     stats
 }
 
-/// Encodes as `STRING` or, when its estimated size is smaller, as an `ENUM`
+/// Upper bound on an `ENUM` column's JSON and padding, excluding its enum
+/// definition and `enum_id`.
+const ENUM_OVERHEAD: usize = 39;
+
+/// Upper bound on the JSON and padding cost of narrower-than-`UINT32` string
+/// offsets (`UINT32` is the default, so its `stringOffsetType` is omitted).
+const NARROW_OFFSETS_OVERHEAD: usize = 35;
+
+/// Encodes as `STRING` or, when that certainly shrinks the glb, as an `ENUM`
 /// whose definition is returned for the schema under `enum_id`.
 fn encode_string_column<'a>(
     raw_name: &str,
@@ -244,7 +252,13 @@ fn encode_string_column<'a>(
         .map(|v| v.map_or_else(|| STRING_NO_DATA.to_string(), |v| v.to_string()))
         .collect();
     let byte_len: usize = strings.iter().map(String::len).sum();
-    let offset_size = uint_size(byte_len);
+    let offset_count = strings.len() + 1;
+    let narrow_size = uint_size(byte_len);
+    let offset_size = if (4 - narrow_size) * offset_count > NARROW_OFFSETS_OVERHEAD {
+        narrow_size
+    } else {
+        4
+    };
 
     // The no-data name takes value 0.
     let mut names = IndexSet::from([STRING_NO_DATA]);
@@ -262,8 +276,10 @@ fn encode_string_column<'a>(
         .expect("an enum definition is always serializable")
         .len();
 
-    let string_cost = byte_len + offset_size * (strings.len() + 1);
-    let enum_cost = index_size * strings.len() + enum_json_len;
+    // Leaves out the `STRING` JSON an `ENUM` would drop, so `ENUM` only wins clearly.
+    let string_cost = byte_len + offset_size * offset_count;
+    let enum_cost =
+        index_size * strings.len() + enum_json_len + 2 * enum_id.len() + ENUM_OVERHEAD;
     if enum_cost < string_cost {
         let value_bytes: Vec<u8> = strings
             .iter()
@@ -316,7 +332,7 @@ fn encode_string_column<'a>(
         },
         MetadataPropertyTableProperty {
             values: values_bufferview,
-            string_offset_type: Some(uint_type(offset_size)),
+            string_offset_type: (offset_size != 4).then(|| uint_type(offset_size)),
             string_offsets: Some(offsets_bufferview),
         },
         None,
