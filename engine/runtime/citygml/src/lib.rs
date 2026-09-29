@@ -1,13 +1,13 @@
 #[cfg(feature = "new-geometry")]
 pub(crate) mod appearance;
 pub(crate) mod codespace;
+pub(crate) mod coordinate_handling;
 pub(crate) mod flatten;
 #[cfg(not(feature = "new-geometry"))]
 pub(crate) mod geometry;
 #[cfg(feature = "new-geometry")]
 #[path = "geometry_next.rs"]
 pub(crate) mod geometry;
-pub(crate) mod geometry_interpretation;
 pub mod malformation;
 #[cfg(not(feature = "new-geometry"))]
 pub mod parser;

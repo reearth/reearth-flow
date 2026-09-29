@@ -10,7 +10,7 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-pub use super::geometry_interpretation::GeometryInterpretation;
+pub use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{name_city_object, Malformation, MalformationKind};
 use super::resolver::GeomRegistry;
 use super::srsname;
@@ -104,7 +104,7 @@ pub struct Parser {
     /// Present-but-malformed input sites collected during parsing; see
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
-    pub(super) geometry_interpretation: GeometryInterpretation,
+    pub(super) coordinate_handling: CoordinateHandling,
 }
 
 impl std::fmt::Debug for Parser {
@@ -138,12 +138,12 @@ impl Parser {
             synthetic_gml_id_seq: 0,
             extract_tags,
             malformations: Vec::new(),
-            geometry_interpretation: GeometryInterpretation::default(),
+            coordinate_handling: CoordinateHandling::default(),
         }
     }
 
-    pub fn geometry_interpretation(mut self, interpretation: GeometryInterpretation) -> Self {
-        self.geometry_interpretation = interpretation;
+    pub fn coordinate_handling(mut self, handling: CoordinateHandling) -> Self {
+        self.coordinate_handling = handling;
         self
     }
 

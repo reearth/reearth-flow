@@ -112,7 +112,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
-      geometryInterpretation: strict
+      coordinateHandling: preserve
       includeRejectedDetails: true
 
   - id: d9000000-0000-4000-8000-000000000009

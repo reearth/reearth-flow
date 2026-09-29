@@ -9,7 +9,7 @@ use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-pub use super::geometry_interpretation::GeometryInterpretation;
+pub use super::coordinate_handling::CoordinateHandling;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
@@ -91,7 +91,7 @@ impl Parser {
 
     /// Same shape as the new-geometry `Parser`'s option, not implemented by this
     /// legacy parser and ignored.
-    pub fn geometry_interpretation(self, _interpretation: GeometryInterpretation) -> Self {
+    pub fn coordinate_handling(self, _handling: CoordinateHandling) -> Self {
         self
     }
 
