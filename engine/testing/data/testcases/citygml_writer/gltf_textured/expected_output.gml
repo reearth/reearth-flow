@@ -7,7 +7,7 @@
     </gml:Envelope>
   </gml:boundedBy>
   <core:cityObjectMember>
-    <gen:GenericCityObject gml:id="adb13359-b243-454d-8601-930dff0230e3">
+    <gen:GenericCityObject gml:id="gen_1">
       <gen:lod0Geometry>
         <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/4978" srsDimension="3">
           <gml:surfaceMember>

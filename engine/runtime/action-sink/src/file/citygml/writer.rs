@@ -86,7 +86,9 @@ const CITYGML_2_SCHEMA_LOCATION: &str = concat!(
 pub struct CityGmlXmlWriter<W: Write> {
     writer: Writer<W>,
     srs_name: String,
-    id_counter: u64,
+    /// One running count per prefix, so numbering a city object never shifts
+    /// the `poly_N` ids beneath it.
+    id_counters: HashMap<String, u64>,
     /// `xs:ID` is unique per document, so every id the writer emits is claimed here.
     used_ids: HashSet<String>,
     pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
@@ -104,7 +106,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Self {
             writer,
             srs_name,
-            id_counter: 0,
+            id_counters: HashMap::new(),
             used_ids: HashSet::new(),
             pending_appearances: Vec::new(),
             uri_remap: HashMap::new(),
@@ -116,8 +118,9 @@ impl<W: Write> CityGmlXmlWriter<W> {
     }
 
     fn generate_gml_id(&mut self, prefix: &str) -> String {
-        self.id_counter += 1;
-        format!("{}_{}", prefix, self.id_counter)
+        let counter = self.id_counters.entry(prefix.to_string()).or_insert(0);
+        *counter += 1;
+        format!("{prefix}_{counter}")
     }
 
     /// Settle on a `gml:id` that is a legal `xs:ID` and unused in this document.
@@ -210,7 +213,10 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
         // CityGML declares each class's properties as an `xs:sequence`, so arrival
         // order is not good enough: the elements must be emitted in schema order.
-        let mut ordered: Vec<&GeometryEntry> = geometries.iter().collect();
+        // Cardinality is the other half of the same rule, so duplicates collapse
+        // before the sort rather than being written as siblings.
+        let merged = merge_duplicate_properties(geometries, city_type);
+        let mut ordered: Vec<&GeometryEntry> = merged.iter().collect();
         ordered.sort_by_key(|entry| content_model_position(entry, city_type));
 
         for entry in ordered {
@@ -814,6 +820,66 @@ fn geometry_property_name(entry: &GeometryEntry, city_type: CityObjectType) -> S
     format!("lod{}{}", entry.lod, family)
 }
 
+/// Collapse entries that resolve to the same property name into one element.
+///
+/// Every `lodNXxx` property is declared `minOccurs="0"` with no `maxOccurs` in
+/// the CityGML schemas, so it may appear at most once; `boundedBy` is the only
+/// repeating one. Nested objects are currently flattened onto their parent, so a
+/// building with two `bldg:WallSurface` children arrives as two entries both
+/// naming `lod2MultiSurface`. Writing both produces a document no validator
+/// accepts, so they merge into a single multi-geometry here.
+///
+/// This keeps the geometry while losing which boundary surface each piece came
+/// from. That distinction is already lost upstream by the flattening, so nothing
+/// survives the merge that would have survived without it.
+fn merge_duplicate_properties(
+    entries: &[GeometryEntry],
+    city_type: CityObjectType,
+) -> Vec<GeometryEntry> {
+    let mut merged: Vec<GeometryEntry> = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let name = geometry_property_name(entry, city_type);
+        let folded = match merged
+            .iter_mut()
+            .find(|held| geometry_property_name(held, city_type) == name)
+        {
+            Some(held) => absorb(held, entry),
+            None => false,
+        };
+        // Nothing that cannot be folded is thrown away: it stays a separate
+        // entry, so the document remains as complete as it was before, and the
+        // schema gate still sees the problem.
+        if !folded {
+            merged.push(entry.clone());
+        }
+    }
+    merged
+}
+
+/// Fold `extra`'s geometry into `held`, which already occupies that property.
+/// Returns whether it could, which is only true within one GML family: a second
+/// `gml:Solid` has nowhere to go inside a `SolidPropertyType` property.
+fn absorb(held: &mut GeometryEntry, extra: &GeometryEntry) -> bool {
+    match (&mut held.element, &extra.element) {
+        (
+            GmlElement::MultiSurface { surfaces, .. },
+            GmlElement::MultiSurface { surfaces: more, .. },
+        ) => {
+            surfaces.extend(more.iter().cloned());
+            true
+        }
+        (GmlElement::MultiCurve { curves, .. }, GmlElement::MultiCurve { curves: more, .. }) => {
+            curves.extend(more.iter().cloned());
+            true
+        }
+        (GmlElement::MultiSolid { solids, .. }, GmlElement::MultiSolid { solids: more, .. }) => {
+            solids.extend(more.iter().cloned());
+            true
+        }
+        _ => false,
+    }
+}
+
 /// Where this geometry's property sits in the class's `xs:sequence`. A property
 /// the schema does not declare sorts last rather than being dropped, so invalid
 /// input stays visible to the schema gate instead of vanishing.
@@ -906,6 +972,156 @@ mod tests {
             uv_exterior: vec![],
             uv_interiors: vec![],
         }
+    }
+
+    /// Write several geometry entries as one Building city object and return the
+    /// XML. Separate from `write_entry` because cardinality only shows up with
+    /// more than one entry in hand.
+    fn write_entries(entries: Vec<GeometryEntry>) -> String {
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        w.write_city_object(CityObjectType::Building, &entries, Some("obj-001"), None)
+            .unwrap();
+        w.flush_appearances().unwrap();
+        String::from_utf8(buf).unwrap()
+    }
+
+    /// A building whose LOD-2 geometry came from two boundary surfaces, which is
+    /// what the reader hands over for a `bldg:Building` carrying two
+    /// `bldg:WallSurface` children: one member each, both naming the same source
+    /// property.
+    ///
+    /// `bldg:lod2MultiSurface` is declared `minOccurs="0"` with no `maxOccurs` in
+    /// `building.xsd`, so it may appear **once**. Only `bldg:boundedBy` is
+    /// `maxOccurs="unbounded"`. Emitting the property twice is therefore invalid
+    /// against the schema, and no validator will accept the document.
+    #[test]
+    fn duplicate_lod_property_is_merged_into_one_element() {
+        let entries = vec![
+            GeometryEntry {
+                lod: 2,
+                property: Some("lod2MultiSurface".to_string()),
+                element: GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: vec![plain_surface(triangle())],
+                },
+            },
+            GeometryEntry {
+                lod: 2,
+                property: Some("lod2MultiSurface".to_string()),
+                element: GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: vec![plain_surface(offset_triangle())],
+                },
+            },
+        ];
+
+        let xml = write_entries(entries);
+
+        assert_eq!(
+            xml.matches("<bldg:lod2MultiSurface>").count(),
+            1,
+            "the property may appear at most once, got {} occurrences:\n{xml}",
+            xml.matches("<bldg:lod2MultiSurface>").count()
+        );
+        assert_eq!(
+            xml.matches("<gml:surfaceMember>").count(),
+            2,
+            "merging must keep both surfaces, not drop one:\n{xml}"
+        );
+    }
+
+    /// Curves collide the same way surfaces do: `lod0RoofEdge` is one property,
+    /// and two source objects carrying it arrive as two entries. Merging must
+    /// keep both curves rather than letting the second one fall on the floor.
+    #[test]
+    fn duplicate_curve_property_keeps_every_curve() {
+        let entries = vec![
+            GeometryEntry {
+                lod: 0,
+                property: Some("lod0RoofEdge".to_string()),
+                element: GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![triangle()],
+                },
+            },
+            GeometryEntry {
+                lod: 0,
+                property: Some("lod0RoofEdge".to_string()),
+                element: GmlElement::MultiCurve {
+                    id: None,
+                    curves: vec![offset_triangle()],
+                },
+            },
+        ];
+
+        let xml = write_entries(entries);
+
+        assert_eq!(
+            xml.matches("<bldg:lod0RoofEdge>").count(),
+            1,
+            "the property may appear at most once:\n{xml}"
+        );
+        assert_eq!(
+            xml.matches("<gml:curveMember>").count(),
+            2,
+            "merging must keep both curves, not drop one:\n{xml}"
+        );
+    }
+
+    /// Two solids cannot share one `lod2Solid`, because `gml:SolidPropertyType`
+    /// holds exactly one `gml:Solid`. There is no valid single-property output
+    /// for this input, so the writer keeps both rather than silently discarding
+    /// one: the document stays invalid and the schema gate still reports it,
+    /// which is the lesser of the two failures.
+    ///
+    /// The real fix is nesting, since two solids at one LOD means two objects.
+    /// Until that lands this is a known limitation, pinned here so a future
+    /// change to drop-on-collide cannot slip in unnoticed.
+    #[test]
+    fn unmergeable_solids_are_kept_rather_than_dropped() {
+        let solid = |exterior: Vec<[f64; 3]>| GmlSolid {
+            id: None,
+            exterior: vec![plain_surface(exterior)],
+            interiors: vec![],
+        };
+        let entries = vec![
+            GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_string()),
+                element: GmlElement::Solid(solid(triangle())),
+            },
+            GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_string()),
+                element: GmlElement::Solid(solid(offset_triangle())),
+            },
+        ];
+
+        let xml = write_entries(entries);
+
+        assert_eq!(
+            xml.matches("<gml:Solid").count(),
+            2,
+            "neither solid may be discarded:\n{xml}"
+        );
+    }
+
+    /// Minted ids are numbered per prefix, so a city object and the polygons
+    /// inside it do not share one running count.
+    ///
+    /// This is what lets a feature with no source `gml:id` take a deterministic
+    /// id without renumbering every `poly_N` beneath it, and a deterministic id
+    /// is what lets the test framework compare ids instead of masking them.
+    #[test]
+    fn minted_ids_are_numbered_per_prefix() {
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+
+        assert_eq!(w.claim_gml_id(None, "bldg"), "bldg_1");
+        assert_eq!(w.claim_gml_id(None, "poly"), "poly_1");
+        assert_eq!(w.claim_gml_id(None, "poly"), "poly_2");
+        assert_eq!(w.claim_gml_id(None, "bldg"), "bldg_2");
     }
 
     /// Write one geometry entry as a Building city object and return the XML.

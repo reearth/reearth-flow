@@ -14,6 +14,34 @@
 //! `gml:id`s, which the unified model does not retain; feature attributes,
 //! semantic surfaces and `xsi:schemaLocation`; CityGML 3.0.
 //!
+//! # Member contract, and what this converter ignores
+//!
+//! The reader labels every `GeometryCollection` member with five attributes (see
+//! [`reearth_flow_citygml::pipeline`]). Only two are read here:
+//!
+//! | Key | Read | Effect |
+//! |---|---|---|
+//! | `lod` | yes | the LOD digit in the emitted property name |
+//! | `gmlPropertyName` | yes | the property's own name, `lod0RoofEdge` and such |
+//! | `geometryName` | no | the GML type the property held |
+//! | `__citygml_geometry_gml_id` | no | the owning object's `gml:id` |
+//! | `__citygml_geometry_feature_type` | no | the owning object's type |
+//!
+//! The last two are the ones that matter, because they say which object each
+//! member came from. Ignoring them is why **nested objects are flattened onto
+//! their parent**: a `bldg:Building` with two `bldg:WallSurface` children
+//! produces two members that both land directly on the building, rather than one
+//! `bldg:boundedBy` each.
+//!
+//! That flattening has a visible consequence. Each `lodNXxx` property is
+//! declared `maxOccurs="1"` in the CityGML schemas, so the two members cannot
+//! both be written; [`super::writer`] merges them into a single multi-geometry
+//! to keep the document valid, which preserves the geometry but not which
+//! surface it belonged to. Emitting real nested objects means reading the two
+//! ownership keys here and grouping on them, which needs the per-class table of
+//! nesting properties (`bldg:boundedBy`, `tran:trafficArea`, and so on) that the
+//! content model does not carry yet.
+//!
 //! # Owned here, not by the legacy converter
 //!
 //! - **Axis order.** The new reader stores ordinates in the CRS's own declared

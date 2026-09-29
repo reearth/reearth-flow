@@ -136,9 +136,13 @@ pub fn write_citygml_to_storage(
                 .unwrap_or_else(|| "gen:GenericCityObject".to_string());
             let city_type = CityObjectType::from_feature_type(feature_type_str.as_str());
 
-            let gml_id_str = feature
-                .feature_id()
-                .unwrap_or_else(|| feature.id.to_string());
+            // Only a source `gml:id` is offered as a candidate. The engine's own
+            // feature id is a per-run UUID: using it as a fallback made the
+            // document differ between runs for the same input, and made a minted
+            // id indistinguishable from a real one like `bldg_<uuid>`, which is
+            // precisely the shape PLATEAU uses. `claim_gml_id` mints a stable
+            // `<prefix>_<n>` instead.
+            let gml_id = feature.feature_id();
             let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
                 Some(&object.appearance)
             } else {
@@ -147,7 +151,7 @@ pub fn write_citygml_to_storage(
             xml_writer.write_city_object(
                 city_type,
                 &object.geometries,
-                Some(gml_id_str.as_str()),
+                gml_id.as_deref(),
                 appearance,
             )?;
         }

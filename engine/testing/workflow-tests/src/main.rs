@@ -926,11 +926,6 @@ impl TestContext {
         scrub_generated_gml_ids(&mut expected);
         scrub_generated_gml_ids(&mut actual);
 
-        // A city object whose source carried no gml:id is written under the
-        // engine's per-run feature UUID, which differs on every execution.
-        scrub_feature_uuid_gml_ids(&mut expected);
-        scrub_feature_uuid_gml_ids(&mut actual);
-
         assert_eq!(
             actual, expected,
             "CityGML output mismatch for {}",
@@ -1618,15 +1613,61 @@ fn rewrite_xml_values(element: &mut XmlElement, rewrite: &impl Fn(&str, &str) ->
     }
 }
 
-/// Mask the counter in every `poly_<n>` id, which shifts whenever a surface is
-/// added ahead of it. The `_e` / `_i<n>` suffix is kept — it names the ring.
+/// Renumber the writer's minted `poly_<n>` ids by order of first appearance,
+/// applying the same mapping to the `#poly_<n>` references that point at them.
+///
+/// The absolute numbers shift whenever a surface is added ahead of the others,
+/// which is not a behaviour change worth failing on. *Which* polygon a texture
+/// points at is. Masking every id to one token erased both, so a permutation of
+/// appearance targets compared equal; renumbering absorbs the shift while
+/// keeping the correspondence under test. The `_e` / `_i<n>` suffix is kept
+/// untouched, since it names the ring rather than the surface.
 fn scrub_generated_gml_ids(element: &mut XmlElement) {
+    let mut order = Vec::new();
+    collect_generated_ids(element, &mut order);
     rewrite_xml_values(element, &|_name, value| {
-        value.contains("poly_").then(|| mask_generated_ids(value))
+        value
+            .contains("poly_")
+            .then(|| renumber_generated_ids(value, &order))
     });
 }
 
-fn mask_generated_ids(value: &str) -> String {
+/// Visit the digits of each `poly_<n>` occurrence in `value`, left to right.
+fn for_each_generated_id(value: &str, mut visit: impl FnMut(&str)) {
+    let mut rest = value;
+    while let Some(at) = rest.find("poly_") {
+        let from = &rest[at + "poly_".len()..];
+        let digits = from.len() - from.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        if digits == 0 {
+            rest = from;
+            continue;
+        }
+        visit(&from[..digits]);
+        rest = &from[digits..];
+    }
+}
+
+/// Record each distinct minted number once, in the order the tree first shows it.
+fn collect_generated_ids(element: &XmlElement, order: &mut Vec<String>) {
+    let note = |order: &mut Vec<String>, digits: &str| {
+        if !order.iter().any(|seen| seen == digits) {
+            order.push(digits.to_string());
+        }
+    };
+    for value in element.attributes.values() {
+        for_each_generated_id(value, |digits| note(order, digits));
+    }
+    for child in &element.children {
+        match child {
+            XmlNode::Element(child) => collect_generated_ids(child, order),
+            XmlNode::Text(text) => for_each_generated_id(text, |digits| note(order, digits)),
+        }
+    }
+}
+
+/// Replace each minted number with its position in `order`, so two documents
+/// agree exactly when their polygon-to-reference structure agrees.
+fn renumber_generated_ids(value: &str, order: &[String]) -> String {
     let mut out = String::with_capacity(value.len());
     let mut rest = value;
     while let Some(at) = rest.find("poly_") {
@@ -1637,26 +1678,14 @@ fn mask_generated_ids(value: &str) -> String {
             rest = from;
             continue;
         }
-        out.push('N');
+        match order.iter().position(|seen| seen == &from[..digits]) {
+            Some(index) => out.push_str(&(index + 1).to_string()),
+            None => out.push_str(&from[..digits]),
+        }
         rest = &from[digits..];
     }
     out.push_str(rest);
     out
-}
-
-/// Mask a per-run feature UUID in a `gml:id`. A city object with no source id is
-/// written under the engine's feature UUID, which the writer prefixes so the
-/// result is a legal `xs:ID`.
-fn scrub_feature_uuid_gml_ids(element: &mut XmlElement) {
-    rewrite_xml_values(element, &|name, value| {
-        if name != "gml:id" {
-            return None;
-        }
-        let bare = value.rsplit_once('_').map_or(value, |(_, tail)| tail);
-        uuid::Uuid::parse_str(bare)
-            .is_ok()
-            .then(|| "<per-run-uuid>".to_string())
-    });
 }
 
 /// Check if a filename matches any of the given glob patterns
@@ -1678,6 +1707,50 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
     use walkdir::WalkDir;
+
+    /// Two documents identical except for *which* polygon a texture targets must
+    /// not compare equal.
+    ///
+    /// Masking every `poly_N` to one token made the target and the polygon it
+    /// points at indistinguishable, so any permutation of targets passed. The
+    /// mapping between a texture and its surface is the part of appearance
+    /// output most worth testing, so normalisation has to renumber consistently
+    /// rather than erase.
+    #[test]
+    fn polygon_id_normalisation_keeps_target_correspondence() {
+        let targeting_first = r#"<root><Polygon gml:id="poly_1"/><Polygon gml:id="poly_2"/><target>#poly_1</target></root>"#;
+        let targeting_second = r#"<root><Polygon gml:id="poly_1"/><Polygon gml:id="poly_2"/><target>#poly_2</target></root>"#;
+
+        let mut first = parse_xml_tree(targeting_first).unwrap();
+        let mut second = parse_xml_tree(targeting_second).unwrap();
+        scrub_generated_gml_ids(&mut first);
+        scrub_generated_gml_ids(&mut second);
+
+        assert_ne!(
+            first, second,
+            "a texture pointing at a different polygon must not compare equal"
+        );
+    }
+
+    /// Renumbering still has to absorb a shift in the absolute numbers, which is
+    /// the reason the ids were masked in the first place: inserting a surface
+    /// ahead of the others renumbers everything after it, and that alone is not
+    /// a behaviour change worth failing a test over.
+    #[test]
+    fn polygon_id_normalisation_absorbs_a_uniform_shift() {
+        let low = r#"<root><Polygon gml:id="poly_1"/><Polygon gml:id="poly_2"/><target>#poly_2</target></root>"#;
+        let shifted = r#"<root><Polygon gml:id="poly_7"/><Polygon gml:id="poly_8"/><target>#poly_8</target></root>"#;
+
+        let mut low = parse_xml_tree(low).unwrap();
+        let mut shifted = parse_xml_tree(shifted).unwrap();
+        scrub_generated_gml_ids(&mut low);
+        scrub_generated_gml_ids(&mut shifted);
+
+        assert_eq!(
+            low, shifted,
+            "the same structure with shifted numbering must still compare equal"
+        );
+    }
 
     /// Validates that all workflow_test.json files are properly normalized
     /// (key order matches the WorkflowTestProfile struct field order)
