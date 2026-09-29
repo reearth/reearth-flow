@@ -26,12 +26,7 @@ const DebugRunTimer: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    if (
-      !isActive ||
-      startTime === undefined ||
-      Number.isNaN(startTime)
-    )
-      return;
+    if (!isActive || startTime === undefined || Number.isNaN(startTime)) return;
 
     let timeout: ReturnType<typeof setTimeout>;
     // Schedule each tick on the next whole second since startedAt, so the
