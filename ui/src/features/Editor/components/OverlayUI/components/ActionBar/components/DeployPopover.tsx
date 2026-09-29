@@ -45,8 +45,8 @@ const DeployPopover: React.FC<Props> = ({
     deployment?.description ?? "",
   );
   const [isDeploying, setIsDeploying] = useState(false);
-  // Set once a (re)deployment succeeds. The popover then stays open and
-  // offers a way through to the deployment's details page.
+  // Set once a (re)deployment succeeds, so the popover can stay open and
+  // confirm it.
   const [result, setResult] = useState<
     { deployment: Deployment; isUpdate: boolean } | undefined
   >(undefined);
@@ -63,13 +63,15 @@ const DeployPopover: React.FC<Props> = ({
     }
   }, [description, deployment, onWorkflowDeployment]);
 
+  const deploymentToView = result?.deployment ?? deployment;
+
   const handleViewDetails = useCallback(() => {
-    if (!result) return;
+    if (!deploymentToView) return;
     onDialogClose();
     navigate({
-      to: `/workspaces/${result.deployment.workspaceId}/deployments/${result.deployment.id}`,
+      to: `/workspaces/${deploymentToView.workspaceId}/deployments/${deploymentToView.id}`,
     });
-  }, [result, navigate, onDialogClose]);
+  }, [deploymentToView, navigate, onDialogClose]);
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -127,7 +129,12 @@ const DeployPopover: React.FC<Props> = ({
             <p className="text-sm dark:font-light">
               {t("Are you sure you want to proceed?")}
             </p>
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-end gap-2">
+              {deployment && (
+                <Button variant="ghost" onClick={handleViewDetails}>
+                  {t("View Details")}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 disabled={
