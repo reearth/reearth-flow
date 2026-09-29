@@ -171,9 +171,6 @@ impl Parser {
                         m.location = rid.clone();
                     }
                 }
-                if m.detail.geometry_type.is_empty() {
-                    m.detail.geometry_type = ty.local_name().to_string();
-                }
             }
             let (geometry, faces) = result?;
             GeomNode::Resolved(geometry, LeafIds { file, faces })
@@ -931,41 +928,6 @@ mod tests {
                 detail: MalformationDetail {
                     city_object_id: "relief1".to_string(),
                     city_object_type: "dem:ReliefFeature".to_string(),
-                    geometry_type: "TriangulatedSurface".to_string(),
-                },
-            }]
-        );
-    }
-
-    /// A malformation names the innermost geometry element enclosing it.
-    #[test]
-    fn a_malformation_names_the_enclosing_geometry_type() {
-        let xml = r#"<core:CityModel
-                 xmlns:core="http://www.opengis.net/citygml/3.0"
-                 xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
-                 xmlns:gml="http://www.opengis.net/gml/3.2">
-               <core:cityObjectMember><bldg:Building gml:id="b1">
-                 <core:lod2MultiCurve><gml:MultiCurve><gml:curveMember>
-                     <gml:LineString gml:id="line1">
-                       <gml:posList>0 0 0 1 0 bad</gml:posList>
-                     </gml:LineString>
-                 </gml:curveMember></gml:MultiCurve></core:lod2MultiCurve>
-               </bldg:Building></core:cityObjectMember>
-             </core:CityModel>"#;
-        let url = Url::parse("file:///test.gml").unwrap();
-        let mut parser = Parser::new(CityGmlVersion::V3);
-        parser.parse(xml.as_bytes(), &url).unwrap();
-        let ParserOutput { malformations, .. } = parser.finish();
-        assert_eq!(
-            malformations,
-            vec![Malformation {
-                file: "file:///test.gml".to_string(),
-                location: "line1".to_string(),
-                kind: MalformationKind::InvalidPosList,
-                detail: MalformationDetail {
-                    city_object_id: "b1".to_string(),
-                    city_object_type: "bldg:Building".to_string(),
-                    geometry_type: "LineString".to_string(),
                 },
             }]
         );
@@ -1246,7 +1208,6 @@ mod tests {
                 detail: MalformationDetail {
                     city_object_id: "b1".to_string(),
                     city_object_type: "bldg:Building".to_string(),
-                    geometry_type: "Polygon".to_string(),
                 },
             }]
         );

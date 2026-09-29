@@ -184,22 +184,6 @@ nodes:
     type: subGraph
     subGraphId: d9100000-0000-4000-8000-000000000000
 
-  # Only sites inside a TIN are triangles. The original checks nothing else, so
-  # the rest (breaklines, mass points, other geometry) is not counted and the
-  # `unfiltered` port is left unconnected.
-  - id: d9000000-0000-4000-8000-000000000037
-    name: FeatureFilterRejectedTriangle
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: |
-              geometry_type = attributes["rejectedResult"]["geometryType"];
-              geometry_type == "TriangulatedSurface" or geometry_type == "Tin"
-          outputPort: triangle
-
   # A site the reader could not read is put on the row of the ReliefFeature it
   # was found in.
   - id: d9000000-0000-4000-8000-00000000000d
@@ -783,13 +767,8 @@ edges:
     toPort: features
   - id: d9000000-0000-4000-8000-00010000000c
     from: d9000000-0000-4000-8000-000000000008
-    to: d9000000-0000-4000-8000-000000000037
-    fromPort: rejected
-    toPort: features
-  - id: d9000000-0000-4000-8000-000100000047
-    from: d9000000-0000-4000-8000-000000000037
     to: d9000000-0000-4000-8000-00000000000d
-    fromPort: triangle
+    fromPort: rejected
     toPort: features
 
   # The ReliefFeatures also feed the result sheet, so one with no finding at all

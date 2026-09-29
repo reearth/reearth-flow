@@ -55,9 +55,6 @@ pub struct MalformationDetail {
     pub city_object_id: String,
     /// The qualified element name of that city object (e.g. `dem:ReliefFeature`).
     pub city_object_type: String,
-    /// The GML local name of the innermost geometry element enclosing it (e.g.
-    /// `TriangulatedSurface`).
-    pub geometry_type: String,
 }
 
 /// Name the city object on every malformation in `found` that names none yet.

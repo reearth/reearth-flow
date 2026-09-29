@@ -159,8 +159,8 @@ pub struct FeatureCityGml3ReaderParam {
     keep_triangle_rings: bool,
     /// # Include Rejected Details
     /// When true, the `rejectedResult` map of each rejected feature also carries `kind` (what
-    /// was wrong), `cityObjectId` and `cityObjectType` (the top-level city object it was found
-    /// in), and `geometryType` (the innermost geometry element enclosing it). Defaults to false.
+    /// was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was
+    /// found in). Defaults to false.
     #[serde(default)]
     include_rejected_details: bool,
 }
@@ -317,7 +317,7 @@ impl Processor for FeatureCityGml3Reader {
 }
 
 /// The `rejectedResult` map for a malformed site: `file`, `location` and `reason`, plus
-/// `kind`, `cityObjectId`, `cityObjectType` and `geometryType` when `include_details` is set.
+/// `kind`, `cityObjectId` and `cityObjectType` when `include_details` is set.
 fn rejected_result(m: Malformation, include_details: bool) -> AttributeValue {
     let reason = m.kind.to_string();
     let mut map = Attributes::new();
@@ -339,10 +339,6 @@ fn rejected_result(m: Malformation, include_details: bool) -> AttributeValue {
         map.insert(
             Attribute::new("cityObjectType"),
             AttributeValue::String(m.detail.city_object_type),
-        );
-        map.insert(
-            Attribute::new("geometryType"),
-            AttributeValue::String(m.detail.geometry_type),
         );
     }
     AttributeValue::Map(map)
@@ -448,10 +444,10 @@ mod tests {
         );
     }
 
-    /// With details enabled, the map also says what was wrong and where in the
-    /// city object it was found.
+    /// With details enabled, the map also says what was wrong and which city object it
+    /// was found in.
     #[test]
-    fn details_add_kind_city_object_and_geometry_type() {
+    fn details_add_kind_and_city_object() {
         let sent = parse_and_finish(true);
         let (_, reported) = &sent[1];
         assert_eq!(
@@ -466,7 +462,6 @@ mod tests {
                 ("kind", "InvalidPosList"),
                 ("cityObjectId", "b1"),
                 ("cityObjectType", "bldg:Building"),
-                ("geometryType", "Polygon"),
             ]))
         );
     }

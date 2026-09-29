@@ -166,35 +166,6 @@ impl GmlGeometryType {
                 | GmlGeometryType::Tin
         )
     }
-
-    /// The GML local name of this type (e.g. `TriangulatedSurface`).
-    pub(super) fn local_name(&self) -> &'static str {
-        match self {
-            GmlGeometryType::Point => "Point",
-            GmlGeometryType::LineString => "LineString",
-            GmlGeometryType::Curve => "Curve",
-            GmlGeometryType::LinearRing => "LinearRing",
-            GmlGeometryType::Polygon => "Polygon",
-            GmlGeometryType::Surface => "Surface",
-            GmlGeometryType::PolyhedralSurface => "PolyhedralSurface",
-            GmlGeometryType::TriangulatedSurface => "TriangulatedSurface",
-            GmlGeometryType::Tin => "Tin",
-            GmlGeometryType::MultiPoint => "MultiPoint",
-            GmlGeometryType::OrientableCurve => "OrientableCurve",
-            GmlGeometryType::CompositeCurve => "CompositeCurve",
-            GmlGeometryType::MultiCurve => "MultiCurve",
-            GmlGeometryType::Ring => "Ring",
-            GmlGeometryType::OrientableSurface => "OrientableSurface",
-            GmlGeometryType::CompositeSurface => "CompositeSurface",
-            GmlGeometryType::MultiSurface => "MultiSurface",
-            GmlGeometryType::Shell => "Shell",
-            GmlGeometryType::Solid => "Solid",
-            GmlGeometryType::CompositeSolid => "CompositeSolid",
-            GmlGeometryType::MultiSolid => "MultiSolid",
-            GmlGeometryType::MultiGeometry => "MultiGeometry",
-            GmlGeometryType::GeometricComplex => "GeometricComplex",
-        }
-    }
 }
 
 /// The read-only lookup tables threaded through pass-2 resolution (registry,
@@ -423,9 +394,6 @@ fn construct(
             if let Some(id) = &node.id {
                 m.location = id.clone();
             }
-        }
-        if m.detail.geometry_type.is_empty() {
-            m.detail.geometry_type = node.ty.local_name().to_string();
         }
     }
     built
@@ -879,37 +847,6 @@ mod tests {
                 kind: MalformationKind::CyclicXlinkHref,
                 detail: Default::default(),
             }]
-        );
-    }
-
-    /// A malformation found while constructing a container names its type.
-    #[test]
-    fn construct_malformation_names_the_container_type() {
-        let n = node(
-            GmlGeometryType::Ring,
-            vec![
-                (Role::Member, resolved(line())),
-                (Role::Member, resolved(point())),
-            ],
-        );
-        let mut malformations = Vec::new();
-        resolve_root(
-            &n,
-            &GeomRegistry::new(),
-            &AppearanceIndex::default(),
-            &HashMap::new(),
-            &mut malformations,
-        );
-        let kinds: Vec<_> = malformations
-            .iter()
-            .map(|m| (m.kind.clone(), m.detail.geometry_type.as_str()))
-            .collect();
-        assert_eq!(
-            kinds,
-            vec![
-                (MalformationKind::ExpectedCurve, "Ring"),
-                (MalformationKind::NonCurveRingMember, "Ring"),
-            ]
         );
     }
 
