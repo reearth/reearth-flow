@@ -30,11 +30,14 @@ import type {
   AnyWorkflowVariable,
   AwarenessUser,
   Edge,
+  Job,
+  JobStatus,
   Node,
 } from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
+  DebugRunTimer,
   DebugStartPopover,
   DebugStopPopover,
   DebugWorkflowVariablesDialog,
@@ -105,6 +108,8 @@ const DebugActionBar: React.FC<Props> = ({
       <StartButton
         isReaderRestricted={isReaderRestricted}
         debugRunStarted={debugRunStarted}
+        debugRunJob={debugJob}
+        debugRunStatus={jobStatus}
         selectedNodeIds={selectedNodeIds}
         edges={edges}
         isSaving={isSaving}
@@ -163,6 +168,8 @@ export default memo(DebugActionBar);
 const StartButton: React.FC<{
   isReaderRestricted: boolean;
   debugRunStarted: boolean;
+  debugRunJob?: Job;
+  debugRunStatus?: JobStatus;
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
@@ -178,6 +185,8 @@ const StartButton: React.FC<{
 }> = ({
   isReaderRestricted,
   debugRunStarted,
+  debugRunJob,
+  debugRunStatus,
   selectedNodeIds,
   edges,
   isSaving,
@@ -261,6 +270,12 @@ const StartButton: React.FC<{
                           />
                         )}
                       </div>
+                      <DebugRunTimer
+                        key={debugRunJob?.startedAt}
+                        startedAt={debugRunJob?.startedAt}
+                        completedAt={debugRunJob?.completedAt}
+                        jobStatus={debugRunStatus}
+                      />
                       <PlayIcon weight="thin" size={18} />
                     </div>
                   ) : (
