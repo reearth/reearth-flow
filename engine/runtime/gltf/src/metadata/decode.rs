@@ -198,6 +198,15 @@ fn parse_property_table(
             continue;
         };
 
+        let is_array = schema_property_field(schema, class.as_deref(), key, "array")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        if is_array {
+            tracing::warn!("Skipping array metadata property '{key}': arrays are not supported");
+            parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
+            continue;
+        }
+
         let no_data = schema_property_field(schema, class.as_deref(), key, "noData");
 
         // Extract string properties using buffer views. A row matching the
@@ -251,15 +260,9 @@ fn parse_property_table(
             }
         }
 
-        // VEC2/3/4, MAT2/3/4, and array-flagged SCALAR properties also carry
-        // a `componentType`, but decoding them with the flat-scalar reader
-        // below would read the wrong stride and produce corrupt values,
-        // so only dispatch to it for genuine scalar (non-array) properties.
-        let is_array = schema_property_field(schema, class.as_deref(), key, "array")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-        if property_type == Some("SCALAR") && !is_array {
+        // VEC2/3/4 and MAT2/3/4 also carry a `componentType`, but the
+        // flat-scalar reader below would read them with the wrong stride.
+        if property_type == Some("SCALAR") {
             let component_type =
                 schema_property_field(schema, class.as_deref(), key, "componentType")
                     .and_then(|v| v.as_str());
@@ -279,7 +282,7 @@ fn parse_property_table(
             }
         }
 
-        // TODO: Handle other property types (VECN/MATN, arrays, ...)
+        // TODO: Handle other property types (VECN/MATN, ...)
         parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
     }
 
@@ -415,12 +418,15 @@ fn parse_enum_property(
         .get("valueType")
         .and_then(|v| v.as_str())
         .unwrap_or("UINT16");
-    let names: HashMap<i64, &str> = enum_def
+    // One enum has a single `valueType`, so casting signed values to `u64`
+    // keeps keys distinct while covering the full UINT64 range.
+    let key = |n: &serde_json::Number| n.as_u64().or_else(|| n.as_i64().map(|i| i as u64));
+    let names: HashMap<u64, &str> = enum_def
         .get("values")
         .and_then(|v| v.as_array())
         .into_iter()
         .flatten()
-        .filter_map(|v| Some((v.get("value")?.as_i64()?, v.get("name")?.as_str()?)))
+        .filter_map(|v| Some((key(v.get("value")?.as_number()?)?, v.get("name")?.as_str()?)))
         .collect();
     let Some(indices) =
         parse_numeric_property(gltf, prop_obj, buffer_data, count, value_type, None)?
@@ -428,15 +434,24 @@ fn parse_enum_property(
         return Ok(None);
     };
     let no_data = no_data.and_then(|nd| nd.as_str());
-    Ok(Some(
-        indices
-            .into_iter()
-            .map(|index| match index.as_i64().and_then(|i| names.get(&i)) {
-                Some(&name) if Some(name) != no_data => AttributeValue::String(name.to_string()),
-                _ => AttributeValue::Null,
+    indices
+        .into_iter()
+        .map(|index| {
+            let name = match &index {
+                AttributeValue::Number(n) => key(n).and_then(|k| names.get(&k)),
+                _ => None,
+            }
+            .ok_or_else(|| {
+                GltfReaderError::Parse(format!("Enum value {index:?} is not defined in the enum"))
+            })?;
+            Ok(if Some(*name) == no_data {
+                AttributeValue::Null
+            } else {
+                AttributeValue::String(name.to_string())
             })
-            .collect(),
-    ))
+        })
+        .collect::<Result<_, _>>()
+        .map(Some)
 }
 
 fn is_no_data_i64(no_data: Option<&Value>, v: i64) -> bool {
