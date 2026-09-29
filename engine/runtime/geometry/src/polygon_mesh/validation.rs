@@ -17,8 +17,8 @@ use crate::validation_next::{
     check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d,
     check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
     check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
-    tetra_volume_6x, EdgeOrientation, FaceOrientation, FaceTopology, Validate, ValidationParams,
-    ValidationReport, ValidationType,
+    tetra_volume_6x, DegenerateThresholds, EdgeOrientation, FaceOrientation, FaceTopology,
+    Validate, ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -206,12 +206,12 @@ impl PolygonMesh3DData {
     }
 
     /// Report a [`ValidationType::Degenerate`] problem for every face ring
-    /// whose area is at most `min_area`. Shared by the [`PolygonMesh3D`] leaf
-    /// and [`Solid`](crate::solid::Solid) shells.
+    /// that is degenerate under `thresholds`. Shared by the [`PolygonMesh3D`]
+    /// leaf and [`Solid`](crate::solid::Solid) shells.
     pub(crate) fn check_degenerate_rings(
         &self,
         frame: &CoordinateFrame,
-        min_area: f64,
+        thresholds: &DegenerateThresholds,
         report: &mut ValidationReport,
     ) {
         for_each_ring(
@@ -222,7 +222,7 @@ impl PolygonMesh3DData {
                 check_degenerate_ring_3d(
                     frame,
                     &ring_coords(&self.vertices, ring),
-                    min_area,
+                    thresholds,
                     report,
                 );
             },
@@ -516,7 +516,7 @@ impl Validate for PolygonMesh2D {
                     check_degenerate_ring_2d(
                         &self.frame,
                         &ring_coords(&self.vertices, ring),
-                        params.degenerate.min_area,
+                        &params.degenerate,
                         r,
                     );
                 },
@@ -594,7 +594,7 @@ impl Validate for PolygonMesh3D {
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             self.data
-                .check_degenerate_rings(&self.frame, params.degenerate.min_area, r)
+                .check_degenerate_rings(&self.frame, &params.degenerate, r)
         })
     }
 }

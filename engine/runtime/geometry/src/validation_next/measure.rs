@@ -4,7 +4,7 @@
 //! [`Planarity`](super::ValidationType::Planarity). Measures are plain f64;
 //! only their comparisons against caller thresholds decide anything.
 
-use super::{open_ring, PlanarityThreshold, ValidationReport};
+use super::{open_ring, DegenerateThresholds, PlanarityThreshold, ValidationReport};
 use crate::algorithm::convex_hull::quick_hull_3d;
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
@@ -80,17 +80,44 @@ pub(crate) fn check_degenerate_chain_3d(
     }
 }
 
+/// Whether a ring of the given area is degenerate under `thresholds`: its area
+/// is at most `min_area`, or it is a triangle whose height over its longest
+/// edge is at most `min_height`. `open` is the ring without its closing
+/// duplicate.
+fn is_degenerate_ring<const D: usize>(
+    open: &[[f64; D]],
+    area: f64,
+    thresholds: &DegenerateThresholds,
+) -> bool {
+    if area <= thresholds.min_area {
+        return true;
+    }
+    let [a, b, c] = open else {
+        return false;
+    };
+    let dist = |p: &[f64; D], q: &[f64; D]| {
+        p.iter()
+            .zip(q)
+            .map(|(x, y)| (x - y) * (x - y))
+            .sum::<f64>()
+            .sqrt()
+    };
+    let longest = dist(a, b).max(dist(b, c)).max(dist(c, a));
+    longest == 0.0 || 2.0 * area / longest <= thresholds.min_height
+}
+
 /// Report a [`Degenerate`](super::ValidationType::Degenerate) problem when a
-/// 2D ring's area (|shoelace| / 2) is at most `min_area`, positioned at the
-/// ring as a LineString. Closure is optional; the last vertex wraps to the
-/// first.
+/// 2D ring (area |shoelace| / 2) is degenerate under `thresholds`, positioned
+/// at the ring as a LineString. Closure is optional; the last vertex wraps to
+/// the first.
 pub(crate) fn check_degenerate_ring_2d(
     frame: &CoordinateFrame,
     ring: &[[f64; 2]],
-    min_area: f64,
+    thresholds: &DegenerateThresholds,
     report: &mut ValidationReport,
 ) {
-    if signed_area_2d(open_ring(ring)).abs() / 2.0 <= min_area {
+    let open = open_ring(ring);
+    if is_degenerate_ring(open, signed_area_2d(open).abs() / 2.0, thresholds) {
         report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
             LineString2D::from_coords(frame.clone(), ring.iter().copied()),
         )));
@@ -98,16 +125,17 @@ pub(crate) fn check_degenerate_ring_2d(
 }
 
 /// Report a [`Degenerate`](super::ValidationType::Degenerate) problem when a
-/// 3D ring's area (half its Newell vector magnitude) is at most `min_area`,
-/// positioned at the ring.
+/// 3D ring (area half its Newell vector magnitude) is degenerate under
+/// `thresholds`, positioned at the ring.
 pub(crate) fn check_degenerate_ring_3d(
     frame: &CoordinateFrame,
     ring: &[[f64; 3]],
-    min_area: f64,
+    thresholds: &DegenerateThresholds,
     report: &mut ValidationReport,
 ) {
     let n = newell_vector_3d(ring);
-    if (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt() / 2.0 <= min_area {
+    let area = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt() / 2.0;
+    if is_degenerate_ring(open_ring(ring), area, thresholds) {
         report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
             LineString3D::from_coords(frame.clone(), ring.iter().copied()),
         )));
@@ -283,6 +311,81 @@ mod tests {
     fn vertical_newell_norm(ring: &[[f64; 3]]) -> f64 {
         let n = newell_vector_3d(ring);
         (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt()
+    }
+
+    fn ring_is_degenerate_3d(ring: &[[f64; 3]], thresholds: &DegenerateThresholds) -> bool {
+        ValidationReport::ran(|r| {
+            check_degenerate_ring_3d(&CoordinateFrame::Euclidean, ring, thresholds, r)
+        })
+        .problem_recorded()
+    }
+
+    fn ring_is_degenerate_2d(ring: &[[f64; 2]], thresholds: &DegenerateThresholds) -> bool {
+        ValidationReport::ran(|r| {
+            check_degenerate_ring_2d(&CoordinateFrame::Euclidean, ring, thresholds, r)
+        })
+        .problem_recorded()
+    }
+
+    fn min_height(min_height: f64) -> DegenerateThresholds {
+        DegenerateThresholds {
+            min_height,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn min_height_flags_thin_triangles() {
+        // Longest edge 10, height 0.005 (area 0.025).
+        let thin = [
+            [0.0, 0.0, 1.0],
+            [10.0, 0.0, 1.0],
+            [5.0, 0.005, 1.0],
+            [0.0, 0.0, 1.0],
+        ];
+        assert!(ring_is_degenerate_3d(&thin, &min_height(0.01)));
+        assert!(ring_is_degenerate_3d(&thin, &min_height(0.005)));
+        assert!(!ring_is_degenerate_3d(&thin, &min_height(0.004)));
+        let thin_2d = [[0.0, 0.0], [10.0, 0.0], [5.0, 0.005]];
+        assert!(ring_is_degenerate_2d(&thin_2d, &min_height(0.01)));
+        assert!(!ring_is_degenerate_2d(&thin_2d, &min_height(0.004)));
+    }
+
+    #[test]
+    fn min_height_ignores_rings_of_four_or_more_vertices() {
+        // A thin quadrilateral: height 0.005 over a length of 10.
+        let thin = [
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [10.0, 0.005, 0.0],
+            [0.0, 0.005, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        assert!(!ring_is_degenerate_3d(&thin, &min_height(0.01)));
+    }
+
+    #[test]
+    fn default_thresholds_ignore_nearly_collinear_triangles() {
+        let nearly = [
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [5.0, 1e-6, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        assert!(!ring_is_degenerate_3d(
+            &nearly,
+            &DegenerateThresholds::default()
+        ));
+        let collinear = [
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [5.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        assert!(ring_is_degenerate_3d(
+            &collinear,
+            &DegenerateThresholds::default()
+        ));
     }
 
     #[test]

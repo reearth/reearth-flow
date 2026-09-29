@@ -15,8 +15,9 @@ name: PLATEAU6.FloodingAreaTriangleChecks
 # to this graph.
 #
 # A triangle is linear or point-like when two of its corners lie within 0.01 of
-# each other. That distance is in the coordinate unit, so the incoming geometry
-# must already be in a projected frame.
+# each other, or one corner lies within 0.01 of the opposite edge. That distance
+# is in the coordinate unit, so the incoming geometry must already be in a
+# projected frame.
 nodes:
   - id: d8100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -61,18 +62,19 @@ nodes:
   # --- Collapse ---
   # Read on the 3D face: two corners that share their horizontal position but not
   # their height are two corners, and flattening first would merge them.
-  # `duplicateTolerance` is the distance below which two corners count as one,
-  # which is what turns a triangle into a line or a point.
+  # Two corners within `duplicateTolerance` count as one, and a triangle no
+  # higher than `minHeight` over its longest edge has its corners on one line.
   - id: d8100000-0000-4000-8000-000000000007
     name: GeometryValidatorCollapse
     type: action
     action: Geometry Validator
     with:
       duplicateTolerance: 0.01
+      degenerateThresholds:
+        minHeight: 0.01
 
-  # A triangle with two corners closer together than the tolerance collapses to a
-  # line or a point once they are treated as one, which is what the requirement
-  # calls a linear or point-like triangle.
+  # Either way the triangle collapses to a line or a point, which is what the
+  # requirement calls a linear or point-like triangle.
   - id: d8100000-0000-4000-8000-000000000008
     name: FeatureFilterDegenerate
     type: action
@@ -81,7 +83,9 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("DuplicatePoints", 0) > 0
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              checks.get("DuplicatePoints", 0) > 0 or checks.get("Degenerate", 0) > 0
           outputPort: degenerate
 
   - id: d8100000-0000-4000-8000-000000000009

@@ -177,8 +177,8 @@ impl PlanarityThreshold {
 
 /// The per-dimension measures below which a geometry is
 /// [`Degenerate`](ValidationType::Degenerate). Each applies to the geometries of
-/// its dimension: `min_length` to lines, `min_area` to faces, `min_volume` to
-/// solids.
+/// its dimension: `min_length` to lines, `min_area` to faces, `min_height` to
+/// triangular faces, `min_volume` to solids.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DegenerateThresholds {
@@ -186,6 +186,9 @@ pub struct DegenerateThresholds {
     pub min_length: f64,
     /// Minimum area of a 2D geometry (face / ring).
     pub min_area: f64,
+    /// Minimum height of a triangle (ring of three vertices): twice its area
+    /// over its longest edge.
+    pub min_height: f64,
     /// Minimum volume of a 3D geometry (solid).
     pub min_volume: f64,
 }
