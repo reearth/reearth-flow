@@ -1,9 +1,20 @@
 import { act, renderHook } from "@testing-library/react";
 import * as Y from "yjs";
 
+import { computeDeploymentFingerprint } from "@flow/lib/yjs/deploymentTracking";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import useDeploymentChanges from "./useDeploymentChanges";
+
+// Wrapped so tests can count how often the graph is fingerprinted.
+vi.mock("@flow/lib/yjs/deploymentTracking", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@flow/lib/yjs/deploymentTracking")>();
+  return {
+    ...actual,
+    computeDeploymentFingerprint: vi.fn(actual.computeDeploymentFingerprint),
+  };
+});
 
 const makeNode = (type = "transformer", params: unknown = {}) => {
   const yNode = new Y.Map<unknown>();
@@ -103,6 +114,20 @@ describe("useDeploymentChanges", () => {
     expect(hook.result.current.deploymentChangeStatus).toBe("unchanged");
   });
 
+  test("a note restored by undo is still recognised when deleted again", () => {
+    const { yNodes, undoManager, hook, edit, deploy } = setup();
+    edit(() => yNodes.set("n", makeNode("note")));
+    deploy();
+
+    edit(() => yNodes.delete("n"));
+    act(() => {
+      undoManager.undo();
+    });
+    edit(() => yNodes.delete("n"));
+
+    expect(hook.result.current.deploymentChangeStatus).toBe("unchanged");
+  });
+
   test("counts deleting an action node", () => {
     const { yNodes, hook, edit, deploy } = setup();
     deploy();
@@ -143,11 +168,12 @@ describe("useDeploymentChanges", () => {
     expect(hook.result.current.deploymentChangeStatus).toBe("changed");
   });
 
-  test("leaves writing the flag to the collaborator who made the edit", () => {
+  test("flags a remote edit even when its author did not", () => {
     const { doc, hook, deploy } = setup();
     deploy();
 
-    // A second client edits and its update arrives here as a remote change.
+    // A second client without this hook edits, so nothing flags it there, and
+    // its update arrives here as a remote change.
     const remote = new Y.Doc();
     Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
     const remoteData = (
@@ -165,7 +191,7 @@ describe("useDeploymentChanges", () => {
         Y.encodeStateAsUpdate(remote, Y.encodeStateVector(doc)),
       );
     });
-    expect(hook.result.current.deploymentChangeStatus).toBe("unchanged");
+    expect(hook.result.current.deploymentChangeStatus).toBe("changed");
   });
 
   test("an edit made while the deploy is in flight still counts", () => {
@@ -175,4 +201,130 @@ describe("useDeploymentChanges", () => {
     act(() => hook.result.current.recordDeployment("v1", fingerprint));
     expect(hook.result.current.deploymentChangeStatus).toBe("changed");
   });
+});
+
+// Two collaborators on separate docs, synced by hand. Yjs settles concurrent
+// writes to one map key by client ID, so the tests run both ways round.
+const createClient = (clientID: number, from?: Y.Doc) => {
+  const doc = new Y.Doc();
+  doc.clientID = clientID;
+  const yWorkflows = doc.getMap<YWorkflow>("workflows");
+  if (from) {
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(from));
+  } else {
+    const yWorkflow = new Y.Map<any>();
+    yWorkflow.set("nodes", new Y.Map());
+    yWorkflow.set("edges", new Y.Map());
+    yWorkflows.set("main", yWorkflow);
+    (yWorkflow.get("nodes") as Y.Map<Y.Map<unknown>>).set("a", makeNode());
+  }
+  const undoManager = new Y.UndoManager(yWorkflows, {
+    trackedOrigins: new Set([doc.clientID]),
+  });
+  const hook = renderHook(
+    ({ version }) =>
+      useDeploymentChanges({
+        yDoc: doc,
+        yWorkflows,
+        undoManager,
+        deploymentVersion: version,
+      }),
+    { initialProps: { version: "v3" } },
+  );
+  const params = () =>
+    (
+      (yWorkflows.get("main")?.get("nodes") as Y.Map<Y.Map<unknown>>)
+        .get("a")
+        ?.get("data") as Y.Map<unknown>
+    ).get("params");
+  return {
+    doc,
+    hook,
+    status: () => hook.result.current.deploymentChangeStatus,
+    setParams: (value: unknown) =>
+      act(() => {
+        doc.transact(() => {
+          (
+            (yWorkflows.get("main")?.get("nodes") as Y.Map<Y.Map<unknown>>)
+              .get("a")
+              ?.get("data") as Y.Map<unknown>
+          ).set("params", value);
+        }, doc.clientID);
+      }),
+    params,
+    deploy: (version: string) =>
+      act(() => {
+        const fp = hook.result.current.captureDeploymentFingerprint();
+        hook.result.current.recordDeployment(version, fp);
+      }),
+    setVersion: (version: string) => hook.rerender({ version }),
+  };
+};
+
+type Client = ReturnType<typeof createClient>;
+
+const sync = (a: Client, b: Client) =>
+  act(() => {
+    const toB = Y.encodeStateAsUpdate(a.doc, Y.encodeStateVector(b.doc));
+    const toA = Y.encodeStateAsUpdate(b.doc, Y.encodeStateVector(a.doc));
+    Y.applyUpdate(b.doc, toB);
+    Y.applyUpdate(a.doc, toA);
+  });
+
+describe("useDeploymentChanges with collaborators", () => {
+  test.each([
+    [1, 2],
+    [2, 1],
+  ])(
+    "an edit made while another client deploys is flagged (ids %i, %i)",
+    (deployerId, editorId) => {
+      const deployer = createClient(deployerId);
+      deployer.deploy("v3");
+      const editor = createClient(editorId, deployer.doc);
+      expect(editor.status()).toBe("unchanged");
+
+      // Neither client sees the other's change before the deploy lands.
+      editor.setParams({ v: 1 });
+      deployer.deploy("v4");
+      deployer.setVersion("v4");
+      editor.setVersion("v4");
+      sync(deployer, editor);
+
+      expect(deployer.status()).toBe("changed");
+      expect(editor.status()).toBe("changed");
+    },
+  );
+
+  test("catching up on edits that were deployed does not flag them", () => {
+    const deployer = createClient(1);
+    deployer.deploy("v3");
+    const viewer = createClient(2, deployer.doc);
+
+    // The viewer is offline while the deployer edits and redeploys.
+    deployer.setParams({ v: 1 });
+    deployer.deploy("v4");
+    deployer.setVersion("v4");
+    viewer.setVersion("v4");
+    sync(deployer, viewer);
+
+    expect(viewer.params()).toEqual({ v: 1 });
+    expect(viewer.status()).toBe("unchanged");
+    expect(deployer.status()).toBe("unchanged");
+  });
+});
+
+test("once flagged, remote edits are not fingerprinted", () => {
+  const deployer = createClient(1);
+  deployer.deploy("v3");
+  const editor = createClient(2, deployer.doc);
+  editor.setParams({ v: 1 });
+  sync(deployer, editor);
+  expect(deployer.status()).toBe("changed");
+
+  vi.mocked(computeDeploymentFingerprint).mockClear();
+  for (let v = 2; v < 5; v++) {
+    editor.setParams({ v });
+    sync(deployer, editor);
+  }
+  expect(computeDeploymentFingerprint).not.toHaveBeenCalled();
 });

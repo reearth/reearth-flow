@@ -2,15 +2,14 @@ import type * as Y from "yjs";
 
 import type { Direction } from "./layout";
 
-// What the editor knows about the project's deployment. Written only by the
-// editor, so a deployment made elsewhere leaves a stale version here.
+// The project's last deployment from the editor. Written only on deploy, so a
+// deployment made elsewhere leaves a stale version here.
 export type DeploymentTracking = {
   // The deployment version this record describes, e.g. "v3".
   version: string;
-  // Fingerprint of the deployed graph, compared on undo/redo.
+  // Fingerprint of the deployed graph, compared on undo/redo and on remote
+  // changes.
   fingerprint: string;
-  // Set on the first relevant edit after deploying; cleared by undo or redeploy.
-  changed: boolean;
 };
 
 export type YDocMetadata = {
@@ -21,6 +20,10 @@ export type YDocMetadata = {
   layoutDirection?: Direction;
   layoutApplyToAll?: boolean;
   deploymentTracking?: DeploymentTracking;
+  // The recorded version the canvas has changed from, or null. A separate key
+  // from the record, so an edit and a concurrent deploy cannot overwrite each
+  // other.
+  deploymentChangedVersion?: string | null;
 };
 
 export type YDocMetadataValue = NonNullable<
