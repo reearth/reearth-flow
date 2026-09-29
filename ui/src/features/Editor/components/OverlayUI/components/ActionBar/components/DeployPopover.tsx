@@ -1,5 +1,6 @@
 import {
-  CaretRightIcon,
+  ArrowRightIcon,
+  ArrowSquareOutIcon,
   CheckCircleIcon,
   RocketIcon,
 } from "@phosphor-icons/react";
@@ -75,77 +76,87 @@ const DeployPopover: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <div className="flex justify-between gap-2">
-        <h4 className="text-md flex items-center gap-2 self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
-          <RocketIcon weight="thin" size={18} />
-          {t("Deploy Project")}
-        </h4>
-      </div>
+      <h4 className="text-md flex items-center gap-2 leading-none tracking-tight dark:font-thin">
+        <RocketIcon weight="thin" size={18} />
+        {t("Deploy Project")}
+      </h4>
       {result ? (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <CheckCircleIcon className="shrink-0 text-success" size={18} />
+        <>
+          <div className="flex items-start gap-2">
+            <CheckCircleIcon
+              className="mt-px shrink-0 text-success"
+              weight="fill"
+              size={18}
+            />
             <p className="text-sm dark:font-light">
               {result.isUpdate
                 ? t("Deployment has been successfully updated.")
                 : t("Deployment has been successfully created.")}
             </p>
           </div>
-          <div className="flex flex-row items-center">
+          <div className="flex items-center justify-between">
             <Label>{t("Deployment Version: ")}</Label>
-            <p className="pl-1 font-semibold">{result.deployment.version}</p>
+            <p className="text-sm font-semibold">{result.deployment.version}</p>
           </div>
-          <div className="flex items-center justify-end">
-            <Button variant="outline" onClick={handleViewDetails}>
+          <div className="flex justify-end">
+            <Button
+              className="flex gap-2"
+              variant="outline"
+              onClick={handleViewDetails}>
+              <ArrowSquareOutIcon weight="thin" />
               {t("View Details")}
             </Button>
           </div>
-        </div>
+        </>
       ) : (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-row items-center">
-              <Label>{t("Deployment Version: ")}</Label>
-              <div className="flex items-center gap-2">
-                <p className="pl-1 dark:font-thin">{currentVersion}</p>
-                <CaretRightIcon />
-                <p className="font-semibold">
-                  {currentVersion ? currentVersion + 1 : 1}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>{t("Description")}</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t(
-                  "Give your deployment a meaningful description...",
-                )}
-              />
-            </div>
-          </div>
-          <div className="flex flex-col gap-4">
-            <p className="text-sm dark:font-light">
-              {t("Are you sure you want to proceed?")}
-            </p>
-            <div className="flex items-center justify-end gap-2">
-              {deployment && (
-                <Button variant="ghost" onClick={handleViewDetails}>
-                  {t("View Details")}
-                </Button>
+        <>
+          <div className="flex items-center justify-between">
+            <Label>{t("Deployment Version: ")}</Label>
+            <div className="flex items-center gap-1.5 text-sm">
+              {currentVersion && (
+                <>
+                  <span className="text-muted-foreground">
+                    v{currentVersion}
+                  </span>
+                  <ArrowRightIcon className="text-muted-foreground" />
+                </>
               )}
-              <Button
-                variant="outline"
-                disabled={
-                  !allowedToDeploy || isDeploying || !description.trim()
-                }
-                onClick={handleWorkflowDeployment}>
-                {deployment ? t("Update") : t("Deploy")}
-              </Button>
+              <span className="font-semibold">
+                v{currentVersion ? currentVersion + 1 : 1}
+              </span>
             </div>
           </div>
-        </div>
+          <div className="flex flex-col gap-2">
+            <Label>{t("Description")}</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t(
+                "Give your deployment a meaningful description...",
+              )}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            {deployment ? (
+              <Button
+                className="-ml-3 flex gap-2 text-muted-foreground"
+                variant="ghost"
+                onClick={handleViewDetails}>
+                <ArrowSquareOutIcon weight="thin" />
+                {t("View Details")}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Button
+              className="shrink-0"
+              variant="outline"
+              disabled={!allowedToDeploy || isDeploying || !description.trim()}
+              onClick={handleWorkflowDeployment}>
+              {deployment ? t("Update") : t("Deploy")}
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
