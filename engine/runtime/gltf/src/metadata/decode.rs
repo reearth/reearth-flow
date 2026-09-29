@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::reader::{read_u16, read_u32, GltfReaderError};
 use indexmap::IndexMap;
 use reearth_flow_types::AttributeValue;
@@ -226,6 +228,22 @@ fn parse_property_table(
         let property_type =
             schema_property_field(schema, class.as_deref(), key, "type").and_then(|v| v.as_str());
 
+        if property_type == Some("ENUM") {
+            let enum_def = schema_property_field(schema, class.as_deref(), key, "enumType")
+                .and_then(|v| v.as_str())
+                .and_then(|id| {
+                    schema.pointer(&format!("/enums/{}", escape_json_pointer_token(id)))
+                });
+            if let Some(enum_def) = enum_def {
+                if let Some(values) =
+                    parse_enum_property(gltf, prop_obj, buffer_data, count, enum_def, no_data)?
+                {
+                    parsed_properties.insert(key.clone(), PropertyData { values });
+                    continue;
+                }
+            }
+        }
+
         if property_type == Some("BOOLEAN") {
             if let Some(values) = parse_boolean_property(gltf, prop_obj, buffer_data, count)? {
                 parsed_properties.insert(key.clone(), PropertyData { values });
@@ -261,7 +279,7 @@ fn parse_property_table(
             }
         }
 
-        // TODO: Handle other property types (ENUM, VECN/MATN, arrays, ...)
+        // TODO: Handle other property types (VECN/MATN, arrays, ...)
         parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
     }
 
@@ -381,6 +399,44 @@ fn parse_numeric_property(
         )?);
     }
     Ok(Some(values))
+}
+
+/// Parse an ENUM property into each row's value name; a row whose name is the
+/// schema's `noData` becomes `AttributeValue::Null`.
+fn parse_enum_property(
+    gltf: &gltf::Gltf,
+    prop_obj: &serde_json::Map<String, Value>,
+    buffer_data: &[Vec<u8>],
+    count: usize,
+    enum_def: &Value,
+    no_data: Option<&Value>,
+) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
+    let value_type = enum_def
+        .get("valueType")
+        .and_then(|v| v.as_str())
+        .unwrap_or("UINT16");
+    let names: HashMap<i64, &str> = enum_def
+        .get("values")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|v| Some((v.get("value")?.as_i64()?, v.get("name")?.as_str()?)))
+        .collect();
+    let Some(indices) =
+        parse_numeric_property(gltf, prop_obj, buffer_data, count, value_type, None)?
+    else {
+        return Ok(None);
+    };
+    let no_data = no_data.and_then(|nd| nd.as_str());
+    Ok(Some(
+        indices
+            .into_iter()
+            .map(|index| match index.as_i64().and_then(|i| names.get(&i)) {
+                Some(&name) if Some(name) != no_data => AttributeValue::String(name.to_string()),
+                _ => AttributeValue::Null,
+            })
+            .collect(),
+    ))
 }
 
 fn is_no_data_i64(no_data: Option<&Value>, v: i64) -> bool {
@@ -564,9 +620,14 @@ fn parse_string_property(
     // Read offsets buffer
     let offsets_buffer = resolve_metadata_buffer_view(gltf, string_offsets_idx, buffer_data)?;
 
+    let offset_size = match prop_obj.get("stringOffsetType").and_then(|v| v.as_str()) {
+        Some("UINT8") => 1,
+        Some("UINT16") => 2,
+        _ => 4,
+    };
     let offsets: Vec<u32> = offsets_buffer
-        .chunks_exact(4)
-        .map(|chunk| u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        .chunks_exact(offset_size)
+        .map(|chunk| chunk.iter().rev().fold(0, |acc, &b| (acc << 8) | b as u32))
         .collect();
 
     if offsets.len() != count + 1 {
