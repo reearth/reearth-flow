@@ -133,9 +133,9 @@ nodes:
   # 3.0 a WaterBody holds its surfaces through `core:boundary`, so its geometry
   # still arrives on the WaterBody feature.
   #
-  # A posList the geometry layer cannot read arrives on `rejected`, which is what
-  # makes it countable: the surface itself reaches no check because its geometry
-  # is missing.
+  # Anything the reader cannot read arrives on `rejected`. A posList it cannot
+  # read is countable only from there: the surface itself reaches no check
+  # because its geometry is missing.
   - id: d8000000-0000-4000-8000-000000000009
     name: FeatureCityGml3Reader
     type: action
@@ -144,6 +144,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
+      includeRejectedDetails: true
 
   # Reprojected before any check: winding and area are only defined once the
   # coordinates are in a linear unit.
@@ -161,6 +162,22 @@ nodes:
     name: TriangleChecks
     type: subGraph
     subGraphId: d8100000-0000-4000-8000-000000000000
+
+  # Only coordinates the reader could not read leave vertices uncounted. Other
+  # sites (a cyclic xlink:href, for example) say nothing about vertex counts,
+  # so `unfiltered` is left unconnected.
+  - id: d8000000-0000-4000-8000-00000000002d
+    name: FeatureFilterRejectedCoordinates
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              kind = attributes["rejectedResult"]["kind"];
+              kind == "InvalidPosList" or kind == "PosListLengthNotMultipleOfThree" or kind == "InvalidPos" or kind == "PosOrdinateCountNotThree"
+          outputPort: unreadableCoordinates
 
   # --- Unshared edges ---
   # Scoped to one flood scale within one folder, the way the original workspace
@@ -748,7 +765,7 @@ edges:
     toPort: features
   # Geometry no check could read is a triangle whose corners could not be
   # counted, so it is reported in the same column rather than dropped. The
-  # reader's own unreadable coordinate lists join it here.
+  # coordinates the reader could not read join it here.
   - id: d8000000-0000-4000-8000-000100000017
     from: d8000000-0000-4000-8000-00000000000b
     to: d8000000-0000-4000-8000-000000000013
@@ -756,8 +773,13 @@ edges:
     toPort: features
   - id: d8000000-0000-4000-8000-000100000018
     from: d8000000-0000-4000-8000-000000000009
-    to: d8000000-0000-4000-8000-000000000013
+    to: d8000000-0000-4000-8000-00000000002d
     fromPort: rejected
+    toPort: features
+  - id: d8000000-0000-4000-8000-00010000003d
+    from: d8000000-0000-4000-8000-00000000002d
+    to: d8000000-0000-4000-8000-000000000013
+    fromPort: unreadableCoordinates
     toPort: features
   - id: d8000000-0000-4000-8000-000100000019
     from: d8000000-0000-4000-8000-00000000000a
