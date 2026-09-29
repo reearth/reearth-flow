@@ -31,6 +31,7 @@ graphs:
   - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
+  - !include ../../../../graphs/plateau6/triangle_ring_checks.yml
   - !include triangle_checks.yml
   - !include fld_checks.yml
   - id: 6a2d91f4-5c83-4e17-b0d6-7f39c1e58a24

@@ -52,28 +52,23 @@ nodes:
     with:
       routingPort: triangles
 
-  # --- Closure and collapse ---
+  # --- Closure and vertex count ---
+  - id: d8100000-0000-4000-8000-000000000006
+    name: TriangleRingChecks
+    type: subGraph
+    subGraphId: c5000000-0000-4000-8000-000000000000
+
+  # --- Collapse ---
   # Read on the 3D face: two corners that share their horizontal position but not
   # their height are two corners, and flattening first would merge them.
   # `duplicateTolerance` is the distance below which two corners count as one,
   # which is what turns a triangle into a line or a point.
-  - id: d8100000-0000-4000-8000-000000000006
-    name: GeometryValidatorTriangle
+  - id: d8100000-0000-4000-8000-000000000007
+    name: GeometryValidatorCollapse
     type: action
     action: Geometry Validator
     with:
       duplicateTolerance: 0.01
-
-  - id: d8100000-0000-4000-8000-000000000007
-    name: FeatureFilterNotClosed
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: attributes["validationResult"]["checks"].get("UnclosedRing", 0) > 0
-          outputPort: notClosed
 
   # A triangle with two corners closer together than the tolerance collapses to a
   # line or a point once they are treated as one, which is what the requirement
@@ -102,26 +97,6 @@ nodes:
     action: Output Router
     with:
       routingPort: degenerate
-
-  # --- Corner count ---
-  # Three is the only correct number, since the closing vertex is not counted.
-  - id: d8100000-0000-4000-8000-00000000000b
-    name: VertexCounter
-    type: action
-    action: Vertex Counter
-    with:
-      outputAttribute: _vertexCount
-
-  - id: d8100000-0000-4000-8000-00000000000c
-    name: FeatureFilterVertexCount
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: attributes.get("_vertexCount", 0) != 3
-          outputPort: incorrectVertexCount
 
   - id: d8100000-0000-4000-8000-00000000000d
     name: IncorrectVertexCountRouter
@@ -214,55 +189,39 @@ edges:
     fromPort: features
     toPort: features
 
-  ## Closure and collapse
+  ## Closure and vertex count
   - id: d8100000-0000-4000-8000-000000000105
     from: d8100000-0000-4000-8000-000000000004
     to: d8100000-0000-4000-8000-000000000006
     fromPort: features
     toPort: features
-  - id: d8100000-0000-4000-8000-000000000106
-    from: d8100000-0000-4000-8000-000000000006
-    to: d8100000-0000-4000-8000-000000000007
-    fromPort: failed
-    toPort: features
-  - id: d8100000-0000-4000-8000-000000000107
-    from: d8100000-0000-4000-8000-000000000006
-    to: d8100000-0000-4000-8000-000000000008
-    fromPort: failed
-    toPort: features
   - id: d8100000-0000-4000-8000-000000000108
-    from: d8100000-0000-4000-8000-000000000007
+    from: d8100000-0000-4000-8000-000000000006
     to: d8100000-0000-4000-8000-000000000009
     fromPort: notClosed
+    toPort: features
+  - id: d8100000-0000-4000-8000-00000000010c
+    from: d8100000-0000-4000-8000-000000000006
+    to: d8100000-0000-4000-8000-00000000000d
+    fromPort: incorrectVertexCount
+    toPort: features
+
+  ## Collapse
+  # `rejected` is not wired: the ring checks reject the same face and report it.
+  - id: d8100000-0000-4000-8000-000000000106
+    from: d8100000-0000-4000-8000-000000000004
+    to: d8100000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: d8100000-0000-4000-8000-000000000107
+    from: d8100000-0000-4000-8000-000000000007
+    to: d8100000-0000-4000-8000-000000000008
+    fromPort: failed
     toPort: features
   - id: d8100000-0000-4000-8000-000000000109
     from: d8100000-0000-4000-8000-000000000008
     to: d8100000-0000-4000-8000-00000000000a
     fromPort: degenerate
-    toPort: features
-
-  ## Corner count
-  # An unclosed ring has no closing vertex to leave out, so it is counted only
-  # as not closed.
-  - id: d8100000-0000-4000-8000-00000000010a
-    from: d8100000-0000-4000-8000-000000000006
-    to: d8100000-0000-4000-8000-00000000000b
-    fromPort: success
-    toPort: features
-  - id: d8100000-0000-4000-8000-000000000117
-    from: d8100000-0000-4000-8000-000000000007
-    to: d8100000-0000-4000-8000-00000000000b
-    fromPort: unfiltered
-    toPort: features
-  - id: d8100000-0000-4000-8000-00000000010b
-    from: d8100000-0000-4000-8000-00000000000b
-    to: d8100000-0000-4000-8000-00000000000c
-    fromPort: features
-    toPort: features
-  - id: d8100000-0000-4000-8000-00000000010c
-    from: d8100000-0000-4000-8000-00000000000c
-    to: d8100000-0000-4000-8000-00000000000d
-    fromPort: incorrectVertexCount
     toPort: features
 
   ## Winding

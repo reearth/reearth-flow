@@ -64,22 +64,11 @@ nodes:
     with:
       routingPort: triangles
 
-  # --- Closure ---
+  # --- Closure and vertex count ---
   - id: d9100000-0000-4000-8000-000000000006
-    name: GeometryValidatorTriangle
-    type: action
-    action: Geometry Validator
-
-  - id: d9100000-0000-4000-8000-000000000007
-    name: FeatureFilterNotClosed
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: attributes["validationResult"]["checks"].get("UnclosedRing", 0) > 0
-          outputPort: notClosed
+    name: TriangleRingChecks
+    type: subGraph
+    subGraphId: c5000000-0000-4000-8000-000000000000
 
   - id: d9100000-0000-4000-8000-000000000009
     name: NotClosedRouter
@@ -87,46 +76,6 @@ nodes:
     action: Output Router
     with:
       routingPort: notClosed
-
-  # --- Corner count ---
-  # Three is the only correct number, since the closing vertex is not counted.
-  - id: d9100000-0000-4000-8000-00000000000b
-    name: VertexCounter
-    type: action
-    action: Vertex Counter
-    with:
-      outputAttribute: _vertexCount
-
-  - id: d9100000-0000-4000-8000-00000000000c
-    name: FeatureFilterVertexCount
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: attributes.get("_vertexCount", 0) != 3
-          outputPort: incorrectVertexCount
-
-  # An open ring has no closing vertex for the counter to leave out, so four is
-  # the only correct number here.
-  - id: d9100000-0000-4000-8000-000000000015
-    name: VertexCounterOpenRing
-    type: action
-    action: Vertex Counter
-    with:
-      outputAttribute: _vertexCount
-
-  - id: d9100000-0000-4000-8000-000000000016
-    name: FeatureFilterOpenRingVertexCount
-    type: action
-    action: Feature Filter
-    with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: attributes.get("_vertexCount", 0) != 4
-          outputPort: incorrectVertexCount
 
   - id: d9100000-0000-4000-8000-00000000000d
     name: IncorrectVertexCountRouter
@@ -237,58 +186,19 @@ edges:
     fromPort: features
     toPort: features
 
-  ## Closure
+  ## Closure and vertex count
   - id: d9100000-0000-4000-8000-000000000105
     from: d9100000-0000-4000-8000-000000000004
     to: d9100000-0000-4000-8000-000000000006
     fromPort: features
     toPort: features
-  - id: d9100000-0000-4000-8000-000000000106
-    from: d9100000-0000-4000-8000-000000000006
-    to: d9100000-0000-4000-8000-000000000007
-    fromPort: failed
-    toPort: features
   - id: d9100000-0000-4000-8000-000000000108
-    from: d9100000-0000-4000-8000-000000000007
+    from: d9100000-0000-4000-8000-000000000006
     to: d9100000-0000-4000-8000-000000000009
     fromPort: notClosed
     toPort: features
-
-  ## Corner count
-  # An unclosed ring has no closing vertex to leave out, so it is counted on its
-  # own against four.
-  - id: d9100000-0000-4000-8000-00000000010a
-    from: d9100000-0000-4000-8000-000000000006
-    to: d9100000-0000-4000-8000-00000000000b
-    fromPort: success
-    toPort: features
-  - id: d9100000-0000-4000-8000-000000000117
-    from: d9100000-0000-4000-8000-000000000007
-    to: d9100000-0000-4000-8000-00000000000b
-    fromPort: unfiltered
-    toPort: features
-  - id: d9100000-0000-4000-8000-00000000010b
-    from: d9100000-0000-4000-8000-00000000000b
-    to: d9100000-0000-4000-8000-00000000000c
-    fromPort: features
-    toPort: features
   - id: d9100000-0000-4000-8000-00000000010c
-    from: d9100000-0000-4000-8000-00000000000c
-    to: d9100000-0000-4000-8000-00000000000d
-    fromPort: incorrectVertexCount
-    toPort: features
-  - id: d9100000-0000-4000-8000-000000000119
-    from: d9100000-0000-4000-8000-000000000007
-    to: d9100000-0000-4000-8000-000000000015
-    fromPort: notClosed
-    toPort: features
-  - id: d9100000-0000-4000-8000-00000000011a
-    from: d9100000-0000-4000-8000-000000000015
-    to: d9100000-0000-4000-8000-000000000016
-    fromPort: features
-    toPort: features
-  - id: d9100000-0000-4000-8000-00000000011b
-    from: d9100000-0000-4000-8000-000000000016
+    from: d9100000-0000-4000-8000-000000000006
     to: d9100000-0000-4000-8000-00000000000d
     fromPort: incorrectVertexCount
     toPort: features

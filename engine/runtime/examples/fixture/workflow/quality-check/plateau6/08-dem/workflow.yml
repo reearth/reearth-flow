@@ -22,6 +22,7 @@ graphs:
   - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
+  - !include ../../../../graphs/plateau6/triangle_ring_checks.yml
   - !include triangle_checks.yml
   - !include dem_checks.yml
   - id: a670e3b2-01e7-4a0b-9cb6-69e4f3495557
