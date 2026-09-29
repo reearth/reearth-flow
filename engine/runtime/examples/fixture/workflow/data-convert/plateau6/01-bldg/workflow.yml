@@ -4,6 +4,10 @@ name: "PLATEAU6-DataConvert-01-bldg-workflow"
 entryGraphId: 8f3a94c6-bb3e-4561-a405-09b65353986c
 with:
   cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
 graphs:
   - id: 8f3a94c6-bb3e-4561-a405-09b65353986c
     name: entry_point
@@ -19,8 +23,19 @@ graphs:
               [
                 {
                   "city_gml_path": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
+
+      - id: d3d2a83a-e1f6-4ff3-9457-a0dcc8e52f43
+        name: DirectoryDecompressor
+        type: action
+        action: Directory Decompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
 
       - id: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
         name: FilePathExtractor
@@ -31,6 +46,7 @@ graphs:
             type: flowExpr
             value: attributes["city_gml_path"]
           extractArchive: true
+          destPrefix: udx
 
       - id: 8269fcb7-645d-4cc2-bb7e-215357fc960d
         name: GmlFileFilter
@@ -42,6 +58,17 @@ graphs:
                 type: flowExpr
                 value: attributes["extension"] == "gml"
               outputPort: features
+
+      - id: 20684cc5-04e0-4fd1-84c8-4cd4f40e6022
+        name: UDXFolderExtractor
+        type: action
+        action: PLATEAU6.UDXFolderExtractor
+        with:
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
 
       - id: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
         name: PathAttributeWhitelist
@@ -610,6 +637,11 @@ graphs:
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1
         from: d733672a-56d5-4a85-ac1d-a61e1ba174f5
+        to: d3d2a83a-e1f6-4ff3-9457-a0dcc8e52f43
+        fromPort: features
+        toPort: features
+      - id: e63a882d-1c54-4bb0-931f-4ec2782d4575
+        from: d3d2a83a-e1f6-4ff3-9457-a0dcc8e52f43
         to: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
         fromPort: features
         toPort: features
@@ -620,6 +652,11 @@ graphs:
         toPort: features
       - id: 499a3897-53db-4825-be5b-73414dbadfcf
         from: 8269fcb7-645d-4cc2-bb7e-215357fc960d
+        to: 20684cc5-04e0-4fd1-84c8-4cd4f40e6022
+        fromPort: features
+        toPort: features
+      - id: 45dfa8f0-8bb2-4113-9bb3-0541d4b4e392
+        from: 20684cc5-04e0-4fd1-84c8-4cd4f40e6022
         to: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
         fromPort: features
         toPort: features

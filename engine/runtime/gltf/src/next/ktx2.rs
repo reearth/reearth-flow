@@ -93,27 +93,20 @@ impl Codec for Ktx2Codec {
 }
 
 /// Full mip chain (base down to 1x1) for an sRGB RGBA page. Each level is
-/// resized from a linear-light copy of the base and re-encoded to sRGB, so
+/// resized from the previous one in linear light and re-encoded to sRGB, so
 /// minified texels average correctly. Alpha stays linear at every step.
 fn srgb_mip_chain(base: &RgbaImage) -> Vec<RgbaImage> {
     let (width, height) = base.dimensions();
     let levels = 32 - width.max(height).leading_zeros();
-    let linear = to_linear(base);
-    (0..levels)
-        .map(|level| {
-            if level == 0 {
-                return base.clone();
-            }
-            let w = (width >> level).max(1);
-            let h = (height >> level).max(1);
-            from_linear(&image::imageops::resize(
-                &linear,
-                w,
-                h,
-                image::imageops::FilterType::Triangle,
-            ))
-        })
-        .collect()
+    let mut chain = vec![base.clone()];
+    let mut linear = to_linear(base);
+    for level in 1..levels {
+        let w = (width >> level).max(1);
+        let h = (height >> level).max(1);
+        linear = image::imageops::resize(&linear, w, h, image::imageops::FilterType::Triangle);
+        chain.push(from_linear(&linear));
+    }
+    chain
 }
 
 /// sRGB RGBA8 to linear-light RGBA (f32); RGB is gamma-expanded, alpha scaled.
