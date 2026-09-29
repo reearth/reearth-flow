@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -148,12 +149,25 @@ pub fn write_citygml_to_storage(
             } else {
                 None
             };
+            let dropped_before = xml_writer.dropped_lod1_surfaces();
             xml_writer.write_city_object(
                 city_type,
                 &object.geometries,
                 gml_id.as_deref(),
                 appearance,
             )?;
+            // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
+            // schema gate cannot see this one and it is reported here instead of
+            // dropped in silence.
+            if xml_writer.dropped_lod1_surfaces() > dropped_before {
+                if let Some(diagnostics) = diagnostics {
+                    diagnostics.report_drop(
+                        ErrorCode::CitygmlLod1ShellConflict,
+                        Some(feature.id),
+                        Some(true),
+                    );
+                }
+            }
         }
 
         xml_writer.write_footer()?;

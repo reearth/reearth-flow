@@ -91,6 +91,9 @@ pub struct CityGmlXmlWriter<W: Write> {
     id_counters: HashMap<String, u64>,
     /// `xs:ID` is unique per document, so every id the writer emits is claimed here.
     used_ids: HashSet<String>,
+    /// Surfaces dropped by the LOD1 exclusive-shell rule, reported by the sink so
+    /// the drop is visible rather than silent.
+    dropped_lod1_surfaces: usize,
     pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
     /// Maps original texture URI strings to relative output paths.
     uri_remap: HashMap<String, String>,
@@ -108,9 +111,16 @@ impl<W: Write> CityGmlXmlWriter<W> {
             srs_name,
             id_counters: HashMap::new(),
             used_ids: HashSet::new(),
+            dropped_lod1_surfaces: 0,
             pending_appearances: Vec::new(),
             uri_remap: HashMap::new(),
         }
+    }
+
+    /// How many `lod1MultiSurface` properties were dropped because the object
+    /// also carried a `lod1Solid`. Read once the document is written.
+    pub fn dropped_lod1_surfaces(&self) -> usize {
+        self.dropped_lod1_surfaces
     }
 
     pub fn set_uri_remap(&mut self, remap: HashMap<String, String>) {
@@ -215,7 +225,8 @@ impl<W: Write> CityGmlXmlWriter<W> {
         // order is not good enough: the elements must be emitted in schema order.
         // Cardinality is the other half of the same rule, so duplicates collapse
         // before the sort rather than being written as siblings.
-        let merged = merge_duplicate_properties(geometries, city_type);
+        let mut merged = merge_duplicate_properties(geometries, city_type);
+        self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, city_type);
         let mut ordered: Vec<&GeometryEntry> = merged.iter().collect();
         ordered.sort_by_key(|entry| content_model_position(entry, city_type));
 
@@ -856,6 +867,57 @@ fn merge_duplicate_properties(
     merged
 }
 
+/// Whether this class inherits the LOD1 exclusive-shell rule.
+///
+/// CityGML 2.0 states it identically for `_AbstractBuilding` (§10.3.4),
+/// `_AbstractTunnel` and `_AbstractBridge`: at LOD1 the volumetric and surface
+/// parts of the exterior shell are identical, so either `lodNSolid` or
+/// `lodNMultiSurface` must be used, but not both, and from LOD2 the two may be
+/// modelled individually and complementary. `WaterBody` declares the same pair
+/// at LOD1 and carries no such restriction, so it is deliberately absent here.
+fn has_exclusive_lod1_shell(city_type: CityObjectType) -> bool {
+    matches!(
+        city_type,
+        CityObjectType::Building
+            | CityObjectType::BuildingPart
+            | CityObjectType::Bridge
+            | CityObjectType::BridgePart
+            | CityObjectType::Tunnel
+            | CityObjectType::TunnelPart
+    )
+}
+
+/// Drop `lod1MultiSurface` when `lod1Solid` is also present, and report it.
+///
+/// The XSD declares the two as independent optional elements, so a document
+/// carrying both validates and the CI schema gate cannot catch this. The rule
+/// exists only in the specification text, which is why it is enforced here.
+///
+/// The solid wins because `building.xsd` says the multi-surface form is the one
+/// to use when the geometry is not a topologically clean solid, making the solid
+/// the primary representation. Since the spec also defines the two as identical
+/// at LOD1, the dropped surfaces are redundant rather than additional.
+fn enforce_lod1_shell(entries: &mut Vec<GeometryEntry>, city_type: CityObjectType) -> usize {
+    if !has_exclusive_lod1_shell(city_type) {
+        return 0;
+    }
+    let names: Vec<String> = entries
+        .iter()
+        .map(|entry| geometry_property_name(entry, city_type))
+        .collect();
+    if !names.iter().any(|name| name == "lod1Solid") {
+        return 0;
+    }
+    let before = entries.len();
+    let mut index = 0;
+    entries.retain(|_| {
+        let keep = names[index] != "lod1MultiSurface";
+        index += 1;
+        keep
+    });
+    before - entries.len()
+}
+
 /// Fold `extra`'s geometry into `held`, which already occupies that property.
 /// Returns whether it could, which is only true within one GML family: a second
 /// `gml:Solid` has nowhere to go inside a `SolidPropertyType` property.
@@ -1122,6 +1184,72 @@ mod tests {
         assert_eq!(w.claim_gml_id(None, "poly"), "poly_1");
         assert_eq!(w.claim_gml_id(None, "poly"), "poly_2");
         assert_eq!(w.claim_gml_id(None, "bldg"), "bldg_2");
+    }
+
+    fn solid_of(exterior: Vec<[f64; 3]>) -> GmlSolid {
+        GmlSolid {
+            id: None,
+            exterior: vec![plain_surface(exterior)],
+            interiors: vec![],
+        }
+    }
+
+    fn shell_entries(lod: u8) -> Vec<GeometryEntry> {
+        vec![
+            GeometryEntry {
+                lod,
+                property: Some(format!("lod{lod}Solid")),
+                element: GmlElement::Solid(solid_of(triangle())),
+            },
+            GeometryEntry {
+                lod,
+                property: Some(format!("lod{lod}MultiSurface")),
+                element: GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: vec![plain_surface(offset_triangle())],
+                },
+            },
+        ]
+    }
+
+    /// CityGML 2.0 §10.3.4, conformance requirement 3: at LOD1 the volumetric and
+    /// surface parts of the exterior shell are identical, so either `lod1Solid`
+    /// or `lod1MultiSurface` must be used, **but not both**.
+    ///
+    /// The XSD declares them as two independent optional elements, so a document
+    /// carrying both still passes schema validation and the CI gate cannot see
+    /// it. The solid is kept because `building.xsd` says the multi-surface form
+    /// is the one to use when the geometry is not a topologically clean solid,
+    /// which makes the solid the primary representation.
+    #[test]
+    fn lod1_shell_keeps_the_solid_and_drops_the_multisurface() {
+        let xml = write_entries(shell_entries(1));
+
+        assert_eq!(
+            xml.matches("<bldg:lod1Solid>").count(),
+            1,
+            "the solid is the primary form and must survive:\n{xml}"
+        );
+        assert_eq!(
+            xml.matches("<bldg:lod1MultiSurface>").count(),
+            0,
+            "LOD1 may carry only one of the two:\n{xml}"
+        );
+    }
+
+    /// The same spec paragraph: "Starting from LOD2, both properties may be
+    /// modelled individually and complementary." So the LOD1 rule must not be
+    /// generalised into a blanket exclusion.
+    #[test]
+    fn lod2_may_carry_both_solid_and_multisurface() {
+        let xml = write_entries(shell_entries(2));
+
+        assert_eq!(xml.matches("<bldg:lod2Solid>").count(), 1, "{xml}");
+        assert_eq!(
+            xml.matches("<bldg:lod2MultiSurface>").count(),
+            1,
+            "from LOD2 the two are complementary, not exclusive:\n{xml}"
+        );
     }
 
     /// Write one geometry entry as a Building city object and return the XML.
