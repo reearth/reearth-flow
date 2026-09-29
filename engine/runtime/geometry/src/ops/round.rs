@@ -30,13 +30,21 @@ impl CoordinatePrecision {
 }
 
 /// `value` rounded half away from zero to `places` decimal places, or unchanged
-/// when `places` is `None`.
+/// when `places` is `None` or too many to scale `value` by.
 pub fn round_to(value: f64, places: Option<u32>) -> f64 {
     match places {
         None => value,
         Some(places) => {
-            let scale = 10f64.powi(places as i32);
-            (value * scale).round() / scale
+            let Ok(places) = i32::try_from(places) else {
+                return value;
+            };
+            let scale = 10f64.powi(places);
+            let scaled = value * scale;
+            if scale.is_finite() && scaled.is_finite() {
+                scaled.round() / scale
+            } else {
+                value
+            }
         }
     }
 }
@@ -116,6 +124,14 @@ mod tests {
             PRECISION.apply([1.000_000_000_000_4, 1.234_9, 0.000_05]),
             [1.0, 1.23, 0.0001]
         );
+    }
+
+    #[test]
+    fn places_too_many_to_scale_by_leave_the_value_unchanged() {
+        assert_eq!(round_to(1.5, Some(u32::MAX)), 1.5);
+        assert_eq!(round_to(1.5, Some(309)), 1.5);
+        assert_eq!(round_to(0.0, Some(309)), 0.0);
+        assert_eq!(round_to(1e10, Some(300)), 1e10);
     }
 
     #[test]
